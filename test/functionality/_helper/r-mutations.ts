@@ -1,3 +1,4 @@
+import { escapeRegex } from '../../../src/util/text/strings';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -264,9 +265,6 @@ function renameOccurrences(code: string, places: readonly SourceRange[], to: str
 	return lines.join('\n');
 }
 
-function escapeRegex(text: string): string {
-	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 async function renameCriterionTo(target: MutationTarget, occurrencesOf: Occurrences, to: string): Promise<MutationTarget | undefined> {
 	const at = SlicingCriterion.nameAt(target.criterion);
@@ -295,14 +293,12 @@ const LiteralTakenAsWritten = /\b(library|require|quote|substitute|bquote|expres
 const splitString: MutationPass = {
 	name:  'split string literal',
 	apply: target => {
-		const literal = [...target.code.matchAll(/"[^"\\\n]*"/g)]
-			.find(m => m[0].length > 3 && !LiteralTakenAsWritten.test(target.code.slice(0, m.index)));
+		const literal = replaceableLiteral(target.code, v => v.length > 1);
 		if(literal === undefined) {
 			return undefined;
 		}
 		const value = literal[0].slice(1, -1);
-		const split = `paste0("${value.slice(0, 1)}", "${value.slice(1)}")`;
-		return { ...target, code: target.code.slice(0, literal.index) + split + target.code.slice(literal.index + literal[0].length) };
+		return { ...target, code: replaceLiteral(target, literal, `paste0("${value.slice(0, 1)}", "${value.slice(1)}")`) };
 	}
 };
 
@@ -495,6 +491,84 @@ const lambdaShorthand: MutationPass = {
 		: { ...target, code: target.code.replace(/\bfunction\s*\(/g, '\\(') }
 };
 
+/** the first string literal a pass may replace by an expression of the same value */
+function replaceableLiteral(code: string, fits: (value: string) => boolean = () => true): RegExpMatchArray | undefined {
+	/* an escape is skipped over so the next literal starts where R starts it, but a literal holding one is left alone */
+	return [...code.matchAll(/"(?:[^"\\\n]|\\.)*"/g)].find(m => !m[0].includes('\\') && fits(m[0].slice(1, -1)) && !LiteralTakenAsWritten.test(code.slice(0, m.index)));
+}
+
+function replaceLiteral(target: MutationTarget, literal: RegExpMatchArray, by: string): string {
+	return target.code.slice(0, literal.index) + by + target.code.slice((literal.index ?? 0) + literal[0].length);
+}
+
+const hoistString: MutationPass = {
+	name:  'string literal hoisted into a variable',
+	apply: target => {
+		const literal = replaceableLiteral(target.code);
+		return literal === undefined ? undefined
+			: mapLines({ ...target, code: replaceLiteral(target, literal, `${MutationPrefix}s`) }, lines => [`${MutationPrefix}s <- ${literal[0]}`, ...lines], line => line + 1);
+	}
+};
+
+const sprintfString: MutationPass = {
+	name:  'string literal formatted by sprintf',
+	apply: target => {
+		const literal = replaceableLiteral(target.code);
+		return literal === undefined ? undefined : { ...target, code: replaceLiteral(target, literal, `sprintf("%s", ${literal[0]})`) };
+	}
+};
+
+const filePathString: MutationPass = {
+	name:  'path literal built by file.path',
+	apply: target => {
+		const literal = replaceableLiteral(target.code, v => /^[^/]+(\/[^/]+)+$/.test(v));
+		return literal === undefined ? undefined
+			: { ...target, code: replaceLiteral(target, literal, `file.path(${literal[0].slice(1, -1).split('/').map(p => `"${p}"`).join(', ')})`) };
+	}
+};
+
+/* rewriting a call with do.call forces its arguments first and moves where it is called from */
+const ArgumentsTakenLazily = /<<-|\bsubstitute\(|\bmissing\(|match\.call|sys\.call|sys\.function|parent\.frame|eval\.parent|\bdeparse\(|\bquote\(|on\.exit/;
+const CalledAsWritten: ReadonlySet<string> = new Set([
+	'library', 'require', 'requireNamespace', 'quote', 'bquote', 'substitute', 'expression', 'function', 'local', 'eval', 'evalq',
+	'tryCatch', 'try', 'withCallingHandlers', 'suppressWarnings', 'suppressMessages', 'invisible', 'with', 'within', 'subset', 'transform',
+	'switch', 'missing', 'on.exit', 'Recall', 'UseMethod', 'NextMethod', 'standardGeneric', 'environment', 'sys.call', 'match.arg',
+	'data', 'system.time', 'force', 'delayedAssign', 'makeActiveBinding', 'setRefClass', 'new', 'ls', 'rm', 'exists', 'get', 'get0', 'mget', 'assign'
+]);
+
+const doCall: MutationPass = {
+	name:  'call made by do.call',
+	apply: target => ArgumentsTakenLazily.test(target.code) ? undefined : rewriteAssignments(target, (name, rhs) => {
+		const call = soleCall(rhs);
+		if(call === undefined || CalledAsWritten.has(call.name) || /(^|[^\w.])function\s*\(|\\\(|\.\.\./.test(call.args)) {
+			return undefined;
+		}
+		return `${name} <- do.call(${call.name}, list(${splitTopLevelArgs(call.args).join(', ')}))`;
+	})
+};
+
+const guardedByIf: MutationPass = {
+	name:  'every statement guarded by if(TRUE)',
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const guard = l.trim() !== '' && !l.includes(';') && !/^(if|else|for|while|repeat|function)\b/.test(l.trim());
+			changed ||= guard;
+			return guard ? `if(TRUE) ${l}` : l;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+/* inside `local` an assignment binds in a fresh frame, which these see as different from the global one */
+const SeesTheFrame = /<<-|parent\.frame|sys\.|environment\(|globalenv|\.GlobalEnv|assign\(|eval\.parent|makeActiveBinding|list2env|\bls\(|\brm\(|exists\(|\bget0?\(|mget\(|setRefClass|search\(|attach\(|source\(|sys\.source|\bload\(|\bdata\(/;
+
+const wholeProgramLocal: MutationPass = {
+	name:  'whole program in local',
+	apply: target => !SeesTheFrame.test(target.code) && target.code.split('\n').slice(0, -1).every(l => PrintsNothing.test(l)) ?
+		mapLines(target, lines => ['local({', ...lines, '})'], line => line + 1) : undefined
+};
+
 /** every pass a mutant is generated for; add to this list to check another rewrite */
 export const MutationPasses: readonly MutationPass[] = [
 	leadingNoise,
@@ -518,14 +592,21 @@ export const MutationPasses: readonly MutationPass[] = [
 	semicolonJoined,
 	bracesAdded,
 	lambdaShorthand,
-	nestedCallToPipe
+	nestedCallToPipe,
+	hoistString,
+	sprintfString,
+	filePathString,
+	doCall,
+	guardedByIf,
+	wholeProgramLocal
 ];
 
 const analyzers = new WeakMap<KnownParser, Map<string, Promise<FlowrAnalyzer>>>();
 function analyzerFor(parser: KnownParser, code: string): Promise<FlowrAnalyzer> {
 	const known = analyzers.get(parser) ?? new Map<string, Promise<FlowrAnalyzer>>();
 	analyzers.set(parser, known);
-	const analyzer = known.get(code) ?? new FlowrAnalyzerBuilder().setParser(parser).build().then(a => (a.addRequest(code), a));
+	const analyzer = known.get(code) ?? new FlowrAnalyzerBuilder()
+		.setParser(parser).build().then(a => (a.addRequest(code), a));
 	known.set(code, analyzer);
 	return analyzer;
 }
@@ -535,6 +616,15 @@ export async function slice(parser: KnownParser, { code, criterion }: MutationTa
 	const result = await createSlicePipeline(parser, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
 	const reconstructed = result.reconstruct.code;
 	return Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
+}
+
+/** what is left of `code` once the removal slice of `criterion` is removed, see {@link staticRemovalSlice} */
+export async function removalSlice(parser: KnownParser, { code, criterion }: MutationTarget): Promise<string> {
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	analyzer.addRequest(code);
+	const { 'static-slice': slices } = await analyzer.query([{ type: 'static-slice', criteria: [criterion], removal: true }]);
+	const left = (Object.values(slices.results)[0] as { reconstruct?: { code: string | string[] } } | undefined)?.reconstruct?.code;
+	return Array.isArray(left) ? left.join('\n') : left ?? '';
 }
 
 /** applies one pass, letting it locate what it rewrites with the flowR search */

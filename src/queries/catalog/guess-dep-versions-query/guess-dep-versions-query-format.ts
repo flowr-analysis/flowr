@@ -1,9 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, italic, faint, color, Colors, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import { RVersion, type VersionString } from '../../../util/r-version';
 import { arraysGroupBy, uniqueArray } from '../../../util/collections/arrays';
 import { Identifier } from '../../../dataflow/environments/identifier';
@@ -416,7 +416,7 @@ export const GuessDepVersionsQueryDefinition = {
 	executor:        executeGuessDepVersionsQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, _query) => {
 		const out = queryResults as QueryResults<'guess-dep-versions'>['guess-dep-versions'];
-		result.push(`Query: ${bold('guess-dep-versions', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('guess-dep-versions', formatter, out['.meta'].timing));
 		if(out.dateCutoff) {
 			result.push(`   ╰ up to ${italic(out.dateCutoff, formatter)}${out.rVersion ? `, R ${rVersionText(out, formatter)}` : ''}`);
 		} else if(out.rVersion) {

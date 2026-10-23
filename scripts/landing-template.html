@@ -10,10 +10,11 @@
 <style>
 <!--THEME-CSS-->
 <!--BASE-CSS-->
-/* a few soft balls behind everything, in the colours the feature cards use, drifting slowly enough
+/* a few soft balls behind the whole page, in the colours the feature cards use, drifting slowly enough
    that one only notices them when looking for them */
+body { position: relative; overflow-x: clip; }
 body::before, body::after {
-	content: ""; position: fixed; inset: -10%; z-index: -1; pointer-events: none;
+	content: ""; position: absolute; inset: 0 -5%; z-index: -1; pointer-events: none;
 	will-change: transform;
 }
 body::before {
@@ -58,10 +59,10 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 
 <!--BAR-CSS-->
 
-header { text-align: center; padding: 2.6rem 0 1.6rem; }
-header h1 { margin: 0 0 1.3rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
-header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
-#meta { min-height: 1.6em; margin: 0 0 1.6rem; color: var(--muted); font-size: .9rem; }
+header { text-align: center; padding: 1.5rem 0 .8rem; }
+header h1 { margin: 0 0 .8rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
+header p.lead { max-width: 46rem; margin: 0 auto 1rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
+#meta { min-height: 1.6em; margin: 0 0 1rem; color: var(--muted); font-size: .9rem; }
 #meta b { color: var(--fg); }
 #meta a { color: inherit; text-decoration: none; }
 #meta a:hover { color: var(--accent); }
@@ -75,8 +76,8 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .cta a.primary { border-color: transparent; color: var(--accent-fg); background: var(--accent); }
 
 .demo { overflow: hidden; }
-.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: .2rem; padding: .4rem .4rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
-.tabs::-webkit-scrollbar { display: none; }
+/* the tabs wrap rather than scroll, so a narrow screen still shows every one of them */
+.tabs { display: flex; flex-wrap: wrap; gap: .2rem; padding: .4rem .4rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
 .tabs button {
 	/* .4rem strip padding + .6rem here puts the label on the same 1rem line as the code and the file name below */
 	white-space: nowrap; font: inherit; font-size: .9rem; font-weight: 600; padding: .6rem .6rem; cursor: pointer;
@@ -103,7 +104,7 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
    flexed, because a flex line would put a gap between every token of the code */
 .demo .line[data-note] { display: flow-root; }
 .demo .line[data-note]::after {
-	content: attr(data-note); float: right; margin-left: 2.5rem; text-indent: 0; color: var(--muted); opacity: .85;
+	content: attr(data-note); float: right; margin-left: 1rem; text-indent: 0; color: var(--muted); opacity: .85;
 }
 .demo .line.dep { box-shadow: inset .18rem 0 0 var(--kind); --kind: var(--accent); }
 /* a run of lines doing the same thing reads as one block: square edges inside it, round at its ends */
@@ -112,7 +113,7 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .demo .line.dep.last { border-top-left-radius: 0; border-top-right-radius: 0; }
 .demo .line.dep.run { background: color-mix(in srgb, var(--kind) 10%, transparent); }
 .demo .line.dep[data-kind]::after {
-	content: attr(data-kind); float: right; margin-left: 2rem; text-indent: 0;
+	content: attr(data-kind); float: right; margin-left: 1rem; text-indent: 0;
 	padding: 0 .5rem; border-radius: 1rem; font: 600 .68rem/1.7 system-ui, sans-serif; letter-spacing: .04em;
 	color: var(--kind); border: 1px solid color-mix(in srgb, var(--kind) 45%, transparent);
 	background: color-mix(in srgb, var(--kind) 12%, transparent);
@@ -123,10 +124,12 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .demo .line.source  { --kind: #0072b2; }
 .demo .line.read    { --kind: #0f766e; }
 .demo .line.write   { --kind: #d55e00; }
+.demo .line.transform { --kind: #b8860b; }
 :root[data-theme="dark"] .demo .line.library { --kind: #c58af9; }
 :root[data-theme="dark"] .demo .line.visualize { --kind: #f0a6d0; }
 :root[data-theme="dark"] .demo .line.read    { --kind: #2dd4bf; }
 :root[data-theme="dark"] .demo .line.write   { --kind: #e69f00; }
+:root[data-theme="dark"] .demo .line.transform { --kind: #e3b341; }
 .demo .line.jump { animation: jump 1.2s ease-out; }
 @keyframes jump {
 	0%, 60% { background: color-mix(in srgb, var(--accent) 30%, transparent); }
@@ -143,7 +146,7 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .demo .line { transition: opacity .2s ease, background .2s ease, filter .2s ease; }
 .demo .tk-keyword { color: #b07d00; } .demo .tk-call { color: var(--fg); font-weight: 600; } .demo .tk-string { color: #0f766e; } .demo .tk-op { color: var(--muted); }
 :root[data-theme="dark"] .demo .tk-keyword { color: #e0b341; } :root[data-theme="dark"] .demo .tk-string { color: #2dd4bf; }
-.demo .code { padding: .8rem 1rem; overflow-x: auto; font-size: clamp(.75rem, 3vw, .9rem); }
+.demo .code { padding: .8rem clamp(.5rem, 3vw, 1rem); overflow-x: auto; font-size: clamp(.75rem, 3vw, .9rem); }
 /* the frame around a sample: a title bar, then numbered lines */
 .demo .chrome {
 	padding: .2rem 1rem; border-bottom: 1px solid var(--border); background: var(--sunk);
@@ -151,6 +154,9 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 }
 
 .demo .code:not(.out) { counter-reset: line; }
+/* every line is as wide as the widest one, so a short mark floated beside it keeps to its own line and scrolls
+   with the code; the inferred values are too long for that and drop under their line on a narrow screen instead */
+.demo section:not([data-panel="values"]) > .code:not(.out) { display: grid; grid-template-columns: minmax(max-content, 1fr); align-content: start; }
 .demo .code:not(.out) .line { padding-left: 3rem; text-indent: -3rem; }
 .demo .code:not(.out) .line::before {
 	counter-increment: line; content: counter(line);
@@ -227,7 +233,7 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .cases details:hover { border-color: var(--accent); }
 .cases summary {
 	cursor: pointer; padding: .9rem 1.2rem; font-size: 1.05rem; font-weight: 600; color: var(--fg);
-	list-style: none; display: flex; align-items: center; gap: .6rem;
+	list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem;
 }
 .cases summary::-webkit-details-marker { display: none; }
 .cases .tags { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
@@ -260,6 +266,9 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 .grid.washed > .build { --tint: #0f766e; }
 .grid > * { padding: 1.1rem; text-decoration: none; color: inherit; }
 .grid > *:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+/* a link drawn as a card, a button or a chip answers the pointer with its frame, not with an underlined text */
+.grid > a:hover, .cta a:hover, .chips a:hover, .reads a:hover { text-decoration: none; }
+.grid > a:hover { color: inherit; }
 .grid.washed > *:hover {
 	border-color: color-mix(in srgb, var(--tint) 55%, var(--border));
 	background: radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, var(--tint) 24%, transparent), transparent 72%), var(--panel);
@@ -306,7 +315,7 @@ header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 
 @media (prefers-reduced-motion: reduce) { .path li em { transition: none; } }
 .path li em code { background: var(--sunk); border: 1px solid var(--border); border-radius: .3rem; padding: 0 .3rem; font-size: .92em; }
 /* the platforms flowR ships for, introduced rather than dropped in */
-.available { margin: 2.2rem 0 .5rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+.available { margin: 1.4rem 0 .4rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
 /* which way a slice runs: a question next to the explanation instead of a switch under the code */
 .demo .direction { margin-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .demo .direction[hidden] { display: none; }
@@ -406,7 +415,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; }
 
 	<section data-panel="slice">
 		<div class="chrome"><span class="file">survey.R</span></div>
-		<div class="code" id="slice">
+		<div class="code" id="slice" data-preview="<!--SLICE-PREVIEW-->">
 <!--SLICE-->
 		</div>
 	</section>
@@ -693,7 +702,8 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; }
 
 	const code = document.getElementById('slice');
 	const hint = document.getElementById('slice-hint');
-	let pinned, way = '';
+	/* the slice shown before the reader points at anything; the first pointing replaces it for good */
+	let pinned, preview = code.dataset.preview || undefined, way = '';
 	const sliceFor = name => {
 		code.dataset.way = way;
 		code.toggleAttribute('data-slice', Boolean(name));
@@ -701,10 +711,10 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; }
 			line.classList.toggle('keep', (line.dataset.keep ?? '').split(' ').includes(name + way));
 		}
 		for(const v of code.querySelectorAll('v')) {
-			v.classList.toggle('pinned', v.dataset.name === pinned);
+			v.classList.toggle('pinned', v.dataset.name === (pinned ?? preview));
 		}
 		const kept = code.querySelectorAll('.line.keep').length;
-		hint.textContent = name ? `${name} · ${kept}/${code.querySelectorAll('.line').length} lines` : '';
+		hint.textContent = name ? `${code.querySelector(`v[data-name="${name}"]`)?.dataset.label ?? name} · ${kept}/${code.querySelectorAll('.line').length} lines` : '';
 		say(way ? 'impact' : 'slice');
 	};
 	const nameAt = event => event.target.closest('v')?.dataset.name;
@@ -718,10 +728,14 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; }
 		button.addEventListener('click', () => {
 			way = button.dataset.way;
 			document.querySelectorAll('.way').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
-			sliceFor(pinned);
+			sliceFor(pinned ?? preview);
 		});
 	}
-	code.addEventListener('mouseover', event => sliceFor(nameAt(event) ?? pinned));
+	sliceFor(preview);
+	code.addEventListener('mouseover', event => {
+		preview = undefined;
+		sliceFor(nameAt(event) ?? pinned);
+	});
 	code.addEventListener('mouseleave', () => sliceFor(pinned));
 
 	for(const panel of document.querySelectorAll('[data-panel="origin"]')) {

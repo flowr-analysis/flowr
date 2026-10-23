@@ -253,7 +253,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext();
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand

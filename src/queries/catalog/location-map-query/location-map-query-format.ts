@@ -1,9 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeLocationMapQuery } from './location-map-query-executor';
-import { bold, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import type { OutputFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
-import { summarizeIdsIfTooLong } from '../../query-print';
+import { summarizeIdsIfTooLong, queryHeader } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
@@ -62,7 +61,7 @@ export const LocationMapQueryDefinition = {
 	executor:        executeLocationMapQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as LocationMapQueryResult;
-		result.push(`Query: ${bold('location-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('location-map', formatter, out['.meta'].timing));
 		result.push('   ╰ File List:');
 		for(const [id, file] of Object.entries(out.map.files)) {
 			result.push(`      ╰ ${id}: \`${file}\``);

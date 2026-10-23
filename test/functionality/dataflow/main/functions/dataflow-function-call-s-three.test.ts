@@ -1,9 +1,10 @@
 import { describe } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
-import { label } from '../../../_helper/label';
+import { assertDataflow, withTreeSitter, assertCallTargets } from '../../../_helper/shell';
+import { label, decorateLabelContext } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
-import { pushLocalEnvironment } from '../../../../../src/dataflow/environments/scoping';
 import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
+import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { REnvironment } from '../../../../../src/dataflow/environments/environment';
 
 describe('S3 Function Calls', withTreeSitter(ts => {
 	assertDataflow(label('Simple S3 dispatch', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
@@ -20,7 +21,7 @@ f <- function(x) {
 				in:                [],
 				entryPoint:        '2@{',
 				graph:             new Set([]),
-				environment:       pushLocalEnvironment(defaultEnv()),
+				environment:       REnvironment.pushLocal(defaultEnv()),
 				out:               [],
 				hooks:             [],
 				unknownReferences: []
@@ -129,4 +130,28 @@ f.numeric <- function(x) {
 			.definedByOnCall('8@x', '5@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['6@"f"', '5@function']] }
 	);
+
+	describe('domains:dispatch', () => {
+		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
+		const calls = (name: string, code: string, criterion: SlicingCriterion, expected: { reaches?: readonly SlicingCriterion[], misses?: readonly SlicingCriterion[] }) => assertCallTargets(sec(name), ts, code, criterion, expected);
+		const temp = 'print.temp <- function(x, ...) cat(x, "degrees\\n")\nx <- structure(21, class = "temp")\nprint(x)';
+		calls('domains:dispatch print reaches the method of the class', temp, '3@print', { reaches: ['1@function'] });
+		const vec = 'print.temp <- function(x, ...) cat(x, "degrees\\n")\nx <- structure(21, class = c("celsius", "temp"))\nprint(x)';
+		calls('domains:dispatch a later class of the vector is reached', vec, '3@print', { reaches: ['1@function'] });
+		const both = 'print.temp <- function(x, ...) cat("t\\n")\nprint.celsius <- function(x, ...) cat("c\\n")\nx <- structure(21, class = c("celsius", "temp"))\nprint(x)';
+		calls('domains:dispatch the first class wins', both, '4@print', { reaches: ['2@function'], misses: ['1@function'] });
+		const other = 'print.temp <- function(x, ...) cat("t\\n")\nx <- structure(21, class = "other")\nprint(x)';
+		calls('domains:dispatch an unrelated class does not reach the method', other, '3@print', { misses: ['1@function'] });
+		const next = 'print.temp <- function(x, ...) cat("t\\n")\nprint.celsius <- function(x, ...) NextMethod()\nx <- structure(21, class = c("celsius", "temp"))\nprint(x)';
+		calls('domains:dispatch NextMethod reaches the later class', next, '4@print', { reaches: ['1@function', '2@function'] });
+		const replaced = 'print.temp <- function(x, ...) cat("t\\n")\nx <- "a"\nclass(x) <- "temp"\nprint(x)';
+		calls('domains:dispatch a class set by replacement reaches the method', replaced, '4@print', { reaches: ['1@function'] });
+		const two = 'print.temp <- function(x, ...) cat("t\\n")\nprint.other <- function(x, ...) cat("o\\n")\n';
+		calls('domains:dispatch a named extra argument keeps the dispatch', two + 'x <- structure(21, class = "temp")\nprint(x, digits = 2)', '4@print', { reaches: ['1@function'], misses: ['2@function'] });
+		calls('domains:dispatch on the argument bound to the first formal', two + 'x <- structure(21, class = "temp")\nprint(digits = 2, x)', '4@print', { reaches: ['1@function'], misses: ['2@function'] });
+		calls('domains:dispatch on a class known inside a function', two + 'f <- function() {\n  x <- structure(21, class = "temp")\n  print(x)\n}\nf()', '5@print', { reaches: ['1@function'], misses: ['2@function'] });
+		calls('domains:dispatch a free variable sees its later value', two + 'x <- structure(1, class = "temp")\nf <- function() print(x)\nx <- structure(1, class = "other")\nf()', '4@print', { reaches: ['2@function'] });
+		calls('domains:dispatch a primitive dispatches on its first argument given', 'rep.a <- function(x, ...) "a"\nrep.b <- function(x, ...) "b"\nx <- structure(1, class = "a")\ny <- structure(1, class = "b")\nrep(times = y, x)', '5@rep', { reaches: ['2@function'] });
+		calls('domains:dispatch a binary operator dispatches on either operand', '`+.b` <- function(e1, e2) "b"\n`+.a` <- function(e1, e2) "a"\nx <- 1\ny <- structure(1, class = "b")\nx + y', '5@+', { reaches: ['1@function'] });
+	});
 }));

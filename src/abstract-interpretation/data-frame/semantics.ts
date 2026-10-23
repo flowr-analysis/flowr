@@ -473,16 +473,14 @@ function applyJoinSemantics(
 
 function applyIdentitySemantics(
 	value: DataFrameDomain,
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-	_args: {}
+	_args: object
 ): DataFrameDomain {
 	return value;
 }
 
 function applyUnknownSemantics(
 	value: DataFrameDomain,
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-	_args: {}
+	_args: object
 ): DataFrameDomain {
 	return value.top();
 }

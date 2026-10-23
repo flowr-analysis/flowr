@@ -1,6 +1,6 @@
 .bar {
 	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
-	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
+	padding: .4rem 0 .3rem; border-bottom: 1px solid var(--border);
 }
 .bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
 .bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
@@ -13,23 +13,21 @@
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
 .bar nav::-webkit-scrollbar { display: none; }
 .bar nav a {
-	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
+	display: inline-flex; align-items: center; height: 1.75rem; padding: 0 .5rem; white-space: nowrap;
 	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
 }
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
 .bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
-/* narrow viewport: wrap nav under the title instead of scrolling it off-screen */
-@media (max-width: 46rem) {
-	.bar { flex-wrap: wrap; }
-	/* negative margin aligns pill text with the brand, offsetting pill padding */
-	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
-	.bar .controls { margin-left: auto; }
-}
-/* below 21rem a 2x2 grid reads better than three names and a stray */
-@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
+/* set by the chrome script once title, nav, and controls no longer fit one row: the nav wraps under the
+   title instead of scrolling off-screen, and the controls stay beside the title */
+.bar.stacked { flex-wrap: wrap; column-gap: .5rem; }
+/* negative margin aligns pill text with the brand, offsetting pill padding */
+.bar.stacked nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
+.bar.stacked .controls { margin-left: auto; }
+.bar.tight .version { display: none; }
 /* GitHub brand guidelines: mark stays solid black/white, only the backdrop hovers */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
-.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
+.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: .5rem; }
 .bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
 :root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
 @media (prefers-color-scheme: dark) {
@@ -37,16 +35,30 @@
 }
 .bar .controls .gh svg { display: block; width: auto; height: auto; }
 #theme {
-	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
-	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
-	border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+	--night: radial-gradient(1px 1px at 62% 30%, #fff 60%, transparent), radial-gradient(1.5px 1.5px at 78% 62%, #fff 60%, transparent),
+		radial-gradient(1px 1px at 88% 28%, #fff 60%, transparent), radial-gradient(1px 1px at 70% 78%, #fff 60%, transparent), #211042;
+	position: relative; width: 2.2rem; height: 1.2rem; padding: 0; flex: none; cursor: pointer; overflow: hidden;
+	border: 0; border-radius: 1rem; background: radial-gradient(.4rem .22rem at 30% 70%, #fff 95%, transparent), radial-gradient(.28rem .24rem at 22% 58%, #fff 95%, transparent),
+		radial-gradient(.24rem .18rem at 40% 30%, #fff 95%, transparent), #b8edf9;
+	transition: background-color .2s;
 }
-#theme:hover { border-color: var(--accent); color: var(--accent); }
-#theme svg { display: block; width: auto; height: auto; }
-#theme .sun { display: none; }
-:root[data-theme="dark"] #theme .sun { display: block; }
-:root[data-theme="dark"] #theme .moon { display: none; }
+#theme::after {
+	content: ""; position: absolute; top: .15rem; left: calc(100% - 1.05rem); width: .9rem; height: .9rem; border-radius: 50%;
+	background: #f7ffff; box-shadow: 0 0 0 1.5px #465a6e47, 0 0 .4rem .1rem #fff; transition: left .18s cubic-bezier(.3, 1.3, .6, 1), background-color .18s, box-shadow .18s;
+}
+#theme:hover { filter: brightness(1.05); }
+#theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:root[data-theme="dark"] #theme { background: var(--night); }
+:root[data-theme="dark"] #theme::after { left: .15rem; background: #faeaf1; box-shadow: 0 0 .4rem .1rem #fff8; }
 @media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) #theme .sun { display: block; }
-	:root:not([data-theme="light"]) #theme .moon { display: none; }
+	:root:not([data-theme="light"]) #theme { background: var(--night); }
+	:root:not([data-theme="light"]) #theme::after { left: .15rem; background: #faeaf1; box-shadow: 0 0 .4rem .1rem #fff8; }
 }
+@media (prefers-reduced-motion: no-preference) {
+	.bar .brand .mark { transition: transform .5s cubic-bezier(.3, 1.6, .6, 1); }
+	.bar .brand:hover .mark { transform: rotate(30deg) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+	#theme, #theme::after { transition: none; }
+}
+

@@ -1,7 +1,6 @@
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { IEnvironment, REnvironmentInformation } from '../../dataflow/environments/environment';
-import { Environment } from '../../dataflow/environments/environment';
-import type { cleanEnvOf } from '../../dataflow/environments/scoping';
+import { Environment, REnvironment } from '../../dataflow/environments/environment';
 import type { DeepReadonly } from 'ts-essentials';
 import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
@@ -22,7 +21,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	get builtInEnvironment(): DeepReadonly<IEnvironment>;
 
 	/**
-	 * Every built-in definition flowR carries for `name`, matched by its plain name.
+	 * Every built-in definition flowR carries for `name`: what its namespace states when it names one, else matched by its plain name.
 	 */
 	builtInDefinitionsOf(name: Identifier): readonly IdentifierDefinition[];
 
@@ -47,7 +46,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with the configured built-in environment as base.
-	 * Knows only the built-ins, no attached package, so prefer {@link cleanEnvOf} wherever an environment is at hand.
+	 * Knows only the built-ins, no attached package, so prefer {@link REnvironment.cleanOf} wherever an environment is at hand.
 	 */
 	makeCleanEnv(): REnvironmentInformation;
 
@@ -187,7 +186,8 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	}
 
 	public builtInDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] {
-		return this.builtInEnv.memory.get(Identifier.getName(name)) ?? this.statedDefinitionsOf(name) ?? [];
+		const namespaced = Identifier.getNamespace(name) === undefined ? undefined : this.statedDefinitionsOf(name);
+		return namespaced ?? this.builtInEnv.memory.get(Identifier.getName(name)) ?? this.statedDefinitionsOf(name) ?? [];
 	}
 
 	public knowsPackage(pkg: string): boolean {

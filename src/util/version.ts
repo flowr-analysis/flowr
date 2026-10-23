@@ -6,11 +6,12 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
+import { compareByCodeUnit } from './text/strings';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.15.9';
-// this is automatically replaced with the release date by release-it (regex-bumper, see package.json)
-const versionDate = '2026-09-17T20:12:23Z';
+const version = '2.16.6';
+// this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
+const versionDate = '2026-10-22T19:05:13Z';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.
@@ -34,7 +35,6 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
-
 /**
  * Retrieves the version information for flowR and the given parser or analysis provider.
  */
@@ -57,7 +57,6 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
-
 
 /**
  * Displays the version information to the given output.
@@ -106,20 +105,14 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		// plugin/dataflow graph) into `util/version`, which `util/assert` depends on
 		const { BuiltInPlugins } = await import('../project/plugins/plugin-registry');
 		const keyByClass = new Map<string, string>(BuiltInPlugins.map(([key, producer]) => [producer.name, key]));
-		const activated = new Set<string>();
-		for(const cls of ctx.activatedPlugins) {
-			const key = keyByClass.get(cls);
-			if(key !== undefined) {
-				activated.add(key);
-			}
-		}
+		const activated = new Set(ctx.activatedPlugins.values().map(cls => keyByClass.get(cls)));
 		const render = (full: string, suffix: string): string => trace && !activated.has(full) ? dim(suffix) : suffix;
 		const labelWidth = Math.max(...[...byPrefix.keys()].map(p => p.length));
 		const header = `registered plugins (${names.length})`;
 		const hint = trace ? ' (faint = did not activate)' : ' (set +repl.showPlugins=true to track activation)';
 		pluginLines.push(`${bold(output.formatter.hyperlink(header, wiki, true), output.formatter)}:${dim(hint)}`);
 		for(const [prefix, suffixes] of [...byPrefix].sort((a, b) => a[0].localeCompare(b[0]))) {
-			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort((a, b) => a.localeCompare(b)).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
+			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort(compareByCodeUnit).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
 		}
 		if(!osc8) {
 			pluginLines.push(`  ${dim('docs: ' + wiki)}`);

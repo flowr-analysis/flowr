@@ -10,12 +10,11 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Environment, type EnvType, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
-import type { BuiltInMemory } from '../environments/built-in';
 import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
+import { REnvironment } from '../environments/environment';
 
 /**
  * Describes the information we store per function body.
@@ -68,10 +67,7 @@ export const FunctionArgument = {
 	},
 	/** The node id of a non-empty `arg`, e.g. of either `a` or `2` in `foo(a=3, 2)`. */
 	getId(this: void, arg: FunctionArgument): NodeId | undefined {
-		if(arg !== EmptyArgument) {
-			return arg?.nodeId;
-		}
-		return undefined;
+		return arg === EmptyArgument ? undefined : arg.nodeId;
 	},
 	/** The name of `arg` if named, `undefined` otherwise. */
 	getName(this: void, arg: FunctionArgument): string | undefined {
@@ -81,10 +77,8 @@ export const FunctionArgument = {
 	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
 		if(arg === EmptyArgument) {
 			return undefined;
-		} else if(arg.name === undefined) {
-			return arg.nodeId;
 		}
-		return arg.valueId;
+		return arg.name === undefined ? arg.nodeId : arg.valueId;
 	},
 	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link FunctionSemantics.call.match.toSpec} for that). */
 	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
@@ -193,7 +187,12 @@ export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
 	Edge   extends DfEdge       = DfEdge
 > {
-	private _idMap: AstIdMap | undefined;
+	private _idMap:        AstIdMap | undefined;
+	/**
+	 * Where the top-level statements of every file start and end running, counted in the order they first do, as a
+	 * statement sourcing a file runs that file's statements in between. Set once the whole program is analyzed.
+	 */
+	public statementOrder: ReadonlyMap<NodeId, readonly [start: number, end: number]> | undefined;
 
 	/*
 	 * Set of vertices which have sideEffects that we do not know anything about.
@@ -218,7 +217,7 @@ export class DataflowGraph<
 	private incomingIndex?:    Map<NodeId, IngoingEdges<Edge>>;
 
 	/* tag to the ids carrying it; a lookup re-checks the vertex, as another graph may retag an object they share */
-	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
+	private types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
 	/** The id list of `tag`, created on first use, so a caller adding many ids looks it up once. */
 	private typeList(tag: Vertex['tag']): NodeId[] {
@@ -235,10 +234,7 @@ export class DataflowGraph<
 
 	/** Every write above keeps an id listed under one tag at most once, so a lookup never hands the same one out twice. */
 	private unindexType(tag: Vertex['tag'], id: NodeId): void {
-		const ids = this.types.get(tag);
-		if(ids === undefined) {
-			return;
-		}
+		const ids = this.types.get(tag) ?? [];
 		for(let idx = ids.lastIndexOf(id); idx >= 0; idx = ids.lastIndexOf(id)) {
 			ids.splice(idx, 1);
 		}
@@ -246,6 +242,7 @@ export class DataflowGraph<
 
 	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
 	private qualifiedNames?: QualificationCache;
+
 
 	toJSON(): DataflowGraphJson {
 		return {
@@ -257,9 +254,21 @@ export class DataflowGraph<
 		};
 	}
 
+	/** A view of this graph without the environments of its vertices and subflows, sharing everything else. */
+	public withoutEnvironments(): DataflowGraph<Vertex, Edge> {
+		const graph = new DataflowGraph<Vertex, Edge>(this._idMap);
+		graph.rootVertices = this.rootVertices;
+		graph.edgeInformation = this.edgeInformation;
+		graph.types = this.types;
+		graph.vertexInformation = new Map(Array.from(this.vertexInformation, ([id, vertex]) => [id, (DfgVertex.isFunctionDefinition(vertex)
+			? { ...vertex, environment: undefined, subflow: { ...vertex.subflow, environment: undefined } }
+			: { ...vertex, environment: undefined }) as Vertex]));
+		graph.mergeRootsAndUnknowns(this, false);
+		return graph;
+	}
+
 	/** Gets the {@link DataflowGraphVertexInfo} attached to `id` (searching function definitions too if `includeDefinedFunctions`) and its outgoing edges. */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
-		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
 		const vertex: Vertex | undefined = includeDefinedFunctions ? this.getVertex(id) : this.getRootVertex(id);
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()];
 	}
@@ -271,10 +280,7 @@ export class DataflowGraph<
 
 	/** Gets the {@link DataflowGraphVertexInfo} attached to `id`, but only if it is a root-level vertex, see {@link DataflowGraph#getVertex}. */
 	public getRootVertex(id: NodeId): Vertex | undefined {
-		if(!this.rootVertices.has(id)) {
-			return undefined;
-		}
-		return this.vertexInformation.get(id);
+		return this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined;
 	}
 
 	/**
@@ -317,7 +323,7 @@ export class DataflowGraph<
 	public ingoingEdges(id: NodeId): ReadonlyIngoingEdges | undefined {
 		if(this.incomingIndex === undefined) {
 			const index = new Map<NodeId, IngoingEdges<Edge>>();
-			for(const [source, outgoing] of this.edgeInformation.entries()) {
+			for(const [source, outgoing] of this.edgeInformation) {
 				for(const [target, edge] of outgoing) {
 					const into = index.get(target);
 					if(into === undefined) {
@@ -342,10 +348,10 @@ export class DataflowGraph<
 		/* an nse edge quotes iff it does not originate from a loop marking its body */
 		const quotes = (source: NodeId, e: DfEdge): boolean =>
 			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(this.idMap?.get(source));
-		if(this.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
+		if(this.edgesTo(id).entries().some(([source, e]) => quotes(source, e))) {
 			return true;
 		}
-		return withOutgoing && (this.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
+		return withOutgoing && this.edgesFrom(id).values().some(e => quotes(id, e));
 	}
 
 	/**
@@ -399,9 +405,7 @@ export class DataflowGraph<
 	/** Drops the cached qualifications, as the graph may no longer imply them. Every mutator runs through here, so the guard covers them all. */
 	private dropQualifications(): void {
 		guard(!this.consumed, 'this graph was consumed by a merge and must not be changed any more');
-		if(this.qualifiedNames !== undefined) {
-			this.qualifiedNames = undefined;
-		}
+		this.qualifiedNames = undefined;
 	}
 
 	/** For a node of the normalized AST: `nodeId` if it is a DFG vertex itself, else the DFG vertices linked to it, else `undefined`. */
@@ -446,11 +450,7 @@ export class DataflowGraph<
 
 	/** Every vertex carrying `type`, in the order the graph learned of them. */
 	public* verticesOfType<T extends Vertex['tag']>(type: T): MapIterator<[NodeId, Vertex & { tag: T }]> {
-		const ids = this.types.get(type);
-		if(ids === undefined) {
-			return;
-		}
-		for(const id of ids) {
+		for(const id of this.types.get(type) ?? []) {
 			const vertex = this.vertexInformation.get(id);
 			/* a stale entry would hand out a vertex without the fields its tag promises */
 			if(vertex?.tag === type) {
@@ -461,11 +461,7 @@ export class DataflowGraph<
 
 	/** The ids of {@link DataflowGraph#verticesOfType|verticesOfType}, as a fresh array the caller may keep. */
 	public vertexIdsOfType<T extends Vertex['tag']>(type: T): NodeId[] {
-		const ids = this.types.get(type);
-		if(ids === undefined) {
-			return [];
-		}
-		return ids.filter(id => this.vertexInformation.get(id)?.tag === type);
+		return this.types.get(type)?.filter(id => this.vertexInformation.get(id)?.tag === type) ?? [];
 	}
 
 	/** Ids of all edges in the graph together with their edge information, see {@link DataflowGraph#vertices}. */
@@ -487,6 +483,25 @@ export class DataflowGraph<
 		return this.rootVertices;
 	}
 
+	/** while tracked (see {@link trackIncomingReads}), how often a read arriving at a vertex was added or removed */
+	private readsInto: Map<NodeId, number> | undefined;
+
+	/** Starts (or stops) counting the reads added to or removed from each vertex, see {@link incomingReadsVersion}. */
+	public trackIncomingReads(on: boolean): void {
+		this.readsInto = on ? new Map() : undefined;
+	}
+
+	/** How often a read arriving at `id` was added or removed since tracking started; an equal number means the reads are unchanged. */
+	public incomingReadsVersion(id: NodeId): number {
+		return this.readsInto?.get(id) ?? 0;
+	}
+
+	private countRead(to: NodeId, type: EdgeType | number): void {
+		if(this.readsInto !== undefined && (type & EdgeType.Reads) !== 0) {
+			this.readsInto.set(to, (this.readsInto.get(to) ?? 0) + 1);
+		}
+	}
+
 	/**
 	 * Takes `type` off the edge `fromId -> toId`, dropping the edge itself once it states nothing.
 	 * An edge with no type is no edge: every removal has to go through here so none is left behind.
@@ -499,6 +514,7 @@ export class DataflowGraph<
 			return this;
 		}
 		this.dropQualifications();
+		this.countRead(to, type);
 		edge.types &= ~type;
 		if(DfEdge.hasAnyType(edge)) {
 			/* the reverse index holds this very object, so a narrowed type is already visible through it */
@@ -524,24 +540,24 @@ export class DataflowGraph<
 		const vid = vertex.id;
 		const previous = this.vertexInformation.get(vid);
 		if(previous !== undefined && !overwrite) {
+			if(DfgVertex.isFunctionCall(previous) && DfgVertex.isFunctionCall(vertex)) {
+				mergeOrigins(previous, vertex);
+			}
 			return this;
 		}
 		this.dropQualifications();
 		const vtag = vertex.tag;
-
-		// keep a clone of the original environment, isolating the snapshot from later updates
+		/* keep a clone of the original environment, isolating the snapshot from later updates */
 		let environment: REnvironmentInformation | undefined;
 		if(vertex.environment) {
-			environment = cloneEnvironmentInformation(vertex.environment);
+			environment = REnvironment.clone(vertex.environment);
 		} else if(vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin)) {
 			/* only here is a fallback wanted, so a thunk spares every other vertex one it would discard */
 			environment = typeof fallbackEnv === 'function' ? fallbackEnv() : fallbackEnv;
 		}
 		(vertex as { environment: REnvironmentInformation | undefined }).environment = environment;
 		this.vertexInformation.set(vid, vertex as Vertex);
-		if(activeDataflowBudget !== undefined) {
-			activeDataflowBudget.vertex();
-		}
+		activeDataflowBudget?.vertex();
 		/* an overwrite keeping the tag is indexed already */
 		if(previous?.tag !== vtag) {
 			if(previous !== undefined) {
@@ -549,7 +565,6 @@ export class DataflowGraph<
 			}
 			this.indexType(vtag, vid);
 		}
-
 		if(asRoot) {
 			this.rootVertices.add(vid);
 		}
@@ -563,6 +578,7 @@ export class DataflowGraph<
 			return this;
 		}
 		this.dropQualifications();
+		this.countRead(toId, type);
 		const fromEdges = this.edgeInformation.get(fromId);
 		const existing = fromEdges?.get(toId);
 		if(existing !== undefined) {
@@ -573,7 +589,6 @@ export class DataflowGraph<
 			}
 			return this;
 		}
-
 		/* the spread would build the object through a slower path, and this runs for every edge of every graph */
 		const added = (data === undefined ? { types: type } : { types: type, cd: data.cd }) as unknown as Edge;
 		if(fromEdges === undefined) {
@@ -605,25 +620,44 @@ export class DataflowGraph<
 			return this;
 		}
 		guard(!otherGraph.consumed, 'a graph consumed by an earlier merge cannot be merged again');
-
-		this.mergeVertices(otherGraph, mergeRootVertices);
-		this.mergeEdges(otherGraph, consume);
+		if(consume && this.vertexInformation.size === 0 && this.edgeInformation.size === 0) {
+			this.adopt(otherGraph, mergeRootVertices);
+		} else {
+			this.mergeVertices(otherGraph, mergeRootVertices);
+			this.mergeEdges(otherGraph, consume);
+		}
 		otherGraph.consumed ||= consume;
 		return this;
 	}
 
-	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {
+	/** An empty graph takes over the contents of a graph it consumes rather than copying them entry by entry. */
+	private adopt(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices: boolean): void {
 		this.dropQualifications();
-		// merge root ids
+		this.vertexInformation = otherGraph.vertexInformation;
+		this.edgeInformation = otherGraph.edgeInformation;
+		this.types = otherGraph.types;
+		this.incomingIndex = undefined;
+		const takeRoots = mergeRootVertices && this.rootVertices.size === 0;
+		if(takeRoots) {
+			this.rootVertices = otherGraph.rootVertices;
+		}
+		this.mergeRootsAndUnknowns(otherGraph, mergeRootVertices && !takeRoots);
+	}
+
+	private mergeRootsAndUnknowns(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices: boolean): void {
 		if(mergeRootVertices) {
 			for(const root of otherGraph.rootVertices) {
 				this.rootVertices.add(root);
 			}
 		}
-
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
+	}
+
+	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {
+		this.dropQualifications();
+		this.mergeRootsAndUnknowns(otherGraph, mergeRootVertices);
 		/* the tags of the vertices coming in repeat, so the list each goes on is looked up only when it changes */
 		let lastTag: Vertex['tag'] | undefined;
 		let lastIds: NodeId[] = [];
@@ -716,14 +750,10 @@ export class DataflowGraph<
 
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
-		if(target) {
-			this._unknownSideEffects.add({
-				id:     NodeId.normalize(id),
-				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
-			});
-			return this;
-		}
-		this._unknownSideEffects.add(NodeId.normalize(id));
+		this._unknownSideEffects.add(target ? {
+			id:     NodeId.normalize(id),
+			linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
+		} : NodeId.normalize(id));
 		return this;
 	}
 
@@ -749,22 +779,23 @@ export class DataflowGraph<
 }
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
-	if(current.tag !== next.tag) {
-		return current;
-	} else if(DfgVertex.isFunctionDefinition(current)) {
+	if(current.tag === next.tag && DfgVertex.isFunctionDefinition(current)) {
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
 		if(n.mode && n.mode.length > 0) {
-			current.mode ??= [];
-			for(const m of n.mode) {
-				if(!current.mode.includes(m)) {
-					current.mode.push(m);
-				}
-			}
+			current.mode = uniqueArrayMerge(current.mode ?? [], n.mode);
 		}
+	} else if(DfgVertex.isFunctionCall(current) && DfgVertex.isFunctionCall(next)) {
+		mergeOrigins(current, next);
 	}
-
 	return current;
+}
+
+/** a call resolving to several callees is processed once per callee, each adding its origin */
+function mergeOrigins(current: DataflowGraphVertexFunctionCall, next: { origin: DataflowGraphVertexFunctionCall['origin'] }): void {
+	if(Array.isArray(current.origin) && Array.isArray(next.origin)) {
+		current.origin = uniqueArrayMerge(current.origin, next.origin);
+	}
 }
 
 export interface IEnvironmentJson {
@@ -784,14 +815,9 @@ interface REnvironmentInformationJson {
 
 function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
-	const memory: BuiltInMemory = new Map();
-	for(const [key, value] of Object.entries(json.memory)) {
-		memory.set(key, value);
-	}
-	const obj = new Environment(parent as Environment, json.builtInEnv);
-	(obj as { id: NodeId }).id = json.id;
-	obj.adoptMap(memory);
-	const env = obj;
+	const env = new Environment(parent as Environment, json.builtInEnv);
+	(env as { id: NodeId }).id = json.id;
+	env.adoptMap(new Map(Object.entries(json.memory)));
 	env.n = json.n;
 	env.t = json.t;
 	env.globalEnv = json.globalEnv;
@@ -799,9 +825,5 @@ function envFromJson(json: IEnvironmentJson): Environment {
 }
 
 function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {
-	const current = envFromJson(json.current);
-	return {
-		current,
-		level: json.level
-	};
+	return { current: envFromJson(json.current), level: json.level };
 }

@@ -119,11 +119,7 @@ function stringifyRNumberSuffix(value: RNumberValue): string {
 function renderString(value: RStringValue): string {
 	const quote = value.quotes;
 	const raw = value.flag === 'raw';
-	if(raw) {
-		return `r${quote}(${value.str})${quote}`;
-	} else {
-		return `${quote}${JSON.stringify(value.str).slice(1, -1)}${quote}`;
-	}
+	return raw ? `r${quote}(${value.str})${quote}` : `${quote}${JSON.stringify(value.str).slice(1, -1)}${quote}`;
 }
 
 

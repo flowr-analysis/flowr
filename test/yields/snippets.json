@@ -1,0 +1,474 @@
+[
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"avg <- function(df, col, n = nrow(df)) {",
+			"  if(anyNA(df))",
+			"    df <- na.omit(df)",
+			"  sum(df[[col]]) / n",
+			"}",
+			"df <- data.frame(a = c(1, NA, 3))",
+			"avg(df, \"a\")  # :yields: 2"
+		],
+		"checks": [
+			{
+				"line": 6,
+				"yields": "2"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"x <- c(5, NA, 7)",
+			"x[x > 6]           # :yields: c(NA, 7)",
+			"try(if(NA) 1 else 2)",
+			"# Error: missing value where TRUE/FALSE needed"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "c(NA, 7)"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"paste0(\"col_\", 1:2)",
+			"# :yields: c(\"col_1\", \"col_2\")"
+		],
+		"checks": [
+			{
+				"line": 0,
+				"yields": "c(\"col_1\", \"col_2\")"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"f_123 <- function() 1",
+			"get(paste0(\"f_12\", 1 + 2))() # :yields: 1"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "1"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"code <- deparse(quote(1 + 2))",
+			"code <- gsub(\"2\", \"3\", code) # replace \"2\" with \"3\"",
+			"eval(parse(text = code)) # :yields: 4"
+		],
+		"checks": [
+			{
+				"line": 2,
+				"yields": "4"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"z <- 1 + 2i",
+			"Re(z)",
+			"# :yields: 1"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "1"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"f <- factor(c(\"a\", \"b\"))",
+			"levels(f)",
+			"# :yields: c(\"a\", \"b\")"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "c(\"a\", \"b\")"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"x <- c(1, 2, 3)      # len 3, elems [1..3]",
+			"x[c(TRUE, FALSE)]    # :yields: c(1, 3)",
+			"c(x, \"a\")            # :yields: c(\"1\", \"2\", \"3\", \"a\")",
+			"x[5] <- 9            # x: c(1, 2, 3, NA, 9)"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "c(1, 3)"
+			},
+			{
+				"line": 2,
+				"yields": "c(\"1\", \"2\", \"3\", \"a\")"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"x <- c(1, NA)",
+			"sum(x)               # :yields: NA",
+			"sum(x, na.rm = TRUE) # :yields: 1"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "NA"
+			},
+			{
+				"line": 2,
+				"yields": "1"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"attributes(matrix(1)) # :yields: list(dim = c(1, 1))",
+			"class(matrix(1))      # :yields: c(\"matrix\", \"array\")"
+		],
+		"checks": [
+			{
+				"line": 0,
+				"yields": "list(dim = c(1, 1))"
+			},
+			{
+				"line": 1,
+				"yields": "c(\"matrix\", \"array\")"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"c <- 42",
+			"c(1, 2)  # :yields: c(1, 2)",
+			"c <- function(...) \"no vector\"",
+			"c(1, 2)  # :yields: \"no vector\""
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "c(1, 2)"
+			},
+			{
+				"line": 3,
+				"yields": "\"no vector\""
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"e <- quote(x + 1)                  # a call object",
+			"e[[1]]                             # :yields: `+`",
+			"eval(substitute(x + 1, list(x=2))) # :yields: 3"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "`+`"
+			},
+			{
+				"line": 2,
+				"yields": "3"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [
+			"dplyr"
+		],
+		"code": [
+			"df <- data.frame(id = 1:3) |>",
+			"      filter(id > 1) |>",
+			"      transform(points = id * 2)",
+			"df$score   # :yields: NULL"
+		],
+		"checks": [
+			{
+				"line": 3,
+				"yields": "NULL"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"xs <- list(a = 1, b = \"x\")  # nam:c:es a, b",
+			"names(xs)                   # :yields: c(\"a\", \"b\")"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "c(\"a\", \"b\")"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [
+			"units"
+		],
+		"code": [
+			"set_units(1, m) + set_units(1, cm)  # :yields: 1.01 m"
+		],
+		"checks": [
+			{
+				"line": 0,
+				"yields": "1.01 m"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"adder <- function(n) function(x) x + n",
+			"add1  <- adder(1)",
+			"Reduce(`+`, lapply(1:3, add1))  # :yields: 9"
+		],
+		"checks": [
+			{
+				"line": 2,
+				"yields": "9"
+			}
+		]
+	},
+	{
+		"prefix": "adder <- function(n) function(x) x + n; add1 <- adder(1)",
+		"libraries": [],
+		"code": [
+			"twice <- function(f, x) {",
+			"  body(add1) <<- quote(x - n)   # rewrites add1",
+			"  y <- f(f(x))   # f(f(5)) = (5 - 1) - 1 = 3",
+			"  paste(deparse(body(f)), \"=\", y)",
+			"}",
+			"# add1 was: function(x) x + n (with n = 1)",
+			"twice(add1, 5)   # :yields: \"x - n = 3\""
+		],
+		"checks": [
+			{
+				"line": 6,
+				"yields": "\"x - n = 3\""
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"add <- function() n + n",
+			"n <- 2",
+			"add()  # :yields: 2 + 2 = 4",
+			"environment(add) <- list2env(list(n = 3))",
+			"add()  # :yields: 3 + 3 = 6"
+		],
+		"checks": [
+			{
+				"line": 2,
+				"yields": "2 + 2 = 4"
+			},
+			{
+				"line": 4,
+				"yields": "3 + 3 = 6"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"x <- 1:3",
+			"class(x)  <- \"factor\"",
+			"levels(x) <- c(\"a\", \"b\", \"c\")",
+			"typeof(x)  # :yields: \"integer\"",
+			"class(x)   # :yields: \"factor\""
+		],
+		"checks": [
+			{
+				"line": 3,
+				"yields": "\"integer\""
+			},
+			{
+				"line": 4,
+				"yields": "\"factor\""
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"c(1, 2) + c(FALSE, 2, 3)   # :yields: c(1, 4, 4)"
+		],
+		"checks": [
+			{
+				"line": 0,
+				"yields": "c(1, 4, 4)"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"f <- function() {",
+			"    var_name <- \"x\"",
+			"    assign(var_name, 42, envir = parent.frame())",
+			"}",
+			"f()",
+			"print(x) # :yields: 42"
+		],
+		"checks": [
+			{
+				"line": 5,
+				"yields": "42"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"f <- function(x = {",
+			"  x <- 2",
+			"  1",
+			"}) x + x",
+			"f()                        # :yields: 3 (as before)",
+			"formals(f) <- alist(x = 5)",
+			"body(f)    <- quote(x <<- x + x)",
+			"f()                        # :yields: 10",
+			"eval(parse(text = \"`<-` <- `*`\"))",
+			"x <- 2                     # :yields: 20"
+		],
+		"checks": [
+			{
+				"line": 4,
+				"yields": "3 (as before)"
+			},
+			{
+				"line": 7,
+				"yields": "10"
+			},
+			{
+				"line": 9,
+				"yields": "20"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"x <- \"hello\"",
+			"print(x)            # :yields: \"hello\"",
+			"print.character <- function(...) 42",
+			"print(x)            # :yields: 42"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "\"hello\""
+			},
+			{
+				"line": 3,
+				"yields": "42"
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"f <- function() {",
+			"  n <- as.integer(\"a\")   # warns, n is NA",
+			"  \"after\"",
+			"}",
+			"f()                       # :yields: \"after\"",
+			"options(warn = 2)",
+			"tryCatch(f(), error = function(e) \"aborted\")",
+			"# :yields: \"aborted\""
+		],
+		"checks": [
+			{
+				"line": 4,
+				"yields": "\"after\""
+			},
+			{
+				"line": 6,
+				"yields": "\"aborted\""
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"g <- function(a) {",
+			"  a",
+			"  \"g end\"",
+			"}",
+			"h <- function() {",
+			"  g(return(\"h early\"))",
+			"  \"h end\"",
+			"}",
+			"h()   # :yields: \"h early\""
+		],
+		"checks": [
+			{
+				"line": 8,
+				"yields": "\"h early\""
+			}
+		]
+	},
+	{
+		"prefix": "",
+		"libraries": [],
+		"code": [
+			"set.seed(1)",
+			"runif(1)   # :yields: 0.2655087",
+			"runif(1)   # :yields: 0.3721239"
+		],
+		"checks": [
+			{
+				"line": 1,
+				"yields": "0.2655087"
+			},
+			{
+				"line": 2,
+				"yields": "0.3721239"
+			}
+		]
+	}
+]

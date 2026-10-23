@@ -1,44 +1,30 @@
-import type { ReplCodeCommand, ReplOutput } from './repl-main';
+import type { ReplCodeCommand } from './repl-main';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
 import { ReplClipboard } from './repl-clipboard';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
-function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
-	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+function normalizeMermaidCommand(description: string, usageExample: string, aliases: string[], convert: (ast: RProject<ParentInformation>) => string): ReplCodeCommand {
+	return {
+		description,
+		isCodeCommand: true,
+		usageExample,
+		aliases,
+		script:        false,
+		argsParser:    (args: string) => handleString(args),
+		fn:            async({ output, analyzer }) => {
+			const result = await analyzer.normalize();
+			await ReplClipboard.print(output, convert(result.ast), ReplClipboard.note(output, 'mermaid url', 'normalize', result['.meta'].timing));
+		}
+	};
 }
 
-export const normalizeCommand: ReplCodeCommand = {
-	description:   'Get mermaid code for the normalized AST of R code',
-	isCodeCommand: true,
-	usageExample:  ':normalize',
-	aliases:       ['n'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.normalize();
-		const mermaid = normalizedAstToMermaid(result.ast);
-		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
-	}
-};
-
-export const normalizeStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':normalize*',
-	aliases:       ['n*'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.normalize();
-		const mermaid = normalizedAstToMermaidUrl(result.ast);
-		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
-	}
-};
+export const normalizeCommand = normalizeMermaidCommand('Get mermaid code for the normalized AST of R code', ':normalize', ['n'], normalizedAstToMermaid);
+export const normalizeStarCommand = normalizeMermaidCommand('Returns the URL to mermaid.live', ':normalize*', ['n*'], normalizedAstToMermaidUrl);
 
 export const normalizeHashCommand: ReplCodeCommand = {
 	description:   'Returns summarization stats for the normalized AST',

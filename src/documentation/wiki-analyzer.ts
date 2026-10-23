@@ -328,7 +328,7 @@ ${section('Project Discovery', 4)}
 These plugins trigger when confronted with a project analysis request (see, ${ctx.link('RProjectAnalysisRequest')}).
 Their job is to identify the files that belong to the project and add them to the analysis.
 flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a
-${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that simply collects all R source files in the given folder.
+${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that collects all R source files in the given folder.
 
 Please note that all project discovery plugins should conform to the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} base class.
 

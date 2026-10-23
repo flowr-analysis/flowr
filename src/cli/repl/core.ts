@@ -2,7 +2,7 @@
  * Basically a helper file to allow the main 'flowr' script (located in the source root) to provide its repl
  * @module
  */
-import { prompt } from './prompt';
+import { prompt, rawPrompt } from './prompt';
 import { handlePathLikeInput, watchProtocol } from './path-input';
 import * as readline from 'readline';
 import { installGhostHint } from './ghost-hint';
@@ -36,6 +36,12 @@ function replCompleterKeywords() {
 }
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 
+/** Lines like `[REPL Stats] ...` are printed by the repl itself, so they only reach the prompt when output is pasted back in, maybe with the prompt. */
+function isReplStatsLine(line: string): boolean {
+	const text = line.trimStart();
+	return (text.startsWith(rawPrompt) ? text.slice(rawPrompt.length).trimStart() : text).startsWith('[REPL Stats]');
+}
+
 /**
  * Completion suggestions for a specific REPL command
  */
@@ -63,7 +69,11 @@ export function describeCompletion(insert: string, describe: string): string {
 	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
 }
 
-function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
+/**
+ * Every completion for `line`, the fragment of it they replace, the labels saying what each does, and the
+ * display-only hints; {@link replCompleter} and {@link completionSuggestion} are the two views the terminal needs.
+ */
+export function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -237,7 +247,7 @@ export function startWatching(
 	return watcher;
 }
 
-async function executeStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+async function executeStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean, remote: boolean): Promise<void> {
 	const time = Date.now();
 	const heatMap = new Map<RType, number>();
 	if(analyzer.inspectContext().config.repl.dfProcessorHeat) {
@@ -254,7 +264,9 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 		};
 		try {
 			const processor = getCommand(command);
-			if(processor) {
+			if(processor?.localOnly && remote) {
+				output.stderr(`the command '${command}' is only available in a local session, not to clients of the server\n`);
+			} else if(processor) {
 				await genericWrapReplFailIfNoRequest(async() => {
 					const remainingLine = statement.slice(command.length + 2).trim();
 					if(processor.isCodeCommand) {
@@ -323,18 +335,18 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 	}
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean, remote: boolean): Promise<void> {
 	stopWatching(output, !statement.includes(watchProtocol));
 
 	if(statement.includes(watchProtocol)) {
 		const watchPath = extractWatchPath(statement);
 		const effective = toFileStatement(statement);
-		await executeStatement(output, effective, analyzer, allowRSessionAccess);
+		await executeStatement(output, effective, analyzer, allowRSessionAccess, remote);
 		if(watchPath) {
 			try {
 				activeWatcher = startWatching(watchPath, output, () => {
 					analyzer.context().files.getFileByPath(watchPath)?.invalidate();
-					void executeStatement(output, effective, analyzer, allowRSessionAccess);
+					void executeStatement(output, effective, analyzer, allowRSessionAccess, remote);
 				});
 				activeWatcher.unref();
 				activeWatcher.on('error', (err: Error) => {
@@ -348,7 +360,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		return;
 	}
 
-	await executeStatement(output, statement, analyzer, allowRSessionAccess);
+	await executeStatement(output, statement, analyzer, allowRSessionAccess, remote);
 }
 
 /**
@@ -357,12 +369,13 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
+ * @param remote              - If true, the expression comes from a (untrusted) client of the server, which may not use {@link ReplBaseCommand#localOnly} commands.
  */
-export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
+export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean, remote = false): Promise<void> {
 	const statements = splitAtEscapeSensitive(expr, false, /^;\s*:/);
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement.trim(), analyzer, allowRSessionAccess);
+		await replProcessStatement(output, statement.trim(), analyzer, allowRSessionAccess, remote);
 	}
 }
 
@@ -406,7 +419,7 @@ export async function repl(
 		allowRSessionAccess = false
 	}: FlowrReplOptions) {
 	if(historyFile) {
-		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }));
+		rl.on('history', h => fs.writeFileSync(historyFile, h.filter(l => !isReplStatsLine(l)).join('\n'), { encoding: 'utf-8' }));
 	}
 
 	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, {
@@ -448,6 +461,12 @@ export async function repl(
 			rl.question(activeWatcher !== undefined ? '' : prompt(), answer => {
 				ghostHint.clear();
 				sigintCount = 0;
+				if(isReplStatsLine(answer)) {
+					// copied REPL output, not input: keep it out of the history and do not run it
+					(rl as unknown as { history?: string[] }).history?.shift();
+					resolve();
+					return;
+				}
 				rl.pause();
 				replProcessAnswer(analyzer, output, answer, allowRSessionAccess).then(() => {
 					rl.resume();
@@ -470,7 +489,7 @@ export function loadReplHistory(historyFile: string): string[] | undefined {
 		if(!fs.existsSync(historyFile)) {
 			return undefined;
 		}
-		return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n');
+		return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n').filter(l => !isReplStatsLine(l));
 	} catch(e) {
 		log.error(`Failed to load repl history from ${historyFile}: ${(e as Error)?.message}`);
 		log.error((e as Error)?.stack);

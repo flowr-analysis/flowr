@@ -63,7 +63,7 @@ export class FlowrAnalyzerBuilder {
 	 * Per default, the value returned by {@link FlowrConfig.default} is used.
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
 	public amendConfig(func: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): this {
 		this.flowrConfig = FlowrConfig.amend(this.flowrConfig, func);
 		return this;

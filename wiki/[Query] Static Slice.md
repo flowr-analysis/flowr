@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-20, 14:20:38 UTC (v2.16.3), do not edit directly._
 <h2 id="Static Slice Query">Static Slice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).\
 _This query is requested with the type `static-slice`._\
-Run in the REPL: `:query @static-slice (<crit>;...)[fiIcB] <code | file://path>`
+Run in the REPL: `:query @static-slice (<crit>;...)[fricIB] <code | file://path>`
 
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
@@ -39,7 +39,7 @@ _Results (prettified and summarized):_
 
 x <- 1\
 z <- 3\
-x\
+x
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -86,7 +86,7 @@ _Results (prettified and summarized):_
 
 Query: **static-slice** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice "4@x" \
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -122,7 +122,7 @@ Likewise, if you want the forward slice for the first use of `x`, you can do it 
 _Results (prettified and summarized):_
 
 x <- 1\
-x\
+x
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -171,7 +171,7 @@ criteria (and may combine it with the forward `f` as `fi`), for example (with a 
 _Results (prettified and summarized):_
 
 greeting <- "hello"\
-print(greeting)\
+print(greeting)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -204,6 +204,6 @@ This query replaces the old [`request-slice`](https://github.com/flowr-analysis/
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Static Slice Query query is `executeStaticSliceQuery` in [`./src/queries/catalog/static-slice-query/static-slice-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts).
+The Static Slice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts#L28"><code><span title="Execute static slice queries, catching duplicates with the same fingerprint">executeStaticSliceQuery</span></code></a>.
 
 </details>

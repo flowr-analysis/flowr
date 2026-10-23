@@ -41,7 +41,7 @@ export function documentAllServerMessages(ctx: GeneralDocContext) {
 		text:             async(shell: KnownParser) => {
 			return `
 	
-After launching _flowR_, for example, with <code>docker run -it --rm ${DockerName} ${getCliLongOptionOf('flowr', 'server', false, false)}</code>&nbsp;(🐳️), simply connecting should present you with a \`${helloMessageDefinition.type}\` message, that amongst others should reveal the versions of&nbsp;_flowR_ and&nbsp;R, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
+After launching _flowR_, for example, with <code>docker run -it --rm ${DockerName} ${getCliLongOptionOf('flowr', 'server', false, false)}</code>&nbsp;(🐳️), connecting should present you with a \`${helloMessageDefinition.type}\` message, that amongst others should reveal the versions of&nbsp;_flowR_ and&nbsp;R, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
 The message looks like this:
 
 ${codeBlock('json',
@@ -222,7 +222,7 @@ ${
 			type:         'response',
 			expectedType: 'response-file-analysis',
 			description:  `
-Please note, that the base message format is still JSON. Only the individual results get converted. 
+The base message format is still JSON, only the individual results get converted.
 While the context is derived from the \`filename\`, we currently offer no way to customize other parts of the quads 
 (please open a [new issue](${NewIssueUrl}) if you require this).
 
@@ -234,7 +234,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
 <a id="analysis-format-compact"></a>
 **Retrieve the Output in a Compacted Form**
 
-The default response is formatted as JSON. But this can get very big quickly.
+The default JSON response can get very big quickly.
 By specifying \`format: "compact"\`, you can retrieve the results heavily compacted (using [lz-string](https://www.npmjs.com/package/lz-string)).
 This works with and without the control flow graph as described [above](#analysis-include-cfg).
 
@@ -257,7 +257,7 @@ ${
 			type:         'response',
 			expectedType: 'response-file-analysis',
 			description:  `
-Please note, that the base message format is still JSON. Only the individual results are printed as binary objects.
+The base message format is still JSON, only the individual results are printed as binary objects.
 			`
 		}]
 	})
@@ -291,7 +291,7 @@ Please note, that the base message format is still JSON. Only the individual res
 
 To slice, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly slice the same file.
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](${FlowrWikiBaseRef}/Terminology#slicing-criterion) 
-(however, instead of using \`;\`, you can simply pass separate array elements).
+(however, instead of using \`;\`, you can pass separate array elements).
 See the implementation of the request-slice message for more information.
 
 Additionally, you may pass \`"noMagicComments": true\` to disable the automatic selection of elements based on magic comments (see below).
@@ -317,7 +317,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
 			`
 		}, {
 			type:        'request',
-			description: 'Of course, the second slice criterion `2:1` is redundant for the input, as they refer to the same variable. It is only for demonstration purposes.',
+			description: 'The second slice criterion `2:1` is redundant for the input, as they refer to the same variable. It is only for demonstration purposes.',
 			message:     {
 				type:      'request-slice',
 				id:        '2',
@@ -395,7 +395,7 @@ Furthermore, you can set the \`ansi\` field to \`true\` if you are interested in
 We strongly recommend you to make use of the \`id\` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
 
 > [!WARNING]
-> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. 
+> There is currently no automatic sandboxing or safeguarding against such requests. They execute the respective&nbsp;R code on your machine.
 > Please be very careful (and do not use ${getCliLongOptionOf('flowr', 'r-session-access')} if you are unsure).
 
 

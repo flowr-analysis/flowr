@@ -1,6 +1,7 @@
 import { RBasePackageStore } from '../data/r-base-packages.generated';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { RVersion } from './r-version';
+import { memoize } from './collections/defaultmap';
 
 /**
  * The base packages R attaches to the search path on startup, so their exports are usable without a `library` call.
@@ -11,6 +12,19 @@ import { RVersion } from './r-version';
  * for the version-aware view, as a release cannot attach a package it did not ship.
  */
 export const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
+/** The data sets of `datasets` (R 4.6), always in scope as lazy data, which its namespace does not export. */
+export const BaseDatasets: ReadonlySet<string> = new Set([
+	'ability.cov', 'airmiles', 'AirPassengers', 'airquality', 'anscombe', 'attenu', 'attitude', 'austres', 'beaver1', 'beaver2', 'BJsales',
+	'BJsales.lead', 'BOD', 'cars', 'ChickWeight', 'chickwts', 'co2', 'CO2', 'crimtab', 'discoveries', 'DNase', 'esoph', 'euro', 'euro.cross',
+	'eurodist', 'EuStockMarkets', 'faithful', 'fdeaths', 'Formaldehyde', 'freeny', 'freeny.x', 'freeny.y', 'gait', 'HairEyeColor',
+	'Harman23.cor', 'Harman74.cor', 'Indometh', 'infert', 'InsectSprays', 'iris', 'iris3', 'islands', 'JohnsonJohnson', 'LakeHuron', 'ldeaths',
+	'lh', 'LifeCycleSavings', 'Loblolly', 'longley', 'lynx', 'mdeaths', 'morley', 'mtcars', 'nhtemp', 'Nile', 'nottem', 'npk',
+	'occupationalStatus', 'Orange', 'OrchardSprays', 'penguins', 'penguins_raw', 'PlantGrowth', 'precip', 'presidents', 'pressure', 'Puromycin',
+	'quakes', 'randu', 'rivers', 'rock', 'Seatbelts', 'sleep', 'stack.loss', 'stack.x', 'stackloss', 'state.abb', 'state.area', 'state.center',
+	'state.division', 'state.name', 'state.region', 'state.x77', 'sunspot.m2014', 'sunspot.month', 'sunspot.year', 'sunspots', 'swiss',
+	'Theoph', 'Titanic', 'ToothGrowth', 'treering', 'trees', 'UCBAdmissions', 'UKDriverDeaths', 'UKgas', 'USAccDeaths', 'USArrests',
+	'UScitiesD', 'USJudgeRatings', 'USPersonalExpenditure', 'uspop', 'VADeaths', 'volcano', 'warpbreaks', 'women', 'WorldPhones', 'WWWusage'
+]);
 /** {@link AttachedBasePackages} for membership tests, which happen far more often than iteration. */
 export const AttachedBasePackageSet: ReadonlySet<string> = new Set(AttachedBasePackages);
 
@@ -19,8 +33,13 @@ function effective(rVersion: string): string {
 	return RVersion.compare(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;
 }
 
-/** memoized results per assumed R version, so the list is computed at most once per version (never per lookup) */
-const cache = new Map<string, readonly string[]>();
+/** memoized per assumed R version, so the list is computed at most once per version (never per lookup) */
+const basePackagesAt = memoize((rVersion: string): readonly string[] => {
+	const eff = effective(rVersion);
+	return Object.entries(RBasePackageStore.packages)
+		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
+		.map(([name]) => name);
+});
 
 /**
  * The base packages available at the assumed R version (all of them if omitted). A package counts as
@@ -35,16 +54,7 @@ export function baseRPackages(rVersion?: string): readonly string[] {
 	if(rVersion === undefined || rVersion === RBasePackageStore.newestRVersion || RVersion.compare(rVersion, RBasePackageStore.newestRVersion) >= 0) {
 		return RBasePackageStore.current;   // the current base set, precomputed at bundle time
 	}
-	const cached = cache.get(rVersion);
-	if(cached !== undefined) {
-		return cached;
-	}
-	const eff = effective(rVersion);
-	const result = Object.entries(RBasePackageStore.packages)
-		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
-		.map(([name]) => name);
-	cache.set(rVersion, result);
-	return result;
+	return basePackagesAt(rVersion);
 }
 
 /**

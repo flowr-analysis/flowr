@@ -12,12 +12,11 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphReferenceType } from '../../../../../environments/identifier';
-import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
-import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Process a list call.
@@ -59,7 +58,7 @@ export function resolveListToEnvState<OtherInfo>(
 	if(!RFunctionCall.isNamed(source)) {
 		return undefined;
 	}
-	let envState = pushLocalEnvironment(data.environment);
+	let envState = REnvironment.pushLocal(data.environment);
 	let found = false;
 	let position = 0;
 	for(const arg of source.arguments) {
@@ -80,7 +79,7 @@ export function resolveListToEnvState<OtherInfo>(
 		};
 		for(const name of [arg.name?.content, Identifier.make(String(position))]) {
 			if(name !== undefined) {
-				envState = define({ ...definition, name }, false, envState);
+				envState = REnvironment.define({ ...definition, name }, false, envState);
 			}
 		}
 		found = true;

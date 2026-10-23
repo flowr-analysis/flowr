@@ -104,16 +104,24 @@ const ManifestFilePattern = new RegExp(`\\.manifest\\.json${CompressedExtPattern
 /** a `<name>.sigs.ndjson` bundle, in any of the codecs we can read */
 const BundleFilePattern = new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`);
 
-function sigDbBundleDirs(watched?: [string, number][]): string[] {
+/** the bundle directories in the cache, the most recently synced first (it takes precedence) */
+export function sigDbBundleDirs(watched?: [string, number][]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
 	try {
 		const bundles = path.join(sigDbCacheDir(undefined, false), 'bundles');
 		const mtimeMs = fs.statSync(bundles).mtimeMs;
+		/* a bundle of every release synced so far stays in the cache, and the first one found wins: the most recently
+		   synced comes first, or an update to a release that happens to sort before the old one would be ignored */
 		const dirs = fs.readdirSync(bundles, { withFileTypes: true })
 			.filter(e => e.isDirectory())
-			.map(e => path.join(bundles, e.name));
+			.map(e => {
+				const dir = path.join(bundles, e.name);
+				return { dir, mtimeMs: fs.statSync(dir).mtimeMs };
+			})
+			.sort((a, b) => b.mtimeMs - a.mtimeMs)
+			.map(e => e.dir);
 		watched?.push([bundles, mtimeMs]);   // a bundle directory appearing here has to be picked up too
 		return dirs;
 	} catch{

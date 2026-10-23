@@ -5,6 +5,8 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../util/slice-direction';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { keptAfterRemoval, staticRemovalSlice } from '../../../slicing/static/removal-slice';
+import type { DependencyInfo } from '../dependencies-query/dependencies-query-format';
 
 /** what a static slice is of, which is what its result is keyed by when it was given no name */
 const slicedBy = (query: StaticSliceQuery): string => query.criteria.join(',');
@@ -36,7 +38,18 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		const sliceStart = Date.now();
 		const n = await analyzer.normalize();
 		const df = await analyzer.dataflow();
-		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids: resolveSliceCriteria(criteria, n), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold, includeCallees });
+		const ids = resolveSliceCriteria(criteria, n);
+		const threshold = analyzer.flowrConfig.solver.slicer?.threshold;
+		if(query.removal) {
+			/* the plots, devices and saves the dependencies state are what a removed plot takes along */
+			const { dependencies } = await analyzer.query([{ type: 'dependencies' }]);
+			const removed = staticRemovalSlice(analyzer.inspectContext(), df, n, ids, Object.values(dependencies).filter(Array.isArray).flat() as DependencyInfo[], threshold).result;
+			const kept = keptAfterRemoval(n, removed);
+			results[key] = timedSliceEntry(query, { timesHitThreshold: 0, result: removed, slicedFor: ids }, Date.now() - sliceStart,
+				() => reconstructSlice(n, df.graph, kept, query));
+			continue;
+		}
+		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids, direction: query.direction ?? SliceDirection.Backward, threshold, includeCallees });
 		const packages = query.reportPackages ? [...Dataflow.packagesOf(slice.result, df.graph)] : undefined;
 		results[key] = { packages, ...timedSliceEntry(query, slice, Date.now() - sliceStart,
 			() => reconstructSlice(n, df.graph, slice.result, query)) };

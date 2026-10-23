@@ -13,6 +13,7 @@ export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
 
 /**
  * Helper for working with {@link RLineDirective} AST nodes.
+ * @helper ast
  */
 export const RLineDirective = {
 	...RNode,

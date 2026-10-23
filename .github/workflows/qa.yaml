@@ -80,6 +80,9 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           cache: npm
 
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
+
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
 
@@ -104,6 +107,9 @@ jobs:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
           cache: npm
+
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint
@@ -135,34 +141,16 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "📦 Install Node Dependencies"
         # the sync below runs through ts-node, so the dependencies have to be there before it
         run: npm ci
 
-      - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v5
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
         with:
-          # only the bundles, the shards unpacked next to them are re-derived on demand
-          path: ~/.cache/flowr/sigdb/bundles
-          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
-
-      - name: "⬇️ Sync the Signature Database"
-        # without a database every sigdb-backed test skips instead of checking anything; run through the same
-        # script as the tests so the node dependencies are installed once and reused by both
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/workflows/scripts/run-flowr-command.sh sigdb:sync
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
@@ -190,6 +178,55 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+
+  test-os:
+    needs: [ debug ]
+    name: "🧪 Test Suite (${{ matrix.os }})"
+    # the release matrix tests these as well, but by then a failure blocks the release instead of the merge
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: |
+          wanted <- readLines(".github/actions/setup-r/packages.txt")
+          install.packages(wanted, repos="https://cloud.r-project.org/")
+          missing <- setdiff(wanted, rownames(installed.packages()))
+          if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
+
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🧪 Run the Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"
 
 
   performance-test:

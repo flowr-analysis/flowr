@@ -1,4 +1,5 @@
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
@@ -9,9 +10,15 @@ import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
-import { describe } from 'vitest';
+import { Identifier, ReferenceType } from '../../../../../src/dataflow/environments/identifier';
+import { describe, expect, test } from 'vitest';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ExitPointType } from '../../../../../src/dataflow/info';
 
 describe('Function Call', withTreeSitter(ts => {
 	describe('Calling previously defined functions', () => {
@@ -19,7 +26,7 @@ describe('Function Call', withTreeSitter(ts => {
 			ts, 'i <- 4; a <- function(x) { x }\na(i)', emptyGraph()
 				.use('8', 'x', undefined, false)
 				.reads('8', '4')
-				.use('13', 'i', undefined)
+				.use('13', 'i', { cds: [{ id: '15', when: true, byPromise: true }] })
 				.reads('13', '0')
 				.reads(15, 13)
 				.definesOnCall('13', '4')
@@ -65,7 +72,7 @@ describe('Function Call', withTreeSitter(ts => {
 				.reads('8', '4')
 				.use('13', 'a', undefined)
 				.reads('13', '3')
-				.use('16', 'i', undefined)
+				.use('16', 'i', { cds: [{ id: '18', when: true, byPromise: true }] })
 				.reads(18, 16)
 				.reads('16', '0')
 				.definesOnCall('16', '4')
@@ -118,7 +125,7 @@ a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, emptyGraph()
 			.use('9', 'x', undefined, false)
 			.reads('9', '4')
-			.use('19', 'i', undefined)
+			.use('19', 'i', { cds: [{ id: '21', when: true, byPromise: true }] })
 			.reads('19', '0')
 			.reads(21, 19)
 			.definesOnCall('19', '4')
@@ -269,13 +276,13 @@ a()()`, emptyGraph()
 
 	describe('Argument which is expression', () => {
 		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...OperatorDatabase['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph()
-			.use('2', 'x')
-			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [NodeId.toBuiltIn('+')] })
+			.use('2', 'x', { cds: [{ id: '5', when: true, byPromise: true }] })
+			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [NodeId.toBuiltIn('+')], cds: [{ id: '5', when: true, byPromise: true }] })
 			.calls('3', NodeId.toBuiltIn('+'))
 			.reads('3', ['1', '2'])
 			.call('5', 'foo', [argumentInCall('3')], { returns: [], reads: [] })
 			.reads('5', '3')
-			.constant('1')
+			.constant('1', { cds: [{ id: '5', when: true, byPromise: true }] })
 		);
 	});
 
@@ -290,14 +297,14 @@ a()()`, emptyGraph()
 			.call('7', 'f', [argumentInCall('5')], { returns: [], reads: [] })
 			.reads('7', '3')
 			.constant('3', undefined, false)
-			.defineFunction('5', ['3'], {
+			.defineFunction('5', [{ nodeId: '3', type: ExitPointType.Default }], {
 				out:               [],
 				in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }, { nodeId: 4, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '4',
 				graph:             new Set(['3', '4']),
 				environment:       defaultEnv().pushEnv()
-			})
+			}, {})
 		);
 	});
 
@@ -383,7 +390,7 @@ a(,3)`, emptyGraph()
 			})
 			.calls('15', '10')
 			.defineVariable('1', 'x', { definedBy: ['2'] }, false)
-			.constant('2', undefined, false)
+			.constant('2', { cds: [{ id: '1', when: true, byPromise: true }] }, false)
 			.defineVariable('4', 'y', { definedBy: [] }, false)
 			.defineFunction('10', ['8'], {
 				out:               [],
@@ -394,7 +401,7 @@ a(,3)`, emptyGraph()
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3').defineParameter('y', '4', '5')
 			}, { readParams: [[1, false], [4, true]] })
 			.defineVariable('0', 'a', { definedBy: ['10', '11'] })
-			.constant('13')
+			.constant('13', { cds: [{ id: '15', when: true, byPromise: true }] })
 			.reads(15, 13)
 			.definesOnCall('13', '4')
 			.definedByOnCall('4', '13')
@@ -402,25 +409,25 @@ a(,3)`, emptyGraph()
 	});
 	describe('Reuse parameters in call', () => {
 		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph()
-			.use('3', 'x')
+			.use('3', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
 			.reads('3', '2')
-			.use('4', 'x')
+			.use('4', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
 			.call('6', 'a', [argumentInCall('3', { name: 'x' }), argumentInCall('4')], { returns: [], reads: [] })
 			.reads('6', '4')
 			.argument('6', '3')
-			.constant('2')
+			.constant('2', { cds: [{ id: '6', when: true, byPromise: true }] })
 		);
 	});
 	describe('Define in parameters', () => {
 		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph()
 			.use('6', 'x')
 			.reads('6', '1')
-			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [NodeId.toBuiltIn('<-'), 2], onlyBuiltIn: true })
+			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [NodeId.toBuiltIn('<-'), 2], onlyBuiltIn: true, cds: [{ id: '5', when: true, byPromise: true }] })
 			.calls('3', NodeId.toBuiltIn('<-'))
 			.call('5', 'foo', [argumentInCall('3')], { returns: [], reads: [] })
 			.reads('5', '3')
-			.constant('2')
-			.defineVariable('1', 'x', { definedBy: ['2', '3'] })
+			.constant('2', { cds: [{ id: '5', when: true, byPromise: true }] })
+			.defineVariable('1', 'x', { definedBy: ['2', '3'], cds: [{ id: '5', when: true, byPromise: true }] })
 		);
 	});
 	describe('Partial Matching of Arguments', () => {
@@ -494,7 +501,7 @@ testFuncCorrect <- function(x, length=0.1){
 testFuncCorrect(1:5)
 testFuncCorrect(1:5, sum)
 `, emptyGraph()
-				.call('3@length', 'length', [argumentInCall('3@x')], { returns: [], reads: ['3@x', NodeId.toBuiltIn('length')], onlyBuiltIn: false }, false)
+				.call('3@length', 'length', [argumentInCall('3@x')], { returns: [], reads: ['3@x', NodeId.toBuiltIn('length')], onlyBuiltIn: false, origin: [BuiltInProcName.Default, BuiltInProcName.Function] }, false)
 				.calls('3@length', NodeId.toBuiltIn('length')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
@@ -512,5 +519,38 @@ testFuncCorrect(1:5, sum)
 				.definedByOnCall('1@x', '$10'),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
+	});
+	/* only one arm of `switch` runs, so an arm reads what held before the call, never what another arm defines (checked against R) */
+	assertDataflow(label('switch arms do not see each other', ['name-normal', 'call-normal']), ts,
+		'x <- 0\nswitch(m, a = x <- 1, b = y <- x)',
+		emptyGraph().reads('2:32', '1@x'),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['2:32', '2:15']] }
+	);
+	/* `f(2)` returns its own argument, so only `f(g)` hands back `g` */
+	assertDataflow(label('a parameter returned holds what its own call passes', ['name-normal', 'call-normal', 'formals-named', 'implicit-return']), ts,
+		'f <- function(x) x\ng <- function() 1\nh <- f(g)\nk <- f(2)\nh()\nk()',
+		emptyGraph().calls('5@h', '2@function'),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['6@k', '2@function']] }
+	);
+	/* a file runs only after the one before it is done, so what it defines is not there yet for that one */
+	test('a top-level call does not reach a method defined in a later file', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addFile(new FlowrInlineTextFile('a.R', 'x <- structure(list(2), class = "foo")\nx[[1]]\n'));
+		analyzer.addFile(new FlowrInlineTextFile('b.R', '"[[.foo" <- function(x, i) x\nx[[1]]\n'));
+		analyzer.addRequest({ request: 'file', content: 'a.R' }, { request: 'file', content: 'b.R' });
+		const graph = (await analyzer.dataflow()).graph;
+		const method = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionDefinition(v))?.[0];
+		const callsInFile = (file: string) => graph.vertices(true).filter(([id, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === '[['
+			&& graph.idMap?.get(id)?.info.file?.endsWith(file)).map(([id]) => Dataflow.hasEdge(graph, id, method ?? '', EdgeType.Calls)).toArray();
+		expect(callsInFile('a.R')).toEqual([false]);
+		expect(callsInFile('b.R')).toEqual([true]);
+	});
+	/* a call reads what `options()` wrote, but no function comes from there */
+	test('an unknown call does not call what it reads the options of', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest('options(f = function() 1)\nunknownFn()');
+		const graph = (await analyzer.dataflow()).graph;
+		const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === 'unknownFn');
+		expect(call && Dataflow.callTargetsOf(call[0], graph)).toEqual([]);
 	});
 }));

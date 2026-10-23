@@ -70,6 +70,9 @@ export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp 
 
 const rFileRegex = /\.[rR]$/;
 
+/** The code files directly below a package's `R/` directory: besides `.R` and `.r`, R accepts `.S`, `.s`, and `.q` there (and nowhere else, `src/*.s` is assembler). */
+export const rPackageSourceRegex = /(^|[\\/])R[\\/][^\\/]+\.(r|s|q)$/i;
+
 /**
  * Retrieves all R files in a given directory (asynchronously)
  * @param input - directory-path to start the search from, can be a file as well. Will just return the file then.
@@ -109,11 +112,8 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
 	}
 	const reader = new LineByLine(filePath);
 
-	let line: Buffer | null;
-
 	let counter = 0;
-	// eslint-disable-next-line no-cond-assign
-	while(line = reader.next()) {
+	for(let line = reader.next(); line; line = reader.next()) {
 		if(counter >= maxLines) {
 			return false;
 		}
@@ -137,17 +137,26 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 	}
 	const reader = new LineByLine(filePath);
 
-	let line: Buffer | null;
-
 	let counter = 0;
-	// eslint-disable-next-line no-cond-assign
-	while(line = reader.next()) {
+	for(let line = reader.next(); line; line = reader.next()) {
 		if(counter >= maxLines) {
 			return false;
 		}
 		onLine(line, counter++);
 	}
 	return true;
+}
+
+/**
+ * Joins `base` with a single path segment taken from an untrusted source (e.g., a file name, release tag, or hash read
+ * from a downloaded or project-supplied file), refusing every segment that could name anything outside `base`.
+ * @throws if the segment is empty, `.` or `..`, or contains a path separator or NUL
+ */
+export function joinUntrustedSegment(base: string, segment: string): string {
+	if(segment === '' || segment === '.' || segment === '..' || /[/\\\0]/.test(segment) || path.isAbsolute(segment)) {
+		throw new Error(`Refusing the untrusted path segment ${JSON.stringify(segment)}`);
+	}
+	return path.join(base, segment);
 }
 
 /**

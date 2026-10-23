@@ -5,6 +5,10 @@ inputs:
   r-version:
     description: "The R version to install"
     required: true
+  packages:
+    description: "Whether to also install the R packages the tests run, listed once in `packages.txt` next to this action"
+    required: false
+    default: "false"
   retry-delay:
     description: "Seconds to wait before retrying a failed install, doubled for every further attempt"
     required: false
@@ -63,3 +67,22 @@ runs:
       with:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
+
+    - name: "📋 List the R packages"
+      id: packages
+      if: inputs.packages == 'true'
+      shell: bash
+      run: |
+        {
+          echo "list<<EOF"
+          sed 's/^/any::/' "${{ github.action_path }}/packages.txt"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: "📦 Install R Packages"
+      if: inputs.packages == 'true'
+      uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        cache: 'true'
+        cache-version: '1'
+        extra-packages: ${{ steps.packages.outputs.list }}

@@ -46,18 +46,18 @@ const ContextFunctions: LinkToLastCall = {
 
 
 export const TestFunctions: FunctionInfo[] = [
-	{ package: 'testthat', name: 'test_that', argName: 'desc',        argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions] },
-	{ package: 'testthat', name: 'describe',  argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions] },
-	{ package: 'testthat', name: 'it',        argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions] },
-	{ package: 'testthat', name: 'test_file' },
-	{ package: 'testthat', name: 'test_dir' },
-	{ package: 'testthat', name: 'test_package' },
+	{ package: 'testthat', name: 'test_that', argName: 'desc',        argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions], invisible: true },
+	{ package: 'testthat', name: 'describe',  argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions], invisible: true },
+	{ package: 'testthat', name: 'it',        argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions], invisible: true },
+	{ package: 'testthat', name: 'test_file', invisible: true },
+	{ package: 'testthat', name: 'test_dir', invisible: true },
+	{ package: 'testthat', name: 'test_package', invisible: true },
 	{ package: 'tinytest', name: 'run_test_dir' },
 	{ package: 'tinytest', name: 'run_test_file' },
 	{ package: 'tinytest', name: 'test_all' },
 	{ package: 'tinytest', name: 'test_package' },
-	{ package: 'testit',   name: 'test_pkg' },
+	{ package: 'testit',   name: 'test_pkg', invisible: true },
 	{ package: 'RUnit',    name: 'runTestSuite' },
 	{ package: 'RUnit',    name: 'runTestFile' },
-	{ package: 'RUnit',    name: 'defineTestSuite' },
+	{ package: 'RUnit',    name: 'defineTestSuite', invisible: true },
 ];

@@ -36,28 +36,48 @@ export interface SliceFlag {
 	readonly flag:       string
 	/** what the flag does, kept to a few words as it is offered as a completion */
 	readonly describe:   string
-	/** the flag this one only makes sense with, if any */
-	readonly requires?:  string
+	/** the flags this one only makes sense with one of, if any */
+	readonly requires?:  readonly string[]
 	/** the flags this one must not be combined with */
 	readonly conflicts?: readonly string[]
 }
 
+/** the letter of every flag a criteria argument may end with, the one place they are spelled out */
+export const SliceFlagLetter = {
+	Forward:        'f',
+	Removal:        'r',
+	InlineSources:  'i',
+	IncludeCallees: 'c',
+	InlineFull:     'I',
+	Banners:        'B'
+} as const;
+const { Forward, Removal, InlineSources, IncludeCallees, InlineFull, Banners } = SliceFlagLetter;
+
 /** the flags every slicing query understands, see {@link sliceQueryOptionsParser} */
 export const SharedSliceFlags = [
-	{ flag: 'i', describe: 'inline sources', conflicts: ['I'] },
-	{ flag: 'c', describe: 'include callees' },
-	{ flag: 'I', describe: 'inline all files', conflicts: ['i'] },
-	{ flag: 'B', describe: 'banners', requires: 'I' }
+	{ flag: InlineSources, describe: 'inline sources', conflicts: [InlineFull] },
+	{ flag: IncludeCallees, describe: 'include callees' },
+	{ flag: InlineFull, describe: 'inline all files', conflicts: [InlineSources] },
+	{ flag: Banners, describe: 'banners', requires: [InlineSources, InlineFull] }
 ] as const satisfies readonly SliceFlag[];
 
 /** the flags of the `static-slice` query: a dice fixes both directions, so only it can be told to slice forward */
-export const StaticSliceFlags = [{ flag: 'f', describe: 'slice forward' }, ...SharedSliceFlags] as const satisfies readonly SliceFlag[];
+export const StaticSliceFlags = [
+	{ flag: Forward, describe: 'slice forward', conflicts: [Removal] },
+	{ flag: Removal, describe: 'removal slice', conflicts: [Forward] },
+	...SharedSliceFlags
+] as const satisfies readonly SliceFlag[];
 
 /**
  * Checks whether the given argument represents a slicing direction with an `f` suffix (in any flag order).
  */
 export function sliceDirectionParser(argument: string): SliceDirection {
-	return sliceFlagSuffix(argument).includes('f') ? SliceDirection.Forward : SliceDirection.Backward;
+	return sliceFlagSuffix(argument).includes(Forward) ? SliceDirection.Forward : SliceDirection.Backward;
+}
+
+/** Whether the flag suffix of `argument` asks for the removal slice (`r`) rather than the slice. */
+export function sliceRemovalParser(argument: string): boolean {
+	return sliceFlagSuffix(argument).includes(Removal);
 }
 
 /**
@@ -66,16 +86,17 @@ export function sliceDirectionParser(argument: string): SliceDirection {
  */
 export function sliceQueryOptionsParser(argument: string): SliceQueryOptions {
 	const flags = sliceFlagSuffix(argument);
+	const inlining = flags.includes(Banners) ? 'banner' as const : true;
 	return {
-		...(flags.includes('i') ? { inlineSources: true } : {}),
-		...(flags.includes('I') ? { inlineFull: flags.includes('B') ? 'banner' as const : true } : {}),
-		...(flags.includes('c') ? { includeCallees: true } : {})
+		...(flags.includes(InlineSources) ? { inlineSources: inlining } : {}),
+		...(flags.includes(InlineFull) ? { inlineFull: inlining } : {}),
+		...(flags.includes(IncludeCallees) ? { includeCallees: true } : {})
 	};
 }
 
-/** the given flags and what they do, e.g. for a help text: `f (slice forward), B (banners, needs I)` */
+/** the given flags and what they do, e.g. for a help text: `f (slice forward), B (banners, needs i or I)` */
 export function describeSliceFlags(flags: readonly SliceFlag[]): string {
-	return flags.map(f => `${f.flag} (${f.describe}${f.requires ? `, needs ${f.requires}` : ''})`).join(', ');
+	return flags.map(f => `${f.flag} (${f.describe}${f.requires ? `, needs ${f.requires.join(' or ')}` : ''})`).join(', ');
 }
 
 function warn(output: ReplOutput, message: string): void {
@@ -141,7 +162,7 @@ export function sliceFlagCompletions(arg: string, flags: readonly SliceFlag[]): 
 	const has = (flag: string) => split.flags.includes(flag);
 	const offered = flags.filter(f =>
 		!has(f.flag)
-		&& (f.requires === undefined || has(f.requires))
+		&& (f.requires === undefined || f.requires.some(has))
 		&& !f.conflicts?.some(has)
 	);
 	return {

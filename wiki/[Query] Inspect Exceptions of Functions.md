@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -32,11 +32,11 @@ the following query returns the information for all identified function definiti
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (5ms)\
+Query: **inspect-exception**\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
-&nbsp;&nbsp;- Function **44** (5.13-10.1) does not throw exceptions.\
+&nbsp;&nbsp;- Function **44** (5.13-10.1) does not throw exceptions.
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -88,9 +88,9 @@ subgraph "flow-20" [function 20]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;**
       *2.6-10* (**id: 7**)
     arg: (5, 6)`"]]
-    built-in:_["`Built-In:
+    built-in:_60_["`Built-In:
 #60;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     9{{"`*#91;RString#93;* **#34;Negative value!#34;**
       *2.18-34* (**id: 9**)`"}}
     11[["`*#91;RFunctionCall#93;* base#58;#58;**stop**
@@ -116,15 +116,18 @@ if`"]
     19[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.24* (**id: 19**)
     arg: (18)`"]]
+    built-in:_123_["`Built-In:
+#123;`"]
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **mayFail**
       *1.1-7* (**id: 0**, v: 20)`"]
     21[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-4.1* (**id: 21**)
     arg: (0, 20)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     44["`*#91;RFunctionDefinition#93;* **function**
       *5.13-10.1* (**id: 44**)`"]
 
@@ -132,14 +135,14 @@ subgraph "flow-44" [function 44]
     23["`*#91;RSymbol#93;* **x**
       *5.22* (**id: 23**, v: )`"]
     29(["`*#91;RSymbol#93;* **x**
-      *7.13* (**id: 29**)`"])
+      *7.13* (**id: 29**, 31+)`"])
     %% Environment of 31 [level: 1]:
     %% Built-in
     %% 1----------------------------------------
     %% 2----------------------------------------
     %%   x: {**x** (id: 23, type: Parameter, def. @24)}
     31[["`*#91;RFunctionCall#93;* **mayFail**
-      *7.5-14* (**id: 31**)
+      *7.5-14* (**id: 31**, 42+)
     arg: (29)`"]]
     %% Environment of 40 [level: 1]:
     %% Built-in
@@ -156,9 +159,9 @@ subgraph "flow-40" [function 40]
     39[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *8.25* (**id: 39**)
     arg: (38)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 38 stroke:purple,stroke-width:4px; 
 end
     41(["`*#91;RArgument#93;* **error**
@@ -176,9 +179,9 @@ tryCatch`"]
     %%   x: {**x** (id: 23, type: Parameter, def. @24)}
     anon-40[["`??
       *??-??* (**id: anon-40**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     43[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *5.25* (**id: 43**)
     arg: (42)`"]]
@@ -205,7 +208,7 @@ end
     linkStyle 7 stroke:gray,color:gray;
     7 -.->|"branch (when: false)"| 14
     linkStyle 8 stroke:gray,color:gray;
-    7 -.->|"reads, calls"| built-in:_
+    7 -.->|"reads, calls"| built-in:_60_
     linkStyle 9 stroke:gray;
     9 -.->|"flow"| 11
     linkStyle 10 stroke:gray,color:gray;
@@ -228,7 +231,7 @@ end
     18 -.->|"flow"| 19
     linkStyle 22 stroke:gray,color:gray;
     19 -->|"returns, arg"| 18
-    19 -.->|"reads, calls"| built-in:_
+    19 -.->|"reads, calls"| built-in:_123_
     linkStyle 24 stroke:gray;
 20 -.-|function| flow-20
 
@@ -238,7 +241,7 @@ end
     0 -->|"defined-by"| 20
     21 -->|"reads, arg"| 20
     21 -->|"returns, arg"| 0
-    21 -.->|"reads, calls"| built-in:_-
+    21 -.->|"reads, calls"| built-in:_60_-
     linkStyle 31 stroke:gray;
     21 -.->|"flow"| 44
     linkStyle 32 stroke:gray,color:gray;
@@ -251,6 +254,7 @@ end
     31 -->|"reads, arg"| 29
     31 -.->|"flow"| 40
     linkStyle 5 stroke:gray,color:gray;
+    31 -->|"reads"| 42
     31 -->|"calls"| 20
     31 -->|"returns"| 11
     31 -->|"returns"| 18
@@ -260,41 +264,41 @@ end
     38 -.->|"flow"| 39
     linkStyle 1 stroke:gray,color:gray;
     39 -->|"returns, arg"| 38
-    39 -.->|"reads, calls"| built-in:_
+    39 -.->|"reads, calls"| built-in:_123_
     linkStyle 3 stroke:gray;
 40 -.-|function| flow-40
 
     40 -.->|"flow"| 41
-    linkStyle 15 stroke:gray,color:gray;
+    linkStyle 16 stroke:gray,color:gray;
     41 -->|"reads, calls"| 40
     41 -.->|"flow"| 42
-    linkStyle 17 stroke:gray,color:gray;
+    linkStyle 18 stroke:gray,color:gray;
     41 -->|"calls"| anon-40
     42 -->|"returns, arg"| 31
     42 -->|"reads, calls, arg"| 41
     42 -->|"reads, calls"| 40
     42 -->|"returns"| 38
     42 -.->|"reads, calls"| built-in:tryCatch
-    linkStyle 23 stroke:gray;
+    linkStyle 24 stroke:gray;
     42 -.->|"flow"| 43
-    linkStyle 24 stroke:gray,color:gray;
+    linkStyle 25 stroke:gray,color:gray;
     anon-40 -->|"reads, calls"| 40
-    anon-40 -.->|"reads"| built-in:_
-    linkStyle 26 stroke:gray;
+    anon-40 -.->|"reads, calls"| built-in:_123_
+    linkStyle 27 stroke:gray;
     anon-40 -->|"returns"| 38
     43 -->|"returns, arg"| 42
-    43 -.->|"reads, calls"| built-in:_
-    linkStyle 29 stroke:gray;
+    43 -.->|"reads, calls"| built-in:_123_
+    linkStyle 30 stroke:gray;
 44 -.-|function| flow-44
 
     44 -.->|"flow"| 22
-    linkStyle 64 stroke:gray,color:gray;
+    linkStyle 65 stroke:gray,color:gray;
     22 -->|"defined-by, flow"| 45
     22 -->|"defined-by"| 44
     45 -->|"reads, arg"| 44
     45 -->|"returns, arg"| 22
-    45 -.->|"reads, calls"| built-in:_-
-    linkStyle 69 stroke:gray;
+    45 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 70 stroke:gray;
 ```
 
 </details>
@@ -305,6 +309,6 @@ end
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Inspect Exceptions of Functions Query query is `executeExceptionQuery` in [`./src/queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts).
+The Inspect Exceptions of Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts#L14"><code><span title="Execute exception function inspection queries on the given analyzer.">executeExceptionQuery</span></code></a>.
 
 </details>

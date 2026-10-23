@@ -1,5 +1,5 @@
+import { RString } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { randomString } from '../../../src/util/random';
-import { removeRQuotes } from '../../../src/r-bridge/retriever';
 import { describe, assert, test } from 'vitest';
 
 describe('(AST) Retriever', () => {
@@ -11,7 +11,7 @@ describe('(AST) Retriever', () => {
 						for(const letter of ['"', "'", '']) {
 							const str = `${letter}${source}${letter}`;
 							test(letter === '' ? '<none>' : `${letter}`, () => {
-								assert.strictEqual(removeRQuotes(str), source, `${str} should be ${source}`);
+								assert.strictEqual(RString.unquote(str), source, `${str} should be ${source}`);
 							});
 						}
 					});
@@ -23,7 +23,7 @@ describe('(AST) Retriever', () => {
 			test('should never throw', () => {
 				for(let i = 1; i < 20; i++) {
 					const randomStr = randomString(i);
-					assert.doesNotThrow(() => removeRQuotes(randomStr), undefined, `should not throw for ${randomStr}`);
+					assert.doesNotThrow(() => RString.unquote(randomStr), undefined, `should not throw for ${randomStr}`);
 				}
 			});
 		});

@@ -1,10 +1,10 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
 2)&nbsp;a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), and 3)&nbsp;a control flow graph&nbsp;(CFG).
 flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context)).
 
-Please note that the control flow graph is a view on the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph),
+The control flow graph is a view on the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph),
 similar to the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
 
 > [!TIP]
@@ -27,7 +27,7 @@ For readability, we structure this wiki page into various segments:
 	- [Working With Exit Points](#cfg-exit-points)
 
 > [!TIP]
-> FlowR provides you with various helper objects to work with the CFG, such as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L252"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L82"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a>, 
+> FlowR provides you with various helper objects to work with the CFG, such as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L247"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L83"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a>, 
 > 		which you can use to easily access the properties of the CFG and its vertices and edges.
 
 <h2 id="cfg-overview">Initial Overview</h2>
@@ -113,8 +113,8 @@ The condition `u` runs first and splits into the two branches, which join again 
 The `if` is therefore where the structure is left (see the [structure](#cfg-structure) section for more details).
 
 Standing on `u`, the edges leaving it are control edges that name the `if`, so what a condition belongs to can be
-read off locally. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L794"><code>ControlFlowGraph::<b>decides</b></code></a> lists the constructs a vertex decides,
-and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L809"><code>ControlFlowGraph::<b>entryOf</b></code></a> goes the other way, from the `if` to the condition it starts with.
+read off locally. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L769"><code>ControlFlowGraph::<b>decides</b></code></a> lists the constructs a vertex decides,
+and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L784"><code>ControlFlowGraph::<b>entryOf</b></code></a> goes the other way, from the `if` to the condition it starts with.
 
 For you to compare, the following shows the CFG of an `if` without an `else` branch:
 
@@ -302,15 +302,15 @@ f()
 
 <h2 id="cfg-structure">Structure of the Control Flow Graph</h2>
 
-You can produce your very own control flow graph with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L1115"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a>.
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L511"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> class describes everything required to model the control flow graph, with its edge types described by
- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L246"><code><span title="An edge in the ControlFlowGraph .">CfgEdge</span></code></a> and its vertices by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L76"><code><span title="A vertex in the ControlFlowGraph . Please use the helper object (e.g. getType() ) to work with vertices instead of directly accessing the properties.">CfgVertex</span></code></a>.
-However, you should be aware of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L978"><code><span title="Summarizes the control information of a program">ControlFlowInformation</span></code></a> interface which adds some additional information the CFG
+You can produce your very own control flow graph with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L1054"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a>.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L506"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> class describes everything required to model the control flow graph, with its edge types described by
+ <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L247"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and its vertices by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L83"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a>.
+However, you should be aware of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L917"><code><span title="Summarizes the control information of a program">ControlFlowInformation</span></code></a> interface which adds some additional information the CFG
 (and is used during the construction of the CFG as well):
 
- * **[ControlFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L978)**   
+ * **[ControlFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L917)**   
    Summarizes the control information of a program
-   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L978">src/control-flow/control-flow-graph.ts#L978</a></summary>
+   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L917">src/control-flow/control-flow-graph.ts#L917</a></summary>
    
    ```ts
    /**
@@ -342,14 +342,14 @@ As the CFG may become unhandy for larger programs, there are simplifications ava
 
 <h3 id="cfg-structure-vertices">CFG Vertices</h3>
 
-All vertex types are summarized in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L21"><code><span title="The type of a CfgVertex in the ControlFlowGraph .">CfgVertexType</span></code></a> enum which currently contains the following types:
+All vertex types are summarized in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L22"><code><span title="The type of a CfgVertex in the ControlFlowGraph .">CfgVertexType</span></code></a> enum which currently contains the following types:
 
 - `Statement` (1)
 - `Expression` (2)
 - `Block` (3)
 
-We use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L70"><code><span title="A basic block vertex in the ControlFlowGraph . Contains the vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs.">CfgBasicBlockVertex</span></code></a> to represent [basic blocks](#cfg-basic-blocks) and separate
-expressions (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L65"><code>CfgExpressionVertex</code></a>) and statements (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L61"><code>CfgStatementVertex</code></a>) 
+We use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L71"><code><span title="A basic block vertex in the ControlFlowGraph . Contains the vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs.">CfgBasicBlockVertex</span></code></a> to represent [basic blocks](#cfg-basic-blocks) and separate
+expressions (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L66"><code>CfgExpressionVertex</code></a>) and statements (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L62"><code>CfgStatementVertex</code></a>) 
 as control flow units with and without side effects (if you want to, you can see view statements as effectful expressions).
 
 Every vertex corresponds to a vertex of the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph): the control flow
@@ -360,18 +360,18 @@ In mermaid visualizations, we use rectangles for statements and rounded rectangl
 Blocks are visualized as boxes around the contained vertices.
 
 > [!NOTE]
-> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L15"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
+> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 > 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 > 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
 
 <h3 id="cfg-structure-edges">CFG Edges</h3>
 
 Every edge points the way execution goes: an edge from `a` to `b` means that `b` runs after `a`.
-There are two kinds, told apart by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L39"><code>CfgEdgeType</code></a> enum.
+There are two kinds, told apart by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L40"><code>CfgEdgeType</code></a> enum.
 
 <h4 id="cfg-flow-edge">Flow Edges</h4>
 
-A flow edge says that the target simply runs next. In `x; y` there is one from `x` to `y`:
+A flow edge says that the target runs next. In `x; y` there is one from `x` to `y`:
 
 ```mermaid
 flowchart LR
@@ -392,15 +392,15 @@ We used the following simplification: `unique-cf-sets` .
 A control edge says the same, but only when a condition holds, which is how the branches of an `if` or the
 body of a loop are attached. Diagrams draw these dashed.
 
-The edge *is* the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L21"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> it stands for, the same one the vertices behind it carry in
+The edge *is* the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> it stands for, the same one the vertices behind it carry in
 their `cds`, so it names the deciding vertex, whether it is the true or the false case, and whether the
 decision comes from iterating a loop:
 
- * **[ControlDependency](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L21)**   
+ * **[ControlDependency](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20)**   
    A control dependency links a vertex to the control flow element which
    may have an influence on its execution.
    Within `if(p) a else b`, `a` and `b` have a control dependency on the `if` (which in turn decides based on `p`).
-   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L21">src/dataflow/info.ts#L21</a></summary>
+   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20">src/dataflow/info.ts#L20</a></summary>
    
    ```ts
    /**
@@ -417,6 +417,8 @@ decision comes from iterating a loop:
        readonly when?:        boolean
        /** whether this control dependency was created due to iteration (e.g., a loop) */
        readonly byIteration?: boolean
+       /** whether this control dependency is a promise's: what stands under it runs only once the call `id` forces it, see {@link ControlFlow.withinPromise} */
+       readonly byPromise?:   boolean
        /**
         * any file-exist assumptions made
         */
@@ -492,7 +494,7 @@ while(u) b
 </details>
 <br/>
 
-Please note that repeat loops have no control edges, as they repeat their body unconditionally.
+Repeat loops have no control edges, as they repeat their body unconditionally.
 Additionally, the control flow graph does not have to be connected. If you use a repeat without any exit condition,
 the loop is never left, so its vertex is not reachable from the entry:
 
@@ -615,7 +617,7 @@ for(i in 1:10) b
 <h4 id="cfg-call-links">Extra: Call Links</h4>
 
 The control flow graph is a view on the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph): the dataflow analysis
-records the control flow while it walks the program, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L1115"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a> projects it into the shape the control
+records the control flow while it walks the program, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L1054"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a> projects it into the shape the control
 flow analyses expect. Because of that, the interprocedural knowledge the dataflow analysis gained is available without
 a second pass over the program.
 
@@ -659,7 +661,7 @@ f <- function() b; f()
 
 </details>
 
-A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L15"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a> of the function definitions that
+A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> of the function definitions that
 are called from this vertex, taken from the `calls` edges the dataflow analysis resolved.
 
 For built-in functions that are provided by flowR's built-in configuration (see the [interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface)) the CFG does not contain
@@ -722,10 +724,10 @@ print(3)
 
 <h3 id="cfg-basic-blocks">Adding Basic Blocks</h3>
 
-As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence simply links all vertices independent of whether they have (un-)conditional jumps or not.
+As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence links all vertices independent of whether they have (un-)conditional jumps or not.
 On the upside, this tells us the execution order (and, in case of promises, forcing order) of involved expressions and seamlessly handles cases like
 `x <- return(3)`.  On the downside, this makes it hard to apply classical control flow graph algorithms and, in general, makes the graph much harder to read.
-Yet, we can request basic blocks or transform an existing CFG into basic blocks using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-to-basic-blocks.ts#L22"><code><span title="Take a control flow information of a graph without any basic blocks and convert it to a graph with basic blocks.">convertCfgToBasicBlocks</span></code></a> function.
+Yet, we can request basic blocks or transform an existing CFG into basic blocks using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-to-basic-blocks.ts#L18"><code><span title="Take a control flow information of a graph without any basic blocks and convert it to a graph with basic blocks.">convertCfgToBasicBlocks</span></code></a> function.
 
 Any program without any (un-)conditional jumps now contains a single basic block:
 
@@ -781,7 +783,7 @@ We used the following simplification: `unique-cf-sets` .
 	)_
 
 In a way, using the basic blocks perspective does not remove any of these vertices (we just usually visualize them compacted as their execution order should be "obvious").
-The vertices are still there, as elems of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L70"><code><span title="A basic block vertex in the ControlFlowGraph . Contains the vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs.">CfgBasicBlockVertex</span></code></a>:
+The vertices are still there, as elems of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L71"><code><span title="A basic block vertex in the ControlFlowGraph . Contains the vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs.">CfgBasicBlockVertex</span></code></a>:
 
 ```mermaid
 flowchart LR
@@ -1006,8 +1008,8 @@ Similarly, flowR provides you with a set of utility functions and classes that y
 
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/simple-visitor.ts#L50"><code><span title="Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies in execution order but ignoring cycles.">visitCfgInOrder</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/simple-visitor.ts#L12"><code><span title="Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.">visitCfgInReverseOrder</span></code></a> for simple traversals
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L25"><code><span title="In contrast to visitCfgInOrder and visitCfgInReverseOrder , this visitor is not a simple visitor and serves as the basis for a variety of more complicated visiting orders of the control flow graph. It includes features to provide additional information using the NormalizedAst and the DataflowGraph . Use BasicCfgGuidedVisitor#start to start the traversal.">BasicCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/syntax-cfg-guided-visitor.ts#L53"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the AST type of the node. Use BasicCfgGuidedVisitor#start to start the traversal.">SyntaxAwareCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/dfg-cfg-guided-visitor.ts#L48"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the dataflow graph. Use BasicCfgGuidedVisitor#start to start the traversal.">DataflowAwareCfgGuidedVisitor</span></code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L76"><code><span title="This visitor extends on the DataflowAwareCfgGuidedVisitor by dispatching visitors for separate function calls as well, providing more information! In a way, this is the mixin of syntactic and dataflow guided visitation. Overwrite the functions starting with on to implement your logic. In general, there is just one special case that you need to be aware of: In the context of a function call, flowR ...">SemanticCfgGuidedVisitor</span></code></a> for more sophisticated traversals
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L252"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L82"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a> for easy access to the properties of the CFG and its vertices and edges
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L124"><code><span title="Check if the given CFG satisfies all properties.">assertCfgSatisfiesProperties</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L10"><code><span title="The collection of properties that can be checked on a control flow graph.">CfgProperties</span></code></a> to check for properties of the CFG
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L247"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L83"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a> for easy access to the properties of the CFG and its vertices and edges
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L101"><code><span title="Check if the given CFG satisfies all properties.">assertCfgSatisfiesProperties</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L10"><code><span title="The collection of properties that can be checked on a control flow graph.">CfgProperties</span></code></a> to check for properties of the CFG
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/diff-cfg.ts#L19"><code><span title="Compare two control flow graphs and return a report on the differences. If you simply want to check whether they equal, use <result>.isEqual() .">diffOfControlFlowGraphs</span></code></a> to diff two CFGs
 
 <h3 id="cfg-simple-traversal">Simple Traversal</h3>
@@ -1040,7 +1042,7 @@ Calling it with the CFG and AST of the expression `x - 1 + 2L * 3` yields the fo
 - `{"num":2,"complexNumber":false,"markedAsInt":true}`
 - `{"num":3,"complexNumber":false,"markedAsInt":false}`
 
-A more useful appearance of these visitors occurs with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/happens-before.ts#L8"><code><span title="Determines if node a happens before node b in the control flow graph.">happensBefore</span></code></a> which uses the CFG to determine whether the execution
+A more useful appearance of these visitors occurs with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/happens-before.ts#L31"><code><span title="Determines if node a happens before node b in the control flow graph.">happensBefore</span></code></a> which uses the CFG to determine whether the execution
 of one vertex always, maybe, or never happens before another vertex (see the corresponding [query documentation](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Happens-Before) for more information).
 
 <h3 id="cfg-diff-and-test">Diffing and Testing</h3>
@@ -1052,14 +1054,13 @@ If you want to diff two control flow graphs, you can use the <a href="https://gi
 <h4 id="cfg-check-properties">Checking Properties</h4>
 
 To be a valid representation of the program, the CFG should satisfy a collection of properties that, in turn, you can automatically assume to hold
-when working with it. In general, we verify these in every unit test using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L124"><code><span title="Check if the given CFG satisfies all properties.">assertCfgSatisfiesProperties</span></code></a>,
+when working with it. In general, we verify these in every unit test using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L101"><code><span title="Check if the given CFG satisfies all properties.">assertCfgSatisfiesProperties</span></code></a>,
 and you can have a look at the active properties by checking the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L10"><code><span title="The collection of properties that can be checked on a control flow graph.">CfgProperties</span></code></a> object.
 In general, we check for a hammock graph (given that the program contains no definite infinite loop) and the absence of direct cycles.
 
 <h3 id="cfg-traversal">Sophisticated CFG Traversal</h3>
 
-The [simple traversal](#cfg-simple-traversal) functions are great for simple tasks, but very unhandy when you want to do something more sophisticated
-that incorporates language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
+The [simple traversal](#cfg-simple-traversal) functions are unhandy once you need language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
 visitors that incorporate various alternative perspectives:
 
 - [Basic CFG Visitor](#cfg-traversal-basic):\
@@ -1232,7 +1233,7 @@ All in all, this visitor offers the following semantic events:
   <code>origins</code>
   of the given node.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L491"><code>SemanticCfgGuidedVisitor::<b>getSourceAndTarget</b></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L491"><code>SemanticCfgGuidedVisitor::<b>getSourceAndTarget</b></code></a>
   
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L393"><code><span title="Fires for every subsetting call: [[, [, or $.">SemanticCfgGuidedVisitor::<b>onAccessCall</b></span></code></a>\
   Fires for every subsetting call: `[[`, `[`, or `$`.
@@ -1303,7 +1304,7 @@ All in all, this visitor offers the following semantic events:
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L441"><code><span title="Fires for every call that (to flowR's knowledge) constructs a list, e.g. list(1, 2, 3).">SemanticCfgGuidedVisitor::<b>onListCall</b></span></code></a>\
   Fires for every call that (to flowR's knowledge) constructs a list, e.g. `list(1, 2, 3)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L508"><code>SemanticCfgGuidedVisitor::<b>onLoadCall</b></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L502"><code>SemanticCfgGuidedVisitor::<b>onLoadCall</b></code></a>
   
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L456"><code><span title="Fires for every call that performs a local call, e.g. local({ x <- 1; y <- 2; x + y }).">SemanticCfgGuidedVisitor::<b>onLocalCall</b></span></code></a>\
   Fires for every call that performs a local call, e.g. `local({ x <- 1; y <- 2; x + y })`.

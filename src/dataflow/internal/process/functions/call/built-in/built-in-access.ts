@@ -15,7 +15,6 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { unpackArg } from '../argument/unpack-argument';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
 import { accessedFieldName, linkFieldReads } from '../../../../linker';
@@ -95,7 +94,7 @@ export function processAccess<OtherInfo>(
 		const envState = stackEnvState
 			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
 		if(envState) {
-			const fieldName = accessedFieldName(unpackArg(args[1]), config.treatIndicesAsString);
+			const fieldName = accessedFieldName(RArgument.valueOf(args[1]), config.treatIndicesAsString);
 			const fieldDefs = fieldName
 				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
@@ -123,11 +122,7 @@ export function processAccess<OtherInfo>(
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
 		in:                RArgument.isEmpty(head) ? info.in : info.in.map(ref => {
-			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, info.graph, info.environment, false);
-			} else {
-				return ref;
-			}
+			return ref.nodeId === head.value?.info.id ? makeReferenceMaybe(ref, info.graph, info.environment, false) : ref;
 		})
 	};
 }

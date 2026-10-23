@@ -2,16 +2,12 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	PotentiallyEmptyRArgument,
-	RFunctionCall
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveFunctionArgument } from './built-in-apply';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments } from '../common';
-import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -19,13 +15,15 @@ import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/proc
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { Identifier } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Resolve } from '../../../../../environments/resolve-helper';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
-import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { argForImpl } from '../../../../../fn/class-declaration';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 
 
@@ -54,16 +52,15 @@ export function processS7NewGeneric<OtherInfo>(
 		dataflowLogger.warn('empty s7 new_generic, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const params = {
+	const { dispatchArg } = config.args;
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), {
 		[config.args.name]: 'name',
-	};
-	if(config.args.dispatchArg) {
-		params[config.args.dispatchArg] = 'dispatchArg';
-	}
-	params[config.args.fun] = 'fun';
-	params['...'] = '...';
-	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
-	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
+		...dispatchArg ? { [dispatchArg]: 'dispatchArg' } : {},
+		[config.args.fun]:  'fun',
+		'...':              '...'
+	});
+	const argNamed = (formal: 'name' | 'dispatchArg' | 'fun') => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(formal)?.[0]));
+	const genName = argNamed('name');
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -74,14 +71,12 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	data = { ...data, currentS7name: accessedIdentifiers } as DataflowProcessorInformation<OtherInfo & ParentInformation>;
 
-	let funArg = unpackArg(RArgument.getWithId(args, argMaps.get('fun')?.[0]))?.info.id;
+	let funArg = argNamed('fun')?.info.id;
 	const effectiveArgs = args.slice();
 	if(!funArg) {
-		const dispatchArg = unpackArg(RArgument.getWithId(args, argMaps.get('dispatchArg')?.[0]));
-		const newFun: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [dispatchArg?.lexeme ?? undefined], rootId, args.length, data.completeAst.idMap);
-		// fake it 'function([dispatch_args],...) S7_dispatch()'
-		effectiveArgs.push(newFun[0]);
-		funArg = newFun[1];
+		const [fun, funId] = makeS7DispatchFDef<OtherInfo>(name, [argNamed('dispatchArg')?.lexeme], rootId, args.length, data.completeAst.idMap);
+		effectiveArgs.push(fun);
+		funArg = funId;
 	}
 	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
 
@@ -99,7 +94,7 @@ export function processS7NewGeneric<OtherInfo>(
 
 /**
  * Process a call that **returns a function**: S7/S4 constructor factories (`make_constructor`, `new_class`,
- * `setClass`) and generic function factories (`Negate`, `Vectorize`, `partial`, …). We model the result as a
+ * `setClass`) and generic function factories (`Negate`, `Vectorize`, `partial`, ...). We model the result as a
  * synthetic function definition so the assigned symbol is recognized as a **function** rather than a plain
  * constant.
  */
@@ -117,13 +112,14 @@ export function processMakeConstructor<OtherInfo>(
 	}
 ): DataflowInformation {
 	// synthesise `function(...) S7_dispatch()` and make the call return it
-	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
+	const [funArg, funId] = makeS7DispatchFDef<OtherInfo>(name, [], rootId, args.length, data.completeAst.idMap);
 	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
 	if(DfgVertex.isFunctionDefinition(fArg) && config?.mode) {
-		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
+		/* a copy, as the mode is mutated in place later and config.mode is shared */
+		fArg.mode ??= config.mode.slice();
 	}
 	if(config?.wrapIndex !== undefined) {
 		linkWrappedFunction(info, args, rootId, config.wrapIndex, config.wrapName, data);
@@ -140,11 +136,8 @@ export function attachClassDeclaration<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	config: ClassDeclarationConfig | undefined
 ): void {
-	if(config === undefined) {
-		return;
-	}
 	const vertex = info.graph.getVertex(rootId);
-	if(DfgVertex.isFunctionCall(vertex)) {
+	if(config !== undefined && DfgVertex.isFunctionCall(vertex)) {
 		vertex.classDecl = FunctionSemantics.classes.of(config, args);
 	}
 }
@@ -157,16 +150,19 @@ function linkWrappedFunction<OtherInfo>(
 	wrapName: string | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): void {
-	const wrapped = argFor(args, { name: wrapName, idx: wrapIndex });
-	if(wrapped === undefined) {
+	const wrapped = argForImpl(args, { name: wrapName, idx: wrapIndex });
+	const resolved = wrapped === undefined ? undefined : resolveFunctionArgument(wrapped, data, {});
+	if(resolved === undefined) {
 		return;
 	}
-	const resolved = resolveFunctionArgument(wrapped, data, {});
-	if(resolved === undefined || resolved.anonymous) {
-		return;
+	const body = rootId + '-s7-new-generic-fun-body';
+	/* the wrapper runs what it wraps, so a call of it does what the wrapped function does */
+	const targets = resolved.anonymous ? [resolved.functionId] : (Resolve.byNameAndType(resolved.functionName, data.environment, ReferenceType.Function) ?? [])
+		.flatMap(d => d.type === ReferenceType.BuiltInFunction ? [d.nodeId] : (d as { value?: NodeId[] }).value ?? []);
+	for(const target of targets) {
+		info.graph.addEdge(body, target, EdgeType.Calls);
 	}
-	const vertex = info.graph.getVertex(resolved.functionId);
-	if(!DfgVertex.isUse(vertex)) {
+	if(resolved.anonymous || !DfgVertex.isUse(info.graph.getVertex(resolved.functionId))) {
 		return;
 	}
 	info.graph.updateToFunctionCall({
@@ -179,7 +175,7 @@ function linkWrappedFunction<OtherInfo>(
 		cds:         data.cds,
 		origin:      [BuiltInProcName.Function]
 	});
-	info.graph.addEdge(rootId + '-s7-new-generic-fun-body', resolved.functionId, EdgeType.Reads | EdgeType.Calls);
+	info.graph.addEdge(body, resolved.functionId, EdgeType.Reads | EdgeType.Calls);
 }
 
 /**
@@ -189,41 +185,21 @@ function linkWrappedFunction<OtherInfo>(
  */
 export const S7SyntheticFunArgSuffix = '-s7-new-generic-fun-arg';
 
-// 'function([dispatch_args],...) S7_dispatch()'; returns the value id
+/** Synthesizes the argument `fun = function([dispatch_args], ...) S7_dispatch()`, returning it and the id of its value. */
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
-	const argNameId = rootId + '-s7-new-generic-fun-arg-name';
 	const r = name.location ?? SourceRange.invalid();
-	const argName = {
-		type:    RType.Symbol,
-		lexeme:  'fun',
-		content: 'fun',
-		info:    {
-			id:        argNameId,
-			nest:      name.info.nest,
-			role:      RoleInParent.ArgumentName,
-			fullRange: r,
-			adToks:    undefined,
-			file:      name.info.file,
-			parent:    rootId,
-			index:     0
-		},
-		location: r,
-	} satisfies RSymbol<ParentInformation, string>;
-	idMap.set(argNameId, argName);
-	const funcNameId = rootId + '-s7-new-generic-fun-name';
+	const info = (id: NodeId, role: RoleInParent, parent: NodeId, index = 0) => (
+		{ id, nest: name.info.nest, role, fullRange: r, adToks: undefined, file: name.info.file, parent, index }
+	);
+	const symbol = (id: NodeId, lexeme: string, role: RoleInParent, parent: NodeId, index = 0) => (
+		{ type: RType.Symbol, lexeme, content: lexeme, info: info(id, role, parent, index), location: r }
+	) satisfies RSymbol<ParentInformation, string>;
+	const argName = symbol(rootId + '-s7-new-generic-fun-arg-name', 'fun', RoleInParent.ArgumentName, rootId);
+	idMap.set(argName.info.id, argName);
 	const funcName = {
-		type:   RType.Symbol,
-		lexeme: 'S7_dispatch',
-		info:   {
-			id:        funcNameId,
-			nest:      name.info.nest,
-			role:      RoleInParent.FunctionCallName,
-			fullRange: r,
-			adToks:    undefined,
-			file:      name.info.file,
-			parent:    rootId,
-			index:     0
-		},
+		type:     RType.Symbol,
+		lexeme:   'S7_dispatch',
+		info:     info(rootId + '-s7-new-generic-fun-name', RoleInParent.FunctionCallName, rootId),
 		location: r,
 		content:  Identifier.make('S7_dispatch', 'S7'),
 	} satisfies RSymbol<ParentInformation>;
@@ -234,51 +210,17 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		named:        true,
 		functionName: funcName,
 		arguments:    [],
-		info:         {
-			id:        rootId + '-s7-new-generic-fun-body',
-			nest:      name.info.nest,
-			role:      RoleInParent.FunctionDefinitionBody,
-			fullRange: r,
-			adToks:    undefined,
-			file:      name.info.file,
-			parent:    rootId,
-			index:     0
-		}
+		info:         info(rootId + '-s7-new-generic-fun-body', RoleInParent.FunctionDefinitionBody, rootId)
 	} satisfies RFunctionCall<ParentInformation>;
 	const fdefId = rootId + '-s7-new-generic-fun-fdef';
 	const argValue = {
-		type: RType.FunctionDefinition,
-		info: {
-			file:      name.info.file,
-			id:        fdefId,
-			nest:      name.info.nest,
-			role:      RoleInParent.ArgumentValue,
-			parent:    rootId,
-			index:     args + 1,
-			adToks:    undefined,
-			fullRange: r,
-		},
+		type:       RType.FunctionDefinition,
+		info:       info(fdefId, RoleInParent.ArgumentValue, rootId, args + 1),
 		lexeme:     'function',
 		location:   r,
 		parameters: [...names.filter(isNotUndefined), '...'].map((n, i) => {
 			const paramId = fdefId + `-param-${i}`;
-			const paramNameId = paramId + '-name';
-			const paramName = {
-				type:    RType.Symbol,
-				lexeme:  n,
-				content: n,
-				info:    {
-					id:        paramNameId,
-					nest:      name.info.nest,
-					role:      RoleInParent.ParameterName,
-					fullRange: r,
-					adToks:    undefined,
-					file:      name.info.file,
-					index:     i,
-					parent:    paramId
-				},
-				location: r,
-			} satisfies RSymbol<ParentInformation, string>;
+			const paramName = symbol(paramId + '-name', n, RoleInParent.ParameterName, paramId, i);
 			const param = {
 				type:         RType.Parameter,
 				location:     r,
@@ -286,43 +228,24 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 				name:         paramName,
 				defaultValue: undefined,
 				special:      n === '...',
-				info:         {
-					id:        paramId,
-					nest:      name.info.nest,
-					role:      RoleInParent.FunctionDefinitionParameter,
-					parent:    fdefId,
-					index:     i,
-					adToks:    undefined,
-					file:      name.info.file,
-					fullRange: r,
-				}
+				info:         info(paramId, RoleInParent.FunctionDefinitionParameter, fdefId, i)
 			} satisfies RParameter<ParentInformation>;
-			idMap.set(paramNameId, paramName);
+			idMap.set(paramName.info.id, paramName);
 			idMap.set(paramId, param);
 			return param;
 		}),
 		body: funcBody,
 	} satisfies RFunctionDefinition<ParentInformation>;
-	idMap.set(funcNameId, funcName);
+	idMap.set(funcName.info.id, funcName);
 	idMap.set(funcBody.info.id, funcBody);
 	idMap.set(fdefId, argValue);
-	const argId = rootId + S7SyntheticFunArgSuffix;
 	const argument: RArgument<ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   'fun',
 		location: r,
-		info:     {
-			id:        argId,
-			nest:      name.info.nest,
-			role:      RoleInParent.FunctionCallArgument,
-			fullRange: r,
-			adToks:    undefined,
-			file:      name.info.file,
-			parent:    rootId,
-			index:     args + 1
-		},
-		name:  argName,
-		value: argValue
+		info:     info(rootId + S7SyntheticFunArgSuffix, RoleInParent.FunctionCallArgument, rootId, args + 1),
+		name:     argName,
+		value:    argValue
 	};
 	idMap.set(argument.info.id, argument);
 	return [argument as RArgument<OtherInfo & ParentInformation>, argValue.info.id];

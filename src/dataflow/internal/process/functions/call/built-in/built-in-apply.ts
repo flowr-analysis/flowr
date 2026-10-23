@@ -21,6 +21,9 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { applyAmbientStateOfCallee } from './built-in-ambient-state';
+import { CallProp, CallProps, SemanticCallTag } from '../../../../../environments/built-in-props';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** the function reference extracted from an argument passed to a higher-order call */
 export interface ResolvedFunctionArgument {
@@ -28,9 +31,11 @@ export interface ResolvedFunctionArgument {
 	readonly functionName: Identifier
 	readonly anonymous:    boolean
 	readonly asString:     boolean
+	/** the name is computed by the argument (`paste0("f_", k)`), whose own vertex therefore cannot become the call */
+	readonly computed?:    boolean
 }
 
-/** Resolve the function an argument stands for: a string literal, a symbol, or an inline definition; `undefined` if none. */
+/** Resolve the function an argument stands for: a string (literal or computed), a symbol, or an inline definition; `undefined` if none. */
 export function resolveFunctionArgument<OtherInfo>(
 	val:  RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -41,6 +46,11 @@ export function resolveFunctionArgument<OtherInfo>(
 	}
 	if(RFunctionDefinition.is(val)) {
 		return { functionId: val.info.id, functionName: `${UnnamedFunctionCallPrefix}${val.info.id}`, anonymous: true, asString: false };
+	}
+	/* `do.call(paste0("f_", 1 + 2))` and `do.call(name)` with a string in `name` call the function so named */
+	const named = opts.unquoteFunction ? NodeValue.singleStringOf(val.info.id, data) : undefined;
+	if(named !== undefined) {
+		return { functionId: val.info.id, functionName: named, anonymous: false, asString: true, computed: !RSymbol.is(val) };
 	}
 	if(!RSymbol.is(val)) {
 		return undefined;
@@ -81,34 +91,16 @@ export function processApply<OtherInfo>(
 	const resFn = processKnownFunctionCall({
 		name, args, rootId, data, sig: FunctionSemantics.call.signature.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
 	});
+	const { processedArguments } = resFn;
 	let information = resFn.information;
 	if(hasUnknownSideEffects) {
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 	}
-	const processedArguments = resFn.processedArguments;
 
-	let index = indexOfFunction;
 	/* search, if one of the arguments actually contains the argument name if given in the config */
-	if(nameOfFunctionArgument !== undefined) {
-		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name?.content === nameOfFunctionArgument);
-		if(mayFn >= 0) {
-			index = mayFn;
-		}
-	}
-	// shift the index to point to the index'd unnamed argument
-	let posArgsFound = 0;
-	for(let i = 0; i < args.length; i++) {
-		const arg = args[i];
-		if(arg !== EmptyArgument && arg.name) {
-			// do nothing
-		} else if(posArgsFound === index) {
-			index = i;
-			break;
-		} else {
-			posArgsFound++;
-		}
-	}
-
+	const named = nameOfFunctionArgument === undefined ? -1
+		: args.findIndex(arg => arg !== EmptyArgument && arg.name?.content === nameOfFunctionArgument);
+	const index = positionOfUnnamed(args, named >= 0 ? named : indexOfFunction);
 	/* validate, that we indeed have so many arguments to fill this one :D */
 	if(index >= args.length) {
 		dataflowLogger.warn(`Function argument at index ${index} not found, skipping`);
@@ -116,40 +108,46 @@ export function processApply<OtherInfo>(
 	}
 
 	const arg = args[index];
-
 	if(RArgument.isEmpty(arg) || !arg.value || (!unquoteFunction && !RSymbol.is(arg.value) && !RFunctionDefinition.is(arg.value))) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
-	const val = arg.value;
-	const resolvedFn = resolveFunctionArgument(val, data, { unquoteFunction, resolveValue });
+	const resolvedFn = resolveFunctionArgument(arg.value, data, { unquoteFunction, resolveValue });
 	if(resolvedFn === undefined) {
-		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(val)} instead.`);
+		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(arg.value)} instead.`);
 		// the called function is dynamic and unresolvable: reached-but-unknown rather than dropped
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
-	const { functionName, anonymous, asString } = resolvedFn;
+	const { functionName, anonymous, asString, computed } = resolvedFn;
 	let functionId: NodeId = resolvedFn.functionId;
+	if(computed) {
+		/* the call the computed name stands for gets a vertex of its own, which reads the name */
+		const nameId = functionId;
+		functionId = `${nameId}-call`;
+		/* a use for now, made the call below like any other function handed over */
+		information.graph.addVertex({ tag: VertexType.Use, id: functionId, cds: data.cds }, data.ctx.env.cleanEnv);
+		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
+		information.graph.addEdge(functionId, nameId, EdgeType.Reads);
+	}
 	if(asString) {
 		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	}
 
 	const allOtherArguments: FunctionArgument[] = processedArguments.map((arg, i) => {
 		const counterpart = args[i];
-		if(arg && counterpart !== EmptyArgument) {
-			return {
-				name:    counterpart.name?.content,
-				valueId: counterpart.value?.info.id,
-				cds:     data.cds,
-				type:    ReferenceType.Argument,
-				nodeId:  arg.entryPoint
-			};
-		} else {
+		if(!arg || counterpart === EmptyArgument) {
 			return EmptyArgument;
 		}
+		return {
+			name:    counterpart.name?.content,
+			valueId: counterpart.value?.info.id,
+			cds:     data.cds,
+			type:    ReferenceType.Argument,
+			nodeId:  arg.entryPoint
+		};
 	}).filter((_, i) => i !== index);
 
 	if(anonymous) {
@@ -181,7 +179,11 @@ export function processApply<OtherInfo>(
 			ClosureRefs.resolveOpenIngoing(information.graph, functionId, called, data.environment);
 		}
 	} else {
-		/* identify it as a full-blown function call :) */
+		/* a callee binding names (`do.call("assign", ...)`) does so with arguments we cannot see here; loading a package is handled on its own */
+		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)?.some(t => t.type === ReferenceType.BuiltInFunction
+			&& CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
+			information.graph.markIdForUnknownSideEffects(rootId);
+		}
 		information.graph.updateToFunctionCall({
 			tag:         VertexType.FunctionCall,
 			id:          functionId,
@@ -192,6 +194,14 @@ export function processApply<OtherInfo>(
 			cds:         data.cds,
 			origin:      [BuiltInProcName.Function]
 		});
+		/* once the call has its arguments, which may name the files it accesses */
+		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
+		/* `do.call(new.env, list())` creates an environment just like `new.env()` does */
+		const call = information.graph.getVertex(rootId);
+		if(DfgVertex.isFunctionCall(call) && Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)
+			?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.NewEnv)) {
+			call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
+		}
 	}
 
 	for(const [i, arg] of processedArguments.entries()) {
@@ -200,14 +210,28 @@ export function processApply<OtherInfo>(
 		}
 	}
 
-	if(resolveInEnvironment === 'global') {
-		// remove from open ingoing references
-		return {
-			...information,
-			in:                information.in.filter(ref => ref.nodeId !== functionId),
-			unknownReferences: information.unknownReferences.filter(ref => ref.nodeId !== functionId)
-		};
-	} else {
+	if(resolveInEnvironment !== 'global') {
 		return information;
 	}
+	// remove from open ingoing references
+	return {
+		...information,
+		in:                information.in.filter(ref => ref.nodeId !== functionId),
+		unknownReferences: information.unknownReferences.filter(ref => ref.nodeId !== functionId)
+	};
+}
+
+/** The position in `args` of the `n`-th unnamed argument (counting empty ones), `n` itself if there are fewer. */
+function positionOfUnnamed<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo>[], n: number): number {
+	let unnamedSeen = 0;
+	for(const [i, arg] of args.entries()) {
+		if(arg !== EmptyArgument && arg.name) {
+			continue;
+		}
+		if(unnamedSeen === n) {
+			return i;
+		}
+		unnamedSeen++;
+	}
+	return n;
 }

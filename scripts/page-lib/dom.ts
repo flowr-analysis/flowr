@@ -17,3 +17,12 @@ export function blank<T extends HTMLAnchorElement>(link: T): T {
 	link.rel = 'noopener';
 	return link;
 }
+
+/** a plain button, with what it does said on hover */
+export function button(className: string | undefined, text: string, title: string, onClick: (event: MouseEvent) => void): HTMLButtonElement {
+	const node = el('button', className, text);
+	node.type = 'button';
+	node.title = title;
+	node.addEventListener('click', onClick);
+	return node;
+}

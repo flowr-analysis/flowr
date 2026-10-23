@@ -1,3 +1,4 @@
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, describe, test } from 'vitest';
 import type { AbsintAnalysis, AbsintPredecessor, AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
 import { AbstractInterpreter } from '../../../src/abstract-interpretation/absint-inference';
@@ -6,7 +7,6 @@ import type { MultiValueStateDomain } from '../../../src/abstract-interpretation
 import type { StateDomain } from '../../../src/abstract-interpretation/domains/state-domain';
 import { ValueSemantics } from '../../../src/abstract-interpretation/value-semantics';
 import type { DataflowGraphVertexFunctionCall } from '../../../src/dataflow/graph/vertex';
-import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../../src/util/assert';
 import { runInterpreter } from './inference';
@@ -155,7 +155,7 @@ describe('Abstract Interpretation Visitor (interprocedural)', () => {
 		const values = new Map<string, string | undefined>();
 
 		for(const [id] of visitor.config.dfg.verticesOfType(VertexType.VariableDefinition)) {
-			const name = visitor.config.normalizedAst.idMap.get(id)?.lexeme;
+			const name = NodeId.recoverName(id, visitor.config.normalizedAst.idMap);
 			if(name !== undefined) {
 				values.set(name, end.isValue() ? end.getValue(id, 'interval')?.toString() : undefined);
 			}
@@ -212,7 +212,7 @@ describe('Abstract Interpretation Visitor (interprocedural)', () => {
 			config => new CallFollowingVisitor(config, true), { config: Intraprocedural });
 		const end = visitor.getEndState();
 		const definition = [...visitor.config.dfg.verticesOfType(VertexType.VariableDefinition)]
-			.find(([id]) => visitor.config.normalizedAst.idMap.get(id)?.lexeme === 'x');
+			.find(([id]) => NodeId.recoverName(id, visitor.config.normalizedAst.idMap) === 'x');
 
 		assert.isDefined(definition);
 		assert.strictEqual(end.isValue() ? end.getValue(definition[0], 'interval')?.toString() : undefined, '[3, 3]',

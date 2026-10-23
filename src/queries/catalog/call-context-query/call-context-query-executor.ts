@@ -23,6 +23,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { quotedForWorker } from '../../../dataflow/environments/query-fn-props';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
@@ -99,38 +100,31 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 } {
 	let requiresCfg = false;
 	const promotedQueries: PromotedQuery[] = queries.map((q, idx) => {
-		if(isSubCallQuery(q)) {
-			requiresCfg = true;
-			return {
-				...q,
-				callName:   promoteCallName(q.callName, q.callNameExact),
-				exactNames: exactNamesOf(q.callName, q.callNameExact),
-				idx,
-				fileFilter: q.fileFilter && {
-					...q.fileFilter,
-					filter: promoteCallName(q.fileFilter.filter)
-				},
-				linkTo: q.linkTo ? isArray<LinkTo>(q.linkTo) ? q.linkTo.map(l => ({
-					...l,
-					callName: promoteCallName(l.callName)
-				})) : {
-					...q.linkTo,
-					/* we have to add another promotion layer whenever we add something without this call name */
-					callName: promoteCallName(q.linkTo.callName)
-				} : undefined
-			} satisfies PromotedQuery;
-		} else {
-			return {
-				...q,
-				callName:   promoteCallName(q.callName, q.callNameExact),
-				exactNames: exactNamesOf(q.callName, q.callNameExact),
-				idx,
-				fileFilter: q.fileFilter && {
-					...q.fileFilter,
-					filter: promoteCallName(q.fileFilter.filter)
-				}
-			} satisfies PromotedQuery;
+		const promoted = {
+			...q,
+			callName:   promoteCallName(q.callName, q.callNameExact),
+			exactNames: exactNamesOf(q.callName, q.callNameExact),
+			idx,
+			fileFilter: q.fileFilter && {
+				...q.fileFilter,
+				filter: promoteCallName(q.fileFilter.filter)
+			}
+		};
+		if(!isSubCallQuery(q)) {
+			return promoted;
 		}
+		requiresCfg = true;
+		return {
+			...promoted,
+			linkTo: q.linkTo ? isArray<LinkTo>(q.linkTo) ? q.linkTo.map(l => ({
+				...l,
+				callName: promoteCallName(l.callName)
+			})) : {
+				...q.linkTo,
+				/* we have to add another promotion layer whenever we add something without this call name */
+				callName: promoteCallName(q.linkTo.callName)
+			} : undefined
+		} satisfies PromotedQuery;
 	});
 
 	return { promotedQueries, requiresCfg };
@@ -359,7 +353,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 					continue;
 				}
 			}
-			if(Dataflow.isQuoted(nodeId, dataflow.graph)) {
+			if(Dataflow.isQuoted(nodeId, dataflow.graph) && !quotedForWorker(nodeId, dataflow.graph, analyzer.inspectContext().env.builtInIndex)) {
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {

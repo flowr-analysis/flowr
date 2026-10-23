@@ -1,4 +1,5 @@
 import { packForUrl, unpackFromUrl } from './url-encoding';
+import { escapeRegex } from './strings';
 import { uniqueArray } from '../collections/arrays';
 
 /** the parts of the page a mark can point at, rather than a place in the script */
@@ -10,7 +11,9 @@ export enum PlaygroundBox {
 	/** what the dependency query found */
 	Deps  = 'deps',
 	/** what the linter found */
-	Lints = 'lints'
+	Lints = 'lints',
+	/** what the DESCRIPTION of the project says */
+	Project = 'project'
 }
 
 /**
@@ -23,11 +26,11 @@ export enum PlaygroundBox {
  * - a {@link PlaygroundBox} is one of the boxes of the page itself
  * @see {@link Mark.isValid} to check one, {@link Mark.compress} to shorten a list
  */
-export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}`
+export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}` | `${number}(${string})`
 	| `lint:${string}` | `dep:${string}` | PlaygroundBox;
 
-/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line */
-const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?$/;
+/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line, in another file with a `(file-regex)` */
+const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?(\(.+\))?$/;
 /** a mark that stands for what an analysis found: `lint:<rule>[@<line>]`, `dep:<kind>[@<line>]` */
 const FoundMarkPattern = /^(lint|dep):[^@,]+(@\d+)?$/;
 /** how many lines one range may stand for, so a hand-written link cannot ask for a million marks */
@@ -99,6 +102,10 @@ const Mark = {
 export interface PlaygroundLinkParts {
 	/** the script the page opens with; left out, the page keeps its own sample */
 	readonly code?:       string;
+	/** the file name of that script, `main.R` when left out */
+	readonly name?:       string;
+	/** the other files of the project, in the order flowR loads them, all before the opened one */
+	readonly files?:      readonly { name: string, code: string }[];
 	/** what the page marks when it opens, and what alt-click toggles from there on */
 	readonly marks?:      readonly PlaygroundMark[];
 	/** the boxes that open folded away, for whatever the example is not about */
@@ -123,6 +130,14 @@ export interface PlaygroundLinkParts {
 }
 
 /**
+ * The letter each setting of the view takes in the view field of a link, in the order a link writes them. Links in
+ * papers and mails have to open as they were sent: a letter is never reused for something else, only new ones are added.
+ */
+const ViewFlags = { forward: '>', removal: '-', dim: 'd', replOpen: 'r', wholeSlice: 'a', inline: 'i' } as const;
+/** how the view of the page was left, as the view field of a link carries it */
+export type PlaygroundView = { readonly [Setting in keyof typeof ViewFlags]?: boolean };
+
+/**
  * Everything about flowR's playground that is not the page itself: what a link to it carries, and how
  * one is written. The page reads back exactly what {@link Playground.link} writes.
  * @helper location
@@ -132,53 +147,52 @@ export interface PlaygroundLinkParts {
  * ```
  */
 export const Playground = {
-	name:    'Playground',
+	name:     'Playground',
 	/** where the page these links point at is served from */
-	BaseRef: 'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	BaseRef:  'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	/** the name of the file a link opens on when it names none */
+	MainFile: 'main.R',
 	/** what a link can point at */
 	Mark,
 	/** the boxes of the page a mark can point at */
-	Box:     PlaygroundBox,
+	Box:      PlaygroundBox,
+	/** the view field's letters for the settings of `view` that are on */
+	viewFlags(this: void, view: PlaygroundView): string {
+		return Object.entries(ViewFlags).filter(([setting]) => view[setting as keyof PlaygroundView]).map(([, letter]) => letter).join('');
+	},
+	/** which settings of the view the letters of a view field turn on */
+	readView(this: void, flags: string): Required<PlaygroundView> {
+		return Object.fromEntries(Object.entries(ViewFlags).map(([setting, letter]) => [setting, flags.includes(letter)])) as Required<PlaygroundView>;
+	},
 	/**
 	 * The link that opens the playground on exactly this: a script, what it points at, where its cursor
 	 * sits, and how the page is laid out.
 	 */
 	link(this: void, parts: PlaygroundLinkParts): string {
-		const { code, marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
+		const { code, name, files = [], marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
 		const base = parts.base ?? Playground.BaseRef;
-		const fields: [string, string][] = [];
-		if(code !== undefined && code.length > 0) {
-			fields.push(['c', packForUrl(code)]);
-		}
-		if(config.length > 0) {
-			fields.push(['k', Playground.packConfig(config)]);
-		}
-		const kept = Mark.compress(marks);
-		if(kept.length > 0) {
-			fields.push(['h', kept.join(',')]);
-		}
-		const folded = uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box));
-		if(folded.length > 0) {
-			fields.push(['f', folded.join(',')]);
-		}
 		/* one field for everything about the layout, with the trailing empty parts dropped */
 		const view = [
 			split === undefined ? '' : String(split),
 			repl === undefined ? '' : String(repl),
-			`${forward ? '>' : ''}${dim ? 'd' : ''}${replOpen ? 'r' : ''}${wholeSlice ? 'a' : ''}`
+			Playground.viewFlags({ forward, dim, replOpen, wholeSlice })
 		];
 		while(view.length > 0 && view[view.length - 1].length === 0) {
 			view.pop();
 		}
-		if(view.length > 0) {
-			fields.push(['v', view.join(',')]);
-		}
 		const position = at === undefined ? undefined
 			: code === undefined ? (/^\d+:\d+$/.test(at) ? at : undefined) : Playground.positionOf(code, at);
-		if(position !== undefined) {
-			fields.push(['p', position]);
-		}
-		const hash = Playground.hash(fields);
+		/* an empty field is left out of the link */
+		const hash = Playground.hash([
+			['c', code ? packForUrl(code) : ''],
+			['n', name !== undefined && name !== Playground.MainFile ? name : ''],
+			['o', files.length > 0 ? packForUrl(JSON.stringify(files.map(f => [f.name, f.code]))) : ''],
+			['k', config.length > 0 ? Playground.packConfig(config) : ''],
+			['h', Mark.compress(marks).join(',')],
+			['f', uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box)).join(',')],
+			['v', view.join(',')],
+			['p', position ?? '']
+		]);
 		return hash.length > 0 ? `${base}#${hash}` : base;
 	},
 	/**
@@ -198,8 +212,8 @@ export const Playground = {
 		return text.split(';').filter(key => key.length > 0);
 	},
 	/**
-	 * Everything a fragment does not carry as itself is escaped, so a configuration's brackets, braces and
-	 * quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
+	 * The non-empty fields as a fragment. Everything a fragment does not carry as itself is escaped, so a
+	 * configuration's brackets, braces and quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
 	 * a terminal cuts the address at. What is left is what {@link FragmentSafe} lists: a fragment is not a
 	 * query, so `,`, `:` and `;` stand in it as they are and keep a link readable. `&` and `+` are escaped
 	 * beyond that, the first because it separates the fields here and the second because a reader takes it
@@ -267,7 +281,7 @@ export const Playground = {
 	},
 	/** where a name stands in a line, as a name rather than as a substring of a longer one */
 	nameIndexIn(this: void, text: string, name: string): number | undefined {
-		for(const found of text.matchAll(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))) {
+		for(const found of text.matchAll(new RegExp(escapeRegex(name), 'g'))) {
 			const before = text[found.index - 1];
 			const after = text[found.index + name.length];
 			if(!/[\w._]/.test(before ?? ' ') && !/[\w._]/.test(after ?? ' ')) {

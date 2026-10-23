@@ -4,6 +4,7 @@ import type { FlowrFileProvider } from '../../context/flowr-file';
 import { FileRole } from '../../context/flowr-file';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
+import { rPackageSourceRegex } from '../../../util/files';
 import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 /**
@@ -43,7 +44,7 @@ class DefaultFlowrAnalyzerFilePlugin extends FlowrAnalyzerFilePlugin {
 
 	public process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrFileProvider {
 		const path = arg.path().toString();
-		if(/\.r$/i.test(path)) {
+		if(/\.r$/i.test(path) || rPackageSourceRegex.test(path)) {
 			// we just assign the role :D
 			arg.assignRole(FileRole.Source);
 		}

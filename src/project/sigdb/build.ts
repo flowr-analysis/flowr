@@ -598,47 +598,38 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 /** flush a batch line once its serialized size reaches roughly this many bytes (keeps lines under the string cap) */
 const NdjsonBatchBytes = 8_000_000;
 
+function* batched(count: number, part: (i: number) => string, line: (from: number, parts: readonly string[]) => string): Generator<string> {
+	let start = 0;
+	let parts: string[] = [];
+	let bytes = 0;
+	for(let i = 0; i < count; i++) {
+		const s = part(i);
+		if(parts.length > 0 && bytes + s.length + 1 > NdjsonBatchBytes) {
+			yield line(start, parts);
+			start = i;
+			parts = [];
+			bytes = 0;
+		}
+		parts.push(s);
+		bytes += s.length + 1;
+	}
+	yield line(start, parts);
+}
+
 /**
  * Batch the string dictionary into `["d", startIdx, "s1\ns2\n…"]` lines: one newline-delimited blob per line
  * rather than a JSON array of quoted strings, which loads as a single `split('\n')` instead of parsing ~1.4M elements.
  */
 function* dictLines(strings: readonly string[]): Generator<string> {
-	let start = 0;
-	let parts: string[] = [];
-	let bytes = 0;
-	const line = (from: number): string => `["d",${from},${JSON.stringify(parts.join('\n'))}]`;
-	for(let i = 0; i < strings.length; i++) {
-		const s = strings[i];
-		if(parts.length > 0 && bytes + s.length + 1 > NdjsonBatchBytes) {
-			yield line(start);
-			start = i;
-			parts = [];
-			bytes = 0;
-		}
-		parts.push(s);
-		bytes += s.length + 1;
+	/* a line holding no names would read back as one empty name */
+	if(strings.length > 0) {
+		yield* batched(strings.length, i => strings[i], (from, parts) => `["d",${from},${JSON.stringify(parts.join('\n'))}]`);
 	}
-	yield line(start);
 }
 
 /** batch an array into `[tag, startIdx, [...]]` lines that never approach V8's string cap */
 function* batchLines(tag: string, arr: readonly unknown[]): Generator<string> {
-	let start = 0;
-	let parts: string[] = [];
-	let bytes = 0;
-	const line = (from: number): string => `["${tag}",${from},[${parts.join(',')}]]`;
-	for(let i = 0; i < arr.length; i++) {
-		const s = JSON.stringify(arr[i]);
-		if(parts.length > 0 && bytes + s.length + 1 > NdjsonBatchBytes) {
-			yield line(start);
-			start = i;
-			parts = [];
-			bytes = 0;
-		}
-		parts.push(s);
-		bytes += s.length + 1;
-	}
-	yield line(start);
+	yield* batched(arr.length, i => JSON.stringify(arr[i]), (from, parts) => `["${tag}",${from},[${parts.join(',')}]]`);
 }
 
 export interface CompressOptions {

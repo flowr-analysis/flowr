@@ -46,7 +46,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		const idMap = mermaid.rootGraph.idMap;
 		const node = idMap?.get(nodeId);
 		const nodeLexeme = RNode.lexeme(node) ?? 'function';
-		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
+		const location = SourceRange.getStartLine(node?.location) ? ` (L. ${SourceRange.getStartLine(node?.location)})` : '';
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${Mermaid.escape(nodeLexeme)}${location}"]`);
 	} else {
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${id}]`);
@@ -217,7 +217,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	if(mermaid.simplified) {
-		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
+		const location = SourceRange.getStartLine(node?.location) ? ` (L. ${SourceRange.getStartLine(node?.location)})` : '';
 		const escapedName = (node ? boldLexeme(lexeme, display) : '**??**') + location + (node ? `\n*${node.type}*` : '');
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
@@ -226,7 +226,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const lnks = info.link?.origin ? ', links: ' + info.link.origin.map(o => Mermaid.escapeId(o)).join(', ') : '';
 		const source = DfgVertex.isVariableDefinition(info) ? info.source : undefined;
 		const sources = source ? ', v: ' + source.map(s => Mermaid.escapeId(s)).join(', ') : '';
-		const n = node?.info.fullRange ?? node?.location ?? (RExpressionList.is(node) ? node?.grouping?.[0].location : undefined);
+		const n = SourceRange.fromNode(node) ?? (RExpressionList.is(node) ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (DfgVertex.isFunctionDefinition(info) && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
@@ -245,14 +245,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	// eslint-disable-next-line prefer-const
-	for(let [target, edge] of edges) {
-		if(includeOnlyIds && !includeOnlyIds.has(target)) {
+	for(const [originalTarget, edge] of edges) {
+		if(includeOnlyIds && !includeOnlyIds.has(originalTarget)) {
 			continue;
 		}
 
-		const originalTarget = target;
-		target = Mermaid.escapeId(target);
+		const target = Mermaid.escapeId(originalTarget);
 		const edgeTypes = typeof edge.types == 'number' ? new Set(DfEdge.splitTypes(edge)) : edge.types;
 		const carriesControlFlow = edgeTypes.has(EdgeType.FlowEdge) || edgeTypes.has(EdgeType.ControlEdge);
 		/* an edge that carries dataflow as well stays a dataflow edge, it just says the control flow goes there too */

@@ -22,6 +22,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { DataflowInformation } from '../info';
 import { DfgVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
+import { EdgeType } from '../graph/edge';
+import type { DataflowGraph } from '../graph/graph';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 
 /**
@@ -49,7 +51,8 @@ function statedBuiltIn(definition: IdentifierDefinition, environment: REnvironme
 		return undefined;
 	}
 	const [pkg, fn] = pkgFn;
-	const known = REnvironment.findBuiltIn(environment.current).memory.get(fn)
+	const builtIn = REnvironment.findBuiltIn(environment.current);
+	const known = (builtIn.namespaces?.get(pkg)?.get(fn) ?? builtIn.memory.get(fn))
 		?.filter(d => d.type === ReferenceType.BuiltInFunction && Identifier.getNamespace(d.name ?? '') === pkg);
 	return known?.length ? known : undefined;
 }
@@ -153,6 +156,13 @@ export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInf
 			environment: vertex.onlyBuiltin ? { level: 0, current: REnvironment.findBuiltIn(known.current) } : known
 		})
 	};
+}
+
+/** Whether `id` is quoted only by calls shipping it to a worker (`future(expr)`, `%dopar%`), which still runs it. */
+export function quotedForWorker(id: NodeId, graph: DataflowGraph, index: BuiltInIndex): boolean {
+	const quoting = Dataflow.sourcesOf(graph, id, EdgeType.NonStandardEvaluation);
+	return quoting.length > 0 && quoting.every(s => Dataflow.targetsOf(graph, s, EdgeType.Calls).some(t =>
+		NodeId.isBuiltIn(t) && ((index.propsOf(NodeId.fromBuiltIn(t)) ?? 0) & CallProp.Concurrent) !== 0));
 }
 
 /**

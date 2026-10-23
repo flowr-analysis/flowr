@@ -56,10 +56,9 @@ function fixedStackEnv(kind: StackEnvKind | undefined, data: StackEnvContext): R
 }
 
 /** The kind of stack environment `node` denotes, if it does; a user definition of the same name shadows the built-in. */
-export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: StackEnvContext): StackEnvKind | undefined {
+export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<StackEnvContext, 'environment'>): StackEnvKind | undefined {
 	const symbol = RSymbol.is(node) ? node.content
-		: RFunctionCall.isNamed(node) && RSymbol.is(node.functionName) ? node.functionName.content
-			: undefined;
+		: RFunctionCall.calledName(node);
 	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;
 	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
 		return undefined;
@@ -102,7 +101,7 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	}
 	if(name.startsWith(SearchPathPackagePrefix)) {
 		const pkg = name.slice(SearchPathPackagePrefix.length);
-		for(let env: Environment | undefined = REnvironment.findGlobal(data.environment.current).parent; env !== undefined && !env.builtInEnv; env = env.parent) {
+		for(const env of REnvironment.searchPath(data.environment.current)) {
 			if(env.n === pkg && env.t === EnvType.Namespace) {
 				return { current: env, level: 0 };
 			}
@@ -121,11 +120,11 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
 		return undefined;
 	}
 	const kind = stackEnvKind(String(vertex.name));
-	if(vertex.origin.includes(BuiltInProcName.StackEnv)) {
+	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.StackEnv)) {
 		return fixedStackEnv(kind, data);
 	}
 	/* `environment()` goes through the default processor; with an argument it denotes a closure's env instead */
-	return kind === StackEnvKind.Current && vertex.args.length === 0 && vertex.origin.includes(BuiltInProcName.Default)
+	return kind === StackEnvKind.Current && vertex.args.length === 0 && DfgVertex.hasOrigin(vertex, BuiltInProcName.Default)
 		? { current: data.environment.current, level: data.environment.level }
 		: undefined;
 }

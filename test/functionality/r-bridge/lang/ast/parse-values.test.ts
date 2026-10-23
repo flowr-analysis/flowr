@@ -1,14 +1,12 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { RNumberPool, RStringPool, RSymbolPool } from '../../../_helper/provider';
-import { exprList } from '../../../_helper/ast-builder';
+import { comment, exprList, lgl, num, str, sym } from '../../../_helper/ast-builder';
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { prepareParsedData } from '../../../../../src/r-bridge/lang-4.x/ast/parser/json/format';
 import { label } from '../../../_helper/label';
 import { retrieveParseDataFromRCode } from '../../../../../src/r-bridge/retriever';
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe, assert, test, expect } from 'vitest';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
-import { SourceRange } from '../../../../../src/util/range';
 
 describe('CSV parsing', { concurrent: false }, withShell(shell => {
 	test('simple', async() => {
@@ -48,6 +46,10 @@ describe('CSV parsing', { concurrent: false }, withShell(shell => {
 	});
 }));
 
+// same lexer path as a sibling that stays in the pool: other digits, further simple escapes, the other quote or bracket for the same shape
+const RedundantNumbers: ReadonlySet<string> = new Set(['10', '0.2', '1000000L', '1.1L', '4.1i', '0x1.1P1', '0x.p-5']);
+const RedundantStrings: ReadonlySet<string> = new Set(["'a'", "'Hi'", '"a#b"', '"\\r"', '"\\t"', '"\\b"', '"\\a"', '"\\f"', '"\\v"', '"\\uAFFE"', '"\\U{10AFFE}"', "r'()'", 'r"[xx]"', 'r"{xx}"']);
+
 describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 	describe('parse empty', () => {
 		assertAst(label('nothing', []),
@@ -62,16 +64,9 @@ describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 			}, shell)).rejects.toThrow()
 		);
 		describe('numbers', () => {
-			for(const number of RNumberPool) {
-				const range = SourceRange.from(1, 1, 1, number.str.length);
+			for(const number of RNumberPool.filter(n => !RedundantNumbers.has(n.str))) {
 				assertAst(label(number.str, ['numbers', ...(number.val.complexNumber ? ['numbers-complex' as const] : [])]),
-					shell, number.str, exprList({
-						type:     RType.Number,
-						location: range,
-						lexeme:   number.str,
-						content:  number.val,
-						info:     {}
-					}), {
+					shell, number.str, exprList(num(number.str, [1, 1], number.val)), {
 						// https://github.com/r-lib/tree-sitter-r/issues/159
 						skipTreeSitter: /[pP]/.test(number.str)
 					}
@@ -79,17 +74,10 @@ describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 			}
 		});
 		describe('strings', () => {
-			for(const string of RStringPool) {
-				const range = SourceRange.from(1, 1, 1, string.str.length);
+			for(const string of RStringPool.filter(s => !RedundantStrings.has(s.str))) {
 				const raw = string.str.startsWith('r') || string.str.startsWith('R');
 				assertAst(label(string.str, ['strings', ...(raw ? ['raw-strings' as const] : [])]),
-					shell, string.str, exprList({
-						type:     RType.String,
-						location: range,
-						lexeme:   string.str,
-						content:  string.val,
-						info:     {}
-					}),
+					shell, string.str, exprList({ ...str(string.str, [1, 1], string.val.str), content: string.val }),
 					{
 						// just a hacky way to not outright flag all
 						minRVersion: raw ? MIN_VERSION_RAW_STABLE : undefined
@@ -99,49 +87,20 @@ describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 		});
 		describe('Symbols', () => {
 			for(const symbol of RSymbolPool) {
-				const range = SourceRange.from(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1);
-				const exported = symbol.namespace !== undefined;
-				const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : [];
+				const mapped = symbol.namespace !== undefined && !symbol.internal ? ['accessing-exported-names' as const] : [];
 				assertAst(label(symbol.str, ['name-normal', ...mapped]),
-					shell, symbol.str, exprList({
-						type:     RType.Symbol,
-						location: range,
-						lexeme:   symbol.val,
-						content:  Identifier.make(symbol.val, symbol.namespace, symbol.internal),
-						info:     {}
-					})
+					shell, symbol.str, exprList(sym(symbol.val, [1, symbol.symbolStart], Identifier.make(symbol.val, symbol.namespace, symbol.internal)))
 				);
 			}
 		});
 		describe('logical', () => {
-			for(const [lexeme, content] of [['TRUE', true], ['FALSE', false]] as const) {
-				assertAst(label(`${lexeme} as ${JSON.stringify(content)}`, ['logical']),
-					shell, lexeme, exprList({
-						type:     RType.Logical,
-						location: SourceRange.from(1, 1, 1, lexeme.length),
-						lexeme,
-						content,
-						info:     {}
-					})
-				);
+			for(const lexeme of ['TRUE', 'FALSE'] as const) {
+				assertAst(label(`${lexeme} as ${JSON.stringify(lexeme === 'TRUE')}`, ['logical']), shell, lexeme, exprList(lgl(lexeme, [1, 1])));
 			}
 		});
 		describe('comments', () => {
 			assertAst(label('simple line comment', ['comments']),
-				shell, '# Hello World',
-				{
-					...exprList(),
-					info: {
-						adToks: [
-							{
-								type:     RType.Comment,
-								location: SourceRange.from(1, 1, 1, 13),
-								lexeme:   '# Hello World',
-								info:     {}
-							}
-						]
-					}
-				}
+				shell, '# Hello World', { ...exprList(), info: { adToks: [comment('# Hello World', [1, 1])] } }
 			);
 		});
 	});

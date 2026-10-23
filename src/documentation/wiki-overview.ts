@@ -38,8 +38,8 @@ for instructions on how to install _flowR_.
 
 Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
 Its subcomponents (like the custom ${ctx.link(RShell)}) or the internals of the static ${ctx.link(DataflowGraph)}) 
-are not important if you simply wish to use _flowR_.
-If you wish to use _flowR_, check out one of its extensions (e.g., the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}),
+are not important if you only wish to use _flowR_.
+Instead, check out one of its extensions (e.g., the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}),
 the [REPL and server interfaces](#using-flowr-from-the-outside) or its coding API with the
 ${ctx.link(FlowrAnalyzer)}, which you build with the ${ctx.link(FlowrAnalyzerBuilder)}:
 
@@ -72,10 +72,10 @@ _flowR_ itself has two main ways to operate:
 Besides these two ways, there is a ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} that allows you to use _flowR_ directly from within the editor (it is available on ${ctx.linkPage('flowr:positron', 'open-vsx')} as well).
 Similarly, we offer an ${ctx.linkPage('flowr:rstudio-addin', 'Addin for RStudio')}, as well as an ${ctx.linkPage('flowr:radapter', 'R package')}.
 
-🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (\`docker run -it --rm eagleoutice/flowr:latest\`), while launching with the ${ctx.cliOption('flowr', 'server')} argument starts the server (\`docker run -it --rm eagleoutice/flowr:latest --server\`).\\
+🐳️ If you use the docker-version, starting the docker container in interactive mode drops you right into the REPL (\`docker run -it --rm eagleoutice/flowr:latest\`), while launching with the ${ctx.cliOption('flowr', 'server')} argument starts the server (\`docker run -it --rm eagleoutice/flowr:latest --server\`).\\
 ⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by the main script \`npm run flowr\` or in the development mode \`npm run main-dev\`.
 
-Independent of your way of launching *flowr*, we will write simply \`flowr\` for either (🐳️)&nbsp;\`docker run -it --rm eagleoutice/flowr:latest\` or (⚒️)&nbsp;\`npm run flowr\`.
+Independent of your way of launching *flowr*, we write \`flowr\` for either (🐳️)&nbsp;\`docker run -it --rm eagleoutice/flowr:latest\` or (⚒️)&nbsp;\`npm run flowr\`.
 See the ${ctx.linkPage('wiki/Setup')} wiki page for more information on how to get _flowR_ running.
 
 ### The Read-Eval-Print Loop (REPL)
@@ -166,7 +166,7 @@ The server allows accessing the REPL as well
 ## Calling the Scripts Directly
 
 This describes the old way of using _flowR_ by creating and calling the respective scripts directly.
-Although this is no longer necessary, the scripts still remain, fully integrated into the REPL of _flowR_ (you can access them simply by adding a colon \`:\` before the name).
+Although this is no longer necessary, the scripts still remain, fully integrated into the REPL of _flowR_ (you can access them by adding a colon \`:\` before the name).
 
 ### Generate Static Slices
 
@@ -227,7 +227,7 @@ For this, you can make use of the _summarizer_ script from within the \`cli\` di
 npm run summarizer -- "<output.json>"
 \`\`\`
 
-Please note that the summarizer may require a long time as it parses, normalizes, and analyzes _each_ slice produced, to calculate the reduction numbers. Therefore, it actually executes two steps:
+The summarizer may require a long time as it parses, normalizes, and analyzes _each_ slice produced, to calculate the reduction numbers. Therefore, it actually executes two steps:
 
 1. For each file, it calculates the reduction, required time, and other information, written to \`<output-summary.json>\`
 2. Calculate the "ultimate" summary by aggregating the intermediate results for each file

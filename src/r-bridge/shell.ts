@@ -13,6 +13,7 @@ import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
 import type { AsyncParser, RShellInformation } from './parser';
 import { type RParseRequest, retrieveParseDataFromRCode } from './retriever';
+import { SecureMode } from '../util/secure-mode';
 
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
@@ -309,11 +310,7 @@ export class RShell implements AsyncParser<string> {
 				this._sendCommand(`cat("${marker}${this.options.eol}")`);
 			}
 		});
-		if(config.automaticallyTrimOutput) {
-			return output.map(line => line.trim());
-		} else {
-			return output;
-		}
+		return config.automaticallyTrimOutput ? output.map(line => line.trim()) : output;
 	}
 
 	/**
@@ -375,6 +372,7 @@ class RShellSession {
 	private requestQueue:           Promise<unknown> = Promise.resolve();
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
+		SecureMode.guard('starting R', options.pathToRExecutable);
 		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
 			env:         options.env,
 			cwd:         options.cwd,
@@ -461,6 +459,12 @@ class RShellSession {
 		};
 
 		return new Promise<string[]>((resolve, reject) => {
+			if(this.bareSession.exitCode !== null || this.bareSession.signalCode !== null) {
+				reject(new Error(`the R session has exited (${this.bareSession.exitCode ?? this.bareSession.signalCode}), it cannot answer anymore`));
+				drained = true;
+				onDrained();
+				return;
+			}
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
 				if(timeout.onTimeout) {
 					timeout.onTimeout(resolve, reject, result);
@@ -530,7 +534,7 @@ class RShellSession {
 		this.bareSession.stdin.on('error', callback);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the listener signature is dictated by node's EventEmitter
 	private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both';
 		if(both || from === 'stdout') {
@@ -541,7 +545,7 @@ class RShellSession {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the listener signature is dictated by node's EventEmitter
 	private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both';
 		if(both || from === 'stdout') {

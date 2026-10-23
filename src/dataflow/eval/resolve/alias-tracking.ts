@@ -25,6 +25,7 @@ import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/mod
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
 import { NodeValue } from './node-value';
+import { Dataflow } from '../../graph/df-helper';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -351,9 +352,8 @@ function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMa
 	if(!RParameter.is(bound) || bound.info.parent === undefined) {
 		return 'applies';
 	}
-	const count = (edges: Iterable<[NodeId, DfEdge]>, type: EdgeType) => [...edges].filter(([, e]) => DfEdge.includesType(e, type)).length;
-	const calls = count(graph.edgesTo(bound.info.parent), EdgeType.Calls);
-	return calls === 0 ? 'unknown' : count(graph.edgesFrom(bound.name.info.id), EdgeType.DefinedByOnCall) >= calls ? 'overridden' : 'applies';
+	const calls = Dataflow.sourcesOf(graph, bound.info.parent, EdgeType.Calls).length;
+	return calls === 0 ? 'unknown' : Dataflow.targetsOf(graph, bound.name.info.id, EdgeType.DefinedByOnCall).length >= calls ? 'overridden' : 'applies';
 }
 
 /**
@@ -417,6 +417,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		return isTop(value) ? Top : setOf(iteratedElements(value));
 	}
 
+	const start = id;
 	const queue = new VisitingQueue(10);
 	const clean = ctx.env.makeCleanEnv();
 	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
@@ -434,7 +435,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			continue;
 		}
 		const cds = vertex.cds;
-		for(const cd of cds ?? []) {
+		/* a read in a loop sees the same value every round unless a definition in the loop reaches it, which the walk meets */
+		const loopedRead = id === start && DfgVertex.isUse(vertex);
+		for(const cd of loopedRead ? [] : cds ?? []) {
 			const target = graph.idMap?.get(cd.id);
 			if(target === undefined) {
 				continue;
@@ -444,7 +447,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 				break;
 			}
 		}
-		if(!forceTop && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
+		if(!forceTop && !loopedRead && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
 			forceTop = true;
 		}
 		if(forceTop) {

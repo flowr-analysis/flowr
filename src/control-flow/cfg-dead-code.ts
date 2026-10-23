@@ -17,6 +17,7 @@ import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -82,9 +83,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					}
 					const og = this.getValue(cause);
 					const w = CfgEdge.unpackWhen(edge);
-					if(og === Ternary.Always && w === RFalse) {
-						cfg.removeEdge(from, target);
-					} else if(og === Ternary.Never && w === RTrue) {
+					if((og === Ternary.Always && w === RFalse) || (og === Ternary.Never && w === RTrue)) {
 						cfg.removeEdge(from, target);
 					}
 				} else if(CfgEdge.isFlowDependency(edge) && this.isUnconditionalJump(from)) {
@@ -157,22 +156,15 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(cached !== undefined) {
 			return cached;
 		}
-		let result = false;
-		for(let node = this.getNormalizedAst(id)?.info.parent; node !== undefined;) {
-			const vertex = this.getDataflowGraph(node);
-			if(DfgVertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Try)) {
-				result = true;
-				break;
-			}
-			node = this.getNormalizedAst(node)?.info.parent;
-		}
+		const result = RNode.iterateParents(this.getNormalizedAst(id), this.config.normalizedAst.idMap)
+			.some(node => DfgVertex.hasOrigin(this.getDataflowGraph(node.info.id), BuiltInProcName.Try));
 		this.caught.set(id, result);
 		return result;
 	}
 
 	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
 		const v = this.config.dfg.getVertex(cause);
-		if(!DfgVertex.isFunctionCall(v) || !v.origin.includes(BuiltInProcName.Switch)) {
+		if(!DfgVertex.isFunctionCall(v) || !DfgVertex.hasOrigin(v, BuiltInProcName.Switch)) {
 			return false;
 		}
 		const selected = this.selectedSwitchArm(v);

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 07:04:46 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Call-Graph Query">Call-Graph Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the call graph of the given code.\
@@ -16,8 +16,8 @@ Using the example code `x + 1`, the following query returns the dataflow graph o
 
 _Results (prettified and summarized):_
 
-Query: **call-graph** (3 ms)\
-&nbsp;&nbsp;&nbsp;╰ [Call Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MzsqKlxuICAgICAgKjEuMS01KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpkW1wiYEJ1aWx0LUluOlxuZGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpkIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMiAtLi0+fFwiY2FsbHNcInwgYnVpbHQtaW46ZFxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)\
+Query: **call-graph** (6 ms)\
+&nbsp;&nbsp;&nbsp;╰ [Call Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MzsqKlxuICAgICAgKjEuMS01KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpkW1wiYEJ1aWx0LUluOlxuZGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpkIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMiAtLi0+fFwiY2FsbHNcInwgYnVpbHQtaW46ZFxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -65,16 +65,16 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
@@ -86,6 +86,6 @@ flowchart LR
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Call-Graph Query query is `executeCallGraphQuery` in [`./src/queries/catalog/call-graph-query/call-graph-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-graph-query/call-graph-query-executor.ts).
+The Call-Graph Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-graph-query/call-graph-query-executor.ts#L10"><code><span title="Executes the given call graph queries.">executeCallGraphQuery</span></code></a>.
 
 </details>

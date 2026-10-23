@@ -3,8 +3,8 @@ import { FlowrFile } from '../../../context/flowr-file';
 import fs from 'fs';
 import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
-import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 import { log } from '../../../../util/log';
+import { SecureMode } from '../../../../util/secure-mode';
 
 const rdaLog = log.getSubLogger({ name: 'flowr-rda-file' });
 
@@ -133,6 +133,9 @@ const BareStreamFormats = new Set(['A', 'B', 'X']);
 function isBareSerializationStream(buf: Buffer): boolean {
 	return buf.length >= 2 && buf[1] === 0x0a && BareStreamFormats.has(String.fromCodePoint(buf[0]));
 }
+
+/** The control characters an ASCII-format string spells with a backslash escape; any other escaped character stands for itself. */
+const AsciiEscapes: Readonly<Record<string, string>> = { n: '\n', t: '\t', v: '\v', b: '\b', r: '\r', f: '\f', a: '\x07' };
 
 /** The variants {@link RDAParser.deserialize} handles. */
 const SupportedSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
@@ -281,27 +284,49 @@ const SpecialValueSxps: ReadonlyMap<SexpType, { readonly value: RValues, readonl
 	[SexpType.BaseNamespaceSxp, { value: RValues.BaseNamespace, type: SexpType.EnvSxp }],
 ]);
 
+/** The parts of the (untyped) `bzip2` package we use. */
+export interface Bzip2 {
+	array(bytes: Uint8Array): unknown
+	header(bits: unknown): number
+	/** decompresses the next block (stopping after `len` bytes), `-1` after the last one */
+	decompress(bits: unknown, size: number, len?: number): Uint8Array | -1
+}
+
+/** Decompresses a bzip2 stream block by block, throwing a `RangeError` if it would yield more than `limit` bytes. */
+export function bunzip(bzip2: Bzip2, content: Buffer, limit = Infinity): Buffer {
+	const bits = bzip2.array(content);
+	const size = bzip2.header(bits);
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for(let chunk = bzip2.decompress(bits, size, limit - total + 1); chunk !== -1; chunk = bzip2.decompress(bits, size, limit - total + 1)) {
+		total += chunk.byteLength;
+		if(total > limit) {
+			throw new RangeError(`Refusing to decompress more than ${limit} bytes`);
+		}
+		chunks.push(chunk);
+	}
+	return Buffer.concat(chunks);
+}
+
 /**
  * Parser for RDA files.
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c | R source: serialize.c}
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c | R source: saveload.c}
  */
 export class RDAParser {
-	private readonly file:                 FlowrFileProvider;
-	private readonly shortcut:             boolean;
-	private buffer!:                       Buffer;
-	private currentDepth:                  number = 0;
-	private static readonly INITIAL_DEPTH: number = 1;
-	private lastName:                      string | undefined = undefined;
+	private readonly file:     FlowrFileProvider;
+	private readonly shortcut: boolean;
+	private buffer!:           Buffer;
+	private currentDepth:      number = 0;
 	private offset = 0;
 	private static readonly R_CODE_SET_MAX = 2 ** 6 - 1;
-	private RWeakRefs:                     null | RObjectData = null;
+	private RWeakRefs:         null | RObjectData = null;
 	private static readonly SIZE_OF_DOUBLE = 2 ** 3;
 	private static readonly WORD_SIZE = 2 ** 7;
 	private static readonly MAX_VECTOR_LENGTH = 2 ** 16;
-	private format!:                       SerializationFormat;
-	private readonly refTable:             RObject[] = [];
-	private Registry:                      RObjectData | null = null;
+	private format!:           SerializationFormat;
+	private readonly refTable: RObject[] = [];
+	private Registry:          RObjectData | null = null;
 
 	constructor(file: FlowrFileProvider, shortcut: boolean = true) {
 		this.file = file;
@@ -347,28 +372,28 @@ export class RDAParser {
 	/** Decompresses `fileContent` per the {@link detectCompression} result `compressionType`. Throws error for unsupported compression types. */
 	decompress(fileContent: Buffer, compressionType: CompressionType): Buffer {
 		let buffer: Buffer;
+		// the file belongs to the (possibly hostile) project, so the secure mode bounds what it may decompress to
+		const limit = SecureMode.decompressionLimit();
 
 		switch(compressionType) {
 			case CompressionType.CompGz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const zlib = require('zlib');
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, so bundles without gzip files do not pull in zlib
+				const zlib = require('zlib') as typeof import('zlib');
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-					buffer = zlib.gunzipSync(fileContent);
-				} catch{
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-					buffer = zlib.inflateSync(fileContent);
+					buffer = zlib.gunzipSync(fileContent, { maxOutputLength: limit });
+				} catch(e) {
+					if((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {
+						throw e;
+					}
+					buffer = zlib.inflateSync(fileContent, { maxOutputLength: limit });
 				}
 				break;
 			}
 
 			case CompressionType.CompBz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const bzip2 = require('bzip2');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-				const decompressed = bzip2.simple(bzip2.array(fileContent));
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				buffer = Buffer.from(decompressed);
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- the untyped `bzip2` package has no module declaration, and is loaded on demand
+				const bzip2 = require('bzip2') as Bzip2;
+				buffer = bunzip(bzip2, fileContent, limit);
 				break;
 			}
 
@@ -472,7 +497,7 @@ export class RDAParser {
 				if(neLen > RDAParser.R_CODE_SET_MAX || neLen < 0)  {
 					throw new Error('invalid length of encoding name');
 				}
-				const _nativeEncoding = this.inString(neLen);
+				this.inString(neLen);
 				break;
 			}
 			default:
@@ -616,17 +641,9 @@ export class RDAParser {
 					if(c === '\\') {
 						c = String.fromCodePoint(this.buffer[this.offset++]);
 						switch(c) {
-							case 'n': result.push('\n'); break;
-							case 't': result.push('\t'); break;
-							case 'v': result.push('\v'); break;
-							case 'b': result.push('\b'); break;
-							case 'r': result.push('\r'); break;
-							case 'f': result.push('\f'); break;
-							case 'a': result.push('\x07'); break; // \a
-							case '\\': result.push('\\'); break;
-							case '?': result.push('?'); break;
-							case '\'': result.push('\''); break;
-							case '"': result.push('"'); break;
+							case 'n': case 't': case 'v': case 'b': case 'r': case 'f': case 'a':
+								result.push(AsciiEscapes[c]);
+								break;
 							case '0': case '1': case '2': case '3':
 							case '4': case '5': case '6': case '7': {
 								let d = 0;
@@ -691,36 +708,24 @@ export class RDAParser {
 		return this.readItemRecursive(flags);
 	}
 
-	/** Runs `code` in R and answers an `EnvSxp`, `value` set to {@link RValues.GlobalEnv} when the result names it. Shared by {@link R_FindNamespace} and {@link R_FindNamespace1}. */
-	private runNamespaceLookup(code: string): RObjectData {
-		const shell = new RShellExecutor();
-		const result = shell.run(code);
-		shell.close();
-
-		const val: RObjectData = { type: SexpType.EnvSxp };
-		if(result === '<environment: R_GlobalEnv>') {
-			val.value = RValues.GlobalEnv;
-		}
-		return val;
-	}
-
 	/**
-	 * Resolves a namespace reference by name via `getNamespace()` in R. Simpler variant of {@link R_FindNamespace1}.
+	 * Resolves a namespace reference by name. Simpler variant of {@link R_FindNamespace1}.
+	 * R would load the namespace (`getNamespace()`), but flowR analyzes R code and data without running it: the name comes
+	 * from the (untrusted) file, and loading a namespace runs the package's code. Hence, this answers an `EnvSxp` standing
+	 * for the (unknown) namespace environment without consulting R.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
 	 */
 	R_FindNamespace(info: RObjectData): RObjectData {
-		const namespaceName = (info.value as RObjectData).name as string;
-		return this.runNamespaceLookup(`getNamespace("${namespaceName}")`);
+		rdaLog.trace(`Not loading namespace ${JSON.stringify((info.value as RObjectData | undefined)?.name)} of a serialized object`);
+		return { type: SexpType.EnvSxp };
 	}
 
 	/**
-	 * Resolves a serialized namespace reference by executing R at runtime. See {@link R_FindNamespace} for the result shape.
+	 * Resolves a serialized namespace reference, see {@link R_FindNamespace} for why this does not ask R.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1785-L1796 | R source: R_FindNamespace1}
 	 */
 	R_FindNamespace1(info: RObjectData): RObjectData {
-		const where = this.lastName;
-		const code = `..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${where as string}")`;
-		return this.runNamespaceLookup(code);
+		return this.R_FindNamespace({ ...info, value: (info.value as RObjectData[] | undefined)?.[0] });
 	}
 
 	/**
@@ -990,7 +995,7 @@ export class RDAParser {
 			s.attributes = hasAttribute ? [skip ? this.skipItem() : this.assertRObjectData(this.readItem())] as RObjectData[] : undefined;
 			this.currentDepth--;
 		}
-		if(!skip && s.type === SexpType.BcodesSxp && !this.R_BCVersionOK(s)) {
+		if(!skip && s.type === SexpType.BcodesSxp) {
 			return this.R_BytecodeExpr(s) as RObjectData;
 		}
 		return s;
@@ -1178,10 +1183,6 @@ export class RDAParser {
 
 			s.attributes = hasAttr ? [this.shortcut ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
 			s.tag = hasTag ? this.readItem() : RValues.NilValue;
-
-			if(hasTag && this.currentDepth == RDAParser.INITIAL_DEPTH && typeof s.tag === 'object') {
-				this.lastName = s.tag.name;
-			}
 
 			s.car = this.shortcut ? this.skipItem() : this.readItem();
 			this.currentDepth--;
@@ -1629,12 +1630,9 @@ export class RDAParser {
 					this.skipInteger();
 					type = this.assertInteger(this.inInteger());
 				}
-				/* eslint-disable no-useless-assignment -- mirrors the read path */
-				switch(type) {
-					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
-					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
+				if(type === SexpType.AltLangSxp || type === SexpType.AttrListSxp) {
+					hasAttr = true;
 				}
-				/* eslint-enable no-useless-assignment */
 
 				this.currentDepth++;
 				if(hasAttr) {
@@ -1681,27 +1679,12 @@ export class RDAParser {
 		}
 	}
 
-	/** Whether a {@link SexpType.BcodesSxp}'s version is within the supported range. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L7166-L7175 | R source: R_BCVersionOK} */
-	R_BCVersionOK(s: RObjectData): boolean {
-		if(s.type !== SexpType.BcodesSxp) {
-			return false;
-		}
-		// const version = s.code;
-		const version = 0;
-		return version >= 9 && version <= 12;
-	}
-
 	/** Source-language expression for an unsupported bytecode object: its first constant pool entry, or {@link RValues.NilValue}. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L5566-L5574 | R source: bytecodeExpr} */
 	R_BytecodeExpr(s: RObjectData): RObject {
-		if(s.type === SexpType.BcodesSxp) {
-			if(((s.cdr as RObjectData).value as RObject[])?.length > 0) {
-				return this.VECTOR_ELT(s.cdr as RObjectData, 0);
-			} else {
-				return RValues.NilValue;
-			}
-		} else {
+		if(s.type !== SexpType.BcodesSxp) {
 			return s;
 		}
+		return ((s.cdr as RObjectData).value as RObject[])?.length > 0 ? this.VECTOR_ELT(s.cdr as RObjectData, 0) : RValues.NilValue;
 	}
 
 	/**

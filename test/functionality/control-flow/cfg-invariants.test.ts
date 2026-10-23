@@ -7,6 +7,7 @@ import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-prop
 import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrConfig } from '../../../src/config';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 
 /**
  * Programs that put the control flow under pressure: jumps out of nested constructs, arms that never complete,
@@ -135,15 +136,20 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		assert.isTrue(reached.has(handlers[0]), 'and the error the block always raises gets to it');
 	});
 
-	/** An argument that always jumps does leave the call, so what follows is dead. */
-	test('an unconditional jump within an argument does leave the call', async() => {
-		const context = contextFromInput('f({ return() })\nprint(2)', FlowrConfig.default());
+	/** An argument that always jumps leaves the call exactly when the callee forces it. */
+	test.each([
+		['a callee forcing it', 'g <- function(x) x\nh <- function() { g({ return(1) }); print(2) }', false],
+		['a callee never forcing it', 'g <- function(x) 1\nh <- function() { g({ return(1) }); print(2) }', true],
+		['a callee flowR does not know', 'h <- function() { g({ return(1) }); print(2) }', true]
+	] as const)('an unconditional jump within an argument, %s', async(_name, code, alive) => {
+		const context = contextFromInput(code, FlowrConfig.default());
 		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		const cfg = extractCfg(result.dataflow);
 		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
 		const follows = [...result.dataflow.graph.verticesOfType(VertexType.FunctionCall)]
-			.find(([, v]) => v.name === 'print')?.[0];
+			.find(([, v]) => Identifier.getName(v.name) === 'print')?.[0];
 
-		assert.isFalse(follows !== undefined && reached.has(follows), 'what follows the call is dead');
+		assert.isDefined(follows);
+		assert.strictEqual(reached.has(follows), alive);
 	});
 }));

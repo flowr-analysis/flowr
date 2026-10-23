@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
@@ -62,9 +63,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			/* the two interpolations are separate reads, so neither may end up merged into the other's vertex */
 			const reads = new Map<string, NodeId[]>();
 			for(const [id] of graph.verticesOfType(VertexType.Use)) {
-				const to = [...graph.edgesFrom(id)]
-					.filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads))
-					.map(([target]) => target);
+				const to = Dataflow.targetsOf(graph, id, EdgeType.Reads);
 				if(to.length > 0) {
 					reads.set(String(id), to);
 				}

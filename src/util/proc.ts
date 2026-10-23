@@ -12,5 +12,6 @@ export function exitSafe(code = 0): void {
 	};
 	process.stdout.write('', done);
 	process.stderr.write('', done);
-	setTimeout(() => process.exit(code), 60_000).unref();
+	/* a browser's timer is a plain number that cannot be unreferenced */
+	(setTimeout(() => process.exit(code), 60_000) as { unref?: () => void }).unref?.();
 }

@@ -1,11 +1,10 @@
 import path from 'path';
 import os from 'os';
+import Suites from './test-suites.json';
 
 export const GlobalSummaryFile = path.join(os.tmpdir(), `flowr-label-summary-${process.pid}.json`);
 
-export const TestSuites = {
-	functionality: { folder: 'test/functionality', details: 'coverage/flowr-test-details.json' },
-	mutations:     { folder: 'test/mutations', details: 'coverage/flowr-test-details-mutations.json' }
-} as const;
+/* kept as JSON, so the vitest configurations can read it without loading TypeScript */
+export const TestSuites = Suites;
 
 export const DetailedInfoFile = process.env.FLOWR_TEST_DETAILS_FILE ?? TestSuites.functionality.details;

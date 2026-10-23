@@ -3,26 +3,33 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import type { InputClassifierConfig, InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import type { InputClassifierConfig, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraphVertexInfo, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier } from '../../dataflow/environments/identifier';
-import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { escapeRegex } from '../../util/text/strings';
+import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
+import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
 
+/** what runs a command, and what evaluates code beyond looking up a name (`get`) or calling a function it is handed (`do.call`) */
 function defaultConsider(index: BuiltInIndex): readonly ConsiderSpec[] {
-	return [
-		{ pattern: '^eval$', allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true },
-		...index.with(SemanticCallTag.Process).map(n => ({ pattern: `^${Identifier.getName(n)}$` }))
-	];
+	const evaluates = index.with(SemanticCallTag.Eval).filter(n => ((index.propsOf(n) ?? 0) & CallProp.Pure) === 0 && !index.get(n)?.sig?.some(([, p]) => (p & ArgProp.Callee) !== 0));
+	return [...index.with(SemanticCallTag.Process), ...evaluates].map(n => ({ pattern: `^${escapeRegex(Identifier.getName(n))}$` }))
+		.map(s => s.pattern === '^eval$' ? { ...s, allowedInputTypes: [InputType.Constant, InputType.DerivedConstant], resolveSourceArgs: true } : s)
+		.concat({ pattern: '^fread$' });
 }
 
 const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
 	{ pattern: /^pdf$/,        argIdx: 0, argName: 'file' },
-	{ pattern: /^postscript$/, argIdx: 0, argName: 'file' }
+	{ pattern: /^postscript$/, argIdx: 0, argName: 'file' },
+	{ pattern: /^bitmap$/,     argIdx: 0, argName: 'file' }
 ];
 
 export interface PipeCommandFunctionSpec {
@@ -41,11 +48,11 @@ export interface ConsiderSpec {
 	resolveSourceArgs?: boolean
 }
 
-function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp, resolveSourceArgs?: boolean }[] {
+function normalizePatternList(cfg: string | string[] | ConsiderSpec | ConsiderSpec[] | undefined): { pattern: RegExp, allowedInputTypes?: InputType[], allowedValues?: RegExp, disallowedValues?: RegExp, resolveSourceArgs?: boolean }[] {
 	const raw = (Array.isArray(cfg) ? cfg : cfg !== undefined ? [cfg] : []).map(s => typeof s === 'string' ? { pattern: s } : s);
 	return raw.map(s => ({
 		pattern:           typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
-		allowedInputTypes: s.allowedInputTypes ?? [],
+		allowedInputTypes: s.allowedInputTypes,
 		allowedValues:     typeof s.allowedValues === 'string' ? new RegExp(s.allowedValues) : s.allowedValues,
 		disallowedValues:  typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues,
 		resolveSourceArgs: s.resolveSourceArgs
@@ -65,18 +72,14 @@ function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | PipeCommandFunctionSp
 	}));
 }
 
-function formatInputSources(inputs: InputSources, inline = true): string | string[] {
-	if(!inputs || inputs.length === 0) {
-		return inline ? '' : [];
-	}
-	const fmt = (s: InputSource) => {
+function formatInputSources(inputs: InputSources, inline: boolean): string[] {
+	return inputs.map(s => {
 		const t = '[' + s.types.join(',') + ']';
 		const c = s.cds ? ', cds: [' + s.cds.join(',') + ']' : '';
 		return inline
 			? `${s.id} (type: ${t}, trace: ${s.trace}${c})`
 			: `- ${s.id}: type=${t}, trace=${s.trace}${c}`;
-	};
-	return inline ? inputs.map(fmt).join('; ') : inputs.map(fmt);
+	});
 }
 
 function hasUnknownSource(sources: InputSources): boolean {
@@ -97,6 +100,7 @@ function isProblematicForAllowed(sources: InputSources, evalValues: string[], al
 	return false;
 }
 
+/** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
 function getPipeCommandValue(sources: InputSources, allowedValues?: RegExp, disallowedValues?: RegExp): string | undefined {
 	for(const s of sources) {
 		if(typeof s.value !== 'string' || !s.value.startsWith('|')) {
@@ -113,31 +117,12 @@ function getPipeCommandValue(sources: InputSources, allowedValues?: RegExp, disa
 	return undefined;
 }
 
-function resolveFileArgId(vertex: DataflowGraphVertexFunctionCall | undefined, argIdx: number, argName: string): NodeId | undefined {
-	const args = vertex?.args;
-	if(!args) {
+function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexInfo | undefined, argIdx: number, argName: string, ctx: ReadOnlyFlowrAnalyzerContext): NodeId | undefined {
+	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
-	let idx = args.findIndex(a => FunctionArgument.isNamed(a) && a.name === argName);
-	if(idx < 0) {
-		idx = argIdx;
-	}
-	if(idx >= args.length) {
-		return undefined;
-	}
-	const arg = args[idx];
-	return FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
-}
-
-function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources, allowedValues?: RegExp, disallowedValues?: RegExp): ProblematicInputsResult | undefined {
-	const pipeCmd = getPipeCommandValue(sources, allowedValues, disallowedValues);
-	if(pipeCmd !== undefined) {
-		return { involvedId: nid, certainty: LintingResultCertainty.Certain, loc, name, sources, pipeCommand: pipeCmd };
-	}
-	if(hasUnknownSource(sources)) {
-		return { involvedId: nid, certainty: LintingResultCertainty.Uncertain, loc, name, sources };
-	}
-	return undefined;
+	const arg = vertex.args[boundArgumentIndex(graph, vertex, argIdx, argName, ctx)];
+	return arg === undefined ? undefined : FunctionArgument.getReference(arg);
 }
 
 export interface ProblematicInputsResult extends LintingResult {
@@ -153,69 +138,64 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 }
 
 export const PROBLEMATIC_INPUTS = {
-	createSearch: (config) => {
-		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
-		return Q.fromQuery([
-			...normalizePatternList(config.consider).map((s, i) => toQ(s.pattern, `fn-${i}`)),
-			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
-		]);
-	},
+	createSearch:        () => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets),
 	processSearchResult: async(elements, config, data) => {
 		const df = await data.dataflow();
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
+		const tempFileAccept = [InputType.Constant, InputType.DerivedConstant, InputType.TempFile];
 		const considerPats  = normalizePatternList(config.consider);
-		const pipePats      = normalizePipeSpecs(config?.pipeCommandFunctions);
-
+		const pipePats      = normalizePipeSpecs(config.pipeCommandFunctions);
 		for(const element of elements.getElements()) {
 			const nid  = element.node.info.id;
 			if(seen.has(nid)) {
 				continue;
 			}
-			const name       = element.node.lexeme ?? '';
-			const pipeSpec   = pipePats.find(s => s.pattern.test(name));
-			const consider = pipeSpec === undefined ? considerPats.find(s => s.pattern.test(name)) : undefined;
-			if(pipeSpec === undefined && consider === undefined) {
+			if(Dataflow.isQuoted(nid, df.graph) && !quotedForWorker(nid, df.graph, data.inspectContext().env.builtInIndex)) {
 				continue;
 			}
-
-			const loc = SourceLocation.fromNode(element.node) ?? SourceLocation.invalid();
-
+			const names = enrichmentContent(element, Enrichment.CallTargets).targets.flatMap(t => typeof t === 'string' ? [Identifier.getName(Identifier.parse(t))] : []);
+			const name = names.find(n => pipePats.some(s => s.pattern.test(n)) || considerPats.some(p => p.pattern.test(n))) ?? '';
+			const pipeSpec = pipePats.find(s => s.pattern.test(name));
+			const consider = pipeSpec === undefined ? considerPats.find(s => s.pattern.test(name)) : undefined;
+			/* a pipe spec checks the file argument of the call, a considered call the call itself */
+			let target: NodeId | undefined;
 			if(pipeSpec !== undefined) {
-				const vertex    = df.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
-				const fileArgId = resolveFileArgId(vertex, pipeSpec.argIdx, pipeSpec.argName);
-				if(fileArgId !== undefined) {
-					const criterion = SlicingCriterion.fromId(fileArgId);
-					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
-					const sources   = all['input-sources']?.results?.[criterion] ?? [];
-					const r         = checkPipeInjection(nid, loc, name, sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
-					if(r !== undefined) {
-						seen.add(nid);
-						results.push(r);
-					}
-				}
+				target = resolveFileArgId(df.graph, df.graph.getVertex(nid), pipeSpec.argIdx, pipeSpec.argName, data.inspectContext());
 			} else if(consider !== undefined) {
-				const criterion = SlicingCriterion.fromId(nid);
-				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
-				const sources   = all['input-sources']?.results?.[criterion] ?? [];
-				const evalValues: string[] = [];
-				if(consider.resolveSourceArgs) {
-					for(const source of sources) {
-						if(source.value === undefined) {
-							const arg = df.graph.idMap?.get(source.id)?.info?.fullLexeme;
-							if(arg !== undefined) {
-								evalValues.push(arg);
-							}
-						}
+				target = nid;
+			}
+			if(target === undefined) {
+				continue;
+			}
+			const [criterion, call] = [SlicingCriterion.fromId(target), SlicingCriterion.fromId(nid)];
+			const res = (await data.query([{ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns }]))['input-sources']?.results;
+			const own = res?.[criterion] ?? [];
+			/* a file argument that is an input itself (`pdf(readline())`) only shows as a source of the call */
+			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res?.[call] ?? []).filter(s => s.id === target));
+			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
+			const evalValues: string[] = [];
+			if(consider?.resolveSourceArgs) {
+				for(const source of sources) {
+					const arg = source.value === undefined ? df.graph.idMap?.get(source.id)?.info?.fullLexeme : undefined;
+					if(arg !== undefined) {
+						evalValues.push(arg);
 					}
-				}
-				if(isProblematicForAllowed(sources, evalValues, consider.allowedInputTypes, consider.allowedValues, consider.disallowedValues)) {
-					seen.add(nid);
-					results.push({ involvedId: nid, certainty: hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, loc, name, sources });
 				}
 			}
+			if(pipeCommand !== undefined || isProblematicForAllowed(sources, evalValues, consider?.allowedInputTypes ?? (pipeSpec !== undefined || sources.some(s => s.types.includes(InputType.TempFile)) ? tempFileAccept : []), consider?.allowedValues, consider?.disallowedValues)) {
+				seen.add(nid);
+				const uncertain = pipeCommand === undefined && hasUnknownSource(sources);
+				results.push({
+					involvedId: nid,
+					certainty:  uncertain ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
+					name,
+					sources,
+					...(pipeCommand === undefined ? {} : { pipeCommand })
+				});
+			}
 		}
-
 		return { results };
 	},
 	prettyPrint: {
@@ -223,11 +203,11 @@ export const PROBLEMATIC_INPUTS = {
 			if(result.pipeCommand !== undefined) {
 				return `Pipe command injection via '${result.pipeCommand}' in call to ${result.name} at ${SourceLocation.format(result.loc)}`;
 			}
-			const src = formatInputSources(result.sources ?? [], true) as string;
-			return 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + (src ? '; inputs: ' + src : '');
+			const src = formatInputSources(result.sources ?? [], true).join(', ');
+			return 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + (src ? ' with inputs ' + src : '');
 		},
 		[LintingPrettyPrintContext.Full]: result => {
-			const lines = formatInputSources(result.sources ?? [], false) as string[];
+			const lines = formatInputSources(result.sources ?? [], false);
 			const tail  = lines.length ? '\nInputs:\n' + lines.join('\n') : '';
 			return result.pipeCommand !== undefined
 				? `Pipe command injection: '${result.pipeCommand}' passed as filename to ${result.name} at ${SourceLocation.format(result.loc)}${tail}`
@@ -235,8 +215,8 @@ export const PROBLEMATIC_INPUTS = {
 		}
 	},
 	info: {
-		name:          'Problematic inputs',
-		description:   'Detects uses of dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
+		name:          'Problematic Inputs',
+		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: ctx => ({

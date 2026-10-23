@@ -1,6 +1,7 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../environments/identifier';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { Top, type Value } from '../values/r-value';
@@ -150,8 +151,10 @@ function calledName(node: RNodeWithParent): string | undefined {
 		case RType.UnaryOp:
 		case RType.BinaryOp:
 			return node.operator;
-		case RType.FunctionCall:
-			return node.named ? Identifier.getName(node.functionName.content) : undefined;
+		case RType.FunctionCall: {
+			const name = RFunctionCall.calledName(node);
+			return name === undefined ? undefined : Identifier.getName(name);
+		}
 		default:
 			return undefined;
 	}

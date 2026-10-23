@@ -217,9 +217,9 @@ export function describeObject(level: number, formatter: OutputFormatter, desc: 
 	if(!('keys' in desc)) {
 		return lines;
 	}
-	for(const key in desc.keys) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		const keySchema = desc.keys[key] as Joi.Description;
+	const keys = desc.keys as Record<string, Joi.Description>;
+	for(const key in keys) {
+		const keySchema = keys[key];
 		lines = lines.concat(genericDescription(level + 1, formatter, key, keySchema));
 	}
 

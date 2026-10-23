@@ -55,7 +55,6 @@ describe('Lax Parser', withTreeSitter(ts => {
 		emptyGraph()
 			.addEdge('1@t', '1@0', EdgeType.DefinedBy)
 			.addEdge('3@t', '3@4', EdgeType.DefinedBy)
-			.addEdge('8@t', '1@t', EdgeType.Reads)
 			.addEdge('8@t', '3@t', EdgeType.Reads)
 			.addEdge('8@t', '5@t', EdgeType.Reads)
 			.addEdge('4@if', '4@==', EdgeType.Reads | EdgeType.Argument)

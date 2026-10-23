@@ -1,8 +1,8 @@
 import { type Fingerprint, fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import type { ReadOnlyFlowrAnalyzerGasContext } from '../../project/context/flowr-analyzer-gas-context';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../gas';
 import { slicerLogger } from './static-slicer';
@@ -13,31 +13,31 @@ const enum SeenAs {
 }
 
 export class VisitingQueue {
-	private readonly threshold:      number;
-	private timesHitThreshold:       number                   = 0;
-	private readonly seen:           Map<NodeId, Map<Fingerprint, number>> = new Map();
-	private readonly seenByCache:    Set<NodeId>              = new Set();
-	private readonly idThreshold:    Map<NodeId, number>      = new Map();
-	private readonly queue:          NodeToSlice[] = [];
-	private readonly cache?:         Map<Fingerprint, Set<NodeId>> = new Map();
+	private readonly threshold:     number;
+	private timesHitThreshold:      number                   = 0;
+	private readonly seen:          Map<NodeId, Map<Fingerprint, number>> = new Map();
+	private readonly seenByCache:   Set<NodeId>              = new Set();
+	private readonly idThreshold:   Map<NodeId, number>      = new Map();
+	private readonly queue:         NodeToSlice[] = [];
+	private readonly cache?:        Map<Fingerprint, Set<NodeId>> = new Map();
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
 	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
-	public potentialAdditions:       Map<NodeId, [NodeId, NodeToSlice]> = new Map();
-	private cachedCallTargets:       Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
-	/** whether the dataflow graph has a vertex for an id, i.e. whether the traversal could continue from it */
-	private readonly isGraphVertex?: (id: NodeId) => boolean;
-	private readonly gas?:           ReadOnlyFlowrAnalyzerGasContext;
+	public potentialAdditions:      Map<NodeId, [NodeId, NodeToSlice]> = new Map();
+	private readonly graph?:        Pick<DataflowGraph, 'hasVertex' | 'isRoot'>;
+	private readonly global?:       readonly [REnvironmentInformation, Fingerprint];
+	private readonly gas?:          ReadOnlyFlowrAnalyzerGasContext;
 	private stoppedEarly            = false;
 	/** how many nodes pass between two gas checks, see {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} */
-	private readonly gasCheckEvery:  number;
+	private readonly gasCheckEvery: number;
 	private untilGasCheck           = 0;
 	/** entries dequeued, see {@link SliceProgress} */
 	private visited                 = 0;
 
-	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, isGraphVertex?: (id: NodeId) => boolean, gas?: ReadOnlyFlowrAnalyzerGasContext) {
+	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, graph?: Pick<DataflowGraph, 'hasVertex' | 'isRoot'>, gas?: ReadOnlyFlowrAnalyzerGasContext, global?: readonly [REnvironmentInformation, Fingerprint]) {
 		this.threshold = threshold;
 		this.cache     = cache;
-		this.isGraphVertex = isGraphVertex;
+		this.graph = graph;
+		this.global = global;
 		this.gas = gas;
 		this.gasCheckEvery = gas?.checkEvery() ?? 0;
 	}
@@ -52,8 +52,11 @@ export class VisitingQueue {
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		/* a built-in without a vertex is R's own definition (`x <- 1` reads `built-in:<-`), a dead end the traversal
 		 * would drop right back out of, so it only ever widened the result */
-		if(NodeId.isBuiltIn(target) && this.isGraphVertex?.(target) === false) {
+		if(NodeId.isBuiltIn(target) && this.graph?.hasVertex(target) === false) {
 			return;
+		}
+		if(this.global !== undefined && this.graph?.isRoot(target)) {
+			[env, envFingerprint] = this.global;
 		}
 
 		const idCounter = this.idThreshold.get(target) ?? 0;
@@ -116,14 +119,6 @@ export class VisitingQueue {
 
 	public hasId(id: NodeId): boolean {
 		return this.idThreshold.has(id);
-	}
-
-	public memoizeCallTargets(id: NodeId, targets: () => Set<DataflowGraphVertexInfo>): Set<DataflowGraphVertexInfo> {
-		let known = this.cachedCallTargets.get(id);
-		if(known === undefined) {
-			this.cachedCallTargets.set(id, known = targets());
-		}
-		return known;
 	}
 
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {

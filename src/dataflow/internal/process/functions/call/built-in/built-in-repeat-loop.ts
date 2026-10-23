@@ -4,7 +4,6 @@ import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from
 import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap, reapplyLoopExitPoints } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type {
 	PotentiallyEmptyRArgument
@@ -17,6 +16,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { ControlFlow } from '../../../../control-flow';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -37,7 +37,7 @@ export function processRepeatLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const unpacked = unpackNonameArg(args[0]);
+	const unpacked = RArgument.unnamedValueOf(args[0]);
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
 		args:      unpacked ? [unpacked] : args,
@@ -59,6 +59,7 @@ export function processRepeatLoop<OtherInfo>(
 	guard(body !== undefined, () => `Repeat-Loop ${Identifier.toString(name.content)} has no body, impossible!`);
 
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph)), body.out, body.environment);
+	linkAmbientStateWithinLoop(information.graph, body.in.concat(body.unknownReferences), body);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);

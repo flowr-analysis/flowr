@@ -8,8 +8,17 @@ void (async() => {
 		info('sigdb:sync: cache already complete -- nothing to do (pass --force to redownload)');
 		return;
 	}
-	const { dir, files } = await downloadFullSigDb({ force, onProgress: m => info(`  ${m}`) });
-	info(`sigdb:sync: ${files.length} shard(s) ready in ${dir}`);
+	const { tag, dir, files, downloaded } = await downloadFullSigDb({ force, onProgress: m => info(`  ${m}`) });
+	info(`sigdb:sync: ${tag} ready, ${files.length} file(s) in ${dir} (${downloaded.length} fetched now)`);
 })().catch((e: unknown) => {
-	info(`sigdb:sync: skipped -- ${(e as Error).message}`);
+	/* never fail the surrounding script: flowR still works with the signatures it has (or without any) */
+	const failed = (e as { failed?: readonly { name: string, reason: string }[] }).failed;
+	if(failed !== undefined) {
+		info(`sigdb:sync: incomplete, ${failed.length} file(s) missing (rerun to fetch only these):`);
+		for(const { name, reason } of failed) {
+			info(`  ${name}: ${reason}`);
+		}
+	} else {
+		info(`sigdb:sync: skipped -- ${(e as Error).message}`);
+	}
 });

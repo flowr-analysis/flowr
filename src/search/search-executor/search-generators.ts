@@ -75,7 +75,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 
 	if(line && line < 0) {
 		guard(normalize.ast.files.length === 1, 'Currently, negative line numbers are only supported for single-file inputs');
-		const maxLines = normalize.ast.files[0].root.info.fullRange?.[2] ??
+		const maxLines = SourceRange.getEndLine(normalize.ast.files[0].root.info.fullRange) ??
 			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0

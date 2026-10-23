@@ -112,6 +112,18 @@ function collectEdges<EdgeMap>(graph: EdgeIndexedGraph<EdgeMap>, project?: (edge
 
 /** The edge-differencing steps shared by the dataflow and the control flow graph diff. */
 export const GraphDiff = {
+	/** Reports a differing number of vertices unless the smaller side is declared a subgraph. */
+	vertexCount<Graph>(this: void, ctx: GraphDiffContext<Graph>, left: number, right: number): void {
+		if(left < right && !ctx.config.leftIsSubgraph || left > right && !ctx.config.rightIsSubgraph) {
+			ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${left}, ${ctx.rightname} has ${right}`);
+		}
+	},
+	/** Reports a vertex of the left graph that the right one lacks, unless the right is declared a subgraph. */
+	missingVertex<Graph>(this: void, ctx: GraphDiffContext<Graph>, id: NodeId): void {
+		if(!ctx.config.rightIsSubgraph) {
+			ctx.report.addComment(`Vertex ${id} is not present in ${ctx.rightname}`, { tag: 'vertex', id });
+		}
+	},
 	/** Compares all edges of both graphs vertex by vertex, handing each pair to `diffEdges`. */
 	outgoingEdges<EdgeMap, Graph extends EdgeIndexedGraph<EdgeMap>>(
 		this: void,

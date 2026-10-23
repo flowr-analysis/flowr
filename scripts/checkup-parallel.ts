@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { stripAnsi } from '../src/util/text/ansi';
 
 interface Job {
 	id:       string
@@ -35,6 +36,7 @@ const allJobs: Job[] = [
 	{ id: 'lint',      label: 'lint',                 argv: [npm, 'run', 'lint'] },
 	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'], summary: true },
 	{ id: 'system',    label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'] },
+	{ id: 'yields',    label: 'yield snippets',       argv: [npm, 'run', 'test:yields', '--', '--run'] },
 	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true },
 	{ id: 'wiki',      label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
 	{ id: 'labels',    label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },
@@ -127,8 +129,7 @@ function run(job: Job): Promise<JobResult> {
 	const note = (chunk: Buffer | string) => {
 		log.write(chunk);
 		// keep the last non-empty line for the heartbeat (strip ansi so the ticker stays tidy)
-		// eslint-disable-next-line no-control-regex
-		const line = chunk.toString().replace(/\x1b\[[0-9;]*m/g, '').split('\n').map(l => l.trim()).filter(Boolean).pop();
+		const line = stripAnsi(chunk.toString()).split('\n').map(l => l.trim()).filter(Boolean).pop();
 		if(line) {
 			state.last = line.length > 80 ? line.slice(0, 79) + '…' : line;
 		}

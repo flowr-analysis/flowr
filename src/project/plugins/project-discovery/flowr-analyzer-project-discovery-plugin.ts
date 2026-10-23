@@ -4,7 +4,7 @@ import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
-import { getAllFilesSync } from '../../../util/files';
+import { getAllFilesSync, rPackageSourceRegex } from '../../../util/files';
 import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import fs from 'fs';
 import path from 'path';
@@ -27,8 +27,8 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 }
 
-// `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources
-export const discoverRSourcesRegex = /(\.(r|rmd|rmarkdown|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
+// `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources, as are the `.S`/`.s`/`.q` files below `R/`
+export const discoverRSourcesRegex = new RegExp(`(\\.(r|rmd|rmarkdown|ipynb|qmd|rnw)|(^|[\\\\/])\\.?Rprofile(\\.site)?)$|${rPackageSourceRegex.source}`, 'i');
 // matched against the posix path relative to the project root
 export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 export const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;

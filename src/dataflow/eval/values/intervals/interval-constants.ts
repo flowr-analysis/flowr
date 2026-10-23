@@ -20,11 +20,7 @@ export function intervalFrom(start: RNumberValue | number, end = start, startInc
 }
 
 function shiftNum(v: Lift<ValueNumber>): ValueNumber {
-	if(isBottom(v) || isTop(v)) {
-		return liftScalar(v);
-	} else {
-		return v;
-	}
+	return isBottom(v) || isTop(v) ? liftScalar(v) : v;
 }
 
 

@@ -28,7 +28,8 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		{ code: '\nx <- 1\ny <- x\nprint(y)', criterion: '4@y', expected: '[1] 1' },
 		{ code: 'nm <- "vvv"\nvvv <- 8\nr <- get(nm)\nprint(r)', criterion: '4@r', expected: '[1] 8' },
 		{ code: 'if(TRUE) x <- 2\nprint(x)', criterion: '2@x', expected: '[1] 2' },
-		{ code: 'r <- sum(rev(1:3))\nprint(r)', criterion: '2@r', expected: '[1] 6' }
+		{ code: 'r <- sum(rev(1:3))\nprint(r)', criterion: '2@r', expected: '[1] 6' },
+		{ code: 'p <- "a/b.txt"\nr <- basename(p)\nprint(r)', criterion: '3@r', expected: '[1] "b.txt"' }
 	];
 	describe('every mutant is a program R reads', () => {
 		for(const pass of MutationPasses) {

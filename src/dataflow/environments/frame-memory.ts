@@ -84,6 +84,11 @@ export class Frame implements MemoryView {
 		return new Frame(new Map(this.bindings), false);
 	}
 
+	/** The attached package this frame binds, as long as nothing was written to it, see {@link LazyBindings}. */
+	public lazy(): LazyBindings | undefined {
+		return this.base === undefined && this.bindings instanceof LazyBindings ? this.bindings : undefined;
+	}
+
 	/** How many overlays are stacked below this one, which bounds what a lookup miss walks. */
 	private stacked(): number {
 		let n = 0;
@@ -225,9 +230,15 @@ const EmptyFrame = Frame.of(new Map<BrandedIdentifier, IdentifierDefinition[]>()
 export class LazyBindings implements MemoryView {
 	private readonly built = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
+	/**
+	 * @param names  - the names this binds
+	 * @param bind   - builds the definitions of one name
+	 * @param origin - what, besides the names, decides what `bind` returns, so the bindings can be told apart without building them
+	 */
 	constructor(
 		private readonly names:   ReadonlySet<BrandedIdentifier>,
-		private readonly bind:    (name: BrandedIdentifier) => IdentifierDefinition[]
+		private readonly bind:    (name: BrandedIdentifier) => IdentifierDefinition[],
+		public readonly origin:   string
 	) {}
 
 	public get(name: BrandedIdentifier): IdentifierDefinition[] | undefined {

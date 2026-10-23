@@ -41,7 +41,6 @@ import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-typ
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
-import { NoEdges } from '../dataflow/graph/graph';
 import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -124,7 +123,6 @@ export class BenchmarkSlicer {
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
-	private callGraph:           CallGraph | undefined;
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
@@ -210,8 +208,7 @@ export class BenchmarkSlicer {
 		let numberOfDefinitions = 0;
 
 		for(const [n, info] of vertices) {
-			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
-			for(const [, edge] of outgoingEdges ?? NoEdges) {
+			for(const [, edge] of this.dataflow.graph.edgesFrom(n)) {
 				/* the control flow lives in the very same graph, so it is counted on its own to stay comparable */
 				if(DfEdge.includesType(edge, ControlFlowEdgeTypes)) {
 					numberOfControlFlowEdges++;
@@ -366,7 +363,7 @@ export class BenchmarkSlicer {
 		const g = this.dataflow?.graph;
 		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
 
-		this.callGraph = this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
+		this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
 	}
 
 	/**

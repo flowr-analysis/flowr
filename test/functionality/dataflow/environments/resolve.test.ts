@@ -133,6 +133,9 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 
 	describe('Resolve Value', () => {
 		testResolve('Constant Value',       '1@x', 'x <- 5', set([5]));
+		/* setting graphics parameters or options is tracked as global state, it does not invalidate the variables */
+		testResolve('Value after par',      '3@x', 'x <- 5 \n par(mfrow=c(1,2)) \n x', set([5]));
+		testResolve('Value after options',  '3@x', 'x <- 5 \n options(digits=2) \n x', set([5]));
 		testResolve('Constant Value Str',   '1@x', 'x <- "foo"', set(['foo']));
 		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
 		testResolve('Brace block',          '2@x', 'x <- { 1 + 2 } \n x', set([3]));

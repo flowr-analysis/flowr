@@ -4,20 +4,25 @@
  */
 
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../graph/graph';
-import { DfEdge, EdgeType } from '../graph/edge';
+import { EdgeType } from '../graph/edge';
 import { isNotUndefined } from '../../util/assert';
 import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
-import { VertexType } from '../graph/vertex';
-import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
+import { DfgVertex, VertexType } from '../graph/vertex';
+import type { ResolveInfo } from '../eval/resolve/alias-tracking';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { NodeValue } from '../eval/resolve/node-value';
+import { collectStrings } from '../eval/values/string/string-constants';
+import { isValue } from '../eval/values/r-value';
+import { Dataflow } from '../graph/df-helper';
 
 /** The object system a declaration belongs to. */
 export const enum ClassSystem {
@@ -113,50 +118,27 @@ export function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info &
 	if(ref === undefined) {
 		return undefined;
 	}
-	if(ref.name !== undefined) {
-		const named = args.find(a => !RArgument.isEmpty(a) && a.name?.content === ref.name);
-		if(named !== undefined && !RArgument.isEmpty(named)) {
-			return named.value;
-		}
+	const named = ref.name === undefined ? undefined : RArgument.findNamed(args, ref.name);
+	if(named !== undefined) {
+		return RArgument.valueOf(named);
 	}
 	if(ref.idx === undefined) {
 		return undefined;
 	}
-	let pos = 0;
-	for(const a of args) {
-		if(RArgument.isEmpty(a) || a.name !== undefined) {
-			continue;
-		}
-		if(pos++ === ref.idx) {
-			return a.value;
-		}
-	}
-	return undefined;
-}
-
-/**
- * The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise.
- * Exported so `built-in-s-four.ts` can drop its own copy of this instead of hand-rolling it again; that file
- * already imports {@link ClassArgRef} from here, so the reverse import would cycle.
- * @deprecated use {@link argForImpl} instead
- */
-export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
-	return argForImpl(args, ref);
+	const unnamed = args.filter(a => !RArgument.isEmpty(a) && a.name === undefined);
+	return RArgument.valueOf(unnamed[ref.idx]);
 }
 
 /** The string a node states literally, `undefined` for anything that is not a literal (a variable, a call, ...). */
 function literal<Info>(node: RNode<Info & ParentInformation> | undefined): string | undefined {
-	return node !== undefined && RString.is(node) ? node.content.str : undefined;
+	return RString.is(node) ? node.content.str : undefined;
 }
 
 /** The character vector a node states: a literal, or the literals of a `c(...)`/`list(...)` around them. */
 function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined): { values: string[], byVariable: string[] } {
 	const values: string[] = [];
 	const byVariable: string[] = [];
-	if(node === undefined) {
-		return { values, byVariable };
-	}
-	const collect = (n: RNode<Info & ParentInformation>): void => {
+	const collect = (n: RNode<Info & ParentInformation> | undefined): void => {
 		const str = literal(n);
 		if(str !== undefined) {
 			values.push(str);
@@ -164,11 +146,7 @@ function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined):
 			/* `inherit = Generator` / `parent = Cls`: the name is there, it is just not a string */
 			byVariable.push(n.lexeme);
 		} else if(RFunctionCall.isNamed(n)) {
-			for(const arg of n.arguments) {
-				if(!RArgument.isEmpty(arg) && arg.value !== undefined) {
-					collect(arg.value);
-				}
-			}
+			n.arguments.forEach(a => collect(RArgument.valueOf(a)));
 		}
 	};
 	collect(node);
@@ -180,14 +158,11 @@ function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined):
  * element, plus the bare strings such a call may carry (an RC `fields = c("x", "y")`, or a `"VIRTUAL"` marker).
  */
 function membersOf<Info>(node: RNode<Info & ParentInformation> | undefined, ref: ClassMemberArgRef): { members: ClassMember[], virtual: boolean } {
+	if(!RFunctionCall.isNamed(node)) {
+		return { members: [], virtual: literal(node) === VirtualClass };
+	}
 	const members: ClassMember[] = [];
 	let virtual = false;
-	if(node === undefined) {
-		return { members, virtual };
-	}
-	if(!RFunctionCall.isNamed(node)) {
-		return { members, virtual: literal(node) === VirtualClass };
-	}
 	for(const arg of node.arguments) {
 		if(RArgument.isEmpty(arg) || arg.value === undefined) {
 			continue;
@@ -221,35 +196,25 @@ function isTrue<Info>(node: RNode<Info & ParentInformation> | undefined): boolea
  * An argument that resolves to no literal contributes a {@link ClassDeclaration.byVariable|by-variable} name, or nothing.
  */
 export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
-	const byVariable: string[] = [];
 	const nameNode = argForImpl(args, config.nameArg);
 	const name = literal(nameNode);
-	if(name === undefined && nameNode !== undefined && RSymbol.is(nameNode)) {
-		byVariable.push(nameNode.lexeme);
-	}
-
 	const parents = literalVector(argForImpl(args, config.containsArg));
-	byVariable.push(...parents.byVariable);
-	const contains = parents.values.filter(c => c !== VirtualClass);
+	const byVariable = name === undefined && RSymbol.is(nameNode) ? [nameNode.lexeme, ...parents.byVariable] : parents.byVariable;
 	let virtual = parents.values.includes(VirtualClass) || isTrue(argForImpl(args, config.virtualArg));
-
 	const members: ClassMember[] = [];
 	for(const ref of config.memberArgs ?? []) {
 		const found = membersOf(argForImpl(args, ref), ref);
 		members.push(...found.members);
 		virtual ||= found.virtual;
 	}
-
-	const union = config.unionArg === undefined ? undefined : literalVector(argForImpl(args, config.unionArg)).values;
-	const prototype = config.prototypeArg === undefined ? []
-		: membersOf(argForImpl(args, config.prototypeArg), config.prototypeArg).members.map(m => m.name);
-
+	const union = literalVector(argForImpl(args, config.unionArg)).values;
+	const prototype = membersOf(argForImpl(args, config.prototypeArg), config.prototypeArg ?? {}).members.map(m => m.name);
 	/* a class union is virtual by construction: it exists to be extended, never to be instantiated */
-	const isUnion = union !== undefined && union.length > 0;
+	const isUnion = union.length > 0;
 	return compactRecord({
 		system:    config.system,
 		name,
-		contains,
+		contains:  parents.values.filter(c => c !== VirtualClass),
 		members,
 		virtual:   virtual || isUnion ? true : undefined,
 		union:     isUnion ? union : undefined,
@@ -270,67 +235,55 @@ export interface DeclaredClass extends ClassDeclaration {
 /** Every class the graph declares, keyed by name. A later declaration of the same name wins, as it would in R. */
 export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredClass> {
 	const classes = new Map<string, DeclaredClass>();
-	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		const decl = (vertex as DataflowGraphVertexFunctionCall).classDecl;
-		if(decl?.name === undefined || decl.relation !== undefined) {
-			continue;
+	for(const [id, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(classDecl?.name !== undefined && classDecl.relation === undefined) {
+			classes.set(classDecl.name, { ...classDecl, id, name: classDecl.name });
 		}
-		classes.set(decl.name, { ...decl, id, name: decl.name });
 	}
+	const addSuper = (sub: string, sup: string | undefined) => {
+		const existing = classes.get(sub);
+		if(existing !== undefined && sup !== undefined && !existing.contains.includes(sup)) {
+			classes.set(sub, { ...existing, contains: [...existing.contains, sup] });
+		}
+	};
 	/* R6 and S7 name their parent by the generator *variable*, so `Employee <- R6Class(inherit = Person)`
 	   only says "Person"; the assignment that bound the generator says which class that is */
 	const byGenerator = generatorVariables(graph, classes);
 	for(const [name, declared] of classes) {
-		const resolved = declared.byVariable.map(v => byGenerator.get(v)).filter(isNotUndefined)
-			.filter(c => c !== name && !declared.contains.includes(c));
-		if(resolved.length > 0) {
-			classes.set(name, { ...declared, contains: [...declared.contains, ...resolved] });
+		for(const sup of declared.byVariable.map(v => byGenerator.get(v))) {
+			if(sup !== name) {
+				addSuper(name, sup);
+			}
 		}
 	}
-	/* a `setClassUnion` states its members as subclasses, which is the same fact written the other way round */
-	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		const decl = (vertex as DataflowGraphVertexFunctionCall).classDecl;
-		if(decl?.name === undefined) {
+	for(const [, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(classDecl?.name === undefined) {
 			continue;
 		}
-		for(const member of decl.union ?? []) {
-			const existing = classes.get(member);
-			if(existing !== undefined && !existing.contains.includes(decl.name)) {
-				classes.set(member, { ...existing, contains: [...existing.contains, decl.name] });
-			}
+		/* a `setClassUnion` states its members as subclasses, which is the same fact written the other way round */
+		for(const member of classDecl.union ?? []) {
+			addSuper(member, classDecl.name);
 		}
 		/* `setIs(class1, class2)` states the same is-a relation `contains` does */
-		if(decl.relation === 'is') {
-			const [sub, sup] = [decl.name, decl.contains[0]];
-			const existing = classes.get(sub);
-			if(existing !== undefined && sup !== undefined && !existing.contains.includes(sup)) {
-				classes.set(sub, { ...existing, contains: [...existing.contains, sup] });
-			}
+		if(classDecl.relation === 'is') {
+			addSuper(classDecl.name, classDecl.contains[0]);
 		}
 	}
 	return classes;
 }
 
-/** @deprecated use {@link declaredClassesImpl} instead */
-export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass> {
-	return declaredClassesImpl(graph);
-}
-
 /** Variable name to the class its generator declares, for the `Cls <- R6Class(...)`/`Cls <- new_class(...)` bindings. */
 function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, DeclaredClass>): Map<string, string> {
-	const byName = new Map<NodeId, string>();
-	for(const declared of classes.values()) {
-		byName.set(declared.id, declared.name);
-	}
+	const classOfId = new Map(classes.values().map(d => [d.id, d.name] as const));
 	const generators = new Map<string, string>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-		const lexeme = graph.idMap?.get(id)?.lexeme;
+		const lexeme = NodeId.recoverName(id, graph.idMap);
 		if(lexeme === undefined) {
 			continue;
 		}
-		for(const [target, edge] of graph.edgesFrom(id)) {
-			const cls = byName.get(target);
-			if(cls !== undefined && DfEdge.includesType(edge, EdgeType.DefinedBy)) {
+		for(const target of Dataflow.targetsOf(graph, id, EdgeType.DefinedBy)) {
+			const cls = classOfId.get(target);
+			if(cls !== undefined) {
 				generators.set(lexeme, cls);
 			}
 		}
@@ -343,19 +296,15 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
  * analysis never saw declared ends the chain, so what another package contributes is simply not in the answer.
  */
 export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
-	const chain: string[] = [];
-	const seen = new Set<string>([name]);
-	const queue = [...(classes.get(name)?.contains ?? [])];
-	while(queue.length > 0) {
-		const next = queue.shift() as string;
-		if(seen.has(next)) {
-			continue;
+	const seen = new Set([name]);
+	/* a set iteration also visits what is added during it, so this walks the hierarchy breadth first */
+	for(const next of seen) {
+		for(const sup of classes.get(next)?.contains ?? []) {
+			seen.add(sup);
 		}
-		seen.add(next);
-		chain.push(next);
-		queue.push(...(classes.get(next)?.contains ?? []));
 	}
-	return chain;
+	seen.delete(name);
+	return [...seen];
 }
 
 /**
@@ -363,27 +312,21 @@ export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, Cl
  * the analysis declared carries no `package`; a referenced class `ownerOf` can place becomes a `foreign` record.
  */
 export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
-	const records: SigClassInfo[] = [];
-	for(const declared of classes.values()) {
-		records.push(compactRecord({
-			name:    declared.name,
-			system:  declared.system,
-			supers:  declared.union ?? declared.contains,
-			slots:   declared.members.filter(m => !m.method).map(m => compactRecord({ name: m.name, type: m.type })),
-			virtual: declared.virtual ? true : undefined,
-			union:   declared.union !== undefined ? true : undefined
-		}));
-	}
+	const records: SigClassInfo[] = classes.values().map(declared => compactRecord({
+		name:    declared.name,
+		system:  declared.system,
+		supers:  declared.union ?? declared.contains,
+		slots:   declared.members.filter(m => !m.method).map(m => compactRecord({ name: m.name, type: m.type })),
+		virtual: declared.virtual ? true : undefined,
+		union:   declared.union !== undefined ? true : undefined
+	})).toArray();
 	if(ownerOf === undefined) {
 		return records;
 	}
 	/* a superclass the analysis never declared belongs to whoever does define it, which is what makes an
 	   inherited class distinguishable from one the package owns */
 	for(const referenced of new Set(records.flatMap(r => r.supers))) {
-		if(classes.has(referenced)) {
-			continue;
-		}
-		const owner = ownerOf(referenced);
+		const owner = classes.has(referenced) ? undefined : ownerOf(referenced);
 		if(owner !== undefined) {
 			records.push({ name: referenced, system: 's4', supers: [], slots: [], package: owner });
 		}
@@ -391,8 +334,38 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 	return records;
 }
 
-/** @deprecated use {@link toSigClassesImpl} instead */
-export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
-	return toSigClassesImpl(classes, ownerOf);
+/** The class vector S3 dispatch sees for the value at `id`: a `structure(..., class = )` or a constant, `undefined` if not statically known. */
+function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly string[] | undefined {
+	const node = info.idMap.get(id);
+	if(RFunctionCall.is(node) && Dataflow.hasEdge(info.graph, id, NodeId.toBuiltIn('structure'), EdgeType.Calls)) {
+		const cls = NodeValue.soleOf(argForImpl(node.arguments, { name: 'class' }), info);
+		const strings = cls?.type === 'string' ? collectStrings([cls]) : cls?.type === 'vector' && isValue(cls.elements) ? collectStrings(cls.elements) : undefined;
+		return strings?.length ? strings : undefined;
+	}
+	const value = NodeValue.soleOf(id, info);
+	if(value?.type === 'string') {
+		return ['character'];
+	} else if(value?.type === 'logical') {
+		return ['logical'];
+	} else if(value?.type === 'number' && isValue(value.value)) {
+		return value.value.complexNumber ? ['complex'] : value.value.markedAsInt ? ['integer', 'numeric'] : ['double', 'numeric'];
+	}
+	return undefined;
 }
 
+/** The value a plain assignment binds to the definition `def`, `undefined` for any other kind of definition (`class(x) <- `, `assign`, a parameter, ...). */
+function assignedValueOf(def: NodeId, graph: DataflowGraph): NodeId | undefined {
+	const vertex = graph.getVertex(def);
+	const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+	return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
+}
+
+/** The class vectors S3 dispatch may see for the argument at `id`, one per reaching definition, `undefined` unless all are known. */
+export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly (readonly string[])[] | undefined {
+	const { graph } = info;
+	const value = RArgument.valueOf(info.idMap.get(id))?.info.id;
+	const isRead = value !== undefined && DfgVertex.isUse(graph.getVertex(value));
+	const values = isRead ? Dataflow.targetsOf(graph, value, EdgeType.Reads).map(def => assignedValueOf(def, graph)) : [value];
+	const classes = values.map(v => v === undefined ? undefined : s3ClassOfValue(v, info));
+	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
+}

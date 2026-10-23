@@ -436,7 +436,7 @@ f <- function(a = get("a")) {
   a
 }
 f()`, emptyGraph()
-				.use('8-get-name', '"a"', undefined, false)
+				.use('8-get-name', '"a"', { cds: [{ id: '4', when: true, byPromise: true }] }, false)
 				.reads('8-get-name', '4')
 				.use('12', 'a', undefined, false)
 				.reads('12', '4')
@@ -445,7 +445,7 @@ f()`, emptyGraph()
 				.argument('2', ['1', '0'])
 				.argument(8, '8-get-name')
 				.returns(8, '8-get-name')
-				.call('8', 'get', [argumentInCall('8-get-name')], { returns: [], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+				.call('8', 'get', [argumentInCall('8-get-name')], { returns: [], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv(), cds: [{ id: '4', when: true, byPromise: true }] }, false)
 				.argument('13', '12')
 				.call('13', '{', [argumentInCall('12')], { returns: ['12'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv().defineParameter('a', '4', '9') }, false)
 				.calls('13', NodeId.toBuiltIn('{'))

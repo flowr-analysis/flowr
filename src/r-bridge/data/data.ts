@@ -128,8 +128,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:         'Dynamic Environment Resolution',
 							id:           'dynamic-environment-resolution',
 							code:         ['new.env'],
-							description:  `_An environment a program builds and names itself, rather than one a ${LinkTo('function-definitions', 'definition')} opens._ Covers \`new.env\`, \`assign\`/\`get\`/\`local\` with \`envir=\`, \`e$x\`, \`attach\`, \`with\`, and aliasing such an environment through a variable.`,
-							example:      codeBlock('r', 'e <- new.env()\nassign("x", 3, envir = e)\nget("x", envir = e) + e$x'),
+							description:  `_An environment a program builds and names itself, rather than one a ${LinkTo('function-definitions', 'definition')} opens._ Covers \`new.env\`, \`assign\`/\`get\`/\`local\` with \`envir=\`, \`e$x\`, \`attach\`, \`with\`, and aliasing such an environment through a variable. A write from within a function reaches the environment it names, a read of the whole environment (\`as.list(e)\`) sees every field written, and copies of an environment variable (\`g <- e\`) share its fields.`,
+							example:      codeBlock('r', 'e <- new.env()\nassign("x", 3, envir = e)\nget("x", envir = e) + e$x\nf <- function() e$y <- 4\nf()\ng <- e\ng$z <- 5\nas.list(e)'),
 							capabilities: [
 								{
 									name:        'Environment in Control Flow',
@@ -285,8 +285,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 						{
 							name:        'Local with Explicit Environment',
 							id:          'local-envir-argument',
-							supported:   'partially',
-							description: '_Send `local`\'s body to a specific environment._ `new.env()` and `globalenv()` work, but inside a function that already binds the name the write lands in that frame instead.',
+							supported:   'fully',
+							description: '_Send `local`\'s body to a specific environment._ Its writes land in that environment, also inside a function that binds the same name itself.',
 							example:     codeBlock('r', 'e <- new.env()\nlocal(y <- 2, envir = e)\nget("y", envir = e)'),
 							url:         [{ name: '`local`', href: 'https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/local' }]
 						},
@@ -366,8 +366,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									name:        'Side-Effects in Argument',
 									id:          'side-effects-in-argument',
 									supported:   'partially',
-									description: `_An argument that binds a name while it is evaluated, as \`f(x <- 3)\` does._ Whether the argument is ever forced is not modelled (see ${LinkTo('formals-promises', 'promises')}), so \`f <- function(a) 1; f(x <- 3)\` still believes \`x\` is 3.`,
-									example:     codeBlock('r', 'f <- function(a) a\nf(x <- 3)\nx'),
+									description: `_An argument that binds a name while it is evaluated, as \`f(x <- 3)\` does._ Whether the argument is ever forced is not modelled (see ${LinkTo('formals-promises', 'promises')}), so \`f <- function(a) 1; f(x <- 3)\` still believes \`x\` is 3. A call in the argument depends on the call it is handed to, so \`g(FALSE, f(4))\` keeps \`g\`.`,
+									example:     codeBlock('r', 'f <- function(a) a\nf(x <- 3)\nx\ng <- function(a, b) if(a) b else 0\ng(FALSE, print("never"))'),
 									url:         [RLang('Argument evaluation')]
 								},
 								{
@@ -416,7 +416,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Functions with global side effects',
 							id:          'functions-with-global-side-effects',
 							supported:   'partially',
-							description: `_A call that changes state the rest of the program reads without naming it, as \`setwd\` changes where a path points._ Only the ${LinkTo('working-directory', 'working directory')} is interpreted, while other ambient state such as ${LinkTo('built-in-options', 'the options')} stays an unknown side effect.`,
+							description: `_A call that changes state the rest of the program reads without naming it, as \`setwd\` changes where a path points._ The ${LinkTo('working-directory', 'working directory')}, ${LinkTo('built-in-options', 'the options')}, and ${LinkTo('graphics-state', 'the graphics state')} are tracked, so a read links to the calls that set what it reads. Other ambient state, like environment variables or the random seed, stays an unknown side effect.`,
 							example:     codeBlock('r', 'setwd("/tmp")\nread.csv("data.csv")')
 						},
 						{
@@ -590,8 +590,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 											id:          'assignment-functions',
 											code:        ['assign', 'delayedAssign'],
 											supported:   'partially',
-											description: `_Bind a name given as a string, with \`assign\`, \`delayedAssign\`, ..._ The name has to be a ${LinkTo('name-created-resolved', 'resolvable string')}, and what a delayed assignment does when forced is not modelled.`,
-											example:     codeBlock('r', 'assign("x", 3)\ndelayedAssign("y", x * 2)\ny')
+											description: `_Bind a name given as a string, with \`assign\`, \`delayedAssign\`, ..._ The name has to be a ${LinkTo('name-created-resolved', 'resolvable string')}. A delayed expression runs where the name is first read, so it sees the bindings at that point and its own writes happen there, in the \`assign.env\` given.`,
+											example:     codeBlock('r', 'assign("x", 3)\ndelayedAssign("y", x * 2)\nx <- 5\ny')
 										},
 										{
 											name:        'Range Assignment',
@@ -838,8 +838,16 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'built-in-options',
 							code:        ['options', 'getOption'],
 							supported:   'partially',
-							description: `_The global options \`options\` sets and \`getOption\` reads._ Option values are not tracked, so \`getOption("digits")\` does not reach a preceding \`options(digits = 3)\`. Unlike the ${LinkTo('working-directory', 'working directory')} they are not interpreted at all.`,
-							example:     codeBlock('r', 'old <- options(digits = 3)\ngetOption("digits")\noptions(old)')
+							description: '_The global options `options` sets and `getOption`, `.Options`, printing, and formatting read._ Each option is tracked by name, so `getOption("digits")` reaches the last `options(digits = 3)`, `print` and `cat` reach the printing options, and an unrelated option usually stays out of a slice. `withr::with_options` and `local_options` scope a change, and `eval` of code that sets options counts as setting them. The values themselves are not interpreted, an `options(op)` restoring an unknown list may set any option, and options that change every conversion (`scipen`, `OutDec`) stay an unknown side effect. A function flowR cannot see into may read any option.',
+							example:     codeBlock('r', 'old <- options(digits = 3)\nprint(pi)\noptions(old)\ngetOption("digits")')
+						},
+						{
+							name:        'Graphics State',
+							id:          'graphics-state',
+							code:        ['par', 'layout', 'palette', 'dev.off', 'dev.set'],
+							supported:   'partially',
+							description: '_The graphics parameters `par` and `layout` set for the active device, the `palette` all devices share, and the devices opened and closed._ A plot reads the state of the device it draws on, so it links to the `par` calls before it, a new device starts afresh, and `dev.off()` returns to the state of the device that becomes active. `withr::with_par` and the `with_<device>` functions scope a change. Within a function the open devices are unknown, so a device call only adds to what may hold, and grid-based plots like ggplot2 ignore the parameters.',
+							example:     codeBlock('r', 'par(mfrow = c(1, 2))\npng("a.png")\npar(mar = c(1, 1, 1, 1))\nplot(1:10)\ndev.off()\nplot(2:3)')
 						},
 						{
 							name:        'Help',
@@ -886,8 +894,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'built-in-evaluation',
 									code:        ['eval', 'evalq', 'eval.parent'],
 									supported:   'partially',
-									description: `_Run an expression that is a value with \`eval\`, \`evalq\`, \`eval.parent\`, ..._ \`eval(expr, envir)\` runs in an ${LinkTo('dynamic-environment-resolution', 'environment')} we may not know, so it is marked an unknown side effect.`,
-									example:     codeBlock('r', 'e <- quote(x + 1)\nx <- 2\neval(e)'),
+									description: `_Run an expression that is a value with \`eval\`, \`evalq\`, \`eval.parent\`, ..._ The captured code is linked where it is evaluated, also through a name bound once to \`quote\`, \`as.name\`, \`str2lang\`, or \`parse\`, but \`eval(expr, envir)\` with an ${LinkTo('dynamic-environment-resolution', 'environment')} we do not know stays an unknown side effect.`,
+									example:     codeBlock('r', 'e <- quote(x + 1)\nx <- 2\neval(e)\nn <- as.name("x")\neval(n)'),
 									url:         [RLang('Evaluation of expressions'), AdvancedR('Evaluation', 'evaluation.html')]
 								},
 								{
@@ -901,10 +909,10 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 								{
 									name:        'Parsing',
 									id:          'built-in-parsing',
-									code:        ['parse', 'deparse'],
+									code:        ['parse', 'str2lang', 'deparse'],
 									supported:   'partially',
-									description: `_Turn text into an expression with \`parse\`, and an expression back into text with \`deparse\`._ What \`parse\` produces is only reached through ${LinkTo('built-in-evaluation', 'evaluation')}, and \`deparse\` is not modelled beyond reading its argument.`,
-									example:     codeBlock('r', 'eval(parse(text = "1 + 1"))\ndeparse(quote(x + y))'),
+									description: `_Turn text into an expression with \`parse\` or \`str2lang\`, and an expression back into text with \`deparse\`._ What \`parse\` produces is only reached through ${LinkTo('built-in-evaluation', 'evaluation')}, and \`deparse\` is not modelled beyond reading its argument.`,
+									example:     codeBlock('r', 'eval(parse(text = "1 + 1"))\neval(str2lang("2 * 3"))\ndeparse(quote(x + y))'),
 									url:         [RLang('The parsing process'), RLang('Deparsing')]
 								}
 							]
@@ -1082,7 +1090,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-dispatch',
 							code:        ['UseMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method that runs._ \`UseMethod\` links to every ${LinkTo('function-definitions', 'definition')} named \`generic.class\` in scope, so the ${LinkTo('oop-s3-construction', 'class')} an object carries narrows the target only where it is known (heavily over-approximating).`,
+							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to every ${LinkTo('function-definitions', 'definition')} named \`generic.class\` in scope, so the ${LinkTo('oop-s3-construction', 'class')} an object carries narrows the target only where it is known (heavily over-approximating).`,
 							url:         [RLang('UseMethod'), RLang('Method dispatching')]
 						},
 						{
@@ -1090,7 +1098,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-inheritance',
 							code:        ['NextMethod'],
 							supported:   'partially',
-							description: `_Walk the class vector with \`NextMethod\`._ It reaches the generic's ${LinkTo('oop-s3-dispatch', 'methods')}, the one it stands in included, rather than only the next class in the vector.`,
+							description: `_Walk the class vector with \`NextMethod\`._ It reaches the generic's ${LinkTo('oop-s3-dispatch', 'methods')}, the one it stands in included, rather than only the next class in the vector, and hands on the current values of the formals.`,
 							url:         [RLang('NextMethod'), RLang('Inheritance')]
 						}
 					]
@@ -1113,9 +1121,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 						{
 							name:        'Dispatch',
 							id:          'oop-s4-dispatch',
-							code:        ['standardGeneric', 'setGeneric', 'setMethod'],
+							code:        ['standardGeneric', 'setGeneric', 'setMethod', 'setReplaceMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method \`setMethod\` registered._ The generic reaches its methods through the chain they register in, but the signature does not narrow which of them runs, as ${LinkTo('types-inference', 'no type is inferred')} for the argument.`,
+							description: `_Route a generic call to the method \`setMethod\` (or \`setReplaceMethod\`, for the \`<-\` generic) registered._ The generic reaches its methods through the chain they register in, but the signature does not narrow which of them runs, as ${LinkTo('types-inference', 'no type is inferred')} for the argument.`,
 							url:         [RLang('Method dispatching')]
 						},
 						{

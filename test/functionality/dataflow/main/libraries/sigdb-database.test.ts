@@ -269,6 +269,22 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 	});
 });
 
+describe('sigdb dictionary lines', () => {
+	/* every escape JSON.stringify may write, a pair and lone surrogates, empty names, and both line forms */
+	const names = ['a"b', 'back\\slash', 'tab\tx', 'cr\rx', 'bs\bx', 'ff\fx', 'slash/x', 'uml\u00e4ut', 'ctl\u0001x', 'emoji\u{1F600}', 'lone\ud800x', 'low\udc00y', '', 'x', ''];
+	const asWritten = (name: string): string => Buffer.from(name, 'utf8').toString('utf8');
+	test.each([
+		['the blob form', [JSON.stringify(['d', 0, names.join('\n')])]],
+		['the legacy form', [JSON.stringify(['d', 0, names])]],
+		['both, out of order', [JSON.stringify(['d', 7, names.slice(7).join('\n')]), JSON.stringify(['d', 0, names.slice(0, 7)])]]
+	])('%s decodes to the names', (_, lines) => {
+		expect([...SigDict.ofLines(Buffer.from(lines.join('\n') + '\n'))]).toEqual(names.map(asWritten));
+	});
+	test('no lines, no names', () => {
+		expect(SigDict.ofLines(Buffer.alloc(0)).length).toBe(0);
+	});
+});
+
 describe('sigdb tiers, shards and federation', () => {
 	const exp = (name: string) => ({ name, props: FnProp.Exported, params: [], callees: [], line: 1 });
 	function builder(): SigDbBuilder {
@@ -553,6 +569,16 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		const report = await verifyShardedDatabase(manifestFile);
 		expect(report.ok).toBe(false);
 		expect(report.errors.some(e => e.includes('recomputed hash'))).toBe(true);
+	});
+
+	test('a database without any string still verifies', async() => {
+		const dir = sigTmpDir('sigdb-empty-');
+		const sharded = new SigDbBuilder().buildSharded(meta, [{ tier: 'current' }]);
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), sharded, manifestFile);
+		const report = await verifyShardedDatabase(manifestFile);
+		expect(report.errors).toEqual([]);
+		expect(report.ok).toBe(true);
 	});
 
 	test('an in-memory database answers exactly as the same bundle written to disk does', async() => {

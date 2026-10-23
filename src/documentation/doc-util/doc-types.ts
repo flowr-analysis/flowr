@@ -209,7 +209,7 @@ function genericNames(node: { readonly typeParameters?: ts.NodeArray<ts.TypePara
 	return node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 }
 
-function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
+function collectTypeHierarchy(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
 	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
 	const visit = (node: ts.Node | undefined, sourceFile: ts.SourceFile) => {
@@ -465,7 +465,7 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 	const { files, program } = getTypeScriptSourceFiles(fileNames);
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
-	const hierarchyList = collectHierarchyInformation(files, withProgram);
+	const hierarchyList = collectTypeHierarchy(files, withProgram);
 	return {
 		mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram),
 		info:    hierarchyList,
@@ -711,6 +711,10 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 		if(node.length === 0) {
 			return undefined;
 		}
+	}
+	if(!container) {
+		/* a bare name means the declaration itself, not a member that happens to share it (like the `Dataflow` gas key of `GasFeatureKey`) */
+		node = [...node.filter(n => n.extends.length === 0), ...node.filter(n => n.extends.length > 0)];
 	}
 	return [container, name, node[0]];
 }

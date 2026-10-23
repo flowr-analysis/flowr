@@ -228,7 +228,7 @@ export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 
 /** merge two arrays, removing duplicates */
 export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[] {
-	return Array.from(new Set<T>(left).union(new Set<T>(right)));
+	return uniqueArray([...left, ...right]);
 }
 
 /**

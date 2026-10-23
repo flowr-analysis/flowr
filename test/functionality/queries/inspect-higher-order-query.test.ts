@@ -99,4 +99,8 @@ describe('Inspect Higher-Order Functions Query', withTreeSitter(parser => {
 	testEachHigherOrder('nor is a value handed through one', 'm <- function(x) identity(x)', {
 		'function(x) identity(x)': false
 	});
+	/* one call site reaching two definitions resolves its arguments once, and both are answered for the argument they see */
+	testEachHigherOrder('definitions sharing a call site are told apart', 'f1 <- function(a, b) a\nf2 <- function(a, b) a\nh <- f1\nif(u) h <- f2\nh(1, 2)\nh(1, sqrt)', {
+		'function(a, b) a': true
+	});
 }));

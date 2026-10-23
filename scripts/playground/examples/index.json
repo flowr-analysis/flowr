@@ -1,0 +1,8 @@
+[
+	{ "label": "R script", "title": "a short analysis with dplyr", "files": { "main.R": "sample.R" } },
+	{ "label": "R Markdown report", "title": "chunks, inline code, and a chunk with eval = FALSE", "files": { "report.Rmd": "examples/report.Rmd" } },
+	{ "label": "Quarto document", "title": "chunk options written as #| comments", "files": { "analysis.qmd": "examples/analysis.qmd" } },
+	{ "label": "Jupyter notebook", "title": "an R notebook, opened as its code cells", "files": { "notebook.ipynb": "examples/notebook.ipynb" } },
+	{ "label": "Shiny app", "title": "a small app with a slider, a plot, and a table, run through Shinylive", "files": { "app.R": "examples/shiny/app.R" } },
+	{ "label": "Small R package", "title": "a package-like project: a script that sources its helpers, with a DESCRIPTION and a LICENSE", "files": { "main.R": "examples/project/main.R", "helpers.R": "examples/project/helpers.R", "DESCRIPTION": "examples/project/DESCRIPTION", "LICENSE": "examples/project/LICENSE" } }
+]

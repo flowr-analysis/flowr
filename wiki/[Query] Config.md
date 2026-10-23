@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-09-10, 13:52:02 UTC (v2.15.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -19,7 +19,7 @@ _Results (prettified and summarized):_
 Query: **config** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ Updated configuration:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- ignoreSourceCalls=true\
-&nbsp;&nbsp;&nbsp;╰ Specialized for project kind **unknown** (overrides linter.disabledRules)\
+&nbsp;&nbsp;&nbsp;╰ Specialized for project kind **unknown** (overrides linter.disabledRules)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -80,9 +80,9 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       ],
       "repl": {"quickStats":false,"dfProcessorHeat":false,"hints":true,"plugins":["flowr:default"],"autoUseFileProtocol":true,"queryStats":true,"showPlugins":false},
       "project": {"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false,"assumeImplicitEcho":true},
-      "linter": {"disabledRules":["software-has-license","software-has-tests"]},
+      "linter": {"disabledRules":["software-has-license","software-has-tests"],"disabledTags":["cmd-check"]},
       "specializeConfig": {
-        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}}},
+        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledTags":[]}},
         "project": {"solver":{"resolveSource":{"assumeFilesExist":true}}},
         "shiny-app": {"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},
         "script": {"inherit":"unknown"},
@@ -141,7 +141,7 @@ Please note that, in the REPL, a special syntax starting with `+` (which should 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.8, R v4.6.1 (r-shell engine)
+flowR repl v2.16.3, R v4.6.1 (r-shell engine)
 R> :query @config +solver.slicer.threshold=10000
 ```
 
@@ -164,7 +164,7 @@ one path segment, `**` any number. This only reads: setting a value still names 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.8, R v4.6.1 (r-shell engine)
+flowR repl v2.16.3, R v4.6.1 (r-shell engine)
 R> :query @config **.enabled
 ```
 
@@ -256,6 +256,6 @@ enables quick statistics after each REPL command. Likewise, <a href="https://git
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Config Query query is `executeConfigQuery` in [`./src/queries/catalog/config-query/config-query-format.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/config-query/config-query-format.ts).
+The Config Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/config-query/config-query-executor.ts#L11"><code><span title="Executes the given configuration queries using the provided analyzer.">executeConfigQuery</span></code></a>.
 
 </details>

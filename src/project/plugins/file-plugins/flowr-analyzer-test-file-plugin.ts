@@ -2,7 +2,7 @@ import { FlowrAnalyzerRoleFilePlugin, PathPart } from './flowr-analyzer-file-plu
 import { SemVer } from 'semver';
 import { FileRole } from '../../context/flowr-file';
 
-const TestPathPattern = /tests?/i;
+const TestPathPattern = /(^|\/)tests?(\/|$)/i;
 
 /**
  * This plugin provides supports for the identification of test files.

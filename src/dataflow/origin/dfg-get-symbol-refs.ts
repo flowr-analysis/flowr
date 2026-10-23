@@ -1,5 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfEdge, EdgeType } from '../graph/edge';
+import { EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
 import { happensInEveryBranch } from '../info';
 import { Dataflow } from '../graph/df-helper';
@@ -18,6 +18,7 @@ import { Dataflow } from '../graph/df-helper';
  * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve
  * @returns      List including the Definitions and References to that definition
+ * @useInstead {@link Dataflow.refsToSymbol}
  * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y']
  */
 export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId[] | undefined {
@@ -38,14 +39,8 @@ export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId
 	const res = new Set<NodeId>();
 	for(const { id } of definitiveOrigins) {
 		res.add(id);
-		graph.ingoingEdges(id)
-			?.entries()
-			.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.Reads))
-			.forEach(([node, _]) => res.add(node));
-		graph.outgoingEdges(id)
-			?.entries()
-			.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.DefinedByOnCall))
-			.forEach(([node, _]) => res.add(node));
+		Dataflow.sourcesOf(graph, id, EdgeType.Reads).forEach(node => res.add(node));
+		Dataflow.targetsOf(graph, id, EdgeType.DefinedByOnCall).forEach(node => res.add(node));
 	}
 
 	return [...res];

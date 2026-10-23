@@ -35,12 +35,15 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .hl { position: absolute; inset: 0; z-index: 0; overflow: hidden; white-space: pre; pointer-events: none; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: .7rem 2.4rem .7rem .9rem; border: 1px solid transparent; color: var(--fg); }
 .hl .punct { color: var(--muted); }
 .hl .op { color: color-mix(in srgb, var(--muted) 62%, #6f86b3); }
-.hl .role { color: color-mix(in srgb, var(--accent) 78%, var(--fg)); font-weight: 500; }
-.hl .prop { color: color-mix(in srgb, #3f9b78 72%, var(--fg)); font-weight: 500; }
+.hl .role { color: color-mix(in srgb, #3b73c4 72%, var(--fg)); font-weight: 500; }
+.hl .prop { color: color-mix(in srgb, #c27a12 70%, var(--fg)); font-weight: 500; }
+.hl .regex { color: color-mix(in srgb, #8a5cc2 70%, var(--fg)); }
 .hl .bad { color: #c0392b; text-decoration: underline wavy; }
 .search input::-webkit-search-cancel-button { appearance: none; }
 .search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .search select { font: inherit; padding: .7rem .6rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
+#problem { margin: .6rem 0 0; font-size: .85rem; color: color-mix(in srgb, #c0392b 72%, var(--fg)); }
+#problem[hidden] { display: none; }
 #status { min-height: 1.6em; margin: .7rem 0 0; color: var(--muted); font-size: .9rem; }
 .filters { display: flex; flex-wrap: wrap; gap: .35rem; margin: .8rem 0 0; }
 .filters button {
@@ -70,12 +73,21 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .suggest .label { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .suggest .label b { font-weight: 700; color: var(--accent); }
 .suggest .detail { color: var(--muted); font-size: .78rem; margin-left: .6rem; }
+.suggest li.none { opacity: .45; }
 .suggest li[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
 .suggest li[aria-selected="true"] .label b { color: var(--accent-fg); }
 .suggest li[aria-selected="true"] .detail { color: var(--accent-fg); opacity: .85; }
 .suggest[hidden] { display: none; }
 .help { max-width: min(38rem, 92vw); padding: 1rem 1.3rem; border-radius: .8rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); box-shadow: var(--shadow); }
 .help::backdrop { background: rgb(0 0 0 / .35); }
+.help { max-height: 85vh; overflow-y: auto; }
+.help h3 { margin: 1rem 0 .3rem; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.help .try { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; padding: .05rem .4rem; margin-right: .3rem; cursor: pointer; border-radius: .3rem; border: 1px solid var(--border); background: var(--sunk); color: var(--fg); }
+.help .try:hover { border-color: var(--accent); color: var(--accent); }
+.help .words { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 1.5rem; }
+.help dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .15rem .7rem; font-size: .82rem; }
+.help dt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.help dd { margin: 0; color: var(--muted); }
 .help h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
 .help ul { padding-left: 1.2rem; }
 .help li { margin: .4rem 0; }
@@ -190,8 +202,8 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .stated .ret, #hits .stated .kind { flex: none; }
 #hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
 #hits .stated mark.want { border-radius: .2rem; padding: 0 .15rem; color: inherit; }
-#hits .stated mark.want.role { color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-#hits .stated mark.want.prop { color: color-mix(in srgb, #3f9b78 72%, var(--fg)); background: color-mix(in srgb, #3f9b78 15%, transparent); }
+#hits .stated mark.want.role { color: color-mix(in srgb, #3b73c4 72%, var(--fg)); background: color-mix(in srgb, #3b73c4 14%, transparent); }
+#hits .stated mark.want.prop { color: color-mix(in srgb, #c27a12 70%, var(--fg)); background: color-mix(in srgb, #c27a12 15%, transparent); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
@@ -256,19 +268,36 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 </div>
 <dialog id="helpdialog" class="help">
 	<h2>Search syntax</h2>
-	<p><code>name(arguments)[properties]</code>, every part is optional. A query with none of the special parts is just a name, so <code>+</code>, <code>*</code>, <code>[[</code> or <code>%in%</code> search for exactly that.</p>
+	<p>A query is <code>name(arguments) [properties]</code>, every part optional. Without arguments or properties it is just a name, so <code>+</code>, <code>*</code>, <code>[[</code> and <code>%in%</code> search for exactly that. Click an example to try it.</p>
+	<h3>Names</h3>
 	<ul>
-		<li><code>read*</code>, <code>*csv</code>: <code>*</code> in a name matches any text, over the whole name.</li>
-		<li><code>pkg::name</code>: only names that package exports.</li>
-		<li><code>*(&hellip;)</code>: <code>*</code> alone as the name means any function.</li>
-		<li><code>(x, y)</code>: arguments by name, in order. Without a <code>*</code> the count has to match.</li>
-		<li><code>([alias])</code>: the argument has that role, like <code>alias</code>, <code>value</code>, <code>forced</code>, <code>written</code> or <code>callee</code>. <code>x[value]</code> names the formal as well, and <code>[alias,forced]</code> asks for both.</li>
-		<li><code>*</code>: any number of arguments. <code>([alias],*)</code> is an alias first, then anything.</li>
-		<li><code>[role]+</code>: one or more arguments, all with the role. <code>[role]*</code>: zero or more, all with it.</li>
-		<li><code>[role]?</code>: at least one argument has the role, the others may be anything.</li>
-		<li><code>[pure]</code>, <code>[invisible]</code>: after the arguments, what the call does as a whole.</li>
+		<li><button type="button" class="try" data-q="read*">read*</button> <code>*</code> in a name matches any text, over the whole name (<code>*csv</code>, <code>*read*</code>)</li>
+		<li><button type="button" class="try" data-q="dplyr::filter">dplyr::filter</button> only what that package exports</li>
+		<li><button type="button" class="try" data-q="*([alias],*)">*(&hellip;)</button> a lone <code>*</code> as the name means any function</li>
 	</ul>
-	<p>For example <code>*([value]?) [pure]</code> finds the pure functions with at least one value argument. Only functions with a flowR signature can answer argument and property questions. Typing <code>[</code> offers the words that fit, and the filters above say the same without typing.</p>
+	<ul>
+		<li><button type="button" class="try" data-q="/^read\.(csv|table)$/">/regex/</button> between slashes, a regular expression over the whole name, ignoring case. It works for argument names too: <button type="button" class="try" data-q="*(/^file/?)">*(/^file/?)</button></li>
+	</ul>
+	<h3>Arguments</h3>
+	<ul>
+		<li><code>(x, y)</code> arguments by name, in order. Without a <code>*</code> the count has to match</li>
+		<li><button type="button" class="try" data-q="*(x?)">*(x?)</button> has an argument called <code>x</code>, anywhere. <code>x[value]?</code> adds a role</li>
+		<li><button type="button" class="try" data-q="*([alias],*)">*([alias],*)</button> the first argument has a role, the rest is anything. Several roles: <code>[alias,forced]</code></li>
+		<li><button type="button" class="try" data-q="*(file[resource])">*(file[resource])</button> exactly one argument, called <code>file</code>, with that role</li>
+		<li><code>*</code> any number of arguments, including none. <code>+</code> one or more</li>
+		<li><button type="button" class="try" data-q="*([value]+) [pure]">[role]+</button> one or more arguments, <b>all</b> with the role. <code>[role]*</code> zero or more, all with it</li>
+		<li><button type="button" class="try" data-q="*([value]?) [pure]">[role]?</button> <b>at least one</b> argument has the role, the others may be anything</li>
+	</ul>
+	<h3>The function</h3>
+	<ul>
+		<li><button type="button" class="try" data-q="[pure] *">[pure]</button> a property of the call as a whole. It may come first, last or right after the name, and several add up</li>
+		<li><button type="button" class="try" data-q="[invisible] *([value]?)">[invisible] *([value]?)</button> combines with arguments</li>
+	</ul>
+	<p>Only functions with a flowR signature can answer argument and property questions, and one signature has to satisfy all of it. Typing <code>[</code> lists the words that fit, grayed when nothing would match. The filter groups above ask the same without typing.</p>
+	<div class="words">
+		<div><h3>Argument roles</h3><dl id="helproles"></dl></div>
+		<div><h3>Function properties</h3><dl id="helpprops"></dl></div>
+	</div>
 	<form method="dialog"><button>close</button></form>
 </dialog>
 <div class="filters" id="filters">
@@ -283,6 +312,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 		</span>
 	</span>
 </div>
+<p id="problem" class="problem" role="status" hidden></p>
 <p id="status">Type a name to search.</p>
 <ul id="hits"></ul>
 

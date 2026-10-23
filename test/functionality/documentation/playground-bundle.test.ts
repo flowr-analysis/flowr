@@ -124,7 +124,7 @@ describe('playground', { concurrent: false }, () => {
 		row?.click();
 		const details = page.document.querySelector('#panel .lintmore');
 		expect(details?.textContent).toContain('Finds definitions that are never used');
-		expect(details?.querySelector('.del')?.textContent).toMatch(/^- unused_total/);
+		expect(details?.querySelector('.del')?.textContent).toMatch(/^\s*\d+ - unused_total/);
 		details?.querySelector<HTMLElement>('.fix')?.click();
 		await page.until(() => expect(page.code()).not.toContain('unused_total'));
 		page.close();

@@ -24,6 +24,43 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
+		// the missing `)` belongs at the end of the head, before the body, not after everything that came with it
+		assertLinter(label('missing closing parenthesis of a for head', ['syntax-errors'], ['linter']), parser, 'for(i in 1:10 {\n  print(i)\n}\n',
+			'syntactically-valid',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				kind:      'error',
+				message:   'Unexpected `for(i in 1:10 { print(i) }`',
+				loc:       [1, 1, 3, 1],
+				quickFix:  [{ type: 'replace', loc: [1, 14, 1, 13], description: 'Add missing closing `)` after the head', replacement: ')' }]
+			}],
+			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
+		);
+
+		assertLinter(label('missing closing parenthesis of a while head', ['syntax-errors'], ['linter']), parser, 'while(x < 3 {\n  x <- x + 1\n}',
+			'syntactically-valid',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				kind:      'error',
+				message:   'Unexpected `while(x < 3 { x <- x + 1 }`',
+				loc:       [1, 1, 3, 1],
+				quickFix:  [{ type: 'replace', loc: [1, 12, 1, 11], description: 'Add missing closing `)` after the head', replacement: ')' }]
+			}],
+			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
+		);
+
+		assertLinter(label('a call that holds a block keeps the fix at the end', ['syntax-errors'], ['linter']), parser, 'f({\n  1\n}',
+			'syntactically-valid',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				kind:      'missing',
+				message:   'Missing `)`',
+				loc:       [3, 2, 3, 1],
+				quickFix:  [{ type: 'replace', loc: [3, 2, 3, 1], description: 'Insert missing `)`', replacement: ')' }]
+			}],
+			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
+		);
+
 		assertLinter(label('unbalanced brace', ['syntax-errors'], ['linter']), parser, '{ 1',
 			'syntactically-valid',
 			[{

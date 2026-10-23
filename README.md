@@ -46,7 +46,7 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (10 ms)
+    Query: linter (49 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -65,7 +65,7 @@ It offers a wide variety of features, for example:
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈10 ms (1ms accuracy, total 10 ms)
+    All queries together required ≈49 ms (1ms accuracy, total 53 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -79,7 +79,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (16 ms)\
+    Query: **linter** (897 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -102,7 +102,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈17 ms (1ms accuracy, total 17 ms)_
+    _All queries together required ≈897 ms (1ms accuracy, total 900 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -162,7 +162,7 @@ It offers a wide variety of features, for example:
 * 🍕 **program slicing**\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
-   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zM4VwtgBAPAtBAMAoADgJwPYBMQGMAu0cAjIgO6EQDsiAchUUogGbqoQAUAlhJwHYREAXOxowiASnEQA3oggRQkWAvAQA1D3URSciGiy4Cy-dnwQAVD0QBfRIhwBDPOwBEAZXCCXAGhVhfLgA6vC7i9k6uAAoYpnheviaGAcGhiEA&h=slice&f=deps&v=,,d&p=11:13 "run the slicing example in flowR's playground, no setup")&nbsp;)
+   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zM4VwtgBAPAtBAMAoADgJwPYBMQGMAu0cAjIgO6EQDsiAchUUogGbqoQAUAlhJwHYREAXOxowiASnEQA3oggRQkWAvAQA1D3URSciGiy4Cy-dnwQAVD0QBfRIhwBDPOwBEAZXCCXAGhVhfLgA6vC7i9k6uAAoYpnheviaGAcGhiEA&h=slice&f=deps&p=11:13 "run the slicing example in flowR's playground, no setup")&nbsp;)
 
     <details><summary>Example: Slicing with flowR</summary>
     
@@ -206,7 +206,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈4 ms (1ms accuracy, total 5 ms)
+    All queries together required ≈25 ms (1ms accuracy, total 28 ms)
     ```
     
     </details>

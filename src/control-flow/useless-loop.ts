@@ -72,6 +72,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 	private loopCds: ControlDependency[] | undefined = undefined;
 	private encounteredLoopBreaker = false;
 	private onlyLoopyOnce = false;
+	private withinLoop = new Set<NodeId>();
 
 	constructor(private readonly loopToCheck: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
 		super(config);
@@ -81,32 +82,34 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		const g = this.config.controlFlow.graph;
 		const loopNode = this.getNormalizedAst(this.loopToCheck);
 		guard(loopNode !== undefined, "Can't find the loop to check");
-		const withinLoop: NodeId[] = [];
 		new NodeVisitor<ParentInformation>(node => {
 			if(RFunctionDefinition.is(node)) {
 				/* a jump within a nested closure leaves that closure, not the loop around it */
 				return true;
 			}
-			withinLoop.push(node.info.id);
+			this.withinLoop.add(node.info.id);
 		}).visit(loopNode);
+
+		// We use withinLoop to filter the cds to only cds that are inside the loop
+		this.withinLoop.delete(this.loopToCheck);
 
 		/*
 		 * Everything the loop is made of is inspected rather than followed through the graph: a loop that always
 		 * jumps out never reaches its own vertex, so a walk from there would not find what breaks it.
 		 */
-		for(const current of withinLoop) {
-			if(!g.hasVertex(current) || !this.visitNode(current)) {
-				continue;
+		for(const current of this.withinLoop.values()) {
+			if(g.hasVertex(current)) {
+				this.visitNode(current);
 			}
-			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 		}
 
-		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
+		this.onlyLoopyOnce = this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 	}
 
 	private breaks({ call }: OnCall): void {
 		this.encounteredLoopBreaker = true;
-		const filtered = call.cds?.filter(c => c.id !== this.loopToCheck) ?? [];
+		const filtered = call.cds?.filter(c => this.withinLoop.has(c.id)) ?? [];
+
 		if(filtered.length > 0) {
 			this.loopCds = (this.loopCds ?? []).concat(filtered);
 		}

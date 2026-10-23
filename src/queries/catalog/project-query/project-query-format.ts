@@ -47,8 +47,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly authors?:      RAuthorInfo[];
 	/** The files considered part of the project. */
 	readonly files:         (string | '<inline>')[];
-	/** The count of files by their role in the project. */
-	readonly roleCounts:    Record<FileRole, number>;
+	/** The counts of files by their role in the project. */
+	readonly roleCounts?:    Record<FileRole, number>;
 	/** The lists of files by their role in the project. */
 	readonly roleFiles?:    Record<FileRole, readonly string[]>;
 	/** The licenses of the project. */

@@ -31,11 +31,20 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 		checkLoop('for (i in 1:1)',  'for(i in 1:1)  { print(i) }',  '1@for',    true);
 
 		checkLoop('Always Break',    'repeat { print(42); break; }', '1@repeat', true);
-
-		// works after #1858 is merged
-		// checkLoop('Simple For with Alias', 'x <- c(1); for(i in x) { print(i) }', '1@for', true);
+		checkLoop('Simple For with Alias', 'x <- c(1); for(i in x) { print(i) }', '1@for', true);
 	});
 
+	describe('Nested Loops', () => {
+		checkLoop('Nested in if', 'if(u) { for(i in c(1)) { print(i) } }', '1@for', true);
+		checkLoop('Nested in if with break', 'if(u) { for(i in c(1,2)) { print(i); break } }', '1@for', true);
+
+
+		checkLoop('Nested for, inner breaks 1', 'for(i in 1:10) {\n for(j in 1:10) { break; } }', '2@for', true);
+		checkLoop('Nested for, inner breaks 2', 'for(i in 1:10) {\n for(j in 1:10) { break; } }', '1@for', false);
+
+		checkLoop('Nested for, both break 1', 'for(i in 1:10) {\n break; \n for(j in 1:10) { break; } }', '1@for', true);
+		checkLoop('Nested for, both break 2', 'for(i in 1:10) { \n for(j in 1:10) { break; } \n break; }', '2@for', true);
+	});
 
 	describe('Stopped Loop', () => {
 		const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];

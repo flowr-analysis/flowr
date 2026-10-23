@@ -14,6 +14,7 @@ import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sit
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { FileRole } from '../../../src/project/context/flowr-file';
 
 const expFn = (name: string) => ({ name, props: FnProp.Exported, params: [], callees: [], line: 1 });
 const ver = (functions: SigVersionInfo['functions']): SigVersionInfo => ({ cran: true, functions });
@@ -70,6 +71,7 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const project = results.project;
 		expect(project.name).toBe('mypkg');
 		expect(project.kind).toBe('package');
+		expect(project.dfaPerformed).toBe(false);
 		const deps = project.dependencies;
 		expect(deps).toBeDefined();
 		expect(deps?.imports).toBe(3);
@@ -151,4 +153,28 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 
 		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('package');
 	});
+
+	test(label('checks whether dataflow has been performed when the query is run with withDf', [], ['other']), async() => {
+		const dir = writePackage(tmp, 'dfapkg', 'Version: 1.0.0\n', 'x <- 1\n');
+		const analyzer = await analyzeProject(parser, db, dir);
+
+		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: false }])).project.dfaPerformed).toBe(false);
+		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.dfaPerformed).toBe(true);
+	});
+
+	test(label('reports the files considered part of the project, and their roles', [], ['other']), async() => {
+		const dir = writePackage(tmp, 'rolepkg', 'Version: 1.0.0\n', 'x <-1\n');
+		fs.writeFileSync(path.join(dir, 'rv.lock'), 'x <- 1\n');
+		fs.writeFileSync(path.join(dir, '.Rprofile'), 'z <- 1\n');
+		const analyzer = await analyzeProject(parser, db, dir);
+		const results = await executeQueries({ analyzer }, [{ type: 'project' }]);
+
+		const project = results.project;
+		expect(project.roleFiles?.[FileRole.VirtualEnv]).toEqual(['rv.lock']);
+
+		const summary = await asciiSummaryOfQueryResult(ansiFormatter, 0, results, analyzer, [{ type: 'project' }]);
+		expect(summary).toContain('rv.lock');
+		expect(summary).toContain('.Rprofile');
+	});
+
 }));

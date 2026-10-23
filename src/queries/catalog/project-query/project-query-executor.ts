@@ -1,4 +1,5 @@
 import { log } from '../../../util/log';
+import path from 'path';
 import type { ProjectDependencyStats, ProjectQuery, ProjectQueryResult } from './project-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import { FileRole } from '../../../project/context/flowr-file';
@@ -67,8 +68,10 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	const ctx = analyzer.inspectContext();
 	const basePackages = new Set(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
 	const roleCounts: Record<FileRole, number> = {} as Record<FileRole, number>;
+	const roleFiles: Record<FileRole, readonly string[]> = {} as Record<FileRole, readonly string[]>;
 	for(const file of Object.values(FileRole)) {
 		roleCounts[file] = ctx.files.getFilesByRole(file).length;
+		roleFiles[file] = ctx.files.getFilesByRole(file).map(r => path.basename(r.path()));
 	}
 	// whichever plugin read the metadata (DESCRIPTION, rproject.toml, a lockfile) contributed it to the context,
 	// so nothing here has to know which file the project happens to use
@@ -86,7 +89,9 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 		rVersion:     ctx.meta.getRVersion(),
 		licenses:     ctx.meta.getLicenses(),
 		roleCounts:   roleCounts,
+		roleFiles:    roleFiles,
 		kind:         ctx.projectKind(),
-		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined
+		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined,
+		dfaPerformed: analyzer.peekDataflow() !== undefined
 	};
 }

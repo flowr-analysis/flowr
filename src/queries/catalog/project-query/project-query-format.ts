@@ -49,6 +49,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly files:         (string | '<inline>')[];
 	/** The counts of files by their role in the project. */
 	readonly roleCounts?:   Record<FileRole, number>;
+	/** The lists of files by their role in the project. */
+	readonly roleFiles?:    Record<FileRole, readonly string[]>;
 	/** The licenses of the project. */
 	readonly licenses?:     RLicenseElementInfo[];
 	/** The encoding of the project files. */
@@ -61,6 +63,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly kind?:         ProjectKind;
 	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */
 	readonly dependencies?: ProjectDependencyStats;
+	/** Determines whether the Data Flow Analysis already happened  */
+	readonly dfaPerformed:  boolean;
 }
 
 function addSuffix(count: number, singular = '', plural = 's'): string {
@@ -97,17 +101,21 @@ export const ProjectQueryDefinition = {
 				result.push(`      ╰ ${stringifyRLicense(license)}`);
 			}
 		}
-		if(out.roleCounts) {
-			const entries = Object.entries(out.roleCounts).filter(([, count]) => count > 0);
+		if(out.roleFiles) {
+			const entries = Object.entries(out.roleFiles).filter(([, files]) => files.length > 0);
 			if(entries.length > 0) {
 				result.push('   ╰ File Role Counts:');
 				const longestRole = Math.max(...entries.map(([r]) => r.length));
-				const longestCount = Math.max(...entries.map(([, c]) => String(c).length));
-				for(const [role, count] of entries) {
-					result.push(`      ╰ ${(role + ':').padEnd(longestRole + 1, ' ')} ${formatter.format(String(count).padStart(longestCount, ' '), {
+				const longestCount = Math.max(...entries.map(([, f]) => String(f.length).length));
+				for(const [role, files] of entries) {
+					const limit = 2;
+					const displayedFiles = files.slice(0, limit).join(', ');
+					const fileList = '[' + displayedFiles + (files.length > limit ? ', ...' : '') + ']';
+
+					result.push(`      ╰ ${(role + ':').padEnd(longestRole + 1, ' ')} ${formatter.format(String(files.length).padStart(longestCount, ' '), {
 						effect: ColorEffect.Foreground,
 						color:  Colors.Cyan
-					})}`);
+					})} ${fileList}`);
 				}
 			}
 		}
@@ -123,7 +131,7 @@ export const ProjectQueryDefinition = {
 				result.push(`      ╰ Requires R ${d.rVersion}`);
 			}
 		}
-		if(analyzer.peekDataflow() === undefined) {
+		if(!out.dfaPerformed) {
 			result.push(formatter.format('   ╰ Dataflow not performed (run `:df#`, then re-run this query, or pass "withDf": true)', { color: Colors.White, effect: ColorEffect.Foreground }));
 		} else {
 			result.push(`   ╰ Dataflow Analysis considered ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);

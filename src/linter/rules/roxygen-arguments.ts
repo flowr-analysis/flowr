@@ -1,5 +1,5 @@
 import {
-	LintingPrettyPrintContext,
+	prettyPrint,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
@@ -71,10 +71,9 @@ export const ROXYGEN_ARGS = {
 		}),
 		'.meta': {}
 	}),
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`
-	},
+	prettyPrint: prettyPrint(
+		result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`
+	),
 	info: {
 		name:          'Roxygen Arguments',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation],

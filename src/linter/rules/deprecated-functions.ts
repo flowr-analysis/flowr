@@ -1,4 +1,5 @@
 import type { Range } from 'semver';
+import { functionFinderUtil, hasArgumentValue  } from './function-finder-util';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
@@ -6,7 +7,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { uniqueArray } from '../../util/collections/arrays';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
@@ -14,15 +15,13 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { RRange } from '../../util/r-version';
-import { Q } from '../../search/flowr-search-builder';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
@@ -180,10 +179,7 @@ function conditionalyDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions
 export const DEPRECATED_FUNCTIONS = {
 	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
-	createSearch: (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
-		onlyBuiltin:  true,
-		qualifyNames: true
-	}),
+	createSearch:        () => functionFinderUtil.createSearch(undefined),
 	processSearchResult: async(elements, config, data) => {
 		const always = indexAlways(config.always);
 		const conditionals = indexConditionals(config.conditionally);
@@ -267,9 +263,9 @@ export const DEPRECATED_FUNCTIONS = {
 			'.meta': { builtin: results.length, sigdb: sigdbFlagged.length }
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}function \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  (result: DeprecatedFunctionRuleResult) => {
+	prettyPrint: prettyPrint(
+		(result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}function \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
+		(result: DeprecatedFunctionRuleResult) => {
 			const str: string[] = [];
 			if(result.type === 'deprecated-argument') {
 				const argStr = typeof result.arg === 'number' ? `at position \`${result.arg}\`` : result.arg;
@@ -284,7 +280,7 @@ export const DEPRECATED_FUNCTIONS = {
 			}
 			return str.join(' ');
 		}
-	},
+	),
 	info: {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility, LintingRuleTag.QuickFix],

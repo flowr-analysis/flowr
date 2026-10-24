@@ -19,6 +19,8 @@ import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { builtInOf, callsBuiltIn } from '../../linter-util';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { at, printer, calledDefinitions, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
 
 /** what is wrong with a package hook */
@@ -72,9 +74,11 @@ interface ReachedCall {
 	readonly via?: NodeId
 }
 
+const BranchingCalls: ReadonlySet<string> = new Set(['switch', 'tryCatch']);
+
 /** the constructs whose body may or may not run */
-function isConditional(node: RNode<ParentInformation>): boolean {
-	return RIfThenElse.is(node) || RWhileLoop.is(node) || RForLoop.is(node) || RRepeatLoop.is(node) || RFunctionCall.isNamed(node, 'switch') || RFunctionCall.isNamed(node, 'tryCatch');
+function isConditional(node: RNode<ParentInformation>, graph: DataflowGraph): boolean {
+	return RIfThenElse.is(node) || RWhileLoop.is(node) || RForLoop.is(node) || RRepeatLoop.is(node) || RFunctionCall.is(node) && callsBuiltIn(graph, node.info.id, BranchingCalls);
 }
 
 /**
@@ -90,14 +94,14 @@ function reachedCalls(def: RFunctionDefinition<ParentInformation>, df: DataflowI
 		const { via } = item;
 		let conditional = 0;
 		RNode.visitAst(item.def.body, node => {
-			if(via !== undefined && (isConditional(node) || RFunctionDefinition.is(node))) {
+			if(via !== undefined && (isConditional(node, df.graph) || RFunctionDefinition.is(node))) {
 				conditional++;
 			}
 			const vertex = df.graph.getVertex(node.info.id);
 			if(!DfgVertex.isFunctionCall(vertex) || conditional > 0) {
 				return false;
 			}
-			result.push({ id: node.info.id, name: Identifier.getName(vertex.name), via });
+			result.push({ id: node.info.id, name: Identifier.getName(builtInOf(df.graph, node.info.id) ?? vertex.name), via });
 			for(const callee of follow ? calledDefinitions(df.graph, node.info.id, idMap) : []) {
 				if(!visited.has(callee.info.id)) {
 					visited.add(callee.info.id);
@@ -106,7 +110,7 @@ function reachedCalls(def: RFunctionDefinition<ParentInformation>, df: DataflowI
 			}
 			return false;
 		}, node => {
-			if(via !== undefined && (isConditional(node) || RFunctionDefinition.is(node))) {
+			if(via !== undefined && (isConditional(node, df.graph) || RFunctionDefinition.is(node))) {
 				conditional--;
 			}
 		});
@@ -132,10 +136,10 @@ function hasNamedArgument(id: NodeId, df: DataflowInformation, name: string): bo
 }
 
 /** `message()` called in a hook as the startup message function, which takes the same arguments */
-function asStartupMessage(call: RNode<ParentInformation> | undefined, startup: string | undefined): LintQuickFixReplacement[] | undefined {
+function asStartupMessage(call: RNode<ParentInformation> | undefined, startup: string | undefined, graph: DataflowGraph): LintQuickFixReplacement[] | undefined {
 	const own = RFunctionCall.isNamed(call) ? SourceRange.ownFromNode(call.functionName) : undefined;
 	const loc = own === undefined ? undefined : SourceLocation.from(own, call?.info.file);
-	return startup === undefined || loc === undefined || !RFunctionCall.isNamed(call) || Identifier.getName(call.functionName.content) !== 'message'
+	return startup === undefined || loc === undefined || call === undefined || !callsBuiltIn(graph, call.info.id, 'message')
 		? undefined : [{ type: 'replace', loc, description: `Use \`${startup}\``, replacement: startup }];
 }
 
@@ -196,7 +200,7 @@ export const PACKAGE_HOOKS = {
 					report('output', hook === '.onLoad' && startupMessages.has(name)
 						? `.onLoad should not print startup messages with ${name}, use .onAttach instead${through}`
 						: `Package startup functions should use ${config.startupMessageFunctions[0] ?? 'packageStartupMessage'} to generate messages, but ${hook} calls ${name}${through}`, at, name, via === undefined,
-					via === undefined && hook !== '.onLoad' ? asStartupMessage(idMap.get(id), config.startupMessageFunctions[0]) : undefined);
+					via === undefined && hook !== '.onLoad' ? asStartupMessage(idMap.get(id), config.startupMessageFunctions[0], df.graph) : undefined);
 				}
 			}
 		}

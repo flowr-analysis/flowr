@@ -1,5 +1,5 @@
 import {
-	LintingPrettyPrintContext,
+	prettyPrint,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
@@ -328,10 +328,10 @@ export const SYNTACTICALLY_VALID = {
 		}
 		return { results, '.meta': { parser, errors: results.length, fixable: results.filter(r => r.quickFix !== undefined).length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: SyntacticallyValidResult) => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  (result: SyntacticallyValidResult) => `Syntax error (${result.kind}): ${result.message} at ${SourceLocation.format(result.loc)}`
-	},
+	prettyPrint: prettyPrint(
+		(result: SyntacticallyValidResult) => `${result.message} at ${SourceLocation.format(result.loc)}`,
+		(result: SyntacticallyValidResult) => `Syntax error (${result.kind}): ${result.message} at ${SourceLocation.format(result.loc)}`
+	),
 	info: {
 		name:            'Syntactically Valid',
 		description:     'Finds syntax errors with the configured (error-tolerant) parser. Offers extensible quick fixes to repair them.',

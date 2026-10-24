@@ -169,7 +169,9 @@ export enum SemanticCallTag {
 	/** puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` */
 	AttachesPackage = 'attaches-package',
 	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
-	ChecksPackage   = 'checks-package'
+	ChecksPackage   = 'checks-package',
+	/** registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` */
+	Declares        = 'declares'
 }
 
 /** a bitfield of {@link ArgProp} */

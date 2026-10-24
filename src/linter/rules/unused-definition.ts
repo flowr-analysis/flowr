@@ -1,5 +1,5 @@
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -382,10 +382,10 @@ export const UNUSED_DEFINITION = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)} is unused`
-	},
+	prettyPrint: prettyPrint(
+		result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)}`,
+		result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)} is unused`
+	),
 	info: {
 		name:          'Unused Definitions',
 		description:   'Finds definitions that are never used.',

@@ -15,6 +15,8 @@ import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
+import { builtInOf, callsBuiltIn } from '../../linter-util';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { at, type CmdCheckResult, packageInfo, packageCalls, printer } from './cmd-check-util';
 
 export type NamespaceTamperingKind =
@@ -42,9 +44,6 @@ export interface NamespaceTamperingConfig extends MergeableRecord {
 
 export type NamespaceTamperingMetadata = MergeableRecord;
 
-/** the calls this rule is about, which spares resolving every other call */
-const TamperingCalls: ReadonlySet<string> = new Set(['unlockBinding', 'assignInNamespace', '.Internal', 'library.dynam', 'library.dynam.unload']);
-
 /** the calls that name a namespace by the package name they are handed */
 const NamespaceGetters: ReadonlySet<string> = new Set(['asNamespace', 'getNamespace', 'loadNamespace']);
 
@@ -58,12 +57,13 @@ function namespaceOf(node: RNode<ParentInformation> | undefined, info: ResolveIn
 		return namespaceOf(node.value, info, own, depth);
 	}
 	let name: string | undefined;
-	if(RFunctionCall.isNamed(node)) {
-		const fn = Identifier.getName(node.functionName.content);
+	if(RFunctionCall.is(node)) {
+		const called = info.graph === undefined ? undefined : builtInOf(info.graph, node.info.id);
+		const fn = called === undefined ? undefined : Identifier.getName(called);
 		if(fn === 'topenv' || fn === 'environment') {
 			return 'own';
 		}
-		if(!NamespaceGetters.has(fn) || node.arguments.length < 1 || node.arguments[0] === EmptyArgument) {
+		if(fn === undefined || !NamespaceGetters.has(fn) || node.arguments.length < 1 || node.arguments[0] === EmptyArgument) {
 			return undefined;
 		}
 		name = NodeValue.singleStringOf(node.arguments[0].value?.info.id, info);
@@ -95,10 +95,10 @@ function namespaceOfVariable(node: RSymbol<ParentInformation>, info: ResolveInfo
 }
 
 /** whether the call is the one a `.Internal` call is handed, which is reported with the `.Internal` */
-function isInternalArgument(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
+function isInternalArgument(node: RNode<ParentInformation>, idMap: AstIdMap, graph: DataflowGraph): boolean {
 	const arg = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
 	const call = arg?.info.parent === undefined ? undefined : idMap.get(arg.info.parent);
-	return RFunctionCall.isNamed(call, '.Internal');
+	return call !== undefined && callsBuiltIn(graph, call.info.id, '.Internal');
 }
 
 /**
@@ -117,14 +117,14 @@ export const NAMESPACE_TAMPERING = {
 		const info = Resolve.info(df.graph, ctx);
 		const results: NamespaceTamperingResult[] = [];
 		const add = (node: RNode<ParentInformation>, result: Omit<NamespaceTamperingResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...result });
-		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, TamperingCalls, true)) {
+		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg)) {
 			const arg = (formals: Record<string, string>, formal: string) => {
 				const ids = FunctionSemantics.call.match.toSpec(call.args, formals).get(formal);
 				return ids?.length === 1 ? idMap.get(ids[0]) : undefined;
 			};
 			switch(name) {
 				case 'unlockBinding': {
-					if(isInternalArgument(node, idMap)) {
+					if(isInternalArgument(node, idMap, df.graph)) {
 						break;
 					}
 					const ns = namespaceOf(arg({ sym: 'sym', env: 'env' }, 'env'), info, pkg.name);

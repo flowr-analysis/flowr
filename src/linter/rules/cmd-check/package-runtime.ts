@@ -7,7 +7,8 @@ import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { namesWith } from '../../linter-util';
+import { ArgProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { FileRole } from '../../../project/context/flowr-file';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -18,8 +19,9 @@ import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';
-import { packageFiles, type PackageFiles } from './package-files';
+import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, projectNodes } from './cmd-check-util';
+import type { PackageFiles } from './package-files';
+import { onPackageFiles } from './file-checks';
 import { packageCode } from './package-code';
 
 export type PackageRuntimeKind =
@@ -78,7 +80,7 @@ interface Definitions {
 }
 
 /** the names the top level of the package code binds, including the generics `setGeneric` creates */
-function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly string[]): Definitions {
+function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly string[], declaring: ReadonlySet<string>): Definitions {
 	const names = new Set<string>(data);
 	let dynamic = false;
 	const topLevelCalls: string[] = [];
@@ -117,11 +119,8 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 			names.add(target.content.str);
 		}
 	}
-	return { names, dynamic, opaque: topLevelCalls.some(fn => !names.has(fn) && baseRExportOwner(fn) === undefined && !TopLevelHarmless.has(fn)) };
+	return { names, dynamic, opaque: topLevelCalls.some(fn => !names.has(fn) && baseRExportOwner(fn) === undefined && !declaring.has(fn) && fn !== 'assign') };
 }
-
-/** calls at the top level of package code that define nothing beyond what the scan sees */
-const TopLevelHarmless: ReadonlySet<string> = new Set(['setGeneric', 'setClass', 'setRefClass', 'setMethod', 'setValidity', 'setClassUnion', 'assign', 'globalVariables']);
 
 /** the line of the first NAMESPACE directive matching, to point a finding at it */
 function lineMatching(text: string | undefined, pattern: RegExp): number | undefined {
@@ -213,7 +212,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	}
 }
 
-function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, writers: ReadonlySet<string>, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, writers: ReadonlyMap<string, ReadonlySet<string>>, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const entries = files.entries.filter(e => !e.isDirectory).map(e => e.relative);
 	const testFiles = entries.filter(f => /^tests\/[^/]+\.[rR]$/.test(f));
 	const testthatFiles = entries.filter(f => /^tests\/testthat\/test[^/]*\.[rR]$/.test(f));
@@ -250,7 +249,7 @@ function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: Read
 			if(fn === 'test_check' && strings.length > 0 && pkg.name !== undefined && strings[0] !== pkg.name) {
 				add({ certainty: LintingResultCertainty.Certain, loc: at(node), kind: 'test-runner', message: `test_check("${strings[0]}") runs the tests of another package than '${pkg.name}'` });
 			} else if(config.checkWrites && writers.has(fn)) {
-				const named = node.arguments.find(a => a !== EmptyArgument && a.name !== undefined && ['file', 'con', 'path', 'filename', 'description'].includes(Identifier.getName(a.name.content)));
+				const named = node.arguments.find(a => a !== EmptyArgument && a.name !== undefined && writers.get(fn)?.has(Identifier.getName(a.name.content)));
 				const second = node.arguments[1];
 				const file = named !== undefined && named !== EmptyArgument ? named.value : second !== undefined && second !== EmptyArgument ? second.value : undefined;
 				if(RString.is(file) && writesIntoWorkingDirectory(file.content.str)) {
@@ -282,22 +281,18 @@ function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: Read
  */
 export const PACKAGE_RUNTIME = {
 	createSearch:        () => Q.from([]),
-	processSearchResult: async(_elements, config, data) => {
+	processSearchResult: onPackageFiles({}, async(files, pkg, config, data) => {
 		const ctx = data.inspectContext();
-		const pkg = packageInfo(ctx);
-		const files = packageFiles(ctx, pkg.name);
 		const results: PackageRuntimeResult[] = [];
-		if(files === undefined) {
-			return { results, '.meta': {} };
-		}
 		const add = (r: Omit<PackageRuntimeResult, 'involvedId'>) => results.push({ ...r, involvedId: undefined });
 		const ast = ctx.files.hasRequests() ? await data.normalize() : undefined;
 		const dataObjects = files.entries.filter(e => !e.isDirectory && e.relative.startsWith('data/')).map(e => path.posix.basename(e.relative).replace(/\..*$/, ''));
 		if(ast !== undefined) {
-			namespaceChecks(files, pkg, definitionsOf(ast, pkg, dataObjects), data, add);
+			namespaceChecks(files, pkg, definitionsOf(ast, pkg, dataObjects, namesWith(ctx.env.builtInIndex, SemanticCallTag.Declares)), data, add);
 			const ownName = pkg.name;
+			const attaching = namesWith(ctx.env.builtInIndex, SemanticCallTag.AttachesPackage);
 			for(const node of projectNodes(ast)) {
-				if(ownName !== undefined && pkg.isPackageCode(node.info.file) && (RFunctionCall.isNamed(node, 'library') || RFunctionCall.isNamed(node, 'require'))) {
+				if(ownName !== undefined && pkg.isPackageCode(node.info.file) && RFunctionCall.isNamed(node, attaching)) {
 					const arg = node.arguments[0] === EmptyArgument ? undefined : node.arguments[0]?.value;
 					const name = RSymbol.is(arg) ? Identifier.getName(arg.content) : RString.is(arg) ? arg.content.str : undefined;
 					const loc = SourceLocation.fromNode(node);
@@ -320,10 +315,14 @@ export const PACKAGE_RUNTIME = {
 		if(installed !== undefined) {
 			add({ certainty: LintingResultCertainty.Certain, loc: files.locate(installed), kind: 'not-source-package', message: `${installed} belongs to an installed package, R CMD check needs the package sources` });
 		}
-		const writers = new Set(ctx.env.builtInIndex.with(SemanticCallTag.Writes).map(n => Identifier.getName(n)));
+		const index = ctx.env.builtInIndex;
+		const writers = new Map<string, Set<string>>(namesWith(index, SemanticCallTag.Writes).values().map(n => [n, new Set<string>()]));
+		for(const p of index.params(ArgProp.Resource)) {
+			writers.get(Identifier.getName(p.call))?.add(p.name);
+		}
 		testAndVignetteChecks(files, pkg, data, config, writers, add);
 		return { results, '.meta': {} };
-	},
+	}),
 	prettyPrint: printer<PackageRuntimeResult>(r => r.kind),
 	info:        {
 		name:          'Package Runtime',

@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
 _This query is requested with the type `signature`._\
-Run in the REPL: `:query @signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--cg-max <n>] [--help]`
+Run in the REPL: `:query @signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [<name>(<arg>, [<role>], *) [<prop>]] [--cg] [--cg-max <n>] [--help]`
 
 This query is the read-side interface to flowR's [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)&mdash;the very same database
 that resolves `library()` and `::` calls during the dataflow analysis. It lets you ask what flowR actually _knows_ about a package
@@ -44,7 +44,7 @@ we can inspect the signature of the function it calls:
 
 _Results (prettified and summarized):_
 
-Query: **signature** (17 ms)\
+Query: **signature** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ **dplyr**::**lead** v1.2.1\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **lead**(_x_, _n_ = _1L_, _default_ = _NULL_, _order_by_ = _NULL_, ...)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ exported  _can-throw_\
@@ -56,8 +56,7 @@ Query: **signature** (17 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -107,6 +106,6 @@ functions you only half-remember: `{ package: '*', parameters: ['data', 'mapping
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Signature Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-executor.ts#L864"><code><span title="Executes the signature query. With no package it summarizes the loaded databases. A glob in package/function or a multi-version version triggers a wildcard search (matching packages or functions). Otherwise a single exact package (optionally at an exact version) yields its full view, or the detailed function view.">executeSignatureQuery</span></code></a>.
+The Signature Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-executor.ts#L901"><code><span title="Executes the signature query. With no package it summarizes the loaded databases. A glob in package/function or a multi-version version triggers a wildcard search (matching packages or functions). Otherwise a single exact package (optionally at an exact version) yields its full view, or the detailed function view.">executeSignatureQuery</span></code></a>.
 
 </details>

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Dataflow Cluster Query">Dataflow Cluster Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Calculates and returns all the clusters present in the dataflow graph.\
@@ -33,8 +33,7 @@ Query: **dataflow-cluster**\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"dataflow-cluster":{".meta":{},"clusters":[{"startNode":3,"members":[3,0,2,1],"hasUnknownSideEffects":false}]},".meta":{}}
@@ -67,8 +66,7 @@ Query: **dataflow-cluster**\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -100,8 +98,7 @@ Query: **dataflow-cluster**\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -178,6 +175,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dataflow Cluster Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/cluster-query/cluster-query-executor.ts#L9"><code><span title="Executes the given dataflow cluster queries using the provided analyzer.">executeDataflowClusterQuery</span></code></a>.
+The Dataflow Cluster Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/cluster-query/cluster-query-executor.ts#L10"><code><span title="Executes the given dataflow cluster queries using the provided analyzer.">executeDataflowClusterQuery</span></code></a>.
 
 </details>

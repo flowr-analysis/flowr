@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="package-structure">Package Structure&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 2–3, 8–23, 57, 87](https://img.shields.io/badge/cmd--check-2%E2%80%933%2C%208%E2%80%9323%2C%2057%2C%2087-blueviolet) </a>
@@ -28,10 +28,10 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 | [57](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-57) | [demos](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L4793) ([book](https://r-pkgs.org/R-CMD-check.html#demos)) | 🔷 | the demo index and file names, the demos are not run |
 | [87](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-87) | [package vignettes](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L4944) ([book](https://r-pkgs.org/R-CMD-check.html#vignettes)) | 🔷 | non-ASCII vignettes without declared encoding are not reported |
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds problems in the package files: portable names, hidden files, top-level files, subdirectories, permissions, executables, timestamps, sizes, line endings of scripts, and vignette leftovers.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-structure.ts#L329">src/linter/rules/cmd-check/package-structure.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-structure.ts#L328">src/linter/rules/cmd-check/package-structure.ts</a>._
 
 ### Configuration
 
@@ -118,37 +118,5 @@ Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Package Structure** (package-structure):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Found the following file with a non-portable file name: 'R/a:b.R'. This is not a valid file name on all R platforms; please rename the file. at /pkg/R/a:b.R:1.1
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "package-structure": {
-        "results": [
-          {
-            "certainty": "certain",
-            "loc": [1,1,1,1,"/pkg/R/a:b.R"],
-            "kind": "non-portable-file-name",
-            "file": "R/a:b.R",
-            "message": "Found the following file with a non-portable file name: 'R/a:b.R'. This is not a valid file name on all R platforms; please rename the file."
-          }
-        ],
-        ".meta": {"inspectedEntries":4,"onDisk":false}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 More examples are the test cases in [test/functionality/linter/cmd-check/lint-package-structure.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/cmd-check/lint-package-structure.test.ts).

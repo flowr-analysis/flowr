@@ -1,41 +1,10 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
 For example:
 
-```shell
-$ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.4, R grammar v14 (tree-sitter engine)
-R> :query @linter "read.csv(\"/root/x.txt\")"
-```
-
-<details>
-<summary style='color:gray'>Output</summary>
-
-```text
-Query: linter (24 ms)
-   ╰ Deprecated Functions (deprecated-functions): no findings
-   ╰ File Path Validity (file-path-validity): no findings
-   ╰ Seeded Randomness (seeded-randomness): no findings
-   ╰ Absolute Paths (absolute-file-paths): no findings
-   ╰ Unused Definitions (unused-definitions): no findings
-   ╰ Network Functions (network-functions): no findings
-   ╰ Dataframe Access Validation (dataframe-access-validation): no findings
-   ╰ Dead Code (dead-code): no findings
-   ╰ Useless Loops (useless-loop): no findings
-   ╰ Problematic Inputs (problematic-inputs): no findings
-   ╰ Stop Without Call (stop-call): no findings
-   ╰ Roxygen Arguments (roxygen-arguments): no findings
-   ╰ No Leaked Credentials (no-leaked-credentials): no findings
-   ╰ Undefined Symbol (undefined-symbol): no findings
-   ╰ Unused Import (unused-import): no findings
-   ╰ Unclosed Connection (unclosed-connection): no findings
-   ╰ Unescaped Arguments (unescaped-arguments): no findings
-   ╰ Namespace Access Validity (namespace-access): no findings
-```
-
-The linter will analyze the code and return any issues found.
+Running <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> with `@linter "read.csv(\"/root/x.txt\")"` analyzes the code and returns any issues found.
 Formatted more nicely, this returns:
 
 ```json
@@ -46,7 +15,7 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (28 ms)\
+Query: **linter** (478 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -74,8 +43,7 @@ Query: **linter** (28 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -118,8 +86,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
   ".meta": {}
 }
 ```
-
-</details>
 
 </details>
 

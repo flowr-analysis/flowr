@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="absolute-file-paths">Absolute Paths&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds absolute file paths.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/absolute-path.ts#L128">src/linter/rules/absolute-path.ts</a>._
@@ -42,48 +42,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/home/me/project/data/survey.csv` at 1.1-44 (1 quick fix(es) available)
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "absolute-file-paths": {
-        "results": [
-          {
-            "certainty": "certain",
-            "filePath": "/home/me/project/data/survey.csv",
-            "loc": [1,1,1,44],
-            "quickFix": [
-              {
-                "type": "replace",
-                "loc": [1,10,1,43],
-                "description": "Replace with a relative path to `/home/me/project/data/survey.csv`",
-                "replacement": "\"./data/survey.csv\""
-              }
-            ]
-          }
-        ],
-        ".meta": {"totalConsidered":1,"totalUnknown":0}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 #### Additional Examples
 	
@@ -109,7 +71,7 @@ We expect the linter to report the following:
 * uncertain: filePath = `'/home/me/foo.bar'`, 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L48) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_is_32_relative_32_to_32_home">Test Case: is relative to home</h4>
 
 > Replacing absolute paths with relative paths should work within function calls as well
@@ -130,7 +92,7 @@ We expect the linter to report the following:
 * uncertain: filePath = `'/home/me/foo.bar'`, 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L66) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_built_32_path_32_is_32_reported_32_once">Test Case: a built path is reported once</h4>
 
 Given the following input:
@@ -144,21 +106,7 @@ We expect the linter to report the following:
 * certain at 1.1-1.43: filePath = `'/home/me/data.csv'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L84) for the test-case implementation.
-		
-<h4 id="Test_32_Case:_32_a_32_relative_32_built_32_path_32_is_32_no_32_absolute_32_path">Test Case: a relative built path is no absolute path</h4>
 
-Given the following input:
-
-```r
-read.csv(file.path("data", "data.csv"))
-```
-
-We expect the linter to report the following:
-
-* no lints
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L89) for the test-case implementation.
-		
 <h4 id="Test_32_Case:_32_a_32_report_32_written_32_to_32_a_32_resource_32_argument">Test Case: a report written to a resource argument</h4>
 
 Given the following input:
@@ -173,7 +121,7 @@ We expect the linter to report the following:
 * certain at 2.1-2.56: filePath = `'C:/Users/a/out.html'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L90) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_none">Test Case: none</h4>
 
 > If the script contains no function that reads a file path, we expect no issues
@@ -189,7 +137,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L97) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_none_32_with_32_all_32_strings">Test Case: none with all strings</h4>
 
 > If the script contains no file paths, but we include all strings, we expect no issues either
@@ -210,7 +158,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L99) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_too_32_short">Test Case: too short</h4>
 
 > if we consider all strings for absolute paths, and the string contains something that might be a path, yet we deem it too short, we expect no issues
@@ -231,7 +179,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L108) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_multiple_32_path_32_functions">Test Case: multiple path functions</h4>
 
 > Each absolute path is reported once, even if the script calls several path functions
@@ -251,7 +199,7 @@ We expect the linter to report the following:
 * certain at 3.1-3.13: filePath = `'/tmp'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L142) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_change_32_fsep">Test Case: change fsep</h4>
 
 > As we also incorporate the `file.path` function, we should be able to detect relative paths with a given separator
@@ -267,35 +215,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L218) for the test-case implementation.
-		
-<h4 id="Test_32_Case:_32_skrewed_32_fsep">Test Case: skrewed fsep</h4>
 
-Given the following input:
-
-```r
-file.path("a", "b", fsep="")
-```
-
-We expect the linter to report the following:
-
-* no lints
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L219) for the test-case implementation.
-		
-<h4 id="Test_32_Case:_32_skrewed_32_fsep">Test Case: skrewed fsep</h4>
-
-Given the following input:
-
-```r
-file.path("a", "b", fsep=u)
-```
-
-We expect the linter to report the following:
-
-* no lints
-
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L227) for the test-case implementation.
-		
 <h4 id="Test_32_Case:_32_change_32_fsep">Test Case: change fsep</h4>
 
 Given the following input:
@@ -309,7 +229,7 @@ We expect the linter to report the following:
 * uncertain at 1.1-1.31: filePath = `'C:\\b'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L241) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_skrewed_32_fsep">Test Case: skrewed fsep</h4>
 
 > If someone constructs an absolute path due to a (cursed) fsep, we should still be able to detect it
@@ -325,3 +245,25 @@ We expect the linter to report the following:
 * uncertain at 1.1-1.30: filePath = `'C:/b'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-absolute-path.test.ts#L249) for the test-case implementation.
+
+<h4 id="Test_32_Cases_32_without_32_Findings">Test Cases without Findings</h4>
+
+The linter reports nothing for:
+
+**a relative built path is no absolute path**
+
+```r
+read.csv(file.path("data", "data.csv"))
+```
+
+**skrewed fsep**
+
+```r
+file.path("a", "b", fsep="")
+```
+
+**skrewed fsep**
+
+```r
+file.path("a", "b", fsep=u)
+```

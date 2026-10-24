@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { SearchQuery, SearchQueryResult } from './search-query-format';
 import { runSearch } from '../../../search/flowr-search-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -22,9 +23,7 @@ export async function executeSearch({ analyzer }: BasicQueryData, queries: reado
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

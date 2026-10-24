@@ -139,6 +139,5 @@ export const ProjectQueryDefinition = {
 	schema: Joi.object({
 		type:   Joi.string().valid('project').required().description('The type of the query.'),
 		withDf: Joi.boolean().optional().default(false).description('Whether to include Dataflow information in the result.')
-	}).description('The project query provides information on the analyzed project.'),
-	flattenInvolvedNodes: () => []
+	}).description('The project query provides information on the analyzed project.')
 } as const satisfies SupportedQuery<'project'>;

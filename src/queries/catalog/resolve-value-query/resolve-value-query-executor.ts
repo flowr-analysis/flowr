@@ -1,6 +1,7 @@
 import type { ResolveValueQuery, ResolveValueQueryResult } from './resolve-value-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
@@ -39,9 +40,7 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

@@ -12,6 +12,7 @@ import type { StatedProps } from '../../../dataflow/environments/built-in-props'
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { enumMembers } from '../../../util/objects';
 import { DefaultDepth } from '../../../dataflow/fn/argument-roles';
+import { FunctionFilterSchema } from '../../query-function-property';
 import { uniqueArrayMerge } from '../../../util/collections/arrays';
 
 
@@ -73,7 +74,7 @@ export const InspectFnPropsQueryDefinition = {
 	syntax:   '@inspect-fn-props [(<crit>;...)] <code | file://path>',
 	schema:   Joi.object({
 		type:     Joi.string().valid('inspect-fn-props').required().description('The type of the query.'),
-		filter:   Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.'),
+		filter:   FunctionFilterSchema,
 		maxDepth: Joi.number().integer().min(1).optional().description(`How far a value is followed back through names and calls when deciding what a formal stands for (default ${DefaultDepth}).`),
 		only:     Joi.string().valid('arguments', 'function').optional().description('Infer only what the formals do, or only what the function itself does; both are inferred when this is left out.'),
 		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only the formals written as one of these names.'),

@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { defaultInputClassifierConfig, type InputSourcesQuery, type InputSourcesQueryResult } from './input-sources-query-format';
 import { log } from '../../../util/log';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
@@ -55,9 +56,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

@@ -1,4 +1,4 @@
-/** R Markdown and Quarto as prose around R chunks, Jupyter as R scripts in the percent format (`# %%`), every line kept where flowR sees it */
+/** R Markdown and Quarto as prose around R chunks, Jupyter as R scripts in the percent format (`# %%`), R console transcripts as commands among their output, every line kept where flowR sees it */
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { Facet, Prec, StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { StreamLanguage, type StreamParser, type StringStream } from '@codemirror/language';
@@ -7,6 +7,7 @@ import { yaml } from '@codemirror/legacy-modes/mode/yaml';
 import type { INotebookContent } from '@jupyterlab/nbformat';
 import { cellOptionLines, globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { button, el } from '../page-lib/dom';
+import { codeOfInput, isRSession, parseRSession, PromptWidth } from './r-session';
 
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
 
@@ -129,12 +130,40 @@ const percentScript: StreamParser<ScriptState> = {
 	languageData: { commentTokens: { line: '#' } }
 };
 
+interface SessionState {
+	input: boolean
+	inner: unknown
+}
+
+const sessionTranscript: StreamParser<SessionState> = {
+	name:       'r',
+	startState: () => ({ input: false, inner: startOf(rParser) }),
+	copyState:  state => ({ ...state, inner: copyOf(rParser, state.inner) }),
+	token(stream, state) {
+		if(stream.sol()) {
+			const prompt = /^>(?: |$)/.test(stream.string) || state.input && /^\+(?: |$)/.test(stream.string);
+			state.input = prompt;
+			if(prompt) {
+				stream.pos = Math.min(PromptWidth, stream.string.length);
+				return 'meta';
+			}
+		}
+		if(state.input) {
+			return rParser.token(stream, state.inner);
+		}
+		stream.skipToEnd();
+		return 'comment';
+	},
+	languageData: { commentTokens: { line: '#' } }
+};
+
 const markdownLanguage = StreamLanguage.define(markdownDocument);
+const sessionLanguage = StreamLanguage.define(sessionTranscript);
 const scriptLanguage = StreamLanguage.define(percentScript);
 
 /** how a file of this name reads in the editor */
 export function languageOf(name: string): Extension {
-	return isMarkdownDocument(name) ? markdownLanguage : scriptLanguage;
+	return isMarkdownDocument(name) ? markdownLanguage : isRSession(name, '') ? sessionLanguage : scriptLanguage;
 }
 
 /** a run of lines, 1-based and inclusive */
@@ -148,6 +177,10 @@ interface Cell {
 	readonly label:    string
 	/** how many of the first lines are options (`#| label: fit`), not code */
 	readonly options?: number
+	/** the lines start with a console prompt */
+	readonly prompt?:  boolean
+	/** recorded output of a console session */
+	readonly output?:  boolean
 }
 
 /** knitr names a chunk by the first, unnamed option of its header, as in `{r setup, include = FALSE}` */
@@ -186,12 +219,28 @@ function scriptCells(rows: readonly string[]): Cell[] {
 	}));
 }
 
+/** a console transcript as one code cell per command with its continuations, and the output between them */
+function sessionCells(text: string): Cell[] {
+	return parseRSession(text).map(({ kind, lines, firstLine }) => ({
+		kind:   kind === 'input' ? 'code' : 'meta',
+		from:   firstLine,
+		to:     firstLine + lines.length - 1,
+		runs:   true,
+		label:  '',
+		prompt: kind === 'input',
+		output: kind === 'output'
+	}));
+}
+
+/** whether the file is a console transcript */
+const SessionFile = Facet.define<boolean, boolean>({ combine: values => values.some(Boolean) });
+
 const lineDeco = (classes: string, note?: string) => Decoration.line({ class: classes, attributes: note === undefined ? undefined : { 'data-note': note } });
 
 function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 	const text = state.doc.toString();
 	const rows = text.split(LineBreak);
-	return markdown ? documentCells(text, rows) : scriptCells(rows);
+	return state.facet(SessionFile) ? sessionCells(text) : markdown ? documentCells(text, rows) : scriptCells(rows);
 }
 
 /** runs a cell in the shared R session, its output going `into` the given element */
@@ -326,7 +375,8 @@ export function rewriteCells(state: EditorState, name: string, codeOf: (from: nu
 			const body = cell.from + (cell.options ?? 0);
 			const code = body > cell.to ? '' : codeOf(body, cell.to);
 			if(code.trim() !== '') {
-				out.push(...text, ...rows.slice((cell.head ?? cell.from) - 1, body - 1), ...code.split('\n'), ...cell.tail === undefined ? [] : [rows[cell.tail - 1]]);
+				const lines = code.split('\n');
+				out.push(...text, ...rows.slice((cell.head ?? cell.from) - 1, body - 1), ...cell.prompt ? lines.map((line, at) => `${at === 0 ? '>' : '+'} ${line}`) : lines, ...cell.tail === undefined ? [] : [rows[cell.tail - 1]]);
 			}
 			text = [];
 			line = (cell.tail ?? cell.to) + 1;
@@ -346,10 +396,13 @@ export function rewriteCells(state: EditorState, name: string, codeOf: (from: nu
 export function writesR(state: EditorState, name: string, line: number): boolean {
 	const markdown = isMarkdownDocument(name);
 	const kind = cellAt(cellsOf(state, markdown), line)?.kind;
-	return markdown ? kind === 'code' : kind !== 'text';
+	return markdown || state.facet(SessionFile) ? kind === 'code' : kind !== 'text';
 }
 
-const codeOf = (state: EditorState, cell: Cell) => cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
+const codeOf = (state: EditorState, cell: Cell) => {
+	const code = cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
+	return cell.prompt ? code.split(LineBreak).map(codeOfInput).join('\n') : code;
+};
 
 class CellOutput extends WidgetType {
 	constructor(readonly box: HTMLElement) {
@@ -453,7 +506,7 @@ class RunButton extends WidgetType {
 		}
 		const current = () => {
 			const cells = cellsOf(view.state, this.markdown);
-			return { cells, at: Math.max(0, cells.findIndex(c => c.head === this.cell.head)) };
+			return { cells, at: Math.max(0, cells.findIndex(c => (c.head ?? c.from) === (this.cell.head ?? this.cell.from))) };
 		};
 		const run = button('cm-cell-run', '', 'run in the same R session as runs and the repl (shift+enter runs this cell)', () => {
 			const { cells, at } = current();
@@ -497,7 +550,7 @@ function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: 
 	};
 	const inCell = new Set<number>();
 	for(const cell of cells) {
-		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}`;
+		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}${cell.output ? ' cm-session-out' : ''}`;
 		const note = cell.kind === 'meta' ? cell.label : cell.kind === 'text' && markdown ? 'markdown' : undefined;
 		if(cell.head !== undefined) {
 			at(cell.head, lineDeco(`${kind} cm-cell-head`, note));
@@ -512,6 +565,9 @@ function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: 
 			} else if(editable && cell.kind === 'text' && cell.head <= doc.lines) {
 				found.push(Decoration.widget({ widget: new EditTools(cell.head, markdown), side: 1 }).range(doc.line(cell.head).to));
 			}
+		}
+		if(cell.prompt && cell.from <= doc.lines) {
+			found.push(Decoration.widget({ widget: new RunButton(cell, '', markdown, editable, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.from).to));
 		}
 		for(let line = cell.from; line <= cell.to; line++) {
 			at(line, lineDeco(`${kind}${line === cell.to && cell.tail === undefined ? ' cm-cell-end' : ''}`));
@@ -544,6 +600,7 @@ export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Ex
 	const { runs, shown, took } = cellRunning(markdown, run);
 	return [
 		shown,
+		SessionFile.of(isRSession(name, '')),
 		editable ? inserters(markdown) : [],
 		NotebookRun.of((view, fresh) => {
 			const cells = cellsOf(view.state, markdown);
@@ -594,6 +651,7 @@ const cellLook = EditorView.theme({
 	'.cm-cell-text.cm-cell-head':                                    { fontFamily: 'inherit', opacity: '.55', lineHeight: '1.4' },
 	'.cm-cell-text.cm-cell-end':                                     { paddingBottom: '.35rem' },
 	'.cm-cell-meta':                                                 { backgroundColor: 'color-mix(in srgb, var(--sunk) 85%, transparent)', boxShadow: 'inset 3px 0 0 var(--border)' },
+	'.cm-session-out':                                               { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 transparent', color: 'var(--muted)', fontStyle: 'italic' },
 	'.cm-cell-off':                                                  { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 var(--border)', opacity: '.6' },
 	'.cm-cell-head':                                                 { borderTop: '1px solid var(--border)', fontSize: '.85em' },
 	'.cm-cell-tail':                                                 { fontSize: '.85em' },

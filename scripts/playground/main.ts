@@ -48,7 +48,8 @@ import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.
 import { blank, button, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
-import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
+import { FileRole, FlowrInlineTextFile } from '../../src/project/context/flowr-file';
+import { isRSession, sessionAsScript } from './r-session';
 import { cellTitles, languageOf, NotebookRun, notebookAsScript, notebookCells, rewriteCells, writesR } from './notebook';
 import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
 import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
@@ -1360,7 +1361,7 @@ function elsewhere(node: { info: { file?: string } } | undefined): string | unde
 	return file === files[active].name ? undefined : file;
 }
 
-const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb)$/i;
+const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb|rout|rsession|rconsole)$/i;
 const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)(DESCRIPTION|LICEN[CS]E(\.md|\.txt)?)$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
 
 async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
@@ -1437,7 +1438,7 @@ function load(found: Promise<[string, Blob][]> | [string, Blob][]): void {
 		if(failed.length > 0) {
 			showTook(`could not open ${failed.join(', ')}`);
 		} else if(read.length === 0) {
-			showTook('nothing to open: flowR reads R scripts, R Markdown, Quarto, Jupyter notebooks, and zips of them');
+			showTook('nothing to open: flowR reads R scripts, R console sessions, R Markdown, Quarto, Jupyter notebooks, and zips of them');
 		}
 	}).catch((e: unknown) => showTook(`could not open that: ${String(e)}`));
 }
@@ -1769,12 +1770,16 @@ async function packagesOf(code?: string): Promise<readonly string[]> {
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
 	return uniqueArray(found).filter(p => !BaseRPackages.has(p));
 }
+/** the project as R sees it on disk, a console transcript as the script it records */
+const runnableFiles = () => projectFiles().map(([name, text]) => [name, isRSession(name, text) ? sessionAsScript(text) : text] as const);
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
-	const code = Analyzed.test(name) && !/\.r$/i.test(name)
-		? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
-		: textOf(active);
-	return { code, files: projectFiles(), fresh: runFresh };
+	const code = isRSession(name, textOf(active))
+		? sessionAsScript(textOf(active))
+		: Analyzed.test(name) && !/\.r$/i.test(name)
+			? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
+			: textOf(active);
+	return { code, files: runnableFiles(), fresh: runFresh };
 }
 const RunFreshKey = 'flowr-playground-run-fresh';
 /** whether the run button starts R over like `Rscript` or continues the session the cells share */
@@ -1805,7 +1810,7 @@ runMode.addEventListener('click', () => openMenu(runMode, [
 const runner = setupRunR(toRun, packagesOf, () => editor.state.facet(NotebookRun)[0]?.(editor, runFresh));
 /** cells share one R session, next to the project files as they are now */
 function runCell(code: string, title: string, into?: HTMLElement, fresh = false): Promise<number | undefined> {
-	return runner(() => Promise.resolve({ code, files: projectFiles(), fresh }), title, into);
+	return runner(() => Promise.resolve({ code, files: runnableFiles(), fresh }), title, into);
 }
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
@@ -2317,7 +2322,14 @@ async function analyzer(code?: string, open?: string) {
 		built.addRequest({ request: 'text', content: code });
 	} else {
 		/* `open` stands in for the open file, as it is about to be rather than as it is */
-		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, open !== undefined && name === files[active].name ? open : text)));
+		built.addFile(...projectFiles().map(([name, text]) => {
+			const content = open !== undefined && name === files[active].name ? open : text;
+			const file = new FlowrInlineTextFile(name, isRSession(name, content) ? sessionAsScript(content) : content);
+			if(isRSession(name, content)) {
+				file.assignRole(FileRole.Source);
+			}
+			return file;
+		}));
 		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
 	}
 	return built;

@@ -1,11 +1,13 @@
 /** a command (or several lines of code) with the output a notebook or transcript recorded for it */
 export interface RecordedRun {
 	/** 1-based line the code starts at in the file, if the format has lines */
-	readonly line?:  number
-	readonly code:   string
-	readonly output: string
+	readonly line?:   number
+	readonly code:    string
+	readonly output:  string
 	/** how many plots the run drew, if the format records images */
-	readonly plots?: number
+	readonly plots?:  number
+	/** the recorded plots as data URLs, if the format records images */
+	readonly images?: readonly string[]
 }
 
 /** a file that keeps the output of the code it holds, like an R console transcript or a Jupyter notebook */

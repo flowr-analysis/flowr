@@ -57,13 +57,19 @@ export function jupyterRecordedRuns(json: string): RecordedRun[] {
 		return [];
 	}
 	return !Array.isArray(cells) ? [] : (cells as INotebookContent['cells']).flatMap(cell => cell.cell_type === 'code'
-		? [{ code: joined(cell.source ?? ''), output: outputText((cell as ICodeCell).outputs ?? []).trim(), plots: plotCount((cell as ICodeCell).outputs ?? []) }] : []);
+		? [{ code: joined(cell.source ?? ''), output: outputText((cell as ICodeCell).outputs ?? []).trim(), plots: plotCount((cell as ICodeCell).outputs ?? []), images: imagesOf((cell as ICodeCell).outputs ?? []) }] : []);
 }
 
 const joined = (text: string | readonly string[]) => typeof text === 'string' ? text : text.join('');
 
 /** the images the outputs hold, which are the plots */
 const plotCount = (outputs: readonly IOutput[]): number => outputs.filter(o => Object.keys((o.data as object | undefined) ?? {}).some(type => type.startsWith('image/'))).length;
+
+/** the plots of a cell as data URLs, for the formats a browser shows */
+const imagesOf = (outputs: readonly IOutput[]): string[] => outputs.flatMap(o => ['image/png', 'image/jpeg', 'image/gif'].flatMap(type => {
+	const data = (o.data as Record<string, string | string[]> | undefined)?.[type];
+	return data === undefined ? [] : [`data:${type};base64,${joined(data).replace(/\s/g, '')}`];
+}));
 
 /** what a cell printed: streams and the plain text of results, and the error a run ended in */
 function outputText(outputs: readonly IOutput[]): string {

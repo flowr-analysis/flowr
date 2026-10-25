@@ -29,13 +29,14 @@ plot(y)
 			] }
 		] });
 		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded(), [
-			{ code: 'x <- 1', output: '', plots: 0 },
-			{ code: 'cat("a")\nx', output: 'a\n\n[1] 1', plots: 0 }
+			{ code: 'x <- 1', output: '', plots: 0, images: [] },
+			{ code: 'cat("a")\nx', output: 'a\n\n[1] 1', plots: 0, images: [] }
 		]);
 	});
 	test('counts the plots a cell drew and survives a notebook it cannot read', () => {
 		const notebook = JSON.stringify({ cells: [{ cell_type: 'code', source: 'plot(1)', outputs: [{ output_type: 'display_data', data: { 'image/png': 'AAAA', 'text/plain': '<Figure>' } }] }] });
 		assert.strictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded()[0].plots, 1);
+		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded()[0].images, ['data:image/png;base64,AAAA']);
 		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', '{ not json')).recorded(), []);
 	});
 });

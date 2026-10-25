@@ -180,8 +180,8 @@
     "@codemirror/legacy-modes": "^6.5.3",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-angular": "^20.5.0",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-angular": "^21.2.4",
     "@eagleoutice/eslint-config-flowr": "^2.1.10",
     "@jupyterlab/nbformat": "^4.5.4",
     "@lezer/highlight": "^1.2.5",
@@ -230,10 +230,9 @@
     "ws": "^8.18.0"
   },
   "allowScripts": {
-    "@davisvaughan/tree-sitter-r@1.2.0": true,
-    "core-js-pure@3.40.0": true,
-    "esbuild@0.28.1": true,
-    "unrs-resolver@1.12.2": true
+    "@davisvaughan/tree-sitter-r": true,
+    "esbuild": true,
+    "unrs-resolver": true
   },
   "optionalDependencies": {
     "@dagrejs/dagre": "^3.1.1",

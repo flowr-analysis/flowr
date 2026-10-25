@@ -1,3 +1,4 @@
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -280,7 +281,7 @@ export const UNDEFINED_SYMBOL = {
 		const symbolOf = (node: RNodeWithParent): [UndefinedSymbolKind, Identifier] | undefined => {
 			const vtx = graph.getVertex(node.info.id);
 			if(DfgVertex.isFunctionCall(vtx)) {
-				return vtx.origin !== 'unnamed' && config.checkFunctions ? ['function', vtx.name] : undefined;
+				return !DfgVertex.hasOrigin(vtx, BuiltInProcName.Unnamed) && config.checkFunctions ? ['function', vtx.name] : undefined;
 			}
 			const plainSymbol = RSymbol.is(node) && node.lexeme !== '...' && node.lexeme !== undefined;
 			return DfgVertex.isUse(vtx) && config.checkVariables && plainSymbol ? ['variable', node.content] : undefined;

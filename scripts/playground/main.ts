@@ -285,12 +285,14 @@ function paint(code: string, into: HTMLElement): void {
 		span.textContent = text;
 		into.append(span);
 	};
-	highlightCode(code, rLanguage.parser.parse(code), highlight, (text, classes) => {
+	const tree = rLanguage.parser.parse(code);
+	highlightCode(code, tree, highlight, (text, classes) => {
 		/* the mode hands out whole unstyled runs, and a call name inside one is marked like in the editor */
 		let cursor = 0;
 		for(const found of text.matchAll(/[A-Za-z.][\w._]*/g)) {
 			const start = found.index;
-			if(start === undefined || Keywords.has(found[0]) || !/^\s*\(/.test(code.slice(at + start + found[0].length))) {
+			if(start === undefined || Keywords.has(found[0]) || !/^\s*\(/.test(code.slice(at + start + found[0].length))
+				|| /string|comment/i.test(tree.resolveInner(at + start, 1).name)) {
 				continue;
 			}
 			if(start > cursor) {
@@ -326,7 +328,7 @@ const callMarks = ViewPlugin.fromClass(class {
 		for(const { from, to } of view.visibleRanges) {
 			const text = view.state.doc.sliceString(from, to);
 			for(const found of text.matchAll(/[A-Za-z.][\w._]*(?=\s*\()/g)) {
-				if(found.index !== undefined && !Keywords.has(found[0])) {
+				if(found.index !== undefined && !Keywords.has(found[0]) && !spelledOut(view.state, from + found.index)) {
 					marks.push(Decoration.mark({ class: 'cm-call' }).range(from + found.index, from + found.index + found[0].length));
 				}
 			}

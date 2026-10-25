@@ -14,6 +14,7 @@ import { linkCallToDefinitions } from '../../../linker';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { Dataflow } from '../../../../graph/df-helper';
+import { RoleInParent } from '../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -142,9 +143,10 @@ export const Deferred = {
 	/**
 	 * Links the expression rooted at `expr` to the bindings it may meet when it is evaluated. Given the reads
 	 * that may force it, control flow rules out what no force can reach; without them every binding stays a
-	 * candidate.
+	 * candidate. An argument (`inCallerFrame`) is evaluated in the frame of its call, so the parameters and local
+	 * bindings of the function forcing it are none it can meet, even though they come before the force.
 	 */
-	link<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, forces?: ForceSites): void {
+	link<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, forces?: ForceSites, inCallerFrame = false): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
 		/* one walk per direction answers every candidate, so the sets are built once and only when asked for */
@@ -187,7 +189,7 @@ export const Deferred = {
 					}
 				}
 			} else {
-				const seen = (index.definitions.get(name) ?? []).filter(seenByAForce);
+				const seen = (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && (!inCallerFrame || visibleFrom(expr, d, graph, idMap)));
 				for(const definition of seen) {
 					graph.addEdge(node, definition, EdgeType.Reads);
 				}
@@ -199,3 +201,12 @@ export const Deferred = {
 		}
 	}
 } as const;
+
+/** Whether the binding `definition` lives in a frame `expr` sees: not a parameter or a local binding of a function `expr` is not within. */
+function visibleFrom<Info>(expr: NodeId, definition: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): boolean {
+	const node = idMap.get(definition);
+	const parent = node?.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+	const local = node?.info.role === RoleInParent.ParameterName || DfgVertex.hasOrigin(graph.getVertex(parent?.info.id ?? ''), BuiltInProcName.Assignment);
+	const frame = local ? RNode.findEnclosing(definition, idMap, RFunctionDefinition.is) : undefined;
+	return frame === undefined || RNode.findEnclosing(expr, idMap, n => n.info.id === frame) !== undefined;
+}

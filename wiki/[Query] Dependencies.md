@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-25, 20:08:08 UTC (v2.16.6), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,7 +18,7 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (4 ms)\
+Query: **dependencies** (6 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
@@ -77,7 +77,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (7 ms)\
+Query: **dependencies** (8 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -206,7 +206,7 @@ Set `assumedPackages` to have those reported as well, as `library` entries marke
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (1 ms)\
+Query: **dependencies** (0 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**base** _always attached by R, used at 8_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_
@@ -323,7 +323,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (5 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\
@@ -746,8 +746,6 @@ ggtitle`"]
     %%   theme_dark:                 {**ggplot2::theme_dark** (id: built-in:theme_dark, type: BuiltInFunction, def. @built-in:theme_dark)}
     %%   theme_classic:              {**ggplot2::theme_classic** (id: built-in:theme_classic, type: BuiltInFunction, def. @built-in:theme_classic)}
     %%   theme_linedraw:             {**ggplot2::theme_linedraw** (id: built-in:theme_linedraw, type: BuiltInFunction, def. @built-in:theme_linedraw)}
-    %%   theme_update:               {**ggplot2::theme_update** (id: built-in:theme_update, type: BuiltInFunction, def. @built-in:theme_update)}
-    %%   theme_replace:              {**ggplot2::theme_replace** (id: built-in:theme_replace, type: BuiltInFunction, def. @built-in:theme_replace)}
     %%   theme_grey:                 {**ggplot2::theme_grey** (id: built-in:theme_grey, type: BuiltInFunction, def. @built-in:theme_grey)}
     %%   theme_bw:                   {**ggplot2::theme_bw** (id: built-in:theme_bw, type: BuiltInFunction, def. @built-in:theme_bw)}
     %%   theme_sub_axis:             {**ggplot2::theme_sub_axis** (id: built-in:theme_sub_axis, type: BuiltInFunction, def. @built-in:theme_sub_axis)}
@@ -924,6 +922,8 @@ ggtitle`"]
     %%   expand_limits:              {**ggplot2::expand_limits** (id: built-in:expand_limits, type: BuiltInFunction, def. @built-in:expand_limits)}
     %%   expand_scale:               {**ggplot2::expand_scale** (id: built-in:expand_scale, type: BuiltInFunction, def. @built-in:expand_scale)}
     %%   guides:                     {**ggplot2::guides** (id: built-in:guides, type: BuiltInFunction, def. @built-in:guides)}
+    %%   theme_update:               {**ggplot2::theme_update** (id: built-in:theme_update, type: BuiltInFunction, def. @built-in:theme_update)}
+    %%   theme_replace:              {**ggplot2::theme_replace** (id: built-in:theme_replace, type: BuiltInFunction, def. @built-in:theme_replace)}
     %%   last_plot:                  {**ggplot2::last_plot** (id: built-in:last_plot, type: BuiltInFunction, def. @built-in:last_plot)}
     %%   quo:                        {**ggplot2::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
     %%   quos:                       {**ggplot2::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
@@ -940,11 +940,11 @@ ggtitle`"]
     %%   syms:                       {**ggplot2::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:                   {**ggplot2::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:                   {**ggplot2::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   gg_dep:                     {**ggplot2::gg_dep** (id: built-in:gg_dep, type: BuiltInFunction, def. @built-in:gg_dep)}
     %%   is.ggplot:                  {**ggplot2::is.ggplot** (id: built-in:is.ggplot, type: BuiltInFunction, def. @built-in:is.ggplot)}
     %%   guide_train:                {**ggplot2::guide_train** (id: built-in:guide_train, type: BuiltInFunction, def. @built-in:guide_train)}
     %%   aes_auto:                   {**ggplot2::aes_auto** (id: built-in:aes_auto, type: BuiltInFunction, def. @built-in:aes_auto)}
     %%   aes_:                       {**ggplot2::aes_** (id: built-in:aes_, type: BuiltInFunction, def. @built-in:aes_)}
+    %%   gg_dep:                     {**ggplot2::gg_dep** (id: built-in:gg_dep, type: BuiltInFunction, def. @built-in:gg_dep)}
     %%   element_line:               {**ggplot2::element_line** (id: built-in:element_line, type: BuiltInFunction, def. @built-in:element_line)}
     %%   element_rect:               {**ggplot2::element_rect** (id: built-in:element_rect, type: BuiltInFunction, def. @built-in:element_rect)}
     %%    library-load:              {**ggplot2:: library-load** (id: 7, type: Function, def. @7)}
@@ -1107,6 +1107,6 @@ ggsave`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L38"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
+The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L40"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
 
 </details>

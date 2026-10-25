@@ -46,7 +46,7 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (17 ms)
+    Query: linter (15 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -63,9 +63,10 @@ It offers a wide variety of features, for example:
        ╰ Undefined Symbol (undefined-symbol): no findings
        ╰ Unused Import (unused-import): no findings
        ╰ Unclosed Connection (unclosed-connection): no findings
+       ╰ Overwritten File (overwritten-file): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈17 ms (1ms accuracy, total 17 ms)
+    All queries together required ≈15 ms (1ms accuracy, total 15 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -79,7 +80,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (22 ms)\
+    Query: **linter** (25 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -100,9 +101,10 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Overwritten File** (overwritten-file): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈22 ms (1ms accuracy, total 23 ms)_
+    _All queries together required ≈26 ms (1ms accuracy, total 26 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -143,6 +145,7 @@ It offers a wide variety of features, for example:
           },
           "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
           "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
+          "overwritten-file": {"results":[],".meta":{"totalFiles":0}},
           "unescaped-arguments": {"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},
           "namespace-access": {"results":[],".meta":{"unresolved":0}}
         },
@@ -205,7 +208,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈5 ms (1ms accuracy, total 5 ms)
+    All queries together required ≈8 ms (1ms accuracy, total 8 ms)
     ```
     
     </details>

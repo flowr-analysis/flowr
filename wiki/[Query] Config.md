@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-25, 18:02:51 UTC (v2.16.6), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -81,7 +81,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
       "project": {"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false,"assumeImplicitEcho":true},
       "linter": {"disabledRules":["software-has-license","software-has-tests"],"disabledTags":["cmd-check"]},
       "specializeConfig": {
-        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledTags":[]}},
+        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledRules":[],"disabledTags":[]}},
         "project": {"solver":{"resolveSource":{"assumeFilesExist":true}}},
         "shiny-app": {"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},
         "script": {"inherit":"unknown"},

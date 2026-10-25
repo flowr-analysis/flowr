@@ -1,4 +1,4 @@
-import { LintingResultCertainty, type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { LintingResultCertainty, type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -45,10 +45,9 @@ export const SOFTWARE_HAS_TESTS = {
 			}
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: SoftwareHasTestsResult) => result.message,
-		[LintingPrettyPrintContext.Full]:  (result: SoftwareHasTestsResult) => result.message
-	},
+	prettyPrint: prettyPrint(
+		(result: SoftwareHasTestsResult) => result.message
+	),
 	info: {
 		name:          'Software Has Tests',
 		description:   'Finds software projects without tests (test files in a test directory or test function calls in R code).',

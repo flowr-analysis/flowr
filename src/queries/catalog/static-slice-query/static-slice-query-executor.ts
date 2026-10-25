@@ -3,6 +3,7 @@ import { staticSlice } from '../../../slicing/static/static-slicer';
 import { reconstructSlice, resolveSliceCriteria, sliceResultKey, sliceResultKeys, timedSliceEntry } from '../slice-query-options';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { SliceDirection } from '../../../util/slice-direction';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { keptAfterRemoval, staticRemovalSlice } from '../../../slicing/static/removal-slice';
@@ -55,9 +56,7 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 			() => reconstructSlice(n, df.graph, slice.result, query)) };
 	}
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

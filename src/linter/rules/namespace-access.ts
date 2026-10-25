@@ -4,7 +4,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { Q } from '../../search/flowr-search-builder';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { SourceLocation, SourceRange } from '../../util/range';
-import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
+import { type LintingResult, type LintingRule, LintingResultCertainty, prettyPrint, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { FnProp, FnPropNames } from '../../project/sigdb/schema';
 
@@ -72,16 +72,16 @@ export const NAMESPACE_ACCESS = {
 		}
 		return { results, '.meta': { unresolved } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result =>
+	prettyPrint: prettyPrint(
+		result =>
 			`\`${result.pkg}${result.kind === 'unnecessary-internal' ? ':::' : '::'}${result.name}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]: result => {
+		result => {
 			const where = SourceLocation.format(result.loc);
 			return result.kind === 'unnecessary-internal'
 				? `\`${result.pkg}:::${result.name}\` at ${where} is unnecessary - \`${result.name}\` is exported by \`${result.pkg}\`, so \`${result.pkg}::${result.name}\` already works`
 				: `\`${result.pkg}::${result.name}\` at ${where} fails at runtime - \`${result.name}\` is not exported by \`${result.pkg}\` (use \`${result.pkg}:::${result.name}\` if this is intentional)`;
 		}
-	},
+	),
 	info: {
 		name:          'Namespace Access Validity',
 		certainty:     LintingRuleCertainty.BestEffort,

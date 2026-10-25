@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
@@ -13,7 +13,7 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (4 ms)\
+Query: **absint** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])
@@ -22,8 +22,7 @@ Query: **absint** (4 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"absint":{".meta":{},"result":{"domain":{"colnames":{"must":[],"may":"top"},"cols":[0,null],"rows":[0,null]}}},".meta":{}}
@@ -42,7 +41,7 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 ```mermaid
@@ -148,7 +147,7 @@ The query optionally also accepts slice criteria to narrow the results to specif
 
 _Results (prettified and summarized):_
 
-Query: **absint** (1 ms)\
+Query: **absint** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ 1@df: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ 1@data.frame: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])
 
@@ -156,8 +155,7 @@ Query: **absint** (1 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -182,7 +180,7 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 ```mermaid
@@ -282,6 +280,6 @@ filter`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-executor.ts#L10"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
+The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-executor.ts#L11"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
 
 </details>

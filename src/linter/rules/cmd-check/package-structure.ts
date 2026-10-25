@@ -1,3 +1,4 @@
+import { DataFile } from './cmd-check-util';
 import fs from 'fs';
 import path from 'path';
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
@@ -7,10 +8,9 @@ import { LintingRuleTag } from '../../linter-tags';
 import { FlowrInlineTextFile } from '../../../project/context/flowr-file';
 import { RDAParser, type RObject, type RObjectData } from '../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { escapeRegex } from '../../../util/text/strings';
-import { packageInfo } from './cmd-check-util';
 import { getPlatform } from '../../../util/os';
-import { type FileResult, fileFindings, MessageAtLocation } from './file-checks';
-import { type PackageEntry, type PackageFiles, packageFiles } from './package-files';
+import { type FileResult, fileFindings, MessageAtLocation, onPackageFiles } from './file-checks';
+import type { PackageEntry, PackageFiles } from './package-files';
 
 export type PackageStructureKind =
 	| 'non-portable-file-name' | 'duplicate-lowercase-name' | 'not-fully-portable-name' | 'long-path' | 'unstorable-path'
@@ -66,7 +66,6 @@ const PortableNameChars = /[^-A-Za-z0-9._!#$%&+,;=@^(){}'[\]]/;
 const InvalidNameChars = /["*:<>?\\|]/;
 const ReservedNames = /^(con|prn|aux|clock[$]|nul|lpt[1-9]|com[1-9])$/;
 const CodeExtensions = new Set(['R', 'r', 'S', 's', 'q']);
-const DataExtensions = /\.(R|r|RData|rdata|rda|tab|txt|TXT|csv|CSV)(\.(gz|bz2|xz))?$/;
 const SweavePattern = /\.[RrSs](nw|tex)$/;
 const VignettePattern = /\.([RrSs](nw|tex)|Rmd|rmd|qmd|Rmarkdown|rmarkdown)$/;
 const ValidVignetteName = /^[A-Za-z][A-Za-z0-9._-]+$/;
@@ -226,7 +225,7 @@ interface EntryRule {
 /** the directories that must not be empty: the kind, the directory, whether it holds something, and the message */
 const NonEmptyDirs: readonly (readonly [PackageStructureKind, string, (env: Env) => boolean, string])[] = [
 	['empty-r-directory', 'R', env => codeFiles(env).length > 0 || env.kinds.has('R/sysdata.rda'), "Found directory 'R' with no source files."],
-	['empty-data-directory', 'data', env => env.children('data').some(e => !e.isDirectory && DataExtensions.test(e.relative)), "Subdirectory 'data' contains no data sets."],
+	['empty-data-directory', 'data', env => env.children('data').some(e => !e.isDirectory && DataFile.test(e.relative)), "Subdirectory 'data' contains no data sets."],
 	['empty-demo-directory', 'demo', env => env.demos.length > 0, "Subdirectory 'demo' contains no demos."],
 	['empty-exec-directory', 'exec', env => env.children('exec').some(e => !base(e.relative).startsWith('.')), "Subdirectory 'exec' contains no files."],
 	['empty-inst-directory', 'inst', env => env.files.some(f => f.relative.startsWith('inst/')), "Subdirectory 'inst' contains no files."],
@@ -328,13 +327,7 @@ function buildFindings(env: Env): [PackageStructureKind, string][] {
 /** Port of the file and directory structure checks of `R CMD check` (portable names, hidden and top-level files, subdirectories, permissions, sizes, vignettes). */
 export const PACKAGE_STRUCTURE = {
 	createSearch:        () => Q.from([]),
-	processSearchResult: (_elements, config, data) => {
-		const ctx = data.inspectContext();
-		const pkg = packageInfo(ctx);
-		const pf = packageFiles(ctx, pkg.name);
-		if(pf === undefined) {
-			return { results: [], '.meta': { inspectedEntries: 0, onDisk: false } };
-		}
+	processSearchResult: onPackageFiles({ inspectedEntries: 0, onDisk: false }, (pf, pkg, config) => {
 		const found = fileFindings<PackageStructureKind>(pf);
 		const entries = pf.entries;
 		const byParent = new Map<string, PackageEntry[]>();
@@ -376,7 +369,7 @@ export const PACKAGE_STRUCTURE = {
 		}
 		buildFindings(env).forEach(([kind, message]) => found.add(kind, 'build/vignette.rds', message));
 		return { results: found.results, '.meta': { inspectedEntries: entries.length, onDisk: pf.onDisk } };
-	},
+	}),
 	prettyPrint: MessageAtLocation,
 	info:        {
 		name:          'Package Structure',

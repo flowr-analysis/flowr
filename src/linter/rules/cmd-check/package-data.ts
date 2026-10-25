@@ -1,3 +1,4 @@
+import { DataFile } from './cmd-check-util';
 import fs from 'fs';
 import path from 'path';
 import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
@@ -8,9 +9,8 @@ import { RRange } from '../../../util/r-version';
 import { FlowrInlineTextFile } from '../../../project/context/flowr-file';
 import { CompressionType, RDAParser } from '../../../project/plugins/file-plugins/files/flowr-rda-file';
 import type { FlowrDescriptionFile } from '../../../project/plugins/file-plugins/files/flowr-description-file';
-import { packageInfo } from './cmd-check-util';
-import { type PackageEntry, packageFiles } from './package-files';
-import { type FileResult, fileFindings, firstLine, linesOf, MessageAtLocation } from './file-checks';
+import type { PackageEntry } from './package-files';
+import { type FileResult, fileFindings, firstLine, linesOf, MessageAtLocation, onPackageFiles } from './file-checks';
 
 export type PackageDataKind =
 	| 'data-directory' | 'lazydata' | 'compact-data' | 'compact-sysdata' | 'compression-depends' | 'serialization-version' | 'undocumented-data';
@@ -32,7 +32,6 @@ export interface PackageDataMetadata extends MergeableRecord {
 	readonly onDisk:             boolean
 }
 
-const DataFile = /\.(R|r|RData|rdata|rda|TXT|CSV|(tab|txt|csv)(\.(gz|bz2|xz))?)$/;
 const RdaFile = /\.(rda|RData)$/;
 const DatalistLine = /^[^ :]+($|: +[A-Za-z.])/;
 const LazyDataCompressions: readonly string[] = ['gzip', 'bzip2', 'xz', 'none'];
@@ -98,13 +97,8 @@ function dependsOnR(desc: FlowrDescriptionFile | undefined, minimum: string): bo
 /** Port of the data checks of `R CMD check`: `data/`, `LazyData`, save compression and serialization version, undocumented data sets. */
 export const PACKAGE_DATA = {
 	createSearch:        () => Q.from([]),
-	processSearchResult: (_elements, config, data) => {
+	processSearchResult: onPackageFiles({ inspectedDataFiles: 0, onDisk: false }, (pf, pkg, config, data) => {
 		const ctx = data.inspectContext();
-		const pkg = packageInfo(ctx);
-		const pf = packageFiles(ctx, pkg.name);
-		if(pf === undefined) {
-			return { results: [], '.meta': { inspectedDataFiles: 0, onDisk: false } };
-		}
 		const { results, add } = fileFindings<PackageDataKind>(pf);
 		const desc = pkg.description;
 		const entries = pf.entries;
@@ -197,7 +191,7 @@ export const PACKAGE_DATA = {
 			}
 		}
 		return { results, '.meta': { inspectedDataFiles: dataSets.length + entries.filter(e => e.relative === SysData).length, onDisk: pf.onDisk } };
-	},
+	}),
 	prettyPrint: MessageAtLocation,
 	info:        {
 		name:          'Package Data',

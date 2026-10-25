@@ -11,3 +11,12 @@ a {
 }
 a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { a { transition: none; } }
+p.lead { color: var(--muted); margin: 0 0 1.2rem; }
+.search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.search input, .search select {
+	font: inherit; padding: .7rem .9rem; border-radius: .6rem;
+	border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+.search input { box-shadow: var(--shadow); }
+.search select { padding-inline: .6rem; }
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }

@@ -10,11 +10,11 @@
 <style>
 <!--THEME-LIGHT
 	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
-	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; --mark: #e0a300; --markline: #b07d00; color-scheme: light;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; --mark: #e0a300; --markline: #b07d00; --plot-filter: none; color-scheme: light;
 -->
 <!--THEME-DARK
 	--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
-	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
+	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; --plot-filter: invert(.9) hue-rotate(180deg); color-scheme: dark;
 -->
 <!--THEME-CSS:own-->
 * { box-sizing: border-box; }
@@ -191,7 +191,7 @@ code, pre { font-family: var(--mono); }
 #repl .out a { color: var(--accent); }
 :is(#repl, #runr .out) .bad { color: #d55e00; }
 :is(#repl, #runr .out) .note { color: var(--muted); }
-:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; filter: var(--plot-filter, none); }
 #runr:not(.shiny) .via .shinylive, #runr.shiny .via .webr, #runr.shiny #runrtrust { display: none; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
 #repl .ask > span { color: var(--accent); font-family: var(--mono); }

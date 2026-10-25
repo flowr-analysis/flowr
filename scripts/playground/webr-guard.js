@@ -11,7 +11,7 @@ const Expected = JSON.parse('<!--WEBR-MANIFEST-->');
 const Packages = 'https://repo.r-wasm.org/';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', event => event.waitUntil(Promise.all([self.clients.claim(), forgetOutdated()])));
 
 self.addEventListener('fetch', event => {
 	const url = event.request.url;
@@ -64,10 +64,50 @@ async function counted(request) {
 	return new Response(await read(request.url, response, total), { status: response.status, statusText: response.statusText, headers: response.headers });
 }
 
+/* what matched its pinned digest is kept by that digest, so a reload or another example does not download and hash it again */
+const Store = 'flowr-webr-verified';
+
+async function remembered(key) {
+	try {
+		return await (await caches.open(Store)).match(key);
+	} catch{
+		return undefined;
+	}
+}
+
+async function remember(key, response) {
+	try {
+		await (await caches.open(Store)).put(key, response);
+	} catch{
+		/* a full or unavailable storage only costs the next download */
+	}
+}
+
+/* files of an earlier pinned release are of no use any more */
+async function forgetOutdated() {
+	try {
+		const current = new Set(Object.values(Expected).map(f => encodeURIComponent(f.sha256)));
+		const cache = await caches.open(Store);
+		for(const request of await cache.keys()) {
+			if(!current.has(new URL(request.url).searchParams.get('sha256') ?? '')) {
+				await cache.delete(request);
+			}
+		}
+	} catch{
+		/* what stays only takes up room */
+	}
+}
+
 async function verified(file) {
 	const want = Expected[file];
 	if(want === undefined) {
 		return refuse(file, 'is not part of the pinned release');
+	}
+	const key = `${Base}${file}?sha256=${encodeURIComponent(want.sha256)}`;
+	const kept = await remembered(key);
+	if(kept !== undefined) {
+		tell({ webrVerified: file });
+		return kept;
 	}
 	const response = await fetch(Base + file);
 	const body = response.ok ? await (await read(Base + file, response, want.size)).arrayBuffer() : new ArrayBuffer(0);
@@ -75,5 +115,7 @@ async function verified(file) {
 		return refuse(file, 'does not match the pinned release');
 	}
 	tell({ webrVerified: file });
-	return new Response(body, { headers: { 'Content-Type': response.headers.get('Content-Type') ?? 'application/octet-stream' } });
+	const headers = { 'Content-Type': response.headers.get('Content-Type') ?? 'application/octet-stream' };
+	await remember(key, new Response(body, { headers }));
+	return new Response(body, { headers });
 }

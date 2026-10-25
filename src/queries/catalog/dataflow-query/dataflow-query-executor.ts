@@ -1,6 +1,7 @@
 import type { DataflowQuery, DataflowQueryResult } from './dataflow-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 
 /**
  * Executes the given dataflow queries.
@@ -12,9 +13,7 @@ export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries
 	const startTime = Date.now();
 	const { graph } = await analyzer.dataflow();
 	return {
-		'.meta': {
-			timing: Date.now() - startTime
-		},
+		...metaSince(startTime),
 		graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph
 	};
 }

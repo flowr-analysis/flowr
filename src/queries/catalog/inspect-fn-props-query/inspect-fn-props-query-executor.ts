@@ -1,6 +1,7 @@
 import type { InspectFnPropsQuery, InspectFnPropsQueryResult } from './inspect-fn-props-query-format';
 import type { ArgProps, PropMask, StatedProps  } from '../../../dataflow/environments/built-in-props';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import { QueryFunctionFilter } from '../../query-function-filter';
@@ -58,9 +59,7 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 	const inferred = FunctionSemantics.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? FunctionSemantics.call.argument.mask(props) : AllProps),
 		props: keepProps(inferred.props, props ? FunctionSemantics.call.props.mask(props) : undefined)
 	};

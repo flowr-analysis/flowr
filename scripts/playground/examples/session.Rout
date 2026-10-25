@@ -1,0 +1,14 @@
+> library(stats)
+> x <- c(2, 4, 6, 8)
+> y <- x * 2 + 1
+> fit <- lm(y ~ x)
+> coef(fit)
+(Intercept)           x 
+          1           2 
+> total <- sum(x)
+> report <- function(v) {
++   m <- mean(v)
++   cat("mean:", m, "\n")
++ }
+> report(y)
+mean: 10 

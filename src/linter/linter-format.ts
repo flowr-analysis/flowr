@@ -287,3 +287,13 @@ export enum LintingPrettyPrintContext {
 	Query = 'query',
 	Full  = 'full'
 }
+
+/**
+ * Builds the pretty printers of a rule, the `full` printer defaults to the `query` one.
+ */
+export function prettyPrint<R>(query: (r: R) => string, full: (r: R) => string = query): { readonly [C in LintingPrettyPrintContext]: (r: R, metadata: unknown) => string } {
+	return {
+		[LintingPrettyPrintContext.Query]: query,
+		[LintingPrettyPrintContext.Full]:  full
+	};
+}

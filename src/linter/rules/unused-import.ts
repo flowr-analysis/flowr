@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
+import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -200,10 +200,10 @@ export const UNUSED_IMPORT = {
 		metadata.totalUnused = results.length;
 		return { results, '.meta': metadata };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Import of ${result.package} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Import of ${result.package} at ${SourceLocation.format(result.loc)} is unused (checked v${result.version}).`
-	},
+	prettyPrint: prettyPrint(
+		result => `Import of ${result.package} at ${SourceLocation.format(result.loc)}`,
+		result => `Import of ${result.package} at ${SourceLocation.format(result.loc)} is unused (checked v${result.version}).`
+	),
 	info: {
 		name:          'Unused Import',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.QuickFix],

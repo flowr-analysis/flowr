@@ -8,6 +8,7 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { compactRecord } from '../../../util/objects';
 import { type DependencyInfoLinkAttachedInfo, DependencyInfoLinkConstraint, type FunctionInfo } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
@@ -112,9 +113,7 @@ export async function executeDependenciesQuery({
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - now
-		},
+		...metaSince(now),
 		...results,
 	} as DependenciesQueryResult;
 }

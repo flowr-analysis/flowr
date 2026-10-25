@@ -1,7 +1,6 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { handleString } from '../core';
-import { ReplClipboard } from './repl-clipboard';
+import { clipboardCommand, codeCommand } from './repl-code-command';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -110,74 +109,50 @@ function printReferenceSections(output: ReplOutput, sections: readonly Reference
 }
 
 function mermaidCommand(description: string, usageExample: string, aliases: string[], url: boolean, simplified: boolean): ReplCodeCommand {
-	return {
-		description,
-		isCodeCommand: true,
-		usageExample,
-		aliases,
-		script:        false,
-		argsParser:    (args: string) => handleString(args),
-		fn:            async({ output, analyzer }) => {
-			const result = await analyzer.dataflow();
-			const qualifyBaseR = isSigDbEnabled(analyzer.flowrConfig);
-			const mermaid = url ? Dataflow.visualize.mermaid.url(result.graph, false, undefined, simplified, qualifyBaseR)
-				: Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: simplified || undefined, qualifyBaseR }).string;
-			await ReplClipboard.print(output, mermaid, ReplClipboard.note(output, url ? 'mermaid url' : 'mermaid code', 'dataflow', result['.meta'].timing));
-		}
-	};
+	return clipboardCommand(description, usageExample, aliases, async analyzer => {
+		const result = await analyzer.dataflow();
+		const qualifyBaseR = isSigDbEnabled(analyzer.flowrConfig);
+		const text = url ? Dataflow.visualize.mermaid.url(result.graph, false, undefined, simplified, qualifyBaseR)
+			: Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: simplified || undefined, qualifyBaseR }).string;
+		return { text, type: url ? 'mermaid url' : 'mermaid code', step: 'dataflow', timing: result['.meta'].timing };
+	});
 }
 
 export const dataflowCommand = mermaidCommand('Get mermaid code for the dataflow graph', ':dataflow', ['d', 'df'], false, false);
 
 export const dataflowStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflow*', ['d*', 'df*'], true, false);
 
-export const dataflowAsciiCommand: ReplCodeCommand = {
-	description:   'Returns an ASCII representation of the dataflow graph',
-	isCodeCommand: true,
-	usageExample:  ':dataflowascii',
-	aliases:       ['df!'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.dataflow();
-		output.stdout(dfgToAscii(result.graph));
-	}
-};
+export const dataflowAsciiCommand = codeCommand('Returns an ASCII representation of the dataflow graph', ':dataflowascii', ['df!'], async({ output, analyzer }) => {
+	const result = await analyzer.dataflow();
+	output.stdout(dfgToAscii(result.graph));
+});
 
-export const dataflowSilentCommand: ReplCodeCommand = {
-	description:   'Just calculates the DFG, but only prints summary info',
-	isCodeCommand: true,
-	usageExample:  ':dataflowsilent',
-	aliases:       ['d#', 'df#'],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		const result = await analyzer.dataflow();
-		const numOfEdges = Array.from(result.graph.edges().flatMap(e => e[1].entries())).length;
-		const numOfVertices = Array.from(result.graph.vertices(true)).length;
-		output.stdout(
-			output.formatter.format(`Dataflow calculated in ${result['.meta'].timing}ms.`,
-				{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic })
-		);
-		printCounts(output, [
-			{ label: 'Edges', value: numOfEdges },
-			{ label: 'Vertices', value: numOfVertices },
-			...Object.entries(VertexType).map(([name, vertType]) => ({
-				label:  name,
-				value:  Array.from(result.graph.verticesOfType(vertType)).length,
-				indent: true
-			}))
-		]);
+export const dataflowSilentCommand = codeCommand('Just calculates the DFG, but only prints summary info', ':dataflowsilent', ['d#', 'df#'], async({ output, analyzer }) => {
+	const result = await analyzer.dataflow();
+	const numOfEdges = Array.from(result.graph.edges().flatMap(e => e[1].entries())).length;
+	const numOfVertices = Array.from(result.graph.vertices(true)).length;
+	output.stdout(
+		output.formatter.format(`Dataflow calculated in ${result['.meta'].timing}ms.`,
+			{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic })
+	);
+	printCounts(output, [
+		{ label: 'Edges', value: numOfEdges },
+		{ label: 'Vertices', value: numOfVertices },
+		...Object.entries(VertexType).map(([name, vertType]) => ({
+			label:  name,
+			value:  Array.from(result.graph.verticesOfType(vertType)).length,
+			indent: true
+		}))
+	]);
 
-		const { idMap } = await analyzer.normalize();
-		printReferenceSections(output, [
-			{ title: 'In', lines: result.in.map(r => referenceRow(r, idMap)) },
-			{ title: 'Out', lines: result.out.map(r => referenceRow(r, idMap)) },
-			{ title: 'Unknown References', lines: result.unknownReferences.map(r => referenceRow(r, idMap)) },
-			{ title: 'Kill', lines: (result.kill ?? []).map(k => killRow(k, idMap)) }
-		]);
-	}
-};
+	const { idMap } = await analyzer.normalize();
+	printReferenceSections(output, [
+		{ title: 'In', lines: result.in.map(r => referenceRow(r, idMap)) },
+		{ title: 'Out', lines: result.out.map(r => referenceRow(r, idMap)) },
+		{ title: 'Unknown References', lines: result.unknownReferences.map(r => referenceRow(r, idMap)) },
+		{ title: 'Kill', lines: (result.kill ?? []).map(k => killRow(k, idMap)) }
+	]);
+});
 
 
 export const dataflowSimplifiedCommand = mermaidCommand('Get mermaid code for the simplified dataflow graph', ':dataflowsimple', ['ds', 'dfs'], false, true);

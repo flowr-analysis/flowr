@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-25, 09:29:25 UTC (v2.16.6), do not edit directly._
 <h2 id="compiled-code">Compiled Code&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 20, 65–78](https://img.shields.io/badge/cmd--check-20%2C%2065%E2%80%9378-blueviolet) </a>
@@ -26,50 +26,50 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 This rule is a <code>best-effort</code> rule.
  
 Finds problems in `src/` and the build files: non-portable Makevars flags, BLAS/LAPACK and OpenMP flag use, GNU make extensions, pragmas, line endings, Fortran KIND, the C++ standard, calls to non-API or non-portable entry points, and `useDynLib` against `src/`.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L354">src/linter/rules/cmd-check/compiled-code.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L353">src/linter/rules/cmd-check/compiled-code.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `compiled-code` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L27"><code><span title="flags (with the dash) that are fine even though they match nonPortableFlags">allowedFlags</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L26"><code><span title="flags (with the dash) that are fine even though they match nonPortableFlags">allowedFlags</span></code></a>\
 flags (with the dash) that are fine even though they match
 <code>nonPortableFlags</code>\
 _R CMD check [#65](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-65 "checking compilation flags in Makevars"), [#78](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-78 "checking compilation flags used")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L39"><code><span title="also look for calls of the non-API entry points of R (default true)">checkNonApi</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L38"><code><span title="also look for calls of the non-API entry points of R (default true)">checkNonApi</span></code></a>\
 also look for calls of the non-API entry points of R (default `true`)\
 _R CMD check [#76](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-76 "checking compiled code")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L43"><code><span title="also look for the missing registration of native routines (default true)">checkRegistration</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L42"><code><span title="also look for the missing registration of native routines (default true)">checkRegistration</span></code></a>\
 also look for the missing registration of native routines (default `true`)\
 _R CMD check [#76](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-76 "checking compiled code")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L41"><code><span title="further non-API entry points to flag besides the ones R lists">extraNonApiEntryPoints</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L40"><code><span title="further non-API entry points to flag besides the ones R lists">extraNonApiEntryPoints</span></code></a>\
 further non-API entry points to flag besides the ones `R` lists\
 _R CMD check [#76](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-76 "checking compiled code")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L47"><code><span title="also flag Fortran type declarations like real*8, which are no standard Fortran (default true)">flagStarKinds</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L46"><code><span title="also flag Fortran type declarations like real*8, which are no standard Fortran (default true)">flagStarKinds</span></code></a>\
 also flag Fortran type declarations like `real*8`, which are no standard Fortran (default `true`)\
 _R CMD check [#74](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-74 "checking usage of KIND in Fortran files")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L45"><code><span title="the header (a file name, or a directory prefix ending in /) to the package that has to be in LinkingTo for it">headerPackages</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L44"><code><span title="the header (a file name, or a directory prefix ending in /) to the package that has to be in LinkingTo for it">headerPackages</span></code></a>\
 the header (a file name, or a directory prefix ending in `/`) to the package that has to be in `LinkingTo` for it\
 _R CMD check [#77](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-77 "checking whether package can be installed")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L29"><code><span title="the C++ standards R still honors; others requested through CXX_STD are unknown">knownCxxStandards</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L28"><code><span title="the C++ standards R still honors; others requested through CXX_STD are unknown">knownCxxStandards</span></code></a>\
 the C++ standards `R` still honors; others requested through `CXX_STD` are unknown\
 _R CMD check [#75](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-75 "checking C++ specification")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L25"><code><span title="regular expressions (anchored by flowR, without the leading dash) for the compiler flags R CMD check calls non-portable">nonPortableFlags</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L24"><code><span title="regular expressions (anchored by flowR, without the leading dash) for the compiler flags R CMD check calls non-portable">nonPortableFlags</span></code></a>\
 regular expressions (anchored by flowR, without the leading dash) for the compiler flags `R CMD check` calls non-portable\
 _R CMD check [#65](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-65 "checking compilation flags in Makevars"), [#78](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-78 "checking compilation flags used")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L31"><code><span title="the C++ standards R ignores as obsolete">obsoleteCxxStandards</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L30"><code><span title="the C++ standards R ignores as obsolete">obsoleteCxxStandards</span></code></a>\
 the C++ standards `R` ignores as obsolete\
 _R CMD check [#75](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-75 "checking C++ specification")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L23"><code><span title="checks (by their R CMD check title) to skip">skip</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L22"><code><span title="checks (by their R CMD check title) to skip">skip</span></code></a>\
 checks (by their `R CMD check` title) to skip
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L33"><code><span title="the functions compiled code must not call because they might terminate R, write to stdout, use system RNGs or [v]sprintf">unportableCalls</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L32"><code><span title="the functions compiled code must not call because they might terminate R, write to stdout, use system RNGs or [v]sprintf">unportableCalls</span></code></a>\
 the functions compiled code must not call because they might terminate R, write to stdout, use system RNGs or `[v]sprintf`\
 _R CMD check [#76](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-76 "checking compiled code")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L37"><code><span title="the Fortran statements compiled code must not use (I/O, stop, system RNGs)">unportableFortran</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L36"><code><span title="the Fortran statements compiled code must not use (I/O, stop, system RNGs)">unportableFortran</span></code></a>\
 the Fortran statements compiled code must not use (I/O, `stop`, system RNGs)\
 _R CMD check [#76](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-76 "checking compiled code")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L35"><code><span title="the objects (and C++ streams) compiled code must not use for the same reason">unportableObjects</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/compiled-code.ts#L34"><code><span title="the objects (and C++ streams) compiled code must not use for the same reason">unportableObjects</span></code></a>\
 the objects (and C++ streams) compiled code must not use for the same reason\
 _R CMD check [#76](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-76 "checking compiled code")_
 
@@ -113,49 +113,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (5 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Compiled Code** (compiled-code):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Non-portable flags in variable 'PKG_CXXFLAGS': -O3 -Wall -fPIC at /pkg/src/Makevars:1.1\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ PKG_CXXFLAGS set in 'src/Makevars' without any corresponding files at /pkg/src/Makevars:1.1
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "compiled-code": {
-        "results": [
-          {
-            "certainty": "certain",
-            "loc": [1,1,1,1,"/pkg/src/Makevars"],
-            "kind": "compilation flags in Makevars",
-            "file": "src/Makevars",
-            "message": "Non-portable flags in variable 'PKG_CXXFLAGS': -O3 -Wall -fPIC"
-          },
-          {
-            "certainty": "certain",
-            "loc": [1,1,1,1,"/pkg/src/Makevars"],
-            "kind": "use of PKG_*FLAGS in Makefiles",
-            "file": "src/Makevars",
-            "message": "PKG_CXXFLAGS set in 'src/Makevars' without any corresponding files"
-          }
-        ],
-        ".meta": {"consideredFiles":4}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 More examples are the test cases in [test/functionality/linter/cmd-check/lint-compiled-code.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/cmd-check/lint-compiled-code.test.ts).

@@ -1,6 +1,7 @@
 import { log } from '../../../util/log';
 import type { ProjectDependencyStats, ProjectQuery, ProjectQueryResult } from './project-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { FileRole } from '../../../project/context/flowr-file';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import type { DeclaredPackages } from '../../../project/context/flowr-analyzer-meta-context';
@@ -75,9 +76,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	const declared = ctx.meta.getDeclaredPackages();
 	const hasDeclarations = Object.values(declared).some(g => g !== undefined);
 	return {
-		'.meta': {
-			timing: Date.now() - startTime
-		},
+		...metaSince(startTime),
 		name:         ctx.meta.getProjectName() ?? ctx.meta.getProjectTitle(),
 		files:        Array.from(ctx.files.consideredFilesList()),
 		authors:      ctx.meta.getAuthors(),

@@ -1,5 +1,5 @@
 import {
-	LintingPrettyPrintContext,
+	prettyPrint,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
@@ -63,10 +63,10 @@ export const DEAD_CODE = {
 			).map(result => isStatement(result, idMap) ? { ...result, quickFix: [{ type: 'remove', loc: result.loc, description: 'Remove the unreachable code' }] } : result)
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Code at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Code at ${SourceLocation.format(result.loc)} can never be executed`,
-	},
+	prettyPrint: prettyPrint(
+		result => `Code at ${SourceLocation.format(result.loc)}`,
+		result => `Code at ${SourceLocation.format(result.loc)} can never be executed`
+	),
 	info: {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility, LintingRuleTag.QuickFix],

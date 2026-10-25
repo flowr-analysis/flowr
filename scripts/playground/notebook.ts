@@ -1,4 +1,4 @@
-/** R Markdown and Quarto as prose around R chunks, Jupyter as R scripts in the percent format (`# %%`), every line kept where flowR sees it */
+/** R Markdown and Quarto as prose around R chunks, Jupyter as R scripts in the percent format (`# %%`), R console transcripts as commands among their output, every line kept where flowR sees it */
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { Facet, Prec, StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { StreamLanguage, type StreamParser, type StringStream } from '@codemirror/language';
@@ -7,6 +7,8 @@ import { yaml } from '@codemirror/legacy-modes/mode/yaml';
 import type { INotebookContent } from '@jupyterlab/nbformat';
 import { cellOptionLines, globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { button, el } from '../page-lib/dom';
+import { codeOfInput, isRSession, parseRSession, PromptWidth } from './r-session';
+import { jupyterRecordedRuns } from '../../src/project/plugins/file-plugins/files/flowr-jupyter-file';
 
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
 
@@ -129,12 +131,40 @@ const percentScript: StreamParser<ScriptState> = {
 	languageData: { commentTokens: { line: '#' } }
 };
 
+interface SessionState {
+	input: boolean
+	inner: unknown
+}
+
+const sessionTranscript: StreamParser<SessionState> = {
+	name:       'r',
+	startState: () => ({ input: false, inner: startOf(rParser) }),
+	copyState:  state => ({ ...state, inner: copyOf(rParser, state.inner) }),
+	token(stream, state) {
+		if(stream.sol()) {
+			const prompt = /^>(?: |$)/.test(stream.string) || state.input && /^\+(?: |$)/.test(stream.string);
+			state.input = prompt;
+			if(prompt) {
+				stream.pos = Math.min(PromptWidth, stream.string.length);
+				return 'meta';
+			}
+		}
+		if(state.input) {
+			return rParser.token(stream, state.inner);
+		}
+		stream.skipToEnd();
+		return 'comment';
+	},
+	languageData: { commentTokens: { line: '#' } }
+};
+
 const markdownLanguage = StreamLanguage.define(markdownDocument);
+const sessionLanguage = StreamLanguage.define(sessionTranscript);
 const scriptLanguage = StreamLanguage.define(percentScript);
 
 /** how a file of this name reads in the editor */
 export function languageOf(name: string): Extension {
-	return isMarkdownDocument(name) ? markdownLanguage : scriptLanguage;
+	return isMarkdownDocument(name) ? markdownLanguage : isRSession(name, '') ? sessionLanguage : scriptLanguage;
 }
 
 /** a run of lines, 1-based and inclusive */
@@ -148,6 +178,10 @@ interface Cell {
 	readonly label:    string
 	/** how many of the first lines are options (`#| label: fit`), not code */
 	readonly options?: number
+	/** the lines start with a console prompt */
+	readonly prompt?:  boolean
+	/** recorded output of a console session */
+	readonly output?:  boolean
 }
 
 /** knitr names a chunk by the first, unnamed option of its header, as in `{r setup, include = FALSE}` */
@@ -186,12 +220,28 @@ function scriptCells(rows: readonly string[]): Cell[] {
 	}));
 }
 
+/** a console transcript as one code cell per command with its continuations, and the output between them */
+function sessionCells(text: string): Cell[] {
+	return parseRSession(text).map(({ kind, lines, firstLine }) => ({
+		kind:   kind === 'input' ? 'code' : 'meta',
+		from:   firstLine,
+		to:     firstLine + lines.length - 1,
+		runs:   true,
+		label:  '',
+		prompt: kind === 'input',
+		output: kind === 'output'
+	}));
+}
+
+/** whether the file is a console transcript */
+const SessionFile = Facet.define<boolean, boolean>({ combine: values => values.some(Boolean) });
+
 const lineDeco = (classes: string, note?: string) => Decoration.line({ class: classes, attributes: note === undefined ? undefined : { 'data-note': note } });
 
 function cellsOf(state: EditorState, markdown: boolean): Cell[] {
 	const text = state.doc.toString();
 	const rows = text.split(LineBreak);
-	return markdown ? documentCells(text, rows) : scriptCells(rows);
+	return state.facet(SessionFile) ? sessionCells(text) : markdown ? documentCells(text, rows) : scriptCells(rows);
 }
 
 /** runs a cell in the shared R session, its output going `into` the given element */
@@ -297,6 +347,9 @@ export const NotebookRun = Facet.define<(view: EditorView, fresh: boolean) => Pr
 const codeIndex = (cell: Cell, cells: readonly Cell[]) => cells.filter(c => c.kind === 'code').indexOf(cell);
 const titleOf = (cell: Cell, cells: readonly Cell[]) => `cell ${codeIndex(cell, cells) + 1}${cell.label ? ` · ${cell.label}` : ''}`;
 
+/** what the output of a code cell is called: its run, with the file so the outputs of several notebooks stay apart */
+const runTitle = (file: string, cell: Cell, cells: readonly Cell[]) => `${file} \u00b7 run ${codeIndex(cell, cells) + 1}${cell.label ? ` \u00b7 ${cell.label}` : ''}`;
+
 const cellAt = (cells: readonly Cell[], line: number) => cells.find(c => line >= c.from && line <= c.to);
 
 /** the name of the code cell holding a line */
@@ -326,7 +379,8 @@ export function rewriteCells(state: EditorState, name: string, codeOf: (from: nu
 			const body = cell.from + (cell.options ?? 0);
 			const code = body > cell.to ? '' : codeOf(body, cell.to);
 			if(code.trim() !== '') {
-				out.push(...text, ...rows.slice((cell.head ?? cell.from) - 1, body - 1), ...code.split('\n'), ...cell.tail === undefined ? [] : [rows[cell.tail - 1]]);
+				const lines = code.split('\n');
+				out.push(...text, ...rows.slice((cell.head ?? cell.from) - 1, body - 1), ...cell.prompt ? lines.map((line, at) => `${at === 0 ? '>' : '+'} ${line}`) : lines, ...cell.tail === undefined ? [] : [rows[cell.tail - 1]]);
 			}
 			text = [];
 			line = (cell.tail ?? cell.to) + 1;
@@ -346,10 +400,75 @@ export function rewriteCells(state: EditorState, name: string, codeOf: (from: nu
 export function writesR(state: EditorState, name: string, line: number): boolean {
 	const markdown = isMarkdownDocument(name);
 	const kind = cellAt(cellsOf(state, markdown), line)?.kind;
-	return markdown ? kind === 'code' : kind !== 'text';
+	return markdown || state.facet(SessionFile) ? kind === 'code' : kind !== 'text';
 }
 
-const codeOf = (state: EditorState, cell: Cell) => cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
+const codeOf = (state: EditorState, cell: Cell) => {
+	const code = cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
+	return cell.prompt ? code.split(LineBreak).map(codeOfInput).join('\n') : code;
+};
+
+const outputLines = (text: string): string[] => text.split(LineBreak).map(l => l.trimEnd());
+const sameOutput = (a: string, b: string) => outputLines(a).join('\n').trim() === outputLines(b).join('\n').trim();
+
+/** the output a notebook recorded for each of its code cells, by the name of the script it is shown as */
+const recordedNotebooks = new Map<string, readonly Recorded[]>();
+
+/** what a run printed and how many plots it drew, where the format records plots */
+interface Recorded {
+	readonly output:  string
+	readonly plots?:  number
+	readonly images?: readonly string[]
+}
+
+/** the script of a Jupyter notebook, remembering what its cells printed to set a run against */
+export function loadNotebook(script: string, json: string): string {
+	const outputs = jupyterRecordedRuns(json);
+	/* a notebook saved without its outputs has nothing to set a run against */
+	if(outputs.some(o => o.output !== '' || o.plots)) {
+		recordedNotebooks.set(script, outputs);
+	} else {
+		recordedNotebooks.delete(script);
+	}
+	return notebookAsScript(json);
+}
+
+/** the output recorded for a code cell: below a command of a transcript, or stored with a notebook */
+function recordedOutput(state: EditorState, file: string, cells: readonly Cell[], cell: Cell): Recorded | undefined {
+	const notebook = recordedNotebooks.get(file);
+	if(notebook !== undefined) {
+		return notebook[codeIndex(cell, cells)] ?? { output: '' };
+	}
+	if(!cell.prompt) {
+		return undefined;
+	}
+	const next = cells[cells.indexOf(cell) + 1];
+	return { output: next?.output ? codeOf(state, next) : '' };
+}
+
+/** a run matching the transcript only says so, as the output is already on the page, and is set against it when it does not */
+function compareWithRecorded(body: HTMLElement, recorded: Recorded): void {
+	const isPlot = (c: Element) => c.nodeName === 'CANVAS' || c.querySelector('canvas') !== null;
+	const printed = [...body.children].filter(c => !isPlot(c));
+	const got = printed.map(c => c.textContent ?? '').join('\n');
+	const plots = body.querySelectorAll('canvas').length;
+	const matches = sameOutput(got, recorded.output) && (recorded.plots === undefined || recorded.plots === plots);
+	printed.forEach(c => c.remove());
+	if(matches) {
+		if(recorded.output.trim() !== '' || plots > 0) {
+			body.prepend(el('div', 'cm-output-verified', `\u2713 matches the recorded output${recorded.plots ? ` and ${recorded.plots} plot${recorded.plots === 1 ? '' : 's'}` : ''}`));
+		}
+		return;
+	}
+	const side = (label: string, text: string, count: number | undefined, images: readonly string[] = []) => {
+		const box = el('div', 'cm-output-side');
+		const shown = [text.trim() === '' ? '(nothing)' : text.trimEnd(), ...count === undefined ? [] : [`${count} plot${count === 1 ? '' : 's'}`]];
+		box.append(el('div', 'cm-output-label', label), el('div', undefined, shown.join('\n')), ...images.map(src => Object.assign(el('img', 'cm-output-recorded'), { src, alt: 'recorded plot' })));
+		return box;
+	};
+	body.classList.add('differs');
+	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded.output, recorded.plots, recorded.images), side('now', got, recorded.plots === undefined ? undefined : plots));
+}
 
 class CellOutput extends WidgetType {
 	constructor(readonly box: HTMLElement) {
@@ -368,7 +487,7 @@ class CellOutput extends WidgetType {
 
 const outputsChanged = StateEffect.define<null>();
 
-function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellRuns, readonly shown: Extension, readonly took: ReadonlyMap<number, number> } {
+function cellRunning(file: string, markdown: boolean, run: CellRunner): { readonly runs: CellRuns, readonly shown: Extension, readonly took: ReadonlyMap<number, number> } {
 	const took = new Map<number, number>();
 	const outputs = new Map<number, HTMLElement>();
 	const outputOf = (view: EditorView, index: number): HTMLElement => {
@@ -383,8 +502,13 @@ function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellR
 	};
 	const runs: CellRuns = (view, picked, cells, fresh = false) => {
 		return picked.filter(c => c.kind === 'code' && c.runs).reduce((before, cell, at) => before.then(async() => {
-			const ran = await run(codeOf(view.state, cell), titleOf(cell, cells), outputOf(view, codeIndex(cell, cells)), fresh && at === 0);
+			const body = outputOf(view, codeIndex(cell, cells));
+			const ran = await run(codeOf(view.state, cell), runTitle(file, cell, cells), body, fresh && at === 0);
 			if(ran !== undefined) {
+				const recorded = recordedOutput(view.state, file, cells, cell);
+				if(recorded !== undefined) {
+					compareWithRecorded(body, recorded);
+				}
 				took.set(codeIndex(cell, cells), ran);
 				view.dispatch({ effects: outputsChanged.of(null) });
 			}
@@ -453,7 +577,7 @@ class RunButton extends WidgetType {
 		}
 		const current = () => {
 			const cells = cellsOf(view.state, this.markdown);
-			return { cells, at: Math.max(0, cells.findIndex(c => c.head === this.cell.head)) };
+			return { cells, at: Math.max(0, cells.findIndex(c => (c.head ?? c.from) === (this.cell.head ?? this.cell.from))) };
 		};
 		const run = button('cm-cell-run', '', 'run in the same R session as runs and the repl (shift+enter runs this cell)', () => {
 			const { cells, at } = current();
@@ -497,7 +621,7 @@ function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: 
 	};
 	const inCell = new Set<number>();
 	for(const cell of cells) {
-		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}`;
+		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}${cell.output ? ' cm-session-out' : ''}`;
 		const note = cell.kind === 'meta' ? cell.label : cell.kind === 'text' && markdown ? 'markdown' : undefined;
 		if(cell.head !== undefined) {
 			at(cell.head, lineDeco(`${kind} cm-cell-head`, note));
@@ -512,6 +636,9 @@ function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: 
 			} else if(editable && cell.kind === 'text' && cell.head <= doc.lines) {
 				found.push(Decoration.widget({ widget: new EditTools(cell.head, markdown), side: 1 }).range(doc.line(cell.head).to));
 			}
+		}
+		if(cell.prompt && cell.from <= doc.lines) {
+			found.push(Decoration.widget({ widget: new RunButton(cell, '', markdown, editable, runs, menu, took.get(codeIndex(cell, cells))), side: 1 }).range(doc.line(cell.from).to));
 		}
 		for(let line = cell.from; line <= cell.to; line++) {
 			at(line, lineDeco(`${kind}${line === cell.to && cell.tail === undefined ? ' cm-cell-end' : ''}`));
@@ -541,9 +668,10 @@ export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Ex
 	const markdown = isMarkdownDocument(name);
 	/* cells are added and removed in a notebook, a script keeps its `# %%` marks as the author wrote them */
 	const editable = markdown || /\.ipynb\.r$/i.test(name);
-	const { runs, shown, took } = cellRunning(markdown, run);
+	const { runs, shown, took } = cellRunning(name, markdown, run);
 	return [
 		shown,
+		SessionFile.of(isRSession(name, '')),
 		editable ? inserters(markdown) : [],
 		NotebookRun.of((view, fresh) => {
 			const cells = cellsOf(view.state, markdown);
@@ -594,11 +722,12 @@ const cellLook = EditorView.theme({
 	'.cm-cell-text.cm-cell-head':                                    { fontFamily: 'inherit', opacity: '.55', lineHeight: '1.4' },
 	'.cm-cell-text.cm-cell-end':                                     { paddingBottom: '.35rem' },
 	'.cm-cell-meta':                                                 { backgroundColor: 'color-mix(in srgb, var(--sunk) 85%, transparent)', boxShadow: 'inset 3px 0 0 var(--border)' },
+	'.cm-session-out':                                               { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 transparent', color: 'var(--muted)', fontStyle: 'italic' },
 	'.cm-cell-off':                                                  { backgroundColor: 'transparent', boxShadow: 'inset 3px 0 0 var(--border)', opacity: '.6' },
 	'.cm-cell-head':                                                 { borderTop: '1px solid var(--border)', fontSize: '.85em' },
 	'.cm-cell-tail':                                                 { fontSize: '.85em' },
 	'.cm-cell-end':                                                  { borderBottom: '1px solid var(--border)' },
-	'.cm-cell-tools':                                                { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.35rem' },
+	'.cm-cell-tools':                                                { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.1rem' },
 	/* the edit tools only show under the pointer, or while one of them has the focus */
 	'.cm-cell-edit':                                                 { display: 'inline-flex', gap: '.25rem', visibility: 'hidden' },
 	'.cm-cell-head:hover .cm-cell-edit, .cm-cell-edit:focus-within': { visibility: 'visible' },
@@ -639,7 +768,7 @@ const cellLook = EditorView.theme({
 		alignItems:    'center',
 		gap:           '.35rem',
 		cursor:        'pointer',
-		lineHeight:    '1.5',
+		lineHeight:    '1.3',
 		fontFamily:    'system-ui, sans-serif',
 		fontSize:      '.7rem',
 		fontWeight:    '650',
@@ -662,13 +791,22 @@ const cellLook = EditorView.theme({
 		borderLeft:     '3px solid color-mix(in srgb, var(--accent) 45%, transparent)', borderBottom:   '.4rem solid transparent',
 		backgroundClip: 'padding-box', background:     'var(--panel)', fontSize:       '.82rem', maxHeight:      '32rem', overflow:       'auto'
 	},
-	'.cm-cell-output-body > div':   { whiteSpace: 'pre-wrap' },
-	'.cm-cell-output-body > .note': { color: 'var(--muted)' },
-	'.cm-cell-output-body > .meta': { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
-	'.cm-cell-output-body > .bad':  { color: '#d55e00' },
+	/* a cell that printed nothing has no box */
+	'.cm-cell-output:has(.cm-cell-output-body:empty)': { display: 'none' },
+	'.cm-cell-output:has(.differs)':                   { borderLeftColor: '#d55e00' },
+	'.cm-cell-output:has(.cm-output-verified)':        { padding: '.15rem 1.8rem .15rem .8rem', borderBottomWidth: '.25rem' },
+	'.cm-output-verified':                             { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.75rem' },
+	'.cm-output-recorded':                             { display: 'block', maxWidth: '100%', margin: '.3rem 0', borderRadius: '.3rem', filter: 'var(--plot-filter, none)' },
+	'.cm-output-differs':                              { color: '#d55e00', fontFamily: 'system-ui, sans-serif', fontWeight: '700', marginBottom: '.3rem' },
+	'.cm-output-label':                                { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.04em' },
+	'.cm-output-side + .cm-output-side':               { marginTop: '.3rem', paddingTop: '.3rem', borderTop: '1px dashed var(--border)' },
+	'.cm-cell-output-body > div':                      { whiteSpace: 'pre-wrap' },
+	'.cm-cell-output-body > .note':                    { color: 'var(--muted)' },
+	'.cm-cell-output-body > .meta':                    { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
+	'.cm-cell-output-body > .bad':                     { color: '#d55e00' },
 	/* no wider than the output, or the code scrolls sideways */
-	'.cm-cell-output-body canvas':  { display: 'block', margin: '.3rem 0' },
-	'.cm-cell-output-x':            {
+	'.cm-cell-output-body canvas':                     { display: 'block', margin: '.3rem 0', borderRadius: '.3rem', filter: 'var(--plot-filter, none)' },
+	'.cm-cell-output-x':                               {
 		position: 'absolute', top: '.2rem', right: '.3rem', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', font: 'inherit', fontSize: '.75rem'
 	},
 	'.cm-cell-output-x:hover':                     { color: 'var(--accent)' },

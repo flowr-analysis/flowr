@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { DiceQuery, DiceQueryResult } from './dice-query-format';
 import { staticDice } from '../../../slicing/static/static-slicer';
 import { reconstructSlice, resolveSliceCriteria, sliceResultKeys, timedSliceEntry } from '../slice-query-options';
@@ -34,9 +35,7 @@ export async function executeDiceQuery({ analyzer }: BasicQueryData, queries: re
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

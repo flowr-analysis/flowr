@@ -1,6 +1,7 @@
 import { log } from '../../../util/log';
 import type { NormalizedAstQuery, NormalizedAstQueryResult } from './normalized-ast-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 
 /**
  * Executes the normalized-AST query.
@@ -12,9 +13,7 @@ export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, qu
 	const startTime = Date.now();
 	const normalized = await analyzer.normalize();
 	return {
-		'.meta': {
-			timing: Date.now() - startTime
-		},
+		...metaSince(startTime),
 		normalized
 	};
 }

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
@@ -24,7 +24,7 @@ print(x)` (with the `print(x)` in the second line), the following query returns 
 
 _Results (prettified and summarized):_
 
-Query: **origin** (5 ms)\
+Query: **origin** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}
 
@@ -32,8 +32,7 @@ Query: **origin** (5 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"origin":{".meta":{},"results":{"2@x":[{"type":0,"id":0}]}},".meta":{}}
@@ -52,7 +51,7 @@ print(x)
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 ```mermaid
@@ -101,6 +100,6 @@ print`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Origin Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts#L17"><code><span title="Execute origin queries, catching duplicates with the same fingerprint">executeOriginQuery</span></code></a>.
+The Origin Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts#L11"><code><span title="Execute origin queries, catching duplicates with the same fingerprint">executeOriginQuery</span></code></a>.
 
 </details>

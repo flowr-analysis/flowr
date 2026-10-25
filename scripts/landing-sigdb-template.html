@@ -20,13 +20,10 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; }
 <!--FOOTER-CSS-->
 
-p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .when { font-size: .9em; }
-.search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .search input {
-	flex: 1 1 auto; min-width: 0; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	padding: .7rem 2.4rem .7rem .9rem; border-radius: .6rem; border: 1px solid var(--border);
-	background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
+	flex: 1 1 auto; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	padding-right: 2.4rem;
 }
 .qwrap { position: relative; flex: 1 1 18rem; display: flex; background: var(--panel); border-radius: .6rem; }
 .qwrap input { position: relative; z-index: 1; background: transparent; }
@@ -40,8 +37,6 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .hl .regex { color: color-mix(in srgb, #8a5cc2 70%, var(--fg)); }
 .hl .bad { color: #c0392b; text-decoration: underline wavy; }
 .search input::-webkit-search-cancel-button { appearance: none; }
-.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.search select { font: inherit; padding: .7rem .6rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
 #problem { margin: .6rem 0 0; font-size: .85rem; color: color-mix(in srgb, #c0392b 72%, var(--fg)); }
 #problem[hidden] { display: none; }
 #status { min-height: 1.6em; margin: .7rem 0 0; color: var(--muted); font-size: .9rem; }

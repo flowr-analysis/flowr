@@ -46,7 +46,7 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (49 ms)
+    Query: linter (17 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -65,7 +65,7 @@ It offers a wide variety of features, for example:
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈49 ms (1ms accuracy, total 53 ms)
+    All queries together required ≈17 ms (1ms accuracy, total 17 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -79,7 +79,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (897 ms)\
+    Query: **linter** (22 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -102,14 +102,13 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈897 ms (1ms accuracy, total 900 ms)_
+    _All queries together required ≈22 ms (1ms accuracy, total 23 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
     The analysis ran (including parsing and normalization and the query) within the generation environment.
     
-    In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-    Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+    The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
     
     ```json
     {
@@ -206,7 +205,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈25 ms (1ms accuracy, total 28 ms)
+    All queries together required ≈5 ms (1ms accuracy, total 5 ms)
     ```
     
     </details>
@@ -549,7 +548,7 @@ It offers a wide variety of features, for example:
         linkStyle 107 stroke:gray;
     ```
     
-    (The analysis ran (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
     
     </details>
     

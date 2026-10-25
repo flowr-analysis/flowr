@@ -1,6 +1,7 @@
 import type { Range } from 'semver';
 import { compareByCodeUnit } from '../../../util/text/strings';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import {
 	DefaultCandidateCap,
 	type GuessDepVersionsQuery,
@@ -216,7 +217,7 @@ export async function executeGuessDepVersionsQuery(
 	const sources = deps.signatureSources();
 	if(sources.length === 0) {
 		return {
-			'.meta':      { timing: Date.now() - start },
+			...metaSince(start),
 			dependencies: [],
 			message:      'No signature database is loaded; version guessing needs the signature database (see the Signature Database wiki).'
 		};
@@ -362,7 +363,7 @@ export async function executeGuessDepVersionsQuery(
 		: undefined;
 
 	return compactRecord({
-		'.meta':          { timing: Date.now() - start },
+		...metaSince(start),
 		dependencies,
 		dateCutoff:       cutoff ? isoDay(cutoff) : undefined,
 		rVersion,

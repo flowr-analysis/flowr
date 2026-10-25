@@ -1157,7 +1157,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['assign', PkgName.Base])], processor: BuiltInProcName.Assignment, config: { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir', props: CallProp.Scope | CallProp.Invisible, sig: [['x', ArgProp.Value], ['value', ArgProp.Value], ['pos', ArgProp.Flag], ['envir', ArgProp.Written], ['inherits', ArgProp.Flag]] }, assumePrimitive: true },
 	{ type:      'function', names:     [Identifier.from(['setValidity', PkgName.Methods])],
 		processor: BuiltInProcName.ClassRelation,
-		config:    {
+		config:    { tags:       [SemanticCallTag.Declares],
 			assignment: { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir' },
 			/* `setValidity(Class, method)` attributes the validator to the class it names, not to a binding */
 			classDecl:  { system: ClassSystem.S4, nameArg: { idx: 0, name: 'Class' }, relation: 'validity' },
@@ -1165,14 +1165,14 @@ export const WrittenBuiltinDefinitions = [
 		}, assumePrimitive: true },
 	{ type:      'function', names:     [Identifier.from(['setIs', PkgName.Methods])],
 		processor: BuiltInProcName.ClassRelation,
-		config:    {
+		config:    { tags:      [SemanticCallTag.Declares],
 			/* `setIs(class1, class2)` states the same is-a relation `contains` does, after the fact */
 			classDecl: { system: ClassSystem.S4, nameArg: { idx: 0, name: 'class1' }, containsArg: { idx: 1, name: 'class2' }, relation: 'is' },
 			props:     CallProp.Scope | CallProp.Invisible, sig:       [['class1', ArgProp.NoDefault], ['class2', ArgProp.NoDefault], ['test', 0], ['coerce', 0], ['replace', 0], ['by', 0], ['where', 0], ['classDef', 0], ['extensionObject', 0], ['doComplete', 0]]
 		}, assumePrimitive: true },
 	{ type:      'function', names:     [Identifier.from(['setMethod', PkgName.Methods])],
 		processor: BuiltInProcName.ClassRelation,
-		config:    {
+		config:    { tags:           [SemanticCallTag.Declares],
 			assignmentLike: { targetVariable: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 			/* a method answers an existing generic for existing classes, both named by string rather than bound */
 			genericArg:     { idx: 0, name: 'f' },
@@ -1180,7 +1180,7 @@ export const WrittenBuiltinDefinitions = [
 		}, assumePrimitive: true },
 	{ type:      'function', names:     [Identifier.from(['setReplaceMethod', PkgName.Methods])],
 		processor: BuiltInProcName.ClassRelation,
-		config:    {
+		config:    { tags:           [SemanticCallTag.Declares],
 			assignmentLike: { targetVariable: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 			genericArg:     { idx: 0, name: 'f' }, genericSuffix:  '<-',
 			classArgs:      [{ idx: 1, name: 'signature' }], sig:            [['f', ArgProp.NoDefault], ['signature', 0], ['definition', ArgProp.NoDefault], ['where', 0], ['valueClass', 0], ['sealed', 0]]
@@ -1255,7 +1255,7 @@ export const WrittenBuiltinDefinitions = [
 				{ name: 'active', visibility: MemberVisibility.Active }
 			]
 		} }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['setRefClass', PkgName.Methods])], processor: BuiltInProcName.ClassGenerator, config: { classDecl: { system: ClassSystem.RefClass, nameArg: { idx: 0, name: 'Class' }, containsArg: { idx: 2, name: 'contains' }, memberArgs: [{ idx: 1, name: 'fields', typed: true }, { idx: 3, name: 'methods', methods: true }] }, sig: [['Class', ArgProp.NoDefault], ['fields', 0], ['contains', 0], ['methods', 0], ['where', 0], ['inheritPackage', 0], ['...', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['setRefClass', PkgName.Methods])], processor: BuiltInProcName.ClassGenerator, config: { tags: [SemanticCallTag.Declares], classDecl: { system: ClassSystem.RefClass, nameArg: { idx: 0, name: 'Class' }, containsArg: { idx: 2, name: 'contains' }, memberArgs: [{ idx: 1, name: 'fields', typed: true }, { idx: 3, name: 'methods', methods: true }] }, sig: [['Class', ArgProp.NoDefault], ['fields', 0], ['contains', 0], ['methods', 0], ['where', 0], ['inheritPackage', 0], ['...', 0]] }, assumePrimitive: false },
 	/* env-returning builtins pointing into the current search-path stack (`e <- globalenv(); e$x`) */
 	{ type:  'function', names: Object.entries(StackEnvBuiltins)
 		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
@@ -1266,6 +1266,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['sys.frame', 'sys.frames']), processor: BuiltInProcName.Default, config: { frame: ArgProp.Value }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['load', PkgName.Base])], processor: BuiltInProcName.Load, config: { props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
 	/* attach injects an environment's contents into the search path; detach reverses it (treated as unknown side effect) */
+	{ type: 'function', names: [Identifier.from(['globalVariables', PkgName.Utils])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Invisible, tags: [SemanticCallTag.Declares], sig: [['names', ArgProp.NoDefault], ['package', 0], ['add', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['attach', PkgName.Base])], processor: BuiltInProcName.Attach, config: { props: CallProp.Invisible, sig: [['what', ArgProp.NoDefault], ['pos', 0], ['name', 0], ['warn.conflicts', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: ['for'],    processor: BuiltInProcName.ForLoop,    config: { sig: [['var', ArgProp.NoDefault | ArgProp.Nse], ['seq', ArgProp.NoDefault | ArgProp.Forced], ['expr', ArgProp.NoDefault]] }, assumePrimitive: true },
 	{ type: 'function', names: ['repeat'], processor: BuiltInProcName.RepeatLoop, config: { sig: [['expr', ArgProp.NoDefault | ArgProp.Forced]] }, assumePrimitive: true },
@@ -1274,7 +1275,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['UseMethod', PkgName.Base])], processor: BuiltInProcName.S3Dispatch, config: { args: { generic: 'generic', object: 'object' }, props: CallProp.Generic, sig: [['generic', ArgProp.NoDefault], ['object', ArgProp.NoDefault]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['NextMethod', PkgName.Base])], processor: BuiltInProcName.S3Dispatch, config: { args: { generic: 'generic', object: 'object' }, inferFromClosure: true, props: CallProp.Generic, sig: [['generic', 0], ['object', 0], ['...', 0]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['new_generic', PkgName.S7])], processor: BuiltInProcName.S7NewGeneric, config: { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['setGeneric', PkgName.Methods])], processor: BuiltInProcName.S7NewGeneric, config: { args: { name: 'name', dispatchArg: undefined, fun: 'fun' }, binds: true, sig: [['name', ArgProp.NoDefault], ['def', 0], ['group', 0], ['valueClass', 0], ['where', 0], ['package', 0], ['signature', 0], ['useAsDefault', 0], ['genericFunction', 0], ['simpleInheritanceOnly', 0]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['setGeneric', PkgName.Methods])], processor: BuiltInProcName.S7NewGeneric, config: { tags: [SemanticCallTag.Declares], args: { name: 'name', dispatchArg: undefined, fun: 'fun' }, binds: true, sig: [['name', ArgProp.NoDefault], ['def', 0], ['group', 0], ['valueClass', 0], ['where', 0], ['package', 0], ['signature', 0], ['useAsDefault', 0], ['genericFunction', 0], ['simpleInheritanceOnly', 0]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['S7_dispatch', PkgName.S7])], processor: BuiltInProcName.S7Dispatch, config: { libFn: true }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['make_constructor', PkgName.GgPlot2]), Identifier.from(['new_class', PkgName.S7])], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'], classDecl: { system: ClassSystem.S7, nameArg: { idx: 0, name: 'name' }, containsArg: { idx: 1, name: 'parent' }, memberArgs: [{ name: 'properties', typed: true }], virtualArg: { name: 'abstract' } } }, assumePrimitive: true },
 	/* S4 keeps its classes and generics in string-keyed registries, so a call naming one depends on whatever registered it */
@@ -1282,11 +1283,11 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.Methods, ['getClass', 'getClassDef', 'getSlots', 'slotNames', 'isVirtualClass', 'removeClass', 'resetClass', 'getValidity']), processor: BuiltInProcName.S4Use, config: { classArgs: [{ idx: 0, name: 'Class' }] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['as', PkgName.Methods])], processor: BuiltInProcName.S4Use, config: { classArgs: [{ idx: 1, name: 'Class' }], sig: [['object', ArgProp.NoDefault], ['Class', ArgProp.NoDefault], ['strict', 0], ['ext', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['is', PkgName.Methods])], processor: BuiltInProcName.S4Use, config: { classArgs: [{ idx: 1, name: 'class2' }], sig: [['object', ArgProp.NoDefault], ['class2', ArgProp.NoDefault]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['setAs', PkgName.Methods])], processor: BuiltInProcName.S4Use, config: { classArgs: [{ idx: 0, name: 'from' }], registersArg: { idx: 1, name: 'to' }, sig: [['from', ArgProp.NoDefault], ['to', ArgProp.NoDefault], ['def', ArgProp.NoDefault], ['replace', 0], ['where', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['setAs', PkgName.Methods])], processor: BuiltInProcName.S4Use, config: { tags: [SemanticCallTag.Declares], classArgs: [{ idx: 0, name: 'from' }], registersArg: { idx: 1, name: 'to' }, sig: [['from', ArgProp.NoDefault], ['to', ArgProp.NoDefault], ['def', ArgProp.NoDefault], ['replace', 0], ['where', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Methods, ['existsMethod', 'hasMethod', 'getMethod', 'selectMethod', 'removeMethod']), processor: BuiltInProcName.S4Use, config: { genericArg: { idx: 0, name: 'f' }, classArgs: [{ idx: 1, name: 'signature' }], sig: [['f', ArgProp.NoDefault], ['signature', 0], ['...', 0]] }, assumePrimitive: false },
 	{ type:      'function', names:     [Identifier.from(['setClass', PkgName.Methods])],
 		processor: BuiltInProcName.S7MakeConstructor,
-		config:    { mode:      ['s4'], classDecl: {
+		config:    { tags:      [SemanticCallTag.Declares], mode:      ['s4'], classDecl: {
 			system:       ClassSystem.S4,
 			nameArg:      { idx: 0, name: 'Class' },
 			containsArg:  { name: 'contains' },
@@ -1296,7 +1297,7 @@ export const WrittenBuiltinDefinitions = [
 		}, sig: [['Class', ArgProp.NoDefault], ['representation', 0], ['prototype', 0], ['contains', 0], ['validity', 0], ['access', 0], ['where', 0], ['version', 0], ['sealed', 0], ['package', 0], ['S3methods', 0], ['slots', ArgProp.NoDefault]] }, assumePrimitive: true },
 	{ type:      'function', names:     [Identifier.from(['setClassUnion', PkgName.Methods])],
 		processor: BuiltInProcName.S7MakeConstructor,
-		config:    { mode:      ['s4'], classDecl: {
+		config:    { tags:      [SemanticCallTag.Declares], mode:      ['s4'], classDecl: {
 			system:   ClassSystem.S4,
 			nameArg:  { idx: 0, name: 'name' },
 			/* a union is a virtual class its members become subclasses of */
@@ -1532,6 +1533,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.TidyR, ['unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric'])  },
 	/* superseded or experimental in their lifecycle, which is no deprecation */
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: {}, names: [...Identifier.fromAll(PkgName.Dplyr, ['top_n', 'sample_n', 'recode', 'group_nest', 'do', 'all_vars', 'vars']), ...Identifier.fromAll(PkgName.Purrr, ['transpose', 'as_vector', 'map_dfr', 'flatten']), ...Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names']), ...Identifier.fromAll(PkgName.TidyR, ['nest_legacy'])] },
+	{ overrides: true, type: 'function', names: [Identifier.from(['princomp', PkgName.Stats]), Identifier.from(['pointLabel', PkgName.Maptools]), Identifier.from(['rmvnorm', 'mvtnorm']), Identifier.from(['randomForest', 'randomForest']), Identifier.from(['rvonmises', 'circular']), ...Identifier.fromAll('permute', ['permute', 'shuffle', 'shuffleSet']), ...Identifier.fromAll(PkgName.Dplyr, ['sample_n', 'sample_frac'])], processor: BuiltInProcName.DefaultReadAllArgs, config: { ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random] }, assumePrimitive: false },
+	{ overrides: true, type: 'function', names: Identifier.fromAll(PkgName.Purrr, ['rbernoulli', 'rdunif']), processor: BuiltInProcName.DefaultReadAllArgs, config: { ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random, SemanticCallTag.Deprecated] }, assumePrimitive: false },
 	/* deprecated, but only when when a certain condition is met (e.g. specific argument value)
 	   https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles
 	   the quantiles moved to the stat, and the geom only kept arguments styling them, so neither is a rename of

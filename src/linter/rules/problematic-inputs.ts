@@ -1,4 +1,4 @@
-import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty, LintingResultCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty, LintingResultCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -204,22 +204,22 @@ export const PROBLEMATIC_INPUTS = {
 		}
 		return { results };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => {
+	prettyPrint: prettyPrint(
+		result => {
 			if(result.pipeCommand !== undefined) {
 				return `Pipe command injection via '${result.pipeCommand}' in call to ${result.name} at ${SourceLocation.format(result.loc)}`;
 			}
 			const src = formatInputSources(result.sources ?? [], true).join(', ');
 			return 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + (src ? ' with inputs ' + src : '');
 		},
-		[LintingPrettyPrintContext.Full]: result => {
+		result => {
 			const lines = formatInputSources(result.sources ?? [], false);
 			const tail  = lines.length ? '\nInputs:\n' + lines.join('\n') : '';
 			return result.pipeCommand !== undefined
 				? `Pipe command injection: '${result.pipeCommand}' passed as filename to ${result.name} at ${SourceLocation.format(result.loc)}${tail}`
 				: 'Use of configured dynamic call at ' + SourceLocation.format(result.loc) + ' is potentially problematic' + tail;
 		}
-	},
+	),
 	info: {
 		name:          'Problematic Inputs',
 		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',

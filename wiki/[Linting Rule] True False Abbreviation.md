@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-23, 16:00:51 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-25, 09:29:25 UTC (v2.16.6), do not edit directly._
 <h2 id="true-false-abbreviation">TRUE/FALSE Abbreviation&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 37](https://img.shields.io/badge/cmd--check-37-blueviolet) </a> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -41,39 +41,5 @@ Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **TRUE/FALSE Abbreviation** (true-false-abbreviation):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Use of `T` at 1.34 (1 quick fix(es) available)
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "true-false-abbreviation": {
-        "results": [
-          {
-            "certainty": "certain",
-            "involvedId": 7,
-            "loc": [1,34,1,34],
-            "name": "T",
-            "kind": "use",
-            "message": "T is used as an abbreviation of TRUE",
-            "quickFix": [{"type":"replace","description":"Replace `T` with `TRUE`","replacement":"TRUE","loc":[1,34,1,34]}]
-          }
-        ],
-        ".meta": {"locallyDefined":0}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 More examples are the test cases in [test/functionality/linter/cmd-check/lint-true-false-abbreviation.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/cmd-check/lint-true-false-abbreviation.test.ts).

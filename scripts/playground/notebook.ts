@@ -404,6 +404,33 @@ const codeOf = (state: EditorState, cell: Cell) => {
 	return cell.prompt ? code.split(LineBreak).map(codeOfInput).join('\n') : code;
 };
 
+const outputLines = (text: string): string[] => text.split(LineBreak).map(l => l.trimEnd());
+const sameOutput = (a: string, b: string) => outputLines(a).join('\n').trim() === outputLines(b).join('\n').trim();
+
+/** the output the transcript recorded below a command */
+function recordedOutput(state: EditorState, cells: readonly Cell[], cell: Cell): string {
+	const next = cells[cells.indexOf(cell) + 1];
+	return next?.output ? codeOf(state, next) : '';
+}
+
+/** what the run printed is already on the page when it matches the transcript, and is set against it when it does not */
+function compareWithRecorded(body: HTMLElement, recorded: string): void {
+	const printed = [...body.children];
+	const got = printed.map(c => c.textContent ?? '').join('\n');
+	if(body.querySelector('canvas') === null && sameOutput(got, recorded)) {
+		body.replaceChildren();
+		return;
+	}
+	const side = (label: string, text: string) => {
+		const box = el('div', 'cm-output-side');
+		box.append(el('div', 'cm-output-label', label), el('div', undefined, text.trim() === '' ? '(nothing)' : text.trimEnd()));
+		return box;
+	};
+	body.classList.add('differs');
+	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded), side('now', got));
+	printed.filter(c => c.querySelector('canvas') === null && c.nodeName !== 'CANVAS').forEach(c => c.remove());
+}
+
 class CellOutput extends WidgetType {
 	constructor(readonly box: HTMLElement) {
 		super();
@@ -436,8 +463,12 @@ function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellR
 	};
 	const runs: CellRuns = (view, picked, cells, fresh = false) => {
 		return picked.filter(c => c.kind === 'code' && c.runs).reduce((before, cell, at) => before.then(async() => {
-			const ran = await run(codeOf(view.state, cell), titleOf(cell, cells), outputOf(view, codeIndex(cell, cells)), fresh && at === 0);
+			const body = outputOf(view, codeIndex(cell, cells));
+			const ran = await run(codeOf(view.state, cell), titleOf(cell, cells), body, fresh && at === 0);
 			if(ran !== undefined) {
+				if(cell.prompt) {
+					compareWithRecorded(body, recordedOutput(view.state, cells, cell));
+				}
 				took.set(codeIndex(cell, cells), ran);
 				view.dispatch({ effects: outputsChanged.of(null) });
 			}
@@ -720,13 +751,19 @@ const cellLook = EditorView.theme({
 		borderLeft:     '3px solid color-mix(in srgb, var(--accent) 45%, transparent)', borderBottom:   '.4rem solid transparent',
 		backgroundClip: 'padding-box', background:     'var(--panel)', fontSize:       '.82rem', maxHeight:      '32rem', overflow:       'auto'
 	},
-	'.cm-cell-output-body > div':   { whiteSpace: 'pre-wrap' },
-	'.cm-cell-output-body > .note': { color: 'var(--muted)' },
-	'.cm-cell-output-body > .meta': { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
-	'.cm-cell-output-body > .bad':  { color: '#d55e00' },
+	/* a cell that printed nothing has no box */
+	'.cm-cell-output:has(.cm-cell-output-body:empty)': { display: 'none' },
+	'.cm-cell-output:has(.differs)':                   { borderLeftColor: '#d55e00' },
+	'.cm-output-differs':                              { color: '#d55e00', fontFamily: 'system-ui, sans-serif', fontWeight: '700', marginBottom: '.3rem' },
+	'.cm-output-label':                                { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.04em' },
+	'.cm-output-side + .cm-output-side':               { marginTop: '.3rem', paddingTop: '.3rem', borderTop: '1px dashed var(--border)' },
+	'.cm-cell-output-body > div':                      { whiteSpace: 'pre-wrap' },
+	'.cm-cell-output-body > .note':                    { color: 'var(--muted)' },
+	'.cm-cell-output-body > .meta':                    { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
+	'.cm-cell-output-body > .bad':                     { color: '#d55e00' },
 	/* no wider than the output, or the code scrolls sideways */
-	'.cm-cell-output-body canvas':  { display: 'block', margin: '.3rem 0' },
-	'.cm-cell-output-x':            {
+	'.cm-cell-output-body canvas':                     { display: 'block', margin: '.3rem 0' },
+	'.cm-cell-output-x':                               {
 		position: 'absolute', top: '.2rem', right: '.3rem', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', font: 'inherit', fontSize: '.75rem'
 	},
 	'.cm-cell-output-x:hover':                     { color: 'var(--accent)' },

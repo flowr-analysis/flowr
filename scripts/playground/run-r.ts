@@ -484,7 +484,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 				}
 			}, plotSize(target), () => run === running, input);
 			if(run === running) {
-				if(!said) {
+				if(!said && into === undefined) {
 					line('no output', 'note meta');
 				}
 				done(`took ${(Math.round(performance.now() - begin) / 1000).toFixed(1)} s`);

@@ -1,13 +1,13 @@
 import type { ICodeCell, INotebookContent, IOutput } from '@jupyterlab/nbformat';
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
-import type { RecordedRun } from './r-session';
+import type { RecordedRun, RecordsRuns } from './recorded-runs';
 
 /**
  * This decorates a text file and parses its contents as a Jupyter file.
  * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
  */
-export class FlowrJupyterFile extends FlowrFile {
+export class FlowrJupyterFile extends FlowrFile implements RecordsRuns {
 	/**
 	 * Prefer the static {@link FlowrJupyterFile.from} method
 	 * @param wrapped - the file to load as Jupyter
@@ -50,11 +50,20 @@ export class FlowrJupyterFile extends FlowrFile {
 
 /** the code cells of a notebook with the output recorded for each */
 export function jupyterRecordedRuns(json: string): RecordedRun[] {
-	return (JSON.parse(json) as INotebookContent).cells.flatMap(cell => cell.cell_type === 'code'
-		? [{ code: joined(cell.source), output: outputText((cell as ICodeCell).outputs ?? []).trim() }] : []);
+	let cells: unknown;
+	try {
+		cells = (JSON.parse(json) as Partial<INotebookContent>).cells;
+	} catch{
+		return [];
+	}
+	return !Array.isArray(cells) ? [] : (cells as INotebookContent['cells']).flatMap(cell => cell.cell_type === 'code'
+		? [{ code: joined(cell.source ?? ''), output: outputText((cell as ICodeCell).outputs ?? []).trim(), plots: plotCount((cell as ICodeCell).outputs ?? []) }] : []);
 }
 
 const joined = (text: string | readonly string[]) => typeof text === 'string' ? text : text.join('');
+
+/** the images the outputs hold, which are the plots */
+const plotCount = (outputs: readonly IOutput[]): number => outputs.filter(o => Object.keys((o.data as object | undefined) ?? {}).some(type => type.startsWith('image/'))).length;
 
 /** what a cell printed: streams and the plain text of results, and the error a run ended in */
 function outputText(outputs: readonly IOutput[]): string {

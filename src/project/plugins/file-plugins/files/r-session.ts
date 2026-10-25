@@ -1,5 +1,7 @@
 /** R console transcripts: `> ` input lines, `+ ` continuations, and recorded output in between */
 
+import type { RecordedRun } from './recorded-runs';
+
 export interface SessionSegment {
 	readonly kind:      'input' | 'output'
 	readonly lines:     readonly string[]
@@ -48,14 +50,6 @@ export function sessionAsScript(text: string): string {
 		? lines.map(line => ' '.repeat(Math.min(PromptWidth, line.length)) + codeOfInput(line))
 		: lines.map(line => line.trim() === '' ? line : `# ${line}`)
 	).join('\n');
-}
-
-/** a command (or several lines of code) with the output a notebook or transcript recorded for it */
-export interface RecordedRun {
-	/** 1-based line the code starts at in the file, if the format has lines */
-	readonly line?:  number
-	readonly code:   string
-	readonly output: string
 }
 
 /** the commands of a transcript with the output recorded below each */

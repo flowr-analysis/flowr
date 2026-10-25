@@ -1,12 +1,13 @@
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
-import { type RecordedRun, recordedRuns, sessionAsScript } from './r-session';
+import { recordedRuns, sessionAsScript } from './r-session';
+import type { RecordedRun, RecordsRuns } from './recorded-runs';
 
 /**
  * This decorates a text file and reads it as a transcript of an R console (`.Rout`, `.Rout.save`):
  * the code is the commands behind their prompts, and everything else is kept as a comment, so every line stays where it was.
  */
-export class FlowrRSessionFile extends FlowrFile {
+export class FlowrRSessionFile extends FlowrFile implements RecordsRuns {
 	/**
 	 * Prefer the static {@link FlowrRSessionFile.from} method
 	 * @param wrapped - the file to load as a transcript

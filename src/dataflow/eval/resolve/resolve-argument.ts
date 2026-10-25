@@ -23,6 +23,7 @@ import { Resolve } from '../../environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { appliedArguments } from '../../graph/applied-arguments';
+import type { CallContext } from './alias-tracking';
 
 /**
  * The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise.
@@ -50,7 +51,8 @@ export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(g
 
 /**
  * Get the values of all arguments matching the criteria, keyed by the id of the argument.
- * Pass the `formals` of the call when they are known already, see {@link boundArgumentIndex}.
+ * Pass the `formals` of the call when they are known already, see {@link boundArgumentIndex}, and a `callContext` to
+ * get the values for particular calls of the functions around the call only.
  */
 export function getArgumentStringValue(
 	variableResolve: VariableResolve,
@@ -60,7 +62,8 @@ export function getArgumentStringValue(
 	argumentName: string | undefined,
 	resolveValue: boolean | 'library' | undefined,
 	ctx: ReadOnlyFlowrAnalyzerContext,
-	formals?: readonly string[]
+	formals?: readonly string[],
+	callContext?: CallContext
 ): Map<NodeId, Set<string | undefined>> | undefined {
 	vertex = appliedArguments(graph, vertex);
 	if(argumentName && argumentIndex !== 'unnamed') {
@@ -78,7 +81,7 @@ export function getArgumentStringValue(
 			}
 			const ref = FunctionArgument.getReference(arg);
 			const resolveAs = FunctionArgument.isNamed(arg) && resolveValue === 'library' ? true : resolveValue;
-			const values = argumentValues(variableResolve, graph, vertex, ref, resolveAs, ctx);
+			const values = argumentValues(variableResolve, graph, vertex, ref, resolveAs, ctx, callContext);
 			if(ref !== undefined && values !== undefined) {
 				map.set(ref, values);
 			}
@@ -86,17 +89,17 @@ export function getArgumentStringValue(
 		return map;
 	}
 	const ref = argumentIndex < vertex.args.length ? FunctionArgument.getReference(vertex.args[argumentIndex]) : undefined;
-	const values = argumentValues(variableResolve, graph, vertex, ref, resolveValue, ctx);
+	const values = argumentValues(variableResolve, graph, vertex, ref, resolveValue, ctx, callContext);
 	return ref === undefined || values === undefined ? undefined : new Map([[ref, values]]);
 }
 
 /** The values of the argument `ref` passes to `vertex`, falling back to the resource a call it reads from opens, and to {@link Unknown}. */
-function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, ref: NodeId | undefined, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext): Set<string | undefined> | undefined {
+function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, ref: NodeId | undefined, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext, callContext: CallContext | undefined): Set<string | undefined> | undefined {
 	const valueNode = ref === undefined ? undefined : RArgument.valueOf(graph.idMap?.get(ref));
 	if(valueNode === undefined) {
 		return undefined;
 	}
-	const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, resolveValue, ctx)
+	const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, resolveValue, ctx, callContext)
 		?? openedResourceOf(variableResolve, graph, valueNode.info.id, ctx)
 		?? [Unknown];
 	return new Set(values);
@@ -132,7 +135,7 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	return hasTrue && hasFalse ? 'maybe' : hasTrue;
 }
 
-function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext, callContext: CallContext | undefined): string[] | undefined {
 	let full = !!resolveValue;
 	if(resolveValue === 'library' && hasCharacterOnly(variableResolve, graph, vertex, ctx) === false) {
 		if(RSymbol.is(argument)) {
@@ -141,7 +144,7 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 		full = false;
 	}
 	// this should be evaluated in the callee-context
-	const resolved = valueSetGuard(Resolve.toValue(argument, { environment: vertex.environment, graph, full, resolve: variableResolve, ctx }));
+	const resolved = valueSetGuard(Resolve.toValue(argument, { environment: vertex.environment, graph, full, resolve: variableResolve, ctx, callContext }));
 	const strings = resolved?.elements.map(value => isValue(value) ? stringsOfValue(value, full) : undefined);
 	return strings?.every(isNotUndefined) ? strings.flat() : undefined;
 }

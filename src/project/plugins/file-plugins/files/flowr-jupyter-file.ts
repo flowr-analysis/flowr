@@ -1,6 +1,7 @@
-import type { INotebookContent } from '@jupyterlab/nbformat';
+import type { ICodeCell, INotebookContent, IOutput } from '@jupyterlab/nbformat';
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import type { RecordedRun } from './r-session';
 
 /**
  * This decorates a text file and parses its contents as a Jupyter file.
@@ -19,6 +20,12 @@ export class FlowrJupyterFile extends FlowrFile {
 	/** The text of the document itself, as its content is only the code it holds. */
 	public rawText(): string {
 		return this.wrapped.content().toString();
+	}
+
+	/** The code cells with the output the notebook recorded for each. */
+	public recorded(): RecordedRun[] {
+		return (JSON.parse(this.rawText()) as INotebookContent).cells.flatMap(cell => cell.cell_type === 'code'
+			? [{ code: joined(cell.source), output: outputText((cell as ICodeCell).outputs).trim() }] : []);
 	}
 
 	/**
@@ -40,6 +47,19 @@ export class FlowrJupyterFile extends FlowrFile {
 		}
 		return file instanceof FlowrJupyterFile ? file : new FlowrJupyterFile(file);
 	}
+}
+
+const joined = (text: string | readonly string[]) => typeof text === 'string' ? text : text.join('');
+
+/** what a cell printed: streams and the plain text of results, and the error a run ended in */
+function outputText(outputs: readonly IOutput[]): string {
+	return outputs.map(o => {
+		switch(o.output_type) {
+			case 'stream': return joined(o.text as string | string[]);
+			case 'error': return `Error: ${o.evalue as string}`;
+			default: return joined(((o.data as Record<string, string | string[]> | undefined)?.['text/plain']) ?? '');
+		}
+	}).join('\n');
 }
 
 function loadJupyter(content: string): string {

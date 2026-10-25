@@ -19,4 +19,18 @@ plot(y)
 		] });
 		assert.strictEqual(String(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).content()), '# # Title\n# some prose\n# \n# more\nx <- 1\nx');
 	});
+	test('records what each code cell printed', () => {
+		const notebook = JSON.stringify({ cells: [
+			{ cell_type: 'markdown', source: 'prose' },
+			{ cell_type: 'code', source: 'x <- 1', outputs: [] },
+			{ cell_type: 'code', source:    ['cat("a")\n', 'x'], outputs:   [
+				{ output_type: 'stream', name: 'stdout', text: ['a\n'] },
+				{ output_type: 'execute_result', data: { 'text/plain': '[1] 1' } }
+			] }
+		] });
+		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded(), [
+			{ code: 'x <- 1', output: '' },
+			{ code: 'cat("a")\nx', output: 'a\n\n[1] 1' }
+		]);
+	});
 });

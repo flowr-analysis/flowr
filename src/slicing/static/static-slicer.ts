@@ -92,6 +92,8 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	/* the unknown side effects every slice keeps are seeds as well, so what they reach is not cut off as running too late */
 	const effects = [...graph.unknownSideEffects].filter((id): id is NodeId => typeof id !== 'object');
 	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph) : undefined;
+	const separatedWrite = (id: NodeId): boolean => info.graph.fileWritesPerCall?.has(id) === true
+		&& !openedBodies.has(RNode.findEnclosing(id, idMap, RFunctionDefinition.is) as NodeId);
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
@@ -198,6 +200,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 					updatePotentialAddition(queue, id, target, baseEnvironment, baseEnvFingerprint);
 					continue;
 				case TraverseEdge.SideEffect:
+					/* a file write's readers read the calls writing their file, only a slice starting in its body needs them all */
+					if(direction === SliceDirection.Backward && separatedWrite(id)) {
+						continue;
+					}
 					queue.add(target, baseEnvironment, baseEnvFingerprint, true);
 					continue;
 				default:

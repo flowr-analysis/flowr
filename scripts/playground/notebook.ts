@@ -346,6 +346,9 @@ export const NotebookRun = Facet.define<(view: EditorView, fresh: boolean) => Pr
 const codeIndex = (cell: Cell, cells: readonly Cell[]) => cells.filter(c => c.kind === 'code').indexOf(cell);
 const titleOf = (cell: Cell, cells: readonly Cell[]) => `cell ${codeIndex(cell, cells) + 1}${cell.label ? ` · ${cell.label}` : ''}`;
 
+/** what the output of a code cell is called: its run, with the file so the outputs of several notebooks stay apart */
+const runTitle = (file: string, cell: Cell, cells: readonly Cell[]) => `${file} \u00b7 run ${codeIndex(cell, cells) + 1}${cell.label ? ` \u00b7 ${cell.label}` : ''}`;
+
 const cellAt = (cells: readonly Cell[], line: number) => cells.find(c => line >= c.from && line <= c.to);
 
 /** the name of the code cell holding a line */
@@ -413,12 +416,12 @@ function recordedOutput(state: EditorState, cells: readonly Cell[], cell: Cell):
 	return next?.output ? codeOf(state, next) : '';
 }
 
-/** what the run printed is already on the page when it matches the transcript, and is set against it when it does not */
+/** a run matching the transcript only says so, as the output is already on the page, and is set against it when it does not */
 function compareWithRecorded(body: HTMLElement, recorded: string): void {
 	const printed = [...body.children];
 	const got = printed.map(c => c.textContent ?? '').join('\n');
 	if(body.querySelector('canvas') === null && sameOutput(got, recorded)) {
-		body.replaceChildren();
+		body.replaceChildren(...recorded.trim() === '' ? [] : [el('div', 'cm-output-verified', '\u2713 matches the recorded output')]);
 		return;
 	}
 	const side = (label: string, text: string) => {
@@ -448,7 +451,7 @@ class CellOutput extends WidgetType {
 
 const outputsChanged = StateEffect.define<null>();
 
-function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellRuns, readonly shown: Extension, readonly took: ReadonlyMap<number, number> } {
+function cellRunning(file: string, markdown: boolean, run: CellRunner): { readonly runs: CellRuns, readonly shown: Extension, readonly took: ReadonlyMap<number, number> } {
 	const took = new Map<number, number>();
 	const outputs = new Map<number, HTMLElement>();
 	const outputOf = (view: EditorView, index: number): HTMLElement => {
@@ -464,7 +467,7 @@ function cellRunning(markdown: boolean, run: CellRunner): { readonly runs: CellR
 	const runs: CellRuns = (view, picked, cells, fresh = false) => {
 		return picked.filter(c => c.kind === 'code' && c.runs).reduce((before, cell, at) => before.then(async() => {
 			const body = outputOf(view, codeIndex(cell, cells));
-			const ran = await run(codeOf(view.state, cell), titleOf(cell, cells), body, fresh && at === 0);
+			const ran = await run(codeOf(view.state, cell), runTitle(file, cell, cells), body, fresh && at === 0);
 			if(ran !== undefined) {
 				if(cell.prompt) {
 					compareWithRecorded(body, recordedOutput(view.state, cells, cell));
@@ -628,7 +631,7 @@ export function notebookCells(name: string, run: CellRunner, menu: CellMenu): Ex
 	const markdown = isMarkdownDocument(name);
 	/* cells are added and removed in a notebook, a script keeps its `# %%` marks as the author wrote them */
 	const editable = markdown || /\.ipynb\.r$/i.test(name);
-	const { runs, shown, took } = cellRunning(markdown, run);
+	const { runs, shown, took } = cellRunning(name, markdown, run);
 	return [
 		shown,
 		SessionFile.of(isRSession(name, '')),
@@ -687,7 +690,7 @@ const cellLook = EditorView.theme({
 	'.cm-cell-head':                                                 { borderTop: '1px solid var(--border)', fontSize: '.85em' },
 	'.cm-cell-tail':                                                 { fontSize: '.85em' },
 	'.cm-cell-end':                                                  { borderBottom: '1px solid var(--border)' },
-	'.cm-cell-tools':                                                { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.35rem' },
+	'.cm-cell-tools':                                                { float: 'right', display: 'inline-flex', alignItems: 'center', gap: '.5rem', margin: '0 .5rem 0 .75rem', position: 'relative', top: '.1rem' },
 	/* the edit tools only show under the pointer, or while one of them has the focus */
 	'.cm-cell-edit':                                                 { display: 'inline-flex', gap: '.25rem', visibility: 'hidden' },
 	'.cm-cell-head:hover .cm-cell-edit, .cm-cell-edit:focus-within': { visibility: 'visible' },
@@ -728,7 +731,7 @@ const cellLook = EditorView.theme({
 		alignItems:    'center',
 		gap:           '.35rem',
 		cursor:        'pointer',
-		lineHeight:    '1.5',
+		lineHeight:    '1.3',
 		fontFamily:    'system-ui, sans-serif',
 		fontSize:      '.7rem',
 		fontWeight:    '650',
@@ -754,6 +757,8 @@ const cellLook = EditorView.theme({
 	/* a cell that printed nothing has no box */
 	'.cm-cell-output:has(.cm-cell-output-body:empty)': { display: 'none' },
 	'.cm-cell-output:has(.differs)':                   { borderLeftColor: '#d55e00' },
+	'.cm-cell-output:has(.cm-output-verified)':        { padding: '.15rem 1.8rem .15rem .8rem', borderBottomWidth: '.25rem' },
+	'.cm-output-verified':                             { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.75rem' },
 	'.cm-output-differs':                              { color: '#d55e00', fontFamily: 'system-ui, sans-serif', fontWeight: '700', marginBottom: '.3rem' },
 	'.cm-output-label':                                { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.04em' },
 	'.cm-output-side + .cm-output-side':               { marginTop: '.3rem', paddingTop: '.3rem', borderTop: '1px dashed var(--border)' },

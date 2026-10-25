@@ -8,6 +8,7 @@ import type { INotebookContent } from '@jupyterlab/nbformat';
 import { cellOptionLines, globalChunkOptions, isExecutableCell, parseRMarkdownFile, RTagRegex } from '../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { button, el } from '../page-lib/dom';
 import { codeOfInput, isRSession, parseRSession, PromptWidth } from './r-session';
+import { jupyterRecordedRuns } from '../../src/project/plugins/file-plugins/files/flowr-jupyter-file';
 
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
 
@@ -410,8 +411,30 @@ const codeOf = (state: EditorState, cell: Cell) => {
 const outputLines = (text: string): string[] => text.split(LineBreak).map(l => l.trimEnd());
 const sameOutput = (a: string, b: string) => outputLines(a).join('\n').trim() === outputLines(b).join('\n').trim();
 
-/** the output the transcript recorded below a command */
-function recordedOutput(state: EditorState, cells: readonly Cell[], cell: Cell): string {
+/** the output a notebook recorded for each of its code cells, by the name of the script it is shown as */
+const recordedNotebooks = new Map<string, readonly string[]>();
+
+/** the script of a Jupyter notebook, remembering what its cells printed to set a run against */
+export function loadNotebook(script: string, json: string): string {
+	const outputs = jupyterRecordedRuns(json).map(r => r.output);
+	/* a notebook saved without its outputs has nothing to set a run against */
+	if(outputs.some(o => o !== '')) {
+		recordedNotebooks.set(script, outputs);
+	} else {
+		recordedNotebooks.delete(script);
+	}
+	return notebookAsScript(json);
+}
+
+/** the output recorded for a code cell: below a command of a transcript, or stored with a notebook */
+function recordedOutput(state: EditorState, file: string, cells: readonly Cell[], cell: Cell): string | undefined {
+	const notebook = recordedNotebooks.get(file);
+	if(notebook !== undefined) {
+		return notebook[codeIndex(cell, cells)] ?? '';
+	}
+	if(!cell.prompt) {
+		return undefined;
+	}
 	const next = cells[cells.indexOf(cell) + 1];
 	return next?.output ? codeOf(state, next) : '';
 }
@@ -469,8 +492,9 @@ function cellRunning(file: string, markdown: boolean, run: CellRunner): { readon
 			const body = outputOf(view, codeIndex(cell, cells));
 			const ran = await run(codeOf(view.state, cell), runTitle(file, cell, cells), body, fresh && at === 0);
 			if(ran !== undefined) {
-				if(cell.prompt) {
-					compareWithRecorded(body, recordedOutput(view.state, cells, cell));
+				const recorded = recordedOutput(view.state, file, cells, cell);
+				if(recorded !== undefined) {
+					compareWithRecorded(body, recorded);
 				}
 				took.set(codeIndex(cell, cells), ran);
 				view.dispatch({ effects: outputsChanged.of(null) });

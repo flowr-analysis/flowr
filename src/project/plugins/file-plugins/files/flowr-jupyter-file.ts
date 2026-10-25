@@ -24,8 +24,7 @@ export class FlowrJupyterFile extends FlowrFile {
 
 	/** The code cells with the output the notebook recorded for each. */
 	public recorded(): RecordedRun[] {
-		return (JSON.parse(this.rawText()) as INotebookContent).cells.flatMap(cell => cell.cell_type === 'code'
-			? [{ code: joined(cell.source), output: outputText((cell as ICodeCell).outputs).trim() }] : []);
+		return jupyterRecordedRuns(this.rawText());
 	}
 
 	/**
@@ -47,6 +46,12 @@ export class FlowrJupyterFile extends FlowrFile {
 		}
 		return file instanceof FlowrJupyterFile ? file : new FlowrJupyterFile(file);
 	}
+}
+
+/** the code cells of a notebook with the output recorded for each */
+export function jupyterRecordedRuns(json: string): RecordedRun[] {
+	return (JSON.parse(json) as INotebookContent).cells.flatMap(cell => cell.cell_type === 'code'
+		? [{ code: joined(cell.source), output: outputText((cell as ICodeCell).outputs ?? []).trim() }] : []);
 }
 
 const joined = (text: string | readonly string[]) => typeof text === 'string' ? text : text.join('');

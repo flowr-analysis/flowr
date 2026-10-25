@@ -50,7 +50,7 @@ import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
 import { FileRole, FlowrInlineTextFile } from '../../src/project/context/flowr-file';
 import { isRSession, sessionAsScript } from './r-session';
-import { cellTitles, languageOf, NotebookRun, notebookAsScript, notebookCells, rewriteCells, writesR } from './notebook';
+import { cellTitles, languageOf, loadNotebook, NotebookRun, notebookCells, rewriteCells, writesR } from './notebook';
 import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
 import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
 import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
@@ -1399,7 +1399,7 @@ async function unzip(blob: Blob): Promise<[string, Blob][]> {
 }
 
 function asProjectFile(name: string, text: string): [string, string] {
-	return /\.ipynb$/i.test(name) ? [`${name}.R`, notebookAsScript(text)] : [name, text];
+	return /\.ipynb$/i.test(name) ? [`${name}.R`, loadNotebook(`${name}.R`, text)] : [name, text];
 }
 async function readable(found: readonly [string, Blob][], failed: string[]): Promise<[string, string][]> {
 	const read: [string, string][] = [];

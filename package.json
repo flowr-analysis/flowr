@@ -76,10 +76,6 @@
   "license": "ISC",
   "typedocOptions": {
     "includeVersion": true,
-    "plugin": [
-      "typedoc-umlclass",
-      "typedoc-plugin-missing-exports"
-    ],
     "entryPoints": [
       "src",
       "test/functionality/_helper"
@@ -104,15 +100,6 @@
     ],
     "out": "doc",
     "readme": "README.md",
-    "umlClassDiagram": {
-      "type": "detailed",
-      "location": "local",
-      "format": "svg",
-      "position": "below",
-      "legendType": "none",
-      "hideEmptyMembers": true,
-      "generatorProcessCount": 4
-    },
     "maxTypeConversionDepth": 4,
     "skipErrorChecking": true,
     "lightHighlightTheme": "light-plus",

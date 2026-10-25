@@ -141,8 +141,10 @@ function operatorCompletion(node: SyntaxNode, at: number): { range: SourceRange,
 	return { range: [node.startPosition.row + 1, column + 1, node.startPosition.row + 1, column + fragment.length], full };
 }
 
+/** the grammar reports a missing string quote as `string_close`, which stands for whatever quote opened the string */
+const missingToken = (node: SyntaxNode): string => node.type === 'string_close' ? node.parent?.firstChild?.text ?? node.type : node.type;
 const isMissingExpression = (f: SyntaxErrorFinding): boolean =>
-	f.kind === 'missing' && !DelimiterInsert.has(f.node.type) && !KeywordInsert.has(f.node.type);
+	f.kind === 'missing' && !DelimiterInsert.has(missingToken(f.node)) && !KeywordInsert.has(missingToken(f.node));
 
 /** The built-in auto-fix patterns; append a {@link SyntaxErrorFixPattern} to add repairs. */
 export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
@@ -164,12 +166,12 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		name:        'insert-missing-token',
 		description: 'Insert a delimiter, quote, or keyword the parser expected but did not find.',
 		direction:   'add',
-		appliesTo:   f => f.kind === 'missing' && (DelimiterInsert.has(f.node.type) || KeywordInsert.has(f.node.type)),
+		appliesTo:   f => f.kind === 'missing' && (DelimiterInsert.has(missingToken(f.node)) || KeywordInsert.has(missingToken(f.node))),
 		quickFix:    (f, file) => ({
 			type:        'replace',
 			loc:         SourceLocation.from(point(f.node.startPosition), file),
-			description: `Insert missing \`${f.node.type}\``,
-			replacement: DelimiterInsert.get(f.node.type) ?? KeywordInsert.get(f.node.type) as string
+			description: `Insert missing \`${missingToken(f.node)}\``,
+			replacement: DelimiterInsert.get(missingToken(f.node)) ?? KeywordInsert.get(missingToken(f.node)) as string
 		})
 	},
 	{
@@ -279,7 +281,7 @@ function collectFindings(node: SyntaxNode, lines: readonly string[], out: Syntax
 
 function describe(finding: SyntaxErrorFinding): string {
 	if(finding.kind === 'missing') {
-		return `Missing \`${finding.node.type}\``;
+		return `Missing \`${missingToken(finding.node)}\``;
 	}
 	const text = finding.node.text.replace(/\s+/g, ' ').trim();
 	return `Unexpected \`${text.length > 30 ? text.slice(0, 27) + '...' : text}\``;

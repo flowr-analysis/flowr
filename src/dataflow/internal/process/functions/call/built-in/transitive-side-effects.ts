@@ -53,13 +53,16 @@ export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environme
 	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the
 	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or the target of a
 	 * `calls` edge. Both are read off the graph once here instead of per export binding. */
-	const called = new Set<NodeId>(graph.vertices(true).map(([id]) => id));
+	const called = new Set<NodeId>(graph.vertices(true).map(([id]) => id).filter(NodeId.isBuiltIn));
 	for(const [, outgoing] of graph.edges()) {
 		for(const [target, edge] of outgoing) {
-			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+			if(NodeId.isBuiltIn(target) && DfEdge.includesType(edge, EdgeType.Calls)) {
 				called.add(target);
 			}
 		}
+	}
+	if(called.size === 0) {
+		return;
 	}
 	/* export node id -> its loading `library()`/`use()` call, from the final environment */
 	const loaders = new Map<NodeId, NodeId>();

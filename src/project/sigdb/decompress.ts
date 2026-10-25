@@ -99,7 +99,7 @@ export async function readHeaderOf(source: string): Promise<Record<string, unkno
 	const input = decompressStream(source);
 	const rl = readline.createInterface({ input, crlfDelay: Infinity });
 	try {
-		const line = (await rl[Symbol.asyncIterator]().next()).value as string | undefined;   // just the first line (the header)
+		const line = (await rl[Symbol.asyncIterator]().next()).value;   // just the first line (the header)
 		return line !== undefined ? JSON.parse(line) as Record<string, unknown> : undefined;
 	} finally {
 		rl.close();

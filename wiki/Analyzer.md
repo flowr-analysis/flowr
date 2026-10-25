@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-10-19, 18:04:52 UTC (v2.16.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-10-25, 09:24:36 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_32_of_32_the_32_Analyzer)  
@@ -162,12 +162,12 @@ const analyzer = await new FlowrAnalyzerBuilder(false)
 This indicates three ways to add a new plugin:
 
 1. By using a predefined name (e.g., `file:description` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L34"><code><span title="This plugin provides support for R DESCRIPTION files.">FlowrAnalyzerDescriptionFilePlugin</span></code></a>)\
-   These mappings are controlled by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L146"><code><span title="Register a new Flowr Analyzer plugin for the registry, to be used by the FlowrAnalyzerBuilder and FlowrAnalyzer .">registerPluginMaker</span></code></a> function in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L138"><code><span title="The registry of built-in and user-registered Flowr Analyzer plugins. Used by the FlowrAnalyzerBuilder and FlowrAnalyzer to instantiate plugins by name.">PluginRegistry</span></code></a>.
-   Under the hood, this relies on <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L175"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> to create the plugin instance from the name.
+   These mappings are controlled by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L148"><code><span title="Register a new Flowr Analyzer plugin for the registry, to be used by the FlowrAnalyzerBuilder and FlowrAnalyzer .">registerPluginMaker</span></code></a> function in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L140"><code><span title="The registry of built-in and user-registered Flowr Analyzer plugins. Used by the FlowrAnalyzerBuilder and FlowrAnalyzer to instantiate plugins by name.">PluginRegistry</span></code></a>.
+   Under the hood, this relies on <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L177"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> to create the plugin instance from the name.
 2. By providing an already instantiated plugin (e.g., the new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin.ts#L8"><code><span title="The plugin provides support for Quarto R Markdown (.qmd) files">FlowrAnalyzerQmdFilePlugin</span></code></a> instance).\
    You can pass these by reference, instantiating any class that conforms to the [plugin specification](#Plugins).
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., `['file:rmd', [/.*.rmd/i]]` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin.ts#L9"><code><span title="The plugin provides support for R Markdown (.rmd) files">FlowrAnalyzerRmdFilePlugin</span></code></a>).\
-   This will also use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L175"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> function under the hood to create the plugin instance.
+   This will also use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L177"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> function under the hood to create the plugin instance.
 
 Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L423"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L164"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a> method.
@@ -281,6 +281,7 @@ Currently, flowR supports the following plugin types built-in:
 | <code>file:rda</code> | <code>file-load</code> | Reads RDA/RData workspace files into their contained R objects. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-rda-file-plugin.ts#L13"><code><span title="This plugin provides support for R workspace files (.rda/.RData), exposing their top-level objects.">FlowrAnalyzerRdaFilePlugin</span></code></a> |
 | <code>file:rmd</code> | <code>file-load</code> | Parses R Markdown files | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin.ts#L9"><code><span title="The plugin provides support for R Markdown (.rmd) files">FlowrAnalyzerRmdFilePlugin</span></code></a> |
 | <code>file:rnw</code> | <code>file-load</code> | Parses R Sweave files | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-sweave-file-plugin.ts#L13"><code><span title="The plugin provides support for Sweave (.Rnw) files">FlowrAnalyzerSweaveFilePlugin</span></code></a> |
+| <code>file:rout</code> | <code>file-load</code> | Parses R console transcripts | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rsession-file-plugin.ts#L13"><code><span title="The plugin provides support for R console transcripts (.Rout, .Rout.save)">FlowrAnalyzerRSessionFilePlugin</span></code></a> |
 | <code>file:rprofile</code> | <code>file-load</code> | Marks R startup files (.Rprofile, Rprofile.site, .Renviron, Renviron.site). | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-rprofile-file-plugin.ts#L19"><code><span title="Marks R startup files: profiles (.Rprofile, Rprofile.site) are R source, so they get FileRole.Startup and FileRole.Source ; environment files (.Renviron, Renviron.site) hold KEY=value definitions rather than R code, so they only get FileRole.Environment . The FlowrAnalyzerLoadingOrderRprofilePlugin moves the profile files to the front of the loading order.">FlowrAnalyzerRprofileFilePlugin</span></code></a> |
 | <code>file:rproject</code> | <code>file-load</code> | Marks the rproject.toml manifest of an rv project. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-manifest-file-plugin.ts#L19"><code><span title="Lifts an rv rproject.toml to a FlowrRProjectFile .">FlowrAnalyzerRProjectFilePlugin</span></code></a> |
 | <code>file:sysdata</code> | <code>file-load</code> | Reads R/sysdata.rda into the objects it lazy-loads into the package namespace. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-sysdata-file-plugin.ts#L15"><code><span title="This plugin provides support for a package's system data, the objects R lazy-loads into the package namespace. It has to run before the FlowrAnalyzerRdaFilePlugin , which would otherwise claim the .rda.">FlowrAnalyzerSysdataFilePlugin</span></code></a> |
@@ -334,7 +335,7 @@ We describe the different plugin types in more detail below.
 
 <h4 id="Project_32_Discovery">Project Discovery</h4>
 
-These plugins trigger when confronted with a project analysis request (see, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L44"><code><span title="This is a request to process a folder as a project, which will be expanded by the registered FlowrAnalyzerProjectDiscoveryPlugin s.">RProjectAnalysisRequest</span></code></a>).
+These plugins trigger when confronted with a project analysis request (see, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L45"><code><span title="This is a request to process a folder as a project, which will be expanded by the registered FlowrAnalyzerProjectDiscoveryPlugin s.">RProjectAnalysisRequest</span></code></a>).
 Their job is to identify the files that belong to the project and add them to the analysis.
 flowR provides the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin.ts#L22"><code><span title="This is the base class for all plugins that discover files in a project for analysis. These plugins interplay with the FlowrAnalyzerFilesContext to gather information about the files in the project. See FlowrAnalyzerDefaultProjectDiscoveryPlugin for the default implementation. In general, these plugins only trigger for a RProjectAnalysisRequest with the idea to discover all files in a project.">FlowrAnalyzerProjectDiscoveryPlugin</span></code></a> with a
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/flowr-analyzer-plugin.ts#L103"><code><span title="Returns a default/dummy implementation to be used when no plugin of this type is registered or triggered.">defaultPlugin</span></code></a> as the default implementation that collects all R source files in the given folder.
@@ -379,7 +380,7 @@ Then, you must create a new class that extends the corresponding base class (e.g
 In general, most plugins operate on the [context information](#Context_Information) provided by the analyzer.
 Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
 
-Once you have your plugin you should register it with a sensible name using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L146"><code><span title="Register a new Flowr Analyzer plugin for the registry, to be used by the FlowrAnalyzerBuilder and FlowrAnalyzer .">registerPluginMaker</span></code></a> function.
+Once you have your plugin you should register it with a sensible name using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L148"><code><span title="Register a new Flowr Analyzer plugin for the registry, to be used by the FlowrAnalyzerBuilder and FlowrAnalyzer .">registerPluginMaker</span></code></a> function.
 This will allow users to register your plugin easily by name using the builder's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L150"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a> method.
 Otherwise, users will have to provide an instance of your plugin class directly.
 
@@ -406,15 +407,15 @@ If for whatever reason you need to reset the context during an analysis, you can
 
 <h3 id="Files_32_Context">Files Context</h3>
 
-First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L210"><code><span title="This is the analyzer file context to be modified by all plugins that affect the files. If you are interested in inspecting these files, refer to ReadOnlyFlowrAnalyzerFilesContext . Plugins, however, can use this context directly to modify files.">FlowrAnalyzerFilesContext</span></code></a>  class that provides access to the files to be analyzed and their [loading order](#Loading_Order_Context):
+First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L211"><code><span title="This is the analyzer file context to be modified by all plugins that affect the files. If you are interested in inspecting these files, refer to ReadOnlyFlowrAnalyzerFilesContext . Plugins, however, can use this context directly to modify files.">FlowrAnalyzerFilesContext</span></code></a>  class that provides access to the files to be analyzed and their [loading order](#Loading_Order_Context):
 
- * [FlowrAnalyzerFilesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L210)   
+ * [FlowrAnalyzerFilesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L211)   
    This is the analyzer file context to be modified by all plugins that affect the files.
    If you are interested in inspecting these files, refer to
    <code>ReadOnlyFlowrAnalyzerFilesContext</code>
    .
    Plugins, however, can use this context directly to modify files.
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L210">src/project/context/flowr-analyzer-files-context.ts#L210</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L211">src/project/context/flowr-analyzer-files-context.ts#L211</a>)</i>
    
     <details><summary>View more (AbstractFlowrAnalyzerContext, ReadOnlyFlowrAnalyzerFilesContext, InvalidationEventReceiver)</summary>
 
@@ -432,7 +433,7 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
      to access the full project context.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/abstract-flowr-analyzer-context.ts#L12">src/project/context/abstract-flowr-analyzer-context.ts#L12</a>)</i>
      
-   * **[ReadOnlyFlowrAnalyzerFilesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L90)**   
+   * **[ReadOnlyFlowrAnalyzerFilesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L91)**   
      This is the read-only interface for the files context, which is used to manage all files known to the
      <code>FlowrAnalyzer</code>
      .
@@ -444,7 +445,7 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
      and want to modify the available files, you can use the
      <code>FlowrAnalyzerFilesContext</code>
      directly.
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L90">src/project/context/flowr-analyzer-files-context.ts#L90</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L91">src/project/context/flowr-analyzer-files-context.ts#L91</a>)</i>
      
    * **[InvalidationEventReceiver](https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41)**   
    
@@ -454,19 +455,19 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
 
 Using the available [plugins](#Plugins),
 the files context categorizes files by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-file.ts#L18"><code><span title="Some files have a special meaning in R projects, e.g., the DESCRIPTION file in R packages. This list may be extended in the future and reflects files that the FlowrAnalyzer can do something interesting with. If you add an interesting file that is only part of your plugin infrastructure, please use the other role.">FileRole</span></code></a> (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L628"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
-It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L461"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L503"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
-and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L576"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
+and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L629"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
+It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L462"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L504"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
+and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L577"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L295"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L296"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.
 
 <h3 id="Loading_32_Order_32_Context">Loading Order Context</h3>
 
 > [!NOTE]
 > Please be aware that the loading order is inherently tied to the files context (as it determines which files are available for ordering).
-> Hence, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-loading-order-context.ts#L50"><code><span title="This context is responsible for managing the loading order of script files in a project, including guesses and known orders provided by FlowrAnalyzerLoadingOrderPlugin s. If you are interested in inspecting these orders, refer to ReadOnlyFlowrAnalyzerLoadingOrderContext . Plugins, however, can use this context directly to modify order guesses.">FlowrAnalyzerLoadingOrderContext</span></code></a> is accessible (only) via the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L210"><code><span title="This is the analyzer file context to be modified by all plugins that affect the files. If you are interested in inspecting these files, refer to ReadOnlyFlowrAnalyzerFilesContext . Plugins, however, can use this context directly to modify files.">FlowrAnalyzerFilesContext</span></code></a>.
+> Hence, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-loading-order-context.ts#L50"><code><span title="This context is responsible for managing the loading order of script files in a project, including guesses and known orders provided by FlowrAnalyzerLoadingOrderPlugin s. If you are interested in inspecting these orders, refer to ReadOnlyFlowrAnalyzerLoadingOrderContext . Plugins, however, can use this context directly to modify order guesses.">FlowrAnalyzerLoadingOrderContext</span></code></a> is accessible (only) via the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L211"><code><span title="This is the analyzer file context to be modified by all plugins that affect the files. If you are interested in inspecting these files, refer to ReadOnlyFlowrAnalyzerFilesContext . Plugins, however, can use this context directly to modify files.">FlowrAnalyzerFilesContext</span></code></a>.
 
 Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-loading-order-context.ts#L50"><code><span title="This context is responsible for managing the loading order of script files in a project, including guesses and known orders provided by FlowrAnalyzerLoadingOrderPlugin s. If you are interested in inspecting these orders, refer to ReadOnlyFlowrAnalyzerLoadingOrderContext . Plugins, however, can use this context directly to modify order guesses.">FlowrAnalyzerLoadingOrderContext</span></code></a> that provides access to the identified loading order of files:
 

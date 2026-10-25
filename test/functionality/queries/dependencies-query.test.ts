@@ -136,8 +136,68 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ nodeId: '3@g', functionName: 'g', value: 'stdout', via: 10 }
 			]
 		});
+		testQuery('each call writes only the file it names', 'save_it <- function(p) write.csv(d, p)\nsave_it("a.csv")\nsave_it("b.csv")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'a.csv', via: 8 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'b.csv', via: 8 }
+			]
+		});
+		testQuery('a call gets the file built from its own argument', 'save_it <- function(n) { p <- file.path("out", paste0(n, ".csv")); write.csv(d, p) }\nsave_it("a")\nsave_it("b")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out/b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out/a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'out/a.csv', via: 23 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'out/b.csv', via: 23 }
+			]
+		});
+		testQuery('a call that leaves a parameter out gets its default', 'save_it <- function(n, ext = ".csv") write.csv(d, paste0(n, ext))\nsave_it("a")\nsave_it("b", ".txt")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.txt', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.txt', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'a.csv', via: 16 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'b.txt', via: 16 }
+			]
+		});
+		testQuery('a call through another function of the program gets its own file', 'inner <- function(k) write.csv(d, k)\nouter <- function(n) inner(paste0("x-", n))\nouter("a")\nouter("b")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'x-b', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'x-a', inputVariables: ['d'] },
+				{ nodeId: '2@inner', functionName: 'inner', value: 'x-b', via: 8 },
+				{ nodeId: '2@inner', functionName: 'inner', value: 'x-a', via: 8 },
+				{ nodeId: '3@outer', functionName: 'outer', value: 'x-a', via: 23 },
+				{ nodeId: '4@outer', functionName: 'outer', value: 'x-b', via: 23 }
+			]
+		});
+		testQuery('a piped call gets the file piped into it', 'save_it <- function(p) write.csv(d, p)\n"a.csv" |> save_it()\nsave_it("b.csv")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'a.csv', via: 8 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'b.csv', via: 8 }
+			]
+		});
 		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
 			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv', inputVariables: ['d'] }, { nodeId: '2@save_it', functionName: 'save_it', value: 'r.csv', via: 8 }]
+		});
+		testQuery('a function ending in ggsave echoes nothing, also when called through another', 'save_it <- function(p) ggplot2::ggsave(p)\nvia <- function(p) save_it(p)\nvia("r.pdf")', {
+			library: [{ nodeId: 3, functionName: '::', value: 'ggplot2' }],
+			write:   [
+				{ nodeId: 6, functionName: ['ggsave', 'ggplot2', false], value: 'r.pdf' },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'r.pdf', via: 6 },
+				{ nodeId: '3@via', functionName: 'via', value: 'r.pdf', via: 16 }
+			]
+		});
+		testQuery('a function ending in a visible call echoes, also when called through another', 'make_it <- function(p) file.create(p)\nvia <- function(p) make_it(p)\nvia("r.txt")', {
+			write: [
+				{ nodeId: '1@file.create', functionName: 'file.create', value: 'r.txt', inputVariables: ['p'] },
+				{ nodeId: '3@via', functionName: 'via', value: 'stdout', implicit: true },
+				{ nodeId: '2@make_it', functionName: 'make_it', value: 'r.txt', via: 6 },
+				{ nodeId: '3@via', functionName: 'via', value: 'r.txt', via: 16 }
+			]
 		});
 		/* the function of the program decides, not the built-in it shadows: an assignment hands its value back invisibly */
 		testQuery('a function ending in an assignment echoes nothing, even shadowing a built-in', 'points <- function() { x <- 2 }\npoints()', { write: [] });
@@ -680,7 +740,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			] });
 			testQuery('stats functions', 'a <- aggregate(x ~ g, data = d, FUN = sum)', { transform: [{ nodeId: '1@aggregate', functionName: 'aggregate', inputVariables: ['d'], assignedTo: 'a' }] });
 			testQuery('tidyr', 'library(tidyr)\nw <- pivot_wider(long, names_from = k)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'tidyr' }], transform: [{ nodeId: '2@pivot_wider', functionName: 'pivot_wider', inputVariables: ['long'], assignedTo: 'w' }] }, {}, [], ['tidyr']);
-			testQuery('data.table', 'library(data.table)\nsetDT(dt)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'data.table' }], transform: [{ nodeId: '2@setDT', functionName: 'setDT', inputVariables: ['dt'] }], write: [printed(7, 'setDT', ['dt'])] }, {}, [], ['data.table']);
+			testQuery('data.table', 'library(data.table)\nsetDT(dt)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'data.table' }], transform: [{ nodeId: '2@setDT', functionName: 'setDT', inputVariables: ['dt'] }] }, {}, [], ['data.table']);
 			testDplyr('disabled', 'library(dplyr)\nfilter(df, x)', dplyr, { enabledCategories: ['library'] });
 			testDplyr('ignoring the defaults', 'dplyr::mutate(df, x)', {}, { ignoreDefaultFunctions: true, enabledCategories: ['transform'] });
 			testQuery('custom function', 'my_verb(df)', { transform: [{ nodeId: '1@my_verb', functionName: 'my_verb', inputVariables: ['df'] }], write: [printed(3, 'my_verb', ['df'])] }, { transformFunctions: [{ name: 'my_verb' }] });

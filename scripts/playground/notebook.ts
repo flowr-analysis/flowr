@@ -416,8 +416,9 @@ const recordedNotebooks = new Map<string, readonly Recorded[]>();
 
 /** what a run printed and how many plots it drew, where the format records plots */
 interface Recorded {
-	readonly output: string
-	readonly plots?: number
+	readonly output:  string
+	readonly plots?:  number
+	readonly images?: readonly string[]
 }
 
 /** the script of a Jupyter notebook, remembering what its cells printed to set a run against */
@@ -459,14 +460,14 @@ function compareWithRecorded(body: HTMLElement, recorded: Recorded): void {
 		}
 		return;
 	}
-	const side = (label: string, text: string, count: number | undefined) => {
+	const side = (label: string, text: string, count: number | undefined, images: readonly string[] = []) => {
 		const box = el('div', 'cm-output-side');
 		const shown = [text.trim() === '' ? '(nothing)' : text.trimEnd(), ...count === undefined ? [] : [`${count} plot${count === 1 ? '' : 's'}`]];
-		box.append(el('div', 'cm-output-label', label), el('div', undefined, shown.join('\n')));
+		box.append(el('div', 'cm-output-label', label), el('div', undefined, shown.join('\n')), ...images.map(src => Object.assign(el('img', 'cm-output-recorded'), { src, alt: 'recorded plot' })));
 		return box;
 	};
 	body.classList.add('differs');
-	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded.output, recorded.plots), side('now', got, recorded.plots === undefined ? undefined : plots));
+	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded.output, recorded.plots, recorded.images), side('now', got, recorded.plots === undefined ? undefined : plots));
 }
 
 class CellOutput extends WidgetType {
@@ -795,6 +796,7 @@ const cellLook = EditorView.theme({
 	'.cm-cell-output:has(.differs)':                   { borderLeftColor: '#d55e00' },
 	'.cm-cell-output:has(.cm-output-verified)':        { padding: '.15rem 1.8rem .15rem .8rem', borderBottomWidth: '.25rem' },
 	'.cm-output-verified':                             { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.75rem' },
+	'.cm-output-recorded':                             { display: 'block', maxWidth: '100%', margin: '.3rem 0', borderRadius: '.3rem', filter: 'var(--plot-filter, none)' },
 	'.cm-output-differs':                              { color: '#d55e00', fontFamily: 'system-ui, sans-serif', fontWeight: '700', marginBottom: '.3rem' },
 	'.cm-output-label':                                { color: 'var(--muted)', fontFamily: 'system-ui, sans-serif', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.04em' },
 	'.cm-output-side + .cm-output-side':               { marginTop: '.3rem', paddingTop: '.3rem', borderTop: '1px dashed var(--border)' },

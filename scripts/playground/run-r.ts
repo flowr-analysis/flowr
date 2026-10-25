@@ -293,10 +293,19 @@ function canvasOf(image: ImageBitmap, plot: PlotSize): HTMLCanvasElement {
 	return canvas;
 }
 
+/** whether the guard already keeps files of webR, so starting it needs no download */
+async function webrStored(): Promise<boolean> {
+	try {
+		return (await (await caches.open('flowr-webr-verified')).keys()).length > 0;
+	} catch{
+		return false;
+	}
+}
+
 /** runs `code` in the page's R session, giving up silently once `current` fails */
 async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<{ readonly said: boolean, readonly took: number }> {
 	if(session === undefined) {
-		sink.status('downloading R, only once...');
+		sink.status(await webrStored() ? 'starting R...' : 'downloading R, only once...');
 		beginStep({ counts: url => url.startsWith(WebRBase) && !url.startsWith(`${WebRBase}vfs/`), total: startBytes, then: 'starting R...' });
 	}
 	const s = await start().finally(() => beginStep());

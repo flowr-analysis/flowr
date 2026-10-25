@@ -11,7 +11,7 @@ const Expected = JSON.parse('<!--WEBR-MANIFEST-->');
 const Packages = 'https://repo.r-wasm.org/';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', event => event.waitUntil(Promise.all([self.clients.claim(), forgetOutdated()])));
 
 self.addEventListener('fetch', event => {
 	const url = event.request.url;
@@ -80,6 +80,21 @@ async function remember(key, response) {
 		await (await caches.open(Store)).put(key, response);
 	} catch{
 		/* a full or unavailable storage only costs the next download */
+	}
+}
+
+/* files of an earlier pinned release are of no use any more */
+async function forgetOutdated() {
+	try {
+		const current = new Set(Object.values(Expected).map(f => encodeURIComponent(f.sha256)));
+		const cache = await caches.open(Store);
+		for(const request of await cache.keys()) {
+			if(!current.has(new URL(request.url).searchParams.get('sha256') ?? '')) {
+				await cache.delete(request);
+			}
+		}
+	} catch{
+		/* what stays only takes up room */
 	}
 }
 

@@ -191,7 +191,7 @@ code, pre { font-family: var(--mono); }
 #repl .out a { color: var(--accent); }
 :is(#repl, #runr .out) .bad { color: #d55e00; }
 :is(#repl, #runr .out) .note { color: var(--muted); }
-:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; filter: var(--plot-filter, none); }
 #runr:not(.shiny) .via .shinylive, #runr.shiny .via .webr, #runr.shiny #runrtrust { display: none; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
 #repl .ask > span { color: var(--accent); font-family: var(--mono); }

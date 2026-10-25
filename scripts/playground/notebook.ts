@@ -803,7 +803,7 @@ const cellLook = EditorView.theme({
 	'.cm-cell-output-body > .meta':                    { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
 	'.cm-cell-output-body > .bad':                     { color: '#d55e00' },
 	/* no wider than the output, or the code scrolls sideways */
-	'.cm-cell-output-body canvas':                     { display: 'block', margin: '.3rem 0', borderRadius: '.3rem', background: 'color-mix(in srgb, #fff 94%, var(--panel))' },
+	'.cm-cell-output-body canvas':                     { display: 'block', margin: '.3rem 0', borderRadius: '.3rem', filter: 'var(--plot-filter, none)' },
 	'.cm-cell-output-x':                               {
 		position: 'absolute', top: '.2rem', right: '.3rem', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', font: 'inherit', fontSize: '.75rem'
 	},

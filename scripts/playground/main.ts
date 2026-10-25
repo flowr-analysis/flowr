@@ -997,7 +997,9 @@ interface ShownDep { readonly kind: string, readonly line?: number, readonly fro
 let shownDeps: readonly ShownDep[] = [];
 
 function depsOver(from: number, to: number): Node[] {
-	return shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to).map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
+	/* a call standing for several entries in the function it calls says the same thing for each of them */
+	const over = shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to);
+	return [...new Map(over.map(d => [`${d.kind}\0${d.said?.name}\0${d.said?.why}`, d])).values()].map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
 }
 
 let shareTimer = 0;
@@ -2358,6 +2360,10 @@ interface Finding { loc?: SourceLocation, quickFix?: LintQuickFix[], involvedId?
 
 /* the finding whose details are open, which a new analysis opens again */
 let openedLint: string | undefined;
+/** the rules whose grouped findings are unfolded, kept across analyses like the opened finding */
+const openedLintGroups = new Set<string>();
+/** from this many findings on, a rule's findings fold into one row, so ten unused names do not bury the one error */
+const LintGroupFrom = 3;
 
 /** the rule that reports code which does not parse */
 const SyntaxRule = 'syntactically-valid';
@@ -3022,6 +3028,9 @@ async function analyze(): Promise<number> {
 		found.length === 0 ? undefined : [errors > 0 ? `${errors} error${errors === 1 ? '' : 's'}` : '', found.length > errors ? `${found.length - errors} warning${found.length - errors === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), acts);
 	const lints = el('div', 'lints');
 	lints.dataset.mark = PlaygroundBox.Lints;
+	/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
+	const lintKeyOf = (f: typeof found[number]): string => `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
+	const rowsOf = new Map<string, HTMLElement[]>();
 	for(const f of found) {
 		const said = el('span', 'says', f.message);
 		const chip = el('span', 'rule');
@@ -3047,8 +3056,7 @@ async function analyze(): Promise<number> {
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'a click goes there, alt-click highlights this finding in the link';
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
-		/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
-		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
+		const lintKey = lintKeyOf(f);
 		line.addEventListener('click', event => {
 			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
 				return;
@@ -3063,7 +3071,45 @@ async function analyze(): Promise<number> {
 		if(openedLint === lintKey) {
 			line.append(ruleDetails(f.rule, f.quickFix, followUp(f)));
 		}
-		lints.append(linkRow(line, [f.line]));
+		rowsOf.set(f.rule, [...rowsOf.get(f.rule) ?? [], linkRow(line, [f.line])]);
+	}
+	for(const [rule, rows] of rowsOf) {
+		if(rows.length < LintGroupFrom) {
+			lints.append(...rows);
+			continue;
+		}
+		const of = found.filter(f => f.rule === rule);
+		/* most messages name what they are about in backticks, which makes for a better summary than a count alone */
+		const names = of.map(f => /`([^`]+)`/.exec(f.message)?.[1]);
+		const summary = names.every(n => n !== undefined) ? `${of.length} findings: ${uniqueArray(names).join(', ')}` : `${of.length} findings`;
+		const chip = el('span', 'rule');
+		chip.dataset.category = category(rule);
+		chip.append(tag(rule, 'rulename'));
+		const head = el('div', 'lint lintgroup');
+		head.dataset.category = chip.dataset.category;
+		head.title = 'a click shows or hides the findings of this rule';
+		const lines = of.map(f => f.line);
+		const toggle = el('span', 'toggle');
+		head.append(chip, el('span', 'says', summary), toggle);
+		const fold = (open: boolean): void => {
+			for(const row of rows) {
+				row.hidden = !open;
+			}
+			head.classList.toggle('open', open);
+			toggle.textContent = open ? 'hide' : 'show';
+		};
+		head.addEventListener('click', () => {
+			const open = !openedLintGroups.delete(rule);
+			if(open) {
+				openedLintGroups.add(rule);
+			}
+			fold(open);
+		});
+		for(const row of rows) {
+			row.classList.add('member');
+		}
+		fold(openedLintGroups.has(rule) || of.some(f => lintKeyOf(f) === openedLint));
+		lints.append(linkRow(head, lines), ...rows);
 	}
 	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
 	panel.append(...sliceBlock);

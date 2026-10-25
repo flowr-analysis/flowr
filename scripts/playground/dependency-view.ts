@@ -5,7 +5,7 @@ import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/no
 import type { DependencyInfo } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { Unknown } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { Identifier } from '../../src/dataflow/environments/identifier';
-import { RFunctionCall } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RBinaryOp } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -13,6 +13,37 @@ import { RPipe } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { RExpressionList } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { SourceRange } from '../../src/util/range';
 import { el } from '../page-lib/dom';
+import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
+
+/** how the calls building a path join their parts, `undefined` for a separator of their own */
+const PathJoins: Readonly<Record<string, string>> = { paste0: '', paste: ' ', 'file.path': '/', sprintf: '' };
+
+/**
+ * The path an argument builds, with what is not known (a parameter no call fills, a variable) shown as `<name>`:
+ * `file.path("out", paste0(name, ".csv"))` is `out/<name>.csv`. `undefined` unless every part is a string, a name,
+ * or such a joining call; only `sprintf` with a format of nothing but `%s` and text counts.
+ */
+export function pathPattern(node: RNode<ParentInformation> | undefined): string | undefined {
+	if(RString.is(node)) {
+		return node.content.str;
+	} else if(RSymbol.is(node)) {
+		return `<${Identifier.getName(node.content)}>`;
+	} else if(!RFunctionCall.is(node)) {
+		return undefined;
+	}
+	const fn = node.named ? Identifier.getName(node.functionName.content) : undefined;
+	const join = fn === undefined ? undefined : PathJoins[fn];
+	const args = node.arguments.map(a => a === EmptyArgument || a.name !== undefined ? undefined : pathPattern(a.value));
+	if(join === undefined || args.length === 0 || args.includes(undefined)) {
+		return undefined;
+	}
+	if(fn === 'sprintf') {
+		const [format, ...rest] = args as string[];
+		const pieces = format.split('%s');
+		return /%[^s]/.test(format) || pieces.length !== rest.length + 1 ? undefined : pieces.map((p, i) => p + (rest[i] ?? '')).join('');
+	}
+	return (args as string[]).join(join);
+}
 
 const items = (n: number, what = 'item'): string => `${n} ${what}${n === 1 ? '' : 's'}`;
 
@@ -219,7 +250,8 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 			return typeof value === 'string' ? value : renderFunctionName(value);
 		}
 		const named = Identifier.getName(e.functionName);
-		return e.lexemeOfArgument ? `${named}: ${e.lexemeOfArgument}` : named;
+		const pattern = e.argumentId === undefined ? undefined : pathPattern(RArgument.valueOf(ids.get(e.argumentId)));
+		return pattern !== undefined && pattern.includes('<') ? `${named}: ${pattern}` : e.lexemeOfArgument ? `${named}: ${e.lexemeOfArgument}` : named;
 	};
 	const usageName = (e: DependencyInfo): string => {
 		const node = e.nodeId === undefined ? undefined : ids.get(e.nodeId);
@@ -312,8 +344,20 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 	};
 
 	const grouped = (kind: string, shown: readonly DependencyInfo[], all: readonly DependencyInfo[]): DepNode[] => {
+		/* a call that cannot tell which of the values in its function is its own names none, and shows them all below it
+		   instead, as `save_figure()` holds both files the `ggsave()` in its body may write */
+		const open = (e: DependencyInfo): boolean => e.via !== undefined && (e.value === undefined || e.value === Unknown);
+		const heldBelow = new Set(shown.filter(open).map(e => e.via));
+		const withHeld = (e: DependencyInfo, made: DepNode, seen: ReadonlySet<DependencyInfo>): DepNode => {
+			if(!open(e)) {
+				return made;
+			}
+			const held = shown.filter(i => !seen.has(i) && i.nodeId === e.via)
+				.map(i => withHeld(i, entry(kind, all, i, withDataFlow(kind, i, displayLabel(i, guardedName(i)))), new Set([...seen, i])));
+			return held.length === 0 ? made : { ...made, children: [...made.children, ...held] };
+		};
 		const groups = new Map<string, DependencyInfo[]>();
-		for(const e of shown.filter(i => i.nodeId !== undefined).sort((a, b) => byLocation(a.nodeId, b.nodeId))) {
+		for(const e of shown.filter(i => i.nodeId !== undefined && !heldBelow.has(i.nodeId)).sort((a, b) => byLocation(a.nodeId, b.nodeId))) {
 			const name = guardedName(e);
 			const list = groups.get(name) ?? [];
 			list.push(e);
@@ -324,10 +368,10 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 				return toConsole(uses, kind, all, name);
 			}
 			if(uses.length === 1) {
-				return entry(kind, all, uses[0], withDataFlow(kind, uses[0], displayLabel(uses[0], name)));
+				return withHeld(uses[0], entry(kind, all, uses[0], withDataFlow(kind, uses[0], displayLabel(uses[0], name))), new Set(uses));
 			}
 			const byValue = uses[0].value !== undefined && uses[0].value !== Unknown && !plots.has(uses[0]);
-			const children = viaNested(uses, e => entry(kind, all, e, withDataFlow(kind, e, byValue ? usageName(e) : guardedName(e))));
+			const children = viaNested(uses, e => withHeld(e, entry(kind, all, e, withDataFlow(kind, e, byValue ? usageName(e) : guardedName(e))), new Set([e])));
 			return groupNode(`${name}${children.map(c => c.key).join('-')}`, kind, displayLabel(uses[0], name), name, 'folder', children);
 		});
 	};

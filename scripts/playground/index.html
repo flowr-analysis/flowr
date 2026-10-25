@@ -192,6 +192,13 @@ code, pre { font-family: var(--mono); }
 :is(#repl, #runr .out) .bad { color: #d55e00; }
 :is(#repl, #runr .out) .note { color: var(--muted); }
 :is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; filter: var(--plot-filter, none); }
+.figures { margin: .4rem 0; }
+.figure-tabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: .25rem 0; }
+.figure-tab { padding: .1rem .5rem; border: 1px solid var(--border); border-radius: .3rem; background: none; color: var(--muted); font: inherit; font-size: .75rem; cursor: pointer; }
+.figure-tab.on { border-color: var(--accent); color: var(--fg); }
+.figure-view img { display: block; max-width: 100%; height: auto; border-radius: .3rem; background: #fff; }
+.figure-view { container-type: inline-size; }
+.figure-view object { display: block; width: 100%; max-height: 70vh; border: 0; border-radius: .3rem; }
 #runr:not(.shiny) .via .shinylive, #runr.shiny .via .webr, #runr.shiny #runrtrust { display: none; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
 #repl .ask > span { color: var(--accent); font-family: var(--mono); }
@@ -620,6 +627,15 @@ code, pre { font-family: var(--mono); }
 }
 #panel .lints .lint:hover { background: color-mix(in srgb, var(--hue) 10%, var(--panel)); border-color: color-mix(in srgb, var(--hue) 40%, var(--border)); }
 #panel .lints .lint .says { line-height: 1.4; }
+#panel .lints .lint.member { margin-left: 1rem; }
+#panel .lints .lint.member[hidden] { display: none; }
+#panel .lints .lintgroup .says { color: var(--muted); }
+#panel .lints .lintgroup .toggle { justify-self: end; font-size: .72rem; color: var(--muted); }
+#panel .lints .lintgroup .toggle::after {
+	content: ''; display: inline-block; width: .35rem; height: .35rem; margin-left: .35rem;
+	border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-.15rem) rotate(45deg); transition: transform .12s;
+}
+#panel .lints .lintgroup.open .toggle::after { transform: translateY(.05rem) rotate(-135deg); }
 #panel .lints .lint .at {
 	justify-self: end; padding: 0 .4rem; border-radius: 1rem; font-size: .72rem;
 	background: var(--sunk); border: 1px solid var(--border);

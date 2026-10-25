@@ -379,6 +379,10 @@ function(x) {
 		configType: 'UnclosedConnectionConfig', ruleType:   'UNCLOSED_CONNECTION', testfile:   'lint-unclosed-connection',
 		example:    'con <- file("data.csv")\nreadLines(con)'
 	},
+	'overwritten-file': {
+		configType: 'OverwrittenFileConfig', ruleType:   'OVERWRITTEN_FILE', testfile:   'lint-overwritten-file',
+		example:    'write.csv(cars, "out.csv")\nwrite.csv(iris, "out.csv")'
+	},
 	'unused-import': {
 		configType: 'UnusedImportConfig', ruleType:   'UNUSED_IMPORT', testfile:   'lint-unused-import',
 		example:    'library(stats)\nprint("no stats function is used")'

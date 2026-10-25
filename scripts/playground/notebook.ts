@@ -412,13 +412,19 @@ const outputLines = (text: string): string[] => text.split(LineBreak).map(l => l
 const sameOutput = (a: string, b: string) => outputLines(a).join('\n').trim() === outputLines(b).join('\n').trim();
 
 /** the output a notebook recorded for each of its code cells, by the name of the script it is shown as */
-const recordedNotebooks = new Map<string, readonly string[]>();
+const recordedNotebooks = new Map<string, readonly Recorded[]>();
+
+/** what a run printed and how many plots it drew, where the format records plots */
+interface Recorded {
+	readonly output: string
+	readonly plots?: number
+}
 
 /** the script of a Jupyter notebook, remembering what its cells printed to set a run against */
 export function loadNotebook(script: string, json: string): string {
-	const outputs = jupyterRecordedRuns(json).map(r => r.output);
+	const outputs = jupyterRecordedRuns(json);
 	/* a notebook saved without its outputs has nothing to set a run against */
-	if(outputs.some(o => o !== '')) {
+	if(outputs.some(o => o.output !== '' || o.plots)) {
 		recordedNotebooks.set(script, outputs);
 	} else {
 		recordedNotebooks.delete(script);
@@ -427,34 +433,40 @@ export function loadNotebook(script: string, json: string): string {
 }
 
 /** the output recorded for a code cell: below a command of a transcript, or stored with a notebook */
-function recordedOutput(state: EditorState, file: string, cells: readonly Cell[], cell: Cell): string | undefined {
+function recordedOutput(state: EditorState, file: string, cells: readonly Cell[], cell: Cell): Recorded | undefined {
 	const notebook = recordedNotebooks.get(file);
 	if(notebook !== undefined) {
-		return notebook[codeIndex(cell, cells)] ?? '';
+		return notebook[codeIndex(cell, cells)] ?? { output: '' };
 	}
 	if(!cell.prompt) {
 		return undefined;
 	}
 	const next = cells[cells.indexOf(cell) + 1];
-	return next?.output ? codeOf(state, next) : '';
+	return { output: next?.output ? codeOf(state, next) : '' };
 }
 
 /** a run matching the transcript only says so, as the output is already on the page, and is set against it when it does not */
-function compareWithRecorded(body: HTMLElement, recorded: string): void {
-	const printed = [...body.children];
+function compareWithRecorded(body: HTMLElement, recorded: Recorded): void {
+	const isPlot = (c: Element) => c.nodeName === 'CANVAS' || c.querySelector('canvas') !== null;
+	const printed = [...body.children].filter(c => !isPlot(c));
 	const got = printed.map(c => c.textContent ?? '').join('\n');
-	if(body.querySelector('canvas') === null && sameOutput(got, recorded)) {
-		body.replaceChildren(...recorded.trim() === '' ? [] : [el('div', 'cm-output-verified', '\u2713 matches the recorded output')]);
+	const plots = body.querySelectorAll('canvas').length;
+	const matches = sameOutput(got, recorded.output) && (recorded.plots === undefined || recorded.plots === plots);
+	printed.forEach(c => c.remove());
+	if(matches) {
+		if(recorded.output.trim() !== '' || plots > 0) {
+			body.prepend(el('div', 'cm-output-verified', `\u2713 matches the recorded output${recorded.plots ? ` and ${recorded.plots} plot${recorded.plots === 1 ? '' : 's'}` : ''}`));
+		}
 		return;
 	}
-	const side = (label: string, text: string) => {
+	const side = (label: string, text: string, count: number | undefined) => {
 		const box = el('div', 'cm-output-side');
-		box.append(el('div', 'cm-output-label', label), el('div', undefined, text.trim() === '' ? '(nothing)' : text.trimEnd()));
+		const shown = [text.trim() === '' ? '(nothing)' : text.trimEnd(), ...count === undefined ? [] : [`${count} plot${count === 1 ? '' : 's'}`]];
+		box.append(el('div', 'cm-output-label', label), el('div', undefined, shown.join('\n')));
 		return box;
 	};
 	body.classList.add('differs');
-	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded), side('now', got));
-	printed.filter(c => c.querySelector('canvas') === null && c.nodeName !== 'CANVAS').forEach(c => c.remove());
+	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded.output, recorded.plots), side('now', got, recorded.plots === undefined ? undefined : plots));
 }
 
 class CellOutput extends WidgetType {
@@ -791,7 +803,7 @@ const cellLook = EditorView.theme({
 	'.cm-cell-output-body > .meta':                    { fontFamily: 'system-ui, sans-serif', fontStyle: 'italic' },
 	'.cm-cell-output-body > .bad':                     { color: '#d55e00' },
 	/* no wider than the output, or the code scrolls sideways */
-	'.cm-cell-output-body canvas':                     { display: 'block', margin: '.3rem 0' },
+	'.cm-cell-output-body canvas':                     { display: 'block', margin: '.3rem 0', borderRadius: '.3rem', background: 'color-mix(in srgb, #fff 94%, var(--panel))' },
 	'.cm-cell-output-x':                               {
 		position: 'absolute', top: '.2rem', right: '.3rem', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', font: 'inherit', fontSize: '.75rem'
 	},

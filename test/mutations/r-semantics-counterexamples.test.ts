@@ -5,8 +5,8 @@ import { withShell } from '../functionality/_helper/shell';
 import { decorateLabelContext, label } from '../functionality/_helper/label';
 import type { RShell } from '../../src/r-bridge/shell';
 import type { FlowrCapabilityId } from '../../src/r-bridge/data/get';
-import type { MutationTarget } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate, observeQueries, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
+import type { MutationTarget, MutationPass, ReplObservation  } from '../functionality/_helper/r-mutations';
+import { MutationPasses, mutate, observeQueries, observeRepl, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 interface Counterexample extends MutationTarget {
 	readonly name:         string;
@@ -40,6 +40,31 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		await shell.sendCommandWithOutput('setwd(flowr_wd); options(flowr_op); graphics.off(); rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
 		return lines.join('\n');
 	}
+	const observed = new Map<string, Promise<ReplObservation>>();
+	function replOf(target: Counterexample): Promise<ReplObservation> {
+		const known = observed.get(target.code) ?? observeRepl(shell, target);
+		observed.set(target.code, known);
+		return known;
+	}
+	/** the REPL has to slice the program as the pipeline does and answer the same about it, unless the pass gives it a reason not to */
+	async function checkRepl(target: Counterexample, original?: Counterexample, pass?: MutationPass): Promise<void> {
+		const after = await replOf(target);
+		const what = `the program is:\n${target.code}`;
+		assert.strictEqual(await run(after.slice), target.expected, `the slice the REPL prints does not print what the input does, ${what}\nand the REPL slices it to:\n${after.slice}`);
+		if(original === undefined || pass === undefined) {
+			return;
+		}
+		const before = await replOf(original);
+		assert.deepStrictEqual(after.dependencies, before.dependencies, `the mutation changes the dependencies the REPL lists, ${what}`);
+		if(pass.adds) {
+			assert.includeMembers([...after.linter], [...before.linter], `the mutation loses linter findings, ${what}`);
+		} else {
+			assert.deepStrictEqual(after.linter, before.linter, `the mutation changes the linter findings, ${what}`);
+		}
+		if(pass.keepsGraph) {
+			assert.deepStrictEqual(after.graphs, before.graphs, `the mutation changes a value or graph the REPL shows, ${what}`);
+		}
+	}
 	async function check(target: Counterexample): Promise<void> {
 		const what = `the program sliced for ${target.criterion} is:\n${target.code}`;
 		const sliced = await slice(shell, target);
@@ -60,7 +85,10 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 	describe(group, () => {
 		for(const counterexample of cases) {
 			const { name, capabilities, code } = counterexample;
-			test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, () => check(counterexample));
+			test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, async() => {
+				await check(counterexample);
+				await checkRepl(counterexample);
+			});
 		}
 		for(const pass of MutationPasses) {
 			describe(pass.name, () => {
@@ -76,8 +104,9 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 						generatedMutants.add(id);
 						usedPasses.add(pass.name);
 						await check(mutant as Counterexample);
-						assert.deepStrictEqual(await observeQueries(shell, mutant.code), await observeQueries(shell, counterexample.code),
+						assert.deepStrictEqual(await observeQueries(shell, mutant.code, mutant.renames), await observeQueries(shell, counterexample.code),
 							`the mutation changes what the queries report about the program, it is:\n${mutant.code}`);
+						await checkRepl(mutant as Counterexample, counterexample, pass);
 					});
 				}
 			});
@@ -235,6 +264,121 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 	counterexamples(shell, 'Plots saved by ggplot2', [
 		{ name: 'ggsave saves the last plot', capabilities: ['library-loading', 'graphics-state', 'i-o'], code: 'library(ggplot2)\nsetwd(tempdir())\nunlink("g.pdf")\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("g.pdf", width = 2, height = 2)\nr <- file.exists("g.pdf")\nprint(r)', criterion: '7@r', expected: '[1] TRUE' },
 		{ name: 'ggsave to another file is not kept', capabilities: ['library-loading', 'graphics-state', 'i-o'], code: 'library(ggplot2)\nsetwd(tempdir())\nwriteLines("1", "h.txt")\np <- ggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("g2.pdf", p, width = 2, height = 2)\nr <- readLines("h.txt")\nprint(r)', criterion: '7@r', expected: '[1] "1"', lacks: ['ggsave', 'ggplot('] }
+	]);
+
+	counterexamples(shell, 'Assignments and redefinitions', [
+		{ name: 'a redefinition hides the first binding', capabilities: ['local-left-assignment'], code: 'x <- 1\nx <- 2\ny <- x\nprint(y)', criterion: '4@y', expected: '[1] 2' },
+		{ name: 'a later redefinition does not reach back', capabilities: ['local-left-assignment'], code: 'x <- 3\ny <- x * 2\nx <- 10\nprint(y)', criterion: '4@y', expected: '[1] 6' },
+		{ name: 'a right assignment defines its target', capabilities: ['local-right-assignment'], code: '5 -> a\nb <- a + 1\nprint(b)', criterion: '3@b', expected: '[1] 6' },
+		{ name: 'an equals assignment defines its target', capabilities: ['local-equal-assignment'], code: 'a = 4\nb = a * a\nprint(b)', criterion: '3@b', expected: '[1] 16' },
+		{ name: 'a chained assignment defines both names', capabilities: ['local-left-assignment', 'return-value-of-assignments'], code: 'a <- b <- 3\nr <- a + b\nprint(r)', criterion: '3@r', expected: '[1] 6' },
+		{ name: 'the value of an assignment is used', capabilities: ['return-value-of-assignments', 'grouping'], code: 'r <- (x <- 4) + 1\nprint(r)', criterion: '2@r', expected: '[1] 5' },
+		{ name: 'an assignment inside an argument defines its name', capabilities: ['side-effects-in-argument'], code: 'r <- sum(y <- 1:3)\nprint(y)', criterion: '2@y', expected: '[1] 1 2 3' },
+		{ name: 'an index replacement keeps the rest of the vector', capabilities: ['replacement-functions', 'single-bracket-access'], code: 'x <- c(1, 2, 3)\nx[2] <- 10\nr <- sum(x)\nprint(r)', criterion: '4@r', expected: '[1] 14' },
+		{ name: 'names<- labels the vector read later', capabilities: ['replacement-functions', 'double-bracket-access'], code: 'v <- 1:2\nnames(v) <- c("a", "b")\nr <- v[["b"]]\nprint(r)', criterion: '4@r', expected: '[1] 2' },
+		{ name: 'a field added through $ joins the list', capabilities: ['replacement-functions', 'dollar-access'], code: 'l <- list(a = 1)\nl$b <- 2\nr <- l$a + l$b\nprint(r)', criterion: '4@r', expected: '[1] 3' },
+		{ name: 'a field added through [[ joins the list', capabilities: ['replacement-functions', 'double-bracket-access'], code: 'l <- list()\nl[["k"]] <- 5\nr <- l[["k"]]\nprint(r)', criterion: '4@r', expected: '[1] 5' },
+		{ name: 'an attribute set is read back', capabilities: ['replacement-functions', 'attributes'], code: 'x <- 1\nattr(x, "u") <- 3\nr <- attr(x, "u")\nprint(r)', criterion: '4@r', expected: '[1] 3' }
+	]);
+
+	counterexamples(shell, 'Control flow', [
+		{ name: 'both branches assign the variable', capabilities: ['if'], code: 'x <- 3\nif(x > 2) y <- 1 else y <- 2\nprint(y)', criterion: '3@y', expected: '[1] 1' },
+		{ name: 'an if used as a value', capabilities: ['if', 'strings'], code: 'x <- 1\ny <- if(x > 2) "big" else "small"\nprint(y)', criterion: '3@y', expected: '[1] "small"' },
+		{ name: 'a for loop accumulates', capabilities: ['for-loop'], code: 's <- 0\nfor(i in 1:4) s <- s + i\nprint(s)', criterion: '3@s', expected: '[1] 10' },
+		{ name: 'next skips the rest of the body', capabilities: ['for-loop', 'next'], code: 's <- 0\nfor(i in 1:5) { if(i %% 2 == 0) next; s <- s + i }\nprint(s)', criterion: '3@s', expected: '[1] 9' },
+		{ name: 'a while loop runs until its condition fails', capabilities: ['while-loop'], code: 'i <- 0\nwhile(i < 5) i <- i + 2\nprint(i)', criterion: '3@i', expected: '[1] 6' },
+		{ name: 'a repeat loop runs until its break', capabilities: ['repeat-loop', 'break'], code: 'i <- 0\nrepeat { i <- i + 1; if(i == 4) break }\nprint(i)', criterion: '3@i', expected: '[1] 4' },
+		{ name: 'switch picks the named case', capabilities: ['switch'], code: 'k <- "b"\nr <- switch(k, a = 1, b = 2, 3)\nprint(r)', criterion: '3@r', expected: '[1] 2' },
+		{ name: 'switch falls through an empty case', capabilities: ['switch', 'empty-arguments'], code: 'k <- "x"\nr <- switch(k, x = , y = "xy", "other")\nprint(r)', criterion: '3@r', expected: '[1] "xy"' },
+		{ name: 'nested loops multiply their counts', capabilities: ['for-loop'], code: 's <- 0\nfor(i in 1:3) for(j in 1:2) s <- s + i * j\nprint(s)', criterion: '3@s', expected: '[1] 18' },
+		{ name: 'the loop variable keeps its last value', capabilities: ['for-loop'], code: 'for(i in 1:3) NULL\nr <- i\nprint(r)', criterion: '3@r', expected: '[1] 3' },
+		{ name: 'an untaken branch leaves the variable alone', capabilities: ['if', 'logical'], code: 'x <- 0\nif(FALSE) x <- 1\nprint(x)', criterion: '3@x', expected: '[1] 0' },
+		{ name: 'a while loop with a computed step', capabilities: ['while-loop', 'if'], code: 'n <- 10\nsteps <- 0\nwhile(n != 1) { n <- if(n %% 2 == 0) n / 2 else 3 * n + 1; steps <- steps + 1 }\nprint(steps)', criterion: '4@steps', expected: '[1] 6' },
+		{ name: 'ifelse chooses per element', capabilities: ['vectorized-operator-or-functions', 'if'], code: 'v <- c(1, 5, 3)\nr <- ifelse(v > 2, "hi", "lo")\nprint(r)', criterion: '3@r', expected: '[1] "lo" "hi" "hi"' }
+	]);
+
+	counterexamples(shell, 'Function definitions and calls', [
+		{ name: 'two arguments by position', capabilities: ['normal-definition', 'unnamed-arguments'], code: 'f <- function(a, b) a + b\nr <- f(1, 2)\nprint(r)', criterion: '3@r', expected: '[1] 3' },
+		{ name: 'a default argument fills in', capabilities: ['formals-default'], code: 'f <- function(a, b = 10) a * b\nr <- f(2)\nprint(r)', criterion: '3@r', expected: '[1] 20' },
+		{ name: 'arguments by name in another order', capabilities: ['named-arguments'], code: 'f <- function(a, b) a - b\nr <- f(b = 1, a = 5)\nprint(r)', criterion: '3@r', expected: '[1] 4' },
+		{ name: 'dots collect every argument', capabilities: ['formals-dot-dot-dot'], code: 'f <- function(...) sum(...)\nr <- f(1, 2, 3)\nprint(r)', criterion: '3@r', expected: '[1] 6' },
+		{ name: 'dots are forwarded to another function', capabilities: ['formals-dot-dot-dot'], code: 'g <- function(x, y) x * y\nf <- function(...) g(...)\nr <- f(3, 4)\nprint(r)', criterion: '4@r', expected: '[1] 12' },
+		{ name: 'a recursive function', capabilities: ['recursion', 'if'], code: 'fact <- function(n) if(n <= 1) 1 else n * fact(n - 1)\nr <- fact(5)\nprint(r)', criterion: '3@r', expected: '[1] 120' },
+		{ name: 'mutually recursive functions', capabilities: ['recursion', 'if'], code: 'ev <- function(n) if(n == 0) TRUE else od(n - 1)\nod <- function(n) if(n == 0) FALSE else ev(n - 1)\nr <- ev(4)\nprint(r)', criterion: '4@r', expected: '[1] TRUE' },
+		{ name: 'an early return', capabilities: ['return', 'if'], code: 'f <- function(x) { if(x > 0) return("pos"); "nonpos" }\nr <- f(3)\nprint(r)', criterion: '3@r', expected: '[1] "pos"' },
+		{ name: 'a function made by a factory', capabilities: ['closures'], code: 'adder <- function(n) function(x) x + n\nadd2 <- adder(2)\nr <- add2(5)\nprint(r)', criterion: '4@r', expected: '[1] 7' },
+		{ name: 'a function reads a global', capabilities: ['lexicographic-scope'], code: 'k <- 4\nf <- function() k * 2\nr <- f()\nprint(r)', criterion: '4@r', expected: '[1] 8' },
+		{ name: 'a local binding shadows the global one', capabilities: ['lexicographic-scope'], code: 'x <- 1\nf <- function() { x <- 2; x }\nr <- f() + x\nprint(r)', criterion: '4@r', expected: '[1] 3' },
+		{ name: 'a parameter shadows the global one', capabilities: ['formals', 'lexicographic-scope'], code: 'x <- 100\nf <- function(x) x + 1\nr <- f(1)\nprint(r)', criterion: '4@r', expected: '[1] 2' },
+		{ name: 'a function applied twice', capabilities: ['call-anonymous', 'normal-definition'], code: 'apply_twice <- function(f, x) f(f(x))\nr <- apply_twice(function(v) v * 3, 2)\nprint(r)', criterion: '3@r', expected: '[1] 18' },
+		{ name: 'sapply over an anonymous function', capabilities: ['call-anonymous', 'vectorized-operator-or-functions'], code: 'v <- c(1, 2, 3)\nr <- sapply(v, function(x) x^2)\nprint(r)', criterion: '3@r', expected: '[1] 1 4 9' },
+		{ name: 'lapply results unlisted', capabilities: ['call-anonymous'], code: 'r <- unlist(lapply(1:3, function(i) i * 10))\nprint(r)', criterion: '2@r', expected: '[1] 10 20 30' },
+		{ name: 'Reduce folds a vector', capabilities: ['call-anonymous'], code: 'r <- Reduce(function(a, b) a * b, 1:4)\nprint(r)', criterion: '2@r', expected: '[1] 24' },
+		{ name: 'Map pairs two vectors', capabilities: ['call-anonymous'], code: 'r <- unlist(Map(function(a, b) a + b, 1:3, 4:6))\nprint(r)', criterion: '2@r', expected: '[1] 5 7 9' },
+		{ name: 'vapply checks the type of each result', capabilities: ['call-anonymous'], code: 'r <- vapply(1:3, function(i) i + 0.5, numeric(1))\nprint(r)', criterion: '2@r', expected: '[1] 1.5 2.5 3.5' },
+		{ name: 'do.call spreads a list of arguments', capabilities: ['built-in-evaluation'], code: 'xs <- list(1:10)\nr <- do.call(sum, xs)\nprint(r)', criterion: '3@r', expected: '[1] 55' },
+		{ name: 'on.exit runs when the function returns', capabilities: ['functions-with-global-side-effects'], code: 'f <- function() { on.exit(cat("bye\\n")); 1 }\nr <- f()\nprint(r)', criterion: '3@r', expected: 'bye\n[1] 1' },
+		{ name: 'an invisible result is still a value', capabilities: ['implicit-return'], code: 'f <- function() invisible(5)\nr <- f()\nprint(r)', criterion: '3@r', expected: '[1] 5' },
+		{ name: 'an unused argument is never evaluated', capabilities: ['formals-promises'], code: 'f <- function(a, b) a\nr <- f(1, stop("no"))\nprint(r)', criterion: '3@r', expected: '[1] 1' },
+		{ name: 'missing asks whether an argument was given', capabilities: ['formals-promises', 'if'], code: 'f <- function(a) if(missing(a)) "none" else a\nr <- f()\nprint(r)', criterion: '3@r', expected: '[1] "none"' },
+		{ name: 'Recall calls the function itself', capabilities: ['recursion'], code: 'f <- function(n) if(n <= 0) 0 else n + Recall(n - 1)\nr <- f(4)\nprint(r)', criterion: '3@r', expected: '[1] 10' },
+		{ name: 'an anonymous function called at once', capabilities: ['call-anonymous', 'grouping'], code: 'r <- (function(x) x * 2)(21)\nprint(r)', criterion: '2@r', expected: '[1] 42' },
+		{ name: 'a lambda is a function', capabilities: ['lambda-syntax'], code: 'sq <- \\(x) x * x\nr <- sq(6)\nprint(r)', criterion: '3@r', expected: '[1] 36' },
+		{ name: 'a pipe of two calls', capabilities: ['pipe-and-pipe-bind'], code: 'r <- c(1, 4, 9) |> sqrt() |> sum()\nprint(r)', criterion: '2@r', expected: '[1] 6' },
+		{ name: 'a function counting its calls through <<-', capabilities: ['super-left-assignment', 'functions-with-global-side-effects'], code: 'cnt <- 0\ninc <- function() cnt <<- cnt + 1\ninc()\ninc()\nprint(cnt)', criterion: '5@cnt', expected: '[1] 2' },
+		{ name: 'a nested function reads the outer parameter', capabilities: ['closures'], code: 'outer_fn <- function(x) { inner <- function(y) x + y; inner(10) }\nr <- outer_fn(5)\nprint(r)', criterion: '3@r', expected: '[1] 15' }
+	]);
+
+	counterexamples(shell, 'Vectors, lists and strings', [
+		{ name: 'an element by position', capabilities: ['single-bracket-access'], code: 'v <- c(10, 20, 30)\nr <- v[2]\nprint(r)', criterion: '3@r', expected: '[1] 20' },
+		{ name: 'a negative index drops an element', capabilities: ['single-bracket-access', 'unary-operator'], code: 'v <- 1:5\nr <- v[-1]\nprint(r)', criterion: '3@r', expected: '[1] 2 3 4 5' },
+		{ name: 'a logical index filters', capabilities: ['single-bracket-access', 'vectorized-operator-or-functions'], code: 'v <- c(3, 8, 1)\nr <- v[v > 2]\nprint(r)', criterion: '3@r', expected: '[1] 3 8' },
+		{ name: 'a nested list read through $', capabilities: ['dollar-access'], code: 'l <- list(a = list(b = 7))\nr <- l$a$b\nprint(r)', criterion: '3@r', expected: '[1] 7' },
+		{ name: 'a matrix cell', capabilities: ['single-bracket-access', 'named-arguments'], code: 'm <- matrix(1:6, nrow = 2)\nr <- m[2, 3]\nprint(r)', criterion: '3@r', expected: '[1] 6' },
+		{ name: 'a sequence reversed', capabilities: ['named-arguments'], code: 'r <- rev(seq(2, 10, by = 4))\nprint(r)', criterion: '2@r', expected: '[1] 10  6  2' },
+		{ name: 'a substring in upper case', capabilities: ['strings'], code: 's <- "flowR"\nr <- toupper(substr(s, 1, 4))\nprint(r)', criterion: '3@r', expected: '[1] "FLOW"' },
+		{ name: 'paste with a separator', capabilities: ['strings', 'named-arguments'], code: 'a <- "x"\nb <- 3\nr <- paste(a, b, sep = "-")\nprint(r)', criterion: '4@r', expected: '[1] "x-3"' },
+		{ name: 'sprintf formats a count', capabilities: ['strings', 'string-templates'], code: 'n <- 5\nr <- sprintf("%d items", n)\nprint(r)', criterion: '3@r', expected: '[1] "5 items"' },
+		{ name: 'gsub replaces every match', capabilities: ['strings'], code: 's <- "a-b-c"\nr <- gsub("-", "+", s)\nprint(r)', criterion: '3@r', expected: '[1] "a+b+c"' },
+		{ name: 'strsplit and two indices', capabilities: ['strings', 'double-bracket-access'], code: 'r <- strsplit("a,b", ",")[[1]][2]\nprint(r)', criterion: '2@r', expected: '[1] "b"' },
+		{ name: 'which.max finds the position', capabilities: ['vectorized-operator-or-functions'], code: 'v <- c(4, 9, 2)\nr <- which.max(v)\nprint(r)', criterion: '3@r', expected: '[1] 2' },
+		{ name: 'a NULL is NULL', capabilities: ['null'], code: 'x <- NULL\nr <- is.null(x)\nprint(r)', criterion: '3@r', expected: '[1] TRUE' },
+		{ name: 'na.rm leaves out the missing value', capabilities: ['named-arguments', 'logical'], code: 'v <- c(1, NA, 3)\nr <- sum(v, na.rm = TRUE)\nprint(r)', criterion: '3@r', expected: '[1] 4' }
+	]);
+
+	counterexamples(shell, 'Data frames', [
+		{ name: 'a column element', capabilities: ['dollar-access', 'single-bracket-access'], code: 'df <- data.frame(a = 1:3, b = c(2, 4, 6))\nr <- df$b[2]\nprint(r)', criterion: '3@r', expected: '[1] 4' },
+		{ name: 'a column computed from another', capabilities: ['dollar-access', 'replacement-functions'], code: 'df <- data.frame(a = 1:3)\ndf$b <- df$a * 2\nr <- sum(df$b)\nprint(r)', criterion: '4@r', expected: '[1] 12' },
+		{ name: 'rows filtered by a column', capabilities: ['single-bracket-access', 'dollar-access'], code: 'df <- data.frame(a = 1:4, b = c(5, 6, 7, 8))\nr <- df[df$a > 2, "b"]\nprint(r)', criterion: '3@r', expected: '[1] 7 8' },
+		{ name: 'the shape of a data frame', capabilities: ['normal-definition'], code: 'df <- data.frame(a = 1:3, b = 4:6)\nr <- nrow(df) * ncol(df)\nprint(r)', criterion: '3@r', expected: '[1] 6' },
+		{ name: 'the column names', capabilities: ['strings'], code: 'df <- data.frame(x = 1, y = 2)\nr <- colnames(df)\nprint(r)', criterion: '3@r', expected: '[1] "x" "y"' },
+		{ name: 'two frames bound by rows', capabilities: ['normal-definition'], code: 'd1 <- data.frame(a = 1)\nd2 <- data.frame(a = 2)\nr <- nrow(rbind(d1, d2))\nprint(r)', criterion: '4@r', expected: '[1] 2' },
+		{ name: 'two frames merged on a key', capabilities: ['dollar-access'], code: 'a <- data.frame(k = 1:2, x = 3:4)\nb <- data.frame(k = 2:3, y = 5:6)\nr <- merge(a, b)$x\nprint(r)', criterion: '4@r', expected: '[1] 4' },
+		{ name: 'a column read through [[', capabilities: ['double-bracket-access', 'single-bracket-access'], code: 'df <- data.frame(a = c(1, 2))\nr <- df[["a"]][1]\nprint(r)', criterion: '3@r', expected: '[1] 1' },
+		{ name: 'tapply groups a vector', capabilities: ['vectorized-operator-or-functions'], code: 'v <- c(1, 2, 3, 4)\ng <- c("a", "b", "a", "b")\nr <- unname(tapply(v, g, sum))\nprint(r)', criterion: '4@r', expected: '[1] 4 6' }
+	]);
+
+	counterexamples(shell, 'Objects', [
+		{ name: 'an S3 method is dispatched on the class', capabilities: ['oop-s3-dispatch'], code: 'area <- function(s) UseMethod("area")\narea.sq <- function(s) s$w^2\nx <- structure(list(w = 3), class = "sq")\nr <- area(x)\nprint(r)', criterion: '5@r', expected: '[1] 9' },
+		{ name: 'an S3 default method', capabilities: ['oop-s3-dispatch'], code: 'desc <- function(o) UseMethod("desc")\ndesc.default <- function(o) "thing"\nr <- desc(1)\nprint(r)', criterion: '4@r', expected: '[1] "thing"' },
+		{ name: 'an S4 slot is read', capabilities: ['oop-s4-construction', 'slot-access'], code: 'setClass("P", representation(n = "numeric"))\np <- new("P", n = 4)\nr <- p@n\nprint(r)', criterion: '4@r', expected: '[1] 4' },
+		{ name: 'inherits reads the class vector', capabilities: ['oop-s3-inheritance'], code: 'o <- structure(1, class = c("b", "a"))\nr <- inherits(o, "a")\nprint(r)', criterion: '3@r', expected: '[1] TRUE' }
+	]);
+
+	counterexamples(shell, 'Evaluation and scopes', [
+		{ name: 'local evaluates a block in its own scope', capabilities: ['local-envir-argument'], code: 'r <- local({ a <- 2; a * 3 })\nprint(r)', criterion: '2@r', expected: '[1] 6' },
+		{ name: 'get reads from the environment it is given', capabilities: ['environment-sharing', 'named-arguments'], code: 'e <- new.env()\nassign("v", 9, envir = e)\nr <- get("v", envir = e)\nprint(r)', criterion: '4@r', expected: '[1] 9' },
+		{ name: 'exists of a name never bound', capabilities: ['search-type'], code: 'r <- exists("not_defined_here_xyz")\nprint(r)', criterion: '2@r', expected: '[1] FALSE' },
+		{ name: 'with reads the fields of a list', capabilities: ['environment-with', 'data-masking'], code: 'l <- list(a = 2, b = 3)\nr <- with(l, a * b)\nprint(r)', criterion: '3@r', expected: '[1] 6' },
+		{ name: 'eval of parsed text', capabilities: ['built-in-parsing', 'built-in-evaluation'], code: 'r <- eval(parse(text = "1 + 2"))\nprint(r)', criterion: '2@r', expected: '[1] 3' },
+		{ name: 'a quoted expression sees the later binding', capabilities: ['built-in-quoting', 'built-in-evaluation'], code: 'e <- quote(x * 2)\nx <- 4\nr <- eval(e)\nprint(r)', criterion: '4@r', expected: '[1] 8' }
+	]);
+
+	counterexamples(shell, 'Conditions', [
+		{ name: 'the error handler provides the value', capabilities: ['exceptions-and-errors'], code: 'r <- tryCatch(stop("e"), error = function(e) -1)\nprint(r)', criterion: '2@r', expected: '[1] -1' },
+		{ name: 'the warning handler provides the value', capabilities: ['exceptions-and-errors'], code: 'r <- tryCatch(as.integer("x"), warning = function(w) 0L)\nprint(r)', criterion: '2@r', expected: '[1] 0' },
+		{ name: 'an error raised in a function is caught', capabilities: ['exceptions-and-errors', 'if'], code: 'f <- function(x) if(x < 0) stop("neg") else sqrt(x)\nr <- tryCatch(f(-4), error = function(e) conditionMessage(e))\nprint(r)', criterion: '3@r', expected: '[1] "neg"' },
+		{ name: 'finally sees what the body did', capabilities: ['exceptions-and-errors'], code: 'trail <- c()\nr <- tryCatch({ trail <- c(trail, "body"); 1 }, finally = { trail <- c(trail, "fin") })\nprint(trail)', criterion: '3@trail', expected: '[1] "body" "fin"' }
 	]);
 
 	describe('bookkeeping', () => {

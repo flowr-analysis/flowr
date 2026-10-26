@@ -217,9 +217,16 @@ The suite has three pieces:
 
 Every program in the corpus is a counterexample, something that already takes care to slice correctly (a
 function called through a list, a value read back through an environment, a closure over a super-assignment,
-and so on). It is checked once for what it prints and once more for what its slice prints. Every pass is then
+and so on), or a representative program of what the functionality tests cover (assignments, control flow,
+function calls, vectors, data frames, objects, scopes, and conditions). It is checked once for what it prints and
+once more for what its slice prints. Every pass is then
 tried against it: where a pass has nothing to rewrite it is skipped for that program instead of failing, and
 where it does apply, its mutant is checked the same way, plus that no query result about the program changed.
+Every program and every mutant is also put to the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} as a reader would type it:
+the slice \`:query @static-slice\` prints has to print what the program does, \`:query @dependencies\` and
+\`:query @linter\` have to answer the same for the mutant as for the program (a pass that adds code of its own may only
+add linter findings), and for a pass that only renames or moves code around, \`:query @resolve-value\`, \`:dataflow\`,
+\`:normalize\`, and \`:cfg\` have to print the same graphs, up to the positions and the names the pass changed.
 
 The passes fall into a few categories:
 
@@ -229,12 +236,22 @@ The passes fall into a few categories:
 - assignment spelling: \`x <- 1\` becomes \`1 -> x\`, \`x = 1\`, \`x <<- 1\` (only where safe, see below), or
   \`assign("x", 1)\`; the right-hand side of an assignment is wrapped in \`(...)\` or in \`{ ... }\`.
 - naming: the variable the criterion points at is renamed to \`mut_v\`, or to a name only valid in backticks;
-  a string literal is split apart into \`paste0("v", "vv")\`.
+  every variable the program binds is renamed consistently (an isomorphic renaming, to \`mut_r1\`, \`mut_r2\`, ...
+  or to names in backticks), unless the program could read a name as data; a string literal is split apart into
+  \`paste0("v", "vv")\`.
+- literals and layout: string literals are written in single quotes, whole numbers in scientific notation
+  (\`3e0\`), an assignment is continued on the next line, and the whitespace around an assignment is made irregular.
+- control flow: the branches of an \`if\`/\`else\` are swapped under the negated condition, a \`while\` loop becomes a
+  \`repeat\` loop breaking on the negated condition, a \`for\` loop over a range becomes a \`while\` loop over its
+  indices, and two adjacent statements that neither read nor change each other trade places.
+- dead code: an assignment to the criterion's variable is put right before it under \`if(FALSE)\`.
 - structure and braces: the first two statements (or a run of statements around the criterion's own line) are
   joined with \`;\`, every statement or the whole program is wrapped in a \`{ ... }\` block, and braces are added
   to the body of a single-line \`if\` (both arms of an \`if\`/\`else\`), \`for\` or \`while\`.
-- function forms: \`function(x)\` becomes \`\\(x)\` where the R version supports the shorthand, and a call
-  nested inside another call is rewritten as a native pipe, e.g. \`f(g(x))\` becomes \`x |> g() |> f()\`.
+- function forms: \`function(x)\` becomes \`\\(x)\` where the R version supports the shorthand, a call
+  nested inside another call is rewritten as a native pipe, e.g. \`f(g(x))\` becomes \`x |> g() |> f()\`, and a
+  pipe back into the nested call; the body of a function is returned explicitly, and an argument is passed
+  through \`identity\`.
 - one pass, \`criterion value shifted by one\`, is the exception that deliberately changes the output: it adds
   one to a printed number and updates the expected output to match, so the corpus also checks that a slice
   tracks a value rather than just a name.

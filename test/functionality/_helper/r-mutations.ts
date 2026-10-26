@@ -15,6 +15,8 @@ import semver from 'semver/preload';
 import { createSlicePipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { replProcessAnswer } from '../../../src/cli/repl/core';
+import { voidFormatter } from '../../../src/util/text/ansi';
 
 export interface MutationTarget {
 	/** the program to mutate */
@@ -23,6 +25,8 @@ export interface MutationTarget {
 	readonly criterion: `${number}@${string}`;
 	/** what {@link code} prints when it is run */
 	readonly expected:  string;
+	/** the names a pass gave the variables, each mapped to the one the program had before */
+	readonly renames?:  Readonly<Record<string, string>>;
 }
 
 /** where a name is written down in the program being mutated, as the flowR search finds it */
@@ -34,6 +38,10 @@ export interface MutationPass {
 	readonly name:         string;
 	/** the R version the rewrite needs, so a host below it explains an idle pass without a name list */
 	readonly minRVersion?: string;
+	/** the rewrite only moves code around or renames it, so the graphs flowR builds keep their shape */
+	readonly keepsGraph?:  boolean;
+	/** the rewrite adds code of its own, about which the linter may say more, but never less */
+	readonly adds?:        boolean;
 	/** the mutated program, or `undefined` if the pass does not apply */
 	readonly apply:        (target: MutationTarget, occurrencesOf: Occurrences) => Promise<MutationTarget | undefined> | MutationTarget | undefined;
 }
@@ -102,28 +110,33 @@ function rewriteAssignments(target: MutationTarget, rewrite: (name: string, rhs:
 
 const leadingNoise: MutationPass = {
 	name:  'leading noise',
+	adds:  true,
 	apply: target => mapLines(target, lines => [`${MutationPrefix}a <- 1`, `${MutationPrefix}b <- ${MutationPrefix}a + 1`, ...lines], line => line + 2)
 };
 
 const trailingNoise: MutationPass = {
 	name:  'trailing noise',
+	adds:  true,
 	apply: target => /^(print|invisible|cat)\(/.test(target.code.split('\n').at(-1) ?? '') ?
 		mapLines(target, lines => [...lines, `${MutationPrefix}c <- 2`], line => line) : undefined
 };
 
 const comments: MutationPass = {
-	name:  'interleaved comments',
-	apply: target => mapLines(target, lines => lines.flatMap(l => [`# ${MutationPrefix}note`, l]), line => line * 2)
+	name:       'interleaved comments',
+	keepsGraph: true,
+	apply:      target => mapLines(target, lines => lines.flatMap(l => [`# ${MutationPrefix}note`, l]), line => line * 2)
 };
 
 const blankLines: MutationPass = {
-	name:  'interleaved blank lines',
-	apply: target => mapLines(target, lines => lines.flatMap(l => ['', l]), line => line * 2)
+	name:       'interleaved blank lines',
+	keepsGraph: true,
+	apply:      target => mapLines(target, lines => lines.flatMap(l => ['', l]), line => line * 2)
 };
 
 const joinFirstTwo: MutationPass = {
-	name:  'first two statements joined',
-	apply: target => {
+	name:       'first two statements joined',
+	keepsGraph: true,
+	apply:      target => {
 		const at = SlicingCriterion.nameAt(target.criterion);
 		const lines = target.code.split('\n');
 		return lines.length < 2 || at === undefined || at.line <= 2 || lines[0].trim() === '' || lines[1].trim() === '' ? undefined
@@ -257,12 +270,16 @@ function distinctPlaces(places: readonly SourceRange[]): SourceRange[] {
 	return [...new Map(places.map(p => [SourceRange.format(p), p])).values()];
 }
 
-function renameOccurrences(code: string, places: readonly SourceRange[], to: string): string {
+function renameAll(code: string, edits: readonly (readonly [SourceRange, string])[]): string {
 	const lines = code.split('\n');
-	for(const [line, column, , endColumn] of distinctPlaces(places).sort((a, b) => SourceRange.compare(b, a))) {
+	for(const [[line, column, , endColumn], to] of [...edits].sort(([a], [b]) => SourceRange.compare(b, a))) {
 		lines[line - 1] = lines[line - 1].slice(0, column - 1) + to + lines[line - 1].slice(endColumn);
 	}
 	return lines.join('\n');
+}
+
+function renameOccurrences(code: string, places: readonly SourceRange[], to: string): string {
+	return renameAll(code, distinctPlaces(places).map(p => [p, to] as const));
 }
 
 
@@ -275,12 +292,13 @@ async function renameCriterionTo(target: MutationTarget, occurrencesOf: Occurren
 	}
 	const places = await occurrencesOf(at.name);
 	return places.length === 0 ? undefined
-		: { ...target, code: renameOccurrences(target.code, places, to), criterion: `${at.line}@${to}` };
+		: { ...target, code: renameOccurrences(target.code, places, to), criterion: `${at.line}@${to}`, renames: { [to]: at.name } };
 }
 
 const renameCriterion: MutationPass = {
-	name:  'renamed criterion variable',
-	apply: (target, occurrencesOf) => renameCriterionTo(target, occurrencesOf, `${MutationPrefix}v`)
+	name:       'renamed criterion variable',
+	keepsGraph: true,
+	apply:      (target, occurrencesOf) => renameCriterionTo(target, occurrencesOf, `${MutationPrefix}v`)
 };
 
 const renameCriterionNonSyntactic: MutationPass = {
@@ -327,8 +345,9 @@ const shiftCriterionValue: MutationPass = {
 };
 
 const trailingComments: MutationPass = {
-	name:  'trailing comments',
-	apply: target => mapLines(target, lines => lines.map(l => l.trim() === '' ? l : `${l} # ${MutationPrefix}note`), line => line)
+	name:       'trailing comments',
+	keepsGraph: true,
+	apply:      target => mapLines(target, lines => lines.map(l => l.trim() === '' ? l : `${l} # ${MutationPrefix}note`), line => line)
 };
 
 const statementBlocks: MutationPass = {
@@ -353,8 +372,9 @@ const wholeProgramBlock: MutationPass = {
 };
 
 const semicolonJoined: MutationPass = {
-	name:  'semicolon-separated statements',
-	apply: target => {
+	name:       'semicolon-separated statements',
+	keepsGraph: true,
+	apply:      target => {
 		const at = SlicingCriterion.nameAt(target.criterion);
 		const lines = target.code.split('\n');
 		if(at === undefined || !lines.every(isWholeStatement)) {
@@ -503,6 +523,7 @@ function replaceLiteral(target: MutationTarget, literal: RegExpMatchArray, by: s
 
 const hoistString: MutationPass = {
 	name:  'string literal hoisted into a variable',
+	adds:  true,
 	apply: target => {
 		const literal = replaceableLiteral(target.code);
 		return literal === undefined ? undefined
@@ -569,6 +590,426 @@ const wholeProgramLocal: MutationPass = {
 		mapLines(target, lines => ['local({', ...lines, '})'], line => line + 1) : undefined
 };
 
+interface Token {
+	readonly kind:   'name' | 'number' | 'string' | 'other';
+	readonly text:   string;
+	readonly line:   number;
+	readonly column: number;
+	readonly index:  number;
+}
+
+const TokenPatterns: readonly (readonly [Token['kind'], RegExp])[] = [
+	['number', /(?:0[xX][\da-fA-F]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)[Li]?/y],
+	['name', /(?:[A-Za-z]|\.(?!\d))[\w.]*/y],
+	['other', /<<-|->>|<-|->|\|>|::|[=!<>]=|&&|\|\||%[^%\n]*%|\S/y]
+];
+
+/** the tokens of `code`, comments left out and every literal kept whole, with where each one starts */
+function tokensOf(code: string): Token[] {
+	const tokens: Token[] = [];
+	let line = 1;
+	let lineStart = 0;
+	for(let i = 0; i < code.length;) {
+		const c = code[i];
+		if(c === '\n') {
+			line++;
+			lineStart = ++i;
+			continue;
+		} else if(/\s/.test(c)) {
+			i++;
+			continue;
+		} else if(c === '#') {
+			while(i < code.length && code[i] !== '\n') {
+				i++;
+			}
+			continue;
+		}
+		let end = i + 1;
+		let kind: Token['kind'] = 'other';
+		if(c === '"' || c === '\'' || c === '`') {
+			while(end < code.length && code[end] !== c) {
+				end += code[end] === '\\' ? 2 : 1;
+			}
+			end++;
+			kind = c === '`' ? 'name' : 'string';
+		} else {
+			for(const [k, pattern] of TokenPatterns) {
+				pattern.lastIndex = i;
+				const m = pattern.exec(code);
+				if(m !== null) {
+					end = i + m[0].length;
+					kind = k;
+					break;
+				}
+			}
+		}
+		const text = code.slice(i, end);
+		tokens.push({ kind, text, line, column: i - lineStart + 1, index: i });
+		const breaks = text.split('\n').length - 1;
+		if(breaks > 0) {
+			line += breaks;
+			lineStart = i + text.lastIndexOf('\n') + 1;
+		}
+		i = end;
+	}
+	return tokens;
+}
+
+/** the positions in `tokens` that are formal parameters of a function header */
+function formalsOf(tokens: readonly Token[]): Set<number> {
+	const formals = new Set<number>();
+	tokens.forEach((t, i) => {
+		if(!(t.text === 'function' || t.text === '\\') || tokens[i + 1]?.text !== '(') {
+			return;
+		}
+		let depth = 0;
+		for(let j = i + 1; j < tokens.length; j++) {
+			const text = tokens[j].text;
+			depth += '([{'.includes(text) ? 1 : ')]}'.includes(text) ? -1 : 0;
+			if(depth === 0) {
+				return;
+			} else if(depth === 1 && tokens[j].kind === 'name' && (tokens[j - 1].text === '(' || tokens[j - 1].text === ',')) {
+				formals.add(j);
+			}
+		}
+	});
+	return formals;
+}
+
+/* a program using any of these may read a name as data, so renaming the binding would change what it finds */
+const ReadsNamesAsData = /\b(get0?|mget|exists|assign|rm|ls|eval|evalq|as\.name|as\.symbol|match\.fun|do\.call|environment|sys\.[\w.]+|parent\.(frame|env)|list2env|makeActiveBinding|delayedAssign|substitute|deparse|quote|bquote|body|formals|args|match\.arg|match\.call|missing|with|within|subset|transform|attach|library|require|requireNamespace|loadNamespace|setRefClass|new|Recall|UseMethod|NextMethod|setClass|setGeneric|setMethod|data|load|save|source|sys\.source|aes)\s*\(|[~`@]/;
+
+/**
+ * The names a program binds that every reference reaches under the same spelling: never an argument name, a
+ * `$` or `@` access, a package, a string or a name an attached package exports, as a renaming must leave those be.
+ */
+function renameableNames(tokens: readonly Token[]): string[] {
+	const formals = formalsOf(tokens);
+	const bound = new Set<string>();
+	const unsafe = new Set<string>();
+	tokens.forEach((t, i) => {
+		if(t.kind === 'string') {
+			for(const word of t.text.match(/[A-Za-z.][\w.]*/g) ?? []) {
+				unsafe.add(word);
+			}
+		}
+		if(t.kind !== 'name') {
+			return;
+		}
+		const before = tokens[i - 1]?.text;
+		const after = tokens[i + 1]?.text;
+		if(before === '$' || before === '@' || before === '::' || after === '::' || (after === '=' && !formals.has(i)) || t.text.startsWith('..')) {
+			unsafe.add(t.text);
+		} else if(formals.has(i) || after === '<-' || after === '<<-' || before === '->' || before === '->>'
+			|| (tokens[i - 2]?.text === 'for' && before === '(' && after === 'in')) {
+			bound.add(t.text);
+		}
+	});
+	/* a dotted name may be an S3 method, which dispatch finds by its spelling */
+	return [...bound].filter(n => !unsafe.has(n) && !n.includes('.') && baseRExportOwner(n) === undefined && !/^(T|F|function|if|else|for|while|repeat|in|next|break|TRUE|FALSE|NULL|NA|Inf|NaN)$/.test(n));
+}
+
+async function renameConsistently(target: MutationTarget, occurrencesOf: Occurrences, fresh: (index: number) => string): Promise<MutationTarget | undefined> {
+	const at = SlicingCriterion.nameAt(target.criterion);
+	if(at === undefined || ReadsNamesAsData.test(target.code)) {
+		return undefined;
+	}
+	const tokens = tokensOf(target.code);
+	const edits: (readonly [SourceRange, string])[] = [];
+	const renames: Record<string, string> = {};
+	for(const name of renameableNames(tokens)) {
+		const written = tokens.filter(t => t.kind === 'name' && t.text === name).map(t => `${t.line}.${t.column}`).sort();
+		const places = distinctPlaces(await occurrencesOf(name));
+		/* the search and the spelling have to agree on every occurrence, or one of them sees something the other does not */
+		if(places.map(([l, c]) => `${l}.${c}`).sort().join() !== written.join()) {
+			continue;
+		}
+		const to = fresh(Object.keys(renames).length + 1);
+		renames[to] = name;
+		edits.push(...places.map(p => [p, to] as const));
+	}
+	if(edits.length === 0) {
+		return undefined;
+	}
+	const renamed = Object.entries(renames).find(([, from]) => from === at.name)?.[0];
+	return { ...target, code: renameAll(target.code, edits), criterion: `${at.line}@${renamed ?? at.name}`, renames };
+}
+
+const isomorphicRenaming: MutationPass = {
+	name:       'every variable renamed',
+	keepsGraph: true,
+	apply:      (target, occurrencesOf) => renameConsistently(target, occurrencesOf, i => `${MutationPrefix}r${i}`)
+};
+
+const isomorphicRenamingNonSyntactic: MutationPass = {
+	name:  'every variable renamed to a non-syntactic name',
+	apply: (target, occurrencesOf) => renameConsistently(target, occurrencesOf, i => `\`${MutationPrefix}r ${i}\``)
+};
+
+/** calls whose result depends on nothing but their arguments and that change nothing, so two of them may trade places */
+const PureCalls: ReadonlySet<string> = new Set([
+	'c', 'list', 'rep', 'seq', 'seq_len', 'seq_along', 'numeric', 'character', 'logical', 'integer', 'paste', 'paste0', 'sum', 'length',
+	'nchar', 'toupper', 'tolower', 'file.path', 'new.env', 'data.frame', 'matrix', 'factor', 'as.character', 'as.numeric', 'as.integer',
+	'unlist', 'rev', 'sort', 'max', 'min', 'mean', 'abs', 'sqrt', 'round', 'setNames', 'identity', 'tempdir', 'names', 'sprintf'
+]);
+
+function isPureRhs(rhs: string): boolean {
+	if(/^(function\b|\\\()/.test(rhs)) {
+		return true;
+	}
+	const tokens = tokensOf(rhs);
+	return tokens.every((t, i) => !['<-', '<<-', '->', '->>', '=', '|>', '$', '[', '[[', '@'].includes(t.text) && t.text !== 'function'
+		&& (t.kind !== 'name' || tokens[i + 1]?.text !== '(' || PureCalls.has(t.text)));
+}
+
+const swapIndependent: MutationPass = {
+	name:  'independent statements swapped',
+	apply: target => {
+		const at = SlicingCriterion.nameAt(target.criterion);
+		const lines = target.code.split('\n');
+		if(at === undefined) {
+			return undefined;
+		}
+		for(let i = 0; i + 1 < at.line - 1; i++) {
+			const [a, b] = [SimpleAssignment.exec(lines[i]), SimpleAssignment.exec(lines[i + 1])];
+			if(a === null || b === null || a[1] === b[1] || lines[i].includes(';') || lines[i + 1].includes(';') || !isPureRhs(a[2]) || !isPureRhs(b[2])) {
+				continue;
+			}
+			const reads = (rhs: string, name: string) => tokensOf(rhs).some(t => t.text === name);
+			if(reads(a[2], b[1]) || reads(b[2], a[1])) {
+				continue;
+			}
+			return mapLines(target, ls => ls.map((l, k) => k === i ? ls[i + 1] : k === i + 1 ? ls[i] : l), line => line);
+		}
+		return undefined;
+	}
+};
+
+const deadStore: MutationPass = {
+	name:  'dead assignment to the criterion variable',
+	adds:  true,
+	apply: target => {
+		const at = SlicingCriterion.nameAt(target.criterion);
+		return at === undefined || !target.code.split('\n').some(l => SimpleAssignment.exec(l)?.[1] === at.name) ? undefined
+			: mapLines(target, lines => lines.flatMap((l, i) => i === at.line - 1 ? [`if(FALSE) ${at.name} <- NULL`, l] : [l]), line => line + 1);
+	}
+};
+
+/** a condition whose value is a single logical, so that negating it swaps the branches and nothing else */
+const LogicalCondition = /[<>]=?|[!=]=|&&|\|\||%in%|\bis\.[\w.]+\(|^\s*!|^\s*(TRUE|FALSE)\s*$/;
+
+/** the prefix before the keyword of a header and its condition, if the condition is a single logical */
+function conditionOf(header: string, keyword: 'if' | 'while'): readonly [string, string] | undefined {
+	const m = new RegExp(String.raw`^(.*?)\b${keyword}\s*\((.*)\)$`, 's').exec(header);
+	return m !== null && LogicalCondition.test(m[2]) && !/<-|<<-|->/.test(m[2]) ? [m[1], m[2]] : undefined;
+}
+
+/** whether a `;` outside of any bracket ends the construct early, so what follows it is no part of its body */
+function hasTopLevelSemicolon(text: string): boolean {
+	return bodyEnd(text, 0) < text.length && text[bodyEnd(text, 0)] === ';';
+}
+
+const braced = (body: string): string => body.startsWith('{') ? body : `{ ${body} }`;
+
+const ifElseSwapped: MutationPass = {
+	name:  'if and else swapped under a negated condition',
+	apply: target => {
+		if(ReadsCodeAsWritten.test(target.code)) {
+			return undefined;
+		}
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const head = controlHead(l);
+			const split = head?.keyword === 'if' && !hasTopLevelSemicolon(head.rest) ? topLevelElseSplit(head.rest.trim()) : undefined;
+			const condition = head && split ? conditionOf(head.header, 'if') : undefined;
+			if(split === undefined || condition === undefined || split[0].trim() === '' || split[1].trim() === '') {
+				return l;
+			}
+			changed = true;
+			return `${condition[0]}if(!(${condition[1]})) ${braced(split[1].trim())} else ${braced(split[0].trim())}`;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+const whileAsRepeat: MutationPass = {
+	name:  'while loop as a repeat loop',
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const head = controlHead(l);
+			const condition = head?.keyword === 'while' && head.header.startsWith('while') ? conditionOf(head.header, 'while') : undefined;
+			const body = head?.rest.trim();
+			if(condition === undefined || !body || hasTopLevelSemicolon(body)) {
+				return l;
+			}
+			changed = true;
+			return `repeat { if(!(${condition[1]})) break; ${body} }`;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+/* a sequence that is never empty, as a for loop over an empty one leaves its variable NULL */
+const ForHead = /^for\(([A-Za-z.][\w.]*) in (\d+:\d+)\)$/;
+
+const forAsWhile: MutationPass = {
+	name:  'for loop as a while loop',
+	adds:  true,
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const head = controlHead(l);
+			const m = head?.keyword === 'for' ? ForHead.exec(head.header) : null;
+			const body = head?.rest.trim();
+			if(m === null || !body || hasTopLevelSemicolon(body)) {
+				return l;
+			}
+			changed = true;
+			return `${MutationPrefix}seq <- ${m[2]}; ${MutationPrefix}k <- 0L; while(${MutationPrefix}k < length(${MutationPrefix}seq)) { ${MutationPrefix}k <- ${MutationPrefix}k + 1L; ${m[1]} <- ${MutationPrefix}seq[[${MutationPrefix}k]]; ${body} }`;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+/* these name their result after how an argument is written, which a wrapper around the argument changes */
+const DeparsesArguments: ReadonlySet<string> = new Set([
+	'data.frame', 'cbind', 'rbind', 'table', 'aes', 'ggplot', 'plot', 'hist', 'boxplot', 'barplot', 'lines', 'points', 'curve', 'xtabs', 'list'
+]);
+
+const identityArgument: MutationPass = {
+	name:  'argument passed through identity',
+	apply: target => ArgumentsTakenLazily.test(target.code) ? undefined : rewriteAssignments(target, (name, rhs) => {
+		const call = soleCall(rhs);
+		if(call === undefined || CalledAsWritten.has(call.name) || DeparsesArguments.has(call.name)) {
+			return undefined;
+		}
+		const args = splitTopLevelArgs(call.args);
+		const at = args.findIndex(a => /^[A-Za-z.][\w.]*$/.test(a) && !a.startsWith('..'));
+		return at < 0 ? undefined : `${name} <- ${call.name}(${args.map((a, i) => i === at ? `identity(${a})` : a).join(', ')})`;
+	})
+};
+
+/** where the body of a function written without braces ends, at the end of its line or the bracket enclosing it */
+function bodyEnd(text: string, start: number): number {
+	let depth = 0;
+	let quote: string | undefined;
+	for(let i = start; i < text.length; i++) {
+		const c = text[i];
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+			continue;
+		} else if(c === '"' || c === '\'' || c === '`') {
+			quote = c;
+		} else if('([{'.includes(c)) {
+			depth++;
+		} else if(')]}'.includes(c)) {
+			if(--depth < 0) {
+				return i;
+			}
+		} else if(depth === 0 && (c === ',' || c === ';' || c === '\n' || c === '#')) {
+			return i;
+		}
+	}
+	return text.length;
+}
+
+const explicitReturn: MutationPass = {
+	name:  'function result made an explicit return',
+	apply: target => {
+		if(ReadsCodeAsWritten.test(target.code)) {
+			return undefined;
+		}
+		const heads = tokensOf(target.code).flatMap((t, i, all) => (t.text === 'function' || t.text === '\\') && all[i + 1]?.text === '(' ? [all[i + 1].index] : []);
+		let code = target.code;
+		for(const open of heads.reverse()) {
+			const close = findMatchingBracket(code, open);
+			const start = close === undefined ? -1 : code.slice(close + 1).search(/\S/) + close + 1;
+			if(close === undefined || start <= close || code[start] === '{') {
+				continue;
+			}
+			const end = bodyEnd(code, start);
+			const body = code.slice(start, end).trimEnd();
+			if(body === '' || body.startsWith('return(')) {
+				continue;
+			}
+			code = `${code.slice(0, start)}return(${body})${code.slice(start + body.length)}`;
+		}
+		return code === target.code ? undefined : { ...target, code };
+	}
+};
+
+const pipeAsCall: MutationPass = {
+	name:  'pipe rewritten as a nested call',
+	apply: target => {
+		let changed = false;
+		const mutated = mapLines(target, lines => lines.map(l => {
+			const m = /^([A-Za-z.][\w.]* <- )?(.+?) \|> ([A-Za-z.][\w.]*)\((.*)\)$/.exec(l);
+			/* the pipe binds tighter than any operator, so only a primary on its left is the whole first argument */
+			const primary = /^([A-Za-z.][\w.]*|"[^"\\]*"|'[^'\\]*'|\d+(\.\d+)?L?)$/.test(m?.[2] ?? '') || soleCall(m?.[2] ?? '') !== undefined;
+			if(m === null || !primary || m[4].includes('|>') || /\b_\b/.test(m[4]) || soleCall(`${m[3]}(${m[4]})`) === undefined) {
+				return l;
+			}
+			changed = true;
+			return `${m[1] ?? ''}${m[3]}(${[m[2], ...splitTopLevelArgs(m[4])].join(', ')})`;
+		}), line => line);
+		return changed ? mutated : undefined;
+	}
+};
+
+const singleQuoted: MutationPass = {
+	name:  'string literals in single quotes',
+	apply: target => {
+		const literals = tokensOf(target.code).filter(t => t.kind === 'string' && t.text.startsWith('"') && !/['\\]/.test(t.text));
+		let code = target.code;
+		for(const t of literals.reverse()) {
+			code = `${code.slice(0, t.index)}'${t.text.slice(1, -1)}'${code.slice(t.index + t.text.length)}`;
+		}
+		return literals.length === 0 ? undefined : { ...target, code };
+	}
+};
+
+const scientificNumbers: MutationPass = {
+	name:  'numbers in scientific notation',
+	apply: target => {
+		if(ReadsCodeAsWritten.test(target.code) || target.code.includes('~')) {
+			return undefined;
+		}
+		const numbers = tokensOf(target.code).filter(t => t.kind === 'number' && /^\d+$/.test(t.text));
+		let code = target.code;
+		for(const t of numbers.reverse()) {
+			code = `${code.slice(0, t.index + t.text.length)}e0${code.slice(t.index + t.text.length)}`;
+		}
+		return numbers.length === 0 ? undefined : { ...target, code };
+	}
+};
+
+const assignmentContinued: MutationPass = {
+	name:       'assignment continued on the next line',
+	keepsGraph: true,
+	apply:      target => {
+		const at = SlicingCriterion.nameAt(target.criterion);
+		const lines = target.code.split('\n');
+		const splits = lines.map((l, i) => i < (at?.line ?? 0) - 1 && SimpleAssignment.test(l) && !l.includes(';'));
+		return !splits.some(Boolean) ? undefined : mapLines(target,
+			ls => ls.flatMap((l, i) => {
+				const m = splits[i] ? SimpleAssignment.exec(l) : null;
+				return m === null ? [l] : [`${m[1]} <-`, `  ${m[2]}`];
+			}),
+			line => line + splits.slice(0, line - 1).filter(Boolean).length);
+	}
+};
+
+const irregularWhitespace: MutationPass = {
+	name:       'irregular whitespace around assignments',
+	keepsGraph: true,
+	apply:      target => rewriteAssignments(target, (name, rhs) => `${name}\t<-   ${rhs}`)
+};
+
 /** every pass a mutant is generated for; add to this list to check another rewrite */
 export const MutationPasses: readonly MutationPass[] = [
 	leadingNoise,
@@ -598,7 +1039,21 @@ export const MutationPasses: readonly MutationPass[] = [
 	filePathString,
 	doCall,
 	guardedByIf,
-	wholeProgramLocal
+	wholeProgramLocal,
+	isomorphicRenaming,
+	isomorphicRenamingNonSyntactic,
+	swapIndependent,
+	deadStore,
+	ifElseSwapped,
+	whileAsRepeat,
+	forAsWhile,
+	identityArgument,
+	explicitReturn,
+	pipeAsCall,
+	singleQuoted,
+	scientificNumbers,
+	assignmentContinued,
+	irregularWhitespace
 ];
 
 const analyzers = new WeakMap<KnownParser, Map<string, Promise<FlowrAnalyzer>>>();
@@ -636,6 +1091,13 @@ export async function mutate(parser: KnownParser, target: MutationTarget, pass: 
 	});
 }
 
+/** `text` with every name a pass gave a variable replaced by the one the variable had before */
+function unrenamed(text: string, renames: Readonly<Record<string, string>> = {}): string {
+	return Object.entries(renames).flatMap(([to, from]) => to.startsWith('`') ? [[to, from], [to.slice(1, -1), from]] : [[to, from]])
+		.sort(([a], [b]) => b.length - a.length)
+		.reduce((t, [to, from]) => t.replace(new RegExp(String.raw`(?<![\w.])${escapeRegex(to)}(?![\w.])`, 'g'), from), text);
+}
+
 /** what the queries say about a program, with every node id dropped, as a mutation moves those */
 export type QueryObservation = Readonly<Record<string, readonly string[]>>;
 
@@ -651,18 +1113,81 @@ function dependenciesOf(result: DependenciesQueryResult): string[] {
  * What no {@link MutationPasses|pass} may change, which is the dependencies flowR finds and what it states
  * about the functions of the program. Renaming, regrouping or hiding a constant behind a `paste0` changes none.
  */
-export async function observeQueries(parser: KnownParser, code: string): Promise<QueryObservation> {
+export async function observeQueries(parser: KnownParser, code: string, renames?: Readonly<Record<string, string>>): Promise<QueryObservation> {
 	const analyzer = await analyzerFor(parser, code);
 	const results = await analyzer.query([
 		{ type: 'dependencies' }, { type: 'inspect-higher-order' }, { type: 'inspect-recursion' },
 		{ type: 'inspect-exception' }, { type: 'inspect-fn-props' }
 	]);
 	return {
-		dependencies: dependenciesOf(results.dependencies),
+		dependencies: dependenciesOf(results.dependencies).map(d => unrenamed(d, renames)),
 		higherOrder:  Object.values(results['inspect-higher-order'].higherOrder).map(String).sort(),
 		recursive:    Object.values(results['inspect-recursion'].recursive).map(String).sort(),
 		exceptions:   Object.values(results['inspect-exception'].exceptions).map(t => String(t.length)).sort(),
 		roles:        Object.values(results['inspect-fn-props'].roles).map(r => JSON.stringify(Object.values(r).sort())).sort(),
 		props:        Object.values(results['inspect-fn-props'].props).map(p => JSON.stringify(p)).sort()
+	};
+}
+
+/** what the REPL answers about a program, written so that a pass that keeps the meaning keeps the answer */
+export interface ReplObservation {
+	/** the code the REPL prints as the slice for the criterion */
+	readonly slice:        string;
+	/** the dependencies as the REPL lists them */
+	readonly dependencies: readonly string[];
+	/** every linter finding, by rule and certainty */
+	readonly linter:       readonly string[];
+	/** the value of the criterion and the graphs, which only a {@link MutationPass#keepsGraph|pass keeping the graph} must not change */
+	readonly graphs:       readonly string[];
+}
+
+const replAnalyzers = new WeakMap<KnownParser, Promise<FlowrAnalyzer>>();
+
+/** what the REPL prints for `line`, without the timings that change from one run to the next */
+async function replLines(parser: KnownParser, line: string): Promise<string[]> {
+	const analyzer = replAnalyzers.get(parser) ?? new FlowrAnalyzerBuilder().setParser(parser).build();
+	replAnalyzers.set(parser, analyzer);
+	const out: string[] = [];
+	const collect = (m: string) => out.push(...m.split('\n'));
+	await replProcessAnswer(await analyzer, { formatter: voidFormatter, allowClipboard: false, stdout: collect, stderr: collect }, line, false);
+	return out.filter(l => !l.startsWith('All queries together required')).map(l => l.replace(/\s*\(\d+\W?ms\)/g, '').trimEnd());
+}
+
+/** the names as the program had them before the pass, and no position, as a pass moves those */
+function neutralized(lines: readonly string[], renames: Readonly<Record<string, string>> = {}): string[] {
+	return lines.map(l => unrenamed(l, renames).replace(/\b\d+\.\d+(?:-\d+(?:\.\d+)?)?\b/g, '').replace(/\(node \d+\)|\{-?\d+@[^{}]*\}/g, ''));
+}
+
+function linterFindings(lines: readonly string[]): string[] {
+	const findings: string[] = [];
+	let rule = '';
+	let certainty = '';
+	for(const line of lines) {
+		const header = /^\s*╰ .* \(([\w-]+)\):$/.exec(line);
+		const level = /^\s*╰ (certain|uncertain):$/.exec(line);
+		if(header !== null) {
+			rule = header[1];
+		} else if(level !== null) {
+			certainty = level[1];
+		} else if(/^\s*╰ /.test(line) && !line.includes('Metadata') && !line.includes('no findings')) {
+			findings.push(`${rule} ${certainty}: ${line.trim()}`);
+		}
+	}
+	return findings.sort();
+}
+
+/** asks the REPL about `target` the way a reader would, with the program inlined into the command */
+export async function observeRepl(parser: KnownParser, target: MutationTarget): Promise<ReplObservation> {
+	const code = JSON.stringify(target.code);
+	const slice = await replLines(parser, `:query @static-slice (${target.criterion}) ${code}`);
+	const graphs = [];
+	for(const command of [`:query @resolve-value (${target.criterion})`, ':dataflow', ':normalize', ':cfg']) {
+		graphs.push(command.split(' ')[0], ...await replLines(parser, `${command} ${code}`));
+	}
+	return {
+		slice:        slice.join('\n'),
+		dependencies: neutralized(await replLines(parser, `:query @dependencies ${code}`), target.renames),
+		linter:       linterFindings(neutralized(await replLines(parser, `:query @linter ${code}`), target.renames)),
+		graphs:       neutralized(graphs, target.renames).map(l => l.replace(/\s+/g, ''))
 	};
 }

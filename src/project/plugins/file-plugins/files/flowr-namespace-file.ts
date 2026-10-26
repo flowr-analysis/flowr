@@ -19,6 +19,7 @@ import {
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
+import { RStringValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArray } from '../../../../util/collections/arrays';
 import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -132,7 +133,8 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	for(const pattern of nsInfo.exportedPatterns) {
-		const regex = parseRRegexPattern(pattern);
+		/* the NAMESPACE states the pattern as an R string, whose escapes R undoes before it reads the regex; R rejects a string it cannot undo, which is kept as written */
+		const regex = parseRRegexPattern(RStringValue.value({ str: pattern, quotes: '"' }) ?? pattern);
 		if(regex.test(name)) {
 			return true;
 		}

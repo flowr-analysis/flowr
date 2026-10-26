@@ -10,6 +10,7 @@
  * this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
  *
  * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
+ * A name in backticks is never split either, and keeps its backticks, as they belong to the name.
  * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
  * @param split       - The character or character sequence to split on (can not be backslash or quote!)
@@ -17,7 +18,7 @@
 export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split: RegExp | string = ' '): string[] {
 	const args = [];
 	let current = '';
-	let inQuotes: false | '"' | '\'' = false;
+	let inQuotes: false | '"' | '\'' | '`' = false;
 	let escaped = false;
 
 	for(let i = 0; i < inputString.length;  i++) {
@@ -40,7 +41,11 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 		) {
 			args.push(current);
 			current = '';
-		} else if(c === '"' || c === "'") {
+		} else if(c === '`' && (!inQuotes || inQuotes === c)) {
+			/* a name in backticks may hold a space, and the backticks are part of the name, so they are always kept */
+			inQuotes = inQuotes ? false : c;
+			current += c;
+		} else if((c === '"' || c === "'") && inQuotes !== '`') {
 			if(!inQuotes) {
 				inQuotes = c;
 				if(escapeQuote) {

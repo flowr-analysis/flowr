@@ -1,5 +1,5 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic, faint } from '../../../util/text/ansi';
+import { ansiInfo, bold, ColorEffect, Colors, italic, faint } from '../../../util/text/ansi';
 import {
 	executeQueries,
 	type Query,
@@ -226,6 +226,12 @@ function unwrapQuotedInput(code: string): string {
 			return code;
 		}
 	}
+	/* a double-quoted wrapping undoes its escapes, as the code commands read it, so `\n` separates statements */
+	if(quote === '"') {
+		try {
+			return JSON.parse(code) as string;
+		} catch{ /* an escape JSON does not know, e.g. a Windows path, is kept as written */ }
+	}
 	return code.slice(1, -1);
 }
 
@@ -259,7 +265,7 @@ export const queryCommand: ReplCodeCommand = {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(await asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.analyzer, results.parsedQuery));
+			output.stdout(await asciiSummaryOfQueryResult(output.formatter, totalEnd - totalStart, results.query, results.analyzer, results.parsedQuery));
 		}
 	}
 };

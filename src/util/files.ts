@@ -1,7 +1,6 @@
 import fs, { type PathLike, promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
-import LineByLine from 'n-readlines';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 
 /** Rethrows if the caller asked for it, otherwise reports the directory as skipped. */
@@ -97,6 +96,31 @@ export async function* allRFiles(input: string): AsyncGenerator<RParseRequestFro
 	return count;
 }
 
+const LineChunkSize = 64 * 1024;
+
+/** yields the lines of the file as buffers without their `\n` or `\r\n` terminator, reading it chunk by chunk */
+function* readBufferLines(filePath: string): Generator<Buffer, void> {
+	const fd = fs.openSync(filePath, 'r');
+	try {
+		const chunk = Buffer.allocUnsafe(LineChunkSize);
+		let rest: Buffer = Buffer.alloc(0);
+		for(let read = fs.readSync(fd, chunk, 0, LineChunkSize, null); read > 0; read = fs.readSync(fd, chunk, 0, LineChunkSize, null)) {
+			let data = rest.length > 0 ? Buffer.concat([rest, chunk.subarray(0, read)]) : Buffer.from(chunk.subarray(0, read));
+			let start = 0;
+			for(let nl = data.indexOf(10, start); nl >= 0; nl = data.indexOf(10, start)) {
+				yield data.subarray(start, nl > start && data[nl - 1] === 13 ? nl - 1 : nl);
+				start = nl + 1;
+			}
+			rest = data = data.subarray(start);
+		}
+		if(rest.length > 0) {
+			yield rest;
+		}
+	} finally {
+		fs.closeSync(fd);
+	}
+}
+
 /**
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
@@ -110,10 +134,9 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
 		log.warn(`File ${filePath} does not exist`);
 		return false;
 	}
-	const reader = new LineByLine(filePath);
 
 	let counter = 0;
-	for(let line = reader.next(); line; line = reader.next()) {
+	for(const line of readBufferLines(filePath)) {
 		if(counter >= maxLines) {
 			return false;
 		}
@@ -135,10 +158,9 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 		log.warn(`File ${filePath} does not exist`);
 		return false;
 	}
-	const reader = new LineByLine(filePath);
 
 	let counter = 0;
-	for(let line = reader.next(); line; line = reader.next()) {
+	for(const line of readBufferLines(filePath)) {
 		if(counter >= maxLines) {
 			return false;
 		}

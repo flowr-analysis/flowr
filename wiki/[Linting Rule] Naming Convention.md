@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-25, 09:29:25 UTC (v2.16.6), do not edit directly._
 <h2 id="naming-convention">Naming Convention&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#style'>![style](https://img.shields.io/badge/style-blue) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span>
 
-This rule is a `over-approximative` rule.
+This rule is a <code>over-approximative</code> rule.
  
 Finds symbols that do not follow the naming convention of the code.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L199">src/linter/rules/naming-convention.ts</a>._
@@ -35,43 +35,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Identifier 'other_var' at 4.1-9 (snake_case) (1 quick fix(es) available)
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "naming-convention": {
-        "results": [
-          {
-            "certainty": "certain",
-            "detectedCasing": "snake_case",
-            "name": "other_var",
-            "loc": [4,1,4,9],
-            "involvedId": 6,
-            "quickFix": [{"type":"replace","replacement":"otherVar","description":"Rename to match naming convention camelCase","loc":[4,1,4,9]}]
-          }
-        ],
-        ".meta": {"numMatches":2,"numBreak":1}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 #### Additional Examples
 	
@@ -97,7 +64,7 @@ We expect the linter to report the following:
 * certain at 1.1-1.7: name = `'testVar'`, detectedCasing = `CasingConvention.CamelCase`, 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L126) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_no_32_fix_32_onto_32_a_32_taken_32_name">Test Case: no fix onto a taken name</h4>
 
 > A rename onto a name the program binds already would change what that name refers to, so no fix is offered
@@ -119,7 +86,7 @@ We expect the linter to report the following:
 * certain at 1.1-1.7: name = `'testVar'`, detectedCasing = `CasingConvention.CamelCase`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L135) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_only_32_detect_32_definition">Test Case: only detect definition</h4>
 
 > The casing of the definition is checked, and quick fixes for all usages (and the definition) are provided
@@ -141,7 +108,7 @@ We expect the linter to report the following:
 * certain at 1.1-1.7: name = `'testVar'`, detectedCasing = `CasingConvention.CamelCase`, 2 quick fixes
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L144) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_function_32_and_32_call">Test Case: function and call</h4>
 
 > Arguments will be checked for correct casing convention as well
@@ -164,7 +131,7 @@ We expect the linter to report the following:
 * certain at 1.21-1.23: name = `'arg'`, detectedCasing = `CasingConvention.CamelCase`, 2 quick fixes
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L156) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_detect_32_casing">Test Case: detect casing</h4>
 
 > The rule can be configured to automaticaly detect the most used casing style. The file will be linted according to the detected style
@@ -187,7 +154,7 @@ We expect the linter to report the following:
 * certain at 3.1-3.8: name = `'test_var'`, detectedCasing = `CasingConvention.SnakeCase`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L180) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_non_32_alpha_32_identifier_32__40_ignore_41_">Test Case: non alpha identifier (ignore)</h4>
 
 > The rule can be configured to ignore identifier that do not contain any alphabetic characters
@@ -208,7 +175,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L189) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_non_32_alpha_32_identifier_32__40_do_32_not_32_ignore_41_">Test Case: non alpha identifier (do not ignore)</h4>
 
 > Otherwise the linter will always detect non alpha identifiers as following the wrong convention
@@ -229,7 +196,7 @@ We expect the linter to report the following:
 * certain at 1.1-1.2: detectedCasing = `CasingConvention.Unknown`, name = `'._'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L195) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_one-word_32_names_32_cast_32_no_32_vote">Test Case: one-word names cast no vote</h4>
 
 Given the following input:
@@ -250,7 +217,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L206) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_one-word_32_names_32_do_32_not_32_hide_32_a_32_name_32_breaking_32_the_32_multi-word_32_convention">Test Case: one-word names do not hide a name breaking the multi-word convention</h4>
 
 Given the following input:
@@ -273,7 +240,7 @@ We expect the linter to report the following:
 * certain at 5.1-5.5: detectedCasing = `CasingConvention.CamelCase`, name = `'myVar'`
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L207) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_quoted_32_names_32_are_32_converted_32_within_32_their_32_quotes">Test Case: quoted names are converted within their quotes</h4>
 
 Given the following input:
@@ -294,7 +261,7 @@ We expect the linter to report the following:
 * certain at 3.8-3.16: detectedCasing = `CasingConvention.PascalCase`, name = `'BadName'`, 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L214) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_S3_32_method_32_keeps_32_the_32_name_32_dispatch_32_needs">Test Case: an S3 method keeps the name dispatch needs</h4>
 
 Given the following input:
@@ -315,7 +282,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L221) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_beside_32_an_32_S3_32_method_32_another_32_name_32_is_32_still_32_checked">Test Case: beside an S3 method another name is still checked</h4>
 
 Given the following input:
@@ -337,7 +304,7 @@ We expect the linter to report the following:
 * certain at 4.1-4.10: detectedCasing = `CasingConvention.CamelCase`, name = `'anotherVar'`, 1 quick fix
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L222) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_empty_32_string">Test Case: empty string</h4>
 
 Given the following input:
@@ -356,7 +323,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L230) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_empty_32_string_32__40_auto_32_detect_41_">Test Case: empty string (auto detect)</h4>
 
 Given the following input:
@@ -375,7 +342,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-naming-convention.test.ts#L231) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_ignore_32_leading_32_underscores">Test Case: ignore leading underscores</h4>
 
 Given the following input:

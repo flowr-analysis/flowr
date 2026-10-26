@@ -8,13 +8,14 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { compactRecord } from '../../../util/objects';
 import { type DependencyInfoLinkAttachedInfo, DependencyInfoLinkConstraint, type FunctionInfo } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { FlowrConfig } from '../../../config';
-import { guard } from '../../../util/assert';
+import { guard, isNotUndefined } from '../../../util/assert';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
@@ -22,6 +23,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { memoize } from '../../../util/collections/defaultmap';
 import { attachesPackage } from './function-info/library-functions';
 import { describePlots } from './plot-description';
 import { assignmentOf, type FlowMemo, inputVariablesOf, makeFlowMemo } from './data-flow';
@@ -30,6 +32,7 @@ import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
+import type { CallContext } from '../../../dataflow/eval/resolve/alias-tracking';
 
 /**
  * Executes a dependencies query.
@@ -77,7 +80,7 @@ export async function executeDependenciesQuery({
 	const g = getAllCategories(queries, ctx);
 	const enabled = query.enabledCategories;
 
-	const run: QueryRun = { dataflow, config, normalize, memo: makeFlowMemo(), formals: formalsLookup(dataflow.graph, ctx) };
+	const run: QueryRun = { dataflow, config, normalize, memo: makeFlowMemo(), formals: formalsLookup(dataflow.graph, ctx), revalue: new Map() };
 	/* the packages the code attaches decide which package a bare call further down belongs to */
 	const library = getResults(g, run, queryResults, 'library', functions.get('library') ?? [], data);
 	const attaching = library.filter(attachesPackage);
@@ -99,7 +102,7 @@ export async function executeDependenciesQuery({
 
 	for(const [category, found] of Object.entries(results)) {
 		if(found !== undefined && !NotPassedOnByCalls.has(category)) {
-			results[category] = [...found, ...callSitesOf(found, dataflow.graph, normalize)];
+			results[category] = [...found, ...callSitesOf(found, dataflow.graph, normalize, run.revalue)];
 		}
 	}
 
@@ -112,9 +115,7 @@ export async function executeDependenciesQuery({
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - now
-		},
+		...metaSince(now),
 		...results,
 	} as DependenciesQueryResult;
 }
@@ -125,22 +126,48 @@ const NotPassedOnByCalls: ReadonlySet<string> = new Set(['library', 'source', 'r
 /**
  * The calls of the program's functions that do what the entries within their bodies do, transitively: a call of `report()`
  * writes what the `cat()` in its body writes, and so does every call of a function that calls `report()`.
+ * A call gets the values the entry has for just this call, as `save("a.csv")` writes `a.csv` only, even though the
+ * `write.csv(d, n)` in the body of `save` writes whatever any call names. Where the entry cannot be asked again, a call
+ * only passes on a sole value, as it cannot tell which of several is its own.
  */
-function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast: NormalizedAst): DependencyInfo[] {
+function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast: NormalizedAst, revalue: ReadonlyMap<NodeId, Revalue>): DependencyInfo[] {
+	/* the calls a chain runs through to the entry it ends in, the root, whose values are asked for again */
+	interface Chain { readonly nodeId: NodeId, readonly entries: readonly DependencyInfo[], readonly root: NodeId, readonly context: CallContext }
+	/* a call already found doing this needs no entry for it, but two writes of one file in one body both pass on to the call */
+	const named = (value: string | undefined) => value !== undefined && value !== Unknown && value !== Constant && value !== 'stdout' && value !== 'stderr';
+	const key = (id: NodeId | undefined, value: string | undefined, root?: NodeId) => `${String(id)}\0${value ?? ''}\0${named(value) ? String(root) : ''}`;
+	const known = new Set(found.map(f => key(f.nodeId, f.value)));
+	const byNode = Map.groupBy(found.filter(f => f.nodeId !== undefined), f => f.nodeId as NodeId);
+	/* asking again is only sound where it states what the entries say without a context, an analysis after the
+	 * values (a plot taking the file of its device) may have changed them; only asked for entries some call reaches */
+	const askable = memoize((root: NodeId): boolean => {
+		const again = revalue.get(root)?.(new Map());
+		return again !== undefined && new Set(again).symmetricDifference(new Set(byNode.get(root)?.map(e => e.value))).size === 0;
+	});
+	const queue: Chain[] = [...byNode.entries().map(([id, entries]) => ({ nodeId: id, entries, root: id, context: new Map() }))];
 	const added: DependencyInfo[] = [];
-	const known = new Set(found.map(f => f.nodeId));
-	const queue = [...found];
-	for(let entry = queue.shift(); entry !== undefined; entry = queue.shift()) {
-		const definition = entry.nodeId === undefined ? undefined : RNode.findEnclosing(entry.nodeId, ast.idMap, RFunctionDefinition.is);
-		for(const call of definition === undefined ? [] : Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
+	for(let chain = queue.shift(); chain !== undefined; chain = queue.shift()) {
+		const definition = RNode.findEnclosing(chain.nodeId, ast.idMap, RFunctionDefinition.is);
+		if(definition === undefined) {
+			continue;
+		}
+		for(const call of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
 			const vertex = graph.getVertex(call);
-			if(!DfgVertex.isFunctionCall(vertex) || known.has(call)) {
+			if(!DfgVertex.isFunctionCall(vertex)) {
 				continue;
 			}
-			known.add(call);
-			const site: DependencyInfo = { functionName: vertex.name ?? entry.functionName, nodeId: call, via: entry.nodeId, ...entry.value === undefined ? {} : { value: entry.value } };
-			added.push(site);
-			queue.push(site);
+			const context = new Map(chain.context).set(definition, call);
+			const sole = uniqueArray(chain.entries.map(e => e.value));
+			const asked = askable(chain.root) ? revalue.get(chain.root)?.(context) : undefined;
+			const values = asked?.length ? asked : sole.length === 1 ? sole : [undefined];
+			const sites = uniqueArray(values).filter(v => !known.has(key(call, v)) && !known.has(key(call, v, chain.root))).map((value): DependencyInfo => {
+				known.add(key(call, value, chain.root));
+				return { functionName: vertex.name ?? chain.entries[0].functionName, nodeId: call, via: chain.nodeId, ...value === undefined ? {} : { value } };
+			});
+			if(sites.length > 0) {
+				added.push(...sites);
+				queue.push({ nodeId: call, entries: sites, root: chain.root, context });
+			}
 		}
 	}
 	return added;
@@ -157,7 +184,12 @@ export interface QueryRun {
 	readonly memo:      FlowMemo
 	/** the formals of the call, give its qualified name if known already */
 	readonly formals:   (vertex: DataflowGraphVertexFunctionCall, qualified?: Identifier) => readonly string[] | undefined
+	/** how the values of the entries of a call come about, so a call of the function around it can ask again for its own */
+	readonly revalue:   Map<NodeId, Revalue>
 }
+
+/** the values the entries of a call get when the functions around it are resolved for the calls the context names */
+type Revalue = (callContext: CallContext) => readonly string[] | undefined;
 
 /** whether the call may reach a function definition of the code, whose formals differ from call to call */
 function callsDefinition(dfg: DataflowGraph, id: NodeId): boolean {
@@ -314,8 +346,11 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				continue;
 			}
 			const formals = run.formals(vertex, functionName);
-			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals);
-			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
+			const argsIn = (callContext?: CallContext) => getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals, callContext);
+			const linkedIn = (args: ReturnType<typeof argsIn>, callContext?: CallContext) =>
+				collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext);
+			const args = argsIn();
+			const linkedArgs = linkedIn(args);
 			const linked = linkedIds?.map(linkedId => typeof linkedId === 'object' ? linkedId.id : linkedId);
 			const ignoreOnArgVal = () => {
 				if(info.ignoreIf !== 'arg-true' && info.ignoreIf !== 'arg-false') {
@@ -371,12 +406,15 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 			} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
 				continue;
 			}
+			const replaced = (value: string | undefined) => value !== undefined && info.stringReplacements && Object.hasOwn(info.stringReplacements, value) ? info.stringReplacements[value] : value;
+			run.revalue.set(id, callContext => {
+				const args = argsIn(callContext);
+				const found = linkedIn(args, callContext) ?? args;
+				return found && [...found.values()].flatMap(values => [...values].map(v => replaced(v) ?? info.defaultValue ?? defaultValue)).filter(isNotUndefined);
+			});
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
-					let resolvedValue = value;
-					if(info.stringReplacements && value !== undefined && Object.hasOwn(info.stringReplacements, value)) {
-						resolvedValue = info.stringReplacements[value];
-					}
+					const resolvedValue = replaced(value);
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					const lexeme = unresolvedArgumentCode(value, arg);
 					finalResults.push(compactRecord({
@@ -407,7 +445,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext, formals: QueryRun['formals'] }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string | undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext, formals: QueryRun['formals'] }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext?: CallContext): Map<NodeId, Set<string | undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
@@ -425,7 +463,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx, data.formals(vertex));
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx, data.formals(vertex), callContext);
 		for(const [arg, values] of args?.entries() ?? []) {
 			map.set(arg, (map.get(arg) ?? new Set()).union(values));
 		}

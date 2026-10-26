@@ -712,6 +712,10 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 			return undefined;
 		}
 	}
+	if(!container) {
+		/* a bare name means the declaration itself, not a member that happens to share it (like the `Dataflow` gas key of `GasFeatureKey`) */
+		node = [...node.filter(n => n.extends.length === 0), ...node.filter(n => n.extends.length > 0)];
+	}
 	return [container, name, node[0]];
 }
 

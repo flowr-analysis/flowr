@@ -289,8 +289,11 @@ function matchArgumentProps(vertex: DataflowGraphVertexFunctionCall, state: Role
 		if(props === 0) {
 			continue;
 		}
-		for(const argument of bound.get(formal) ?? []) {
-			found.push([props, values.get(argument) ?? argument]);
+		const given = bound.get(formal) ?? [];
+		for(const [i, argument] of given.entries()) {
+			/* an alias on `...` is only the last argument */
+			const had = formal === '...' && i < given.length - 1 ? props & ~ArgProp.Alias : props;
+			found.push([had, values.get(argument) ?? argument]);
 		}
 	}
 	return found;

@@ -64,6 +64,16 @@ describe('flowR linter', withTreeSitter(parser => {
 			assert.isTrue(keys.includes('software-has-tests'), `got ${keys.join(', ')}`);
 		});
 
+		test('a multi-file project that is not a package does not run software-has-tests by default', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addFile(new FlowrInlineTextFile('/project/helpers.R', 'f <- function() 1'));
+			analyzer.addFile(new FlowrInlineTextFile('/project/main.R', 'source("helpers.R")\nprint(f())'));
+			analyzer.addRequest({ request: 'file', content: '/project/main.R' });
+			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter' }])).results);
+			assert.isTrue(keys.includes('software-has-license'), `got ${keys.join(', ')}`);
+			assert.isFalse(keys.includes('software-has-tests'), `got ${keys.join(', ')}`);
+		});
+
 		const cmdCheckRules = (Object.keys(LintingRules) as LintingRuleNames[]).filter(r => (LintingRules[r].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) && (LintingRules[r].info as { activeByDefault?: boolean }).activeByDefault !== false);
 
 		test('there are R CMD check rules', () => {

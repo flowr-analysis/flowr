@@ -8,6 +8,7 @@ import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query'
 import { italic, color, Colors } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
+import { parseSpec, problemsOf } from '../../../project/sigdb/spec-query';
 import { executeSignatureQuery, signatureQueryCompleter } from './signature-query-executor';
 import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackages, pushSummary } from './signature-query-render';
 
@@ -44,6 +45,12 @@ export interface SignatureQuery extends BaseQueryFormat {
 	readonly parameters?:         readonly string[];
 	/** keep only functions with exactly this many required (no-default) parameters, excluding `...` */
 	readonly requiredParameters?: number;
+	/**
+	 * flowR's own view of a function as a spec, `name(arg, [role], name[role], *) [prop]`, like `p*([alias]) [invisible]`:
+	 * keeps the functions flowR's built-in configuration states a matching name, argument roles (a `...` formal only
+	 * counts when named), and call properties for. The same language as the signature database page.
+	 */
+	readonly flowr?:              string;
 	/** for a single function, also render its transitive call graph as a mermaid.live link (`--cg`) */
 	readonly callGraph?:          boolean;
 	/**
@@ -277,6 +284,18 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 		...(callGraph ? { callGraph: true } : {}),
 		...(callGraphMaxNodes !== undefined && Number.isFinite(callGraphMaxNodes) ? { callGraphMaxNodes } : {})
 	};
+	// a name with `(args)` and/or `[props]` constraints is the page's spec language, which spaces may split
+	const joined = positional.join(' ');
+	const spec = parseSpec(joined);
+	const specLike = spec.args !== undefined || spec.props.length > 0 || /\(\s*\[|[\w*)]\s*\[[a-z]/i.test(joined);
+	const problems = specLike ? problemsOf(joined) : [];
+	if(problems.length > 0) {
+		problems.forEach(p => output.stderr(`Invalid search: ${p}`));
+		return { query: [] };
+	}
+	if(spec.args !== undefined || spec.props.length > 0) {
+		return { query: [{ type: 'signature', package: '*', flowr: joined, ...paramFilters }] };
+	}
 	const hasParamFilter = parameters.length > 0 || (requiredParameters !== undefined && !Number.isNaN(requiredParameters));
 	const [first, second] = positional;
 	if(!first) {
@@ -331,7 +350,7 @@ export const SignatureQueryDefinition = {
 	},
 	fromLine:  signatureQueryLineParser,
 	completer: signatureQueryCompleter,
-	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--cg-max <n>] [--help]',
+	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [<name>(<arg>, [<role>], *) [<prop>]] [--cg] [--cg-max <n>] [--help]',
 	schema:    Joi.object({
 		type:               Joi.string().valid('signature').required().description('The type of the query.'),
 		package:            Joi.string().optional().description('The package to inspect (glob wildcards allowed); omit for a summary of the loaded databases.'),
@@ -339,6 +358,7 @@ export const SignatureQueryDefinition = {
 		version:            Joi.string().optional().description('A version spec: an exact version, a glob (3.*), a semver range (>=3.0.0, 3.x), or a release-date bound (<=2026, >=2021.05 in YYYY.MM.DD).'),
 		parameters:         Joi.array().items(Joi.string()).optional().description('Keep only functions that have a parameter matching every one of these names (glob wildcards allowed, position-independent).'),
 		requiredParameters: Joi.number().integer().min(0).optional().description('Keep only functions with exactly this many required (no-default) parameters, excluding `...`.'),
+		flowr:              Joi.string().optional().description('A spec over flowR\'s own built-in view: name(arg, [role], name[role], *) [prop], e.g. p*([alias]) [invisible].'),
 		callGraph:          Joi.boolean().optional().description('For a single function, also render its transitive call graph as a mermaid.live link (`--cg`).'),
 		callGraphMaxNodes:  Joi.number().min(1).optional().description(`How many nodes the rendered call graph may hold before the expansion stops (default ${DefaultCallGraphMaxNodes}, \`--cg-max <n>\`).`)
 	}).description('Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count). Names no database records are answered from flowR\'s own built-in configuration instead and marked as such.'),

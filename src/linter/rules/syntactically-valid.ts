@@ -1,5 +1,5 @@
 import {
-	LintingPrettyPrintContext,
+	prettyPrint,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
@@ -39,6 +39,8 @@ export interface RegionScan {
 	readonly closers:   readonly string[]
 	/** Offset of every `%` outside a string or comment; an odd count means an unclosed `%...%` operator. */
 	readonly percentAt: readonly number[]
+	/** Offset where the only missing `)` belongs: the end of a `for`/`while`/`if`/`function` head, right before its `{` body. */
+	readonly headAt?:   number
 }
 
 /** A `missing` (parser-inserted, zero-width) or `error` (un-parseable) tree-sitter node. */
@@ -60,6 +62,8 @@ export interface SyntaxErrorFixPattern {
 	readonly quickFix:    (finding: SyntaxErrorFinding, file: string | undefined) => LintQuickFix
 }
 
+/** what precedes the `(` of a control structure's head */
+const ControlHead = /\b(?:for|while|if|function)\s*$/;
 const DelimiterInsert = new Map([[')', ')'], ['}', '}'], [']', ']'], [']]', ']]'], ['"', '"'], ['\'', '\''], ['`', '`'], [',', ','], [';', ';']]);
 const KeywordInsert = new Map([['in', ' in '], ['else', ' else ']]);
 const OperatorToken = /^([-+*/^:~!<>=&|@$]+|<-|<<-|->|->>|\|>|%[^%]*%)$/;
@@ -79,6 +83,8 @@ const isDanglingOperator = (n: SyntaxNode | null): n is SyntaxNode => !!n && !n.
 /** Read an error region: what it leaves open, and where its operators sit. */
 function scanRegion(text: string): RegionScan {
 	const stack: string[] = [];
+	/* for each open `(` that heads a control structure, where the `{` that follows it starts the body (once there is one) */
+	const heads: ({ bodyAt?: number } | undefined)[] = [];
 	const percentAt: number[] = [];
 	let quote: string | undefined;
 	for(let i = 0; i < text.length; i++) {
@@ -99,21 +105,31 @@ function scanRegion(text: string): RegionScan {
 			percentAt.push(i);
 		} else if(c === '(') {
 			stack.push(')');
+			heads.push(ControlHead.test(text.slice(Math.max(0, i - 24), i)) ? {} : undefined);
 		} else if(c === '[') {
 			stack.push(text[i + 1] === '[' ? (i++, ']]') : ']');
+			heads.push(undefined);
 		} else if(c === '{') {
+			const head = heads[heads.length - 1];
+			if(head !== undefined && stack[stack.length - 1] === ')' && head.bodyAt === undefined) {
+				head.bodyAt = text.slice(0, i).trimEnd().length;
+			}
 			stack.push('}');
+			heads.push(undefined);
 		} else if((c === ')' || c === '}') && stack[stack.length - 1] === c) {
 			stack.pop();
+			heads.pop();
 		} else if(c === ']') {
 			if(stack[stack.length - 1] === ']') {
 				stack.pop();
+				heads.pop();
 			} else if(stack[stack.length - 1] === ']]') {
 				stack[stack.length - 1] = ']';
 			}
 		}
 	}
-	return { closers: stack.reverse(), percentAt };
+	/* the one `)` that is missing belongs where the head ends, not after everything that came with the body */
+	return { closers: stack.reverse(), percentAt, headAt: stack.length === 1 && stack[0] === ')' ? heads[0]?.bodyAt : undefined };
 }
 
 /** Fuzzy-complete the `%...` operator at `at` to the nearest known one (else just close it). */
@@ -125,8 +141,10 @@ function operatorCompletion(node: SyntaxNode, at: number): { range: SourceRange,
 	return { range: [node.startPosition.row + 1, column + 1, node.startPosition.row + 1, column + fragment.length], full };
 }
 
+/** the grammar reports a missing string quote as `string_close`, which stands for whatever quote opened the string */
+const missingToken = (node: SyntaxNode): string => node.type === 'string_close' ? node.parent?.firstChild?.text ?? node.type : node.type;
 const isMissingExpression = (f: SyntaxErrorFinding): boolean =>
-	f.kind === 'missing' && !DelimiterInsert.has(f.node.type) && !KeywordInsert.has(f.node.type);
+	f.kind === 'missing' && !DelimiterInsert.has(missingToken(f.node)) && !KeywordInsert.has(missingToken(f.node));
 
 /** The built-in auto-fix patterns; append a {@link SyntaxErrorFixPattern} to add repairs. */
 export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
@@ -148,12 +166,12 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		name:        'insert-missing-token',
 		description: 'Insert a delimiter, quote, or keyword the parser expected but did not find.',
 		direction:   'add',
-		appliesTo:   f => f.kind === 'missing' && (DelimiterInsert.has(f.node.type) || KeywordInsert.has(f.node.type)),
+		appliesTo:   f => f.kind === 'missing' && (DelimiterInsert.has(missingToken(f.node)) || KeywordInsert.has(missingToken(f.node))),
 		quickFix:    (f, file) => ({
 			type:        'replace',
 			loc:         SourceLocation.from(point(f.node.startPosition), file),
-			description: `Insert missing \`${f.node.type}\``,
-			replacement: DelimiterInsert.get(f.node.type) ?? KeywordInsert.get(f.node.type) as string
+			description: `Insert missing \`${missingToken(f.node)}\``,
+			replacement: DelimiterInsert.get(missingToken(f.node)) ?? KeywordInsert.get(missingToken(f.node)) as string
 		})
 	},
 	{
@@ -177,6 +195,12 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		appliesTo:   f => f.kind === 'error' && f.scan.closers.length > 0,
 		quickFix:    (f, file) => {
 			const closers = f.scan.closers.join('');
+			if(f.scan.headAt !== undefined) {
+				/* the offset is in the region's text, which starts where the node does */
+				const before = f.node.text.slice(0, f.scan.headAt).split('\n');
+				const column = before.length === 1 ? f.node.startPosition.column + f.scan.headAt : before[before.length - 1].length;
+				return { type: 'replace', loc: SourceLocation.from(point({ row: f.node.startPosition.row + before.length - 1, column }), file), description: 'Add missing closing `)` after the head', replacement: ')' };
+			}
 			return { type: 'replace', loc: SourceLocation.from(point(f.node.endPosition), file), description: `Add missing closing \`${closers}\``, replacement: closers };
 		}
 	},
@@ -257,7 +281,7 @@ function collectFindings(node: SyntaxNode, lines: readonly string[], out: Syntax
 
 function describe(finding: SyntaxErrorFinding): string {
 	if(finding.kind === 'missing') {
-		return `Missing \`${finding.node.type}\``;
+		return `Missing \`${missingToken(finding.node)}\``;
 	}
 	const text = finding.node.text.replace(/\s+/g, ' ').trim();
 	return `Unexpected \`${text.length > 30 ? text.slice(0, 27) + '...' : text}\``;
@@ -306,10 +330,10 @@ export const SYNTACTICALLY_VALID = {
 		}
 		return { results, '.meta': { parser, errors: results.length, fixable: results.filter(r => r.quickFix !== undefined).length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: SyntacticallyValidResult) => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  (result: SyntacticallyValidResult) => `Syntax error (${result.kind}): ${result.message} at ${SourceLocation.format(result.loc)}`
-	},
+	prettyPrint: prettyPrint(
+		(result: SyntacticallyValidResult) => `${result.message} at ${SourceLocation.format(result.loc)}`,
+		(result: SyntacticallyValidResult) => `Syntax error (${result.kind}): ${result.message} at ${SourceLocation.format(result.loc)}`
+	),
 	info: {
 		name:            'Syntactically Valid',
 		description:     'Finds syntax errors with the configured (error-tolerant) parser. Offers extensible quick fixes to repair them.',

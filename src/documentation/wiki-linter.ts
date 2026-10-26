@@ -5,11 +5,11 @@ import { CmdCheckConformance, CmdCheckSource, type ConformanceEntry, Conformance
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
+import { getReplCommand } from './doc-util/doc-cli-option';
 import { fileProtocol } from '../r-bridge/retriever';
 import { type TypeElementInSource, type TypeReport, getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
 import { isNotUndefined  } from '../util/assert';
-import { documentReplSession } from './doc-util/doc-repl';
 import { block, section } from './doc-util/doc-structure';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { textWithTooltip } from '../util/html-hover-over';
@@ -217,6 +217,13 @@ function buildSamplesFromLinterTestCases(_parser: KnownParser, testFile: string)
 	
 These examples are synthesized from the test cases in: ${linkFlowRSourceFile('test/functionality/linter/' + testFile)}\n\n`;
 
+	let noLints: string[] = [];
+	const flushNoLints = () => {
+		if(noLints.length > 0) {
+			result += `\n${section('Test Cases without Findings', 4)}\n\nThe linter reports nothing for:\n\n${noLints.join('\n')}\n`;
+			noLints = [];
+		}
+	};
 	for(const report of reports.info) {
 		const args = report.arguments;
 		if(args.length < 5) {
@@ -227,23 +234,28 @@ These examples are synthesized from the test cases in: ${linkFlowRSourceFile('te
 		if(report.comments?.some(c => c.includes('@ignore-in-wiki'))) {
 			continue;
 		}
-		// drop any quotes around the test name
 		const testNameClean = RString.unquote(testName);
+		const input = RString.unquote(args[2].getText(report.source)).replace(/\\n/g, '\n');
+		const expected = describeExpectedResults(args[4].getText(report.source));
+		if(expected === '* no lints' && args.length < 7 && !report.comments) {
+			noLints.push(`**${testNameClean}**\n${codeBlock('r', input)}`);
+			continue;
+		}
 		result += `\n${section('Test Case: ' + testNameClean, 4)}
 
 ${report.comments ? report.comments.map(c => `> ${c}`).join('\n') + '\n' : ''}
 Given the following input:
-${codeBlock('r', RString.unquote(args[2].getText(report.source)).replace(/\\n/g, '\n'))}
+${codeBlock('r', input)}
 ${args.length >= 7 ? `\nAnd using the following [configuration](#configuration): ${codeBlock('ts', prettyPrintExpectedOutput(args[6].getText(report.source)))}` : ''}
 
 We expect the linter to report the following:
 
-${describeExpectedResults(args[4].getText(report.source))}
-
+${expected}
 
 See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: report.lineNumber })}) for the test-case implementation.
-		`;
+`;
 	}
+	flushNoLints();
 
 	return result;
 }
@@ -366,6 +378,10 @@ function(x) {
 	'unclosed-connection': {
 		configType: 'UnclosedConnectionConfig', ruleType:   'UNCLOSED_CONNECTION', testfile:   'lint-unclosed-connection',
 		example:    'con <- file("data.csv")\nreadLines(con)'
+	},
+	'overwritten-file': {
+		configType: 'OverwrittenFileConfig', ruleType:   'OVERWRITTEN_FILE', testfile:   'lint-overwritten-file',
+		example:    'write.csv(cars, "out.csv")\nwrite.csv(iris, "out.csv")'
 	},
 	'unused-import': {
 		configType: 'UnusedImportConfig', ruleType:   'UNUSED_IMPORT', testfile:   'lint-unused-import',
@@ -503,11 +519,12 @@ function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]
 
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string | PackageExample, config: object | undefined, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
+		const configKeys = Object.keys(rule.info.defaultConfig(documentedContext)).sort();
 
 		const tags = sortedTags(rule.info.tags).map(t => t === LintingRuleTag.CmdCheck ? cmdCheckBadge(name, types) : makeTagBadge(t, types)).join(' ');
 
 		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
-		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
+		const certaintyText = textWithTooltip(`<code>${rule.info.certainty}</code>`, certaintyDoc);
 		ruleExplanations.set(name, async() => `
 
 ${autoGenHeader({ filename: module.filename, purpose: 'linter' })}
@@ -523,18 +540,18 @@ ${rule.info.description}\\
 _This linting rule is implemented in ${shortLinkFile(ruleType, types)}._
 
 
-### Configuration
+${configKeys.length === 0 ? '' : `### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The \`${name}\` rule accepts the following configuration options:
 
 ${
-	Object.keys(LintingRules[name].info.defaultConfig(documentedContext)).sort().map(key =>
+	configKeys.map(key =>
 		`- ${shortLink(`${configType}:::${key}`, types)}\\\n${getDocumentationForType(`${configType}::${key}`, types)}${cmdCheckStepsOfOption(name, key)}`
 	).join('\n')
 }
 
-### Examples
+`}### Examples
 
 ${typeof example === 'string' ? codeBlock('r', example) : `A project with the code \`R/code.R\`:\n\n${codeBlock('r', example.code)}\n\nand the files\n\n${Object.entries(example.files).map(([file, content]) => `\`${file}\`:\n\n${codeBlock(file.endsWith('.R') ? 'r' : 'text', content.trimEnd())}`).join('\n\n')}`}
 
@@ -553,9 +570,10 @@ ${(rule.info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck
 /** runs the linter query on a rule's wiki example, refusing an example that shows no finding or an error */
 async function exampleQuery(parser: KnownParser, name: LintingRuleNames, example: string | PackageExample, config: object = {}): Promise<string> {
 	const queries = [{ type: 'linter', rules: [{ name, config: config as never }] }] as const;
-	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { collapseQuery: true })
+	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { collapseQuery: true, withJson: false })
 		: await showQuery(parser, `${fileProtocol}${ExampleRoot}/R/code.R`, queries, {
 			collapseQuery: true,
+			withJson:      false,
 			files:         [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
 		});
 	if(shown.includes('_no findings_') || shown.includes('Error during execution of rule') || shown.includes('rules failed to execute')) {
@@ -644,16 +662,10 @@ For example:
 ${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
 	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
-	return await documentReplSession(knownParser, [{
-		command:     `:query @linter ${JSON.stringify(code)}`,
-		description: `
-The linter will analyze the code and return any issues found.
+	return `Running ${getReplCommand('query')} with \`@linter ${JSON.stringify(code)}\` analyzes the code and returns any issues found.
 Formatted more nicely, this returns:
 
-${res}
-		`
-	}]
-	);
+${res}`;
 })()}
 
 ${section('Linting Rules', 2, 'linting-rules')}

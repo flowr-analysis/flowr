@@ -2,6 +2,7 @@ import { AbstractInterpreter, type AbsintAnalysis } from '../../../abstract-inte
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { AbsintQueryInferences, type AbsintQuery, type AbsintQueryDomain, type AbsintQueryDomains, type AbsintQueryResult, type AbsintQueryStateDomain, type AbsintQueryType } from './absint-query-format';
 
 /**
@@ -30,9 +31,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 		const state = ('domain' in inference ? interpreter.getEndState(inference.domain) : interpreter.getEndState()) as AbsintQueryStateDomain<AbsintType>;
 
 		return {
-			'.meta': {
-				timing: Date.now() - start
-			},
+			...metaSince(start),
 			result: state
 		};
 	}
@@ -59,9 +58,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		result: result
 	};
 }

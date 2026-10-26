@@ -1,5 +1,6 @@
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { ProvenanceQuery, ProvenanceQueryResult } from './provenance-query-format';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
@@ -30,9 +31,7 @@ export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queri
 		));
 	}
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

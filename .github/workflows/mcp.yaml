@@ -4,15 +4,19 @@ name: "MCP Server"
   push:
     branches:
       - main
-    paths:
+    paths: &paths
       - 'mcp/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/mcp.yaml'
   pull_request:
-    paths:
-      - 'mcp/**'
+    paths: *paths
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: mcp-${{ github.ref }}
 
 jobs:
   mcp:
@@ -41,30 +45,73 @@ jobs:
 
       - name: "🧪 Smoke Test"
         run: |
-          # the plugin's version and its pinned server have to follow the package's, users only get an update when they change
-          test "$(jq -r .version package.json)" = "$(jq -r .version .claude-plugin/plugin.json)"
+          # the plugin, its pinned server, and the registry entry have to follow the package's version, users only get an update when it changes
+          VERSION="$(jq -r .version package.json)"
+          test "$VERSION" = "$(jq -r .version .claude-plugin/plugin.json)"
+          test "$VERSION" = "$(jq -r .version server.json)"
+          test "$VERSION" = "$(jq -r '.packages[0].version' server.json)"
+          test "$VERSION" = "$(jq -r .version npm-shrinkwrap.json)"
           # the directory requires launchers to run an exact version, which has to be the released one
-          test "@eagleoutice/flowr-mcp@$(jq -r .version package.json)" = "$(jq -r '.mcpServers.flowr.args[-1]' .mcp.json)"
-          npm install --no-audit --no-fund
+          test "@eagleoutice/flowr-mcp@$VERSION" = "$(jq -r '.mcpServers.flowr.args[-1]' .mcp.json)"
+          # as the launcher installs it, pinned by the shrinkwrap
+          # npm 12 only reads package-lock.json, older ones prefer the published npm-shrinkwrap.json
+          cp npm-shrinkwrap.json package-lock.json
+          npm ci --no-audit --no-fund
           # also covers the signature database download that version guessing needs
           echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query","arguments":{"code":"library(dplyr)\nx <- reframe(df)\nx","queries":[{"type":"static-slice","criteria":["3@x"]},{"type":"guess-dep-versions"}]}}}' \
             | node index.js | tee out.json
           grep -q 'x <- reframe(df)' out.json
           grep -q 'dplyr  >=1.1.0' out.json
 
-      - name: "🚀 Publish (only new versions on main)"
+      - name: "🔍 Check the Version"
+        # a change to the package needs a new version, and a new version needs a change (the readme aside)
+        run: |
+          VERSION="$(jq -r .version package.json)"
+          LATEST="$(npm view @eagleoutice/flowr-mcp version)"
+          cd "$RUNNER_TEMP"
+          mkdir new old
+          tar xzf "$(npm pack "$GITHUB_WORKSPACE/mcp" --silent)" -C new
+          tar xzf "$(npm pack "@eagleoutice/flowr-mcp@$LATEST" --silent)" -C old
+          for d in new old; do
+            jq 'del(.version)' "$d/package/package.json" > "$d/package.json" && mv "$d/package.json" "$d/package/package.json"
+            rm -f "$d/package/README.md"
+          done
+          if diff -r old/package new/package; then CHANGED=false; else CHANGED=true; fi
+          if [ "$VERSION" = "$LATEST" ] && $CHANGED; then
+            echo "::error::The package differs from the published $LATEST, bump the version in package.json, npm-shrinkwrap.json, server.json, .claude-plugin/plugin.json, and .mcp.json"
+            exit 1
+          elif [ "$VERSION" != "$LATEST" ] && ! $CHANGED; then
+            echo "::error::Version $VERSION changes nothing over the published $LATEST"
+            exit 1
+          fi
+
+      - name: "🚀 Publish to npm (only new versions on main)"
         if: github.ref == 'refs/heads/main'
-        # npm uses trusted publishing (OIDC), the registry verifies the package's `mcpName` and the namespace via OIDC
+        # trusted publishing (OIDC)
         run: |
           VERSION="$(jq -r .version package.json)"
           if npm view "@eagleoutice/flowr-mcp@$VERSION" version >/dev/null 2>&1; then
-            echo "Version $VERSION is already published"
+            echo "Version $VERSION is already on npm"
+          else
+            npm publish --access public
+          fi
+
+      - name: "📇 Publish to the MCP Registry (only new versions on main)"
+        if: github.ref == 'refs/heads/main'
+        # the registry verifies the package's `mcpName` and the namespace via OIDC
+        run: |
+          VERSION="$(jq -r .version package.json)"
+          if curl -sf "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.flowr-analysis%2Fflowr/versions/$VERSION" >/dev/null; then
+            echo "Version $VERSION is already in the registry"
             exit 0
           fi
-          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
-          npm publish --access public
           curl -sSLo publisher.tar.gz "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz"
           echo "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  publisher.tar.gz" | sha256sum -c
           tar xzf publisher.tar.gz mcp-publisher
           ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          # a version fresh on npm takes a few minutes to become visible to the registry
+          for i in $(seq 10); do
+            ./mcp-publisher publish && exit 0
+            sleep 30
+          done
+          exit 1

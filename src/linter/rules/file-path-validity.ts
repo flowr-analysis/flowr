@@ -1,4 +1,5 @@
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { DataSetExtensions } from './cmd-check/cmd-check-util';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
@@ -69,8 +70,6 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalWritesBeforeAlways: number
 	totalValid:              number
 }
-
-const DataSetExtensions = ['R', 'r', 'RData', 'rdata', 'rda', 'tab', 'txt', 'TXT', 'tab.gz', 'tab.bz2', 'tab.xz', 'txt.gz', 'txt.bz2', 'txt.xz', 'csv', 'CSV'];
 
 function namesPackage(node: RNode<ParentInformation>): boolean {
 	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && ['package', 'lib.loc'].includes(Identifier.getName(a.name.content)));
@@ -206,10 +205,10 @@ export const FILE_PATH_VALIDITY = {
 			checkUrls:                false
 		})
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} does not point to a valid file`
-	}
+	prettyPrint: prettyPrint(
+		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
+		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} does not point to a valid file`
+	)
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;
 
 /** Whether the read only runs depending on a condition that queries the same file, as in `if(file.exists(p)) readLines(p)`. */

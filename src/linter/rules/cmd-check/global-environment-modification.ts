@@ -21,6 +21,7 @@ import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/mod
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
+import { callsBuiltIn } from '../../linter-util';
 import { at, boundName, type CmdCheckResult, packageCalls, packageInfo, printer, projectNodes } from './cmd-check-util';
 import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
@@ -74,7 +75,7 @@ function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environmen
 		return true;
 	}
 	/* `as.environment(1)`, `as.environment(".GlobalEnv")` */
-	if(RFunctionCall.isNamed(node, 'as.environment') && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
+	if(RFunctionCall.is(node) && callsBuiltIn(df.graph, node.info.id, 'as.environment') && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
 		return denotesGlobalPos(node.arguments[0].value);
 	}
 	if(!RSymbol.is(node)) {
@@ -212,7 +213,7 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		const results: GlobalEnvironmentModificationResult[] = [];
 		let consideredCalls = 0;
 		const add = (node: RNode<ParentInformation>, kind: GlobalEnvironmentModificationKind, message: string, variable?: string) => results.push({ ...at(node), kind, ...(variable !== undefined ? { variable } : {}), message });
-		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, WriterNames, true)) {
+		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, WriterNames)) {
 			consideredCalls++;
 			const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters[name as keyof typeof EnvironmentWriters]);
 			const arg = (formal: string) => {

@@ -17,6 +17,7 @@ import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -390,9 +391,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	removeIdenticalDuplicates(initialIdCollector);
 
 	return {
-		'.meta': {
-			timing: Date.now() - now,
-		},
+		...metaSince(now),
 		kinds: makeReport(initialIdCollector)
 	};
 }

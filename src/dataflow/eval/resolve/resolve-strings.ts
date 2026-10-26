@@ -1,10 +1,11 @@
 import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { Identifier, PkgName } from '../../environments/identifier';
 import { isValue, RValue, Top, type Value } from '../values/r-value';
+import { setOf } from '../values/sets/set-constants';
 import { stringFrom } from '../values/string/string-constants';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { matchCallArguments } from './match-arguments';
@@ -145,25 +146,78 @@ function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolv
 	return args.length > 0 ? known.fold(...args) : undefined;
 }
 
-function argAsString(this: void, id: NodeId, against: BuiltInEvalHandlerArgs, coerce: boolean): string | undefined {
-	const sole = NodeValue.sole(NodeValue.setOf(id, against));
-	if(sole === undefined) {
-		return undefined;
-	}
-	if(sole.type === 'string' && isValue(sole.value)) {
-		return sole.value.str;
+/** the string a single value stands for, coercing a number or logical like `as.character` does if `coerce` is set */
+function valueAsString(this: void, value: Value, coerce: boolean): string | undefined {
+	if(value.type === 'string' && isValue(value.value)) {
+		return value.value.str;
 	}
 	if(!coerce) {
 		return undefined;
 	}
-	const num = RValue.numberOf(sole);
+	const num = RValue.numberOf(value);
 	if(num !== undefined) {
 		return Number.isInteger(num) && Math.abs(num) < 1e5 ? String(num) : undefined;
 	}
-	if(sole.type === 'logical' && isValue(sole.value) && sole.value !== 'maybe') {
-		return sole.value ? 'TRUE' : 'FALSE';
+	if(value.type === 'logical' && isValue(value.value) && value.value !== 'maybe') {
+		return value.value ? 'TRUE' : 'FALSE';
 	}
 	return undefined;
+}
+
+/** every string an argument may hold (e.g. the variable of a `for` loop), `undefined` if any of its values is none */
+function argAsStrings(this: void, id: NodeId, against: BuiltInEvalHandlerArgs, coerce: boolean): string[] | undefined {
+	const set = NodeValue.setOf(id, against);
+	if(set === undefined || set.elements.length === 0) {
+		return undefined;
+	}
+	const strings = set.elements.map(e => valueAsString(e, coerce));
+	return strings.includes(undefined) ? undefined : strings as string[];
+}
+
+/** how many combinations of argument values a fold is tried for, as `paste0(i, j)` of two long loops is no value worth listing */
+const MaxFoldCombinations = 256;
+
+/**
+ * Every value a fold may yield for the values its arguments may hold, one fold for each combination of them,
+ * `undefined` if an argument does not resolve to strings or there are too many combinations.
+ * The values are resolved once, as the solver does not resolve a node again while it is still resolving the call.
+ */
+function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation>, args: BuiltInEvalHandlerArgs, coerce: boolean): (string | number)[] | undefined {
+	const options = new Map<NodeId, string[]>();
+	let unresolved = false;
+	const first = foldStringCall(node, arg => {
+		const strings = argAsStrings(arg.info.id, args, coerce);
+		if(strings === undefined) {
+			unresolved = true;
+			return undefined;
+		}
+		options.set(arg.info.id, strings);
+		return strings[0];
+	});
+	if(unresolved || first === undefined) {
+		return undefined;
+	}
+	const combinations = [...options.values()].reduce((n, o) => n * o.length, 1);
+	if(combinations > MaxFoldCombinations) {
+		return undefined;
+	}
+	const ids = [...options.keys()];
+	const pick = new Map<NodeId, string>();
+	const results: (string | number)[] = [];
+	const enumerate = (at: number): boolean => {
+		if(at === ids.length) {
+			const folded = foldStringCall(node, arg => pick.get(arg.info.id));
+			if(folded !== undefined) {
+				results.push(folded);
+			}
+			return folded !== undefined;
+		}
+		return options.get(ids[at])?.every(s => {
+			pick.set(ids[at], s);
+			return enumerate(at + 1);
+		}) ?? false;
+	};
+	return enumerate(0) ? results : undefined;
 }
 
 /**
@@ -178,11 +232,12 @@ function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 		return Top;
 	}
 	const joined = PasteLikeCalls.has(Identifier.getName(node.functionName.content));
-	const folded = foldStringCall(node, arg => argAsString(arg.info.id, args, joined));
+	const folded = foldAcrossValues(node, args, joined);
 	if(folded === undefined) {
 		return Top;
 	}
-	return typeof folded === 'number' ? intervalFrom(folded, folded) : stringFrom(folded);
+	const asValue = (f: string | number): Value => typeof f === 'number' ? intervalFrom(f, f) : stringFrom(f);
+	return folded.length === 1 ? asValue(folded[0]) : setOf(folded.map(asValue));
 }
 
 /**

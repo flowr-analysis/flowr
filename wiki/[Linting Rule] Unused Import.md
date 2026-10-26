@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-25, 09:29:25 UTC (v2.16.6), do not edit directly._
 <h2 id="unused-import">Unused Import&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.\
 _This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L126">src/linter/rules/unused-import.ts</a>._
@@ -31,43 +31,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (16 ms)\
+Query: **linter** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Import of stats at 1.1-14 (1 quick fix(es) available)
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "unused-import": {
-        "results": [
-          {
-            "certainty": "uncertain",
-            "involvedId": 3,
-            "loc": [1,1,1,14],
-            "package": "stats",
-            "version": "4.5.3",
-            "quickFix": [{"type":"remove","description":"Remove the unused import of stats","loc":[1,1,1,14]}]
-          }
-        ],
-        ".meta": {"totalConsidered":1,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":1}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 #### Additional Examples
 	
@@ -93,7 +60,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L52) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_character.only_32_resolves_32_the_32_package_32_from_32_the_32_variable">Test Case: character.only resolves the package from the variable</h4>
 
 Given the following input:
@@ -115,7 +82,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L55) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_called_32_export_32_keeps_32_the_32_import">Test Case: a called export keeps the import</h4>
 
 Given the following input:
@@ -135,7 +102,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L59) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_require_32_counts_32_just_32_like_32_library">Test Case: require counts just like library</h4>
 
 Given the following input:
@@ -158,7 +125,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L62) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_only_32_the_32_unused_32_ones_32_are_32_reported">Test Case: only the unused ones are reported</h4>
 
 Given the following input:
@@ -182,7 +149,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L65) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_script_32_source_40__41__32_cannot_32_resolve_32_may_32_use_32_the_32_import">Test Case: a script source() cannot resolve may use the import</h4>
 
 Given the following input:
@@ -202,7 +169,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L71) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_name_32_the_32_package_32_may_32_re-export_32_from_32_its_32_imports_32_keeps_32_the_32_import">Test Case: a name the package may re-export from its imports keeps the import</h4>
 
 Given the following input:
@@ -222,7 +189,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L73) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_import_32_using_32_neither_32_its_32_own_32_nor_32_a_32_re-exported_32_name_32_is_32_unused">Test Case: an import using neither its own nor a re-exported name is unused</h4>
 
 Given the following input:
@@ -244,7 +211,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L75) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_namespaced_32_call_32_keeps_32_the_32_import">Test Case: a namespaced call keeps the import</h4>
 
 Given the following input:
@@ -264,7 +231,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L78) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_export_32_handed_32_on_32_as_32_a_32_value_32_keeps_32_the_32_import">Test Case: an export handed on as a value keeps the import</h4>
 
 Given the following input:
@@ -285,7 +252,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L81) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_use_32_inside_32_a_32_function_32_body_32_keeps_32_the_32_import">Test Case: a use inside a function body keeps the import</h4>
 
 Given the following input:
@@ -306,7 +273,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L84) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_use_32_inside_32_a_32_branch_32_keeps_32_the_32_import">Test Case: a use inside a branch keeps the import</h4>
 
 Given the following input:
@@ -326,7 +293,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L87) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_shadowed_32_export_32_does_32_not_32_keep_32_the_32_import">Test Case: a shadowed export does not keep the import</h4>
 
 Given the following input:
@@ -349,7 +316,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L90) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_using_32_one_32_package_32_does_32_not_32_excuse_32_the_32_others">Test Case: using one package does not excuse the others</h4>
 
 Given the following input:
@@ -374,7 +341,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L93) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_braced_32_branch_32_can_32_be_32_emptied">Test Case: a braced branch can be emptied</h4>
 
 Given the following input:
@@ -396,7 +363,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L99) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_unbraced_32_branch_32_offers_32_no_32_removal">Test Case: an unbraced branch offers no removal</h4>
 
 Given the following input:
@@ -417,7 +384,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L102) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_unbraced_32_function_32_body_32_offers_32_no_32_removal">Test Case: an unbraced function body offers no removal</h4>
 
 Given the following input:
@@ -438,7 +405,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L105) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_package_32_the_32_database_32_does_32_not_32_know_32_is_32_skipped">Test Case: a package the database does not know is skipped</h4>
 
 Given the following input:
@@ -462,7 +429,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L110) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_whitelisted_32_package_32_is_32_never_32_reported">Test Case: a whitelisted package is never reported</h4>
 
 Given the following input:
@@ -486,7 +453,7 @@ We expect the linter to report the following:
 ```
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L114) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_nothing_32_is_32_reported_32_without_32_a_32_signature_32_database">Test Case: nothing is reported without a signature database</h4>
 
 Given the following input:
@@ -505,7 +472,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L118) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_requireNamespace_32_is_32_not_32_an_32_import">Test Case: requireNamespace is not an import</h4>
 
 Given the following input:
@@ -524,7 +491,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L121) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_loadNamespace_32_is_32_not_32_an_32_import">Test Case: loadNamespace is not an import</h4>
 
 Given the following input:
@@ -543,7 +510,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L125) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_a_32_qualified_32_call_32_is_32_not_32_an_32_import_32_of_32_its_32_own">Test Case: a qualified call is not an import of its own</h4>
 
 Given the following input:
@@ -562,7 +529,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L128) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_attach_32_naming_32_several_32_packages_32_at_32_once_32_is_32_skipped">Test Case: an attach naming several packages at once is skipped</h4>
 
 Given the following input:
@@ -581,7 +548,7 @@ We expect the linter to report the following:
 * no lints
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-import.test.ts#L131) for the test-case implementation.
-		
+
 <h4 id="Test_32_Case:_32_an_32_attach_32_whose_32_package_32_cannot_32_be_32_resolved_32_is_32_skipped">Test Case: an attach whose package cannot be resolved is skipped</h4>
 
 Given the following input:

@@ -29,6 +29,8 @@ export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	/** whether to add the detailed JSON results besides the prettified ones (default: true) */
+	readonly withJson?:       boolean;
 	readonly shorthand?:      string;
 	readonly ctx?:            GeneralDocContext;
 	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls; a `code` of `file://<name>` analyzes one of them */
@@ -46,7 +48,7 @@ export async function showQuery<
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
+	{ showCode, collapseResult, collapseQuery, withJson = true, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const builder = new FlowrAnalyzerBuilder().setParser(parser);
@@ -85,16 +87,16 @@ ${
 	await asciiSummaryOfQueryResult(markdownFormatter, duration, results, analyzer, queries)
 }
 
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+${withJson ? `<details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
 ${metaInfo}
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the ${ctx ? ctx.linkPage('wiki/Interface', 'Interface') : `[Interface](${FlowrWikiBaseRef}/Interface)`} wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the ${ctx ? ctx.linkPage('wiki/Interface', 'Interface') : `[Interface](${FlowrWikiBaseRef}/Interface)`} wiki page).
 
 ${jsonWithLimit(results)}
 
 </details>
+` : ''}
 
 ${
 	showCode ? `

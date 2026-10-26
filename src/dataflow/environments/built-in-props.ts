@@ -13,7 +13,10 @@ export enum ArgProp {
 	Forced    = 1 << 0,
 	/** declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it */
 	NoDefault = 1 << 1,
-	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
+	/**
+	 * the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge.
+	 * On `...` it is the last argument that is handed back, like in `{`.
+	 */
 	Alias     = 1 << 2,
 	/** the result is computed from the argument's value, like `x` in `sum(x)` */
 	Value     = 1 << 3,
@@ -166,7 +169,9 @@ export enum SemanticCallTag {
 	/** puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` */
 	AttachesPackage = 'attaches-package',
 	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
-	ChecksPackage   = 'checks-package'
+	ChecksPackage   = 'checks-package',
+	/** registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` */
+	Declares        = 'declares'
 }
 
 /** a bitfield of {@link ArgProp} */

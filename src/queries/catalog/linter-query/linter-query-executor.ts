@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { LintingRuleTag } from '../../../linter/linter-tags';
 import type { LinterQuery, LinterQueryResult } from './linter-query-format';
 import { type LintingRuleNames, LintingRules } from '../../../linter/linter-rules';
@@ -58,8 +59,6 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 	return {
 		...results,
 		...(formatted ? { formatted } : {}),
-		'.meta': {
-			timing: Date.now() - start
-		}
+		...metaSince(start)
 	};
 }

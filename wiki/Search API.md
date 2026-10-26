@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-10-04, 14:48:48 UTC (v2.15.9, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L180"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
+Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-executor.ts#L13"><code><span title="Run a search with the given search query and data.">runSearch</span></code></a> function.
 
 For an initial motivation, let's have a look at the following example:
 
@@ -92,7 +92,7 @@ flowchart LR
     linkStyle 10 stroke:gray;
 ```
 
-(The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 </details>
 
@@ -281,7 +281,7 @@ print`"]
     linkStyle 40 stroke:gray;
 ```
 
-(The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 </details>
 
@@ -416,4 +416,4 @@ Every search (and consequently the search pipeline) works with an array of <a hr
 Hence, even operations such as `.first` or `.last` return an array of elements (albeit with a single or no element).
 The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
 In addition, it offers optimizer passes to optimize the search pipeline before execution.
-They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L180"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.
+They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-executor.ts#L13"><code><span title="Run a search with the given search query and data.">runSearch</span></code></a>.

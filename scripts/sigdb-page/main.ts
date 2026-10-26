@@ -1,6 +1,8 @@
 import { rankName } from '../../src/util/text/name-rank';
 import type { SigIndex } from '../sigdb-index';
 import { blank, button, el } from '../page-lib/dom';
+import type { Spec } from './query';
+import { Words, argsOf, PropWords, RoleWords, WordInfo, closed, completeAt, explainAt, problemsOf, globOf, isIncomplete, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
 import type { RRepository } from '../../src/util/r-package-urls';
 import { baseManualIndexUrl, baseManualTopicUrl, cranMirrorSourceUrl, rdrrPackageUrl, rdrrTopicUrl, RRepositories, rSourceUrl } from '../../src/util/r-package-urls';
 
@@ -84,7 +86,18 @@ const Filters: readonly (readonly [what: string, key: string, label: string, abo
 	['kind', 'read', 'read', 'reads data from somewhere outside the program, like read.csv'],
 	['kind', 'write', 'write', 'writes data out of the program, like write.csv'],
 	['kind', 'visualize', 'plot', 'draws something, like plot or ggsave'],
-	['kind', 'library', 'load', 'attaches a package, like library or require']
+	['kind', 'library', 'load', 'attaches a package, like library or require'],
+	['prop', 'pure', 'pure', 'computes a result and nothing else: no side effects, no reads of outside state'],
+	['prop', 'maybe pure', 'maybe pure', 'pure as long as the functions it calls are'],
+	['prop', 'invisible', 'invisible', 'the result is returned invisibly, so it does not print at top level, like invisible(x)'],
+	['prop', 'changes scope', 'changes scope', 'defines or removes variables in an environment, like assign'],
+	['prop', 'ambient state', 'ambient state', 'reads state outside its arguments, like options or the working directory'],
+	['arg', 'alias', 'alias arg', 'an argument is handed back as the result, like x in identity(x)'],
+	['arg', 'forced', 'forced arg', 'an argument is evaluated whenever the call happens, like x in force(x)'],
+	['arg', 'value', 'value arg', 'an argument contributes its value to the result, like x in sum(x)'],
+	['arg', 'written', 'written arg', 'an argument names something the call may modify, like envir in assign'],
+	['arg', 'callee', 'callee arg', 'an argument is called as a function, like FUN in lapply'],
+	['arg', 'presence', 'presence arg', 'only whether an argument was supplied matters, like in missing()']
 ];
 const active = new Set<string>();
 const filters = byId('filters');
@@ -96,6 +109,26 @@ scope.addEventListener('click', () => {
 const picks = [...document.querySelectorAll<HTMLButtonElement>('.pick')];
 let how = 'all';
 const buttons = new Map<string, HTMLButtonElement>();
+const Groups: Record<string, readonly [title: string, about: string]> = {
+	traits: ['traits', 'what the name is: a method, deprecated, a reader, a writer, ...'],
+	prop:   ['function', 'what the call as a whole does or returns'],
+	arg:    ['arguments', 'what the call does with its arguments']
+};
+const groupOf = (what: string): string => what === 'prop' || what === 'arg' ? what : 'traits';
+const groupBoxes = new Map(Object.entries(Groups).map(([group, [title, about]]) => {
+	const box = el('span', 'group');
+	const heading = button('groupbtn', title, about, () => setOpen(box, box.dataset.open !== 'true'));
+	box.append(heading);
+	filters.append(box);
+	return [group, box] as const;
+}));
+function setOpen(box: HTMLElement, open: boolean): void {
+	box.dataset.open = String(open);
+	box.firstElementChild?.setAttribute('aria-expanded', String(open));
+	for(const chip of [...box.children].slice(1)) {
+		(chip as HTMLElement).hidden = !open;
+	}
+}
 for(const [what, key, label, about] of Filters) {
 	const id = what + ':' + key;
 	const filter = button(undefined, label, about + '. Click to filter by it, click again to drop it', () => {
@@ -105,7 +138,15 @@ for(const [what, key, label, about] of Filters) {
 	});
 	filter.setAttribute('aria-pressed', 'false');
 	buttons.set(id, filter);
-	filters.append(filter);
+	groupBoxes.get(groupOf(what))?.append(filter);
+	filter.hidden = true;
+}
+function openGroups(): void {
+	for(const [what, box] of groupBoxes) {
+		if([...active].some(id => groupOf(id.split(':')[0]) === what)) {
+			setOpen(box, true);
+		}
+	}
 }
 for(const pick of picks) {
 	pick.addEventListener('click', () => {
@@ -132,6 +173,12 @@ function holds(id: string, name: string, owners: readonly string[]): boolean {
 	}
 	if(what === 'pkg') {
 		return owners.some(entry => packages[owner(entry).index]?.[7] === '1');
+	}
+	if(what === 'prop') {
+		return (stated.get(name) ?? []).some(([, props]) => wordsOf(props).includes(key));
+	}
+	if(what === 'arg') {
+		return (stated.get(name) ?? []).some(([, , args]) => argsOf(args).some(([, roles]) => roles.includes(key)));
 	}
 	return what === 'kind'
 		? (kinds.get(name) ?? []).includes(key)
@@ -550,26 +597,7 @@ function withStatedOwner(name: string, owners: readonly string[]): readonly stri
 	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
 }
 
-const Words: Record<string, string> = {
-	'can throw':                  'throws', 'invisible':                  'invis', 's3 method':                  's3', 'S3 method':                  's3', 'S4 method':                  's4',
-	'changes scope':              'scope', 'non deterministic':          'nondet', 'non-deterministic':          'nondet',
-	'ambient state':              'ambient', 'file system':                'file', 'network':                    'net', 'concurrent':                 'async',
-	'calls something deprecated': 'calls depr', 'calls internals':            'internal', 'recursive':                  'rec',
-	'owns an S3 class':           's3 class', 'owns an S4 class':           's4 class', 'higher order':               'hof', 'deprecated':                 'depr',
-	'maybe pure':                 'maypure', 'sets ambient state':         'configures', 'calls native code':          'ffi',
-	'produces language object':   'lang',
-	'temp-file':                  'tmpfile', 'asks-user':                  'user', 'command-line':               'argv', 'draws-graphics':             'plot',
-	'opens-handle':               'opens', 'closes-handle':              'closes', 'narrows-args':               'narrows', 'statistics':                 'stats',
-	'javascript':                 'js',
-	'forced':                     'F', 'no default':                 'R', 'lazy':                       'L',
-	'value':                      'val', 'resource':                   'res', 'written':                    'out', 'callee':                     'fn', 'presence':                   'seen'
-};
-
 const Returns: readonly string[] = ['invisible'];
-
-function wordsOf(joined: string): string[] {
-	return joined.split('|').filter(Boolean);
-}
 
 function short(words: readonly string[]): string[] {
 	return words.map(word => Words[word] ?? word);
@@ -593,24 +621,31 @@ function parts(props: string): { kind: string[], returns: string[] } {
 	return { kind: words.filter(word => !Returns.includes(word)), returns: words.filter(word => Returns.includes(word)) };
 }
 
-function argsOf(args: string): (readonly [string, readonly string[]])[] {
-	return args.split(',').filter(Boolean).map((arg): readonly [string, readonly string[]] => {
-		const at = arg.indexOf(':');
-		return at < 0 ? [arg.trim(), []] : [arg.slice(0, at).trim(), wordsOf(arg.slice(at + 1))];
-	});
+/** An alias on `...` hands back the last argument only, which the reader is told. */
+function roleWords(name: string, roles: readonly string[]): string[] {
+	return short(roles).map(role => role === 'alias' && name === '...' ? 'alias (last)' : role);
+}
+
+/** the roles and properties the query asks for, which the signatures shown mark as what made them match */
+let asked: { readonly roles: ReadonlySet<string>, readonly props: ReadonlySet<string> } = { roles: new Set(), props: new Set() };
+
+/** `words` joined by `separator`, the ones the query asked for set apart */
+function marks(words: readonly string[], separator: string, asking: ReadonlySet<string>, raw: readonly string[], kind: 'role' | 'prop'): (string | HTMLElement)[] {
+	return words.flatMap((word, at) => [at > 0 ? separator : '', asking.has(norm(raw[at])) ? el('mark', 'want ' + kind, word) : word]);
 }
 
 function formal([name, roles]: readonly [string, readonly string[]]): HTMLSpanElement {
 	const part = el('span', 'formal');
 	part.append(name);
 	if(roles.length > 0) {
-		part.append(el('i', 'role', ': ' + short(roles).join('+')));
+		part.append(el('i', 'role'));
+		part.lastElementChild?.append(': ', ...marks(roleWords(name, roles), '+', asked.roles, roles, 'role'));
 	}
 	return part;
 }
 
 function readable(name: string, args: string, props: string): string {
-	const spelled = argsOf(args).map(([formalName, roles]) => roles.length === 0 ? formalName : formalName + ': ' + roles.join(' + ')).join(', ');
+	const spelled = argsOf(args).map(([formalName, roles]) => roles.length === 0 ? formalName : formalName + ': ' + roleWords(formalName, roles).join(' + ')).join(', ');
 	const { kind, returns } = parts(props);
 	return name + (kind.length > 0 ? '[' + kind.join(',') + ']' : '') + (args === '' ? '' : '(' + spelled + ')')
 		+ (returns.length > 0 ? ', returns ' + returns.join(' and ') : '');
@@ -621,7 +656,9 @@ function signature(name: string, args: string, props: string): HTMLElement {
 	const { kind, returns } = parts(props);
 	said.append(el('b', undefined, name));
 	if(kind.length > 0) {
-		said.append(el('i', 'kind', '[' + short(kind).join(',') + ']'));
+		const label = el('i', 'kind');
+		label.append('[', ...marks(short(kind), ',', asked.props, kind, 'prop'), ']');
+		said.append(label);
 	}
 	if(args !== '') {
 		const list = el('span', 'args');
@@ -719,13 +756,49 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 const Chunk = 40000;
 const Countable = 50000;
 
+function fitsEntry([, props, args]: EncodedStatedSignature, spec: Spec): boolean {
+	const have = wordsOf(props).map(norm);
+	return spec.props.every(prop => have.includes(prop)) && (spec.args === undefined || matchArgs(spec.args, argsOf(args)));
+}
+
+function fits(name: string, spec: Spec, glob: RegExp | undefined): boolean {
+	if(glob?.test(name) === false) {
+		return false;
+	}
+	return (spec.args === undefined && spec.props.length === 0) || (stated.get(name) ?? []).some(entry => fitsEntry(entry, spec));
+}
+
+/** whether any name flowR states a signature for would match the query, which is all that argument and property words can ask about */
+function anyMatch(text: string): boolean {
+	const spec = parseSpec(closed(text).trim().replace(/^\?/, '').trim());
+	const named = (/^([\w.]+):::?(.*)$/.exec(spec.rest)?.[2] ?? spec.rest).trim();
+	const glob = spec.nameRegex ?? globOf(named);
+	const needle = glob === undefined ? named.toLowerCase() : '';
+	for(const name of stated.keys()) {
+		if((needle === '' || name.toLowerCase().includes(needle)) && fits(name, spec, glob)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 let pending = 0;
+let answered = false;
 async function search(): Promise<void> {
-	const typed = q.value.trim().replace(/^\?/, '').replace(/\(\s*\)$/, '').trim();
+	/* a query that is still being typed asks for nothing yet, so the last answer and its filters stay */
+	if(answered && isIncomplete(q.value)) {
+		return;
+	}
+	const spec = parseSpec(q.value.trim().replace(/^\?/, '').trim());
+	const typed = spec.rest;
+	asked = { roles: new Set(spec.args?.flatMap(arg => arg.roles)), props: new Set(spec.props) };
 	const qualified = /^([\w.]+):::?(.*)$/.exec(typed);
 	const inPackage = qualified?.[1];
 	scoped = inPackage;
-	const needle = (qualified?.[2] ?? typed).trim();
+	const named = (qualified?.[2] ?? typed).trim();
+	const glob = spec.nameRegex ?? globOf(named);
+	const needle = glob === undefined ? named : '';
+	const constrained = glob !== undefined || spec.args !== undefined || spec.props.length > 0;
 	const run = ++pending;
 	hits.replaceChildren();
 
@@ -801,9 +874,9 @@ async function search(): Promise<void> {
 	const wanted = inPackage === undefined ? undefined : byName.get(inPackage);
 	const inScope = wanted === undefined ? matches
 		: matches.filter(match => withStatedOwner(match.name, match.owners.split(',')).some(entry => owner(entry).index === wanted));
-	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && inPackage === undefined);
+	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && !constrained && inPackage === undefined);
 	type PackageHit = readonly [name: string, index: number, at: number];
-	const allPackages: readonly PackageHit[] = inPackage !== undefined || (active.size > 0 && !onlyPackages) ? [] : packages
+	const allPackages: readonly PackageHit[] = inPackage !== undefined || ((active.size > 0 || constrained) && !onlyPackages) ? [] : packages
 		.map((row, index): PackageHit => [row[0], index, row[0].toLowerCase().indexOf(lower)])
 		.filter(([name, , at]) => onlyPackages ? at >= 0 : name.toLowerCase() === lower)
 		.sort(sort.value === 'auto'
@@ -813,19 +886,25 @@ async function search(): Promise<void> {
 	for(const [, index, at] of asPackage) {
 		showPackage(index, needle, at);
 	}
-	offerFilters(inScope);
-	const kept = onlyPackages ? [] : inScope.filter(match => passes(match.name, match.owners.split(',')));
+	const fitting = constrained ? inScope.filter(match => fits(match.name, spec, glob)) : inScope;
+	offerFilters(fitting);
+	const kept = onlyPackages ? [] : fitting.filter(match => passes(match.name, match.owners.split(',')));
 	const found = kept.length;
 	let inPackages: number | undefined;
 	if(found > 0 && found <= Countable) {
 		const seen = new Set<string>();
 		for(const match of kept) {
+			if(spec.args !== undefined || spec.props.length > 0) {
+				/* a signature is stated per package, so only the packages whose own signature fits count */
+				(stated.get(match.name) ?? []).filter(entry => entry[0] !== '' && fitsEntry(entry, spec)).forEach(entry => seen.add(entry[0]));
+				continue;
+			}
 			for(const entry of match.owners.split(',')) {
 				const colon = entry.indexOf(':');
 				seen.add(colon < 0 ? entry : entry.slice(0, colon));
 			}
 		}
-		inPackages = seen.size;
+		inPackages = seen.size === 0 ? undefined : seen.size;
 	}
 	for(const match of kept.slice(0, limit)) {
 		show(match.name, needle, match.at, withStatedOwner(match.name, match.owners.split(',')));
@@ -833,6 +912,7 @@ async function search(): Promise<void> {
 	const where = inPackage === undefined ? ''
 		: wanted === undefined ? ` (flowR knows no package called ${inPackage})` : ` in ${inPackage}`;
 	report(onlyPackages ? allPackages.length : found, onlyPackages ? 'package' : 'name', where, inPackages);
+	answered = true;
 }
 
 function report(total: number, what: string, where: string, inPackages: number | undefined): void {
@@ -863,9 +943,184 @@ q.addEventListener('input', () => {
 mode.addEventListener('change', () => void search());
 sort.addEventListener('change', () => void search());
 
-q.value = new URLSearchParams(location.search).get('q') ?? '';
+const params = new URLSearchParams(location.search);
+q.value = params.get('q') ?? '';
+for(const id of (params.get('f') ?? '').split(',')) {
+	buttons.get(id)?.setAttribute('aria-pressed', String(active.add(id).has(id)));
+}
+openGroups();
+const wantedHow = params.get('how');
+if(picks.some(p => p.dataset.mix === wantedHow)) {
+	how = wantedHow as string;
+	picks.forEach(p => p.setAttribute('aria-pressed', String(p.dataset.mix === how)));
+}
+for(const [select, key] of [[sort, 'sort'], [mode, 'mode']] as const) {
+	const value = params.get(key);
+	if(value !== null && [...select.options].some(o => o.value === value)) {
+		select.value = value;
+	}
+}
 status.textContent = 'Unpacking the database…';
 const ready = unpack().then(() => search(), (error: unknown) => {
 	status.textContent = `This browser could not unpack the database, sorry (${String(error)}).`;
 });
-q.addEventListener('change', () => history.replaceState(null, '', q.value ? '?q=' + encodeURIComponent(q.value) : location.pathname));
+function persist(): void {
+	const next = new URLSearchParams();
+	const state: [string, string][] = [['q', q.value], ['f', [...active].join(',')], ['how', how === 'all' ? '' : how], ['sort', sort.selectedIndex > 0 ? sort.value : ''], ['mode', mode.selectedIndex > 0 ? mode.value : '']];
+	for(const [key, value] of state.filter(([, value]) => value !== '')) {
+		next.set(key, value);
+	}
+	history.replaceState(null, '', next.size > 0 ? '?' + next.toString() : location.pathname);
+}
+for(const control of [q, mode, sort]) {
+	control.addEventListener('change', persist);
+}
+for(const control of [filters, ...picks]) {
+	control.addEventListener('click', persist);
+}
+
+const suggest = byId('suggest'), helpDialog = byId<HTMLDialogElement>('helpdialog');
+byId('help').addEventListener('click', () => {
+	if(typeof helpDialog.showModal === 'function') {
+		helpDialog.showModal();
+	} else {
+		helpDialog.setAttribute('open', '');
+	}
+});
+let chosen = -1;
+function take(row: Element | undefined): void {
+	(row as HTMLElement | undefined)?.dispatchEvent(new MouseEvent('mousedown', { cancelable: true }));
+}
+function pick(at: number): void {
+	const rows = [...suggest.children];
+	chosen = rows.length === 0 ? -1 : (at + rows.length) % rows.length;
+	rows.forEach((row, i) => row.setAttribute('aria-selected', String(i === chosen)));
+	rows[chosen]?.scrollIntoView({ block: 'nearest' });
+}
+const measure = document.createElement('canvas').getContext('2d');
+/** where the word being completed starts in the box, so the list opens under it like an editor's does */
+function leftOf(at: number): number {
+	const style = getComputedStyle(q);
+	if(measure === null) {
+		return 0;
+	}
+	measure.font = `${style.fontSize} ${style.fontFamily}`;
+	return Math.max(0, parseFloat(style.paddingLeft) + measure.measureText(q.value.slice(0, at)).width - q.scrollLeft);
+}
+function offer(): void {
+	const found = completeAt(q.value, q.selectionStart ?? q.value.length);
+	suggest.replaceChildren();
+	suggest.hidden = found === undefined;
+	if(found === undefined) {
+		chosen = -1;
+		return;
+	}
+	const typed = q.value.slice(found.from, found.to);
+	for(const word of found.options) {
+		const row = el('li', undefined);
+		const next = q.value.slice(0, found.from) + word + q.value.slice(found.to);
+		/* a word that would leave nothing to find is shown grayed, and can still be chosen */
+		row.classList.toggle('none', !anyMatch(next));
+		row.setAttribute('role', 'option');
+		const label = el('span', 'label');
+		label.append(el('b', undefined, word.slice(0, typed.length)), word.slice(typed.length));
+		row.append(label, el('span', 'detail', WordInfo[word] ?? ''));
+		/* mousedown, not click: the box keeps its focus and caret while a row is chosen */
+		row.addEventListener('mousedown', event => {
+			event.preventDefault();
+			q.value = q.value.slice(0, found.from) + word + q.value.slice(found.to);
+			const caret = found.from + word.length;
+			q.focus();
+			q.setSelectionRange(caret, caret);
+			offer();
+			paint();
+			persist();
+			void search();
+		});
+		suggest.append(row);
+	}
+	suggest.style.left = `${leftOf(found.from)}px`;
+	chosen = -1;
+}
+q.addEventListener('keydown', event => {
+	/* a search field clears itself on escape, which would throw the query away; it only closes the list */
+	if(event.key === 'Escape') {
+		event.preventDefault();
+		suggest.hidden = true;
+		return;
+	}
+	if(suggest.hidden) {
+		return;
+	}
+	if(event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+		event.preventDefault();
+		pick(chosen < 0 && event.key === 'ArrowUp' ? -1 : chosen + (event.key === 'ArrowDown' ? 1 : -1));
+	} else if(event.key === 'Tab' || (event.key === 'Enter' && chosen >= 0)) {
+		event.preventDefault();
+		take(suggest.children[Math.max(chosen, 0)]);
+	}
+});
+for(const type of ['input', 'click']) {
+	q.addEventListener(type, offer);
+}
+q.addEventListener('keyup', event => {
+	if(!['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(event.key)) {
+		offer();
+	}
+});
+q.addEventListener('blur', () => window.setTimeout(() => void (suggest.hidden = true), 150));
+
+const hl = byId('hl');
+const QueryHint = q.title;
+const problem = byId('problem');
+function paint(): void {
+	const found = problemsOf(q.value);
+	problem.hidden = found.length === 0;
+	problem.textContent = found.length === 0 ? '' : found.join(' · ') + (answered ? ' (showing the last answer)' : '');
+	const pieces = highlight(q.value);
+	const colored = pieces.some(([, kind]) => kind !== 'plain');
+	q.parentElement?.classList.toggle('colored', colored);
+	hl.replaceChildren(...(colored ? pieces.map(([text, kind]) => el('span', kind, text)) : []));
+	hl.scrollLeft = q.scrollLeft;
+}
+for(const type of ['input', 'scroll', 'keyup', 'click', 'focus']) {
+	q.addEventListener(type, paint);
+}
+paint();
+
+const opts = byId('opts'), optButton = byId('optbtn');
+function showOptions(open: boolean): void {
+	opts.hidden = !open;
+	optButton.setAttribute('aria-expanded', String(open));
+}
+optButton.addEventListener('click', () => showOptions(opts.hidden));
+showOptions(sort.selectedIndex > 0 || mode.selectedIndex > 0);
+
+/** the character under the pointer, so a piece of the colored query can say what it means */
+q.addEventListener('mousemove', event => {
+	const style = getComputedStyle(q);
+	if(measure === null) {
+		return;
+	}
+	measure.font = `${style.fontSize} ${style.fontFamily}`;
+	const x = event.clientX - q.getBoundingClientRect().left - parseFloat(style.paddingLeft) + q.scrollLeft;
+	let at = 0;
+	while(at < q.value.length && measure.measureText(q.value.slice(0, at + 1)).width < x) {
+		at++;
+	}
+	q.title = (x >= 0 ? explainAt(q.value, at) : undefined) ?? QueryHint;
+});
+
+for(const [id, words, kind] of [['helproles', RoleWords, 'role'], ['helpprops', PropWords, 'prop']] as const) {
+	byId(id).append(...words.flatMap(word => [el('dt', kind, word), el('dd', undefined, WordInfo[word] ?? '')]));
+}
+for(const example of document.querySelectorAll<HTMLButtonElement>('.try')) {
+	example.addEventListener('click', () => {
+		q.value = example.dataset.q ?? '';
+		helpDialog.close();
+		paint();
+		persist();
+		limit = Step;
+		void search();
+	});
+}

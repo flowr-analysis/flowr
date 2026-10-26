@@ -2,7 +2,7 @@
 	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
 	padding: .4rem 0 .3rem; border-bottom: 1px solid var(--border);
 }
-.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
+.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; letter-spacing: normal; font-weight: 700; display: inline-flex; align-items: center; }
 .bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
 /* margin on both sides of the slash keeps the two names evenly spaced */
 .bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }

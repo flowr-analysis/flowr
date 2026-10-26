@@ -439,28 +439,12 @@ export function assertDataflow(
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
-			if(userConfig?.mustNotHaveVertices) {
-				if(userConfig?.resolveIdsAsCriterion) {
-					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
-						return SlicingCriterion.tryParse(id, normalize.idMap) ?? id;
-					}));
-				}
-				for(const id of userConfig.mustNotHaveVertices) {
-					guard(!graph.hasVertex(id), () => `Graph must not have vertex ${id}, but it exists.`);
-				}
+			const resolve = (id: NodeId): NodeId => userConfig?.resolveIdsAsCriterion ? SlicingCriterion.tryParse(id, normalize.idMap) ?? id : id;
+			for(const id of userConfig?.mustNotHaveVertices ?? []) {
+				guard(!graph.hasVertex(resolve(id)), () => `Graph must not have vertex ${id}, but it exists.`);
 			}
-			if(userConfig?.mustNotHaveEdges) {
-				if(userConfig?.resolveIdsAsCriterion) {
-					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
-						const resolvedFrom = SlicingCriterion.tryParse(from, normalize.idMap) ?? from;
-						const resolvedTo = SlicingCriterion.tryParse(to, normalize.idMap) ?? to;
-						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
-					});
-				}
-				for(const [from, to] of userConfig.mustNotHaveEdges) {
-					const out = graph.outgoingEdges(from);
-					guard(!out?.has(to), () => `Graph must not have edge ${from} -> ${to}, but it exists.`);
-				}
+			for(const [from, to] of userConfig?.mustNotHaveEdges ?? []) {
+				guard(!graph.outgoingEdges(resolve(from))?.has(resolve(to)), () => `Graph must not have edge ${from} -> ${to}, but it exists.`);
 			}
 		} /* v8 ignore start */ catch(e) {
 			const diff = diffGraphsToMermaidUrl(
@@ -571,7 +555,10 @@ export function assertSliced(
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const assumed = assumedPackagesOf(testConfig);
 	const skip = skipTestBecauseConfigNotMet(testConfig);
-	if(skip || testConfig?.testCaseFailType === 'fail-both') {
+	const failType = testConfig?.testCaseFailType;
+	/* whether the test of `parser` is expected to fail */
+	const fails = (parser: 'shell' | 'tree-sitter') => failType === 'fail-both' || failType === `fail-${parser}`;
+	if(skip || failType === 'fail-both') {
 		// drop it again because the test is not to be counted
 		dropTestLabel(name);
 	}
@@ -590,16 +577,16 @@ export function assertSliced(
 
 		testWrapper(
 			false,
-			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-shell',
+			fails('shell'),
 			'shell',
-			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-shell'),
+			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, !fails('shell')),
 		);
 
 		testWrapper(
 			testConfig?.skipTreeSitter,
-			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-tree-sitter',
+			fails('tree-sitter'),
 			'tree-sitter',
-			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-tree-sitter'),
+			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, !fails('tree-sitter')),
 		);
 
 		testWrapper(

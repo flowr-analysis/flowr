@@ -1,5 +1,5 @@
 import { escapeRegex } from '../../../util/text/strings';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -361,10 +361,9 @@ export const DOCUMENTATION_MISMATCH = {
 		}
 		return { results, '.meta': { consideredObjects, consideredPages: pages.length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
+	prettyPrint: prettyPrint(
+		result => `${result.message} at ${SourceLocation.format(result.loc)}`
+	),
 	info: {
 		name:          'Documentation Mismatch',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Documentation, LintingRuleTag.Bug],

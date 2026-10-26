@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -14,10 +14,11 @@ import { baseRExportOwner, isBaseRPackage } from '../../../util/r-base-packages'
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { type RdMacroUse, type RdNode, type RdScan, parseRdMacros, scanRd } from '../../../project/plugins/file-plugins/files/flowr-rd-file';
-import { DependencyFields, packageInfo, projectNodes } from './cmd-check-util';
-import { type PackageFiles, packageFiles } from './package-files';
+import type { packageInfo } from './cmd-check-util';
+import { DependencyFields, projectNodes } from './cmd-check-util';
+import type { PackageFiles } from './package-files';
 import { rdExamples } from './package-code';
-import { type FileResult, fileFindings } from './file-checks';
+import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
 
 /** what is wrong with an Rd page or the manual, named after the part of `R CMD check` that finds it */
 export type RdFilesKind = 'rd-syntax' | 'rd-unknown-macro' | 'rd-structure' | 'rd-empty-section' | 'rd-encoding' | 'rd-markup' | 'rd-lost-braces'
@@ -660,13 +661,7 @@ function packageMacros(files: PackageFiles, extra: readonly string[]): Map<strin
 /** Port of the Rd checks of `R CMD check`, run on the `man/*.Rd` sources. */
 export const RD_FILES = {
 	createSearch:        () => Q.from([]),
-	processSearchResult: (_elements, config, data) => {
-		const ctx = data.inspectContext();
-		const info = packageInfo(ctx);
-		const files = packageFiles(ctx, info.name);
-		if(files === undefined) {
-			return { results: [], '.meta': { checkedFiles: 0 } };
-		}
+	processSearchResult: onPackageFiles({ checkedFiles: 0 }, (files, info, config, data) => {
 		const { results, add } = fileFindings<RdFilesKind>(files);
 		const description = info.description?.content();
 		const has = (field: string) => (description?.get(field)?.length ?? 0) > 0;
@@ -687,14 +682,14 @@ export const RD_FILES = {
 			checkMetadata(pages, info.name, add);
 		}
 		if(config.crossReferences) {
-			checkCrossReferences(pages, ctx, info, config.uncertainLinks, add);
+			checkCrossReferences(pages, data.inspectContext(), info, config.uncertainLinks, add);
 		}
 		return { results, '.meta': { checkedFiles: pages.length } };
-	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	},
+	}),
+	prettyPrint: prettyPrint(
+		result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
+		result => `${result.message} (at ${SourceLocation.format(result.loc)})`
+	),
 	info: {
 		name:          'Rd Files',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],

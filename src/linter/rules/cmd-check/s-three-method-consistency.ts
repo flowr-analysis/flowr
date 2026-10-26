@@ -6,8 +6,7 @@ import { LintingRuleTag } from '../../linter-tags';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { fnInfo } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
-import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import { callsBuiltIn } from '../../linter-util';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -118,14 +117,13 @@ function localGenerics(defs: readonly { name: string, def: RFunctionDefinition<P
 	const generics = new Map<string, Generic>();
 	const seen = new Set<NodeId>();
 	for(const node of projectNodes(ast)) {
-		if(seen.has(node.info.id) || !RFunctionCall.isNamed(node) || Identifier.getName(node.functionName.content) !== 'UseMethod') {
+		if(seen.has(node.info.id) || !RFunctionCall.is(node) || !callsBuiltIn(graph, node.info.id, 'UseMethod')) {
 			continue;
 		}
 		seen.add(node.info.id);
-		const origins = Dataflow.origin(graph, node.info.id);
 		const owner = RNode.strictlyEnclosingFunction(node.info.id, idMap);
 		const def = owner === undefined ? undefined : byId.get(owner);
-		if(def !== undefined && (origins === undefined || origins.every(o => o.type === OriginType.BuiltInFunctionOrigin))) {
+		if(def !== undefined) {
 			generics.set(def.name, { formals: formalNames(def.def), local: true });
 		}
 	}

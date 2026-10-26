@@ -27,7 +27,7 @@ const ReloadScript = `<script>new EventSource('${ReloadPath}').onmessage = () =>
 /** Serves `wiki/`; with `live`, the returned function reloads every served page. */
 export function serveWiki(page = '', port = 8000, live = false): () => void {
 	const listening = new Set<http.ServerResponse>();
-	http.createServer((req, res) => {
+	const server = http.createServer((req, res) => {
 		const at = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
 		if(live && at === ReloadPath) {
 			res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }).write('\n');
@@ -52,7 +52,23 @@ export function serveWiki(page = '', port = 8000, live = false): () => void {
 			res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' })
 				.end(live && type === 'text/html' ? content.toString().replace('</body>', `${ReloadScript}</body>`) : content);
 		});
-	}).listen(port, '127.0.0.1', () => console.log(`serving wiki/ on http://localhost:${port}/${page}${live ? ', reloading on every rebuild' : ''}`));
+	});
+	/* a busy port (often an earlier preview) moves on to the next one instead of failing */
+	const listen = (at: number): void => {
+		server.once('error', (e: NodeJS.ErrnoException) => {
+			if(e.code !== 'EADDRINUSE') {
+				throw e;
+			}
+			console.log(`port ${at} is busy, trying ${at + 1}`);
+			listen(at + 1);
+		});
+		server.listen(at, '127.0.0.1');
+	};
+	server.on('listening', () => {
+		server.removeAllListeners('error');
+		console.log(`serving wiki/ on http://localhost:${(server.address() as { port: number }).port}/${page}${live ? ', reloading on every rebuild' : ''}`);
+	});
+	listen(port);
 	return () => listening.forEach(res => res.write('data: reload\n\n'));
 }
 

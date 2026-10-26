@@ -161,27 +161,27 @@ export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
-	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
+	executor:              QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
 	/** optional completion in, e.g., the repl */
-	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
+	completer?:            (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
 	/** optional query construction from an, e.g., repl line */
-	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
+	fromLine?:             (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
 	/** optional one-line usage of the repl `@`-shorthand `fromLine` accepts, shown by `:query ?<type>` */
-	syntax?:              string
+	syntax?:               string
 	/** the human-readable name, e.g. `Call-Context Query`; also names its wiki page, see {@link queryWikiPage} */
-	title:                string
+	title:                 string
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
 	 */
-	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
-	jsonFormatter?:       (queryResults: BaseQueryResult) => object
-	schema:               Joi.ObjectSchema
+	asciiSummarizer:       (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
+	jsonFormatter?:        (queryResults: BaseQueryResult) => object
+	schema:                Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
-	 * If this query does not involve any nodes, an empty array can be returned.
+	 * If this query does not involve any nodes, this can be omitted.
 	 */
-	flattenInvolvedNodes: (queryResults: BaseQueryResult, query: readonly Query[], certainty?: LintingResultCertainty) => NodeId[]
+	flattenInvolvedNodes?: (queryResults: BaseQueryResult, query: readonly Query[], certainty?: LintingResultCertainty) => NodeId[]
 }
 
 export const SupportedQueries = {

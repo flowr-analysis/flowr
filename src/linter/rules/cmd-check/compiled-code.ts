@@ -1,12 +1,11 @@
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { packageInfo } from './cmd-check-util';
-import { type FileResult, fileFindings, firstLine } from './file-checks';
+import { type FileResult, fileFindings, firstLine, onPackageFiles } from './file-checks';
 import { FileRole } from '../../../project/context/flowr-file';
-import { type PackageFiles, packageFiles } from './package-files';
+import type { PackageFiles } from './package-files';
 
 /** The `R CMD check` checks (by the title it logs them under) this rule ports. */
 export type CompiledCodeKind =
@@ -353,13 +352,8 @@ function rulesFor(files: PackageFiles, config: CompiledCodeConfig, sysReq: strin
 /** Port of the static `R CMD check` checks on compiled code and build files (Rust compilation and the binary part of the compiled code check are not ported). */
 export const COMPILED_CODE = {
 	createSearch:        () => Q.from([]),
-	processSearchResult: (_elements, config, data) => {
+	processSearchResult: onPackageFiles({ consideredFiles: 0 }, (files, pkg, config, data) => {
 		const ctx = data.inspectContext();
-		const pkg = packageInfo(ctx);
-		const files = packageFiles(ctx, pkg.name);
-		if(files === undefined) {
-			return { results: [], '.meta': { consideredFiles: 0 } };
-		}
 		const found = fileFindings<CompiledCodeKind>(files, config.skip);
 		const add: Add = (kind, file, line, message, uncertain) => found.add(kind, file, message, line, uncertain ? LintingResultCertainty.Uncertain : undefined);
 		const sysReq = pkg.description?.content().get('SystemRequirements')?.join(' ') ?? '';
@@ -387,11 +381,11 @@ export const COMPILED_CODE = {
 			add('whether package can be installed', 'NAMESPACE', 1, installProblem);
 		}
 		return { results: found.results, '.meta': { consideredFiles: files.entries.filter(e => !e.isDirectory).length } };
-	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `checking ${result.kind}: ${result.message} (at ${SourceLocation.format(result.loc)})`
-	},
+	}),
+	prettyPrint: prettyPrint(
+		result => `${result.message} at ${SourceLocation.format(result.loc)}`,
+		result => `checking ${result.kind}: ${result.message} (at ${SourceLocation.format(result.loc)})`
+	),
 	info: {
 		name:          'Compiled Code',
 		tags:          [LintingRuleTag.CmdCheck],

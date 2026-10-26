@@ -177,7 +177,8 @@ export interface DependencyInfo extends Record<string, unknown> {
 	linkedIds?:          readonly NodeId[]
 	/**
 	 * Set on a call of a function of the program that does what this entry reports, transitively: the call of
-	 * `report()` writes what the `cat()` in its body writes. It names the entry within the called function.
+	 * `report()` writes what the `cat()` in its body writes. It names the entry within the called function. The
+	 * {@link value} is the one of this call, `save("a.csv")` writes `a.csv` even if other calls of `save` name other files.
 	 */
 	via?:                NodeId
 	/**

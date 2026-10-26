@@ -61,6 +61,10 @@ function isPlotNode(node: RNode<ParentInformation>, dataflow: DataflowInformatio
 /** whether the node calls one of the given graphics functions */
 function isPlotCall(node: RNode<ParentInformation>, dataflow: DataflowInformation, among: ReadonlySet<string>): boolean {
 	const name = RFunctionCall.is(node) ? callIdentifierOf(node, dataflow) : undefined;
-	return name !== undefined && among.has(Identifier.getName(name))
-		&& FunctionSemantics.call.props.hasAny(queryFnProps(name, { environment: dataflow.environment }), [SemanticCallTag.Graphics]);
+	if(name === undefined || !among.has(Identifier.getName(name))) {
+		return false;
+	}
+	/* without its package loaded, flowR knows nothing of `ggplot`, which still draws as its name says, unless the code defines its own */
+	const props = queryFnProps(name, { environment: dataflow.environment });
+	return props === undefined ? [...Dataflow.calleesOf(dataflow.graph, node.info.id)].length === 0 : FunctionSemantics.call.props.hasAny(props, [SemanticCallTag.Graphics]);
 }

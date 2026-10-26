@@ -62,4 +62,15 @@ describe('Removal slices', { concurrent: false }, withShell(shell => {
 		assertRemoval('a loop only the removed output needs goes as a whole', [...caps, 'for-loop'], 's <- 0\nfor(i in 1:3) s <- s + i\nprint(s)\nprint(2)', ['3@print'], 'print(2)', '[1] 2');
 		assertRemoval('a branch keeps what the rest needs of it', [...caps, 'if'], 'x <- 1\nif(x > 0) { y <- 2; z <- 3 }\nprint(y)\nprint(z)', ['3@print'], 'x <- 1\nif(x > 0) { z <- 3 }\nprint(z)', '[1] 3');
 	});
+	describe('Loaded packages', () => {
+		/* the built-in functions of a loaded package read its library() call, but they are no code that is left */
+		test(decorateLabelContext(label('the library only the removed plot needs goes with it', ['name-normal', 'call-normal', 'newlines']), ['slice']), async() => {
+			const code = 'library(ggplot2)\nx <- 1\nprint(x)\nggplot(data.frame(a = 1:3), aes(a)) + geom_bar()';
+			assert.strictEqual(await removalOf(shell, code, ['4@ggplot']), 'x <- 1\nprint(x)');
+		});
+		test(decorateLabelContext(label('the save of a removed plot goes with it', ['name-normal', 'call-normal', 'newlines']), ['slice']), async() => {
+			const code = 'x <- 1\nprint(x)\nggplot(data.frame(a = 1:3), aes(a)) + geom_bar()\nggsave("a.png")';
+			assert.strictEqual(await removalOf(shell, code, ['3@ggplot']), 'x <- 1\nprint(x)');
+		});
+	});
 }));

@@ -18,6 +18,7 @@ import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../dataflow/environments/built-in-props';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, PkgName, ReferenceType } from '../../../dataflow/environments/identifier';
+import { globOf, matchArgs, norm, parseSpec } from '../../../project/sigdb/spec-query';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
@@ -662,6 +663,42 @@ function withBuiltInFallback(
 	return { ...found, matches, matchCount: matches.length };
 }
 
+/**
+ * The functions flowR's built-in configuration states a match for, for a spec like `p*([alias]) [invisible]`:
+ * the name (glob, `/regex/`, or a part of it), the roles of the arguments in order, and the call properties.
+ * The databases record none of the roles or properties, so only the built-ins can answer.
+ */
+function searchBuiltInSpec(spec: string, index: BuiltInIndex): Partial<SignatureQueryResult> {
+	const { rest, nameRegex, args, props } = parseSpec(spec);
+	const qualified = /^([\w.]+):::?(.*)$/.exec(rest);
+	const named = (qualified?.[2] ?? rest).trim();
+	const glob = nameRegex ?? globOf(named);
+	const needle = glob === undefined ? named.toLowerCase() : '';
+	const matches: SignatureMatchView[] = [];
+	let truncated = false;
+	for(const entry of index.entries) {
+		const name = String(Identifier.getName(entry.name));
+		const pkg = String(Identifier.getNamespace(entry.name) ?? PkgName.Base);
+		if((qualified && qualified[1] !== pkg) || (glob ? !glob.test(name) : !name.toLowerCase().includes(needle))) {
+			continue;
+		}
+		const have = FunctionSemantics.call.props.names([entry.props ?? 0, ...entry.tags ?? []]).map(norm);
+		if(!props.every(p => have.includes(p))) {
+			continue;
+		}
+		const sig = (entry.sig ?? []).map(([n, p]) => [n, FunctionSemantics.call.argument.words(p)] as const);
+		if(args !== undefined && (entry.sig === undefined || !matchArgs(args, sig))) {
+			continue;
+		}
+		if(matches.length >= MaxMatches) {
+			truncated = true;
+			break;
+		}
+		matches.push({ package: pkg, name, exported: true, flowrOnly: true, ...(sig.length > 0 ? { parameters: sig.map(([n]) => n) } : {}) });
+	}
+	return { matches, matchCount: matches.length, searched: index.entries.length, truncated };
+}
+
 /** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
 function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery, literalFunction = false): Partial<SignatureQueryResult> {
 	const cap = MaxMatches;
@@ -884,6 +921,10 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const env = () => cleanEnv ??= ctx.env.makeCleanEnv();
 	/* the built-in environment answers for the primitives no package's sources contain, see flowrOnlyFunctionInfo */
 	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(env(), pkg, name);
+
+	if(q.flowr !== undefined) {
+		return { ...meta(), ...searchBuiltInSpec(q.flowr, builtIns) };
+	}
 
 	if(!q.package) {
 		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here

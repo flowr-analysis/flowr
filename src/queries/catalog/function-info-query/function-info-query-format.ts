@@ -3,7 +3,6 @@ import Joi from 'joi';
 import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
 import { bold, faint, italic, type OutputFormatter } from '../../../util/text/ansi';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { executeFunctionInfoQuery } from './function-info-query-executor';
@@ -81,6 +80,5 @@ export const FunctionInfoQueryDefinition = {
 		type:     Joi.string().valid('function-info').required().description('The type of the query.'),
 		name:     Joi.string().required().description('The bare function/symbol name to look up.'),
 		packages: Joi.array().items(Joi.string()).optional().description('Restrict the package list to these names; every exporting package is considered when omitted.')
-	}).description('Reports which packages export a function name, its signature/details in each, and whether flowR itself carries a built-in definition for it.'),
-	flattenInvolvedNodes: (): NodeId[] => []
+	}).description('Reports which packages export a function name, its signature/details in each, and whether flowR itself carries a built-in definition for it.')
 } as const satisfies SupportedQuery<'function-info'>;

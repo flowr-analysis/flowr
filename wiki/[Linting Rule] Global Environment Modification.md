@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-19, 06:47:02 UTC (v2.16.2), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-25, 09:29:25 UTC (v2.16.6), do not edit directly._
 <h2 id="global-environment-modification">Global Environment Modification&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 37](https://img.shields.io/badge/cmd--check-37-blueviolet) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -9,20 +9,20 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 |---|------|:--------:|------|
 | [37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37) | [R code for possible problems](https://github.com/wch/r-source/blob/tags/R-4-6-1/src/library/tools/R/check.R#L2302) ([book](https://r-pkgs.org/R-CMD-check.html#r-code)) | 🟩⭐ | ⭐ also quick fixes, deprecated arguments, environments resolved through variables, hooks followed into callees |
 
-This rule is a `best-effort` rule.
+This rule is a <code>best-effort</code> rule.
  
 Finds code that changes the global environment: `assign()` or `data()` into it, `attach()`, `<<-` without a binding in an enclosing function, and `<<-` to a package variable, whose binding is locked at run time.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/global-environment-modification.ts#L203">src/linter/rules/cmd-check/global-environment-modification.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/global-environment-modification.ts#L204">src/linter/rules/cmd-check/global-environment-modification.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `global-environment-modification` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/global-environment-modification.ts#L51"><code><span title="variables that may be assigned in the global environment (default .Random.seed, as R CMD check allows)">allowedGlobals</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/global-environment-modification.ts#L52"><code><span title="variables that may be assigned in the global environment (default .Random.seed, as R CMD check allows)">allowedGlobals</span></code></a>\
 variables that may be assigned in the global environment (default `.Random.seed`, as `R CMD check` allows)\
 _R CMD check [#37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37 "checking R code for possible problems")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/global-environment-modification.ts#L49"><code><span title="report <<- assignments that reach the global environment or a locked namespace binding (default true)">checkSuperAssignments</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/global-environment-modification.ts#L50"><code><span title="report <<- assignments that reach the global environment or a locked namespace binding (default true)">checkSuperAssignments</span></code></a>\
 report `<<-` assignments that reach the global environment or a locked namespace binding (default `true`)\
 _R CMD check [#37](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-37 "checking R code for possible problems")_
 
@@ -41,51 +41,10 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (9 ms)\
+Query: **linter** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Global Environment Modification** (global-environment-modification):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ assign of cached at 1.22-61\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ global-superassignment of counter at 2.21-43
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
-
-The analysis ran (including parsing and normalization and the query) within the generation environment.
-
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-```json
-{
-  "linter": {
-    "results": {
-      "global-environment-modification": {
-        "results": [
-          {
-            "certainty": "certain",
-            "involvedId": 12,
-            "loc": [1,22,1,61],
-            "kind": "assign",
-            "variable": "cached",
-            "message": "assign() writes 'cached' into the global environment, which belongs to the user"
-          },
-          {
-            "certainty": "certain",
-            "involvedId": 21,
-            "loc": [2,21,2,43],
-            "kind": "global-superassignment",
-            "variable": "counter",
-            "message": "no visible binding for '<<-' assignment to 'counter', which hence creates a variable in the global environment"
-          }
-        ],
-        ".meta": {"consideredCalls":1}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
-```
-
-</details>
 
 More examples are the test cases in [test/functionality/linter/cmd-check/lint-global-environment-modification.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/cmd-check/lint-global-environment-modification.test.ts).

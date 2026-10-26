@@ -10,7 +10,7 @@ import { closeHoverTooltips, Decoration, gutter, GutterMarker, hoverTooltip, key
 import { Compartment, EditorState, Prec, RangeSet, StateEffect, StateField, type StateEffectType, type Transaction } from '@codemirror/state';
 import { indentWithTab } from '@codemirror/commands';
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
-import { HighlightStyle, StreamLanguage, syntaxHighlighting, syntaxTree } from '@codemirror/language';
+import { HighlightStyle, StreamLanguage, matchBrackets, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
 import { r } from '@codemirror/legacy-modes/mode/r';
 import { json } from '@codemirror/legacy-modes/mode/javascript';
@@ -48,15 +48,18 @@ import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.
 import { blank, button, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
-import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
-import { cellTitles, languageOf, NotebookRun, notebookAsScript, notebookCells, rewriteCells, writesR } from './notebook';
+import { FileRole, FlowrInlineTextFile } from '../../src/project/context/flowr-file';
+import { isRSession, sessionAsScript } from './r-session';
+import { cellTitles, languageOf, loadNotebook, NotebookRun, notebookCells, rewriteCells, writesR } from './notebook';
 import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
 import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
 import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
 import { cranPageUrl } from '../../src/util/r-package-urls';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
+import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { VertexType } from '../../src/dataflow/graph/vertex';
 import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
@@ -282,12 +285,14 @@ function paint(code: string, into: HTMLElement): void {
 		span.textContent = text;
 		into.append(span);
 	};
-	highlightCode(code, rLanguage.parser.parse(code), highlight, (text, classes) => {
+	const tree = rLanguage.parser.parse(code);
+	highlightCode(code, tree, highlight, (text, classes) => {
 		/* the mode hands out whole unstyled runs, and a call name inside one is marked like in the editor */
 		let cursor = 0;
 		for(const found of text.matchAll(/[A-Za-z.][\w._]*/g)) {
 			const start = found.index;
-			if(start === undefined || Keywords.has(found[0]) || !/^\s*\(/.test(code.slice(at + start + found[0].length))) {
+			if(start === undefined || Keywords.has(found[0]) || !/^\s*\(/.test(code.slice(at + start + found[0].length))
+				|| /string|comment/i.test(tree.resolveInner(at + start, 1).name)) {
 				continue;
 			}
 			if(start > cursor) {
@@ -323,7 +328,7 @@ const callMarks = ViewPlugin.fromClass(class {
 		for(const { from, to } of view.visibleRanges) {
 			const text = view.state.doc.sliceString(from, to);
 			for(const found of text.matchAll(/[A-Za-z.][\w._]*(?=\s*\()/g)) {
-				if(found.index !== undefined && !Keywords.has(found[0])) {
+				if(found.index !== undefined && !Keywords.has(found[0]) && !spelledOut(view.state, from + found.index)) {
 					marks.push(Decoration.mark({ class: 'cm-call' }).range(from + found.index, from + found.index + found[0].length));
 				}
 			}
@@ -388,6 +393,27 @@ function complaint(found: { rule: string, message: string }, cls: string): HTMLE
 	chip.dataset.category = category(found.rule);
 	at.append(chip, document.createTextNode(found.message.replace(`${found.rule}: `, '')));
 	return at;
+}
+
+/**
+ * The given lines plus the ones holding the closing bracket of every bracket they open, which carry no code of their
+ * own (`}` alone on a line) and so are in no slice, though a slice without them is no longer a program.
+ */
+function withClosers(lines: readonly number[]): number[] {
+	const state = editor.state;
+	const all = new Set(lines);
+	for(const n of lines) {
+		const line = state.doc.line(n);
+		for(let at = 0; at < line.length; at++) {
+			if('{(['.includes(line.text[at]) && !spelledOut(state, line.from + at)) {
+				const match = matchBrackets(state, line.from + at, 1);
+				if(match?.matched && match.end !== undefined) {
+					all.add(state.doc.lineAt(match.end.from).number);
+				}
+			}
+		}
+	}
+	return [...all].sort((a, b) => a - b);
 }
 
 /** whether the offset sits in a string or a comment, where a name is text and not the function it spells */
@@ -658,7 +684,7 @@ const Loading = /\b(?:library|require|loadNamespace|requireNamespace|attachNames
 const BaseRPackages = new Set(baseRPackages());
 
 /** one name to offer, weighed by the {@link rankName} the signature browser ranks its hits with */
-function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string> }): Completion & { boost: number } {
+function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string>, local?: boolean }): Completion & { boost: number } {
 	const dot = label.indexOf('.');
 	/* `print.foo` is a method of `print` when the generic is a name of its own, as the database decides it */
 	const generic = dot > 0 ? label.slice(0, dot) : undefined;
@@ -669,7 +695,8 @@ function offer(label: string, needle: string, where: { pkg?: string, type: strin
 		baseR:    where.pkg !== undefined && BaseRPackages.has(where.pkg),
 		base:     where.pkg === 'base',
 		s3:       generic !== undefined && (knownNames.has(generic) || (where.siblings?.has(generic) ?? false)),
-		variable: where.type === 'variable'
+		variable: where.type === 'variable',
+		local:    where.local
 	});
 	return { label, type: where.type, detail: where.detail, boost: points };
 }
@@ -696,8 +723,78 @@ function ranked(options: readonly (Completion & { boost: number })[]): Completio
 	return unique.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
 }
 
-function complete(context: CompletionContext): CompletionResult | null {
-	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)) {
+/** `frame$col` and `frame[["col"`, with what is written of the column so far */
+const ColumnAccess = /([A-Za-z.][\w.]*)(\$|\[\[\s*["'])([\w. ]*)$/;
+
+/** the columns flowR knows the data frame named at `line`:`col` of the open file to have, the file analyzed as `code` */
+let columnsAsked: { code: string, at: string, columns: Promise<string[]> } | undefined;
+function columnsAt(code: string, line: number, col: number): Promise<string[]> {
+	const at = `${line}:${col}`;
+	if(columnsAsked?.code !== code || columnsAsked.at !== at) {
+		const columns = (async() => {
+			const answers = await (await analyzer(undefined, code)).query([{ type: 'absint', inference: 'df-shape', criteria: [at] }] as never) as unknown as { absint?: { result?: Map<string, unknown> } };
+			const shapes = answers.absint?.result instanceof Map ? [...answers.absint.result.values()] : [];
+			return uniqueArray(shapes.flatMap(shape => {
+				const names = (shape as { colnames?: { must?: Set<string>, may?: Set<string> } }).colnames;
+				return [...names?.must ?? [], ...names?.may ?? []];
+			}));
+		})().catch(() => []);
+		columnsAsked = { code, at, columns };
+	}
+	return columnsAsked.columns;
+}
+
+/** the columns to offer after `frame$` or `frame[["`, which the analysis of the script without the access knows */
+async function completeColumn(context: CompletionContext, access: { from: number, text: string }): Promise<CompletionResult | null> {
+	const [, frame, how, written] = ColumnAccess.exec(access.text) ?? [];
+	const nameEnd = access.from + frame.length;
+	const doc = context.state.doc;
+	const line = doc.lineAt(access.from);
+	const columns = await columnsAt(doc.sliceString(0, nameEnd) + doc.sliceString(context.pos), line.number, access.from - line.from + 1);
+	const quoted = how !== '$';
+	return columns.length === 0 ? null : {
+		from:    context.pos - written.length,
+		options: columns.map(name => ({
+			label:  name,
+			apply:  quoted || /^[A-Za-z.][\w.]*$/.test(name) ? name : `\`${name}\``,
+			type:   'property',
+			detail: `column of ${frame}`
+		}))
+	};
+}
+
+/** the call whose parentheses hold `pos`, by its name, if any */
+function callAround(text: string, pos: number): string | undefined {
+	let depth = 0;
+	for(let at = pos - 1; at >= Math.max(0, pos - 2000); at--) {
+		const char = text[at];
+		if(char === ')' || char === ']' || char === '}') {
+			depth++;
+		} else if(char === '(' || char === '[' || char === '{') {
+			if(depth === 0) {
+				return char === '(' ? /([A-Za-z.][\w.]*(?::{2,3}[A-Za-z.][\w.]*)?)\s*$/.exec(text.slice(Math.max(0, at - 200), at))?.[1] : undefined;
+			}
+			depth--;
+		}
+	}
+	return undefined;
+}
+
+/** the parameters of the function `called`, as far as the page knows its signature */
+function parametersOf(called: string): string[] {
+	const [pkg, name] = called.includes('::') ? called.split(/:{2,3}/) : [undefined, called];
+	const call = signatureOf(name, ownerOf(name, pkg))?.call ?? '';
+	const params = call.slice(call.indexOf('(') + 1, call.lastIndexOf(')'));
+	return call.includes('(') ? [...params.matchAll(/(?:^|,\s*)([A-Za-z.][\w.]*)(?=\s*(?:=|,|$))/g)].map(m => m[1]).filter(p => p !== '...') : [];
+}
+
+/** the names the last analysis saw defined, which reaches those the text alone does not show (`assign("x", 1)`) */
+let flowrDefined: readonly string[] = [];
+
+function complete(context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> {
+	/* a comment is prose, so nothing there completes */
+	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)
+		|| /comment/i.test(syntaxTree(context.state).resolveInner(context.pos, -1).name)) {
 		return null;
 	}
 	const qualified = Qualified.exec(context.matchBefore(/[A-Za-z.][\w.]*:{2,3}[\w._]*/)?.text ?? '');
@@ -708,6 +805,10 @@ function complete(context: CompletionContext): CompletionResult | null {
 			from:    context.pos - written.length,
 			options: ranked(exported.map(label => offer(label, written, { pkg, type: 'function', detail: `${pkg}${colons}`, siblings: exportsOf(pkg) })))
 		};
+	}
+	const access = context.matchBefore(ColumnAccess);
+	if(access !== null) {
+		return completeColumn(context, access);
 	}
 	const loading = Loading.exec(context.matchBefore(Loading)?.text ?? '');
 	if(loading !== null) {
@@ -724,15 +825,19 @@ function complete(context: CompletionContext): CompletionResult | null {
 	/* only what R would find at this position: what the script binds, what it attached, and the rest of
 	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
 	const needle = word.text;
-	const defined = uniqueArray([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
+	const text = context.state.doc.toString();
+	const defined = uniqueArray([...text.matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]));
+	/* right after `(` or `,` of a call, the parameters of what it calls come first */
+	const called = /[(,]\s*$/.test(text.slice(Math.max(0, word.from - 200), word.from)) ? callAround(text, word.from) : undefined;
+	const named = called === undefined ? [] : parametersOf(called).filter(p => p.startsWith(needle)).map(p => ({ label: p, apply: `${p} = `, type: 'property', detail: `argument of ${called}`, boost: 99 }));
 	return {
 		from:    word.from,
-		options: ranked([
-			...defined.map(label => offer(label, needle, { type: 'variable', detail: 'in this script' })),
+		options: [...named, ...ranked([
+			...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
 			/* what the script attached is nearer than what flowR knows without it */
 			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
 			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
-		])
+		])]
 	};
 }
 
@@ -854,8 +959,8 @@ const shared = (() => {
 		repl:       sized(repl, 'px'),
 		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
 		marks:      Playground.Mark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
-		/* a page opened without a link steps back what the slice leaves out; a link keeps the view it was sent with */
-		dim:        params.size === 0 || view.dim,
+		/* stepping back what a slice leaves out is something to turn on, so only a link that says so does */
+		dim:        view.dim,
 		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
 		replOpen:   view.replOpen,
 		wholeSlice: view.wholeSlice,
@@ -892,7 +997,9 @@ interface ShownDep { readonly kind: string, readonly line?: number, readonly fro
 let shownDeps: readonly ShownDep[] = [];
 
 function depsOver(from: number, to: number): Node[] {
-	return shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to).map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
+	/* a call standing for several entries in the function it calls says the same thing for each of them */
+	const over = shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to);
+	return [...new Map(over.map(d => [`${d.kind}\0${d.said?.name}\0${d.said?.why}`, d])).values()].map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
 }
 
 let shareTimer = 0;
@@ -1258,7 +1365,7 @@ function elsewhere(node: { info: { file?: string } } | undefined): string | unde
 	return file === files[active].name ? undefined : file;
 }
 
-const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb)$/i;
+const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb|rout|rsession|rconsole)$/i;
 const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)(DESCRIPTION|LICEN[CS]E(\.md|\.txt)?)$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
 
 async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
@@ -1296,7 +1403,7 @@ async function unzip(blob: Blob): Promise<[string, Blob][]> {
 }
 
 function asProjectFile(name: string, text: string): [string, string] {
-	return /\.ipynb$/i.test(name) ? [`${name}.R`, notebookAsScript(text)] : [name, text];
+	return /\.ipynb$/i.test(name) ? [`${name}.R`, loadNotebook(`${name}.R`, text)] : [name, text];
 }
 async function readable(found: readonly [string, Blob][], failed: string[]): Promise<[string, string][]> {
 	const read: [string, string][] = [];
@@ -1335,7 +1442,7 @@ function load(found: Promise<[string, Blob][]> | [string, Blob][]): void {
 		if(failed.length > 0) {
 			showTook(`could not open ${failed.join(', ')}`);
 		} else if(read.length === 0) {
-			showTook('nothing to open: flowR reads R scripts, R Markdown, Quarto, Jupyter notebooks, and zips of them');
+			showTook('nothing to open: flowR reads R scripts, R console sessions, R Markdown, Quarto, Jupyter notebooks, and zips of them');
 		}
 	}).catch((e: unknown) => showTook(`could not open that: ${String(e)}`));
 }
@@ -1411,10 +1518,12 @@ function showFiles(): void {
 	fileBar.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 	treeToggle.title = `${tree.hidden ? 'show' : 'hide'} the ${files.length === 1 ? 'file' : `${files.length} files`} of the project`;
 	const shown = new Set<string>();
-	const rows = files.map((file, at) => ({ file, at, folders: file.name.split('/') }))
-		.sort((a, b) => a.file.name.localeCompare(b.file.name))
+	/* a folder made with nothing in it yet shows as well, sorted in where a file of it would be */
+	const entries = [...files.map((file, at) => ({ path: file.name, file, at })), ...[...emptyFolders].map(path => ({ path: `${path}/`, file: undefined, at: -1 }))];
+	const rows = entries.map(entry => ({ ...entry, folders: entry.path.split('/') }))
+		.sort((a, b) => a.path.localeCompare(b.path))
 		.flatMap(({ file, at, folders }) => {
-			const name = folders.pop() ?? file.name;
+			const name = folders.pop() ?? '';
 			const heads = folders.map((folder, depth) => [folders.slice(0, depth + 1).join('/'), folder, depth] as const)
 				.filter(([path]) => !shown.has(path) && shown.add(path))
 				.filter(([path]) => !foldedFolders.has(path.split('/').slice(0, -1).join('/')))
@@ -1422,9 +1531,10 @@ function showFiles(): void {
 					const row = treeRow('folder', folder, depth, false, [['+', `a new file in ${path}/`, () => newFile(`${path}/`)]]);
 					row.classList.toggle('folded', foldedFolders.has(path));
 					row.addEventListener('click', () => (foldedFolders.has(path) ? foldedFolders.delete(path) : foldedFolders.add(path), showFiles()));
+					takesFiles(row, path);
 					return row;
 				});
-			if(folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
+			if(file === undefined || folders.some((_, depth) => foldedFolders.has(folders.slice(0, depth + 1).join('/')))) {
 				return heads;
 			}
 			const row = treeRow('file', name, folders.length, !onConfig && at === active, [
@@ -1432,6 +1542,8 @@ function showFiles(): void {
 				...files.length > 1 ? [['\u00D7', `remove ${file.name} from the project`, () => removeFile(at)] as const] : []
 			]);
 			row.title = file.name;
+			row.draggable = true;
+			row.addEventListener('dragstart', event => event.dataTransfer?.setData(MovedFile, String(at)));
 			row.addEventListener('click', () => (openFile(at), showTab(false)));
 			row.addEventListener('contextmenu', event => (event.preventDefault(), openMenu(row, fileMenu(at))));
 			return [...heads, row];
@@ -1456,6 +1568,48 @@ function showFiles(): void {
 }
 
 const foldedFolders = new Set<string>();
+/** folders made in the tree that hold no file yet, which only exist on this page until one is put in */
+const emptyFolders = new Set<string>();
+
+/** the drag of a file of the tree, which a folder (or the top of the tree) takes in */
+const MovedFile = 'application/x-flowr-file';
+function takesFiles(row: HTMLElement, folder: string): void {
+	row.addEventListener('dragover', event => {
+		if(event.dataTransfer?.types.includes(MovedFile)) {
+			event.preventDefault();
+			row.classList.add('droptarget');
+		}
+	});
+	row.addEventListener('dragleave', () => row.classList.remove('droptarget'));
+	row.addEventListener('drop', event => {
+		const at = Number(event.dataTransfer?.getData(MovedFile));
+		row.classList.remove('droptarget');
+		if(event.dataTransfer?.types.includes(MovedFile) && files[at] !== undefined) {
+			event.preventDefault();
+			event.stopPropagation();
+			moveFile(at, folder);
+		}
+	});
+}
+
+/** puts the file into `folder`, `''` being the top of the project */
+function moveFile(at: number, folder: string): void {
+	const name = `${folder === '' ? '' : `${folder}/`}${files[at].name.split('/').pop() ?? files[at].name}`;
+	if(name !== files[at].name && nameAccepted(name, at)) {
+		rename(at, name);
+		emptyFolders.delete(folder);
+	}
+}
+
+function newFolder(): void {
+	const name = prompt('name of the new folder, nested ones separated by /', 'R')?.trim().replace(Leading, '').replace(/\/+$/, '');
+	if(name === undefined || name === '' || name.split('/').some(part => part === '' || part === '..')) {
+		return;
+	}
+	emptyFolders.add(name);
+	foldedFolders.delete(name);
+	showFiles();
+}
 
 /** whether the files are one of the examples as it opened, which nobody minds losing */
 function pristineExample(): boolean {
@@ -1489,6 +1643,10 @@ function renameFile(at: number): void {
 	if(name === undefined || name === files[at].name || !nameAccepted(name, at)) {
 		return;
 	}
+	rename(at, name);
+}
+
+function rename(at: number, name: string): void {
 	openFile(active, () => {
 		files[at].name = name;
 		files[at].state = files[at].state.update({ effects: fileKind.reconfigure(kindOf(name)) }).state;
@@ -1515,6 +1673,12 @@ function fileMenu(at: number): readonly MenuEntry[] {
 	return [
 		files[at].name,
 		{ label: 'Rename...', run: () => renameFile(at) },
+		{ label: 'Move to folder...', title: 'empty for the top of the project', run:   () => {
+			const folder = prompt('move to the folder, empty for the top of the project', files[at].name.split('/').slice(0, -1).join('/'))?.trim().replace(Leading, '').replace(/\/+$/, '');
+			if(folder !== undefined) {
+				moveFile(at, folder);
+			}
+		} },
 		...files.length > 1 ? [{ label: 'Remove', run: () => removeFile(at) }] : [],
 		'', { label: 'New file next to it...', run: () => newFile(files[at].name.replace(/[^/]*$/, '')) }
 	];
@@ -1578,9 +1742,11 @@ window.addEventListener('resize', closeMenu);
 const addButton = document.getElementById('addfile') as HTMLElement;
 addButton.addEventListener('click', () => openMenu(addButton, [
 	{ label: 'New file...', title: 'folders separated by /, as in R/clean.R', run: () => newFile() },
+	{ label: 'New folder...', title: 'drag files onto a folder to move them there', run: () => newFolder() },
 	{ label: 'Upload files...', title: 'R scripts, R Markdown, Quarto, Jupyter notebooks, or a zip of them', run: () => pickers[0].click() },
 	{ label: 'Upload folder...', title: 'every R script and notebook below a folder', run: () => pickers[1].click() }
 ]));
+takesFiles(treeHead, '');
 showFiles();
 
 const pane = fileBar.closest('.pane') as HTMLElement;
@@ -1608,12 +1774,16 @@ async function packagesOf(code?: string): Promise<readonly string[]> {
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
 	return uniqueArray(found).filter(p => !BaseRPackages.has(p));
 }
+/** the project as R sees it on disk, a console transcript as the script it records */
+const runnableFiles = () => projectFiles().map(([name, text]) => [name, isRSession(name, text) ? sessionAsScript(text) : text] as const);
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
-	const code = Analyzed.test(name) && !/\.r$/i.test(name)
-		? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
-		: textOf(active);
-	return { code, files: projectFiles(), fresh: runFresh };
+	const code = isRSession(name, textOf(active))
+		? sessionAsScript(textOf(active))
+		: Analyzed.test(name) && !/\.r$/i.test(name)
+			? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
+			: textOf(active);
+	return { code, files: runnableFiles(), fresh: runFresh };
 }
 const RunFreshKey = 'flowr-playground-run-fresh';
 /** whether the run button starts R over like `Rscript` or continues the session the cells share */
@@ -1644,7 +1814,7 @@ runMode.addEventListener('click', () => openMenu(runMode, [
 const runner = setupRunR(toRun, packagesOf, () => editor.state.facet(NotebookRun)[0]?.(editor, runFresh));
 /** cells share one R session, next to the project files as they are now */
 function runCell(code: string, title: string, into?: HTMLElement, fresh = false): Promise<number | undefined> {
-	return runner(() => Promise.resolve({ code, files: projectFiles(), fresh }), title, into);
+	return runner(() => Promise.resolve({ code, files: runnableFiles(), fresh }), title, into);
 }
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
@@ -2140,7 +2310,7 @@ function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
 const packages = packageSource();
 
 let ready: Promise<void> | undefined;
-async function analyzer(code?: string) {
+async function analyzer(code?: string, open?: string) {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
@@ -2155,7 +2325,15 @@ async function analyzer(code?: string) {
 	if(code !== undefined) {
 		built.addRequest({ request: 'text', content: code });
 	} else {
-		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, text)));
+		/* `open` stands in for the open file, as it is about to be rather than as it is */
+		built.addFile(...projectFiles().map(([name, text]) => {
+			const content = open !== undefined && name === files[active].name ? open : text;
+			const file = new FlowrInlineTextFile(name, isRSession(name, content) ? sessionAsScript(content) : content);
+			if(isRSession(name, content)) {
+				file.assignRole(FileRole.Source);
+			}
+			return file;
+		}));
 		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
 	}
 	return built;
@@ -2182,7 +2360,13 @@ interface Finding { loc?: SourceLocation, quickFix?: LintQuickFix[], involvedId?
 
 /* the finding whose details are open, which a new analysis opens again */
 let openedLint: string | undefined;
+/** the rules whose grouped findings are unfolded, kept across analyses like the opened finding */
+const openedLintGroups = new Set<string>();
+/** from this many findings on, a rule's findings fold into one row, so ten unused names do not bury the one error */
+const LintGroupFrom = 3;
 
+/** the rule that reports code which does not parse */
+const SyntaxRule = 'syntactically-valid';
 /** the categories whose findings are errors, those of any other one warnings */
 const ErrorCategories: ReadonlySet<string> = new Set(['bug', 'security']);
 const isError = (rule: string): boolean => ErrorCategories.has(category(rule));
@@ -2209,10 +2393,13 @@ function applyFixes(fixes: readonly LintQuickFix[]): void {
 	}
 }
 
-function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement {
+function ruleDetails(rule: string, fixes: readonly LintQuickFix[], note?: string): HTMLElement {
 	const more = el('div', 'lintmore');
 	const about = (LintingRules as unknown as Record<string, { info?: { description?: string } }>)[rule]?.info?.description;
 	more.append(el('p', 'about', about ?? 'flowR has no description of this rule'));
+	if(note !== undefined) {
+		more.append(el('p', 'note', note));
+	}
 	if(fixes.length === 0) {
 		return more;
 	}
@@ -2227,13 +2414,15 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[]): HTMLElement 
 		tail++;
 	}
 	const diff = el('pre', 'diff');
+	/* the numbers are those of the script before the fix on the removed lines and after it on the added ones, as in a patch */
+	const width = String(Math.max(before.length, after.length)).length;
 	const show = (lines: readonly string[], sign: string) => {
-		for(const text of lines.slice(0, 6)) {
-			const row = el('span', sign === '-' ? 'del' : 'ins', `${sign} ${text}`);
+		for(const [at, text] of lines.slice(0, 6).entries()) {
+			const row = el('span', sign === '-' ? 'del' : 'ins', `${String(head + at + 1).padStart(width)} ${sign} ${text}`);
 			diff.append(row, '\n');
 		}
 		if(lines.length > 6) {
-			diff.append(el('span', 'more', `  … ${lines.length - 6} more`), '\n');
+			diff.append(el('span', 'more', `${' '.repeat(width)}   … ${lines.length - 6} more`), '\n');
 		}
 	};
 	show(before.slice(head, before.length - tail), '-');
@@ -2670,7 +2859,8 @@ async function analyze(): Promise<number> {
 	const idMap = normalized.idMap;
 	const answers = await built.query([
 		{ type: 'dependencies' },
-		{ type: 'linter' },
+		/* off by default as a rule, but a script that does not parse is the first thing to say */
+		{ type: 'linter' }, { type: 'linter', rules: ['syntactically-valid'] },
 		...files.some(f => /(^|\/)DESCRIPTION$/.test(f.name)) ? [{ type: 'project' }] : [],
 		...slicesFor(lastCriteria = pinnedCriteria().length > 0 ? pinnedCriteria() : criterion === undefined ? [] : [criterion])
 	] as never) as unknown as {
@@ -2681,6 +2871,9 @@ async function analyze(): Promise<number> {
 	};
 	const took = performance.now() - started;
 	showStats({ parse: parsed, normalize: normalizing, dataflow, lint: answers.linter?.['.meta']?.timing ?? 0 }, info.graph);
+	flowrDefined = uniqueArray([...info.graph.verticesOfType(VertexType.VariableDefinition)]
+		.map(([id]) => RString.unquote(NodeId.recoverName(id, idMap) ?? ''))
+		.filter((name): name is string => name !== undefined && /^[A-Za-z.][\w.]*$/.test(name)));
 
 	panel.replaceChildren();
 	panel.classList.add('fresh');
@@ -2700,8 +2893,9 @@ async function analyze(): Promise<number> {
 	/* a removal slice keeps what is left once its lines are gone, which is the program one goes on with */
 	const doc = editor.state.doc;
 	/* the lines that hold code, which a slice keeps a share of: not the prose, fences, and blank lines of a notebook */
-	codeLines = linesOf([...idMap?.entries() ?? []].filter(([, node]) => node.info.parent !== undefined).map(([id]) => id));
-	const keptLines = direction !== 'removal' || sliced.length === 0 ? sliceLinesOf : codeLines.filter(l => !sliceLinesOf.includes(l));
+	codeLines = withClosers(linesOf([...idMap?.entries() ?? []].filter(([, node]) => node.info.parent !== undefined).map(([id]) => id)));
+	const sliceWithClosers = withClosers(sliceLinesOf);
+	const keptLines = direction !== 'removal' || sliced.length === 0 ? sliceWithClosers : codeLines.filter(l => !sliceWithClosers.includes(l));
 	lastKept = keptLines;
 	dim();
 
@@ -2805,14 +2999,19 @@ async function analyze(): Promise<number> {
 			const at = (f.loc?.[0] ?? 0) > 0 ? f.loc?.[0] : undefined;
 			const loc = file === undefined && at !== undefined ? f.loc : undefined;
 			return { rule, file, at, line: loc?.[0], loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta']) };
-		})).sort((a, b) => Number(isError(b.rule)) - Number(isError(a.rule)));
+		})).sort((a, b) => Number(b.rule === SyntaxRule) - Number(a.rule === SyntaxRule) || Number(isError(b.rule)) - Number(isError(a.rule)));
+	/* flowR skips what it cannot parse, so whatever follows the first such spot may only look unused, dead or empty */
+	const brokenAt = found.filter(f => f.rule === SyntaxRule && f.file === undefined).map(f => f.line).filter((l): l is number => l !== undefined).sort((a, b) => a - b)[0];
+	const followUp = (f: { rule: string, file?: string, line?: number }): string | undefined => brokenAt !== undefined && f.rule !== SyntaxRule && f.file === undefined && f.line !== undefined && f.line >= brokenAt
+		? `The syntax error in line ${brokenAt} may be the cause: flowR leaves out the code it cannot parse, so what follows can look unused, dead or empty. Fix that first.` : undefined;
 	const marked = found.flatMap(f => {
-		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
-		/* a rule may point outside this file, e.g. at the project around it */
-		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined || startLine < 1 || startLine > editor.state.doc.lines) {
+		const [startLine, startCol, endLine, rawEnd] = f.loc ?? [];
+		/* a rule may point outside this file, e.g. at the project around it; a syntax error may span lines, so its first one is marked */
+		if(startLine === undefined || startCol === undefined || rawEnd === undefined || (startLine !== endLine && f.rule !== SyntaxRule) || startLine < 1 || startLine > editor.state.doc.lines) {
 			return [];
 		}
 		const line = editor.state.doc.line(startLine);
+		const endCol = startLine === endLine ? rawEnd : line.length;
 		return [{
 			rule:    f.rule, line:    startLine,
 			from:    line.from + startCol - 1, to:      Math.min(line.to, line.from + endCol),
@@ -2829,11 +3028,17 @@ async function analyze(): Promise<number> {
 		found.length === 0 ? undefined : [errors > 0 ? `${errors} error${errors === 1 ? '' : 's'}` : '', found.length > errors ? `${found.length - errors} warning${found.length - errors === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), acts);
 	const lints = el('div', 'lints');
 	lints.dataset.mark = PlaygroundBox.Lints;
+	/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
+	const lintKeyOf = (f: typeof found[number]): string => `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
+	const rowsOf = new Map<string, HTMLElement[]>();
 	for(const f of found) {
 		const said = el('span', 'says', f.message);
 		const chip = el('span', 'rule');
 		chip.dataset.category = category(f.rule);
 		chip.append(tag(f.rule, 'rulename'));
+		if(followUp(f) !== undefined) {
+			chip.append(tag('follow-up?', 'followup'));
+		}
 		if(f.quickFix.length > 0) {
 			chip.classList.add('fixable');
 			chip.append(tag('fix', 'offer'));
@@ -2851,7 +3056,7 @@ async function analyze(): Promise<number> {
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'a click goes there, alt-click highlights this finding in the link';
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
-		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}`;
+		const lintKey = lintKeyOf(f);
 		line.addEventListener('click', event => {
 			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
 				return;
@@ -2859,14 +3064,52 @@ async function analyze(): Promise<number> {
 			openedLint = openedLint === lintKey ? undefined : lintKey;
 			lints.querySelectorAll('.lintmore').forEach(more => more.remove());
 			if(openedLint === lintKey) {
-				line.append(ruleDetails(f.rule, f.quickFix));
+				line.append(ruleDetails(f.rule, f.quickFix, followUp(f)));
 			}
 			reveal(f.file, f.at);
 		});
 		if(openedLint === lintKey) {
-			line.append(ruleDetails(f.rule, f.quickFix));
+			line.append(ruleDetails(f.rule, f.quickFix, followUp(f)));
 		}
-		lints.append(linkRow(line, [f.line]));
+		rowsOf.set(f.rule, [...rowsOf.get(f.rule) ?? [], linkRow(line, [f.line])]);
+	}
+	for(const [rule, rows] of rowsOf) {
+		if(rows.length < LintGroupFrom) {
+			lints.append(...rows);
+			continue;
+		}
+		const of = found.filter(f => f.rule === rule);
+		/* most messages name what they are about in backticks, which makes for a better summary than a count alone */
+		const names = of.map(f => /`([^`]+)`/.exec(f.message)?.[1]);
+		const summary = names.every(n => n !== undefined) ? `${of.length} findings: ${uniqueArray(names).join(', ')}` : `${of.length} findings`;
+		const chip = el('span', 'rule');
+		chip.dataset.category = category(rule);
+		chip.append(tag(rule, 'rulename'));
+		const head = el('div', 'lint lintgroup');
+		head.dataset.category = chip.dataset.category;
+		head.title = 'a click shows or hides the findings of this rule';
+		const lines = of.map(f => f.line);
+		const toggle = el('span', 'toggle');
+		head.append(chip, el('span', 'says', summary), toggle);
+		const fold = (open: boolean): void => {
+			for(const row of rows) {
+				row.hidden = !open;
+			}
+			head.classList.toggle('open', open);
+			toggle.textContent = open ? 'hide' : 'show';
+		};
+		head.addEventListener('click', () => {
+			const open = !openedLintGroups.delete(rule);
+			if(open) {
+				openedLintGroups.add(rule);
+			}
+			fold(open);
+		});
+		for(const row of rows) {
+			row.classList.add('member');
+		}
+		fold(openedLintGroups.has(rule) || of.some(f => lintKeyOf(f) === openedLint));
+		lints.append(linkRow(head, lines), ...rows);
 	}
 	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
 	panel.append(...sliceBlock);

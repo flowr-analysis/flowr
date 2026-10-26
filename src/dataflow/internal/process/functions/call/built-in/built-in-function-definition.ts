@@ -430,14 +430,17 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfIn
 	return { shadowing, generics };
 }
 
-function fnPropsOf(name: Identifier, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext) {
-	return queryFnProps(name, { environment }) ?? ctx.functionInfo(name);
+/** What the signature database says about a name, asked once per name for a pass instead of once per call. */
+type DatabaseInfoOf = (name: Identifier) => ReturnType<FlowrAnalyzerContext['functionInfo']>;
+
+function fnPropsOf(name: Identifier, environment: REnvironmentInformation, infoOf: DatabaseInfoOf) {
+	return queryFnProps(name, { environment }) ?? infoOf(name);
 }
 
 /** Whether `name` resolves to a built-in that dispatches, so the methods the code writes for it are reachable. */
-function dispatchesOnClass(name: Identifier, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): boolean {
+function dispatchesOnClass(name: Identifier, environment: REnvironmentInformation, infoOf: DatabaseInfoOf): boolean {
 	/* a generic only the signature database knows (`toString`) dispatches as well */
-	const props = fnPropsOf(name, environment, ctx);
+	const props = fnPropsOf(name, environment, infoOf);
 	return props === undefined ? Resolve.byNameAndType(name, environment, ReferenceType.Function) === undefined : CallProps.hasAny(props, CallProp.Generic);
 }
 
@@ -445,13 +448,13 @@ function dispatchesOnClass(name: Identifier, environment: REnvironmentInformatio
  * Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, returning their definition vertices.
  * Unless {@link dispatchedS3Methods} knows the class, every such method counts, same as the {@link BuiltInProcName.S3Dispatch} path.
  */
-function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext): readonly NodeId[] {
+function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): readonly NodeId[] {
 	const defs = Resolve.byNameAndType(name, environment, ReferenceType.S3MethodPrefix)
 		?.filter(d => !NodeId.isBuiltIn(d.nodeId) && !ProgramOrder.definedLater(d.nodeId, statement, graph));
 	if(defs === undefined || defs.length === 0) {
 		return [];
 	}
-	const dispatched = dispatchedS3Methods(call, name, defs, graph, environment, statement, ctx) ?? defs;
+	const dispatched = dispatchedS3Methods(call, name, defs, graph, environment, statement, ctx, infoOf) ?? defs;
 	for(const def of dispatched) {
 		/* the dispatch looks the method up by name, just like a call written out would */
 		graph.addEdge(call.id, def.nodeId, EdgeType.Reads);
@@ -467,7 +470,7 @@ function linkedFunctionIds(defs: readonly IdentifierDefinition[], graph: Dataflo
  * The `methods` a call dispatches to per known class of its dispatch object (then `default`), stopping for a top-level call at one surely bound before it;
  * `undefined` if the class is unknown or a method may `NextMethod()`.
  */
-function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, methods: readonly IdentifierDefinition[], graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext): IdentifierDefinition[] | undefined {
+function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, methods: readonly IdentifierDefinition[], graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): IdentifierDefinition[] | undefined {
 	const generic = Identifier.getName(name);
 	const node = graph.idMap?.get(call.id);
 	const first = call.args[0];
@@ -480,7 +483,7 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 		return undefined;
 	}
 	/* a closure dispatches on what binds its first formal, a primitive (or anything else) may on the first argument given */
-	const props = fnPropsOf(name, environment, ctx);
+	const props = fnPropsOf(name, environment, infoOf);
 	const closure = bound !== undefined && props !== undefined && !CallProps.hasAny(props, CallProp.Primitive);
 	const classes = new Set(closure ? bound : [first.nodeId, ...bound ?? []]).values().map(a => s3DispatchClassesOf(a, { graph, idMap: graph.idMap as AstIdMap, ctx })).toArray();
 	if(!classes.every(isNotUndefined)) {
@@ -519,6 +522,7 @@ export function updateNestedFunctionCalls(
 	const lifted: [NodeId, IdentifierReference, NodeId][] = [];
 	const enclosingOf = memoize((id: NodeId) => graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(id, graph.idMap));
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
+	const databaseInfoOf = memoize((name: Identifier) => ctx.functionInfo(name));
 	const environmentAt = memoize((id: NodeId) => {
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
 		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
@@ -558,8 +562,8 @@ export function updateNestedFunctionCalls(
 				}
 			}
 		}
-		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, ctx)) {
-			for(const method of linkOwnS3Methods(vertex, name, graph, effectiveEnvironment, runsOnceAt(id), ctx)) {
+		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
+			for(const method of linkOwnS3Methods(vertex, name, graph, effectiveEnvironment, runsOnceAt(id), ctx, databaseInfoOf)) {
 				targets.add(method);
 			}
 			treatAsS3 = true;

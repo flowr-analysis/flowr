@@ -5,7 +5,6 @@ import { Q } from '../../../search/flowr-search-builder';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
 import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { EdgeType } from '../../../dataflow/graph/edge';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -32,17 +31,14 @@ export const BOGUS_RETURN = {
 		const pkg = packageInfo(data.inspectContext());
 		const results: BogusReturnResult[] = [];
 		for(const { node } of elements.getElements()) {
-			if(!RSymbol.is(node) || Identifier.getName(node.content) !== 'return' || !pkg.isPackageCode(node.info.file)) {
+			if(!RSymbol.is(node) || !pkg.isPackageCode(node.info.file)) {
 				continue;
 			}
 			/* a call of `return` has a call vertex, a bare read is a use that resolves to the built-in */
 			const vertex = graph.getVertex(node.info.id);
 			const loc = SourceLocation.fromNode(node);
-			if(!DfgVertex.isUse(vertex) || loc === undefined || isQuoted(graph, node.info.id, idMap)) {
-				continue;
-			}
-			const targets = Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads);
-			if(targets.some(t => !NodeId.isBuiltIn(t))) {
+			const targets = DfgVertex.isUse(vertex) ? Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads) : [];
+			if(loc === undefined || targets.length === 0 || !targets.every(t => NodeId.isBuiltIn(t) && NodeId.fromBuiltIn(t) === 'return') || isQuoted(graph, node.info.id, idMap)) {
 				continue;
 			}
 			const fn = idMap.get(RNode.findEnclosing(node.info.id, idMap, RFunctionDefinition.is) ?? '');

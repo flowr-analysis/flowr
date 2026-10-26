@@ -16,6 +16,8 @@ export interface ProjectQuery extends BaseQueryFormat {
 	readonly type:    'project';
 	/** Whether to include Dataflow information in the result. */
 	readonly withDf?: boolean;
+
+	readonly showFiles?: boolean;
 }
 
 /** Statistics on the project's declared dependencies, cross-referenced with the signature database. */
@@ -63,7 +65,7 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly kind?:         ProjectKind;
 	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */
 	readonly dependencies?: ProjectDependencyStats;
-	/** Determines whether the Data Flow Analysis already happened  */
+	/** Determines whether dataflow analysis already happened. */
 	readonly dfaPerformed:  boolean;
 }
 
@@ -101,7 +103,20 @@ export const ProjectQueryDefinition = {
 				result.push(`      ╰ ${stringifyRLicense(license)}`);
 			}
 		}
-		if(out.roleFiles) {
+		if(out.roleCounts)  {
+			const entries = Object.entries(out.roleCounts).filter(([, count]) => count > 0);
+			if(entries.length > 0) {
+				result.push('   ╰ File Role Counts:');
+				const longestRole = Math.max(...entries.map(([r]) => r.length));
+				const longestCount = Math.max(...entries.map(([, c]) => String(c).length));
+				for(const [role, count] of entries) {
+					result.push(`      ╰ ${(role + ':').padEnd(longestRole + 1, ' ')} ${formatter.format(String(count).padStart(longestCount, ' '), {
+						effect: ColorEffect.Foreground,
+						color:  Colors.Cyan
+					})}`);
+				}
+			}
+		} else if(out.roleFiles) {
 			const entries = Object.entries(out.roleFiles).filter(([, files]) => files.length > 0);
 			if(entries.length > 0) {
 				result.push('   ╰ File Role Counts:');
@@ -145,8 +160,9 @@ export const ProjectQueryDefinition = {
 		return true;
 	},
 	schema: Joi.object({
-		type:   Joi.string().valid('project').required().description('The type of the query.'),
-		withDf: Joi.boolean().optional().default(false).description('Whether to include Dataflow information in the result.')
+		type:      Joi.string().valid('project').required().description('The type of the query.'),
+		withDf:    Joi.boolean().optional().default(false).description('Whether to include Dataflow information in the result.'),
+		showFiles: Joi.boolean().optional().default(false).description('Whether to include the list of files in the result.')
 	}).description('The project query provides information on the analyzed project.'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'project'>;

@@ -167,10 +167,19 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		fs.writeFileSync(path.join(dir, 'rv.lock'), 'x <- 1\n');
 		fs.writeFileSync(path.join(dir, '.Rprofile'), 'z <- 1\n');
 		const analyzer = await analyzeProject(parser, db, dir);
-		const results = await executeQueries({ analyzer }, [{ type: 'project' }]);
+
+		// test the results for the default query
+		const defaultResults = await executeQueries({ analyzer }, [{ type: 'project' }]);
+		const defaultProject = defaultResults.project;
+		expect(defaultProject.roleCounts?.[FileRole.VirtualEnv]).toBe(1);
+		expect(defaultProject.roleFiles).toBeUndefined();
+
+		// test the results for a query that asks for the files
+		const results = await executeQueries({ analyzer }, [{ type: 'project', showFiles: true }]);
 
 		const project = results.project;
 		expect(project.roleFiles?.[FileRole.VirtualEnv]).toEqual(['rv.lock']);
+		expect(project.roleCounts).toBeUndefined();
 
 		const summary = await asciiSummaryOfQueryResult(ansiFormatter, 0, results, analyzer, [{ type: 'project' }]);
 		expect(summary).toContain('rv.lock');

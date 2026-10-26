@@ -60,6 +60,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	}
 	const startTime = Date.now();
 	const withDf = queries.some(q => q.withDf);
+	const showFiles = queries.some(q => q.showFiles);
 	// we need to know what is considered by the analyzer
 	if(withDf) {
 		await analyzer.dataflow();
@@ -67,12 +68,21 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 
 	const ctx = analyzer.inspectContext();
 	const basePackages = new Set(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
-	const roleCounts: Record<FileRole, number> = {} as Record<FileRole, number>;
-	const roleFiles: Record<FileRole, readonly string[]> = {} as Record<FileRole, readonly string[]>;
-	for(const file of Object.values(FileRole)) {
-		roleCounts[file] = ctx.files.getFilesByRole(file).length;
-		roleFiles[file] = ctx.files.getFilesByRole(file).map(r => path.basename(r.path()));
+
+	let roleCounts: Record<FileRole, number> | undefined;
+	let roleFiles: Record<FileRole, readonly string[]> | undefined;
+	if(showFiles) {
+		roleFiles = {} as Record<FileRole, readonly string[]>;
+		for(const file of Object.values(FileRole)) {
+			roleFiles[file] = ctx.files.getFilesByRole(file).map(r => path.basename(r.path()));
+		}
+	} else {
+		roleCounts = {} as Record<FileRole, number>;
+		for(const file of Object.values(FileRole)) {
+			roleCounts[file] = ctx.files.getFilesByRole(file).length;
+		}
 	}
+
 	// whichever plugin read the metadata (DESCRIPTION, rproject.toml, a lockfile) contributed it to the context,
 	// so nothing here has to know which file the project happens to use
 	const declared = ctx.meta.getDeclaredPackages();

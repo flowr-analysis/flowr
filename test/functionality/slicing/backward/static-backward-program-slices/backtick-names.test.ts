@@ -9,6 +9,8 @@ describe.sequential('Backtick quoted names', withShell(shell => {
 		assertSliced(label('get of a backtick-defined name', [...esc, 'name-created-resolved']), shell, '`x` <- 1\nx <- 2\nget("x")', ['3@get'], 'x <- 2\nget("x")');
 		assertSliced(label('get of a name with a space', [...esc, 'name-created-resolved']), shell, '`my var` <- 1\nget("my var")', ['2@get'], '`my var` <- 1\nget("my var")');
 		assertSliced(label('backtick use of a string-defined name', [...esc, 'name-quoted']), shell, 'assign("x", 1)\n`x`', ['2@`x`'], 'assign("x", 1)\n`x`');
+		assertSliced(label('a backticked parameter shadows the global name', [...esc, 'formals', 'lexicographic-scope']), shell, 'x <- 1\nf <- function(`x`) x\nr <- f(2)', ['3@r'], 'f <- function(`x`) x\nr <- f(2)');
+		assertSliced(label('a parameter with a space is read in backticks', [...esc, 'formals', 'lexicographic-scope']), shell, '`a b` <- 1\nf <- function(`a b`) `a b` * 3\nr <- f(2)', ['3@r'], 'f <- function(`a b`) `a b` * 3\nr <- f(2)');
 	});
 	describe('strings keep their backticks', () => {
 		const quoted = [...caps, 'name-quoted'] as const;

@@ -8,6 +8,7 @@ import type { RNode } from '../../../../model/model';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
+import { Identifier } from '../../../../../../../dataflow/environments/identifier';
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.
@@ -41,10 +42,12 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 		special: content === '...',
 		lexeme:  content,
 		name:    {
-			type:   RType.Symbol,
-			location, content,
-			lexeme: content,
-			info:   {
+			type:    RType.Symbol,
+			location,
+			/* a parameter written in backticks binds the name without them, as every symbol reading it does */
+			content: Identifier.getName(Identifier.make(content)),
+			lexeme:  content,
+			info:    {
 				fullRange:  location,
 				adToks:     [],
 				fullLexeme: content

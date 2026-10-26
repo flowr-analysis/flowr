@@ -1133,6 +1133,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a right assignment', '1 -> x', {});
 			testQuery('a super assignment', 'x <<- 1', {});
 			testQuery('a replacement', 'names(x) <- "a"', {});
+			/* a call handing on its argument hands on that it is invisible, too */
+			testQuery('an assignment handed on by identity', 'identity(x <- 1)', {});
+			testQuery('a function returning an assignment', 'f <- function() return(x <- 1)\nf()', {});
 			/* the body still runs, so what it prints on its own is still an output */
 			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout', inputVariables: ['i'] }] });
 		});

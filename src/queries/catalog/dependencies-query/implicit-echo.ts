@@ -74,8 +74,8 @@ function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfor
 		?.findIndex(([, p]) => (p & ArgProp.Alias) !== 0) ?? -1;
 	const arg = at < 0 ? undefined : node.arguments[at];
 	const value = typeof arg === 'object' && RArgument.is(arg) ? arg.value : undefined;
-	/* only a call or a block (`local({ ... })`) can be invisible where the one around it is not, a symbol says nothing new */
-	return RFunctionCall.is(value) || RExpressionList.is(value) ? value : undefined;
+	/* only a call, a block (`local({ ... })`) or an assignment (`return(x <- 1)`) can be invisible where the one around it is not, a symbol says nothing new */
+	return RFunctionCall.is(value) || RExpressionList.is(value) || (RBinaryOp.is(value) && RBinaryOp.getOperatorInfo(value)?.usedAs === 'assignment') ? value : undefined;
 }
 
 /** the last statement of a block, which is what its value comes from */

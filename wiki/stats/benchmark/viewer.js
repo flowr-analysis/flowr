@@ -1775,25 +1775,59 @@
 			track:   'signature database',
 			history: 'database'
 		},
+		/* one tile for both suites, as the counterexample suite is a part of the tests; each gets a view of its own */
 		tests: {
-			lead: [['tests overall', 'tests in total'], ['tests', 'of them labeled', true]],
-			rest: [],
-			splits: [],
-			trend: 'tests overall',
-			track: null
+			views: [
+				{
+					title: 'Tests',
+					lead:  [['tests overall', 'tests in total'], ['tests', 'of them labeled', true]],
+					rest:  [['mutation tests', 'tests run by the counterexample suite']],
+					splits: [],
+					stack: 'tests',
+					track: null
+				},
+				{
+					title: 'Mutations',
+					lead:  [
+						['mutation mutants', 'mutants sliced'],
+						['mutation passes', 'rewrites applied to each'],
+						/* the suite no longer records it, so only a run that still carries the number states it */
+						['mutation known-wrong mutants', 'still sliced wrongly']
+					],
+					rest:   [['mutation tests', 'tests run by the suite']],
+					splits: [],
+					stack:  'mutations',
+					track:  null,
+					noBars: true
+				}
+			]
+		}
+	};
+
+	/** a difference of two counts, null where either is missing so a gap never reads as a part */
+	const minus = (a, b) => a === null || b === null ? null : Math.max(0, a - b);
+
+	/**
+	 * The views that stack what a release carries into one bar per release. `of` reads the value of a series
+	 * at that release, `extra` what the release wrote next to it. A part with a `cls` keeps that colour,
+	 * every other takes the colour of the series named by `color`.
+	 */
+	const STACKS = {
+		tests: {
+			title: 'Tests per release',
+			parts: [
+				{ label: 'labeled', color: 'tests', of: v => v('tests') },
+				{ label: 'not labeled', cls: 'ssum', of: v => minus(v('tests overall'), v('tests')) },
+				{ label: 'counterexample suite', color: 'mutation tests', of: v => v('mutation tests') }
+			]
 		},
-		/* what the counterexample suite rewrites and what of it is still sliced wrongly */
 		mutations: {
-			lead: [
-				['mutation mutants', 'mutants sliced'],
-				['mutation passes', 'rewrites applied to each'],
-				/* the suite no longer records it, so only a run that still carries the number states it */
-				['mutation known-wrong mutants', 'still sliced wrongly']
-			],
-			rest: [['mutation tests', 'tests run by the suite']],
-			splits: [],
-			trend: 'mutation mutants',
-			track: null
+			title: 'Mutants per release',
+			parts: [
+				{ label: 'sliced', color: 'mutation mutants', of: v => minus(v('mutation mutants'), v('mutation known-wrong mutants') ?? 0) },
+				{ label: 'still sliced wrongly', color: 'mutation known-wrong mutants', of: v => v('mutation known-wrong mutants') },
+				{ label: 'possible, not sliced', cls: 'ssum', of: (v, x) => minus(S.possibleOf(x('mutation mutants')), v('mutation mutants')) }
+			]
 		}
 	};
 
@@ -1879,6 +1913,87 @@
 		svg.classList.add('pickable');
 		box.appendChild(svg);
 		return box;
+	}
+
+	/** one stacked bar per release, so the parts and their whole both read as they grew */
+	function stackedOf(stack, series, runs, at, onPick) {
+		const w = 300, h = 64, padX = 4, padT = 4, padB = 11;
+		const all = distinctParts(stack.parts.map(p => ({ ...p, color: series.find(s => s.name === p.color)?.color ?? 0 })));
+		const known = runs.map((run, i) => all.map(p => {
+			const v = p.of(name => valueAt(series, name, i), name => extraOf(run, name));
+			return typeof v === 'number' ? v : null;
+		}));
+		/* a part no release in range recorded would read as a zero, which it is not */
+		const keep = all.map((_, k) => known.some(r => r[k] !== null));
+		const parts = all.filter((_, k) => keep[k]);
+		const rows = known.map(r => r.filter((_, k) => keep[k]));
+		const totals = rows.map(r => r.reduce((a, v) => a + (v ?? 0), 0));
+		const hi = Math.max(...totals, 0);
+		if(hi === 0) {
+			return null;
+		}
+		const slot = (w - 2 * padX) / runs.length;
+		const y = v => v / hi * (h - padT - padB);
+		const box = dom('div', { className: 'composition stack' });
+		box.appendChild(dom('div', { className: 'tags-head' }, dom('span', { className: 'tags-title', textContent: stack.title })));
+		const svg = tag('svg', { viewBox: '0 0 ' + w + ' ' + h, role: 'img', class: 'pickable', 'aria-label': stack.title });
+		svg.appendChild(tag('line', { class: 'timeline-base', x1: padX, y1: h - padB, x2: w - padX, y2: h - padB }));
+		rows.forEach((row, i) => {
+			let base = h - padB;
+			row.forEach((v, k) => {
+				if(v > 0) {
+					svg.appendChild(tag('rect', {
+						class: 'stack-bar ' + parts[k].cls + (i === at ? ' on' : ''),
+						x: padX + i * slot + slot * 0.15, width: Math.max(0.6, slot * 0.7), y: base - y(v), height: y(v)
+					}));
+					base -= y(v);
+				}
+			});
+		});
+		const first = totals.findIndex(t => t > 0);
+		svg.appendChild(tag('text', { class: 'timeline-tick', x: padX + first * slot, y: h - 3 }, S.runLabel(runs[first])));
+		if(first !== runs.length - 1) {
+			svg.appendChild(tag('text', { class: 'timeline-tick', x: w - padX, y: h - 3, 'text-anchor': 'end' },
+				S.runLabel(runs[runs.length - 1])));
+		}
+		svg.addEventListener('pointermove', ev => {
+			const rect = svg.getBoundingClientRect();
+			const px = (ev.clientX - rect.left) / (rect.width || 1) * w;
+			const i = Math.max(0, Math.min(runs.length - 1, Math.floor((px - padX) / slot)));
+			onPick(i);
+			const t = ui.tooltip;
+			t.textContent = '';
+			t.append(tipHead(runs[i]), dom('table', {},
+				...parts.map((p, k) => tipRow(p.cls, p.label, rows[i][k] === null ? 'n/a' : fmtFact(rows[i][k], '#'))),
+				tipRow('ssum', 'total', fmtFact(totals[i], '#'), '', true)));
+			placeTooltip(ev);
+		});
+		svg.addEventListener('pointerleave', () => {
+			onPick(undefined);
+			ui.tooltip.hidden = true;
+		});
+		box.appendChild(svg);
+		const list = dom('ul');
+		parts.forEach((p, k) => list.appendChild(dom('li', {}, dom('span', { className: 'swatch ' + p.cls }),
+			p.label + ': ' + (rows[at][k] === null ? 'n/a' : fmtFact(rows[at][k], '#')))));
+		box.append(list, dom('p', { className: 'note', textContent: 'as of ' + S.runLabel(runs[at]) + ', ' + fmtDate(runs[at].date) }));
+		return box;
+	}
+
+	/** the views of a tile that states more than one thing, as tabs above the numbers */
+	function viewTabsOf(group, views, pick, rebuild) {
+		const row = dom('div', { className: 'tags-tabs view-tabs' });
+		views.forEach((view, i) => {
+			const b = dom('button', { type: 'button', className: 'tags-tab' + (i === pick ? ' on' : ''), textContent: view.title });
+			b.setAttribute('aria-pressed', String(i === pick));
+			b.addEventListener('click', () => {
+				barsPick.set(group.id + '~view', i);
+				writeUrl();
+				rebuild();
+			});
+			row.appendChild(b);
+		});
+		return row;
 	}
 
 	function fmtFact(v, unit) {
@@ -1981,7 +2096,9 @@
 	 * newest run instead, with a donut per split and the releases that changed them.
 	 */
 	function factsOf(group, series, runs, at) {
-		const spec = FACTS[group.id];
+		const views = FACTS[group.id]?.views;
+		const pick = views ? Math.min(barsPick.get(group.id + '~view') ?? 0, views.length - 1) : 0;
+		const spec = views ? views[pick] : FACTS[group.id];
 		if(!spec || !runs.length) {
 			return null;
 		}
@@ -1989,10 +2106,15 @@
 		const box = document.createElement('div');
 		box.className = 'facts';
 		const lead = factGrid(series, spec.lead, at, 'lead');
-		if(!lead) {
+		if(views) {
+			box.appendChild(viewTabsOf(group, views, pick, () => replaceNode(box, factsOf(group, series, runs, at)
+				|| dom('p', { className: 'empty', textContent: 'no data in this range' }))));
+		} else if(!lead) {
 			return null;
 		}
-		box.appendChild(lead);
+		if(lead) {
+			box.appendChild(lead);
+		}
 		const rest = factGrid(series, spec.rest, at, 'rest');
 		if(rest) {
 			box.appendChild(rest);
@@ -2004,6 +2126,10 @@
 			i => swap(() => factsOf(group, series, runs, i)), at) : null;
 		if(timeline) {
 			box.appendChild(timeline);
+		}
+		const stack = spec.stack ? stackedOf(STACKS[spec.stack], series, runs, at, i => swap(() => factsOf(group, series, runs, i))) : null;
+		if(stack) {
+			box.appendChild(stack);
 		}
 		const splits = dom('div', { className: 'splits' });
 		let leadColor = '';
@@ -2017,7 +2143,7 @@
 		if(splits.children.length) {
 			box.appendChild(splits);
 		}
-		const bars = barsOf(group, series, runs, at, leadColor);
+		const bars = spec.noBars ? null : barsOf(group, series, runs, at, leadColor);
 		if(bars) {
 			box.appendChild(bars);
 		}

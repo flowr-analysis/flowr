@@ -23,6 +23,9 @@ import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, proj
 import type { PackageFiles } from './package-files';
 import { onPackageFiles } from './file-checks';
 import { packageCode } from './package-code';
+import { parseRRegexPattern } from '../../../util/r-regex';
+import { RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
+import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 
 export type PackageRuntimeKind =
 	/** `export(x)` of something the package does not define, which fails the installation ("undefined exports") */
@@ -49,6 +52,10 @@ export type PackageRuntimeKind =
 	| 'rust-requirements'
 	/** a package without a NAMESPACE file, which no package may be since R 3.0.0 */
 	| 'missing-namespace'
+	/** an `exportPattern` that matches nothing the package defines, so it exports nothing */
+	| 'empty-export-pattern'
+	/** a NAMESPACE that exports nothing at all, so attaching the package gives access to nothing */
+	| 'no-exports'
 	/** a DESCRIPTION `Type` other than `Package` */
 	| 'extension-type'
 	/** an installed package (or a build left inside the sources) handed to the check instead of a source package */
@@ -60,7 +67,11 @@ export interface PackageRuntimeResult extends CmdCheckResult {
 
 export interface PackageRuntimeConfig extends MergeableRecord {
 	/** report writes of tests and vignettes into the working directory (default `true`) */
-	readonly checkWrites: boolean
+	readonly checkWrites:    boolean
+	/** report exports of undefined names and export patterns matching nothing (default `true`) */
+	readonly checkExports:   boolean
+	/** report a NAMESPACE that exports nothing, unless the package ships data (default `true`) */
+	readonly requireExports: boolean
 }
 
 export type PackageRuntimeMetadata = MergeableRecord;
@@ -68,21 +79,27 @@ export type PackageRuntimeMetadata = MergeableRecord;
 /** calls binding names in ways a scan of the assignments does not see, so an export may be defined after all */
 const DynamicDefiners: ReadonlySet<string> = new Set(['assign', 'delayedAssign', 'makeActiveBinding', 'eval', 'evalq', 'sys.source', 'list2env', 'source']);
 
+/** calls whose definitions put names into the namespace no scan of the code sees, such as the `.__C__` metadata of a class */
+const MetadataDefiners: ReadonlySet<string> = new Set(['setClass', 'setClassUnion', 'setRefClass', 'setGeneric', 'setMethod', 'setValidity', 'setOldClass']);
+
 interface Definitions {
-	readonly names:   ReadonlySet<string>
+	readonly names:    ReadonlySet<string>
 	/** whether the code may define names that no assignment states */
-	readonly dynamic: boolean
+	readonly dynamic:  boolean
 	/**
 	 * whether the top level calls a function of another package, which may define what it likes (R.oo's
 	 * `setMethodS3("f", "cls", ...)` defines `f.cls`), so nothing can be said about what is undefined
 	 */
-	readonly opaque:  boolean
+	readonly opaque:   boolean
+	/** whether the code defines classes or generics, whose metadata the namespace holds under names no assignment states */
+	readonly metadata: boolean
 }
 
 /** the names the top level of the package code binds, including the generics `setGeneric` creates */
 function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly string[], declaring: ReadonlySet<string>): Definitions {
 	const names = new Set<string>(data);
 	let dynamic = false;
+	let metadata = false;
 	const topLevelCalls: string[] = [];
 	const idMap = ast.idMap;
 	for(const node of projectNodes(ast)) {
@@ -96,6 +113,7 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 				topLevelCalls.push(fn);
 			}
 			const first = node.arguments[0] === EmptyArgument ? undefined : node.arguments[0]?.value;
+			metadata ||= MetadataDefiners.has(fn);
 			if((fn === 'setGeneric' || fn === 'setRefClass' || fn === 'setClass') && RString.is(first)) {
 				names.add(first.content.str);
 			} else if(fn === 'assign' && RString.is(first)) {
@@ -119,7 +137,64 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 			names.add(target.content.str);
 		}
 	}
-	return { names, dynamic, opaque: topLevelCalls.some(fn => !names.has(fn) && baseRExportOwner(fn) === undefined && !declaring.has(fn) && fn !== 'assign') };
+	return { names, dynamic, metadata, opaque: topLevelCalls.some(fn => !names.has(fn) && baseRExportOwner(fn) === undefined && !declaring.has(fn) && fn !== 'assign') };
+}
+
+/** what every namespace holds before the package code runs, which an export pattern sees as well */
+const NamespaceInternals = ['.packageName', '.__NAMESPACE__.', '.__S3MethodsTable__.'];
+
+/** the posix classes {@link parseRRegexPattern} translates, any other is left as is and means something else to JavaScript */
+const UnknownPosixClass = /\[:(?!(digit|lower|upper|alpha|alnum|space|blank|punct|xdigit|ascii|cntrl|graph|word|print):\])/;
+
+/**
+ * The pattern as JavaScript regex, only where it matches at least what R matches, so that a pattern matching
+ * nothing in JavaScript matches nothing in R either: an escape of a letter (`\\<`, `\\d`, a back reference) or a
+ * flag group means something else to the two.
+ */
+function exportRegex(lexeme: string): RegExp | undefined {
+	/* the NAMESPACE states the pattern as an R string, whose escapes R undoes before it reads the regex */
+	const pattern = RStringValue.value({ str: lexeme, quotes: '"' });
+	if(pattern === undefined || /\\[^.^$*+?()[\]{}|\\/-]/.test(pattern) || pattern.includes('(?') || UnknownPosixClass.test(pattern)) {
+		return undefined;
+	}
+	const regex = parseRRegexPattern(pattern);
+	return regex.source === '(?!)' ? undefined : regex;
+}
+
+/** whether a namespace part exports anything, the S3 methods it registers included */
+function exportsAnything(ns: NamespaceInfo): boolean {
+	return ns.exportedSymbols.length + ns.exportedFunctions.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length
+		+ ns.exportS3Generics.size + ns.exportedPatterns.length > 0
+		|| [...ns.conditional?.values() ?? []].some(exportsAnything);
+}
+
+/**
+ * Export patterns that match none of the names the package defines, and a NAMESPACE that exports nothing at all,
+ * which is fine only for a package that `shipsData`, as its data sets are what it offers.
+ * A pattern is only judged where the definitions are known (none `hidden` in binary files) and it reads the same in R and JavaScript.
+ */
+function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRuntimeConfig, hidden: boolean, shipsData: boolean, at: (name: string) => SourceLocation, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+	const certainty = defs.dynamic ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain;
+	const judged = !hidden && !defs.opaque && !defs.metadata;
+	const names = [...defs.names, ...NamespaceInternals];
+	let patternExports = false;
+	for(const pattern of ns.exportedPatterns) {
+		const regex = judged ? exportRegex(pattern) : undefined;
+		if(regex === undefined || names.some(n => regex.test(n))) {
+			patternExports = true;
+		} else if(config.checkExports) {
+			add({ certainty, loc: at(pattern), kind: 'empty-export-pattern', message: `exportPattern("${pattern}") matches nothing the package defines, so it exports nothing` });
+		}
+	}
+	const others = { ...ns, exportedPatterns: [] };
+	if(config.requireExports && !patternExports && !shipsData && !exportsAnything(others)) {
+		add({
+			certainty: ns.exportedPatterns.length > 0 ? certainty : LintingResultCertainty.Certain,
+			loc:       at(''),
+			kind:      'no-exports',
+			message:   'the NAMESPACE exports nothing, so attaching the package gives access to none of its functions'
+		});
+	}
 }
 
 /** the line of the first NAMESPACE directive matching, to point a finding at it */
@@ -158,7 +233,7 @@ function writesIntoWorkingDirectory(file: string): boolean {
 	return file !== '' && !path.isAbsolute(file) && !file.startsWith('~') && !/^[a-z]+:\/\//i.test(file) && file !== 'stdout' && file !== 'stderr';
 }
 
-function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definitions, data: ReadonlyFlowrAnalysisProvider, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definitions, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const ns = pkg.namespace;
 	const nsFile = data.inspectContext().files.getFilesByRole(FileRole.Namespace)[0];
 	if(ns === undefined || nsFile === undefined) {
@@ -166,6 +241,8 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	}
 	const text = nsFile.rawText?.();
 	const relative = path.relative(files.root, nsFile.path()).split(path.sep).join('/');
+	/* the objects of `R/sysdata.rda` live in the namespace as well, under names only the binary file knows */
+	exportChecks(ns, defs, config, files.entries.some(e => e.relative === 'R/sysdata.rda'), files.entries.some(e => !e.isDirectory && e.relative.startsWith('data/')), pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
 	if(defs.opaque) {
 		return;
 	}
@@ -173,7 +250,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	/* a package may export what it imports (`importFrom(magrittr, "%>%")` and `export("%>%")`) */
 	const imported = new Set([...ns.importedPackages.values()].flatMap(v => v === 'all' ? [] : v));
 	const importsWhole = [...ns.importedPackages.values()].includes('all');
-	for(const name of [...ns.exportedSymbols, ...ns.exportedFunctions]) {
+	for(const name of config.checkExports ? [...ns.exportedSymbols, ...ns.exportedFunctions] : []) {
 		if(!defs.names.has(name) && !imported.has(name) && !importsWhole) {
 			add({ certainty, loc: files.locate(relative, lineOf(text, name)), kind: 'undefined-export', message: `undefined export: '${name}', installing the package fails` });
 		}
@@ -288,7 +365,7 @@ export const PACKAGE_RUNTIME = {
 		const ast = ctx.files.hasRequests() ? await data.normalize() : undefined;
 		const dataObjects = files.entries.filter(e => !e.isDirectory && e.relative.startsWith('data/')).map(e => path.posix.basename(e.relative).replace(/\..*$/, ''));
 		if(ast !== undefined) {
-			namespaceChecks(files, pkg, definitionsOf(ast, pkg, dataObjects, namesWith(ctx.env.builtInIndex, SemanticCallTag.Declares)), data, add);
+			namespaceChecks(files, pkg, definitionsOf(ast, pkg, dataObjects, namesWith(ctx.env.builtInIndex, SemanticCallTag.Declares)), data, config, add);
 			const ownName = pkg.name;
 			const attaching = namesWith(ctx.env.builtInIndex, SemanticCallTag.AttachesPackage);
 			for(const node of projectNodes(ast)) {
@@ -328,9 +405,11 @@ export const PACKAGE_RUNTIME = {
 		name:          'Package Runtime',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
-		description:   'Finds what makes installing, loading, or running the package fail without doing so: undefined exports, S3 methods without a function, bad NAMESPACE imports, a package attaching itself, tests that never run, test or vignette code that does not parse, missing vignette metadata, and files written into the working directory.',
+		description:   'Finds what makes installing, loading, or running the package fail without doing so: undefined exports, export patterns matching nothing, a NAMESPACE exporting nothing, S3 methods without a function, bad NAMESPACE imports, a package attaching itself, tests that never run, test or vignette code that does not parse, missing vignette metadata, and files written into the working directory.',
 		defaultConfig: () => ({
-			checkWrites: true
+			checkWrites:    true,
+			checkExports:   true,
+			requireExports: true
 		})
 	}
 } as const satisfies LintingRule<PackageRuntimeResult, PackageRuntimeMetadata, PackageRuntimeConfig>;

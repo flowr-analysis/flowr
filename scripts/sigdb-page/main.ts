@@ -353,8 +353,9 @@ const FlagAbout: Record<string, string> = {
 	u: 'no manual page for this name in this package'
 };
 
-function owner(entry: string): OwnerEntry {
-	const [index, flags, params, topic, file, line] = entry.split(':');
+/** a name only flowR itself knows has no owner at all, so `entry` may be missing */
+function owner(entry: string | undefined): OwnerEntry {
+	const [index, flags, params, topic, file, line] = (entry ?? '').split(':');
 	return {
 		index:  Number(index),
 		flags:  [...(flags ?? '')],

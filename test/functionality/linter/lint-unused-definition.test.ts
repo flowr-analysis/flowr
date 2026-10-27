@@ -92,7 +92,8 @@ print(x)`,
 				/* the super-assignment is the value `f` returns, so removing it changes what `f(2)` gives */
 				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', undefined],
 				['function() { 42 }', '1@function', SourceRange.from(1, 1, 1, 17)],
-				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', undefined],
+				/* the inner function is not what `f` returns, so nothing reads or prints it */
+				['f <- function() {\n function() { 42 }\n 1 }\nprint(f())', '2@function', SourceRange.from(2, 2, 2, 18)],
 				['f <- function(i) { tmp <- i * 2 }\nprint(f(2))', '1@tmp', undefined],
 				/* every call hands over a number, which is no environment, so the write is lost */
 				['f <- function(x) { x$a <- 1 }\nf(3)', '1:20', undefined],
@@ -143,6 +144,7 @@ print(f()())`, '4@x', undefined]
 					[{ certainty: LintingResultCertainty.Uncertain, variableName: 'u', loc: [1, 1, 1, 1], quickFix: undefined }]);
 			}
 			assertLinter('a closure made in local reads the scope of local', parser, 'local({\nk <- 10\nfs <- list(a = function(x) x + k)\nr <- sapply(fs, function(f) f(2))\nprint(r)\n})', 'unused-definitions', []);
+			assertLinter('a function handed on by parentheses is the value of its variable', parser, 'f <- (function() 1)\nr <- f\nprint(r)', 'unused-definitions', []);
 			assertLinter('a closure made and called through do.call is used', parser, 'adder <- function(n) function(x) x + n\nadd2 <- do.call(adder, list(2))\nr <- do.call(add2, list(5))\nprint(r)', 'unused-definitions', []);
 			assertLinter('do.call is as pure as what it calls', parser, 'df2 <- do.call(setNames, list(1, "A"))\nprint(1)', 'unused-definitions',
 				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'df2', loc: [1, 1, 1, 3], quickFix: [{ type: 'remove', loc: [1, 1, 1, 38], description: 'Remove unused definition of `df2`' }] }]);

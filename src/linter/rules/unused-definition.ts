@@ -157,8 +157,8 @@ export interface UnusedDefinitionMetadata extends MergeableRecord {
 }
 
 const InterestingEdgesVariable = EdgeType.Reads | EdgeType.Calls | EdgeType.DefinesOnCall;
-/* include read as this could print the function definition */
-const InterestingEdgesFunction = EdgeType.Reads | EdgeType.Calls;
+/* a read may print the definition, and a call handing it back unchanged, like `(` in `f <- (function() 1)`, passes it on */
+const InterestingEdgesFunction = EdgeType.Reads | EdgeType.Calls | EdgeType.Returns;
 const InterestingEdgesTargets = EdgeType.SideEffectOnCall;
 
 /**

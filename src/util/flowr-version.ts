@@ -5,9 +5,9 @@
 import { SemVer } from 'semver';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.16.6';
+const version = '2.16.7';
 // this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
-export const versionDate = '2026-10-22T19:05:13Z';
+export const versionDate = '2026-10-27T20:44:18Z';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.

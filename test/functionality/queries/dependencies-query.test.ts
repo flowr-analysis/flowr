@@ -1003,6 +1003,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Read from string', () => {
 		testQuery('read.csv text parameter reads inline data', 'a <- read.csv(text="hello, world")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'constant', assignedTo: 'a' }], write: [] });
+		testQuery('fread takes the path as its first argument', 'd <- data.table::fread("a.csv")', { library: [{ nodeId: '1@fread', functionName: '::', value: 'data.table' }], read: [{ nodeId: '1@data.table::fread', functionName: Identifier.make('fread', 'data.table'), value: 'a.csv', assignedTo: 'd' }] });
+		testQuery('a print method writing a file', 'print(tab, file = "o.tex")', { write: [{ nodeId: '1@print', functionName: 'print', value: 'o.tex', inputVariables: ['tab'] }] });
+		testQuery('an update by reference prints nothing', 'a[, z := x + 1]', { write: [] });
 		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv', assignedTo: 'a' }], write: [] });
 		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv', assignedTo: 'a' }], write: [] });
 	});

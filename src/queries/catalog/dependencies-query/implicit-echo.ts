@@ -1,4 +1,5 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { EmptyArgument, RFunctionCall  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
@@ -10,7 +11,6 @@ import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
@@ -57,7 +57,10 @@ function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: Dataf
 		/* whichever branch runs decides; without an `else` a false condition yields an invisible NULL */
 		case RType.IfThenElse:
 			return echoedValue(node.then, dataflow, invisible, seen) ?? echoedValue(node.otherwise, dataflow, invisible, seen);
-		/* a symbol, a constant, an access, an operator, or a function definition is printed as it stands */
+		/* an update by reference, like `d[, z := x + 1]` with data.table, prints nothing although R calls it visible */
+		case RType.Access:
+			return node.access.some(a => a !== EmptyArgument && isAssignment(a.value, dataflow)) ? undefined : node;
+		/* a symbol, a constant, an operator, or a function definition is printed as it stands */
 		default:
 			return node;
 	}

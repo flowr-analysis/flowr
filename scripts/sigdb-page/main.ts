@@ -1,7 +1,7 @@
 import { rankName } from '../../src/util/text/name-rank';
 import { button, el } from '../page-lib/dom';
 import type { Spec } from './query';
-import { argsOf, PropWords, RoleWords, WordInfo, closed, completeAt, explainAt, problemsOf, globOf, isIncomplete, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
+import { argsOf, aboutWord, Vocabulary, WordKind, closed, completeAt, explainAt, problemsOf, globOf, isIncomplete, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
 import type { Stated } from './database';
 import { byId, db, Entry } from './database';
 import { Hits } from './render';
@@ -312,7 +312,7 @@ function offer(): void {
 		row.setAttribute('role', 'option');
 		const label = el('span', 'label');
 		label.append(el('b', undefined, word.slice(0, typed.length)), word.slice(typed.length));
-		row.append(label, el('span', 'detail', WordInfo[word] ?? ''));
+		row.append(label, el('span', 'detail', aboutWord(word) ?? ''));
 		/* mousedown, not click: the box keeps its focus and caret while a row is chosen */
 		row.addEventListener('mousedown', event => {
 			event.preventDefault();
@@ -406,8 +406,8 @@ byId('help').addEventListener('click', () => {
 		helpDialog.setAttribute('open', '');
 	}
 });
-for(const [id, words, kind] of [['helproles', RoleWords, 'role'], ['helpprops', PropWords, 'prop']] as const) {
-	byId(id).append(...words.flatMap(word => [el('dt', kind, word), el('dd', undefined, WordInfo[word] ?? '')]));
+for(const [id, kind] of [['helproles', WordKind.Role], ['helpprops', WordKind.Prop]] as const) {
+	byId(id).append(...Vocabulary[kind].flatMap(({ word, about }) => [el('dt', kind, word), el('dd', undefined, about)]));
 }
 for(const example of document.querySelectorAll<HTMLButtonElement>('.try')) {
 	example.addEventListener('click', () => {

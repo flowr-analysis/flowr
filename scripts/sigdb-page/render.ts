@@ -1,21 +1,21 @@
 import { blank, el } from '../page-lib/dom';
-import { Words, argsOf, norm, wordsOf } from './query';
+import { argsOf, norm, shortOf, wordsOf } from './query';
 import type { Entry, Package } from './database';
 import { ExportFlag } from './export-flags';
 
 /** how a flag reads on the page, and what it says on hover where its name alone does not; a meta flag is about the database entry, not the function */
-const Flags: Readonly<Record<ExportFlag, { readonly name: string, readonly about?: string, readonly meta?: boolean }>> = {
+const Flags: Readonly<Record<ExportFlag, { readonly name: string, readonly short?: string, readonly about?: string, readonly meta?: boolean }>> = {
 	[ExportFlag.CanThrow]:         { name: 'can throw' },
-	[ExportFlag.S3Method]:         { name: 'S3 method' },
-	[ExportFlag.NonDeterministic]: { name: 'non-deterministic' },
-	[ExportFlag.CallsDeprecated]:  { name: 'calls something deprecated' },
-	[ExportFlag.Recursive]:        { name: 'recursive' },
-	[ExportFlag.CallsInternal]:    { name: 'calls internals' },
-	[ExportFlag.S3Owner]:          { name: 'owns an S3 class' },
-	[ExportFlag.S4Owner]:          { name: 'owns an S4 class' },
-	[ExportFlag.S4Method]:         { name: 'S4 method' },
-	[ExportFlag.HigherOrder]:      { name: 'higher order' },
-	[ExportFlag.Deprecated]:       { name: 'deprecated' },
+	[ExportFlag.S3Method]:         { name: 'S3 method', short: 's3' },
+	[ExportFlag.NonDeterministic]: { name: 'non-deterministic', short: 'nondet' },
+	[ExportFlag.CallsDeprecated]:  { name: 'calls something deprecated', short: 'calls depr' },
+	[ExportFlag.Recursive]:        { name: 'recursive', short: 'rec' },
+	[ExportFlag.CallsInternal]:    { name: 'calls internals', short: 'internal' },
+	[ExportFlag.S3Owner]:          { name: 'owns an S3 class', short: 's3 class' },
+	[ExportFlag.S4Owner]:          { name: 'owns an S4 class', short: 's4 class' },
+	[ExportFlag.S4Method]:         { name: 'S4 method', short: 's4' },
+	[ExportFlag.HigherOrder]:      { name: 'higher order', short: 'hof' },
+	[ExportFlag.Deprecated]:       { name: 'deprecated', short: 'depr' },
 	[ExportFlag.Value]:            { name: 'value', meta: true, about: 'the database records it as a value rather than a function' },
 	[ExportFlag.NoLocation]:       { name:  'no loc', meta:  true, about: 'no location: the database records no file and line for it in this package. Usually a constant, a dataset '
 		+ 'or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds' },
@@ -59,14 +59,19 @@ function titled<T extends HTMLElement>(node: T, title: string | undefined): T {
 
 const search = (q: string): string => '?q=' + encodeURIComponent(q);
 
+/** the short forms of the flag names, which the built-in configuration does not word */
+const FlagShorts: ReadonlyMap<string, string> = new Map(Object.values(Flags).flatMap(({ name, short }) => short === undefined ? [] : [[name, short] as const]));
+
+const shortWord = (word: string): string => FlagShorts.get(word) ?? shortOf(word);
+
 function short(words: readonly string[]): string[] {
-	return words.map(word => Words[word] ?? word);
+	return words.map(shortWord);
 }
 
 /** the words of all `statements`, each meaning kept once */
 function mergedWords(...statements: readonly (string | undefined)[]): string {
 	const seen = new Set<string>();
-	return statements.flatMap(statement => wordsOf(statement ?? '')).filter(word => !seen.has(Words[word] ?? word) && seen.add(Words[word] ?? word)).join('|');
+	return statements.flatMap(statement => wordsOf(statement ?? '')).filter(word => !seen.has(shortWord(word)) && seen.add(shortWord(word))).join('|');
 }
 
 function flagWords(flags: string): string {

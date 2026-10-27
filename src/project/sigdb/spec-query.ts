@@ -1,19 +1,49 @@
+import { ArgProps, CallProps, SemanticCallTag, type PropWord } from '../../dataflow/environments/built-in-props';
+import { compileRegex, slashedRegex, tryRegex } from '../../util/text/regex';
 /** The query language of the sigdb page: `name(arg, [role], name[role], *)[prop]`. */
 
-export const Words: Record<string, string> = {
-	'can throw':                  'throws', 'invisible':                  'invis', 's3 method':                  's3', 'S3 method':                  's3', 'S4 method':                  's4',
-	'changes scope':              'scope', 'non deterministic':          'nondet', 'non-deterministic':          'nondet',
-	'ambient state':              'ambient', 'file system':                'file', 'network':                    'net', 'concurrent':                 'async',
-	'calls something deprecated': 'calls depr', 'calls internals':            'internal', 'recursive':                  'rec',
-	'owns an S3 class':           's3 class', 'owns an S4 class':           's4 class', 'higher order':               'hof', 'deprecated':                 'depr',
-	'maybe pure':                 'maypure', 'sets ambient state':         'configures', 'calls native code':          'ffi',
-	'produces language object':   'lang',
-	'temp-file':                  'tmpfile', 'asks-user':                  'user', 'command-line':               'argv', 'draws-graphics':             'plot',
-	'opens-handle':               'opens', 'closes-handle':              'closes', 'narrows-args':               'narrows', 'statistics':                 'stats',
-	'javascript':                 'js',
-	'forced':                     'F', 'no default':                 'R', 'lazy':                       'L',
-	'value':                      'val', 'resource':                   'res', 'written':                    'out', 'callee':                     'fn', 'presence':                   'seen'
+/** the kinds of words a query states: roles of an argument in parentheses, properties of a call outside */
+export enum WordKind {
+	Role = 'role',
+	Prop = 'prop'
+}
+
+/** the words of each kind, as the built-in configuration words them */
+export const Vocabulary: Readonly<Record<WordKind, readonly PropWord[]>> = {
+	[WordKind.Role]: Object.values(ArgProps.vocabulary),
+	[WordKind.Prop]: Object.values(CallProps.vocabulary)
 };
+
+/** the short forms of the tags whose words are long, the roles and properties state their own */
+const TagShorts: Readonly<Partial<Record<SemanticCallTag, string>>> = {
+	[SemanticCallTag.TempFile]:    'tmpfile',
+	[SemanticCallTag.User]:        'user',
+	[SemanticCallTag.CommandLine]: 'argv',
+	[SemanticCallTag.Graphics]:    'plot',
+	[SemanticCallTag.Opens]:       'opens',
+	[SemanticCallTag.Closes]:      'closes',
+	[SemanticCallTag.Narrows]:     'narrows',
+	[SemanticCallTag.Statistics]:  'stats',
+	[SemanticCallTag.JavaScript]:  'js'
+};
+
+/** every word of either kind */
+const AllWords: readonly PropWord[] = Object.values(Vocabulary).flat();
+
+const Shorts: ReadonlyMap<string, string> = new Map([
+	...AllWords.flatMap(({ word, short }) => short === undefined ? [] : [[word, short] as const]),
+	...Object.entries(TagShorts)
+]);
+
+/** the short form of a word, the word itself where it has none */
+export function shortOf(word: string): string {
+	return Shorts.get(word) ?? word;
+}
+
+/** what a role or property word means, `undefined` for any other word */
+export function aboutWord(word: string): string | undefined {
+	return AllWords.find(w => w.word === word)?.about;
+}
 
 /** The words of a `|`-joined statement. */
 export function wordsOf(joined: string): string[] {
@@ -46,7 +76,7 @@ export interface Spec {
 }
 
 /** The short form of a word, so `forced` and `F` are the same. */
-export const norm = (word: string): string => (Words[word.trim().toLowerCase()] ?? word.trim()).toLowerCase();
+export const norm = (word: string): string => shortOf(word.trim().toLowerCase()).toLowerCase();
 const listOf = (words: string): string[] => words.split(/[,|+]/).map(norm).filter(Boolean);
 
 /** The `[props]` groups outside the parentheses, wherever they sit, and what is left of the query without them. */
@@ -77,41 +107,13 @@ const anyArgs: ArgPattern = { repeat: '*', name: '', roles: [] };
 const Mark = '\uE000';
 /** a `/pattern/` standing where a name could: after the start, a space, `(`, `,` or `]`, before whatever ends a name */
 const Slashed = /(^|[\s(,\]])\/((?:\\.|[^/\\\n])+)\/(?=[\s(),[*+?]|$)/g;
-const asPattern = (source: string): RegExp | undefined => {
-	try {
-		return new RegExp(source, 'i');
-	} catch{
-		return undefined;
-	}
-};
-
-/** `/pattern/` in the query as a regular expression, `undefined` when it is none or does not compile; `/` itself is a function */
-export function regexOf(text: string): RegExp | undefined {
-	const slashed = /^\/(.+)\/$/.exec(text.trim());
-	return slashed === null ? undefined : asPattern(slashed[1]);
-}
-
-/** `functions starting with G that [pure]`: how a name is asked for in words, with the constraints left as they are */
-const Worded = /^(?:functions?\s+)?((?:starting|starts|beginning|begins|ending|ends)\s+with|containing|contains)\s+([\w.]+)\s*(?:(?:that|which|with|having|and)\s+)?(.*)$/i;
-
-/** the query with a worded name turned into the glob it means (`starting with G` is `G*`), any other query as it was */
-export function unworded(typed: string): string {
-	const worded = Worded.exec(typed.trim());
-	if(worded === null) {
-		return typed;
-	}
-	const how = worded[1].toLowerCase();
-	const name = how.startsWith('end') ? `*${worded[2]}` : how.startsWith('con') ? `*${worded[2]}*` : `${worded[2]}*`;
-	return name + worded[3].trim();
-}
-
 /** Splits `name(arg, [role], name[role], *)[prop]` into the name and the constraints on the arguments and the function. */
 export function parseSpec(input: string): Spec {
-	const typed = unworded(input);
+	const typed = input;
 	/* a pattern may hold anything, brackets and commas included, so it is set aside while the rest is read */
 	const patterns: RegExp[] = [];
 	const shielded = typed.replace(Slashed, (whole, before: string, source: string) => {
-		const pattern = asPattern(source);
+		const pattern = compileRegex(source, 'i');
 		return pattern === undefined ? whole : before + Mark + (patterns.push(pattern) - 1) + Mark;
 	});
 	const patternOf = (word: string): RegExp | undefined => {
@@ -135,7 +137,7 @@ export function parseSpec(input: string): Spec {
 	});
 	if(args === undefined && props.length === 0) {
 		/* no constraint was asked for, so this is a plain name: `*`, `[`, `[[<-` or `(` are functions too */
-		const nameRegex = regexOf(typed);
+		const nameRegex = slashedRegex(typed, 'i');
 		return { rest: nameRegex === undefined ? typed.replace(/\(\s*\)$/, '').replace(/^`(.*)`$/, '$1').trim() : '', nameRegex, props };
 	}
 	const rest = (args === undefined ? left.replace(/\(\s*\)$/, '') : withArgs?.[1] ?? '').replace(/^`(.*)`$/, '$1').trim();
@@ -178,11 +180,6 @@ export function globOf(name: string): RegExp | undefined {
 	return new RegExp('^' + name.split('*').map(part => part.replaceAll('.', '\\.')).join('.*') + '$', 'i');
 }
 
-/** The roles an argument can state, as the signature database words them. */
-export const RoleWords: readonly string[] = ['alias', 'forced', 'no default', 'value', 'shape', 'flag', 'resource', 'written', 'nse', 'callee', 'presence', 'bounds', 'atomic', 'handle', 'lazy', 'injectable', 'deparsed'];
-/** The properties a call can state, as the signature database words them. */
-export const PropWords: readonly string[] = ['pure', 'maybe pure', 'invisible', 'can throw', 'generic', 's3 method', 'changes scope', 'non deterministic', 'ambient state', 'sets ambient state', 'calls native code', 'produces language object', 'strict', 'concurrent', 'primitive'];
-
 export interface Completion {
 	/** the span of `text` the choice replaces */
 	readonly from:    number;
@@ -203,13 +200,13 @@ export function completeAt(text: string, caret: number): Completion | undefined 
 	const inside = before.slice(open + 1);
 	const start = open + 1 + Math.max(inside.lastIndexOf(','), inside.lastIndexOf('|'), inside.lastIndexOf('+')) + 1;
 	const typed = before.slice(start).trimStart();
-	const words = [...before.slice(0, open)].filter(c => c === '(').length > [...before.slice(0, open)].filter(c => c === ')').length ? RoleWords : PropWords;
+	const words = Vocabulary[[...before.slice(0, open)].filter(c => c === '(').length > [...before.slice(0, open)].filter(c => c === ')').length ? WordKind.Role : WordKind.Prop].map(w => w.word);
 	const taken = new Set(listOf(inside));
 	const options = words.filter(word => word.startsWith(typed.toLowerCase()) && word !== typed.toLowerCase() && !taken.has(norm(word)));
 	return options.length === 0 ? undefined : { from: caret - typed.length, to: caret, options };
 }
 
-export type TokenKind = 'plain' | 'punct' | 'op' | 'role' | 'prop' | 'bad' | 'regex';
+export type TokenKind = 'plain' | 'punct' | 'op' | WordKind | 'bad' | 'regex';
 
 /**
  * The query cut into pieces to color, never changing the text: joining the pieces gives `text` back.
@@ -232,18 +229,18 @@ export function highlight(text: string): readonly (readonly [text: string, kind:
 			slashed.lastIndex = Math.max(0, at - 1);
 		}
 		const found = slashed?.exec(text);
-		if(found !== null && found !== undefined && asPattern(found[2]) !== undefined && found.index + found[1].length === at) {
+		if(found !== null && found !== undefined && compileRegex(found[2], 'i') !== undefined && found.index + found[1].length === at) {
 			const whole = found[0].slice(found[1].length);
 			out.push([whole, 'regex']);
 			at += whole.length;
 		} else if(c === '[' && ((at > 0 && text[at - 1] !== '[') || (at === 0 && leads(text)))) {
 			const close = text.indexOf(']', at);
 			const end = close < 0 ? text.length : close;
-			const words = depth > 0 ? RoleWords : PropWords;
+			const kind = depth > 0 ? WordKind.Role : WordKind.Prop;
 			out.push(['[', 'punct']);
 			for(const part of text.slice(at + 1, end).split(/([,|+])/)) {
-				const known = words.some(word => norm(word) === norm(part));
-				out.push([part, /^[,|+]$/.test(part) ? 'punct' : part.trim() === '' ? 'plain' : known ? (depth > 0 ? 'role' : 'prop') : 'bad']);
+				const known = Vocabulary[kind].some(({ word }) => norm(word) === norm(part));
+				out.push([part, /^[,|+]$/.test(part) ? 'punct' : part.trim() === '' ? 'plain' : known ? kind : 'bad']);
 			}
 			if(close >= 0) {
 				out.push([']', 'punct']);
@@ -266,18 +263,6 @@ export function highlight(text: string): readonly (readonly [text: string, kind:
 	return out;
 }
 
-/** What each completion word means, shown beside it in the list. */
-export const WordInfo: Readonly<Record<string, string>> = {
-	'alias':                    'handed back as the result', 'forced':                   'always evaluated', 'no default':               'declared without a default', 'value':                    'its value feeds the result',
-	'shape':                    'only length or attributes used', 'flag':                     'selects a behavior', 'resource':                 'names a file or connection', 'written':                  'may be modified',
-	'nse':                      'quoted, not evaluated', 'callee':                   'called as a function', 'presence':                 'only if it was given', 'bounds':                   'the result is one of its values',
-	'atomic':                   'plain data only', 'handle':                   'an open connection', 'lazy':                     'never evaluated', 'injectable':               'open to injection', 'deparsed':                 'its expression names part of the result',
-	'pure':                     'computes a result, nothing else', 'maybe pure':               'pure if what it calls is', 'invisible':                'result is not printed', 'can throw':                'may raise an error',
-	'generic':                  'dispatches on its argument', 's3 method':                'method of a generic', 'changes scope':            'defines or removes variables', 'non deterministic':        'may differ between runs',
-	'ambient state':            'reads state outside its arguments', 'sets ambient state':       'changes options or devices', 'calls native code':        'uses C, C++ or Fortran',
-	'produces language object': 'returns code as data', 'strict':                   'evaluates every argument', 'concurrent':               'runs in parallel', 'primitive':                'implemented in the R core'
-};
-
 const SymbolInfo: Readonly<Record<string, string>> = {
 	'*': 'any number of arguments', '+': 'one or more, all like the one before', '?': 'at least one like the one before'
 };
@@ -288,8 +273,8 @@ export function explainAt(text: string, at: number): string | undefined {
 	for(const [part, kind] of highlight(text)) {
 		if(at >= start && at < start + part.length) {
 			switch(kind) {
-				case 'role': return WordInfo[RoleWords.find(w => norm(w) === norm(part)) ?? ''];
-				case 'prop': return WordInfo[PropWords.find(w => norm(w) === norm(part)) ?? ''];
+				case WordKind.Role:
+				case WordKind.Prop: return Vocabulary[kind].find(({ word }) => norm(word) === norm(part))?.about;
 				case 'bad':  return 'unknown';
 				case 'regex': return 'pattern';
 				default:     return kind === 'plain' ? undefined : SymbolInfo[part];
@@ -365,15 +350,14 @@ export function problemsOf(text: string): string[] {
 		} else if(kind === 'bad') {
 			const word = part.trim();
 			const role = parens > 0;
-			const near = closestWord(word, role ? RoleWords : PropWords);
+			const near = closestWord(word, Vocabulary[role ? WordKind.Role : WordKind.Prop].map(w => w.word));
 			out.push(`\`${word}\` is no known ${role ? 'argument role' : 'function property'}${near === undefined ? '' : `, did you mean \`${near}\`?`}`);
 		}
 	}
 	for(const slashed of text.matchAll(Slashed)) {
-		try {
-			new RegExp(slashed[2], 'i');
-		} catch(error) {
-			out.push(`invalid pattern /${slashed[2]}/: ${String((error as Error).message).replace(/^Invalid regular expression: /, '').replace(/^\/.*\/[a-z]*: /, '')}`);
+		const regex = tryRegex(slashed[2], 'i');
+		if(!(regex instanceof RegExp)) {
+			out.push(`invalid pattern /${slashed[2]}/: ${regex.message.replace(/^Invalid regular expression: /, '').replace(/^\/.*\/[a-z]*: /, '')}`);
 		}
 	}
 	return out;

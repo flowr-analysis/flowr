@@ -112,7 +112,7 @@ describe('Static Slice Query in the REPL', () => {
 	test(label('quoted code undoes its escapes, as the code commands read it', ['name-normal', 'newlines'], ['other']), async() => {
 		assert.deepStrictEqual((await sliced(':query @static-slice (2@y) "x <- \\"a\\"\\ny <- x"')).slice(0, 2), ['x <- "a"', 'y <- x']);
 	});
-	test(label('an escape JSON does not know keeps the code as written', ['name-normal', 'strings'], ['other']), async() => {
+	test(label('an escape R rejects keeps the code as written', ['name-normal', 'strings'], ['other']), async() => {
 		assert.deepStrictEqual((await sliced(':query @static-slice (1@x) "x <- \'\\d\'"'))[0], 'x <- \'\\d\'');
 	});
 	test(label('the result is printed with the formatter of the output', ['name-normal'], ['other']), async() => {

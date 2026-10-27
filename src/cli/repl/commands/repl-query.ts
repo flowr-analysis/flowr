@@ -18,6 +18,7 @@ import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { Record } from '../../../util/record';
 import { requestFromInput } from '../../../r-bridge/retriever';
+import { RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { handlePathLikeInput } from '../path-input';
 
 /**
@@ -221,18 +222,21 @@ function unwrapQuotedInput(code: string): string {
 	if((quote !== '"' && quote !== '\'') || code.length < 2 || code[code.length - 1] !== quote) {
 		return code;
 	}
-	for(let i = 1; i < code.length - 1; i++) {
-		if(code[i] === quote && code[i - 1] !== '\\') {
+	let i = 1;
+	for(; i < code.length - 1; i++) {
+		if(code[i] === '\\') {
+			i++;
+		} else if(code[i] === quote) {
 			return code;
 		}
 	}
-	/* a double-quoted wrapping undoes its escapes, as the code commands read it, so `\n` separates statements */
-	if(quote === '"') {
-		try {
-			return JSON.parse(code) as string;
-		} catch{ /* an escape JSON does not know, e.g. a Windows path, is kept as written */ }
+	/* an escaped closing quote is no closing quote */
+	if(i !== code.length - 1) {
+		return code;
 	}
-	return code.slice(1, -1);
+	const inner = code.slice(1, -1);
+	/* a double-quoted wrapping undoes its escapes as R does, so `\n` separates statements; one R rejects, e.g. a Windows path, is kept as written */
+	return quote === '"' ? RStringValue.value({ str: inner, quotes: '"' }) ?? inner : inner;
 }
 
 /**

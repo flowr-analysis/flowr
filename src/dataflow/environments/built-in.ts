@@ -39,7 +39,7 @@ import { type AmbientScope, type AmbientStateAccess, AmbientStateAccessType, app
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
-import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsElement, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import { StringFold } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
 import { resolveAsGet } from '../eval/resolve/resolve-get';
@@ -388,7 +388,8 @@ export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
 	[BuiltInEvalName.StringFn]:   StringFold.call,
 	[BuiltInEvalName.Group]:      resolveAsGroup,
-	[BuiltInEvalName.Get]:        resolveAsGet
+	[BuiltInEvalName.Get]:        resolveAsGet,
+	[BuiltInEvalName.Element]:    resolveAsElement
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];

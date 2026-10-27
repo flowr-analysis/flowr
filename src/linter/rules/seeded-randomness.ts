@@ -5,7 +5,7 @@ import {
 	type LintingRule,
 	LintingRuleCertainty
 } from '../linter-format';
-import { soleNumberOf } from '../../dataflow/eval/values/intervals/interval-constants';
+import { RValue } from '../../dataflow/eval/values/r-value';
 import { functionFinderUtil } from './function-finder-util';
 import { SourceLocation, SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
@@ -250,6 +250,6 @@ function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunct
 		v.type === 'number' ||
 		v.type === 'logical' ||
 		v.type === 'string' ||
-		soleNumberOf(v) !== undefined)
+		RValue.numberOf(v) !== undefined)
 	       ?? false;
 }

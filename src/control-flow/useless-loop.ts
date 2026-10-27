@@ -1,7 +1,6 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
-import { soleNumberOf } from '../dataflow/eval/values/intervals/interval-constants';
 import { Resolve } from '../dataflow/environments/resolve-helper';
-import { isValue, type Lift, type Value } from '../dataflow/eval/values/r-value';
+import { isValue, RValue, type Lift, type Value } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
@@ -64,7 +63,7 @@ function holdsOneElement(value: Lift<Value>, element = false): boolean {
 		return false;
 	}
 	return value.type === 'vector' ? isValue(value.elements) && value.elements.length === 1 && holdsOneElement(value.elements[0], true)
-		: value.type === 'interval' ? soleNumberOf(value) !== undefined
+		: value.type === 'interval' ? RValue.numberOf(value) !== undefined
 			: (value.type === 'string' || value.type === 'logical' || (element && value.type === 'number')) && isValue(value.value);
 }
 

@@ -1,4 +1,7 @@
 import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { setOf } from '../values/sets/set-constants';
+import { valueSetGuard, valueFromRNumber  } from '../values/general';
 import { RValue } from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -11,9 +14,8 @@ import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { OriginType } from '../../origin/dfg-get-origin';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
+import { isValue, type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
-import { valueFromRNumber } from '../values/general';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier, ReferenceType } from '../../environments/identifier';
 import type { REnvironmentInformation } from '../../environments/environment';
@@ -42,7 +44,7 @@ function foldsThroughBuiltIn(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext
 }
 
 /** the node types that may fold through a built-in: calls, operators, and the `(`/`{` groupings */
-const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList];
+const EvalNodeTypes: readonly RType[] = [RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.ExpressionList, RType.Access];
 
 /** Whether the operator only combines literals (`1 + 2`), which alone fold while the analysis runs, as a name may still change its value. */
 export function onlyLiterals(node: RNode<ParentInformation>): boolean {
@@ -61,7 +63,8 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 		return undefined;
 	} else if(graph === undefined) {
 		const named = RExpressionList.is(node) ? RExpressionList.groupStart(node)?.content
-			: RFunctionCall.calledName(node) ?? ((RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined);
+			: RAccess.is(node) ? Identifier.make(node.operator)
+				: RFunctionCall.calledName(node) ?? ((RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined);
 		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)
 			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
 	}
@@ -115,6 +118,25 @@ export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typ
 		return Top;
 	}
 	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top)));
+}
+
+/**
+ * Resolves `x[[i]]` to the element of `x` at position `i`, so `c("a", "b")[[2]]` is `"b"`. Where `i` is not known,
+ * as a loop counter often is not, it is any of the elements; helper of {@link resolveNode}.
+ */
+export function resolveAsElement(args: BuiltInEvalHandlerArgs): Value {
+	const node = args.node;
+	const index = RAccess.is(node) && node.operator === '[[' && node.access.length === 1 && node.access[0] !== EmptyArgument ? node.access[0].value : undefined;
+	if(!RAccess.is(node) || index === undefined) {
+		return Top;
+	}
+	const vectors = valueSetGuard(Resolve.toValue(node.accessed, args))?.elements;
+	if(vectors === undefined || vectors.length === 0 || !vectors.every(v => v.type === 'vector' && isValue(v.elements) && v.elements.length > 0)) {
+		return Top;
+	}
+	const positions = valueSetGuard(Resolve.toValue(index, args))?.elements.map(p => RValue.numberOf(p)) ?? [];
+	const known = positions.length > 0 && positions.every(p => p !== undefined && Number.isInteger(p)) ? positions as number[] : undefined;
+	return setOf((vectors as ValueVector<Value[]>[]).flatMap(v => known === undefined ? v.elements : known.flatMap(p => v.elements[p - 1] ?? [])));
 }
 
 /** Resolves the sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s; helper of {@link resolveNode}. */

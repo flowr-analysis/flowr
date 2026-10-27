@@ -16,14 +16,13 @@ import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../.
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { DfgVertex, VertexType } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
-import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet, type ValueVector } from '../values/r-value';
+import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { soleNumberOf } from '../values/intervals/interval-constants';
 import { setFrom, setOf } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -245,6 +244,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.BinaryOp:
 		case RType.UnaryOp:
 		case RType.ExpressionList:
+		case RType.Access:
 			return setFrom(resolveNode({
 				resolve, node, ctx, environment, graph, idMap, blocked, callContext
 			}));
@@ -389,25 +389,6 @@ onReplacementOperator((args: ReplacementOperatorHandlerArgs) => {
 	}
 });
 
-/**
- * The elements `x[[i]]` may be: the one at a known position, any of them where the position is not known (a counter
- * of a loop, say), `undefined` where `x` is not known element by element. The access hands back a part of `x`, so its
- * `Returns` edge to `x` says nothing about its value.
- */
-function accessedElements(node: RNodeWithParent | undefined, info: ResolveInfo): Value[] | undefined {
-	if(!RAccess.is(node) || node.operator !== '[[' || node.access.length !== 1 || node.access[0] === EmptyArgument) {
-		return undefined;
-	}
-	const vectors = valueSetGuard(resolveIdToValue(node.accessed.info.id, info))?.elements ?? [];
-	if(vectors.length === 0 || !vectors.every(v => v.type === 'vector' && isValue(v.elements) && v.elements.length > 0)) {
-		return undefined;
-	}
-	const positions = valueSetGuard(resolveIdToValue(node.access[0].info.id, info))?.elements
-		.map(soleNumberOf);
-	const known = positions !== undefined && positions.length > 0 && positions.every(p => p !== undefined && Number.isInteger(p)) ? positions as number[] : undefined;
-	return (vectors as ValueVector<Value[]>[]).flatMap(v => known === undefined ? v.elements : known.flatMap(p => v.elements[p - 1] === undefined ? [] : [v.elements[p - 1]]));
-}
-
 function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): 'applies' | 'overridden' | 'unknown' {
 	const parameter = node === undefined ? undefined
 		: [node, ...RNode.iterateParents(node, idMap)].find(p => p.info.role === RoleInParent.ParameterDefaultValue)?.info.parent;
@@ -495,8 +476,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		if(!vertex) {
 			continue;
 		}
-		/* a definition in a loop holds what any round gives it, which is what the walk collects: one depending on an
-		 * earlier round reaches itself again and is blocked, so it stays unknown */
+		/* a definition in a loop may hold the value of any iteration, and the walk collects all of them; one that
+		 * depends on its own earlier value, like `x <- x + 1`, reaches itself again, is blocked, and stays unknown */
 		const t = vertex.tag;
 		/* a replacement (`df[1] <- v`) defines its target from just a part of it, so what it is defined by is not
 		 * the value of the target */
@@ -509,9 +490,14 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 
 		const isFn = t === VertexType.FunctionCall;
-		const elements = isFn ? accessedElements(idMap.get(id), { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked: new Set(blocked), callContext }) : undefined;
-		if(elements !== undefined) {
-			folded.push(...elements);
+		/* an access hands back a part of what it accesses, `x[[2]]` an element of `x`, so its `Returns` edge to `x`
+		 * says nothing about its value, which only the evaluation of the access knows */
+		if(isFn && RAccess.is(idMap.get(id))) {
+			const values = valueSetGuard(resolveIdToValue(id, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked: new Set(blocked), callContext }));
+			if(values === undefined || values.elements.some(isTop)) {
+				return Top;
+			}
+			folded.push(...values.elements);
 			continue;
 		}
 		const outgoingEdges = graph.edgesFrom(id);

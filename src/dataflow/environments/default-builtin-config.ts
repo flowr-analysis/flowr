@@ -204,6 +204,8 @@ export const GraphicsPlotCreate = [
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars', 'cotabplot', 'pheatmap',
 	'spineplot', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'coplot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotSimulatedResiduals', 'plotmeans',
 	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2',
+	'ggarrange', 'ggboxplot', 'ggscatter', 'corrplot', 'plot_grid', 'wrap_plots', 'levelplot', 'image.plot', 'biplot', 'screeplot',
+	'interaction.plot', 'termplot', 'plot_model', 'emmip'
 ];
 export const PlotCreate = GraphicsPlotCreate.concat(TinyPlotCrate, GgPlotCreate);
 /** the creators above that, other than base graphics, return their plot visibly instead of drawing it at once */
@@ -306,7 +308,15 @@ const OtherTransforms: Identifier[] = [
 		...['mutate', 'transmute', 'filter', 'select', 'rename', 'arrange', 'summarise', 'summarize', 'group_by', 'distinct'].flatMap(verb => ['all', 'at', 'if'].map(scope => `${verb}_${scope}`))]),
 	...Identifier.fromAll(PkgName.DataTable, ['as.data.table', 'melt', 'dcast', 'rbindlist', 'merge.data.table']),
 	...Identifier.fromAll(PkgName.Tibble, ['add_column', 'add_row']),
-	Identifier.from(['merge', PkgName.Base]), ...Identifier.fromAll(PkgName.Stats, ['aggregate', 'reshape'])
+	Identifier.from(['merge', PkgName.Base]), ...Identifier.fromAll(PkgName.Stats, ['aggregate', 'reshape', 'ave']),
+	...Identifier.fromAll(PkgName.Base, ['split', 'unsplit', 'expand.grid']), ...Identifier.fromAll(PkgName.Utils, ['stack', 'unstack']),
+	...Identifier.fromAll(PkgName.Reshape2, ['melt', 'dcast', 'acast']),
+	...Identifier.fromAll(PkgName.Plyr, ['ldply', 'llply', 'dlply', 'join', 'rbind.fill'])
+];
+/* the calls that fit a statistical model to data */
+const ModelFits: Identifier[] = [
+	...Identifier.fromAll(PkgName.Stats, ['lm', 'glm', 'nls']), ...Identifier.fromAll(PkgName.Lme4, ['lmer', 'glmer']),
+	Identifier.from(['coxph', PkgName.Survival]), Identifier.from(['glm.nb', PkgName.Mass]), Identifier.from(['feols', PkgName.Fixest])
 ];
 /* `with(data, expr)`: `expr` is evaluated in the data */
 const WithSig: FnSig  = [['data', ArgProp.NoDefault | ArgProp.Written], ['expr', ArgProp.NoDefault], ['...', 0]];
@@ -614,6 +624,7 @@ export const WrittenBuiltinDefinitions = [
 	/* slice_sample draws rows at random; registered after the block above, so this definition is the one that sticks */
 	{ overrides: true, type: 'function', names: [Identifier.from(['slice_sample', PkgName.Dplyr])], processor: BuiltInProcName.Default, config: { markArgsAsMasked: NseArguments.AllButFirst, ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random, SemanticCallTag.Transforms] }, assumePrimitive: false },
 	{ type: 'function', names: OtherTransforms, processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Transforms] }, assumePrimitive: false },
+	{ type: 'function', names: ModelFits, processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Statistics] }, assumePrimitive: false },
 	/* data.table's in-place setters hand back their table invisibly */
 	{ type: 'function', names: Identifier.fromAll(PkgName.DataTable, ['setDT', 'setorder', 'setorderv', 'setcolorder']), processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Transforms], props: CallProp.Invisible }, assumePrimitive: false },
 	/* data-masking without a data argument, e.g. `aes(x, y)` */
@@ -1339,7 +1350,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['partial', PkgName.Purrr])], processor: BuiltInProcName.S7MakeConstructor, config: { wrapIndex: 0, wrapName: '.f' }, assumePrimitive: true },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['.Primitive', '.Internal']), processor: BuiltInProcName.Apply, config: { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['interference', PkgName.Inferference])], processor: BuiltInProcName.Apply, config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['ddply', PkgName.Plyr])], processor: BuiltInProcName.Apply, config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['ddply', PkgName.Plyr])], processor: BuiltInProcName.Apply, config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true, tags: [SemanticCallTag.Transforms] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['list', PkgName.Base])], processor: BuiltInProcName.List, config: { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['Recall', PkgName.Base])], processor: BuiltInProcName.Recall, config: { libFn: true, sig: [['...', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['sys.function', PkgName.Base])], processor: BuiltInProcName.Recall, config: { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse, tags: [SemanticCallTag.Frames], sig: [['which', 0]] }, assumePrimitive: false },

@@ -353,9 +353,8 @@ const FlagAbout: Record<string, string> = {
 	u: 'no manual page for this name in this package'
 };
 
-/** a name only flowR itself knows has no owner at all, so `entry` may be missing */
-function owner(entry: string | undefined): OwnerEntry {
-	const [index, flags, params, topic, file, line] = (entry ?? '').split(':');
+function owner(entry: string): OwnerEntry {
+	const [index, flags, params, topic, file, line] = entry.split(':');
 	return {
 		index:  Number(index),
 		flags:  [...(flags ?? '')],
@@ -688,7 +687,8 @@ let scoped: string | undefined;
 function show(name: string, needle: string, at: number, owners: readonly string[]): void {
 	const row = el('li');
 	const head = el('div', 'head');
-	const value = owner(owners[0]).flags.includes('c');
+	/* a name only flowR itself knows has no owner at all */
+	const value = owners.length > 0 && owner(owners[0]).flags.includes('c');
 	const named = marked(name, needle, at);
 	named.title = 'click for every package that exports ' + name;
 	head.append(named);
@@ -699,8 +699,8 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 		head.append(badge);
 	}
 	const mine = stated.get(name) ?? [];
-	const chosen = owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0];
-	const first = packages[owner(chosen).index];
+	const chosen = owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners.at(0);
+	const first = chosen === undefined ? undefined : packages[owner(chosen).index];
 	const own = mine.find(entry => entry[0] === first?.[0]) ?? mine.find(entry => entry[0] === 'base') ?? mine[0];
 	const words = short(wordsOf(own?.[1] ?? ''));
 	const known = kinds.get(name) ?? [];
@@ -718,7 +718,7 @@ function show(name: string, needle: string, at: number, owners: readonly string[
 	const said = dispatches.map(([kind]) => kind.toLowerCase() + ' method');
 	const shown = {
 		args:  own?.[2] || declaredIn(name, first?.[0]) || '',
-		props: wordsOf(mergedWords(own?.[1], flagWords(owner(chosen).flags)))
+		props: wordsOf(mergedWords(own?.[1], flagWords(chosen === undefined ? [] : owner(chosen).flags)))
 			.filter(word => !said.includes(word.toLowerCase())).join('|')
 	};
 	if(shown.args !== '' || shown.props !== '') {

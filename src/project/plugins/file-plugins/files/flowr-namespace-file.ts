@@ -119,6 +119,14 @@ export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, na
 	return nsInfo ? isExportedInInfo(name, nsInfo) : false;
 }
 
+/**
+ * The regex an `exportPattern` states: the NAMESPACE writes it as an R string, whose escapes R undoes before it
+ * reads the regex. `undefined` where R rejects the string.
+ */
+export function exportPatternValue(this: void, pattern: string): string | undefined {
+	return RStringValue.value({ str: pattern, quotes: '"' });
+}
+
 /** As {@link isExportedInNamespaceFormat}, but for one already picked {@link NamespaceInfo}. */
 export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
 	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)
@@ -133,8 +141,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	for(const pattern of nsInfo.exportedPatterns) {
-		/* the NAMESPACE states the pattern as an R string, whose escapes R undoes before it reads the regex; R rejects a string it cannot undo, which is kept as written */
-		const regex = parseRRegexPattern(RStringValue.value({ str: pattern, quotes: '"' }) ?? pattern);
+		const regex = parseRRegexPattern(exportPatternValue(pattern) ?? pattern);
 		if(regex.test(name)) {
 			return true;
 		}

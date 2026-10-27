@@ -23,9 +23,8 @@ import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, proj
 import type { PackageFiles } from './package-files';
 import { onPackageFiles } from './file-checks';
 import { packageCode } from './package-code';
-import { parseRRegexPattern } from '../../../util/r-regex';
-import { RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
-import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { parseRRegexPatternExactly } from '../../../util/r-regex';
+import { exportPatternValue, type NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 
 export type PackageRuntimeKind =
 	/** `export(x)` of something the package does not define, which fails the installation ("undefined exports") */
@@ -143,29 +142,11 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 /** what every namespace holds before the package code runs, which an export pattern sees as well */
 const NamespaceInternals = ['.packageName', '.__NAMESPACE__.', '.__S3MethodsTable__.'];
 
-/** the posix classes {@link parseRRegexPattern} translates, any other is left as is and means something else to JavaScript */
-const UnknownPosixClass = /\[:(?!(digit|lower|upper|alpha|alnum|space|blank|punct|xdigit|ascii|cntrl|graph|word|print):\])/;
-
-/**
- * The pattern as JavaScript regex, only where it matches at least what R matches, so that a pattern matching
- * nothing in JavaScript matches nothing in R either: an escape of a letter (`\\<`, `\\d`, a back reference) or a
- * flag group means something else to the two.
- */
-function exportRegex(lexeme: string): RegExp | undefined {
-	/* the NAMESPACE states the pattern as an R string, whose escapes R undoes before it reads the regex */
-	const pattern = RStringValue.value({ str: lexeme, quotes: '"' });
-	if(pattern === undefined || /\\[^.^$*+?()[\]{}|\\/-]/.test(pattern) || pattern.includes('(?') || UnknownPosixClass.test(pattern)) {
-		return undefined;
-	}
-	const regex = parseRRegexPattern(pattern);
-	return regex.source === '(?!)' ? undefined : regex;
-}
-
-/** whether a namespace part exports anything, the S3 methods it registers included */
-function exportsAnything(ns: NamespaceInfo): boolean {
-	return ns.exportedSymbols.length + ns.exportedFunctions.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length
-		+ ns.exportS3Generics.size + ns.exportedPatterns.length > 0
-		|| [...ns.conditional?.values() ?? []].some(exportsAnything);
+/** whether a namespace part exports anything, the S3 methods it registers included, and the patterns `matches` says match a name */
+function exportsAnything(ns: NamespaceInfo, matches: (pattern: string) => boolean): boolean {
+	return ns.exportedSymbols.length + ns.exportedFunctions.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length + ns.exportS3Generics.size > 0
+		|| ns.exportedPatterns.some(matches)
+		|| [...ns.conditional?.values() ?? []].some(c => exportsAnything(c, matches));
 }
 
 /**
@@ -177,19 +158,18 @@ function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRunti
 	const certainty = defs.dynamic ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain;
 	const judged = !hidden && !defs.opaque && !defs.metadata;
 	const names = [...defs.names, ...NamespaceInternals];
-	let patternExports = false;
-	for(const pattern of ns.exportedPatterns) {
-		const regex = judged ? exportRegex(pattern) : undefined;
-		if(regex === undefined || names.some(n => regex.test(n))) {
-			patternExports = true;
-		} else if(config.checkExports) {
-			add({ certainty, loc: at(pattern), kind: 'empty-export-pattern', message: `exportPattern("${pattern}") matches nothing the package defines, so it exports nothing` });
-		}
+	/* a pattern R reads differently, or one that cannot be judged, may match anything */
+	const empty = new Set(judged ? ns.exportedPatterns.filter(pattern => {
+		const value = exportPatternValue(pattern);
+		const regex = value === undefined ? undefined : parseRRegexPatternExactly(value);
+		return regex !== undefined && !names.some(n => regex.test(n));
+	}) : []);
+	for(const pattern of config.checkExports ? empty : []) {
+		add({ certainty, loc: at(pattern), kind: 'empty-export-pattern', message: `exportPattern("${pattern}") matches nothing the package defines, so it exports nothing` });
 	}
-	const others = { ...ns, exportedPatterns: [] };
-	if(config.requireExports && !patternExports && !shipsData && !exportsAnything(others)) {
+	if(config.requireExports && !shipsData && !exportsAnything(ns, pattern => !empty.has(pattern))) {
 		add({
-			certainty: ns.exportedPatterns.length > 0 ? certainty : LintingResultCertainty.Certain,
+			certainty: empty.size > 0 ? certainty : LintingResultCertainty.Certain,
 			loc:       at(''),
 			kind:      'no-exports',
 			message:   'the NAMESPACE exports nothing, so attaching the package gives access to none of its functions'
@@ -233,7 +213,7 @@ function writesIntoWorkingDirectory(file: string): boolean {
 	return file !== '' && !path.isAbsolute(file) && !file.startsWith('~') && !/^[a-z]+:\/\//i.test(file) && file !== 'stdout' && file !== 'stderr';
 }
 
-function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definitions, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definitions, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, shipsData: boolean, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const ns = pkg.namespace;
 	const nsFile = data.inspectContext().files.getFilesByRole(FileRole.Namespace)[0];
 	if(ns === undefined || nsFile === undefined) {
@@ -242,7 +222,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	const text = nsFile.rawText?.();
 	const relative = path.relative(files.root, nsFile.path()).split(path.sep).join('/');
 	/* the objects of `R/sysdata.rda` live in the namespace as well, under names only the binary file knows */
-	exportChecks(ns, defs, config, files.entries.some(e => e.relative === 'R/sysdata.rda'), files.entries.some(e => !e.isDirectory && e.relative.startsWith('data/')), pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
+	exportChecks(ns, defs, config, files.entries.some(e => e.relative === 'R/sysdata.rda'), shipsData, pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
 	if(defs.opaque) {
 		return;
 	}
@@ -365,7 +345,7 @@ export const PACKAGE_RUNTIME = {
 		const ast = ctx.files.hasRequests() ? await data.normalize() : undefined;
 		const dataObjects = files.entries.filter(e => !e.isDirectory && e.relative.startsWith('data/')).map(e => path.posix.basename(e.relative).replace(/\..*$/, ''));
 		if(ast !== undefined) {
-			namespaceChecks(files, pkg, definitionsOf(ast, pkg, dataObjects, namesWith(ctx.env.builtInIndex, SemanticCallTag.Declares)), data, config, add);
+			namespaceChecks(files, pkg, definitionsOf(ast, pkg, dataObjects, namesWith(ctx.env.builtInIndex, SemanticCallTag.Declares)), data, config, dataObjects.length > 0, add);
 			const ownName = pkg.name;
 			const attaching = namesWith(ctx.env.builtInIndex, SemanticCallTag.AttachesPackage);
 			for(const node of projectNodes(ast)) {

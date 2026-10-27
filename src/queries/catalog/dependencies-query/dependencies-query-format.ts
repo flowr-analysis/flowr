@@ -148,7 +148,7 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 		functions:        TestFunctions
 	},
 	'statistics': {
-		queryDisplayName: 'Statistical Tests',
+		queryDisplayName: 'Statistics',
 		functions:        statisticsFunctions(env.builtInIndex)
 	}
 });

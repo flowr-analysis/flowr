@@ -88,7 +88,9 @@ jobs:
         uses: actions/download-artifact@v6
         continue-on-error: true
         with:
-          name: test-label-details
+          # QA uploads the mutation suite's details apart from the others, the release run all of them in one
+          pattern: test-label-details*
+          merge-multiple: true
           path: coverage/
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.RELEASE_TOKEN }}

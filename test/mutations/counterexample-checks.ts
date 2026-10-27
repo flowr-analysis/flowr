@@ -102,7 +102,7 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 			describe(pass.name, () => {
 				for(const { target, mutant, error } of ofPass) {
 					exercised.registered++;
-					test(target.name, async({ skip }) => {
+					test(label(`${target.name} [${pass.name}]`, target.capabilities, ['slice', 'output']), async({ skip }) => {
 						await skipWithoutRPackages(target.code, skip);
 						assert.isUndefined(error, `the pass fails on:\n${target.code}`);
 						const checked = mutant as Counterexample;

@@ -346,7 +346,8 @@ export function getAllLinkedFunctionDefinitions(
 		let followTargets: [NodeId, boolean][] | undefined;
 		/* a list handed on as a whole (a loop, an apply) yields its entries, an access the entry it names */
 		const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
-		const returnedTo = DfgVertex.isFunctionCall(vertex) ? cid : call;
+		/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
+		const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? cid : call;
 		for(const [target, e] of dataflowGraph.edgesFrom(cid)) {
 			if(DfEdge.includesType(e, handedBack)) {
 				hasReturnEdge = true;

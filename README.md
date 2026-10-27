@@ -46,11 +46,15 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (15 ms)
+    Query: linter (6 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
-       ╰ File Path Validity (file-path-validity): no findings
+       ╰ File Path Validity (file-path-validity):
+           ╰ certain:
+               ╰ Path `/root/x.txt` at 1.1-23
        ╰ Seeded Randomness (seeded-randomness): no findings
-       ╰ Absolute Paths (absolute-file-paths): no findings
+       ╰ Absolute Paths (absolute-file-paths):
+           ╰ certain:
+               ╰ Path `/root/x.txt` at 1.1-23
        ╰ Unused Definitions (unused-definitions): no findings
        ╰ Network Functions (network-functions): no findings
        ╰ Dataframe Access Validation (dataframe-access-validation): no findings
@@ -66,7 +70,7 @@ It offers a wide variety of features, for example:
        ╰ Overwritten File (overwritten-file): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈15 ms (1ms accuracy, total 15 ms)
+    All queries together required ≈6 ms (1ms accuracy, total 6 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -80,7 +84,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (25 ms)\
+    Query: **linter** (12 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -104,7 +108,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Overwritten File** (overwritten-file): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈26 ms (1ms accuracy, total 26 ms)_
+    _All queries together required ≈12 ms (1ms accuracy, total 12 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -208,7 +212,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈8 ms (1ms accuracy, total 8 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
     ```
     
     </details>

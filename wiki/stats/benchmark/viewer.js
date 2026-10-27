@@ -1917,7 +1917,7 @@
 	}
 
 	/** the parts of a whole stacked as areas over the releases, so the parts and their whole both read as they grew */
-	function stackedOf(stack, series, runs, at, onPick) {
+	function stackedOf(stack, series, runs, onPick) {
 		const w = 300, h = 46, padX = 4, padT = 4, padB = 11;
 		const all = stack.parts;
 		const known = runs.map((run, i) => all.map(p => {
@@ -1943,7 +1943,6 @@
 		const span = Math.max(1, last - first);
 		const x = i => padX + (last === first ? (w - 2 * padX) / 2 : (i - first) / span * (w - 2 * padX));
 		const y = v => h - padB - v / hi * (h - padT - padB);
-		const shown = Math.min(Math.max(at, first), last);
 		const box = dom('div', { className: 'composition stack' });
 		box.appendChild(dom('div', { className: 'tags-head' }, dom('span', { className: 'tags-title', textContent: stack.title })));
 		const svg = tag('svg', { viewBox: '0 0 ' + w + ' ' + h, role: 'img', class: 'pickable', 'aria-label': stack.title });
@@ -1957,7 +1956,6 @@
 				svg.appendChild(tag('path', { class: 'timeline-line ' + p.cls, d: S.smoothPath(upper) }));
 			}
 		});
-		svg.appendChild(tag('circle', { class: 'timeline-dot ' + parts[0].cls, cx: x(shown), cy: y(totals[shown]), r: 2.2 }));
 		svg.appendChild(tag('text', { class: 'timeline-tick', x: x(first), y: h - 3 }, S.runLabel(runs[first])));
 		if(first !== last) {
 			svg.appendChild(tag('text', { class: 'timeline-tick', x: x(last), y: h - 3, 'text-anchor': 'end' }, S.runLabel(runs[last])));
@@ -1978,10 +1976,7 @@
 			onPick(undefined);
 			ui.tooltip.hidden = true;
 		});
-		const list = dom('ul');
-		parts.forEach((p, k) => list.appendChild(dom('li', {}, dom('span', { className: 'swatch ' + p.cls }),
-			p.label + ': ' + (rows[shown][k] === null ? 'n/a' : fmtFact(rows[shown][k], '#')))));
-		box.append(svg, list);
+		box.append(svg);
 		return box;
 	}
 
@@ -2132,7 +2127,7 @@
 		if(timeline) {
 			box.appendChild(timeline);
 		}
-		const stack = spec.stack ? stackedOf(STACKS[spec.stack], series, runs, at, i => swap(() => factsOf(group, series, runs, i))) : null;
+		const stack = spec.stack ? stackedOf(STACKS[spec.stack], series, runs, i => swap(() => factsOf(group, series, runs, i))) : null;
 		if(stack) {
 			box.appendChild(stack);
 		}

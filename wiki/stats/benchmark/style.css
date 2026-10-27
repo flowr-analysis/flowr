@@ -1204,12 +1204,6 @@ footer { margin-top: 1.5rem; }
 	margin: .3rem 0;
 }
 
-.composition.stack ul {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0 1rem;
-}
-
 /* the parts of a stacked chart, filled stronger than a single sparkline so the layers tell apart */
 .stack-area {
 	fill: var(--c);

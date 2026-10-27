@@ -1210,14 +1210,11 @@ footer { margin-top: 1.5rem; }
 	gap: 0 1rem;
 }
 
-/* the release under the pointer stands out, the others recede so the parts still read */
-.stack-bar {
+/* the parts of a stacked chart, filled stronger than a single sparkline so the layers tell apart */
+.stack-area {
 	fill: var(--c);
-	opacity: .55;
-}
-
-.stack-bar.on {
-	opacity: 1;
+	opacity: .35;
+	stroke: none;
 }
 
 .facts .composition {

@@ -1513,7 +1513,7 @@
 		/* a test may cover several parts of the analysis */
 		tests: [{
 			title:  'Labeled tests per part', parent: 'tests overall', part: /^tests \((.*)\)$/, label: t => t,
-			more:   'parts', note: 'labeled tests per part as of ', top: 7,
+			more:   'parts', note: 'labeled tests per part as of ',
 			link:   { href: 'https://github.com/flowr-analysis/flowr/wiki/Capabilities', text: 'capabilities' }
 		}]
 	};
@@ -1781,7 +1781,7 @@
 				{
 					title: 'Tests',
 					lead:  [['tests overall', 'tests in total'], ['tests', 'of them labeled', true]],
-					rest:  [['mutation tests', 'tests run by the counterexample suite']],
+					rest:  [],
 					splits: [],
 					stack: 'tests',
 					track: null
@@ -1794,7 +1794,7 @@
 						/* the suite no longer records it, so only a run that still carries the number states it */
 						['mutation known-wrong mutants', 'still sliced wrongly']
 					],
-					rest:   [['mutation tests', 'tests run by the suite']],
+					rest:   [],
 					splits: [],
 					stack:  'mutations',
 					track:  null,
@@ -1808,25 +1808,26 @@
 	const minus = (a, b) => a === null || b === null ? null : Math.max(0, a - b);
 
 	/**
-	 * The views that stack what a release carries into one bar per release. `of` reads the value of a series
-	 * at that release, `extra` what the release wrote next to it. A part with a `cls` keeps that color,
-	 * every other takes the colour of the series named by `color`.
+	 * The views that stack what a release carries over the releases. `of` reads the value of a series at that
+	 * release, `extra` what the release wrote next to it. The parts take the palette in order, `s0` being the
+	 * first color every tile leads with, and the muted `ssum` stands for the rest of a whole.
 	 */
 	const STACKS = {
 		tests: {
 			title: 'Tests per release',
 			parts: [
-				{ label: 'labeled', color: 'tests', of: v => v('tests') },
+				{ label: 'labeled', cls: 's0', of: v => v('tests') },
 				{ label: 'not labeled', cls: 'ssum', of: v => minus(v('tests overall'), v('tests')) },
-				{ label: 'counterexample suite', color: 'mutation tests', of: v => v('mutation tests') }
+				{ label: 'counterexample suite', cls: 's1', of: v => v('mutation tests') }
 			]
 		},
 		mutations: {
 			title: 'Mutants per release',
 			parts: [
-				{ label: 'sliced', color: 'mutation mutants', of: v => minus(v('mutation mutants'), v('mutation known-wrong mutants') ?? 0) },
-				{ label: 'still sliced wrongly', color: 'mutation known-wrong mutants', of: v => v('mutation known-wrong mutants') },
-				{ label: 'possible, not sliced', cls: 'ssum', of: (v, x) => minus(S.possibleOf(x('mutation mutants')), v('mutation mutants')) }
+				{ label: 'sliced', cls: 's0', of: v => minus(v('mutation mutants'), v('mutation known-wrong mutants') ?? 0) },
+				{ label: 'still sliced wrongly', cls: 's1', of: v => v('mutation known-wrong mutants') },
+				/* a pass that has nothing to rewrite in a program makes no mutant of it */
+				{ label: 'pass did not apply', cls: 'ssum', of: (v, x) => minus(S.possibleOf(x('mutation mutants')), v('mutation mutants')) }
 			]
 		}
 	};
@@ -1915,10 +1916,10 @@
 		return box;
 	}
 
-	/** one stacked bar per release, so the parts and their whole both read as they grew */
+	/** the parts of a whole stacked as areas over the releases, so the parts and their whole both read as they grew */
 	function stackedOf(stack, series, runs, at, onPick) {
-		const w = 300, h = 64, padX = 4, padT = 4, padB = 11;
-		const all = distinctParts(stack.parts.map(p => ({ ...p, color: series.find(s => s.name === p.color)?.color ?? 0 })));
+		const w = 300, h = 46, padX = 4, padT = 4, padB = 11;
+		const all = stack.parts;
 		const known = runs.map((run, i) => all.map(p => {
 			const v = p.of(name => valueAt(series, name, i), name => extraOf(run, name));
 			return typeof v === 'number' ? v : null;
@@ -1927,39 +1928,44 @@
 		const keep = all.map((_, k) => known.some(r => r[k] !== null));
 		const parts = all.filter((_, k) => keep[k]);
 		const rows = known.map(r => r.filter((_, k) => keep[k]));
-		const totals = rows.map(r => r.reduce((a, v) => a + (v ?? 0), 0));
+		const tops = rows.map(r => {
+			let sum = 0;
+			return r.map(v => sum += v ?? 0);
+		});
+		const totals = tops.map(t => t.length ? t[t.length - 1] : 0);
 		const hi = Math.max(...totals, 0);
 		if(hi === 0) {
 			return null;
 		}
-		const slot = (w - 2 * padX) / runs.length;
-		const y = v => v / hi * (h - padT - padB);
+		/* the chart spans the releases that recorded the parts, so the pointer never lands on one without data */
+		const first = totals.findIndex(t => t > 0);
+		const last = totals.length - 1 - [...totals].reverse().findIndex(t => t > 0);
+		const span = Math.max(1, last - first);
+		const x = i => padX + (last === first ? (w - 2 * padX) / 2 : (i - first) / span * (w - 2 * padX));
+		const y = v => h - padB - v / hi * (h - padT - padB);
+		const shown = Math.min(Math.max(at, first), last);
 		const box = dom('div', { className: 'composition stack' });
 		box.appendChild(dom('div', { className: 'tags-head' }, dom('span', { className: 'tags-title', textContent: stack.title })));
 		const svg = tag('svg', { viewBox: '0 0 ' + w + ' ' + h, role: 'img', class: 'pickable', 'aria-label': stack.title });
 		svg.appendChild(tag('line', { class: 'timeline-base', x1: padX, y1: h - padB, x2: w - padX, y2: h - padB }));
-		rows.forEach((row, i) => {
-			let base = h - padB;
-			row.forEach((v, k) => {
-				if(v > 0) {
-					svg.appendChild(tag('rect', {
-						class: 'stack-bar ' + parts[k].cls + (i === at ? ' on' : ''),
-						x: padX + i * slot + slot * 0.15, width: Math.max(0.6, slot * 0.7), y: base - y(v), height: y(v)
-					}));
-					base -= y(v);
-				}
-			});
+		const recorded = S.segments(totals.map(t => t > 0 ? t : null));
+		parts.forEach((p, k) => {
+			for(const seg of recorded) {
+				const upper = seg.map(i => [x(i), y(tops[i][k])]);
+				const lower = seg.map(i => [x(i), y(k > 0 ? tops[i][k - 1] : 0)]).reverse();
+				svg.appendChild(tag('path', { class: 'stack-area ' + p.cls, d: S.smoothPath(upper) + S.smoothPath(lower).replace(/^M/, 'L') + 'Z' }));
+				svg.appendChild(tag('path', { class: 'timeline-line ' + p.cls, d: S.smoothPath(upper) }));
+			}
 		});
-		const first = totals.findIndex(t => t > 0);
-		svg.appendChild(tag('text', { class: 'timeline-tick', x: padX + first * slot, y: h - 3 }, S.runLabel(runs[first])));
-		if(first !== runs.length - 1) {
-			svg.appendChild(tag('text', { class: 'timeline-tick', x: w - padX, y: h - 3, 'text-anchor': 'end' },
-				S.runLabel(runs[runs.length - 1])));
+		svg.appendChild(tag('circle', { class: 'timeline-dot ' + parts[0].cls, cx: x(shown), cy: y(totals[shown]), r: 2.2 }));
+		svg.appendChild(tag('text', { class: 'timeline-tick', x: x(first), y: h - 3 }, S.runLabel(runs[first])));
+		if(first !== last) {
+			svg.appendChild(tag('text', { class: 'timeline-tick', x: x(last), y: h - 3, 'text-anchor': 'end' }, S.runLabel(runs[last])));
 		}
 		svg.addEventListener('pointermove', ev => {
 			const rect = svg.getBoundingClientRect();
 			const px = (ev.clientX - rect.left) / (rect.width || 1) * w;
-			const i = Math.max(0, Math.min(runs.length - 1, Math.floor((px - padX) / slot)));
+			const i = Math.max(first, Math.min(last, first + Math.round((px - padX) / (w - 2 * padX) * span)));
 			onPick(i);
 			const t = ui.tooltip;
 			t.textContent = '';
@@ -1972,11 +1978,10 @@
 			onPick(undefined);
 			ui.tooltip.hidden = true;
 		});
-		box.appendChild(svg);
 		const list = dom('ul');
 		parts.forEach((p, k) => list.appendChild(dom('li', {}, dom('span', { className: 'swatch ' + p.cls }),
-			p.label + ': ' + (rows[at][k] === null ? 'n/a' : fmtFact(rows[at][k], '#')))));
-		box.append(list, dom('p', { className: 'note', textContent: 'as of ' + S.runLabel(runs[at]) + ', ' + fmtDate(runs[at].date) }));
+			p.label + ': ' + (rows[shown][k] === null ? 'n/a' : fmtFact(rows[shown][k], '#')))));
+		box.append(svg, list);
 		return box;
 	}
 

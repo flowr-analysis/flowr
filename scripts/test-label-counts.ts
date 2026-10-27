@@ -25,6 +25,8 @@ interface MutationDetails {
 	readonly passes?:          number;
 	readonly counterexamples?: number;
 	readonly mutants?:         number;
+	/** the passes of each category of rewrites */
+	readonly categories?:      Readonly<Record<string, readonly string[]>>;
 }
 
 const argv = process.argv.slice(2);
@@ -77,11 +79,12 @@ function mutationEntries(path: string | undefined, resultsPath: string | undefin
 	}
 	const possible = typeof facts.passes === 'number' && typeof facts.counterexamples === 'number'
 		? facts.passes * facts.counterexamples : undefined;
-	const entries = ([
+	const entries: GraphEntry[] = ([
 		['mutation mutants', facts.mutants, possible === undefined ? undefined : `out of ${possible} possible`],
 		['mutation passes', facts.passes, undefined]
 	] as const).flatMap(([name, value, extra]) =>
 		typeof value === 'number' && value >= 0 ? [{ name, unit: '#', value, ...(extra ? { extra } : {}) }] : []);
+	entries.push(...Object.entries(facts.categories ?? {}).map(([category, passes]) => ({ name: `mutation passes (${category})`, unit: '#', value: passes.length, extra: passes.join(', ') })));
 	return testsEntry ? [...entries, testsEntry] : entries;
 }
 

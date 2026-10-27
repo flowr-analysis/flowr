@@ -6,7 +6,7 @@ import { decorateLabelContext, label } from '../functionality/_helper/label';
 import type { RShell } from '../../src/r-bridge/shell';
 import { Counterexamples, type Counterexample } from './counterexample-corpus';
 import type { MutationPass, ReplObservation } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate, observeQueries, observeRepl, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
+import { MutationCategory, MutationPasses, mutate, observeQueries, observeRepl, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 
 const generatedMutants = new Set<string>();
@@ -138,7 +138,8 @@ describe('Counterexamples against R semantics', { concurrent: false }, withShell
 				groups:          knownGroups.size,
 				counterexamples: knownTargets.size,
 				capabilities:    knownCapabilities.size,
-				mutants:         generatedMutants.size
+				mutants:         generatedMutants.size,
+				categories:      Object.fromEntries(Object.values(MutationCategory).map(c => [c, MutationPasses.filter(p => p.category === c).map(p => p.name)]))
 			}));
 		});
 	});

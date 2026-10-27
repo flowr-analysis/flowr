@@ -1510,6 +1510,11 @@
 			title:  'What a base-R entry carries', parent: 'signature database base functions', part: /^signature database base functions \((.*)\)$/, label: t => t,
 			more:   'kinds of information', note: 'what a base-R entry carries as of '
 		}],
+		/* every pass belongs to one category, which names its passes */
+		mutations: [{
+			title:  'Passes per category', parent: 'mutation passes', part: /^mutation passes \((.*)\)$/, label: t => t,
+			more:   'categories', note: 'passes per category as of '
+		}],
 		/* a test may cover several parts of the analysis */
 		tests: [{
 			title:  'Labeled tests per part', parent: 'tests overall', part: /^tests \((.*)\)$/, label: t => t,
@@ -1660,15 +1665,17 @@
 	}
 
 	/** the breakdown the tile is showing, which is one of them */
-	function barsOf(group, series, runs, at, lead) {
-		const specs = BARS[group.id];
+	function barsOf(group, series, runs, at, lead, of = group.id) {
+		const specs = BARS[of];
 		if(!specs) {
 			return null;
 		}
 		const pick = Math.min(barsPick.get(group.id) ?? 0, specs.length - 1);
-		return barOf(group, specs[pick], openKey(group, pick), series, runs, at, lead, specs, pick)
+		/* a view of the tile with breakdowns of its own keeps their state apart from the tile's */
+		const keyOf = i => of === group.id ? openKey(group, i) : group.id + '~' + of + '~' + i;
+		return barOf(group, specs[pick], keyOf(pick), series, runs, at, lead, specs, pick)
 			/* the chosen one states nothing for this run, so the first that does is shown instead */
-			?? specs.map((spec, i) => i === pick ? null : barOf(group, spec, openKey(group, i), series, runs, at, lead, specs, i))
+			?? specs.map((spec, i) => i === pick ? null : barOf(group, spec, keyOf(i), series, runs, at, lead, specs, i))
 				.find(Boolean) ?? null;
 	}
 
@@ -1798,7 +1805,7 @@
 					splits: [],
 					stack:  'mutations',
 					track:  null,
-					noBars: true
+					bars:   'mutations'
 				}
 			]
 		}
@@ -1808,8 +1815,8 @@
 	const minus = (a, b) => a === null || b === null ? null : Math.max(0, a - b);
 
 	/**
-	 * The views that stack what a release carries over the releases. `of` reads the value of a series at that
-	 * release, `extra` what the release wrote next to it. The parts take the palette in order, `s0` being the
+	 * The views that stack what a release carries over the releases, `parts` fixed or derived from the series there are.
+	 * `of` reads the value of a series at that release, `extra` what the release wrote next to it. The parts take the palette in order, `s0` being the
 	 * first color every tile leads with, and the muted `ssum` stands for the rest of a whole.
 	 */
 	const STACKS = {
@@ -1821,14 +1828,19 @@
 				{ label: 'counterexample suite', cls: 's1', of: v => v('mutation tests') }
 			]
 		},
+		/* the passes of each category of rewrites, and for a release that recorded none the passes as a whole */
 		mutations: {
-			title: 'Mutants per release',
-			parts: [
-				{ label: 'sliced', cls: 's0', of: v => minus(v('mutation mutants'), v('mutation known-wrong mutants') ?? 0) },
-				{ label: 'still sliced wrongly', cls: 's1', of: v => v('mutation known-wrong mutants') },
-				/* a pass that has nothing to rewrite in a program makes no mutant of it */
-				{ label: 'pass did not apply', cls: 'ssum', of: (v, x) => minus(S.possibleOf(x('mutation mutants')), v('mutation mutants')) }
-			]
+			title: 'Rewrites per release',
+			parts: series => {
+				const categories = series.map(s => /^mutation passes \((.*)\)$/.exec(s.name)?.[1]).filter(c => c !== undefined);
+				return [
+					...categories.map((category, k) => ({ label: category, cls: 's' + k, of: v => v(`mutation passes (${category})`) })),
+					{ label: 'passes, by category from later releases on', cls: 'ssum', of: v => {
+						const known = categories.map(c => v(`mutation passes (${c})`));
+						return known.some(k => k !== null) ? null : v('mutation passes');
+					} }
+				];
+			}
 		}
 	};
 
@@ -1919,7 +1931,7 @@
 	/** the parts of a whole stacked as areas over the releases, so the parts and their whole both read as they grew */
 	function stackedOf(stack, series, runs, onPick) {
 		const w = 300, h = 46, padX = 4, padT = 4, padB = 11;
-		const all = stack.parts;
+		const all = typeof stack.parts === 'function' ? stack.parts(series) : stack.parts;
 		const known = runs.map((run, i) => all.map(p => {
 			const v = p.of(name => valueAt(series, name, i), name => extraOf(run, name));
 			return typeof v === 'number' ? v : null;
@@ -2143,7 +2155,7 @@
 		if(splits.children.length) {
 			box.appendChild(splits);
 		}
-		const bars = spec.noBars ? null : barsOf(group, series, runs, at, leadColor);
+		const bars = barsOf(group, series, runs, at, leadColor, spec.bars);
 		if(bars) {
 			box.appendChild(bars);
 		}

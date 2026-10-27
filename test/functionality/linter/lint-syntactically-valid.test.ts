@@ -112,7 +112,6 @@ describe('flowR linter', withTreeSitter(parser => {
 		);
 
 		// an unfinished pipe must not complete to `%%`, which parses but silently means modulo
-		/* @ignore-in-wiki */
 		assertLinter('completes an unfinished pipe', parser, 'a %> b',
 			'syntactically-valid',
 			[{
@@ -184,7 +183,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('stray closers spanning lines', parser, 'c(1,2))\n]',
 			'syntactically-valid',
 			[{
@@ -210,7 +208,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('a leading `>=` is not a prompt', parser, '>= 3',
 			'syntactically-valid',
 			[{
@@ -242,14 +239,12 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 2, fixable: 2 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('an indexing line is not console output', parser, 'x[1] <- 2',
 			'syntactically-valid',
 			[],
 			{ parser: 'tree-sitter', errors: 0, fixable: 0 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('unterminated string', parser, 'x <- "abc',
 			'syntactically-valid',
 			[{

@@ -64,7 +64,6 @@ print(x)`,
 				/* same, with a braced dispatcher body */
 				'setGeneric("bar", function(obj) { standardGeneric("bar") })'
 			]) {
-				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
 			}
 			/* a package export (via NAMESPACE) is the public API and must not be reported even without a local caller */
@@ -109,7 +108,6 @@ print(x)`,
 
 print(f()())`, '4@x', undefined]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
-				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
 					const ids = SlicingCriterion.decodeAll(criteria.split(';') as SlicingCriteria, ast.idMap);
 					return ids.map(({ id }) => {

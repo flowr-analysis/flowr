@@ -1,5 +1,5 @@
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
-import { type Lift, type ValueInterval, type ValueNumber, isBottom, isTop } from '../r-value';
+import { type Lift, type Value, type ValueInterval, type ValueNumber, isBottom, isTop, isValue } from '../r-value';
 import { getScalarFromInteger, liftScalar } from '../scalar/scalar-constants';
 
 
@@ -39,4 +39,15 @@ export function intervalFromValues(start: Lift<ValueNumber>, end = start, startI
 		startInclusive,
 		endInclusive,
 	};
+}
+
+/** The one number `value` stands for, a number or an interval holding just it, `undefined` if it may be several or none. */
+export function soleNumberOf(value: Lift<Value>): number | undefined {
+	if(!isValue(value)) {
+		return undefined;
+	} else if(value.type === 'number') {
+		return isValue(value.value) ? value.value.num : undefined;
+	}
+	return value.type === 'interval' && value.startInclusive && value.endInclusive && isValue(value.start.value) && isValue(value.end.value)
+		&& value.start.value.num === value.end.value.num ? value.start.value.num : undefined;
 }

@@ -16,14 +16,16 @@ import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../.
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { DfgVertex, VertexType } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
-import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
+import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet, type ValueVector } from '../values/r-value';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { soleNumberOf } from '../values/intervals/interval-constants';
 import { setFrom, setOf } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
-import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
 import { NodeValue } from './node-value';
@@ -387,8 +389,23 @@ onReplacementOperator((args: ReplacementOperatorHandlerArgs) => {
 	}
 });
 
-function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {
-	return RNode.iterateParents(node, ast).some(RLoopConstructs.is);
+/**
+ * The elements `x[[i]]` may be: the one at a known position, any of them where the position is not known (a counter
+ * of a loop, say), `undefined` where `x` is not known element by element. The access hands back a part of `x`, so its
+ * `Returns` edge to `x` says nothing about its value.
+ */
+function accessedElements(node: RNodeWithParent | undefined, info: ResolveInfo): Value[] | undefined {
+	if(!RAccess.is(node) || node.operator !== '[[' || node.access.length !== 1 || node.access[0] === EmptyArgument) {
+		return undefined;
+	}
+	const vectors = valueSetGuard(resolveIdToValue(node.accessed.info.id, info))?.elements ?? [];
+	if(vectors.length === 0 || !vectors.every(v => v.type === 'vector' && isValue(v.elements) && v.elements.length > 0)) {
+		return undefined;
+	}
+	const positions = valueSetGuard(resolveIdToValue(node.access[0].info.id, info))?.elements
+		.map(soleNumberOf);
+	const known = positions !== undefined && positions.length > 0 && positions.every(p => p !== undefined && Number.isInteger(p)) ? positions as number[] : undefined;
+	return (vectors as ValueVector<Value[]>[]).flatMap(v => known === undefined ? v.elements : known.flatMap(p => v.elements[p - 1] === undefined ? [] : [v.elements[p - 1]]));
 }
 
 function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): 'applies' | 'overridden' | 'unknown' {
@@ -464,13 +481,10 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		return isTop(value) ? Top : setOf(iteratedElements(value));
 	}
 
-	const start = id;
 	const queue = new VisitingQueue(10);
 	const clean = ctx.env.makeCleanEnv();
 	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
 	queue.add(id, clean, cleanFingerprint, false);
-
-	let forceTop = false;
 
 	const resultIds: NodeId[] = [];
 	/* what a call the walk ended in folds to, see below */
@@ -481,25 +495,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		if(!vertex) {
 			continue;
 		}
-		const cds = vertex.cds;
-		/* a read in a loop sees the same value every round unless a definition in the loop reaches it, which the walk meets */
-		const loopedRead = id === start && DfgVertex.isUse(vertex);
-		for(const cd of loopedRead ? [] : cds ?? []) {
-			const target = graph.idMap?.get(cd.id);
-			if(target === undefined) {
-				continue;
-			}
-			if(RLoopConstructs.is(target)) {
-				forceTop = true;
-				break;
-			}
-		}
-		if(!forceTop && !loopedRead && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
-			forceTop = true;
-		}
-		if(forceTop) {
-			break;
-		}
+		/* a definition in a loop holds what any round gives it, which is what the walk collects: one depending on an
+		 * earlier round reaches itself again and is blocked, so it stays unknown */
 		const t = vertex.tag;
 		/* a replacement (`df[1] <- v`) defines its target from just a part of it, so what it is defined by is not
 		 * the value of the target */
@@ -512,6 +509,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 
 		const isFn = t === VertexType.FunctionCall;
+		const elements = isFn ? accessedElements(idMap.get(id), { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked: new Set(blocked), callContext }) : undefined;
+		if(elements !== undefined) {
+			folded.push(...elements);
+			continue;
+		}
 		const outgoingEdges = graph.edgesFrom(id);
 		if(isFn && callsBuiltInAndDefinition(outgoingEdges)) {
 			/* `if(u) toupper <- function(x) "z"`: the call may run the built-in just as well as the definition,
@@ -555,7 +557,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 	}
 
-	if(forceTop || (resultIds.length === 0 && folded.length === 0)) {
+	if(resultIds.length === 0 && folded.length === 0) {
 		return Top;
 	}
 

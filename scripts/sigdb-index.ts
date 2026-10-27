@@ -4,6 +4,7 @@
  * signature browser never disagree about what flowR knows.
  */
 import zlib from 'zlib';
+import { ExportFlag, PropFlags } from './sigdb-page/export-flags';
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
@@ -117,21 +118,6 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 	if(db === undefined) {
 		return undefined;
 	}
-	const letters: Record<string, string> = {
-		'can-throw':         't',
-		's3-method':         '3',
-		'non-deterministic': 'n',
-		'calls-deprecated':  'd',
-		'recursive':         'r',
-		'calls-internal':    'i',
-		's3-owner':          'o',
-		's4-owner':          '4',
-		's4-method':         'm',
-		'value':             'c',
-		'higher-order':      'h',
-		'deprecated':        'x',
-		'no-doc':            'u'
-	};
 	const onCran = await currentOnCran();
 	const all: PackageEntry[] = [];
 	/* the names something dispatches on, so `is.datacggm` is not read as a method of `is`, which dispatches
@@ -162,7 +148,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 					generics.add(fn.name);
 				}
 				exports.set(fn.name, {
-					flags:  fn.props.map(p => letters[p] ?? '').join('') + (noLocation ? 'v' : ''),
+					flags:  fn.props.map(p => PropFlags[p] ?? '').join('') + (noLocation ? ExportFlag.NoLocation : ''),
 					params: fn.signature.length,
 					topic:  fn.topic !== fn.name ? fn.topic : undefined,
 					file:   fn.file !== undefined ? files.get(fn.file) : undefined,
@@ -173,7 +159,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		for(const exported of library.exported) {
 			if(!exports.has(exported)) {
 				/* exported, but the database holds no entry for it at all, so there is no location either */
-				exports.set(exported, { flags: 'v', params: 0 });
+				exports.set(exported, { flags: ExportFlag.NoLocation, params: 0 });
 			}
 		}
 		const releases = db.releaseDates(name);

@@ -138,6 +138,25 @@ print(f()())`, '4@x', undefined]
 		});
 
 		describe('a definition nested inside a larger expression', () => {
+			for(const value of ['runif(1)', '(runif(1))', '{ runif(1) }']) {
+				assertLinter(`a draw in ${value} keeps its effect on the seed`, parser, `u <- ${value}\nprint(1)`, 'unused-definitions',
+					[{ certainty: LintingResultCertainty.Uncertain, variableName: 'u', loc: [1, 1, 1, 1], quickFix: undefined }]);
+			}
+			assertLinter('a closure made in local reads the scope of local', parser, 'local({\nk <- 10\nfs <- list(a = function(x) x + k)\nr <- sapply(fs, function(f) f(2))\nprint(r)\n})', 'unused-definitions', []);
+			assertLinter('a closure made and called through do.call is used', parser, 'adder <- function(n) function(x) x + n\nadd2 <- do.call(adder, list(2))\nr <- do.call(add2, list(5))\nprint(r)', 'unused-definitions', []);
+			assertLinter('do.call is as pure as what it calls', parser, 'df2 <- do.call(setNames, list(1, "A"))\nprint(1)', 'unused-definitions',
+				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'df2', loc: [1, 1, 1, 3], quickFix: [{ type: 'remove', loc: [1, 1, 1, 38], description: 'Remove unused definition of `df2`' }] }]);
+			assertLinter('do.call of a draw keeps its effect on the seed', parser, 'u <- do.call(runif, list(1))\nprint(1)', 'unused-definitions',
+				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'u', loc: [1, 1, 1, 1], quickFix: undefined }]);
+			assertLinter('assign is removed as the assignment it is', parser,
+				'assign("k", 5)\nk <- 9\nprint(k)',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'k',
+					loc:          [1, 8, 1, 10],
+					quickFix:     [{ type: 'remove', loc: [1, 1, 1, 14], description: 'Remove unused definition of `k`' }]
+				}]);
 			assertLinter('assignment nested in a call argument keeps its value', parser,
 				'`my var` <- 1\n`my var` + 1\nprint(x <- get("my var"))',
 				'unused-definitions',

@@ -203,17 +203,17 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	if(!DfgVertex.isFunctionCall(vertex)) {
 		return false;
 	}
-	/* what a call that binds the very name in question does to that name is not what keeps it alive, and a call running
-	   functions it is handed (`do.call(f, args)`) is as pure as they are, which are checked on their own as a part of the value */
+	/* two properties do not count: the `Scope` effect of the assignment being removed, which is the binding itself, and
+	   the `MayPure` of `do.call(f, args)` with a known `f`, as `f` is checked on its own as part of the value */
 	const ignored = (id === binds ? CallProp.Scope : 0) | (runsOnlyKnownFunctions(vertex, df) ? CallProp.MayPure : 0);
 	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), { props: ImpureProps.props & ~ignored, tags: ImpureProps.tags });
 }
 
-/** whether the functions a call runs on its own behalf, as `do.call(f, args)` turns the name `f` into a call, are all known */
+/** whether the functions handed to a call like `do.call(f, args)` are all known, see {@link Dataflow.callsOnlyKnownFunctions} */
 function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): boolean {
 	const handed = vertex.args.map(FunctionArgument.getReference)
 		.filter(r => r !== undefined && RSymbol.is(graph.idMap?.get(r)) && DfgVertex.isFunctionCall(graph.getVertex(r))) as NodeId[];
-	return handed.length > 0 && handed.every(h => Dataflow.callTargetsOf(h, graph, environment).every(t => NodeId.isBuiltIn(t) || DfgVertex.isFunctionDefinition(graph.getVertex(t))));
+	return handed.length > 0 && handed.every(h => Dataflow.callsOnlyKnownFunctions(h, graph, environment));
 }
 
 function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst, dfg: DataflowGraph): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
@@ -222,7 +222,7 @@ function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst, d
 		return parent.lhs.info.id === node.info.id ? { statement: parent, value: parent.rhs }
 			: parent.rhs.info.id === node.info.id ? { statement: parent, value: parent.lhs } : undefined;
 	}
-	/* a call assigning as `<-` does, like `assign("x", 1)`, names its target in an argument and its value in another */
+	/* `assign("x", 1)` assigns like `x <- 1`: the first argument names the target, the second is the value */
 	const call = RArgument.is(parent) ? RNode.directParent(parent, ast.idMap) : undefined;
 	const definition = dfg.getVertex(node.info.id);
 	const value = DfgVertex.isVariableDefinition(definition) && definition.source?.length === 1 ? ast.idMap.get(definition.source[0]) : undefined;
@@ -256,7 +256,7 @@ function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAs
 /** Whether the definition's value has obligations, like side effects, so the definition cannot be removed. */
 function hasImportantArgs(definedBys: readonly NodeId[], df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
 	const dfg = df.graph;
-	/* removing the value removes all it runs, `runif` in `(runif(1))` as well, but not the body of a function it defines */
+	/* removing `u <- (runif(1))` removes the `runif` call too, which changes the random seed; calls in a function body defined there do not run */
 	const values = definedBys.filter(d => d !== binds).map(d => dfg.idMap?.get(d)).filter(isNotUndefined);
 	const runs = RNode.collectAllIdsWithStop(values, RFunctionDefinition.is).union(new Set(definedBys));
 	return runs.values().some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, binds)

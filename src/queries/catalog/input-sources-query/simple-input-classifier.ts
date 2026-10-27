@@ -100,8 +100,8 @@ class InputClassifier {
 	private rebinding:        (readonly [NodeId, readonly (ConstantValue | undefined)[] | undefined])[] | undefined;
 
 	/**
-	 * `packages` are the packages attached in the analyzed program, `undefined` if that is not known (then everything may match),
-	 * and `environment` is where the program's calls resolve, to look up what a built-in does with its arguments
+	 * `packages` are the packages attached in the analyzed program, `undefined` if that is not known (then everything may match).
+	 * `environment` is the environment of the program, used to look up the signatures of built-ins.
 	 */
 	constructor(
 		private readonly dfg: DataflowGraph,
@@ -147,28 +147,13 @@ class InputClassifier {
 			const written = RString.is(parent) ? compactRecord({ ...sourceOf(ref, InputType.Constant), value: parent.content.str }) : this.classifyAt(parent.info.id);
 			return written && { ...written, id: ref };
 		} else if(DfgVertex.hasOrigin(call, BuiltInProcName.Apply) && DfgVertex.isFunctionCall(vtx)) {
-			/* the function handed to `do.call` and the like, rather than what calling it yields */
-			return this.callsOnlyKnownFunctions(vtx) ? sourceOf(ref, InputType.Constant) : this.classifyHeldFunction(vtx) ?? this.classifyAt(ref);
+			/* `f` in `do.call(f, args)` or `lapply(x, f)`: a constant if it names a known function */
+			return Dataflow.callsOnlyKnownFunctions(vtx.id, this.whole, this.environment) ? sourceOf(ref, InputType.Constant) : this.classifyHeldFunction(vtx) ?? this.classifyAt(ref);
 		}
 		return this.classifyAt(ref);
 	}
 
-	/**
-	 * Whether every function `call` may run is one the code defines, a built-in, or one a package exports under the
-	 * name written, as a name the program binds nowhere is; its arguments aside.
-	 */
-	private callsOnlyKnownFunctions(call: DataflowGraphVertexFunctionCall): boolean {
-		/* what the dataflow resolved the call to decides, else what the name it reads holds */
-		const calls = Dataflow.targetsOf(this.dfg, call.id, EdgeType.Calls);
-		if(calls.length > 0) {
-			return calls.every(t => NodeId.isBuiltIn(t) || DfgVertex.isFunctionDefinition(this.whole.getVertex(t)));
-		}
-		return [...this.dfg.edgesFrom(call.id)]
-			.filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads) && !DfEdge.includesType(e, EdgeType.Argument))
-			.every(([t]) => NodeId.isBuiltIn(t) || !this.functionDefinitionsAt(t).next().done);
-	}
-
-	/** what the variable a call is made through holds, `add2` in `add2 <- adder(2); add2(5)`, `undefined` if it reads none */
+	/** classifies the function a call goes through: for `add2 <- adder(2); add2(5)` the value of `add2`; `undefined` if the call reads no variable */
 	private classifyHeldFunction(call: DataflowGraphVertexFunctionCall): InputSource | undefined {
 		const held = (Dataflow.origin(this.dfg, call.id) ?? []).filter(o => o.type === OriginType.ReadVariableOrigin || o.type === OriginType.WriteVariableOrigin);
 		if(held.length === 0) {
@@ -343,7 +328,7 @@ class InputClassifier {
 				return this.classifyVariableDefinition(vertex);
 			case VertexType.Use:
 				return this.classifyVariable(vertex);
-			/* a function the program writes down is a value its text fixes, whatever its calls compute */
+			/* a function definition is a constant: its code is fixed, whatever it computes when called */
 			case VertexType.FunctionDefinition:
 				return this.classifyCdsAndReturn(vertex, sourceOf(vertex.id, InputType.Constant));
 		}
@@ -435,7 +420,7 @@ class InputClassifier {
 		return { via: this.aliasArgument(call), renamed: false };
 	}
 
-	/** the calls an apply makes: arguments whose vertex is a call, though their code is none, but the function it runs */
+	/** the calls an apply makes: in `do.call(f, list(x))` the argument `f` gets a call vertex for `f(x)`, although the code has no call there */
 	private appliedCalls(call: DataflowGraphVertexFunctionCall): NodeId[] {
 		return [...this.whole.edgesFrom(call.id)]
 			.filter(([t, e]) => DfEdge.includesType(e, EdgeType.Argument) && DfgVertex.isFunctionCall(this.whole.getVertex(t)) && !RFunctionCall.is(this.whole.idMap?.get(t)))
@@ -507,7 +492,7 @@ class InputClassifier {
 		if(passed) {
 			return this.classifyCdsAndReturn(call, handed?.renamed ? { ...passed, id: call.id } : passed);
 		}
-		/* `do.call(f, list(x))` yields what the call `f(x)` it makes does, and so does every other call applying a function */
+		/* `do.call(f, list(x))` returns what `f(x)` returns, and the same holds for `lapply` and the other applies */
 		const applied = DfgVertex.hasOrigin(call, BuiltInProcName.Apply) ? this.appliedCalls(call) : [];
 		if(applied.length > 0) {
 			const acc = new ClassificationAccumulator();
@@ -673,7 +658,7 @@ class InputClassifier {
 	/** classifies what a call of a variable (e.g. a shiny reactive `n()`) yields, by what that variable holds */
 	private classifyCallee(call: DataflowGraphVertexFunctionCall): InputSource | undefined {
 		for(const o of Dataflow.origin(this.dfg, call.id) ?? []) {
-			/* what calling a function the code defines yields is what its exits do, see classifyDefinitionResult */
+			/* the result of calling a function the code defines is classified by what the function returns, see classifyDefinitionResult */
 			if((o.type !== OriginType.ReadVariableOrigin && o.type !== OriginType.WriteVariableOrigin) || !this.functionDefinitionsAt(o.id).next().done) {
 				continue;
 			}
@@ -709,7 +694,7 @@ class InputClassifier {
 			} else if(o.type === OriginType.ReadVariableOrigin || o.type === OriginType.WriteVariableOrigin) {
 				this.classifyVariableOrigin(o.id, acc);
 			} else if(o.type === OriginType.BuiltInFunctionOrigin && o.id === vtx.id) {
-				/* the name of a built-in read as a value (`identity(sum)`) holds that function, which the program does not choose */
+				/* a built-in used as a value, like `sum` in `identity(sum)`, is a fixed function and so a constant */
 				acc.push(InputType.Constant);
 			} else if(o.type === OriginType.FunctionCallOrigin || o.type === OriginType.BuiltInFunctionOrigin) {
 				acc.merge(this.classifyAt(o.id));

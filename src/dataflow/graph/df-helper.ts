@@ -184,6 +184,16 @@ export const Dataflow = {
 		return getAllFunctionCallTargets(call, graph, environment);
 	},
 	/**
+	 * Whether every function the call may run is a built-in or one the program defines, so that what flowR knows
+	 * about those functions is all there is to know about the call. In `f <- function(x) x; do.call(f, list(1))` the
+	 * symbol `f` is called this way, while in `g <- get(name); g(1)` it is not known what `g` runs.
+	 * A call of a name the program binds nowhere runs what a package exports under that name, which counts as known.
+	 * @see {@link Dataflow.callTargetsOf} - for the targets themselves
+	 */
+	callsOnlyKnownFunctions(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): boolean {
+		return Dataflow.callTargetsOf(call, graph, environment).every(t => NodeId.isBuiltIn(t) || DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/**
 	 * The calls within the body of a function definition, id and vertex paired.
 	 * @see {@link Dataflow.calleeIdsOf} - for what a single call calls
 	 */

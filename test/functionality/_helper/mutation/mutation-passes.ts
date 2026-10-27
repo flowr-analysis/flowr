@@ -49,8 +49,6 @@ export interface MutationPass {
 	readonly keepsGraph?:  boolean;
 	/** the rewrite adds code of its own, about which the linter may say more, but never less */
 	readonly adds?:        boolean;
-	/** the rewrite moves the program into an argument of a call, which a slice keeps whole once it needs the call */
-	readonly wrapsInCall?: boolean;
 	/** the mutated program, or `undefined` if the pass does not apply */
 	apply(program: MutationProgram): Promise<MutationTarget | undefined> | MutationTarget | undefined;
 }
@@ -68,7 +66,6 @@ class RewritePass implements MutationPass {
 	readonly minRVersion?: string;
 	readonly keepsGraph?:  boolean;
 	readonly adds?:        boolean;
-	readonly wrapsInCall?: boolean;
 
 	constructor(spec: PassSpec, private readonly rewrite: Rewriter, private readonly lineByLine = true) {
 		Object.assign(this, spec);
@@ -346,8 +343,7 @@ const wholeProgramBlock = new RewritePass({
 const wholeProgramLocal = new RewritePass({
 	name:        'whole program in local',
 	category:    MutationCategory.Structure,
-	description: 'the whole program is wrapped in `local({ ... })`, where no statement but the last would print and none depends on the frame it runs in',
-	wrapsInCall: true
+	description: 'the whole program is wrapped in `local({ ... })`, where no statement but the last would print and none depends on the frame it runs in'
 }, (program, edit) => {
 	if(onlyLastPrints(program) && !program.seesTheFrame) {
 		edit.insertLines(1, 'local({').insertLines(program.lines.length + 1, '})');

@@ -83,6 +83,9 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 			a01: ['#search-path', '#search-path:dplyr'], a22: ['#search-path', '#search-path:ggplot2']
 		});
 		check('require', 'a01 <- function() require(dplyr)', { a01: ['#search-path', '#search-path:dplyr'] });
+		check('import::from attaches the imports', 'a01 <- function() import::from(dplyr, select)\na22 <- function() import::from(dplyr, select, .into = "tools")\na03 <- function() import::from(dplyr, select, .into = "")', {
+			a01: ['#search-path', '#search-path:imports'], a22: ['#search-path', '#search-path:tools'], a03: []
+		});
 		check('library with character.only', 'a01 <- function() { p <- "dplyr"; library(p, character.only = TRUE) }', { a01: ['#search-path', '#search-path:dplyr'] });
 		check('attach is named like its argument', 'df <- data.frame(x = 1)\na01 <- function() attach(df)\na22 <- function() attach(df, name = "data")', {
 			a01: ['#search-path', '#search-path:df'], a22: ['#search-path', '#search-path:data']

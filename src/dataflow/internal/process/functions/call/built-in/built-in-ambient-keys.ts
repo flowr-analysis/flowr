@@ -110,7 +110,8 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 	}
 }
 
-/** The pseudo variables a write to the given entries of `state` defines: the entries and what every write to the state adds to. */
-export function keyedWrites(state: KeyedState, keys: readonly string[]): string[] {
+/** The pseudo variables a write to the given entries of `state` defines: the entries and what every write to the state adds to. No entry has an empty name. */
+export function keyedWrites(state: KeyedState, given: readonly string[]): string[] {
+	const keys = given.filter(k => k !== '');
 	return keys.length === 0 ? [] : [...new Set([...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.allOf(state)])];
 }

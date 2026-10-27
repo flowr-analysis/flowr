@@ -579,6 +579,7 @@ const SetsEntry = (state: KeyedState, key: string) => ({ type: AmbientStateAcces
 /** `library(pkg)` and `library("pkg")` name the package, `library(pkg, character.only = TRUE)` looks the variable up */
 const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['package', 'help', 'pos', 'lib.loc', 'character.only'], 'package', { quoted: 'character.only' });
 const DetachSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' });
+const ImportSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['.from', '...', '.into', '.library', '.directory', '.all', '.except', '.chdir', '.character_only', '.S3'], '.into', { fallback: 'imports' });
 /** `attach(df)` is named `df`, `attach(df, name = "data")` is named `data` */
 const AttachSearchPath = { type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'parameter', signature: ['what', 'pos', 'name', 'warn.conflicts'], names: ['name', 'what'], quoted: true } } as const;
 
@@ -1191,7 +1192,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['loadNamespace', PkgName.Base])], processor: BuiltInProcName.Library, config: { namespaceOnly: true, characterOnly: true, props: CallProp.Scope, tags: [SemanticCallTag.LoadsPackage], sig: [['package', ArgProp.NoDefault], ['...', 0]] }, assumePrimitive: false },
 	/* they only look whether a package is installed, nothing is loaded */
 	{ type: 'function', names: [Identifier.from(['find.package', PkgName.Base]), ...Identifier.fromAll(PkgName.Utils, ['installed.packages', 'packageVersion', 'packageDescription'])], processor: BuiltInProcName.Default, config: { props: CallProp.Ambient, tags: [SemanticCallTag.ChecksPackage], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['from', PkgName.Import])], processor: BuiltInProcName.Library, config: { fromImports: true, props: CallProp.Scope | CallProp.Invisible, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }, assumePrimitive: false },
+	/* `import::from` attaches what it imports as `imports`, or the name `.into` gives, and `.into = ""` imports into the calling frame */
+	{ type: 'function', names: [Identifier.from(['from', PkgName.Import])], processor: BuiltInProcName.Library, config: { fromImports: true, ambient: ImportSearchPath, props: CallProp.Scope | CallProp.Invisible, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['use', PkgName.Box]), Identifier.from(['use', PkgName.Base])], processor: BuiltInProcName.Library, config: { boxUse: true, props: CallProp.Scope | CallProp.Invisible, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage], sig: [['package', ArgProp.NoDefault], ['include.only', ArgProp.NoDefault]] }, assumePrimitive: false },
 	{ type: 'function', names: ['<-', '='], processor: BuiltInProcName.Assignment, config: { canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['x', ArgProp.NoDefault], ['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from([':=', PkgName.DataTable])], processor: BuiltInProcName.Assignment, config: { props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true },

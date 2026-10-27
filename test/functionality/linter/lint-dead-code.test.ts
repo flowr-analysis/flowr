@@ -4,23 +4,28 @@ import { assertLinter, assertLinterWithIds } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 
+/** a branch without braces cannot just go, so the fix leaves the empty block a braced one would */
+function emptied(loc: [number, number, number, number]) {
+	return { type: 'replace', loc, replacement: '{}', description: 'Replace the unreachable code with an empty block' } as const;
+}
+
 describe('flowR linter', withTreeSitter(parser => {
 	describe('dead code', () => {
 
 		describe('simple', () => {
 			assertLinter('none', parser, 'x <- 1', 'dead-code', []);
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 17] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 17], quickFix: [emptied([1, 17, 1, 17])] }
 			]);
 			assertLinter('never', parser, 'if(FALSE) 1 else 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], quickFix: [emptied([1, 11, 1, 11])] }
 			]);
 			/*
 			 * The dataflow analysis already resolves a constant condition away, so the branch it drops is gone
 			 * from the control flow whether or not the dead code pass runs on top.
 			 */
 			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], quickFix: [emptied([1, 11, 1, 11])] }
 			], undefined, { simplificationPasses: DefaultCfgSimplificationOrder });
 		});
 
@@ -45,6 +50,11 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, loc: [2, 11, 2, 11], quickFix: [{ type: 'remove', loc: [2, 11, 2, 11], description: 'Remove the unreachable code' }] }
 			]);
 			assertLinter('try', parser, 'try(stop(1)); 2', 'dead-code', []);
+			assertLinter('a stop in an argument never forced stops nothing', parser, 'f <- function(a, b) a\nr <- f(1, stop("no"))\nprint(r)', 'dead-code', []);
+			assertLinter('a stop in an argument always forced stops what follows', parser, 'f <- function(a, b) b\nr <- f(1, stop("no"))\nprint(r)', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 1, 2, 1] },
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 1, 3, 8], quickFix: [{ type: 'remove', loc: [3, 1, 3, 8], description: 'Remove the unreachable code' }] }
+			]);
 			assertLinter('try complex', parser, 'f <- function() { try(stop(1)); 2 }; f(); stop(1); 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 52, 1, 52], quickFix: [{ type: 'remove', loc: [1, 52, 1, 52], description: 'Remove the unreachable code' }] }
 			]);
@@ -52,24 +62,24 @@ print(2)
 
 		describe('non-constant', () => {
 			assertLinter('always', parser, 'x <- TRUE; if(x) 1 else 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 25, 1, 25] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 25, 1, 25], quickFix: [emptied([1, 25, 1, 25])] }
 			]);
 			assertLinter('never', parser, 'x <- FALSE; if(x) 1 else 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 19, 1, 19] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 19, 1, 19], quickFix: [emptied([1, 19, 1, 19])] }
 			]);
 		});
 
 		describe('if-elif-else', () => {
 			assertLinterWithIds('TRUE FALSE', parser, 'if(TRUE) 1 else if (FALSE) 2 else 3', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 35], involvedId: ['1@[2]if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9'] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 35], involvedId: ['1@[2]if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9'], quickFix: [emptied([1, 17, 1, 35])] }
 			]);
 			assertLinterWithIds('FALSE FALSE', parser, 'if(FALSE) 1 else if (FALSE) 2 else 3', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 29, 1, 29], involvedId: ['1@2', '$5'] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'], quickFix: [emptied([1, 11, 1, 11])] },
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 29, 1, 29], involvedId: ['1@2', '$5'], quickFix: [emptied([1, 29, 1, 29])] }
 			]);
 			assertLinterWithIds('FALSE TRUE', parser, 'if(FALSE) 1 else if (TRUE) 2 else 3', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 35, 1, 35], involvedId: ['1@3', '$7'] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'], quickFix: [emptied([1, 11, 1, 11])] },
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 35, 1, 35], involvedId: ['1@3', '$7'], quickFix: [emptied([1, 35, 1, 35])] }
 			]);
 		});
 
@@ -80,7 +90,16 @@ print(2)
 			assertLinter('if_else constant', parser, 'if_else(TRUE, 1, 2)', 'dead-code', []);
 		});
 
+		describe('do.call hands the elements of a list on one by one', () => {
+			assertLinter('the value a list hands on decides a branch', parser, 'f <- function(x) { if(x > 0) return("pos"); "nonpos" }\nr <- do.call(f, list(3))', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 45, 1, 52], quickFix: [{ type: 'remove', loc: [1, 45, 1, 52], description: 'Remove the unreachable code' }] }
+			]);
+		});
+
 		describe('local opens an evaluation of its own', () => {
+			assertLinter('a constant condition inside local is resolved as anywhere else', parser, 'local({\n  x <- 1\n  y <- if(x > 2) "big" else "small"\n})', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 18, 3, 22], quickFix: [emptied([3, 18, 3, 22])] }
+			]);
 			assertLinter('return inside local only leaves local', parser, 'f <- function() {\n  local({ return(1) })\n  2\n}\nprint(f())', 'dead-code', []);
 			assertLinter('code after the return inside local is dead', parser, 'f <- function() {\n  local({ return(1); 3 })\n  2\n}', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [2, 22, 2, 22], quickFix: [{ type: 'remove', loc: [2, 22, 2, 22], description: 'Remove the unreachable code' }] }

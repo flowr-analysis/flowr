@@ -1,4 +1,3 @@
-import semver from 'semver/preload';
 import type { ParentInformation, RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RLoopConstructs, type RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { uniqueArray } from '../../../../src/util/collections/arrays';
@@ -17,7 +16,6 @@ import { RAccess } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-acc
 import { RArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RParameter } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../../src/util/r-base-packages';
 import type { SourceRange } from '../../../../src/util/range';
@@ -39,16 +37,14 @@ export enum MutationCategory {
 /** one rewrite, applied to every counterexample it fits */
 export interface MutationPass {
 	/** what the mutants of this pass are named after */
-	readonly name:         string;
-	readonly category:     MutationCategory;
+	readonly name:        string;
+	readonly category:    MutationCategory;
 	/** what the pass does, with an example, as the wiki lists it */
-	readonly description:  string;
-	/** the R version the rewrite needs, so a host below it explains an idle pass without a name list */
-	readonly minRVersion?: string;
+	readonly description: string;
 	/** the rewrite only moves code around or renames it, so the graphs flowR builds keep their shape */
-	readonly keepsGraph?:  boolean;
+	readonly keepsGraph?: boolean;
 	/** the rewrite adds code of its own, about which the linter may say more, but never less */
-	readonly adds?:        boolean;
+	readonly adds?:       boolean;
 	/** the mutated program, or `undefined` if the pass does not apply */
 	apply(program: MutationProgram): Promise<MutationTarget | undefined> | MutationTarget | undefined;
 }
@@ -63,7 +59,6 @@ class RewritePass implements MutationPass {
 	readonly name!:        string;
 	readonly category!:    MutationCategory;
 	readonly description!: string;
-	readonly minRVersion?: string;
 	readonly keepsGraph?:  boolean;
 	readonly adds?:        boolean;
 
@@ -164,12 +159,6 @@ const isArgument = (n: RNode<ParentInformation> | undefined): n is RArgument<Par
 /** the prefix every name a pass makes up starts with, so no program already uses it */
 const MutationPrefix = 'mut_';
 
-const PipeVersion = RPipe.availableFromRVersion().toString();
-
-/** whether the host R runs what the pass makes, which a pass applies regardless, as only running it needs the version */
-export function passIsAvailable(pass: MutationPass): boolean {
-	return pass.minRVersion === undefined || (!!globalThis.rVersion && semver.satisfies(globalThis.rVersion, `>=${pass.minRVersion}`));
-}
 
 /** the statements of the program, and the values of its top-level assignments where `assigned` */
 function constructsOf(program: MutationProgram, assigned: boolean): RNodeWithParent[] {
@@ -549,8 +538,7 @@ const forAsWhile = new ConstructPass({
 const lambdaShorthand = new RewritePass({
 	name:        'lambda shorthand',
 	category:    MutationCategory.Function,
-	description: '`function(x)` becomes `\\(x)`',
-	minRVersion: MIN_VERSION_LAMBDA
+	description: '`function(x)` becomes `\\(x)`'
 }, (program, edit) => {
 	for(const definition of program.nodes().filter(isDefinition)) {
 		const [sl, sc] = definition.location;
@@ -564,8 +552,7 @@ const lambdaShorthand = new RewritePass({
 const nestedCallToPipe = new AssignmentPass({
 	name:        'nested call rewritten as a pipe',
 	category:    MutationCategory.Function,
-	description: 'a call nested in another one becomes a native pipe, `r <- f(g(x))` becomes `r <- x |> g() |> f()`',
-	minRVersion: PipeVersion
+	description: 'a call nested in another one becomes a native pipe, `r <- f(g(x))` becomes `r <- x |> g() |> f()`'
 }, ({ name, value }, _, program) => {
 	const outer = RFunctionCall.isNamed(value) ? value : undefined;
 	const [inner] = outer === undefined ? [] : MutationProgram.argumentsOf(outer);

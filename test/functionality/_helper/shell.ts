@@ -826,7 +826,7 @@ export async function printedByR(code: string): Promise<string> {
 let ciRPackages: Promise<{ listed: readonly string[], available: ReadonlySet<string> }> | undefined;
 
 /** skips a test whose `code` loads a package CI installs (`packages.txt`) but this R lacks, as CRAN no longer builds it for an old R */
-async function skipWithoutRPackages(code: string, skip: (condition: boolean, note?: string) => void): Promise<void> {
+export async function skipWithoutRPackages(code: string, skip: (condition: boolean, note?: string) => void): Promise<void> {
 	const used = [...code.matchAll(/\b(?:library|require|requireNamespace|loadNamespace)\(\s*["']?([\w.]+)|\b([\w.]+):::?/g)].map(m => m[1] ?? m[2]);
 	if(used.length === 0) {
 		return;

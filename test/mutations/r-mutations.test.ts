@@ -1,8 +1,9 @@
 import { describe, test, assert } from 'vitest';
-import { withShell } from '../functionality/_helper/shell';
+import { withShell, withTreeSitter } from '../functionality/_helper/shell';
 import type { RShell } from '../../src/r-bridge/shell';
 import type { MutationPass, MutationTarget } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate, passIsAvailable, slice } from '../functionality/_helper/r-mutations';
+import { MutationPasses, mutate, slice } from '../functionality/_helper/r-mutations';
+import { rReadsSyntaxOf } from '../functionality/_helper/r-version';
 
 function passOf(name: string): MutationPass {
 	const pass = MutationPasses.find(p => p.name === name);
@@ -35,21 +36,24 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		{ code: 's <- 0\nfor(i in 1:3) s <- s + i\nprint(s)', criterion: '3@s', expected: '[1] 6' },
 		{ code: 'v <- 1:3\nr <- v |> sum()\nprint(r)', criterion: '3@r', expected: '[1] 6' }
 	];
-	describe('every mutant is a program R reads', () => {
+	/* tree-sitter makes the mutants, so R only has to read those it can, the native pipe or the lambda shorthand need R 4.1 */
+	describe('every mutant is a program R reads', withTreeSitter(parser => {
 		for(const pass of MutationPasses) {
-			test.skipIf(!passIsAvailable(pass))(pass.name, async() => {
+			test(pass.name, async() => {
 				let applied = 0;
 				for(const program of programs) {
-					const mutant = await mutate(shell, program, pass);
+					const mutant = await mutate(parser, program, pass);
 					if(mutant !== undefined) {
 						applied++;
-						assert.isTrue(await parses(shell, mutant.code), `${pass.name} produced:\n${mutant.code}`);
+						if(await rReadsSyntaxOf(mutant.code)) {
+							assert.isTrue(await parses(shell, mutant.code), `${pass.name} produced:\n${mutant.code}`);
+						}
 					}
 				}
 				assert.isAbove(applied, 0, `${pass.name} rewrote none of the sample programs, so this test checks nothing`);
 			});
 		}
-	});
+	}));
 
 	describe('a statement continued on the next line is left alone', () => {
 		const continued: MutationTarget = { code: 'f <- function()\n5\nr <- f()\nprint(r)', criterion: '4@r', expected: '[1] 5' };
@@ -232,7 +236,8 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		});
 	});
 
-	describe('function forms', () => {
+	/* tree-sitter reads the native pipe on every R */
+	describe('function forms', withTreeSitter(sitter => {
 		test('a body without braces is returned explicitly', async() => {
 			const mutant = await mutate(shell, { code: 'fs <- list(f = function(x) x * 3)\nr <- fs$f(2)\nprint(r)', criterion: '3@r', expected: '[1] 6' }, passOf('function result made an explicit return'));
 			assert.strictEqual(mutant?.code, 'fs <- list(f = function(x) return(x * 3))\nr <- fs$f(2)\nprint(r)');
@@ -242,11 +247,11 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 			assert.deepStrictEqual(out.filter(l => l.trim() !== ''), []);
 		});
 		test('a pipe becomes the nested call it stands for', async() => {
-			const mutant = await mutate(shell, { code: 'f <- function(p) p\n"a" |> f()\nr <- 1 |> f()\nprint(r)', criterion: '4@r', expected: '[1] 1' }, passOf('pipe rewritten as a nested call'));
+			const mutant = await mutate(sitter, { code: 'f <- function(p) p\n"a" |> f()\nr <- 1 |> f()\nprint(r)', criterion: '4@r', expected: '[1] 1' }, passOf('pipe rewritten as a nested call'));
 			assert.strictEqual(mutant?.code, 'f <- function(p) p\nf("a")\nr <- f(1)\nprint(r)');
 		});
 		test('a pipe whose left side is no primary is left alone', async() => {
-			assert.isUndefined(await mutate(shell, { code: 'f <- function(p) p\nr <- 1 + 2 |> f()\nprint(r)', criterion: '3@r', expected: '[1] 3' }, passOf('pipe rewritten as a nested call')));
+			assert.isUndefined(await mutate(sitter, { code: 'f <- function(p) p\nr <- 1 + 2 |> f()\nprint(r)', criterion: '3@r', expected: '[1] 3' }, passOf('pipe rewritten as a nested call')));
 		});
 		test('the first plain argument is passed through identity', async() => {
 			const mutant = await mutate(shell, { code: 'v <- 1:3\nr <- sum(v, 1)\nprint(r)', criterion: '3@r', expected: '[1] 7' }, passOf('argument passed through identity'));
@@ -255,7 +260,7 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		test('a call naming its result after an argument is left alone', async() => {
 			assert.isUndefined(await mutate(shell, { code: 'a <- 1\nd <- data.frame(a)\nprint(names(d))', criterion: '3@print', expected: '[1] "a"' }, passOf('argument passed through identity')));
 		});
-	});
+	}));
 
 	describe('literals and layout', () => {
 		test('double quotes become single quotes', async() => {

@@ -1,28 +1,28 @@
 import fs from 'fs';
 import path from 'path';
 import { describe, test, assert } from 'vitest';
-import { withShell } from '../functionality/_helper/shell';
+import { skipWithoutRPackages, withShell } from '../functionality/_helper/shell';
 import { decorateLabelContext, label } from '../functionality/_helper/label';
 import type { RShell } from '../../src/r-bridge/shell';
 import { Counterexamples, type Counterexample } from './counterexample-corpus';
 import { MutationShardsDir, type MutationShardDetails } from './mutation-details';
-import { mutants, type Mutant } from './mutants';
+import { mutants, originalKey, type Mutants } from './mutants';
+import { rIsAtLeast } from '../functionality/_helper/r-version';
 import type { MutationPass, ReplObservation } from '../functionality/_helper/r-mutations';
-import { MutationPasses, observeQueries, observeRepl, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
+import { MutationPasses, observeQueries, observeRepl, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 
 /** what a shard exercised, kept per shard as the shards of one worker share this module */
 class Exercised {
 	registered = 0;
 	readonly checkedMutants = new Set<string>();
-	readonly usedPasses = new Set<string>();
 	readonly groups = new Set<string>();
 	readonly targets = new Set<string>();
 	readonly capabilities = new Set<string>();
 }
 
 
-function counterexamples(shell: RShell, exercised: Exercised, group: string, cases: readonly Counterexample[], made: readonly Mutant[]): void {
+function counterexamples(shell: RShell, exercised: Exercised, group: string, cases: readonly Counterexample[], { once, originals }: Mutants): void {
 	exercised.groups.add(group);
 	for(const { name, capabilities } of cases) {
 		exercised.targets.add(`${group}: ${name}`);
@@ -84,22 +84,26 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 		}
 	}
 	describe(group, () => {
+		/* a program, or the one it is a mutant of, may use syntax this R cannot read, like the native pipe below R 4.1 */
+		const readable = (name: string, minRVersion?: string) => rIsAtLeast(originals[originalKey(group, name)]) && rIsAtLeast(minRVersion);
 		for(const counterexample of cases) {
 			const { name, capabilities, code } = counterexample;
-			test(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, async() => {
+			test.runIf(readable(name))(`${decorateLabelContext(label(name, capabilities), ['slice', 'output'])} (input: ${JSON.stringify(code)})`, async({ skip }) => {
+				await skipWithoutRPackages(code, skip);
 				await check(counterexample);
 				await checkRepl(counterexample);
 			});
 		}
-		for(const pass of MutationPasses.filter(passIsAvailable)) {
-			const ofPass = made.filter(m => m.passes[0] === pass.name);
+		for(const pass of MutationPasses) {
+			const ofPass = once.filter(m => m.group === group && m.passes[0] === pass.name && cases.some(c => c.name === m.target.name) && readable(m.target.name, m.minRVersion));
 			if(ofPass.length === 0) {
 				continue;
 			}
 			describe(pass.name, () => {
 				for(const { target, mutant, error } of ofPass) {
 					exercised.registered++;
-					test(target.name, async() => {
+					test(target.name, async({ skip }) => {
+						await skipWithoutRPackages(target.code, skip);
 						assert.isUndefined(error, `the pass fails on:\n${target.code}`);
 						const checked = mutant as Counterexample;
 						await check(checked);
@@ -107,7 +111,6 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 							`the mutation changes what the queries report about the program, it is:\n${checked.code}`);
 						await checkRepl(checked, target, pass);
 						exercised.checkedMutants.add(`${group}: ${target.name} [${pass.name}]`);
-						exercised.usedPasses.add(pass.name);
 					});
 				}
 			});
@@ -118,18 +121,19 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 /**
  * Checks every counterexample and its mutants against R, see {@link Counterexamples}. The cases are split into
  * `shards` files, each running on its own R shell, so vitest runs them in parallel; each shard records what it
- * exercised in {@link MutationShardsDir}, which the teardown of `mutation-details.ts` merges once all have run. The mutants are those `mutants.ts` made once for all shards.
+ * exercised in {@link MutationShardsDir}, which the teardown of `mutation-details.ts` merges once all have run.
+ * The mutants are those `mutants.ts` made once for all shards; a program this R cannot read is not run.
  */
 export function counterexampleChecks(shard: number, shards: number): void {
 	let at = 0;
 	const mine = Counterexamples
 		.map(({ group, cases }) => ({ group, cases: cases.filter(() => at++ % shards === shard) }))
 		.filter(({ cases }) => cases.length > 0);
-	const { once } = mutants();
+	const made = mutants();
 	describe(`Counterexamples against R semantics (${shard + 1}/${shards})`, { concurrent: false }, withShell(shell => {
 		const exercised = new Exercised();
 		for(const { group, cases } of mine) {
-			counterexamples(shell, exercised, group, cases, once.filter(m => m.group === group && cases.some(c => c.name === m.target.name)));
+			counterexamples(shell, exercised, group, cases, made);
 		}
 		test('record what this shard exercised', ctx => {
 			if(exercised.checkedMutants.size < exercised.registered) {
@@ -138,8 +142,7 @@ export function counterexampleChecks(shard: number, shards: number): void {
 			}
 			fs.mkdirSync(MutationShardsDir, { recursive: true });
 			const shardDetails: MutationShardDetails = {
-				shards, groups:          [...exercised.groups], counterexamples: exercised.targets.size, capabilities:    [...exercised.capabilities], mutants:         exercised.checkedMutants.size,
-				usedPasses:      [...exercised.usedPasses], availablePasses: MutationPasses.filter(passIsAvailable).map(p => p.name)
+				shards, groups: [...exercised.groups], counterexamples: exercised.targets.size, capabilities: [...exercised.capabilities], mutants: exercised.checkedMutants.size
 			};
 			fs.writeFileSync(path.join(MutationShardsDir, `${shard}.json`), JSON.stringify(shardDetails));
 		});

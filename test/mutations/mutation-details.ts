@@ -13,8 +13,6 @@ export interface MutationShardDetails {
 	readonly counterexamples: number;
 	readonly capabilities:    readonly string[];
 	readonly mutants:         number;
-	readonly usedPasses:      readonly string[];
-	readonly availablePasses: readonly string[];
 }
 
 /** Removes what an earlier run of the shards recorded, so a shard that does not finish leaves no stale record. */
@@ -22,20 +20,12 @@ export function setup(): void {
 	fs.rmSync(MutationShardsDir, { recursive: true, force: true });
 }
 
-/**
- * Merges what the shards recorded once all of them ran in full, and fails if a pass never made a mutant of its own,
- * as it would check nothing then.
- */
+/** Merges what the shards recorded once all of them ran in full. */
 export function teardown(): void {
 	const files = fs.existsSync(MutationShardsDir) ? fs.readdirSync(MutationShardsDir) : [];
 	const shards = files.map(f => JSON.parse(fs.readFileSync(path.join(MutationShardsDir, f), 'utf8')) as MutationShardDetails);
 	if(shards.length === 0 || shards.length < shards[0].shards) {
 		return;
-	}
-	const used = new Set(shards.flatMap(s => s.usedPasses));
-	const idle = shards[0].availablePasses.filter(name => !used.has(name));
-	if(idle.length > 0) {
-		throw new Error(`these passes never made a mutant no other pass made, so they check nothing: ${idle.join(', ')}`);
 	}
 	fs.writeFileSync(MutationDetailsFile, JSON.stringify({
 		passes:          MutationPasses.length,

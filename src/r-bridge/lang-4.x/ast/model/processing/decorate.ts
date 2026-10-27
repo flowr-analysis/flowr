@@ -40,12 +40,13 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 }
 
 /**
- *  Generates ids with a fixed source path and location information as prefix and an incrementing counter.
+ *  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter.
  */
-export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
+export function sourcedDeterministicCountingIdGenerator(path: string, location?: SourceRange, start = 0): () => NodeId {
 	let id = start;
-	const [sl, sc] = location;
-	return () => `${path}:${sl}:${sc}-${id++}`;
+	/* without a location, `path` has to tell the code apart on its own, as the id of the call parsing it does */
+	const prefix = location === undefined ? path : `${path}:${location[0]}:${location[1]}`;
+	return () => `${prefix}-${id++}`;
 }
 
 export interface ParentContextInfo extends MergeableRecord {

@@ -184,7 +184,8 @@ export interface DependencyInfo extends Record<string, unknown> {
 	/**
 	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
 	 * file, the device opener and closer around it. Answers *which statements produce this output* without
-	 * rebuilding it from {@link linkedIds}.
+	 * rebuilding it from {@link linkedIds}. A part is reported as an entry of its own as well, so to count
+	 * plots rather than graphics calls, count the entries no other entry lists in its parts.
 	 */
 	parts?:              readonly NodeId[]
 	/**

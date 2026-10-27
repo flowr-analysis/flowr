@@ -298,6 +298,7 @@ const SigDataDots: FnSig = [['.data', ArgProp.Value], ['...', ArgProp.Value]];
 const SigShape: FnSig  = [['x', ArgProp.Forced | ArgProp.Shape]];
 const SigXTable: FnSig = [['x', ArgProp.Forced | ArgProp.Value], ['table', ArgProp.Forced | ArgProp.Value]];
 const SigDots: FnSig  = [['...', ArgProp.Forced | ArgProp.Value]];
+const SigUnique: FnSig = [['x', ArgProp.Forced | ArgProp.Value], ['incomparables', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]];
 /* the arguments name what they become, like the columns of `data.frame(a, b)` */
 const SigDotsDeparsed: FnSig = [['...', ArgProp.Forced | ArgProp.Value | ArgProp.Deparsed]];
 /* data.table's `set*` functions change their first argument in place */
@@ -623,6 +624,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: DataMaskingFunctionIdentifiers, processor: BuiltInProcName.Default, config: { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure, tags: [SemanticCallTag.Transforms] }, assumePrimitive: false },
 	/* slice_sample draws rows at random; registered after the block above, so this definition is the one that sticks */
 	{ overrides: true, type: 'function', names: [Identifier.from(['slice_sample', PkgName.Dplyr])], processor: BuiltInProcName.Default, config: { markArgsAsMasked: NseArguments.AllButFirst, ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random, SemanticCallTag.Transforms] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['t', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigXDots }, assumePrimitive: true },
 	{ type: 'function', names: OtherTransforms, processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Transforms] }, assumePrimitive: false },
 	{ type: 'function', names: ModelFits, processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Statistics] }, assumePrimitive: false },
 	/* data.table's in-place setters hand back their table invisibly */
@@ -664,7 +666,7 @@ export const WrittenBuiltinDefinitions = [
 				/* `mean` reduces a vector, so unlike its neighbors below the value solver cannot fold it */
 				'mean',
 				/* running summaries & reordering */
-				'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated', 't',
+				'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated',
 				/* coercion */
 				'as.character', 'as.matrix', 'as.data.frame', 'as.factor', 'as.raw', 'as.list', 'as.array', 'factor', 'as.ordered'
 			]),
@@ -1060,7 +1062,7 @@ export const WrittenBuiltinDefinitions = [
 	/* `vapply` takes the shape of the result before its `...`, so naming it keeps the positions honest */
 	{ overrides: true, type: 'function', names: [Identifier.from(['vapply', PkgName.Base])], processor: BuiltInProcName.Apply, config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee], ['FUN.VALUE', ArgProp.Shape], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Functools, ['Lapply', 'Sapply', 'Vapply']), processor: BuiltInProcName.Apply, config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure }, assumePrimitive: false },
-	{ type: 'function', names: [...Identifier.fromAll(PkgName.Base, ['apply', 'tapply']), Identifier.from(['Tapply', PkgName.Functools])], processor: BuiltInProcName.Apply, config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: [['X', ArgProp.NoDefault], ['...', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Base, ['apply', 'tapply']), Identifier.from(['Tapply', PkgName.Functools])], processor: BuiltInProcName.Apply, config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, tags: [SemanticCallTag.Transforms], sig: [['X', ArgProp.NoDefault], ['...', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['Map', PkgName.Base])], processor: BuiltInProcName.Apply, config: { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: [['f', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['outer', PkgName.Base])], processor: BuiltInProcName.Apply, config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['Y', ArgProp.Value], ['FUN', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['Filter', PkgName.Base])], processor: BuiltInProcName.Apply, config: { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: [['f', ArgProp.Callee], ['x', ArgProp.Value]] }, assumePrimitive: false },
@@ -1549,8 +1551,9 @@ export const WrittenBuiltinDefinitions = [
 
 	/* these share the `f(x, ...)` shape above, but R puts one more formal before the `...`: leaving it out
 	   would shift every position after it, so each names its own */
-	{ overrides: true, type: 'function', names: [Identifier.from(['sort', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Value], ['decreasing', ArgProp.Forced | ArgProp.Flag], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
-	{ overrides: true, type: 'function', names: Identifier.fromAll(PkgName.Base, ['unique', 'duplicated']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Value], ['incomparables', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
+	{ overrides: true, type: 'function', names: [Identifier.from(['sort', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: [['x', ArgProp.Forced | ArgProp.Value], ['decreasing', ArgProp.Forced | ArgProp.Flag], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
+	{ overrides: true, type: 'function', names: [Identifier.from(['unique', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigUnique }, assumePrimitive: true },
+	{ overrides: true, type: 'function', names: [Identifier.from(['duplicated', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: SigUnique }, assumePrimitive: true },
 	{ overrides: true, type: 'function', names: [Identifier.from(['as.data.frame', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Value], ['row.names', ArgProp.Forced | ArgProp.Value], ['optional', ArgProp.Forced | ArgProp.Flag], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 	{ overrides: true, type: 'function', names: [Identifier.from(['median', PkgName.Stats])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['x', ArgProp.Forced | ArgProp.Value], ['na.rm', ArgProp.Forced | ArgProp.Flag], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true },
 	/* the ones the earlier list left short where a reader would notice */

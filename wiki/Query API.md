@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 15:03:10 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 19:13:15 UTC (v2.16.6, R v4.5.0), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -458,6 +458,7 @@ Valid item types:
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'project'
                 - **withDf** [optional] _Whether to include Dataflow information in the result._ (boolean)
+                - **showFiles** [optional] _Whether to include the list of files in the result._ (boolean)
             - _Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count). Names no database records are answered from flowR's own built-in configuration instead and marked as such._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'signature'

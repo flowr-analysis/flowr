@@ -7,7 +7,8 @@ import {
 } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
@@ -60,7 +61,14 @@ export const DEAD_CODE = {
 						loc:        SourceLocation.fromNode(element.node)
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
-			).map(result => isStatement(result, idMap) ? { ...result, quickFix: [{ type: 'remove', loc: result.loc, description: 'Remove the unreachable code' }] } : result)
+			).map(result => {
+				const own = ownNode(result, idMap);
+				/* removing the unbraced branch of `if(c) x else b` leaves `if(c) else b`, which does not parse, so it becomes `{}` */
+				const fix = own === undefined ? undefined : isUnbracedBody(own, idMap)
+					? { type: 'replace' as const, loc: result.loc, replacement: '{}', description: 'Replace the unreachable code with an empty block' }
+					: isStatement(own, idMap) ? { type: 'remove' as const, loc: result.loc, description: 'Remove the unreachable code' } : undefined;
+				return fix === undefined ? result : { ...result, quickFix: [fix] };
+			})
 		};
 	},
 	prettyPrint: prettyPrint(
@@ -77,18 +85,26 @@ export const DEAD_CODE = {
 	}
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
-/** whether the result is a whole statement of a block or the file, which can go without breaking the code around it */
-function isStatement(result: DeadCodeResult, idMap: AstIdMap): boolean {
+/** the expression whose location is exactly that of the result, `undefined` if there is none */
+function ownNode(result: DeadCodeResult, idMap: AstIdMap): RNode<ParentInformation> | undefined {
 	const ids = Array.isArray(result.involvedId) ? result.involvedId : [result.involvedId];
-	return ids.some(id => {
-		const node = id === undefined ? undefined : idMap.get(id);
-		const parent = node?.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-		/* the branch of an `if` without braces is a list of its own, which is no block */
+	return ids.map(id => id === undefined ? undefined : idMap.get(id)).find(node => {
 		const own = SourceLocation.fromNode(node);
-		return node?.info.role === RoleInParent.ExpressionListChild && RExpressionList.is(parent)
-			&& (parent.grouping !== undefined || parent.info.parent === undefined)
-			&& own !== undefined && SourceLocation.isSubsetOf(result.loc, own) && SourceLocation.isSubsetOf(own, result.loc);
+		return node?.info.role === RoleInParent.ExpressionListChild && own !== undefined
+			&& SourceLocation.isSubsetOf(result.loc, own) && SourceLocation.isSubsetOf(own, result.loc);
 	});
+}
+
+/** whether the node is a statement in a block or at the top level, so removing it leaves valid code */
+function isStatement(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
+	const parent = RNode.directParent(node, idMap);
+	return RExpressionList.is(parent) && (parent.grouping !== undefined || parent.info.parent === undefined);
+}
+
+/** whether the node is the unbraced body of an `if` or a loop, like `x <- 1` in `if(c) x <- 1` */
+function isUnbracedBody(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
+	const parent = RNode.directParent(node, idMap);
+	return RExpressionList.isImplicit(parent) && parent.info.parent !== undefined && parent.children.length === 1;
 }
 
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {

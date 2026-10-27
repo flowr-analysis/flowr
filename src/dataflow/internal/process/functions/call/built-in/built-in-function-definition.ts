@@ -28,7 +28,7 @@ import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-n
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { AmbientStateName } from './built-in-ambient-state';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -341,7 +341,12 @@ function resolveIngoingRefs(
 	});
 }
 
-function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnvironmentInformation, openReads: IdentifierReference[]) {
+/**
+ * Links the free variables of the functions defined in `graph` to their definitions in `outEnvironment`, the scope
+ * the functions were defined in. Call it before that scope is popped, at the end of a function body or of `local`.
+ * Reads that `outEnvironment` does not define are added to `openReads`.
+ */
+export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnvironmentInformation, openReads: IdentifierReference[]) {
 	const open = new Set(openReads.map(r => r.nodeId));
 	const settled = new Set<NodeId>();
 	const superWrites = new DefaultMap<Identifier, NodeId[]>(() => []);
@@ -733,6 +738,8 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 		enclosing.push(frame);
 	}
 	let env = REnvironment.cleanOf(data.environment);
+	/* the global frame is emptied as well, but keeps its old bindings for {@link Environment#lookupLexically} */
+	env.current.standsInFor(REnvironment.findGlobal(data.environment.current).memory);
 	for(let i = 0; i < level + 1; i++) {
 		env = REnvironment.pushLocal(env);
 		if(i === level) {

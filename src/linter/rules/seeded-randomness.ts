@@ -5,6 +5,7 @@ import {
 	type LintingRule,
 	LintingRuleCertainty
 } from '../linter-format';
+import { RValue } from '../../dataflow/eval/values/r-value';
 import { functionFinderUtil } from './function-finder-util';
 import { SourceLocation, SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
@@ -20,7 +21,6 @@ import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { DfgVertex } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ControlDependency, happensInEveryBranch } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
@@ -250,6 +250,6 @@ function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunct
 		v.type === 'number' ||
 		v.type === 'logical' ||
 		v.type === 'string' ||
-		v.type === 'interval' && v.startInclusive && v.endInclusive && v.start.type === 'number' && v.end.type === 'number' && asValue(v.start.value).num === asValue(v.end.value).num)
+		RValue.numberOf(v) !== undefined)
 	       ?? false;
 }

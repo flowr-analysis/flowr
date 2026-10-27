@@ -23,7 +23,7 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument, type RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -440,6 +440,41 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 	return undefined;
 }
 
+function isBlock(n: RNode<ParentInformation> | undefined): boolean {
+	return RExpressionList.is(n) && n.grouping?.[0].content === '{';
+}
+
+/**
+ * A call handed a block, like `local({ x <- 1; y <- 2 })`, with only the statements of the block the slice selects;
+ * every other argument is kept as written.
+ */
+function reconstructCallOfBlock(call: RNamedFunctionCall<ParentInformation>, args: readonly (Code | typeof EmptyArgument)[], config: ReconstructionConfiguration): Code | undefined {
+	const blocks = call.arguments.filter(a => a !== EmptyArgument && isBlock(a.value)).map(a => (a as RArgument<ParentInformation>).value as RExpressionList<ParentInformation>);
+	/* a block the slice keeps whole stays as it is written */
+	if(blocks.every(b => b.children.every(c => isSelected(config, c)))) {
+		return undefined;
+	}
+	const parts = call.arguments.map((a, i): Code => {
+		if(a === EmptyArgument) {
+			return plain('');
+		} else if(!isBlock(a.value)) {
+			const value = a.value === undefined ? '' : reconstructableSource(a.value);
+			return plain(a.name === undefined ? value : `${RNode.ownLexeme(a.name) ?? ''} = ${value}`);
+		}
+		const block = args[i];
+		const body = block === EmptyArgument || block.length === 0 ? plain('{}') : block;
+		return a.name === undefined ? body : [{ ...body[0], line: `${RNode.ownLexeme(a.name) ?? ''} = ${body[0].line}` }, ...body.slice(1)];
+	});
+	const lines: PrettyPrintLine[] = [{ line: `${RNode.ownLexeme(call.functionName) ?? reconstructableSource(call.functionName)}(`, indent: 0 }];
+	parts.forEach((part, i) => {
+		const last = lines[lines.length - 1];
+		last.line += (i > 0 ? ', ' : '') + part[0].line;
+		lines.push(...part.slice(1));
+	});
+	lines[lines.length - 1].line += ')';
+	return lines;
+}
+
 function reconstructFunctionCall(
 	call: RFunctionCall<ParentInformation>,
 	functionName: Code,
@@ -466,7 +501,7 @@ function reconstructFunctionCall(
 		return reconstructSpecialInfixFunctionCall(args, call);
 	}
 	if(call.named && selected) {
-		return foldToConst(call);
+		return reconstructCallOfBlock(call, args, configuration) ?? foldToConst(call);
 	}
 	if(functionName.length === 0 && args.every(a => a === undefined || a.length === 0)) {
 		return [];

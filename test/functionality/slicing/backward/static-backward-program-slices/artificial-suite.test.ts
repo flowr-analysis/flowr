@@ -1,6 +1,7 @@
-import { assertSliced, skipTestBecauseConfigNotMet, withShell } from '../../../_helper/shell';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { rReadsSyntaxOf } from '../../../_helper/r-version';
 import { label } from '../../../_helper/label';
-import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
@@ -98,8 +99,10 @@ describe('Artificial performance suite', { concurrent: false }, withShell(shell 
 	const dir = 'test/performance/suite-artificial/static';
 	for(const file of fs.readdirSync(dir)) {
 		const code = fs.readFileSync(`${dir}/${file}`, 'utf-8');
-		const minRVersion = /\|>/.test(code) ? MIN_VERSION_PIPE : /\\\(/.test(code) ? MIN_VERSION_LAMBDA : undefined;
-		test.skipIf(skipTestBecauseConfigNotMet({ minRVersion }))(label(`${file} x22: no slice hits the threshold`, [], ['other']), async() => {
+		test(label(`${file} x22: no slice hits the threshold`, [], ['other']), async ctx => {
+			if(!await rReadsSyntaxOf(code)) {
+				ctx.skip();
+			}
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
 			analyzer.addRequest(code.concat('\n').repeat(22));
 			const [ast, info] = [await analyzer.normalize(), await analyzer.dataflow()];

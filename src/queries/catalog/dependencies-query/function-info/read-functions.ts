@@ -8,11 +8,11 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/f
 
 const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'parse',                          argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'utils', name: 'read.table',         argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
-	{ package: 'utils', name: 'read.csv',           argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
-	{ package: 'utils', name: 'read.csv2',          argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
-	{ package: 'utils', name: 'read.delim',         argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
-	{ package: 'utils', name: 'read.delim2',        argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.table',         argIdx: 0, argName: 'file', resolveValue: true, inline: { argName: 'text' } },
+	{ package: 'utils', name: 'read.csv',           argIdx: 0, argName: 'file', resolveValue: true, inline: { argName: 'text' } },
+	{ package: 'utils', name: 'read.csv2',          argIdx: 0, argName: 'file', resolveValue: true, inline: { argName: 'text' } },
+	{ package: 'utils', name: 'read.delim',         argIdx: 0, argName: 'file', resolveValue: true, inline: { argName: 'text' } },
+	{ package: 'utils', name: 'read.delim2',        argIdx: 0, argName: 'file', resolveValue: true, inline: { argName: 'text' } },
 	{ package: 'base', name: 'file',                argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'url',                 argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'gzfile',              argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
@@ -41,7 +41,7 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'pl_scan_parquet', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'compiler', name: 'loadcmp', argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'compiler', name: 'cmpfile', argIdx: 0, argName: 'infile', resolveValue: true, invisible: true },
-	{ package: 'yaml',     name: 'read_yaml', argIdx: 0, argName: 'file',     resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'yaml',     name: 'read_yaml', argIdx: 0, argName: 'file',     resolveValue: true, inline: { argName: 'text' } },
 	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;
 

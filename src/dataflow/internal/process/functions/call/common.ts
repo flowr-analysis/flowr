@@ -15,7 +15,7 @@ import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
-import { AmbientStateName } from './built-in/built-in-ambient-state';
+import { AmbientStateName } from '../../../../environments/ambient-state-name';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
@@ -67,9 +67,8 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
 	}
-	const containedSubflowIn = graph.verticesOfType(VertexType.FunctionDefinition).flatMap(([, info]) => info.subflow.in);
 	/* try to resolve them against the current environment */
-	for(const ref of [...value.in, ...containedSubflowIn]) {
+	for(const ref of value.in) {
 		for(const resolved of ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : []) {
 			graph.addEdge(ref.nodeId, resolved.nodeId, EdgeType.Reads);
 		}

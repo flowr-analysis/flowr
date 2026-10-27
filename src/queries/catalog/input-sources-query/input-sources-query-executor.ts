@@ -51,7 +51,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				df.graph,
 				fdef ? RNode.collectAllIds(fdef) : undefined
 			);
-			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages);
+			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages, df.environment);
 		}
 	}
 

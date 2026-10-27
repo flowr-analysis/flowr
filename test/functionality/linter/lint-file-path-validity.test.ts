@@ -122,7 +122,6 @@ describe('flowR linter', withTreeSitter(parser => {
 
 			describe('checkUrls=false (default)', () => {
 				for(const url of remoteUrls) {
-					/* @ignore-in-wiki */
 					assertLinter(url, parser, `read.csv("${url}")`, 'file-path-validity', [],
 						{ totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
 				}

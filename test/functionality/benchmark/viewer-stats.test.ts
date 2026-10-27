@@ -27,6 +27,7 @@ interface BenchStats {
 	tickIndices(n: number, count: number): number[];
 	fitLabels(spans: readonly (readonly [number, number])[]): boolean[];
 	stateChanges(rows: readonly (readonly (number | null)[])[]): number[];
+	possibleOf(extra: string): number | null;
 	withSum<T extends { name: string }>(shown: readonly T[], series: readonly T[], sum: T | null, off: ReadonlySet<string>): { shown: T[], series: T[] };
 	pickColors(names: readonly string[], known: ReadonlyMap<string, number> | null, palette: number,
 		taken?: Iterable<number>): Map<string, number>;
@@ -153,7 +154,7 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory-detail', 'the memory chart is about the graphs');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
 		assert.ok(!S.GROUPS.some(g => g.id === 'other'), 'a metric no rule claims stays off the page');
-		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests', 'mutations'],
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
 			'only what the flowR version itself carries is independent of the suite');
 		assert.strictEqual(S.groupOf('plugins', '#'), 'features', 'the plugins are part of what the version carries');
 		assert.strictEqual(S.groupOf('plugins (file-load)', '#'), 'features', 'the per-type breakdown joins its total');
@@ -179,11 +180,11 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.betterOf('signature database size (full history)', 'KiB'), 'flat',
 			'a larger database is not a regression');
 		assert.strictEqual(S.groupOf('memory (df-graph)', 'KiB'), 'memory', 'the other sizes stay where they were');
-		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'mutations', 'what the suite mutates is the final tile');
+		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'tests', 'the tests and what they mutate are the final tile');
 		assert.strictEqual(S.groupOf('tests', '#'), 'tests');
 		assert.strictEqual(S.groupOf('tests (dataflow)', '#'), 'tests');
 		assert.strictEqual(S.groupOf('tests overall', '#'), 'tests', 'the total of a run belongs to its tile');
-		assert.deepStrictEqual(S.GROUPS.filter(g => g.facts).map(g => g.id), ['sigdb', 'tests', 'mutations'],
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.facts).map(g => g.id), ['sigdb', 'tests'],
 			'only what never moves between runs is stated instead of plotted');
 		assert.strictEqual(S.shortName('signature database functions (older only)'), 'Functions (older only)',
 			'the chart is already titled for the database');
@@ -191,17 +192,19 @@ describe('Benchmark page helpers', () => {
 
 	test('group the metamorphic mutation counters', () => {
 		for(const name of ['mutation mutants', 'mutation passes', 'mutation tests']) {
-			assert.strictEqual(S.groupOf(name, '#'), 'mutations', `${name} belongs to the mutation tile`);
+			assert.strictEqual(S.groupOf(name, '#'), 'tests', `${name} shares the tile of the tests`);
 			assert.strictEqual(S.betterOf(name, '#'), 'up', `${name} says how much is checked, so more is better`);
 		}
-		assert.strictEqual(S.groupOf('mutation known-wrong mutants', '#'), 'mutations',
-			'an older run still draws it in the mutation tile');
+		assert.strictEqual(S.groupOf('mutation known-wrong mutants', '#'), 'tests',
+			'an older run still draws it in the shared tile');
 		assert.strictEqual(S.betterOf('mutation known-wrong mutants', '#'), 'down',
 			'a mutant that is still sliced wrongly was a debt, so a run holding the number reads it as one');
-		assert.strictEqual(S.shortName('mutation known-wrong mutants'), 'Known-wrong mutants',
-			'the tile is already titled for the mutations');
-		assert.strictEqual(S.shortName('mutation tests'), 'Tests',
-			'the tile is already titled for the mutations');
+		assert.strictEqual(S.shortName('mutation known-wrong mutants'), 'Mutation known-wrong mutants',
+			'the tile is shared with the tests, so a mutation counter keeps saying what it counts');
+		assert.strictEqual(S.shortName('mutation tests'), 'Mutation tests',
+			'and must not read like the tests of the main suite');
+		assert.strictEqual(S.possibleOf('out of 2604 possible'), 2604, 'what the run could have sliced');
+		assert.strictEqual(S.possibleOf(''), null, 'a run that did not state it has no number');
 		assert.strictEqual(S.groupOf('mutations', '#'), 'other', 'only the counters of the setup are claimed');
 	});
 

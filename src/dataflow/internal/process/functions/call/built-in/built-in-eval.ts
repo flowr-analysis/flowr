@@ -95,7 +95,7 @@ export function processEvalCall<OtherInfo>(
 			 * pretending they do would produce wrong edges */
 			handleUnknownSideEffect(information.graph, information.environment, rootId);
 		}
-		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
+		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId);
 
 		data = {
 			...data,

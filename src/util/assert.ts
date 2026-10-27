@@ -1,7 +1,7 @@
 /** use this to ensure that all cases are covered in case of a selection */
 
 /* v8 ignore next */
-import { flowrVersion } from './version';
+import { flowrVersion } from './flowr-version';
 
 /**
  * Verifies, that the given code path is never reached.

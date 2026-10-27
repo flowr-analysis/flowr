@@ -1,4 +1,17 @@
-import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryMeta, type BasicQueryData } from '../../base-query-format';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import { EdgeType } from '../../../dataflow/graph/edge';
+import { DataFrameFunctions } from '../../../abstract-interpretation/data-frame/dataframe-semantics';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { queryHeader } from '../../query-print';
 import type { SupportedQuery } from '../../query';
@@ -28,7 +41,8 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { collectImplicitEchoes } from './implicit-echo';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
-import { uniqueArrayMerge } from '../../../util/collections/arrays';
+import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
+import { SourceRange } from '../../../util/range';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
@@ -57,6 +71,82 @@ export interface DependencyCategorySettings {
 /** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
 export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
+
+/**
+ * Tells whether the variable read at an id holds a data frame: it is defined by a call the data frame shape inference
+ * knows to return one ({@link DataFrameFunctions}, like `read.csv` or `merge`), by a call handing back what it is
+ * given (`(` in `d <- (data.frame(a = 1))`), or by an assignment into a part of one. What each call makes is only
+ * worked out once.
+ */
+function dataFrameHolders(graph: DataflowGraph): (id: NodeId) => boolean {
+	const made = new Map<NodeId, boolean>();
+	const holds = (id: NodeId): boolean => (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
+		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(makes));
+	const makes = (by: NodeId): boolean => {
+		const known = made.get(by);
+		if(known !== undefined) {
+			return known;
+		}
+		/* a call reached again while working it out makes nothing new */
+		made.set(by, false);
+		const result = makesDataFrame(by);
+		made.set(by, result);
+		return result;
+	};
+	const makesDataFrame = (by: NodeId): boolean => {
+		const vertex = graph.getVertex(by);
+		if(!DfgVertex.isFunctionCall(vertex)) {
+			return false;
+		} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+			const target = graph.idMap?.get(by);
+			return RAccess.is(target) && holds((target.accessed as RNode<ParentInformation>).info.id);
+		}
+		const qualified = Dataflow.qualify(by, graph);
+		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+		return (qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`))
+			|| Dataflow.targetsOf(graph, by, EdgeType.Returns).some(makes);
+	};
+	return holds;
+}
+
+/** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
+const GroupingArguments: ReadonlySet<string> = new Set(['by', 'keyby']);
+
+/** an entry for a call transforming the data the symbol `target` holds */
+function transformOf(nodeId: NodeId, functionName: Identifier, target: RSymbol<ParentInformation>): DependencyInfo {
+	const name = Identifier.getName(target.content);
+	return { nodeId, functionName, assignedTo: name, inputVariables: [name] };
+}
+
+/**
+ * What transforms data by its syntax rather than by a function: data.table's update by reference (`dt[, z := x + 1]`)
+ * and grouping (`dt[, mean(x), by = g]`), and an assignment into a part of a data frame, like `d$y <- d$x * 2` or
+ * `d[d$x > 1, "z"] <- 0`. The last only where the target is a data frame, see {@link dataFrameHolders}, as `x[1] <- 2`
+ * on a vector transforms no data.
+ */
+async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
+	const [dataflow, ast] = await Promise.all([data.analyzer.dataflow(), data.analyzer.normalize()]);
+	/* an update by reference or a grouping */
+	const groups = (a: RArgument<ParentInformation> | typeof EmptyArgument) => a !== EmptyArgument && ((a.name !== undefined && GroupingArguments.has(Identifier.getName(a.name.content)))
+		|| (a.value !== undefined && DfgVertex.hasOrigin(dataflow.graph.getVertex(a.value.info.id), BuiltInProcName.TableAssignment)));
+	const byTable: DependencyInfo[] = [];
+	RProject.visitAst(ast.ast, n => {
+		if(RAccess.is(n) && n.operator === '[' && RSymbol.is(n.accessed) && n.access.some(groups)) {
+			/* an update by reference changes the table itself, a grouping yields a new one */
+			const updates = n.access.some(a => a !== EmptyArgument && a.value !== undefined && DfgVertex.hasOrigin(dataflow.graph.getVertex(a.value.info.id), BuiltInProcName.TableAssignment));
+			const name = Identifier.getName(n.accessed.content);
+			byTable.push({ nodeId: n.info.id, functionName: '[', inputVariables: [name], ...updates ? { assignedTo: name } : {} });
+		}
+	});
+	const parts = dataflow.graph.verticesOfType(VertexType.FunctionCall)
+		.filter(([, call]) => DfgVertex.hasOrigin(call, BuiltInProcName.Replacement))
+		.flatMap(([id, call]) => {
+			const node = ast.idMap.get(id);
+			return RAccess.is(node) && RSymbol.is(node.accessed) ? [{ id, functionName: call.name, target: node.accessed }] : [];
+		}).toArray();
+	const holds = dataFrameHolders(dataflow.graph);
+	return [...byTable, ...parts.filter(p => holds(p.target.info.id)).map(p => transformOf(p.id, p.functionName, p.target))];
+}
 
 /**
  * The categories flowR searches for by default. The functions of the categories flowR derives from its
@@ -137,15 +227,20 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 		functions:        VisualizeFunctions
 	},
 	'transform': {
-		queryDisplayName: 'Data Transformations',
-		functions:        transformFunctions(env.builtInIndex)
+		queryDisplayName:   'Data Transformations',
+		functions:          transformFunctions(env.builtInIndex),
+		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
+			if(!ignoreDefault) {
+				result.push(...await dataFrameParts(data));
+			}
+		}
 	},
 	'test': {
 		queryDisplayName: 'Tests',
 		functions:        TestFunctions
 	},
 	'statistics': {
-		queryDisplayName: 'Statistical Tests',
+		queryDisplayName: 'Statistics',
 		functions:        statisticsFunctions(env.builtInIndex)
 	}
 });
@@ -164,9 +259,19 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 	 * Off by default: for most callers these are noise, not a dependency they need to act on.
 	 */
 	readonly assumedPackages?:        boolean
+	/**
+	 * Focus on the dependencies at these criteria, like `2@read.csv`: the answer names every node that takes part in them,
+	 * what they depend on and what depends on them, in {@link DependenciesQueryMeta#focus}, so a client can gray out the rest.
+	 */
+	readonly focus?:                  readonly SlicingCriterion[]
 }
 
-export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
+export interface DependenciesQueryMeta extends BaseQueryMeta {
+	/** the nodes taking part in the dependencies the query {@link DependenciesQuery#focus|focuses} on */
+	readonly focus?: readonly NodeId[]
+}
+
+export type DependenciesQueryResult = { readonly '.meta': DependenciesQueryMeta } & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
 export interface DependencyInfo extends Record<string, unknown> {
@@ -184,7 +289,8 @@ export interface DependencyInfo extends Record<string, unknown> {
 	/**
 	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
 	 * file, the device opener and closer around it. Answers *which statements produce this output* without
-	 * rebuilding it from {@link linkedIds}.
+	 * rebuilding it from {@link linkedIds}. A part is reported as an entry of its own as well, so to count
+	 * plots rather than graphics calls, count the entries no other entry lists in its parts.
 	 */
 	parts?:              readonly NodeId[]
 	/**
@@ -282,19 +388,29 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 export const DependenciesQueryDefinition = {
 	title:           'Dependencies Query',
 	executor:        executeDependenciesQuery,
-	asciiSummarizer: (formatter, analyzer, queryResults, result, queries) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(queryHeader('dependencies', formatter, out['.meta'].timing));
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[], analyzer.inspectContext()))) {
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}
+		const focus = out['.meta'].focus;
+		if(focus !== undefined) {
+			const { idMap } = await analyzer.normalize();
+			const lines = uniqueArray(focus.flatMap(id => SourceRange.getStartLine(idMap.get(id)?.location) ?? [])).sort((a, b) => a - b);
+			result.push(`   ${bold('focus', formatter)} ${faint('the lines taking part:', formatter)} ${lines.join(', ')}`);
+		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine:  filterLineParser('dependencies', 'focus'),
+	completer: criteriaQueryCompleter,
+	syntax:    '@dependencies (<crit>;...) <code | file://path>',
+	schema:    Joi.object({
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
 		...Object.fromEntries(DefaultDependencyCategoryNames.map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
 		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
+		focus:                  Joi.array().items(Joi.string()).optional().description('Focus on the dependencies at these slicing criteria: the result names every node taking part in them in `.meta.focus`.'),
 		assumedPackages:        Joi.boolean().optional().description('Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false.'),
 		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),

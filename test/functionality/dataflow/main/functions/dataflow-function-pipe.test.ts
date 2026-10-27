@@ -8,23 +8,18 @@ import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RShell } from '../../../../../src/r-bridge/shell';
+import type { KnownParser } from '../../../../../src/r-bridge/parser';
 
 assumeLoadedPackages('magrittr');
 
-describe('Function Call Pipes', withTreeSitter(ts => {
+/* both parsers, as R reads the placeholder `_` as a token of its own that tree-sitter does not have */
+function pipes(ts: KnownParser): void {
 	const pipeConfig = { minRVersion: RPipe.hasPlaceHolderFromRVersion().toString(), expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 	describe('Basic Joining', () => {
 		assertDataflow(label('Basic Pipe', ['pipe-and-pipe-bind']), ts, 'x |> f()',
 			emptyGraph()
 				.addEdge('1@f', '1@x', EdgeType.Argument | EdgeType.Reads)
 				.call('1@f', 'f', [argumentInCall('1@x')]),
-			pipeConfig
-		);
-		assertDataflow(label('Basic Pipe With Placeholder', ['pipe-and-pipe-bind']), ts, 'x |> f(_)',
-			emptyGraph()
-				.reads('1@_', '1@x')
-				.reads('1@f', '1@_')
-				.call('1@f', 'f', [argumentInCall('1@_')]),
 			pipeConfig
 		);
 		assertDataflow(label('Basic Pipe With Placeholder and Argument Name', ['pipe-and-pipe-bind']), ts, 'x |> f(a=_)',
@@ -34,19 +29,17 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 				.call('1@f', 'f', [argumentInCall(4)], { omitArgs: true }),
 			pipeConfig
 		);
-		assertDataflow(label('Basic Pipe As Second Arg', ['pipe-and-pipe-bind']), ts, 'x |> f(y, _)',
+		/* R only takes the placeholder as a named argument, or at the head of an extraction (`_$a`) */
+		assertDataflow(label('Basic Pipe As Second Arg', ['pipe-and-pipe-bind']), ts, 'x |> f(y, a = _)',
 			emptyGraph()
 				.reads('1@_', '1@x')
-				.reads('1@f', '1@y')
-				.reads('1@f', '1@_')
-				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@_')]),
+				.addEdge('1@f', '1@y', EdgeType.Argument | EdgeType.Reads)
+				.call('1@f', 'f', [argumentInCall('1@y')], { omitArgs: true }),
 			pipeConfig
 		);
-		assertDataflow(label('Basic Pipe As Access in Arg', ['pipe-and-pipe-bind']), ts, 'x |> f(y, k=_$a)',
+		assertDataflow(label('Basic Pipe As Head of an Extraction', ['pipe-and-pipe-bind']), ts, 'x |> _$a',
 			emptyGraph()
-				.reads('1@_', '1@x')
-				.reads('1@f', '1@y')
-				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall(10)]),
+				.reads('1@_', '1@x'),
 			{ ...pipeConfig, minRVersion: RPipe.hasAccessPlaceHolderFromRVersion().toString() }
 		);
 		describe('magrittr', () => {
@@ -99,15 +92,22 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});
-	test(decorateLabelContext(label('Pipe-bind has no tree-sitter grammar production', ['pipe-bind']), ['dataflow']), async({ expect }) => {
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setInput({ getId: deterministicCountingIdGenerator(0) })
-			.setParser(ts)
-			.build();
-		analyzer.addRequest('x |> y => f(y)');
-		await expect(analyzer.normalize()).rejects.toThrow(/pipe-bind/);
-	});
-}));
+}
+
+describe('Function Call Pipes', () => {
+	describe('tree-sitter', withTreeSitter(ts => {
+		pipes(ts);
+		test(decorateLabelContext(label('Pipe-bind has no tree-sitter grammar production', ['pipe-bind']), ['dataflow']), async({ expect }) => {
+			const analyzer = await new FlowrAnalyzerBuilder()
+				.setInput({ getId: deterministicCountingIdGenerator(0) })
+				.setParser(ts)
+				.build();
+			analyzer.addRequest('x |> y => f(y)');
+			await expect(analyzer.normalize()).rejects.toThrow(/pipe-bind/);
+		});
+	}));
+	describe('R shell', { concurrent: false }, withShell(pipes));
+});
 
 describe('Function Call Pipe-Bind (disabled by default)', withShell(shell => {
 	const pipeBindDisabled = label('Pipe-bind is disabled unless engine.r-shell.pipeBind is enabled', ['pipe-bind']);

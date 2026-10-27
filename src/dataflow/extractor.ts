@@ -23,7 +23,7 @@ import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-cont
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
-import { orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
+import { linkLateWarningsAsErrors, orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
 import type { REnvironmentInformation } from './environments/environment';
 import { REnvironment } from './environments/environment';
@@ -42,7 +42,8 @@ import { dataflowLogger } from './logger';
 import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
 import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow } from './graph/df-helper';
-import { AmbientStateName, mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
+import { mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
+import { AmbientStateName } from './environments/ambient-state-name';
 import { UnnamedFunctionCallPrefix } from './internal/process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from './environments/built-in-proc-name';
 import { partitionArray, uniqueArray } from '../util/collections/arrays';
@@ -625,6 +626,7 @@ function extractDataFlowGraph<OtherInfo>(
 	const cleanEnvironment = ctx.env.makeCleanEnv();
 	separateClosureInstances(df.graph, name => queryFnProps(name, { environment: cleanEnvironment }));
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));
+	linkLateWarningsAsErrors(df.graph, df.environment, completeAst.idMap);
 	orderRaisingBodies(df.graph, completeAst.idMap, ctx);
 	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);

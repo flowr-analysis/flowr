@@ -1,4 +1,6 @@
 import type { RShell } from '../r-bridge/shell';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { Constant, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependencyCategorySettings, Unknown } from '../queries/catalog/dependencies-query/dependencies-query-format';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { executeQueries, QueriesSchema } from '../queries/query';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
@@ -654,6 +656,40 @@ ${codeBlock('json', JSON.stringify({ inputSources: {
 	}
 });
 
+/** what a script takes in, what it puts out, and what it does with data in between, by category of the dependencies query */
+const DependencyRoles: readonly (readonly [title: string, categories: readonly DefaultDependencyCategoryName[]])[] = [
+	['Inputs', ['library', 'remote', 'source', 'read']],
+	['Outputs', ['write', 'visualize']],
+	['What the script does with data', ['transform', 'statistics', 'test']]
+];
+
+/** the categories and the values they report, generated from the categories the query knows */
+function dependencyOverview(ctx: GeneralDocContext, categories: Record<DefaultDependencyCategoryName, DependencyCategorySettings>): string {
+	const examples = (c: DefaultDependencyCategoryName) => categories[c].functions.slice(0, 4).map(f => `\`${f.name}\``).join(', ');
+	const rows = DependencyRoles.map(([title, names]) => `| **${title}** | | | |\n` + names.map(c =>
+		`| \`${c}\` (${categories[c].queryDisplayName ?? c}) | ${categories[c].functions.length} | ${examples(c)} | ${categories[c].defaultValue === undefined ? '' : `\`${categories[c].defaultValue}\``} |`).join('\n')).join('\n');
+	return `
+The query reports one list of entries per category, each entry a call and the \`value\` it reads or writes, like the
+file of a \`read.csv\`:
+
+| Category | Functions known | For example | Value where none is named |
+|----------|----------------:|-------------|---------------------------|
+${rows}
+
+What the \`value\` of an entry tells, and the fields that say more:
+
+| Entry | How to tell | Meaning |
+|-------|-------------|---------|
+| a file, package, or URL | \`value\` names it | the call reads or writes it, like \`"data.csv"\` |
+| inline data | \`value\` is \`${Constant}\` | ${ctx.doc('Constant')} |
+| an unknown resource | \`value\` is \`${Unknown}\` | ${ctx.doc('Unknown')} |
+| console output | \`value\` is \`stdout\` or \`stderr\` | \`print\` and \`cat\` write to \`stdout\`, \`message\` and \`warning\` to \`stderr\` |
+| auto-printed output | \`implicit\` is set | ${ctx.doc('DependencyInfo::implicit')} |
+| through a call of the program | \`via\` is set | ${ctx.doc('DependencyInfo::via').replaceAll('\n', ' ')} |
+| part of another output | its id is in another entry's \`parts\` | ${ctx.doc('DependencyInfo::parts').replaceAll('\n', ' ')} |
+`;
+}
+
 registerQueryDocumentation('dependencies', {
 	type:             'active',
 	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
@@ -678,10 +714,13 @@ ggplot(data, aes(x=x, y=y)) + geom_point()
 better::write.csv(data, "data2.csv")
 print("hello world!")
 		`;
+		const categories = defaultDependencyCategories((await new FlowrAnalyzerBuilder().setParser(shell).build()).inspectContext());
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
 and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
 Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
+
+${dependencyOverview(ctx, categories)}
 
 For a script reading \`${exampleCode}\`, the following query returns the loaded library:
 ${
@@ -720,6 +759,13 @@ ${
 convention and \`R_DEFAULT_PACKAGES\` (or \`options(defaultPackages=)\`) can drop any of them, whereas \`base\` is always
 there and cannot be detached -- so it is never something the script could have asked for, and never something to
 suggest a \`library\` call for.
+
+To see what takes part in a dependency, ask the query to \`focus\` on it: \`.meta.focus\` then lists every node the
+dependency depends on and every node that depends on it, so a client can gray out the rest. In the REPL, the
+criteria go in parentheses, as with ${ctx.replCmd('query')} \`@dependencies (3@read.csv)\`, which prints the lines taking part:
+${
+	await showQuery(shell, 'f <- "a.csv"\ng <- 2\nd <- read.csv(f)\nh <- g + 1\nprint(d)', [{ type: 'dependencies', focus: ['3@read.csv'], enabledCategories: ['read'] }], { showCode: true, collapseQuery: false, collapseResult: true, ctx })
+}
 
 Beyond libraries, files and outputs, the query knows the \`visualize\` category (plots) and the \`transform\` category
 (\`Data Transformations\`): the calls that reshape, filter, join or aggregate data, like \`dplyr::filter\`, \`tidyr::pivot_longer\`,

@@ -8,14 +8,23 @@ import {
 	linkFlowRSourceFile,
 	RemoteFlowrFilePathBaseRef
 } from './doc-util/doc-files';
-import { block } from './doc-util/doc-structure';
+import { block, details } from './doc-util/doc-structure';
 import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import { DfEdge } from '../dataflow/graph/edge';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import { MutationPasses } from '../../test/functionality/_helper/r-mutations';
+import { ChainedWith, MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
+import { linkToQueryOfName } from './doc-util/doc-query';
+
+/** the categories of the passes, the passes of each in a collapsed list with what each does */
+function mutationCategories(): string {
+	const categories = Object.values(MutationCategory);
+	const list = categories.map(c => `\`${c}\``).join(', ');
+	return `The passes fall into ${categories.length} categories: ${list}.\n\n` + categories.map(category => details(`${category} (${MutationPasses.filter(p => p.category === category).length})`,
+		MutationPasses.filter(p => p.category === category).map(p => `- \`${p.name}\`: ${p.description}`).join('\n'))).join('\n');
+}
 
 
 /**
@@ -211,76 +220,36 @@ checkup\`, where \`npm run checkup -- mutations\` runs just this job.
 
 The suite has three pieces:
 
-- the passes, in ${linkFlowRSourceFile('test/functionality/_helper/r-mutations.ts')} (\`MutationPasses\`), ${MutationPasses.length} of them at the moment.
-- the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/r-semantics-counterexamples.test.ts')}.
+- the ${MutationPasses.length} passes, ${ctx.link('MutationPasses')} in ${linkFlowRSourceFile('test/functionality/_helper/mutation')}.
+- the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/counterexample-checks.ts')}.
 - pass-level unit tests, in ${linkFlowRSourceFile('test/mutations/r-mutations.test.ts')}, checking each pass on its own rather than against the corpus.
 
-Every program in the corpus is a counterexample, something that already takes care to slice correctly (a
-function called through a list, a value read back through an environment, a closure over a super-assignment,
-and so on). It is checked once for what it prints and once more for what its slice prints. Every pass is then
-tried against it: where a pass has nothing to rewrite it is skipped for that program instead of failing, and
-where it does apply, its mutant is checked the same way, plus that no query result about the program changed.
+Every program in the corpus is a counterexample flowR once sliced wrongly (a function called through a list, a
+value read back through an environment, a closure over a super-assignment, and so on), or a representative program
+of what the functionality tests cover. Each is run in R once for what it prints and once more for what its slice
+prints. Every pass is then tried on it: a pass with nothing to rewrite skips the program, and every mutant it does
+produce is checked the same way, and must leave the results of the queries unchanged.
 
-The passes fall into a few categories:
+Every program and every mutant also goes through the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')}:
+${ctx.replCmd('query')} with the ${linkToQueryOfName('static-slice')} has to print a slice that prints what the program prints,
+the ${linkToQueryOfName('dependencies')} and the ${linkToQueryOfName('linter')} have to give the same answer for the
+mutant as for the program (a pass that adds code may only add linter findings), and for a pass that only renames
+or moves code, ${linkToQueryOfName('resolve-value')}, ${ctx.replCmd('dataflow')}, ${ctx.replCmd('normalize')} and
+${ctx.replCmd('controlflow')} have to print the same, up to the positions and names the pass changed.
 
-- formatting and noise: bindings nothing reads are added before or after the program (\`leading noise\`,
-  \`trailing noise\`), a comment or a blank line is interleaved between every line, and a trailing comment is
-  appended to each statement.
-- assignment spelling: \`x <- 1\` becomes \`1 -> x\`, \`x = 1\`, \`x <<- 1\` (only where safe, see below), or
-  \`assign("x", 1)\`; the right-hand side of an assignment is wrapped in \`(...)\` or in \`{ ... }\`.
-- naming: the variable the criterion points at is renamed to \`mut_v\`, or to a name only valid in backticks;
-  a string literal is split apart into \`paste0("v", "vv")\`.
-- structure and braces: the first two statements (or a run of statements around the criterion's own line) are
-  joined with \`;\`, every statement or the whole program is wrapped in a \`{ ... }\` block, and braces are added
-  to the body of a single-line \`if\` (both arms of an \`if\`/\`else\`), \`for\` or \`while\`.
-- function forms: \`function(x)\` becomes \`\\(x)\` where the R version supports the shorthand, and a call
-  nested inside another call is rewritten as a native pipe, e.g. \`f(g(x))\` becomes \`x |> g() |> f()\`.
-- one pass, \`criterion value shifted by one\`, is the exception that deliberately changes the output: it adds
-  one to a printed number and updates the expected output to match, so the corpus also checks that a slice
-  tracks a value rather than just a name.
+${mutationCategories()}
 
-A pass is a \`MutationPass\`, an object naming what its mutants are called and a function rewriting the
-target, or returning \`undefined\` where it does not apply:
+Besides, every mutant and every chain of a pass and the ${ChainedWith} passes after it is analyzed in full and asked
+every query on tree-sitter, without R, in ${linkFlowRSourceFile('test/mutations/robustness.ts')}: none of these
+tens of thousands of programs may make flowR fail, overflow the stack, or hang.
 
-${codeBlock('typescript', `interface MutationPass {
-	name:  string;
-	apply: (target: MutationTarget, occurrencesOf: Occurrences) =>
-		Promise<MutationTarget | undefined> | MutationTarget | undefined;
-}`)}
+A pass is a ${ctx.link('MutationPass')} and sees the program as a ${ctx.link('MutationProgram')}: its normalized
+AST and dataflow graph, and what the built-in configuration states about each call. It edits the code through
+a ${ctx.link('Rewrite')}, which moves the criterion along with the lines the edits add or remove.
 
-${linkFlowRSourceFile('test/functionality/_helper/r-mutations.ts')} carries helpers most passes are built from,
-notably \`rewriteAssignments\`, which rewrites every simple assignment a pass accepts and leaves the rest of the
-program (and the criterion's line number) alone, and \`mapLines\`, which rewrites the lines of a program and
-moves the criterion's line along with them.
-
-${block({
-	type:    'WARNING',
-	content: `
-A pass has to stay sound, which is harder than it looks. Rules learned the hard way:
-
-- the rewrite must not change what the program *prints*, as the suite compares printed output. Wrapping
-  something in \`invisible(...)\` or in parentheses at the statement level is not allowed for that reason:
-  \`(x <- 1)\` prints where \`x <- 1\` does not.
-- do not emit magrittr's \`%>%\`, which is not base R and fails on a clean R installation.
-- \`T\`/\`F\` are ordinary bindings R initializes to \`TRUE\`/\`FALSE\`, not literals, so a pass abbreviating them
-  applies only where the program does not otherwise assign them.
-- reordering arguments into named form is unsound in general, as R does partial matching on argument names.
-- a pass must not join the criterion's own line with another line naming the same variable, or the
-  \`line@name\` criterion becomes ambiguous about which of the two occurrences it means.
-`
-})}
-
-There is no list of mutants flowR is allowed to fail on: a pass surfacing a genuine flowR bug should be
-reported and the bug fixed, not silenced.
-
-A complete run writes what it exercised, passes, counterexamples and mutants, together with how many tests it
-ran, and ${linkFlowRSourceFile('scripts/test-label-counts.ts')} merges those numbers into the
-${ctx.linkPage('flowr:benchmarks', 'benchmark page')} as the number of mutation passes, the number of mutants
-(out of how many were possible), and the number of mutation tests.
-
-The suite already found real bugs this way. Most recently, a value arriving through the native pipe (e.g.
-\`x |> g() |> get()\`) was not tracked like a literal argument, so the slice dropped a definition it needed;
-see the piped-argument handling in ${linkFlowRSourceFile('src/dataflow/internal/process/functions/call/built-in/built-in-get.ts')}.
+A complete run writes how many passes, counterexamples and mutants it checked, and
+${linkFlowRSourceFile('scripts/test-label-counts.ts')} adds these numbers to the
+${ctx.linkPage('flowr:benchmarks', 'benchmark page')}.
 
 <a id='performance-tests'></a>
 ### 💃 Performance Tests

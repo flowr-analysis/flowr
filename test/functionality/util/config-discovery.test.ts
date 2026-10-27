@@ -1,4 +1,4 @@
-import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import { afterAll, assert, beforeAll, describe, test, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -29,8 +29,11 @@ describe('Project config trust', () => {
 		// isolate from the global config of whoever runs the tests
 		oldHome = process.env.FLOWR_CONFIG_HOME;
 		process.env.FLOWR_CONFIG_HOME = path.join(root, 'global');
+		// the dropped-option warnings are what these tests provoke
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 	afterAll(() => {
+		vi.restoreAllMocks();
 		if(oldHome === undefined) {
 			delete process.env.FLOWR_CONFIG_HOME;
 		} else {

@@ -543,7 +543,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					name: {
 						type:     RType.Symbol,
 						location: nameRange,
-						content:  nameText,
+						content:  Identifier.getName(Identifier.make(nameText)),
 						lexeme:   nameText,
 						info:     {
 							fullRange:  range,

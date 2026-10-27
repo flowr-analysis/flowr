@@ -307,11 +307,6 @@
 		if(sig) {
 			return capitalize(sig[1]);
 		}
-		// the same for the mutation tile, which is already titled for them
-		const mut = /^mutation (.+)$/.exec(String(name));
-		if(mut) {
-			return capitalize(mut[1]);
-		}
 		const per = /^(.*?)( per 100 lines)$/.exec(String(name));
 		if(per) {
 			return shortName(per[1]) + per[2];
@@ -624,8 +619,7 @@
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
-		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true },
-		{ id: 'mutations', title: 'Metamorphic mutations', about: 'the rewrites every counterexample is sliced through', perVersion: true, facts: true }
+		{ id: 'tests', title: 'Tests and mutations', about: 'the labeled tests, what they cover, and the rewrites every counterexample is sliced through', perVersion: true, facts: true }
 	];
 
 	const PER_SLICE = ['static slicing', 'reconstruct code'];
@@ -641,12 +635,9 @@
 		if(n.startsWith('signature database')) {
 			return 'sigdb';
 		}
-		if(n === 'tests' || n.startsWith('tests ')) {
+		// what the counterexample suite carries is a property of the version too, so it joins the tests
+		if(n === 'tests' || n.startsWith('tests ') || n.startsWith('mutation ')) {
 			return 'tests';
-		}
-		// what the counterexample suite carries, which is a property of the version and not of this run
-		if(n.startsWith('mutation ')) {
-			return 'mutations';
 		}
 		// the totals dwarf the single phases and add nothing the phases do not show
 		if(n.startsWith('total ')) {
@@ -727,6 +718,12 @@
 		return 'flat';
 	}
 
+	/** how many mutants a run could have sliced, as its `extra` states it, null if it does not */
+	function possibleOf(extra) {
+		const m = /out of (\d+) possible/.exec(String(extra || ''));
+		return m ? Number(m[1]) : null;
+	}
+
 	/** the sum always keeps its legend entry so it can be switched back on, but it is only drawn while it is not hidden */
 	function withSum(shown, series, sum, off) {
 		if(!sum) {
@@ -738,7 +735,7 @@
 	root.BenchStats = {
 		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationScales, calibrationFactors, applyFactors,
 		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
-		logTicks, tickIndices, fitLabels, stateChanges, withSum, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
+		logTicks, tickIndices, fitLabels, stateChanges, withSum, possibleOf, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};
 })(typeof globalThis === 'undefined' ? this : globalThis);
 

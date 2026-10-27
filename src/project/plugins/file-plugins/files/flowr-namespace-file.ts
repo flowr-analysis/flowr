@@ -1,4 +1,5 @@
 import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { unescapeRString } from '../../../../dataflow/eval/values/string/string-constants';
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
@@ -132,7 +133,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	for(const pattern of nsInfo.exportedPatterns) {
-		const regex = parseRRegexPattern(pattern);
+		const regex = parseRRegexPattern(unescapeRString(pattern) ?? pattern);
 		if(regex.test(name)) {
 			return true;
 		}

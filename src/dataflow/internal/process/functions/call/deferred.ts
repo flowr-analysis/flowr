@@ -1,4 +1,3 @@
-import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -36,7 +35,7 @@ interface NameIndex {
 /** The vertices of `type` by their unquoted name. */
 export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idMap: AstIdMap<Info & ParentInformation>): Map<string, NodeId[]> {
 	const named = graph.vertexIdsOfType(type).filter(id => NodeId.recoverName(id, idMap) !== undefined);
-	return Map.groupBy(named, id => RString.unquote(NodeId.recoverName(id, idMap) as string));
+	return Map.groupBy(named, id => NodeId.recoverBareName(id, idMap) as string);
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
@@ -53,9 +52,9 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
 				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
-					const name = NodeId.recoverName(def, idMap);
+					const name = NodeId.recoverBareName(def, idMap);
 					if(name !== undefined) {
-						names.push([def, RString.unquote(name), true]);
+						names.push([def, name, true]);
 					}
 				}
 			}
@@ -169,8 +168,8 @@ export const Deferred = {
 			reach.always.set(use, always);
 			return always;
 		};
-		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
-		const bindingName = forces === undefined ? undefined : RString.unquote(NodeId.recoverName(forces.binding, idMap) ?? '');
+		/* `delayedAssign` names its variable with a string literal */
+		const bindingName = forces === undefined ? undefined : NodeId.recoverBareName(forces.binding, idMap) ?? '';
 		for(const [node, name, writes] of within) {
 			if(writes) {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */

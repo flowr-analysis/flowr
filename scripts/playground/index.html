@@ -263,8 +263,10 @@ code, pre { font-family: var(--mono); }
 #runrstate, #runrbytes, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
 /* one line however narrow the card: the words give way, the bar keeps its width */
 #runrstate, #runr .via { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-#runrbytes { font-variant-numeric: tabular-nums; }
-#runrprogress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
+.runr-bytes { font-variant-numeric: tabular-nums; }
+.runr-progress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
+/* a cell and the repl wait with the same bar, as the card is closed while they run */
+.runr-meter { display: flex; align-items: center; gap: .5rem; }
 #runr .via a { color: inherit; text-decoration: underline dotted; }
 #runr .via a:hover { color: var(--accent); }
 #runrtrust { cursor: help; }
@@ -768,7 +770,7 @@ code, pre { font-family: var(--mono); }
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
 		<section id="runr" hidden aria-live="polite" data-webr-start-bytes="<!--WEBR-START-BYTES-->">
-			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a class="webr" href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a><a class="shinylive" href="https://shinylive.io/r/examples/" target="_blank" rel="noopener" title="Shiny on webR, running in your browser">Shinylive</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a class="webr" href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a><a class="shinylive" href="https://shinylive.io/r/examples/" target="_blank" rel="noopener" title="Shiny on webR, running in your browser">Shinylive</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" class="runr-progress" hidden></progress><span id="runrbytes" class="runr-bytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>

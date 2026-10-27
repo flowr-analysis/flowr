@@ -12,8 +12,7 @@ import type {
 } from './identifier';
 import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
-import type { ControlDependency } from '../info';
-import { happensInEveryBranch } from '../info';
+import { ControlDependency, happensInEveryBranch  } from '../info';
 import { appendEnvironment, uniqueMergeValuesInDefinitions } from './append';
 import { define as defineInEnvironment } from './define';
 import { overwriteEnvironment } from './overwrite';
@@ -62,6 +61,12 @@ export function isDefaultBuiltInEnvironment(obj: unknown) {
 }
 
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
+
+/** whether two definitions are the same one, made by the same node under the same control dependencies */
+function sameDefinition(a: IdentifierDefinition, b: IdentifierDefinition): boolean {
+	const [ca, cb] = [a.cds ?? [], b.cds ?? []];
+	return a.nodeId === b.nodeId && a.type === b.type && ControlDependency.minus(ca, cb).length === 0 && ControlDependency.minus(cb, ca).length === 0;
+}
 
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
@@ -160,6 +165,18 @@ export class Environment implements IEnvironment {
 	/** What `name` holds here; the chain walks of name resolution take this rather than {@link memory}. */
 	public lookup(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
 		return this.frame.get(name);
+	}
+
+	/**
+	 * The definitions of `name` in this frame and the frames around it, looking into what an emptied frame stood in
+	 * for (see {@link superMemory}). For `g <- "p"; f <- function(x) UseMethod(g)` the frames are emptied while the
+	 * body of `f` is analyzed, and this still finds `g <- "p"`.
+	 */
+	public lookupLexically(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
+		if(this.builtInEnv) {
+			return undefined;
+		}
+		return this.lookup(name) ?? this.superMemory?.get(name) ?? this.parent?.lookupLexically(name);
 	}
 
 	/** Takes `map` as the bindings, sharing it until something writes. */
@@ -303,7 +320,9 @@ export class Environment implements IEnvironment {
 				break;
 			}
 		}
-		current.writableMemory.set(name, append ? [...current.lookup(name) ?? [], definition] : [definition]);
+		const existing = append ? current.lookup(name) ?? [] : [];
+		/* a definition the name already has under the same conditions adds nothing, while keeping it would double the list with every merge of two states */
+		current.writableMemory.set(name, existing.some(d => sameDefinition(d, definition)) ? existing : [...existing, definition]);
 		return newEnvironment;
 	}
 

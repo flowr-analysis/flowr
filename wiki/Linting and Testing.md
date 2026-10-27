@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-22, 15:15:45 UTC (v2.16.4, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-27, 11:16:11 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -134,7 +134,7 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L391"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L469"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L39"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L391"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L470"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L39"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
@@ -204,76 +204,121 @@ checkup`, where `npm run checkup -- mutations` runs just this job.
 
 The suite has three pieces:
 
-- the passes, in [test/functionality/_helper/r-mutations.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/r-mutations.ts) (`MutationPasses`), 28 of them at the moment.
-- the corpus of programs and the invariant checks run against their mutants, in [test/mutations/r-semantics-counterexamples.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/r-semantics-counterexamples.test.ts).
+- the 40 passes, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L653"><code><span title="every pass a mutant is generated for; add to this list to check another rewrite">MutationPasses</span></code></a> in [test/functionality/_helper/mutation](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation).
+- the corpus of programs and the invariant checks run against their mutants, in [test/mutations/counterexample-checks.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/counterexample-checks.ts).
 - pass-level unit tests, in [test/mutations/r-mutations.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/r-mutations.test.ts), checking each pass on its own rather than against the corpus.
 
-Every program in the corpus is a counterexample, something that already takes care to slice correctly (a
-function called through a list, a value read back through an environment, a closure over a super-assignment,
-and so on). It is checked once for what it prints and once more for what its slice prints. Every pass is then
-tried against it: where a pass has nothing to rewrite it is skipped for that program instead of failing, and
-where it does apply, its mutant is checked the same way, plus that no query result about the program changed.
+Every program in the corpus is a counterexample flowR once sliced wrongly (a function called through a list, a
+value read back through an environment, a closure over a super-assignment, and so on), or a representative program
+of what the functionality tests cover. Each is run in R once for what it prints and once more for what its slice
+prints. Every pass is then tried on it: a pass with nothing to rewrite skips the program, and every mutant it does
+produce is checked the same way, and must leave the results of the queries unchanged.
 
-The passes fall into a few categories:
+Every program and every mutant also goes through the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl):
+<span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> with the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice) has to print a slice that prints what the program prints,
+the [Dependencies Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies) and the [Linter Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Linter) have to give the same answer for the
+mutant as for the program (a pass that adds code may only add linter findings), and for a pass that only renames
+or moves code, [Resolve Value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value), <span title="Description (Repl Command): Get mermaid code for the dataflow graph (aliases: :d, :df)">`:dataflow`</span>, <span title="Description (Repl Command): Get mermaid code for the normalized AST of R code (aliases: :n)">`:normalize`</span> and
+<span title="Description (Repl Command): Get mermaid code for the control-flow graph of R code (aliases: :cfg, :cf)">`:controlflow`</span> have to print the same, up to the positions and names the pass changed.
 
-- formatting and noise: bindings nothing reads are added before or after the program (`leading noise`,
-  `trailing noise`), a comment or a blank line is interleaved between every line, and a trailing comment is
-  appended to each statement.
-- assignment spelling: `x <- 1` becomes `1 -> x`, `x = 1`, `x <<- 1` (only where safe, see below), or
-  `assign("x", 1)`; the right-hand side of an assignment is wrapped in `(...)` or in `{ ... }`.
-- naming: the variable the criterion points at is renamed to `mut_v`, or to a name only valid in backticks;
-  a string literal is split apart into `paste0("v", "vv")`.
-- structure and braces: the first two statements (or a run of statements around the criterion's own line) are
-  joined with `;`, every statement or the whole program is wrapped in a `{ ... }` block, and braces are added
-  to the body of a single-line `if` (both arms of an `if`/`else`), `for` or `while`.
-- function forms: `function(x)` becomes `\(x)` where the R version supports the shorthand, and a call
-  nested inside another call is rewritten as a native pipe, e.g. `f(g(x))` becomes `x |> g() |> f()`.
-- one pass, `criterion value shifted by one`, is the exception that deliberately changes the output: it adds
-  one to a printed number and updates the expected output to match, so the corpus also checks that a slice
-  tracks a value rather than just a name.
+The passes fall into 9 categories: `formatting and noise`, `assignment spelling`, `naming`, `literals and layout`, `control flow`, `dead code`, `structure and braces`, `function forms`, `changed value`.
 
-A pass is a `MutationPass`, an object naming what its mutants are called and a function rewriting the
-target, or returning `undefined` where it does not apply:
+<details><summary>formatting and noise (4)</summary>
 
-```typescript
-interface MutationPass {
-	name:  string;
-	apply: (target: MutationTarget, occurrencesOf: Occurrences) =>
-		Promise<MutationTarget | undefined> | MutationTarget | undefined;
-}
-```
+- `leading noise`: two bindings nothing reads are put before the program, `mut_a <- 1` and `mut_b <- mut_a + 1`
+- `trailing noise`: a binding nothing reads, `mut_c <- 2`, is put after a program that ends in a call printing nothing of its own
+- `interleaved comments`: a comment `# mut_note` is put before every line
+- `trailing comments`: a comment `# mut_note` is appended to every line
 
-[test/functionality/_helper/r-mutations.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/r-mutations.ts) carries helpers most passes are built from,
-notably `rewriteAssignments`, which rewrites every simple assignment a pass accepts and leaves the rest of the
-program (and the criterion's line number) alone, and `mapLines`, which rewrites the lines of a program and
-moves the criterion's line along with them.
+</details>
 
-> [!WARNING]
-> 
-> A pass has to stay sound, which is harder than it looks. Rules learned the hard way:
-> 
-> - the rewrite must not change what the program *prints*, as the suite compares printed output. Wrapping
->   something in `invisible(...)` or in parentheses at the statement level is not allowed for that reason:
->   `(x <- 1)` prints where `x <- 1` does not.
-> - do not emit magrittr's `%>%`, which is not base R and fails on a clean R installation.
-> - `T`/`F` are ordinary bindings R initializes to `TRUE`/`FALSE`, not literals, so a pass abbreviating them
->   applies only where the program does not otherwise assign them.
-> - reordering arguments into named form is unsound in general, as R does partial matching on argument names.
-> - a pass must not join the criterion's own line with another line naming the same variable, or the
->   `line@name` criterion becomes ambiguous about which of the two occurrences it means.
-> 
+<details><summary>assignment spelling (6)</summary>
 
-There is no list of mutants flowR is allowed to fail on: a pass surfacing a genuine flowR bug should be
-reported and the bug fixed, not silenced.
+- `right assignment`: `x <- 1` becomes `1 -> x`
+- `grouped right hand side`: `x <- 1` becomes `x <- (1)`
+- `braced right hand side`: `x <- 1` becomes `x <- { 1 }`
+- `assign call`: `x <- 1` becomes `assign("x", 1)`, except on the line of the criterion, which has to keep naming the variable
+- `equals assignment`: `x <- 1` becomes `x = 1`
+- `top level super assignment`: `x <- 1` becomes `x <<- 1`, except for a name an attached base package exports, as a `<<-` would try to change that binding
 
-A complete run writes what it exercised, passes, counterexamples and mutants, together with how many tests it
-ran, and [scripts/test-label-counts.ts](https://github.com/flowr-analysis/flowr/tree/main/scripts/test-label-counts.ts) merges those numbers into the
-[benchmark page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) as the number of mutation passes, the number of mutants
-(out of how many were possible), and the number of mutation tests.
+</details>
 
-The suite already found real bugs this way. Most recently, a value arriving through the native pipe (e.g.
-`x |> g() |> get()`) was not tracked like a literal argument, so the slice dropped a definition it needed;
-see the piped-argument handling in [src/dataflow/internal/process/functions/call/built-in/built-in-get.ts](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-get.ts).
+<details><summary>naming (4)</summary>
+
+- `renamed criterion variable`: the variable the criterion points at is renamed to `mut_v`
+- `non-syntactic criterion name`: the variable the criterion points at is renamed to a name only valid in backticks, `` `mut_non syntactic` ``
+- `every variable renamed`: every variable the program binds is renamed consistently, to `mut_r1`, `mut_r2`, ..., unless the program may read a name as data
+- `every variable renamed to a non-syntactic name`: every variable the program binds is renamed consistently to a name in backticks, `` `mut_r 1` ``
+
+</details>
+
+<details><summary>literals and layout (8)</summary>
+
+- `split string literal`: a string literal is split apart, `"vvv"` becomes `paste0("v", "vv")`
+- `string literal hoisted into a variable`: a string literal is bound to a variable first, `mut_s <- "a"`, which is used in its place
+- `string literal formatted by sprintf`: a string literal is formatted, `"a"` becomes `sprintf("%s", "a")`
+- `path literal built by file.path`: a path literal is built from its parts, `"a/b.txt"` becomes `file.path("a", "b.txt")`
+- `string literals in single quotes`: `"a"` becomes `'a'`
+- `numbers in scientific notation`: every whole number is written with an exponent, `3` becomes `3e0`
+- `assignment continued on the next line`: an assignment before the criterion is continued on the next line, `x <-` and `  1`
+- `irregular whitespace around assignments`: `x <- 1` becomes `x\t<-   1`
+
+</details>
+
+<details><summary>control flow (5)</summary>
+
+- `every statement guarded by if(TRUE)`: every statement on a line of its own that is no control construct is guarded, `if(TRUE) x <- 1`
+- `independent statements swapped`: two adjacent assignments before the criterion trade places, where both compute a value and nothing else and neither reads what the other binds
+- `if and else swapped under a negated condition`: the branches of an `if`/`else` trade places under the negated condition, where the condition is a single logical
+- `while loop as a repeat loop`: `while(c) b` becomes `repeat { if(!(c)) break; b }`, where the condition is a single logical
+- `for loop as a while loop`: `for(i in 1:3) b` becomes a `while` loop over the indices of the range, for a range of two whole numbers, which is never empty
+
+</details>
+
+<details><summary>dead code (1)</summary>
+
+- `dead assignment to the criterion variable`: an assignment to the variable of the criterion is put right before it under `if(FALSE)`
+
+</details>
+
+<details><summary>structure and braces (5)</summary>
+
+- `every statement in a block`: every statement on a line of its own is wrapped in a block, `{ x <- 1 }`
+- `whole program in a block`: the whole program is wrapped in a `{ ... }` block, where no statement but the last would print
+- `semicolon-separated statements`: the lines before and after the line of the criterion are each joined into one with `;`
+- `braces added to a construct body`: the body of an `if` (both arms of an `if`/`else`), `for`, `while`, or `function` written without braces gets them
+- `whole program in local`: the whole program is wrapped in `local({ ... })`, where no statement but the last would print and none depends on the frame it runs in
+
+</details>
+
+<details><summary>function forms (6)</summary>
+
+- `lambda shorthand`: `function(x)` becomes `\(x)`
+- `nested call rewritten as a pipe`: a call nested in another one becomes a native pipe, `r <- f(g(x))` becomes `r <- x |> g() |> f()`
+- `call made by do.call`: `r <- f(1, b = 2)` becomes `r <- do.call(f, list(1, b = 2))`, where `f` only uses the values of its arguments and each argument computes a value and nothing else, as the list evaluates them first
+- `argument passed through identity`: the first argument that is a plain name is passed through `identity`, `sum(v, 1)` becomes `sum(identity(v), 1)`, where the callee only uses the values of its arguments
+- `function result made an explicit return`: the body of a function written without braces is returned explicitly, `function(x) x * 3` becomes `function(x) return(x * 3)`
+- `pipe rewritten as a nested call`: a native pipe becomes the call it stands for, `x |> f(y)` becomes `f(x, y)`
+
+</details>
+
+<details><summary>changed value (1)</summary>
+
+- `criterion value shifted by one`: the one value the program prints is changed, `x <- 5` becomes `x <- (5) + 1`, and the expected output with it, so the corpus also checks that a slice tracks a value and not just a name
+
+</details>
+
+Besides, every mutant and every chain of a pass and the 4 passes after it is analyzed in full and asked
+every query on tree-sitter, without R, in [test/mutations/robustness.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/robustness.ts): none of these
+tens of thousands of programs may make flowR fail, overflow the stack, or hang.
+
+A pass is a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L38"><code><span title="one rewrite, applied to every counterexample it fits">MutationPass</span></code></a> and sees the program as a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L75"><code><span title="A program to mutate, as flowR sees it: the statements of its normalized AST, the dataflow graph, and what the built-in configuration states about the calls it makes. Passes ask this instead of reading the code as text.">MutationProgram</span></code></a>: its normalized
+AST and dataflow graph, and what the built-in configuration states about each call. It edits the code through
+a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L374"><code><span title="Text edits to a MutationProgram , applied all at once so each names its place in the original code. The criterion moves along with the lines edits add or remove before it.">Rewrite</span></code></a>, which moves the criterion along with the lines the edits add or remove.
+
+A complete run writes how many passes, counterexamples and mutants it checked, and
+[scripts/test-label-counts.ts](https://github.com/flowr-analysis/flowr/tree/main/scripts/test-label-counts.ts) adds these numbers to the
+[benchmark page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark).
 
 <a id='performance-tests'></a>
 ### 💃 Performance Tests

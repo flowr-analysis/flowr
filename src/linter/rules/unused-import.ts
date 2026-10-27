@@ -86,18 +86,16 @@ function isReadFrom(graph: DataflowGraph, id: NodeId): boolean {
  */
 function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph, src: PackageSignatureSource): ReadonlySet<string> {
 	const pending = new Set(attachments.map(a => a.name));
-	const unbound = new Set<BrandedIdentifier>();
-	for(const [id, qualified] of Dataflow.qualifyAll(graph)) {
+	for(const [, qualified] of Dataflow.qualifyAll(graph)) {
 		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
-		if(namespace !== undefined) {
-			pending.delete(namespace);
-			if(pending.size === 0) {
-				return pending;
-			}
-			continue;
+		if(namespace !== undefined && pending.delete(namespace) && pending.size === 0) {
+			return pending;
 		}
-		const vertex = graph.getVertex(id);
-		if(DfgVertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
+	}
+	/* a call or a read of a name the code binds nowhere, like `percent` in `scale_y_continuous(labels = percent)` */
+	const unbound = new Set<BrandedIdentifier>();
+	for(const [id, vertex] of graph.vertices(true)) {
+		if(DfgVertex.isFunctionCall(vertex) && Identifier.getNamespace(vertex.name) === undefined && isUnbound(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
 		} else if(DfgVertex.isUse(vertex) && isUnbound(graph, id)) {
 			const name = NodeId.recoverName(id, graph.idMap);

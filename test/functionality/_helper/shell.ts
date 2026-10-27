@@ -688,19 +688,19 @@ export function assertSliced(
 /** Options for {@link assertDiced}. At least one field should be set. */
 export interface DiceTestExpect {
 	/** Exact reconstructed code expected (trimmed) */
-	code?:       string
+	code?:         string
 	/** Strings that must appear in the reconstructed output */
-	contains?:   string[]
+	contains?:     string[]
 	/** Strings that must NOT appear in the reconstructed output */
-	excludes?:   string[]
+	excludes?:     string[]
 	/** Lower bound on the number of nodes in the dice result */
-	minSize?:    number
+	minSize?:      number
 	/** Upper bound on the number of nodes (0 = empty result) */
-	maxSize?:    number
+	maxSize?:      number
 	/** Slicing criteria whose resolved ids must be present in the result */
-	hasNodes?:   SlicingCriteria
-	/** Slicing criteria whose resolved ids must be absent from the result */
-	lacksNodes?: SlicingCriteria
+	keptNodes?:    SlicingCriteria
+	/** Slicing criteria whose resolved ids the result must not hold */
+	droppedNodes?: SlicingCriteria
 }
 
 /**
@@ -750,10 +750,10 @@ export function assertDiced(
 		if(opts.maxSize !== undefined) {
 			assert.isAtMost(slice.result.size, opts.maxSize, 'result set must be at most this large');
 		}
-		for(const id of SlicingCriterion.convertAll(opts.hasNodes ?? [], ast.idMap)) {
+		for(const id of SlicingCriterion.convertAll(opts.keptNodes ?? [], ast.idMap)) {
 			assert.isTrue(slice.result.has(id), `expected node id ${id} to be in dice result`);
 		}
-		for(const id of SlicingCriterion.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
+		for(const id of SlicingCriterion.convertAll(opts.droppedNodes ?? [], ast.idMap)) {
 			assert.isFalse(slice.result.has(id), `expected node id ${id} NOT to be in dice result`);
 		}
 	});
@@ -768,13 +768,13 @@ export async function sliceOf(parser: KnownParser, code: string, criterion: Slic
 }
 
 /** asserts that the slice for `criterion` keeps each of `has` and none of `lacks` */
-export function assertSliceKeeps(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { has = [], lacks = [] }: { has?: readonly string[], lacks?: readonly string[] }) {
+export function assertSliceKeeps(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { kept = [], dropped = [] }: { kept?: readonly string[], dropped?: readonly string[] }) {
 	test(name, async() => {
 		const sliced = await sliceOf(parser, code, criterion);
-		for(const s of has) {
+		for(const s of kept) {
 			assert.include(sliced, s, `slice should keep ${s}:\n${sliced}`);
 		}
-		for(const s of lacks) {
+		for(const s of dropped) {
 			assert.notInclude(sliced, s, `slice should drop ${s}:\n${sliced}`);
 		}
 	});
@@ -826,7 +826,7 @@ export async function printedByR(code: string): Promise<string> {
 let ciRPackages: Promise<{ listed: readonly string[], available: ReadonlySet<string> }> | undefined;
 
 /** skips a test whose `code` loads a package CI installs (`packages.txt`) but this R lacks, as CRAN no longer builds it for an old R */
-async function skipWithoutRPackages(code: string, skip: (condition: boolean, note?: string) => void): Promise<void> {
+export async function skipWithoutRPackages(code: string, skip: (condition: boolean, note?: string) => void): Promise<void> {
 	const used = [...code.matchAll(/\b(?:library|require|requireNamespace|loadNamespace)\(\s*["']?([\w.]+)|\b([\w.]+):::?/g)].map(m => m[1] ?? m[2]);
 	if(used.length === 0) {
 		return;
@@ -842,9 +842,9 @@ async function skipWithoutRPackages(code: string, skip: (condition: boolean, not
 
 /**
  * Asserts that the slice for `criterion` (default: the call on the last line), run by `Rscript`, prints what the program
- * prints last (all of it with `whole`) and lacks `absent`; `sigdb` turns the shipped signature database on.
+ * prints last (all of it with `whole`) and does not hold `dropped`; `sigdb` turns the shipped signature database on.
  */
-export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, absent, whole, sigdb }: { criterion?: SlicingCriterion, absent?: string, whole?: boolean, sigdb?: boolean } = {}) {
+export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, dropped, whole, sigdb }: { criterion?: SlicingCriterion, dropped?: string, whole?: boolean, sigdb?: boolean } = {}) {
 	test(name, async({ skip }) => {
 		await skipWithoutRPackages(code, skip);
 		const lines = code.split('\n');
@@ -859,8 +859,8 @@ export function assertSliceMatchesR(parser: KnownParser, name: string, code: str
 		});
 		const [all, part] = (await Promise.all([printedByR(code), printedByR(slice)])).map(out => whole ? out : out.split('\n').at(-1));
 		assert.strictEqual(part, all, `the slice:\n${slice}`);
-		if(absent !== undefined) {
-			assert.notInclude(slice, absent, `the slice:\n${slice}`);
+		if(dropped !== undefined) {
+			assert.notInclude(slice, dropped, `the slice:\n${slice}`);
 		}
 	});
 }

@@ -126,6 +126,9 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testRoles('a default keeps the other formals apart', 'f <- function(x, y = 2) x', { x: ArgProp.Forced | ArgProp.Alias, y: ArgProp.Lazy });
 	testRoles('a deparsed formal is read as written', 'f1 <- function(x) deparse(substitute(x))', { x: ArgProp.Nse | ArgProp.Lazy });
 	testRoles('a formal only asked to be there', 'f2 <- function(x) if (missing(x)) 1 else 2', { x: ArgProp.Presence | ArgProp.Lazy });
+	testRoles('forcing a branch forces what both branches are, not each', 'f <- function(a) force(if(missing(a)) "none" else a)', { a: ArgProp.Presence });
+	testRoles('a backticked formal is the one its name reads', 'f <- function(`a`) force(a)', { '`a`': ArgProp.Forced | ArgProp.Alias });
+	testRoles('a formal with a space called through its name is a callee', 'f <- function(`g h`) `g h`(1)', { '`g h`': ArgProp.Forced | ArgProp.Callee });
 
 	test(label('the filter narrows the definitions', ['name-normal'], ['other']), async() => {
 		const { result } = await runQuery(parser, 'f <- function(x) x\ng <- function(y) 1', { type: 'inspect-fn-props', filter: ['2@function'] });

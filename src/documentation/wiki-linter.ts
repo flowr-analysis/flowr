@@ -1,4 +1,3 @@
-import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
 import { CmdCheckConformance, CmdCheckSource, type ConformanceEntry, ConformanceLevel, numberedConformance, RPackagesCmdCheck, WritingRExtensionsCmdCheck } from '../linter/rules/cmd-check/conformance';
@@ -7,14 +6,12 @@ import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { fileProtocol } from '../r-bridge/retriever';
-import { type TypeElementInSource, type TypeReport, getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
+import { type TypeElementInSource, type TypeReport, getDocumentationForType, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
-import { isNotUndefined  } from '../util/assert';
 import { block, section } from './doc-util/doc-structure';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { textWithTooltip } from '../util/html-hover-over';
 import { joinWithLast } from '../util/text/strings';
-import { getFunctionsFromFolder } from './doc-util/doc-functions';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 import { LintQuickFixes } from '../linter/linter-fix';
 import type { LinterOutputFormat } from '../linter/linter-output';
@@ -55,209 +52,6 @@ function getPageNameForLintingRule(name: LintingRuleNames): string {
 	// convert file-path-validity to 'Linting Rule: File Path Validity'
 	const words = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1));
 	return '[Linting Rule] ' + words.join(' ');
-}
-
-/** how wide one line of an expected-result block may get before its entries are broken apart */
-const ExpectedWidth = 160;
-
-/**
- * The expected results of a linter test case as they appear in the wiki: the source text of the array, with its
- * layout dropped, one element per line, and everything that fits on one line kept there.
- */
-function prettyPrintExpectedOutput(expected: string): string {
-	const text = expected.trim();
-	if(text === '[]') {
-		return '* no lints';
-	}
-	const compact = collapseWhitespace(text);
-	if(compact.length <= ExpectedWidth || !compact.startsWith('[')) {
-		return compact;
-	}
-	const elements = splitTopLevel(compact.slice(1, -1));
-	return elements.length <= 1 ? compact : `[\n\t${elements.join(',\n\t')}\n]`;
-}
-
-/**
- * The results a linter test case expects, as one line each: what the rule reports, where, and how sure it is.
- * The source text of anything this cannot read stays a code block.
- */
-function describeExpectedResults(expected: string): string {
-	const text = collapseWhitespace(expected.trim());
-	if(text === '[]') {
-		return '* no lints';
-	}
-	if(!text.startsWith('[')) {
-		return codeBlock('ts', text);
-	}
-	const described = splitTopLevel(text.slice(1, -1)).map(describeExpectedResult);
-	return described.every(isNotUndefined) && described.length > 0
-		? described.map(line => `* ${line}`).join('\n')
-		: codeBlock('ts', prettyPrintExpectedOutput(expected));
-}
-
-/** `{certainty: ..., name: 'x', loc: [1, 1, 1, 2]}` as `certain at 1.1-1.2: name = 'x'` */
-function describeExpectedResult(element: string): string | undefined {
-	const body = /^\{(.*)\}(?: as const)?$/.exec(element.trim())?.[1];
-	if(body === undefined) {
-		return undefined;
-	}
-	const fields = new Map<string, string>();
-	for(const part of splitTopLevel(body)) {
-		const at = part.indexOf(':');
-		if(at < 0) {
-			return undefined;
-		}
-		fields.set(part.slice(0, at).trim(), part.slice(at + 1).trim());
-	}
-	const parts: string[] = [];
-	for(const [key, value] of fields) {
-		if(key === 'certainty' || key === 'loc' || value === 'undefined') {
-			continue;
-		} else if(key === 'quickFix') {
-			const fixes = splitTopLevel(value.replace(/^\[/, '').replace(/]$/, '')).length;
-			parts.push(`${fixes} quick fix${fixes === 1 ? '' : 'es'}`);
-		} else {
-			parts.push(`${key} = \`${value}\``);
-		}
-	}
-	const where = locationOf(fields.get('loc'));
-	const certainty = fields.get('certainty')?.split('.').at(-1)?.toLowerCase() ?? 'reported';
-	return `${certainty}${where ? ` at ${where}` : ''}${parts.length > 0 ? `: ${parts.join(', ')}` : ''}`;
-}
-
-/** `[1, 1, 1, 2]` as `1.1-1.2`, `undefined` for anything else */
-function locationOf(loc: string | undefined): string | undefined {
-	const at = /^\[\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\s*]$/.exec(loc ?? '');
-	return at ? `${at[1]}.${at[2]}-${at[3]}.${at[4]}` : undefined;
-}
-
-/** the text with every run of whitespace outside a string literal reduced to one space */
-function collapseWhitespace(text: string): string {
-	let out = '';
-	let quote: string | undefined;
-	let space = false;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			out += c;
-			if(c === '\\') {
-				out += text[++i] ?? '';
-			} else if(c === quote) {
-				quote = undefined;
-			}
-			continue;
-		}
-		if(/\s/.test(c)) {
-			space = out.length > 0;
-			continue;
-		}
-		if(space && !'}])'.includes(c) && !'{[('.includes(out[out.length - 1])) {
-			out += ' ';
-		}
-		space = false;
-		if(c === ',' && /[}\]]/.test(nextNonSpace(text, i + 1))) {
-			continue;   /* a trailing comma the source needed for its layout says nothing here */
-		}
-		out += c;
-		if(c === '\'' || c === '"' || c === '`') {
-			quote = c;
-		}
-	}
-	return out;
-}
-
-/** the next character of `text` from `at` that is not a space */
-function nextNonSpace(text: string, at: number): string {
-	for(let i = at; i < text.length; i++) {
-		if(!/\s/.test(text[i])) {
-			return text[i];
-		}
-	}
-	return '';
-}
-
-/** the comma-separated parts of `text`, splitting only where no bracket or string is open */
-function splitTopLevel(text: string): string[] {
-	const parts: string[] = [];
-	let depth = 0;
-	let quote: string | undefined;
-	let start = 0;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '\'' || c === '"' || c === '`') {
-			quote = c;
-		} else if('{[('.includes(c)) {
-			depth++;
-		} else if('}])'.includes(c)) {
-			depth--;
-		} else if(c === ',' && depth === 0) {
-			parts.push(text.slice(start, i).trim());
-			start = i + 1;
-		}
-	}
-	const rest = text.slice(start).trim();
-	if(rest !== '') {
-		parts.push(rest);
-	}
-	return parts;
-}
-
-function buildSamplesFromLinterTestCases(_parser: KnownParser, testFile: string): string {
-	const reports = getFunctionsFromFolder({ files: [path.resolve('test/functionality/linter/' + testFile)], fname: /assertLinter/ });
-	if(reports.info.length === 0) {
-		return '';
-	}
-	let result = `#### Additional Examples
-	
-These examples are synthesized from the test cases in: ${linkFlowRSourceFile('test/functionality/linter/' + testFile)}\n\n`;
-
-	let noLints: string[] = [];
-	const flushNoLints = () => {
-		if(noLints.length > 0) {
-			result += `\n${section('Test Cases without Findings', 4)}\n\nThe linter reports nothing for:\n\n${noLints.join('\n')}\n`;
-			noLints = [];
-		}
-	};
-	for(const report of reports.info) {
-		const args = report.arguments;
-		if(args.length < 5) {
-			console.error('Test case for linter rule ' + report.name + ' does not have enough arguments! Expected at least 5, got ' + args.length);
-			continue;
-		}
-		const testName = args[0].getText(report.source);
-		if(report.comments?.some(c => c.includes('@ignore-in-wiki'))) {
-			continue;
-		}
-		const testNameClean = RString.unquote(testName);
-		const input = RString.unquote(args[2].getText(report.source)).replace(/\\n/g, '\n');
-		const expected = describeExpectedResults(args[4].getText(report.source));
-		if(expected === '* no lints' && args.length < 7 && !report.comments) {
-			noLints.push(`**${testNameClean}**\n${codeBlock('r', input)}`);
-			continue;
-		}
-		result += `\n${section('Test Case: ' + testNameClean, 4)}
-
-${report.comments ? report.comments.map(c => `> ${c}`).join('\n') + '\n' : ''}
-Given the following input:
-${codeBlock('r', input)}
-${args.length >= 7 ? `\nAnd using the following [configuration](#configuration): ${codeBlock('ts', prettyPrintExpectedOutput(args[6].getText(report.source)))}` : ''}
-
-We expect the linter to report the following:
-
-${expected}
-
-See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: report.lineNumber })}) for the test-case implementation.
-`;
-	}
-	flushNoLints();
-
-	return result;
 }
 
 /** an example that needs files besides its code shows them as a project, its code in `R/code.R` */
@@ -469,7 +263,7 @@ function(x) {
 	},
 	'package-runtime': {
 		configType: 'PackageRuntimeConfig', ruleType:   'PACKAGE_RUNTIME', testfile:   'cmd-check/lint-package-runtime',
-		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\n' } }
+		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\nexportPattern("^api_")\n' } }
 	}
 };
 
@@ -559,7 +353,7 @@ The linting query can be used to run this rule on the above example:
 
 ${await exampleQuery(parser, name, example, config)}
 
-${(rule.info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) ? `More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/linter/${testfile}.test.ts`)}.` : buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
+More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/linter/${testfile}.test.ts`)}.
 
 		`.trim());
 	}

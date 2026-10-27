@@ -1,14 +1,14 @@
 name: Check for Broken Links and Publish Wiki
 
 'on':
-  push:
-    branches: [ main ]
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ main ]
   workflow_dispatch:
+  # QA tests every push to main and the release tests release commits, so publishing waits for them and reuses
+  # their test label details instead of running the same tests again
   workflow_run:
-    workflows: ["Release Action"]
+    workflows: ["QA", "Release Action"]
     branches: [ main ]
     types:
       - completed
@@ -18,7 +18,6 @@ name: Check for Broken Links and Publish Wiki
 
 env:
   PUBLISH: ${{ github.event_name == 'workflow_dispatch'
-    || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
 
 permissions:
@@ -26,14 +25,19 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  # a newer push to a pull request makes its older run pointless, but a publishing run must not stop halfway
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 65
-    if: ${{ !(github.event_name == 'push' && startsWith(github.event.head_commit.message, '[release:'))
-      && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    # QA runs on release commits as well, but those are published once the release is done
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' && (
+          (github.event.workflow_run.name == 'QA' && github.event.workflow_run.event == 'push'
+            && !startsWith(github.event.workflow_run.head_commit.message, '[release:'))
+        || (github.event.workflow_run.name == 'Release Action'
+            && startsWith(github.event.workflow_run.head_commit.message, '[release:'))) }}
     outputs:
       publish: ${{ steps.gate.outputs.publish }}
     steps:
@@ -79,7 +83,22 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: "⬇️ Get the Test Label Details from the Triggering Run"
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          # QA uploads the mutation suite's details apart from the others, the release run all of them in one
+          pattern: test-label-details*
+          merge-multiple: true
+          path: coverage/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+
+      # only a publishing run without the details of a triggering run tests for them, a pull request
+      # does not publish and gen-capabilities keeps the committed page when the details are missing
       - name: "⚗️ Test Suite (full, for data)"
+        if: ${{ env.PUBLISH == 'true' && hashFiles('coverage/flowr-test-details.json') == '' }}
         # we make sure we have a clean run
         run: |
           rm -rf "coverage/"
@@ -89,9 +108,11 @@ jobs:
       # the run above excludes this suite, so without it the capabilities page below (and the one the
       # documentation job builds from the artifact) would be missing every label the mutation tests claim
       - name: "⚗️ Mutation Tests (for data)"
+        if: ${{ env.PUBLISH == 'true' && hashFiles('coverage/flowr-test-details-mutations.json') == '' }}
         run: npx vitest --run --config test/mutations/vitest.config.mts -- --make-summary
 
       - name: "⬆️ Upload the Test Label Details"
+        if: ${{ env.PUBLISH == 'true' }}
         uses: actions/upload-artifact@v6
         with:
           name: wiki-test-label-details
@@ -111,7 +132,7 @@ jobs:
 
       - name: "🛠️ Update the Generated Pages"
         run: |
-          # npm ci is done by the full test run before
+          # npm ci is done by the signature database sync before
           CHANGED_ANY=false
           CHANGED_FILES=()
           

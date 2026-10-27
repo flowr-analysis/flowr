@@ -88,22 +88,28 @@ const transfers = new Map<string, number>();
 
 const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(1);
 
+/** every bar that shows the download, in the head of the card and in a cell or the repl line waiting for it */
 function showProgress(): void {
-	const bar = document.getElementById('runrprogress') as HTMLProgressElement | null;
-	const bytes = document.getElementById('runrbytes');
-	if(bar === null || bytes === null) {
-		return;
-	}
-	bar.hidden = bytes.hidden = step === undefined;
 	const loaded = arraySum([...transfers.values()]);
-	if(step?.total !== undefined && loaded < step.total) {
-		bar.max = step.total;
-		bar.value = loaded;
-		bytes.textContent = `${megabytes(loaded)} of ${megabytes(step.total)} MB`;
-	} else {
-		bar.removeAttribute('value');
-		bytes.textContent = step?.total !== undefined ? step.then : loaded > 0 ? `${megabytes(loaded)} MB` : '';
+	for(const bar of document.querySelectorAll<HTMLProgressElement>('progress.runr-progress')) {
+		const bytes = bar.nextElementSibling as HTMLElement;
+		bar.hidden = bytes.hidden = step === undefined;
+		if(step?.total !== undefined && loaded < step.total) {
+			bar.max = step.total;
+			bar.value = loaded;
+			bytes.textContent = `${megabytes(loaded)} of ${megabytes(step.total)} MB`;
+		} else {
+			bar.removeAttribute('value');
+			bytes.textContent = step?.total !== undefined ? step.then : loaded > 0 ? `${megabytes(loaded)} MB` : '';
+		}
 	}
+}
+
+/** the progress of the card's head for output the card does not show, as the card is closed while a cell or the repl runs */
+function meterRow(...lead: HTMLElement[]): HTMLElement {
+	const row = el('div', 'note runr-meter');
+	row.append(...lead, el('progress', 'runr-progress'), el('span', 'runr-bytes'));
+	return row;
 }
 
 function beginStep(next?: Step): void {
@@ -480,6 +486,8 @@ let repl = 0;
  */
 export async function evalInR(code: string, packagesOf: PackageFinder, line: (text: string, cls?: string) => void, into: HTMLElement): Promise<void> {
 	const mine = ++repl;
+	const meter = into.appendChild(meterRow());
+	showProgress();
 	try {
 		await evaluate(code, () => packagesOf(code), {
 			line,
@@ -496,6 +504,8 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 		}, plotSize(into), () => mine === repl);
 	} catch(e) {
 		line(e instanceof Error ? e.message : String(e), 'bad');
+	} finally {
+		meter.remove();
 	}
 }
 
@@ -572,6 +582,9 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		if(into === undefined && matchMedia('(max-width: 52rem)').matches) {
 			card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		}
+		const cellState = el('span');
+		const meter = into?.insertBefore(meterRow(cellState), into.firstChild);
+		showProgress();
 		const begin = performance.now();
 		try {
 			const input = await what();
@@ -601,7 +614,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 				plot:   canvas => sink.append(canvas),
 				append: node => sink.append(node),
 				status: text => {
-					state.textContent = text;
+					state.textContent = cellState.textContent = text;
 				}
 			}, plotSize(target), () => run === running, input);
 			if(run === running) {
@@ -617,6 +630,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 				done('');
 			}
 		} finally {
+			meter?.remove();
 			if(into !== undefined && run === running) {
 				into.replaceChildren(...sink.childNodes);
 			}

@@ -113,6 +113,8 @@ export enum RawRType {
 	SymbolSub = 'SYMBOL_SUB',
 	/** T54 */
 	SymbolFormals = 'SYMBOL_FORMALS',
+	/** the `_` of a pipe, `x |> f(y = _)`, which flowR reads as the symbol `_` */
+	Placeholder = 'PLACEHOLDER',
 	/** T55 */
 	Comment = 'COMMENT',
 	/** T56 */
@@ -215,6 +217,7 @@ export const ValidRTypesReverse = Object.fromEntries(Object.entries(RType).map((
 
 const validSymbolTypes = new Set([
 	RawRType.Symbol,
+	RawRType.Placeholder,
 	RawRType.SymbolPackage,
 	RawRType.SymbolFunctionCall,
 	RawRType.NullConst,

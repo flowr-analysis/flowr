@@ -1,4 +1,6 @@
 import { executeQueriesOfSameType } from '../../query';
+import { SliceDirection } from '../../../util/slice-direction';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
@@ -49,6 +51,7 @@ export async function executeDependenciesQuery({
 				enabledCategories:      query.enabledCategories === undefined && q.enabledCategories === undefined ? undefined : [...(query.enabledCategories ?? []), ...(q.enabledCategories ?? [])],
 				ignoreDefaultFunctions: query.ignoreDefaultFunctions || q.ignoreDefaultFunctions,
 				assumedPackages:        query.assumedPackages || q.assumedPackages,
+				focus:                  query.focus === undefined && q.focus === undefined ? undefined : [...query.focus ?? [], ...q.focus ?? []],
 				additionalCategories:   {
 					...query.additionalCategories,
 					...q.additionalCategories
@@ -114,10 +117,20 @@ export async function executeDependenciesQuery({
 		}
 	}
 
+	const focus = query.focus?.length ? await focusOf(data, query.focus) : undefined;
 	return {
-		...metaSince(now),
+		'.meta': { ...metaSince(now)['.meta'], ...focus === undefined ? {} : { focus } },
 		...results,
 	} as DependenciesQueryResult;
+}
+
+/** the nodes taking part in what the `criteria` name: the nodes themselves, what they depend on, and what depends on them */
+async function focusOf(data: BasicQueryData, criteria: readonly SlicingCriterion[]): Promise<NodeId[]> {
+	const { 'static-slice': slices } = await data.analyzer.query([SliceDirection.Backward, SliceDirection.Forward].map(direction =>
+		({ type: 'static-slice', criteria: [...criteria], direction, noReconstruction: true })));
+	const ast = await data.analyzer.normalize();
+	const named = criteria.map(c => SlicingCriterion.tryParse(c, ast.idMap)).filter(isNotUndefined);
+	return uniqueArray([...named, ...Object.values(slices.results).flatMap(r => [...r.slice.result])]);
 }
 
 /** what a call of a function does not do itself: loading a package or a script there is still what the function does */
@@ -364,32 +377,18 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				const ignoredValue = info.ignoreIf === 'arg-true' ? 'TRUE' : 'FALSE';
 				return valValues.length > 0 && valValues.every(v => v === ignoredValue);
 			};
-			const ignoreOnArgSet = () => {
-				if(info.ignoreIf !== 'arg-set') {
-					return;
-				}
-				const hasArg = (name?: string, index?: number | 'unnamed') => vertex.args.some((arg, idx) =>
-					FunctionArgument.isNamed(arg) && arg.name === name ||
-					FunctionArgument.isPositional(arg) && idx === index
-				);
-				if(hasArg(info.argName, info.argIdx)) {
-					return false;
-				}
-				const margs = info.additionalArgs?.argSet;
-				guard(margs, 'Need additional argument argSet when checking for arg-set');
-				return hasArg(margs.argName, margs.argIdx);
-			};
+			const passesInline = info.inline !== undefined && vertex.args.some(arg => FunctionArgument.isNamed(arg) && arg.name === info.inline?.argName);
 			const flow = dataFlowOf(kind, vertex, run);
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
-				if(info.ignoreIf !== 'arg-missing' && !ignoreOnArgVal() && !ignoreOnArgSet()) {
+				if(info.ignoreIf !== 'arg-missing' && !ignoreOnArgVal()) {
 					finalResults.push(compactRecord({
 						nodeId:           id,
 						functionName,
 						lexemeOfArgument: undefined,
 						linkedIds:        linked?.length ? linked : undefined,
 						...flow,
-						value:            info.defaultValue ?? defaultValue
+						value:            passesInline ? Constant : info.defaultValue ?? defaultValue
 					} as DependencyInfo));
 				}
 				continue;
@@ -403,7 +402,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				if(modeValues.every(m => m && modes.has(m))) {
 					continue;
 				}
-			} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
+			} else if(ignoreOnArgVal()) {
 				continue;
 			}
 			const replaced = (value: string | undefined) => value !== undefined && info.stringReplacements && Object.hasOwn(info.stringReplacements, value) ? info.stringReplacements[value] : value;

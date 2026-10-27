@@ -1510,10 +1510,15 @@
 			title:  'What a base-R entry carries', parent: 'signature database base functions', part: /^signature database base functions \((.*)\)$/, label: t => t,
 			more:   'kinds of information', note: 'what a base-R entry carries as of '
 		}],
+		/* every pass belongs to one category, which names its passes */
+		mutations: [{
+			title:  'Passes per category', parent: 'mutation passes', part: /^mutation passes \((.*)\)$/, label: t => t,
+			more:   'categories', note: 'passes per category as of '
+		}],
 		/* a test may cover several parts of the analysis */
 		tests: [{
 			title:  'Labeled tests per part', parent: 'tests overall', part: /^tests \((.*)\)$/, label: t => t,
-			more:   'parts', note: 'labeled tests per part as of ', top: 7,
+			more:   'parts', note: 'labeled tests per part as of ',
 			link:   { href: 'https://github.com/flowr-analysis/flowr/wiki/Capabilities', text: 'capabilities' }
 		}]
 	};
@@ -1660,15 +1665,17 @@
 	}
 
 	/** the breakdown the tile is showing, which is one of them */
-	function barsOf(group, series, runs, at, lead) {
-		const specs = BARS[group.id];
+	function barsOf(group, series, runs, at, lead, of = group.id) {
+		const specs = BARS[of];
 		if(!specs) {
 			return null;
 		}
 		const pick = Math.min(barsPick.get(group.id) ?? 0, specs.length - 1);
-		return barOf(group, specs[pick], openKey(group, pick), series, runs, at, lead, specs, pick)
+		/* a view of the tile with breakdowns of its own keeps their state apart from the tile's */
+		const keyOf = i => of === group.id ? openKey(group, i) : group.id + '~' + of + '~' + i;
+		return barOf(group, specs[pick], keyOf(pick), series, runs, at, lead, specs, pick)
 			/* the chosen one states nothing for this run, so the first that does is shown instead */
-			?? specs.map((spec, i) => i === pick ? null : barOf(group, spec, openKey(group, i), series, runs, at, lead, specs, i))
+			?? specs.map((spec, i) => i === pick ? null : barOf(group, spec, keyOf(i), series, runs, at, lead, specs, i))
 				.find(Boolean) ?? null;
 	}
 
@@ -1775,25 +1782,65 @@
 			track:   'signature database',
 			history: 'database'
 		},
+		/* one tile for both suites, as the counterexample suite is a part of the tests; each gets a view of its own */
 		tests: {
-			lead: [['tests overall', 'tests in total'], ['tests', 'of them labeled', true]],
-			rest: [],
-			splits: [],
-			trend: 'tests overall',
-			track: null
+			views: [
+				{
+					title: 'Tests',
+					lead:  [['tests overall', 'tests in total'], ['tests', 'of them labeled', true]],
+					rest:  [],
+					splits: [],
+					stack: 'tests',
+					track: null
+				},
+				{
+					title: 'Mutations',
+					lead:  [
+						['mutation mutants', 'mutants sliced'],
+						['mutation passes', 'rewrites applied to each'],
+						/* the suite no longer records it, so only a run that still carries the number states it */
+						['mutation known-wrong mutants', 'still sliced wrongly']
+					],
+					rest:   [],
+					splits: [],
+					stack:  'mutations',
+					track:  null,
+					bars:   'mutations'
+				}
+			]
+		}
+	};
+
+	/** a difference of two counts, null where either is missing so a gap never reads as a part */
+	const minus = (a, b) => a === null || b === null ? null : Math.max(0, a - b);
+
+	/**
+	 * The views that stack what a release carries over the releases, `parts` fixed or derived from the series there are.
+	 * `of` reads the value of a series at that release, `extra` what the release wrote next to it. The parts take the palette in order, `s0` being the
+	 * first color every tile leads with, and the muted `ssum` stands for the rest of a whole.
+	 */
+	const STACKS = {
+		tests: {
+			title: 'Tests per release',
+			parts: [
+				{ label: 'labeled', cls: 's0', of: v => v('tests') },
+				{ label: 'not labeled', cls: 'ssum', of: v => minus(v('tests overall'), v('tests')) },
+				{ label: 'counterexample suite', cls: 's1', of: v => v('mutation tests') }
+			]
 		},
-		/* what the counterexample suite rewrites and what of it is still sliced wrongly */
+		/* the passes of each category of rewrites, and for a release that recorded none the passes as a whole */
 		mutations: {
-			lead: [
-				['mutation mutants', 'mutants sliced'],
-				['mutation passes', 'rewrites applied to each'],
-				/* the suite no longer records it, so only a run that still carries the number states it */
-				['mutation known-wrong mutants', 'still sliced wrongly']
-			],
-			rest: [['mutation tests', 'tests run by the suite']],
-			splits: [],
-			trend: 'mutation mutants',
-			track: null
+			title: 'Rewrites per release',
+			parts: series => {
+				const categories = series.map(s => /^mutation passes \((.*)\)$/.exec(s.name)?.[1]).filter(c => c !== undefined);
+				return [
+					...categories.map((category, k) => ({ label: category, cls: 's' + k, of: v => v(`mutation passes (${category})`) })),
+					{ label: 'passes, by category from later releases on', cls: 'ssum', of: v => {
+						const known = categories.map(c => v(`mutation passes (${c})`));
+						return known.some(k => k !== null) ? null : v('mutation passes');
+					} }
+				];
+			}
 		}
 	};
 
@@ -1879,6 +1926,86 @@
 		svg.classList.add('pickable');
 		box.appendChild(svg);
 		return box;
+	}
+
+	/** the parts of a whole stacked as areas over the releases, so the parts and their whole both read as they grew */
+	function stackedOf(stack, series, runs, onPick) {
+		const w = 300, h = 46, padX = 4, padT = 4, padB = 11;
+		const all = typeof stack.parts === 'function' ? stack.parts(series) : stack.parts;
+		const known = runs.map((run, i) => all.map(p => {
+			const v = p.of(name => valueAt(series, name, i), name => extraOf(run, name));
+			return typeof v === 'number' ? v : null;
+		}));
+		/* a part no release in range recorded would read as a zero, which it is not */
+		const keep = all.map((_, k) => known.some(r => r[k] !== null));
+		const parts = all.filter((_, k) => keep[k]);
+		const rows = known.map(r => r.filter((_, k) => keep[k]));
+		const tops = rows.map(r => {
+			let sum = 0;
+			return r.map(v => sum += v ?? 0);
+		});
+		const totals = tops.map(t => t.length ? t[t.length - 1] : 0);
+		const hi = Math.max(...totals, 0);
+		if(hi === 0) {
+			return null;
+		}
+		/* the chart spans the releases that recorded the parts, so the pointer never lands on one without data */
+		const first = totals.findIndex(t => t > 0);
+		const last = totals.length - 1 - [...totals].reverse().findIndex(t => t > 0);
+		const span = Math.max(1, last - first);
+		const x = i => padX + (last === first ? (w - 2 * padX) / 2 : (i - first) / span * (w - 2 * padX));
+		const y = v => h - padB - v / hi * (h - padT - padB);
+		const box = dom('div', { className: 'composition stack' });
+		box.appendChild(dom('div', { className: 'tags-head' }, dom('span', { className: 'tags-title', textContent: stack.title })));
+		const svg = tag('svg', { viewBox: '0 0 ' + w + ' ' + h, role: 'img', class: 'pickable', 'aria-label': stack.title });
+		svg.appendChild(tag('line', { class: 'timeline-base', x1: padX, y1: h - padB, x2: w - padX, y2: h - padB }));
+		const recorded = S.segments(totals.map(t => t > 0 ? t : null));
+		parts.forEach((p, k) => {
+			for(const seg of recorded) {
+				const upper = seg.map(i => [x(i), y(tops[i][k])]);
+				const lower = seg.map(i => [x(i), y(k > 0 ? tops[i][k - 1] : 0)]).reverse();
+				svg.appendChild(tag('path', { class: 'stack-area ' + p.cls, d: S.smoothPath(upper) + S.smoothPath(lower).replace(/^M/, 'L') + 'Z' }));
+				svg.appendChild(tag('path', { class: 'timeline-line ' + p.cls, d: S.smoothPath(upper) }));
+			}
+		});
+		svg.appendChild(tag('text', { class: 'timeline-tick', x: x(first), y: h - 3 }, S.runLabel(runs[first])));
+		if(first !== last) {
+			svg.appendChild(tag('text', { class: 'timeline-tick', x: x(last), y: h - 3, 'text-anchor': 'end' }, S.runLabel(runs[last])));
+		}
+		svg.addEventListener('pointermove', ev => {
+			const rect = svg.getBoundingClientRect();
+			const px = (ev.clientX - rect.left) / (rect.width || 1) * w;
+			const i = Math.max(first, Math.min(last, first + Math.round((px - padX) / (w - 2 * padX) * span)));
+			onPick(i);
+			const t = ui.tooltip;
+			t.textContent = '';
+			t.append(tipHead(runs[i]), dom('table', {},
+				...parts.map((p, k) => tipRow(p.cls, p.label, rows[i][k] === null ? 'n/a' : fmtFact(rows[i][k], '#'))),
+				tipRow('ssum', 'total', fmtFact(totals[i], '#'), '', true)));
+			placeTooltip(ev);
+		});
+		svg.addEventListener('pointerleave', () => {
+			onPick(undefined);
+			ui.tooltip.hidden = true;
+		});
+		box.append(svg);
+		return box;
+	}
+
+	/** the views of a tile that states more than one thing, as tabs above the numbers */
+	function viewTabsOf(group, views, pick, rebuild) {
+		const row = dom('div', { className: 'tags-tabs view-tabs' });
+		views.forEach((view, i) => {
+			const b = dom('button', { type: 'button', className: 'tags-tab' + (i === pick ? ' on' : ''), textContent: view.title });
+			b.setAttribute('aria-pressed', String(i === pick));
+			b.addEventListener('click', () => {
+				barsPick.set(group.id + '~view', i);
+				writeUrl();
+				rebuild();
+			});
+			row.appendChild(b);
+		});
+		return row;
 	}
 
 	function fmtFact(v, unit) {
@@ -1981,7 +2108,9 @@
 	 * newest run instead, with a donut per split and the releases that changed them.
 	 */
 	function factsOf(group, series, runs, at) {
-		const spec = FACTS[group.id];
+		const views = FACTS[group.id]?.views;
+		const pick = views ? Math.min(barsPick.get(group.id + '~view') ?? 0, views.length - 1) : 0;
+		const spec = views ? views[pick] : FACTS[group.id];
 		if(!spec || !runs.length) {
 			return null;
 		}
@@ -1989,10 +2118,15 @@
 		const box = document.createElement('div');
 		box.className = 'facts';
 		const lead = factGrid(series, spec.lead, at, 'lead');
-		if(!lead) {
+		if(views) {
+			box.appendChild(viewTabsOf(group, views, pick, () => replaceNode(box, factsOf(group, series, runs, at)
+				|| dom('p', { className: 'empty', textContent: 'no data in this range' }))));
+		} else if(!lead) {
 			return null;
 		}
-		box.appendChild(lead);
+		if(lead) {
+			box.appendChild(lead);
+		}
 		const rest = factGrid(series, spec.rest, at, 'rest');
 		if(rest) {
 			box.appendChild(rest);
@@ -2004,6 +2138,10 @@
 			i => swap(() => factsOf(group, series, runs, i)), at) : null;
 		if(timeline) {
 			box.appendChild(timeline);
+		}
+		const stack = spec.stack ? stackedOf(STACKS[spec.stack], series, runs, i => swap(() => factsOf(group, series, runs, i))) : null;
+		if(stack) {
+			box.appendChild(stack);
 		}
 		const splits = dom('div', { className: 'splits' });
 		let leadColor = '';
@@ -2017,7 +2155,7 @@
 		if(splits.children.length) {
 			box.appendChild(splits);
 		}
-		const bars = barsOf(group, series, runs, at, leadColor);
+		const bars = barsOf(group, series, runs, at, leadColor, spec.bars);
 		if(bars) {
 			box.appendChild(bars);
 		}

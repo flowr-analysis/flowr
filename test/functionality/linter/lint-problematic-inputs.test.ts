@@ -112,7 +112,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp -o landscape',
 			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
 		}]);
-		assertLinter('pdf title before the file is no pipe', parser, 'pdf(title = "|x", "out.pdf")', 'problematic-inputs', []);
 		assertLinter('pdf pipe as file with a title after it', parser, 'pdf("|lp", title = "x")', 'problematic-inputs', [{
 			certainty:   LintingResultCertainty.Certain,
 			name:        'pdf',

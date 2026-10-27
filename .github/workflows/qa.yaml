@@ -158,18 +158,13 @@ jobs:
       - name: "⚙️ Run System Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
-      - name: "🧬 Run Mutation Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
-
       - name: "⬆️ Upload Test Label Details"
         uses: actions/upload-artifact@v6
         with:
           name: test-label-details
           path: |
-            coverage/flowr-test-details*.json
+            coverage/flowr-test-details.json
             coverage/flowr-test-results.json
-            coverage/flowr-mutation-details.json
-            coverage/flowr-mutation-test-results.json
           if-no-files-found: warn
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
@@ -178,6 +173,54 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+
+  # apart from the coverage job, so the two run side by side instead of one after the other
+  test-mutations:
+    needs: [ debug ]
+    name: "🧬 Mutation Tests"
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+          packages: 'true'
+
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🧬 Run Mutation Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
+
+      - name: "⬆️ Upload Test Label Details"
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-label-details-mutations
+          path: |
+            coverage/flowr-test-details-mutations.json
+            coverage/flowr-mutation-details.json
+            coverage/flowr-mutation-test-results.json
+          if-no-files-found: warn
 
   test-os:
     needs: [ debug ]
@@ -230,7 +273,8 @@ jobs:
 
 
   performance-test:
-    needs: [ test ]
+    # the upload after it needs the label details of both
+    needs: [ test, test-mutations ]
     name: "⏱️ Performance Test"
     # we do not run if the release workflow runs it with pushing
     if: ${{
@@ -313,7 +357,8 @@ jobs:
         uses: actions/download-artifact@v6
         continue-on-error: true
         with:
-          name: test-label-details
+          pattern: test-label-details*
+          merge-multiple: true
           path: test-labels/
 
       # add new benchmark suites and parsers here and in the matrix of `performance-test`

@@ -448,6 +448,17 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('get is classified by the name it looks up', "v <- readline()\nget('v')", q('2@get'), {
 			'2@get': [{ id: '7-get-name', types: [InputType.Constant], trace: InputTraceType.Unknown, value: 'v' }]
 		});
+		for(const wrap of ['', '(', 'identity(']) {
+			testQuery(`${wrap || 'no'}...) hands its argument on unchanged`, `e <- ${wrap}quote(x * 2)${wrap ? ')' : ''}\nx <- 4\neval(e)`, q('3@eval'), {
+				'3@eval': [{ id: '3@e', types: [InputType.Lang], trace: InputTraceType.Alias }]
+			});
+		}
+		testQuery('do.call yields what the call it makes yields', 'f <- function() { y <- 3; function() y }\ng <- do.call(f, list())\nfoo(g)', q('3@foo'), {
+			'3@foo': [{ id: '3@g', types: [InputType.Constant], trace: InputTraceType.Alias }]
+		});
+		testQuery('a built-in named as a value is that function', 'foo(identity(sum))', q('1@foo'), {
+			'1@foo': [{ id: '1@sum', types: [InputType.Constant], trace: InputTraceType.Pure }]
+		});
 		testQuery('do.call is classified by the function it is handed', "do.call(paste, list('a', readline()))", q('1@do.call'), {
 			'1@do.call': [{ id: '1@paste', types: [InputType.Constant], trace: InputTraceType.Unknown }, { id: '1@list', types: [InputType.Constant, InputType.User, InputType.DerivedConstant], trace: InputTraceType.Known }]
 		});

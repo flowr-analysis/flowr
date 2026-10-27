@@ -265,7 +265,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@p_load', functionName: 'p_load', value: 'c' }
 		] });
 
-		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }] });
+		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stderr' }] });
 
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', {
 			write: [
@@ -454,6 +454,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
 		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
 		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [], write: [printed('1@gzfile', 'gzfile')] });
+		testQuery('a connection opened on an unknown file reads an unknown file', 'read.csv(gzfile(d))', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', argumentId: '1@gzfile', lexemeOfArgument: 'gzfile(d)', value: 'unknown' }], write: [printed('1@read.csv', 'read.csv')] });
 
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x', argumentId: '1:12' }], write: [printed('1@read.table', 'read.table')] });
 
@@ -734,6 +735,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('the time-series filter of stats is none', 'stats::filter(x, rep(1, 3))', { library: [{ nodeId: '1@filter', functionName: '::', value: 'stats' }], write: [printed(10, Identifier.make('filter', 'stats'), ['x'])] });
 			testQuery('a bare filter is the one of stats', 'filter(x, rep(1, 3))', { write: [printed(10, 'filter', ['x'])] });
 			testQuery('a user-defined filter is none', 'filter <- function(x) x\ny <- filter(df)', {});
+			testQuery('an assignment into a part of a data frame transforms it', 'd <- data.frame(x = 1:3)\nd$y <- d$x * 2\nv <- 1:3\nv[1] <- 5', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('a data frame handed through parentheses is one', 'd <- (data.frame(x = 1:3))\nd$y <- 2', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('data.table updates by reference and groups', 'dt[, z := x + 1]\nm <- dt[, mean(x), by = g]', { transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['dt'], assignedTo: 'dt' }, { nodeId: '2@[', functionName: '[', inputVariables: ['dt'] }] });
 			testQuery('base functions', 'm <- merge(a, b)\ns <- subset(a, x > 1)', { transform: [
 				{ nodeId: '1@merge', functionName: 'merge', inputVariables: ['a', 'b'], assignedTo: 'm' },
 				{ nodeId: '2@subset', functionName: 'subset', inputVariables: ['a'], assignedTo: 's' }
@@ -1001,7 +1005,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Read from string', () => {
-		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', { read: [], write: [] });
+		testQuery('read.csv text parameter reads inline data', 'a <- read.csv(text="hello, world")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'constant', assignedTo: 'a' }], write: [] });
+		testQuery('fread takes the path as its first argument', 'd <- data.table::fread("a.csv")', { library: [{ nodeId: '1@fread', functionName: '::', value: 'data.table' }], read: [{ nodeId: '1@data.table::fread', functionName: Identifier.make('fread', 'data.table'), value: 'a.csv', assignedTo: 'd' }] });
+		testQuery('a print method writing a file', 'print(tab, file = "o.tex")', { write: [{ nodeId: '1@print', functionName: 'print', value: 'o.tex', inputVariables: ['tab'] }] });
+		testQuery('an update by reference prints nothing', 'a[, z := x + 1]', { write: [], transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['a'], assignedTo: 'a' }] });
 		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv', assignedTo: 'a' }], write: [] });
 		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv', assignedTo: 'a' }], write: [] });
 	});
@@ -1133,6 +1140,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a right assignment', '1 -> x', {});
 			testQuery('a super assignment', 'x <<- 1', {});
 			testQuery('a replacement', 'names(x) <- "a"', {});
+			/* a call handing on its argument hands on that it is invisible, too */
+			testQuery('an assignment handed on by identity', 'identity(x <- 1)', {});
+			testQuery('a function returning an assignment', 'f <- function() return(x <- 1)\nf()', {});
+			/* a replacement is an assignment too, whose vertex sits on its target */
+			for(const target of ['x$a', 'names(x)', 'x[1]']) {
+				testQuery(`a function ending in the replacement ${target} <- ...`, `f <- function(x) ${target} <- 1\nf(list())`, {});
+			}
 			/* the body still runs, so what it prints on its own is still an output */
 			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout', inputVariables: ['i'] }] });
 		});

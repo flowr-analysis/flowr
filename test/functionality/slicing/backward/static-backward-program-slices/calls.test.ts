@@ -31,6 +31,15 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, constFunction, ['3:1'], 'a <- function(x) 1\na(i)');
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities), shell, constFunction, ['2@a'], 'a <- function(x) { }');
+		/* the apply cannot resolve what is piped in, so it keeps its call as one of unknown effect */
+		assertSliced(label('a function piped into an apply is no call to make before the pipe', ['pipe-and-pipe-bind', 'name-normal', 'numbers', 'normal-definition']),
+			shell, 'r <- function(a, b) a + b |> Map(1:3, 4:6)\nr', ['2@r'], 'r <- function(a, b) b |> Map(1:3, 4:6)\nr');
+		assertSliced(label('an environment do.call makes is changed by a callee', ['environment-sharing', 'name-normal', 'numbers', 'newlines', 'dollar-access']),
+			shell, 'e <- do.call(new.env, list())\ne$a <- 1\nf <- function(en) en$a <- 42\nf(e)\nr <- e$a', ['5@r'], 'e <- do.call(new.env, list())\ne$a <- 1\nf <- function(en) en$a <- 42\nf(e)\nr <- e$a');
+		for(const wrap of ['(function() k)', 'identity(function() k)', 'invisible(function() k)']) {
+			assertSliced(label(`a closure handed on by ${wrap.split('(')[0] || '('} reads what holds when it is called`, ['closures', 'grouping', 'name-normal', 'numbers', 'newlines']),
+				shell, `k <- 5\nf <- ${wrap}\nk <- 9\nr <- f()`, ['4@r'], `f <- ${wrap}\nk <- 9\nr <- f()`);
+		}
 		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'a <- function(x) x <- 2');
 		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, '\nfoo(x, y)\nfoo(x, 3)\n    ', ['3@foo'], 'foo(x, 3)');
@@ -150,7 +159,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	describe('Sink', () => {
 		assertSliced(label('Output written while a sink is active reaches its readers', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nprint(r)', ['6@r'], 'tf <- tempfile()\nsink(tf)\nprint("hidden")\nsink()\nr <- length(readLines(tf))\nr', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('Output a sink diverts into a text connection reaches the variable it writes', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nbuf', ['6@buf'], 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\nbuf', { expectedOutput: '[1] "hi"', expectedSliceOutput: '[1] "hi"' });
-		assertSliced(label('A sink into a text connection leaves an unrelated variable alone', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\ny', ['7@y'], 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\nsink()\ny', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+		assertSliced(label('A sink into a text connection leaves an unrelated variable alone', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'y <- 2\nrc <- textConnection("buf", "w")\nsink(rc)\ncat("hi\\n")\nsink()\nclose(rc)\ny', ['7@y'], 'y <- 2\ny', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		assertSliced(label('A text connection opened for reading writes no variable', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'buf <- "a"\ntc <- textConnection(buf)\ncat("hi\\n")\nbuf', ['4@buf'], 'buf <- "a"\nbuf', { expectedOutput: 'hi\n[1] "a"', expectedSliceOutput: '[1] "a"' });
 		assertSliced(label('Printing a sink diverts into a text connection reaches the variable it writes', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\nprint(1)\nsink()\nclose(rc)\nprint(buf)', ['6@print'], 'rc <- textConnection("buf", "w")\nsink(rc)\nprint(1)\nsink()\nclose(rc)\nprint(buf)', { expectedOutput: '[1] "[1] 1"', expectedSliceOutput: '[1] "[1] 1"' });
 		assertSliced(label('Printing after the sink ends does not reach the text connection', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("a\\n")\nsink()\nprint(2)\nclose(rc)\nprint(buf)', ['7@print'], 'rc <- textConnection("buf", "w")\nsink(rc)\ncat("a\\n")\nsink()\nclose(rc)\nprint(buf)', { expectedOutput: '[1] 2\n[1] "a"', expectedSliceOutput: '[1] "a"' });
@@ -300,6 +309,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		const plainCaps: FlowrCapabilityId[] = ['name-normal', 'numbers', 'strings', 'newlines', 'normal-definition', 'implicit-return', 'call-normal'];
 		/* the generic has to evaluate its object to know the class, even though no method body reads it */
 		s3Case('dispatch forces its object', s3Caps, 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '5@v', 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
+		s3Case('a generic named by a variable around the function', s3Caps, 'g <- "p"\np <- function(x) UseMethod(g)\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '6@v', 'g <- "p"\np <- function(x) UseMethod(g)\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
 		s3Case('dispatch with dots forces its object', s3Caps, 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '5@v', 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
 		s3Case('next-method keeps the object as well', s3Caps, 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', '6@v', 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "DEF"');
 		/* `NextMethod` passes on the current value of the formals, so the reassignment before it stays */
@@ -833,6 +843,8 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 		superCase('a super-assignment no enclosing frame catches still reaches the global one', 'x <- 1\nf <- function() { g <- function() x <<- 42; g(); x }\nv <- f()\nv', '4@v', 'x <- 1\nf <- function() {\n        g <- function() x <<- 42\n        g()\n        x\n    }\nv <- f()\nv', '[1] 42');
 		superCase('a closure calls the function its factory was handed', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n^2\nm <- memo(sq)\nv <- m(4)\nv', '5@v', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n ^ 2\nm <- memo(sq)\nv <- m(4)\nv', '[1] 16');
 		superCase('a closure created by local chains its calls', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '4@v', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '[1] 1\n[1] 2');
+		assertSliced(label('a slice of a local block leaves out what it does not need', ['name-normal', 'numbers', 'newlines', 'local-left-assignment', 'call-normal']),
+			shell, 'r <- local({\n\tx <- 1\n\ty <- 2\n\tx\n})\nprint(r)', ['6@r'], 'r <- local({\n        x <- 1\n        x\n    })\nr', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		superCase('a closure taken out of a list in a loop chains its calls', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\nfor(f in L) f()\nv <- L[[1]]()\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nL <- list(mk())\nfor(f in L) f()\nv <- (L[[1]])()\nv', '[1] 2');
 		assertSliced(label('a closure taken out of a list by lapply chains its calls', superCaps), shell, 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nv <- L[[1]]()\nv', ['5@v'], 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nL <- list(mk())\ninvisible(lapply(L, function(g) g()))\nv <- (L[[1]])()\nv', { expectedOutput: '[1] 2', expectedSliceOutput: /\[1\] 2$/ });
 		superCase('the frame of a closure is what environment(fn) reads', 'mk <- function() { n <- 0; function() { n <<- n + 1; 0 } }\nh <- mk()\nh()\nv <- environment(h)$n\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            0\n        }\n    }\nh <- mk()\nh()\nv <- environment(h)$n\nv', '[1] 0\n[1] 1');
@@ -1119,8 +1131,8 @@ describe('Calls run in R', withShell(shell => {
 
 describe('Calls checked against R', withTreeSitter(parser => {
 	const check = (cases: readonly (readonly [string, string, string?])[]) => {
-		for(const [name, code, absent] of cases) {
-			assertSliceMatchesR(parser, name, code, { absent });
+		for(const [name, code, dropped] of cases) {
+			assertSliceMatchesR(parser, name, code, { dropped });
 		}
 	};
 	describe('soundness of slices', () => check([
@@ -1257,9 +1269,9 @@ describe('Calls checked against R', withTreeSitter(parser => {
 			['copies of a higher-order call each keep their draw', 'set.seed(6)\nf <- function(g, a) g(a)\nk <- f(function(x) runif(x), 1)\nk <- f(function(x) runif(x), 1)\nprint(runif(1))']
 		]);
 		const nested = 'f <- function(g, a, b) {\n  x <- g(a + b) + b\n  return(x)\n}\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)';
-		assertSliceKeeps('a criterion in a body keeps the header and the handed function, not the call site', parser, nested, '2@x', { has: ['f <- function(g, a, b)', '\\(x)'], lacks: ['k <- f('] });
-		assertSliceKeeps('a criterion in a handed lambda does not keep the call it is handed to', parser, nested, '5@x', { lacks: ['k <- f(', 'print'] });
-		assertSliceKeeps('a value read in an argument does not keep the callee', parser, 'classify <- function(n) n %% 3\nfor(i in 1:9) print(classify(i))', '2@i', { lacks: ['classify <- function'] });
+		assertSliceKeeps('a criterion in a body keeps the header and the handed function, not the call site', parser, nested, '2@x', { kept: ['f <- function(g, a, b)', '\\(x)'], dropped: ['k <- f('] });
+		assertSliceKeeps('a criterion in a handed lambda does not keep the call it is handed to', parser, nested, '5@x', { dropped: ['k <- f(', 'print'] });
+		assertSliceKeeps('a value read in an argument does not keep the callee', parser, 'classify <- function(n) n %% 3\nfor(i in 1:9) print(classify(i))', '2@i', { dropped: ['classify <- function'] });
 	});
 	/* the last element states whether the shipped signature database is on, as it is outside the tests */
 	describe.sequential('real-world scripts', () => {
@@ -1274,44 +1286,44 @@ describe('Calls checked against R', withTreeSitter(parser => {
 	});
 	describe('domains', () => {
 		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
-		const keeps = (name: string, code: string, criterion: SlicingCriterion, expected: { has?: readonly string[], lacks?: readonly string[] }) => assertSliceKeeps(sec(name), parser, code, criterion, expected);
+		const keeps = (name: string, code: string, criterion: SlicingCriterion, expected: { kept?: readonly string[], dropped?: readonly string[] }) => assertSliceKeeps(sec(name), parser, code, criterion, expected);
 		const adder = 'adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)';
-		keeps('domains:hof the closure argument and its factory call are kept', adder, '4@print', { has: ['adder <- function(n) function(x) x + n', 'add1 <- adder(1)', 'lapply(1:3, add1)'] });
-		keeps('domains:hof a second closure of the factory is not needed', 'adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nadd2 <- adder(2)\nprint(add1(5))', '4@print', { has: ['add1 <- adder(1)'], lacks: ['add2'] });
-		keeps('domains:hof the promise of the factory argument sees the later value', 'adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\nk <- 100\nprint(add(1))', '5@print', { has: ['k <- 100', 'add <- adder(k)'] });
-		keeps('domains:hof the promise of the factory argument does not see the overwritten value', 'adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\nk <- 100\nprint(add(1))', '5@print', { lacks: ['k <- 1\n'] });
+		keeps('domains:hof the closure argument and its factory call are kept', adder, '4@print', { kept: ['adder <- function(n) function(x) x + n', 'add1 <- adder(1)', 'lapply(1:3, add1)'] });
+		keeps('domains:hof a second closure of the factory is not needed', 'adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nadd2 <- adder(2)\nprint(add1(5))', '4@print', { kept: ['add1 <- adder(1)'], dropped: ['add2'] });
+		keeps('domains:hof the promise of the factory argument sees the later value', 'adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\nk <- 100\nprint(add(1))', '5@print', { kept: ['k <- 100', 'add <- adder(k)'] });
+		keeps('domains:hof the promise of the factory argument does not see the overwritten value', 'adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\nk <- 100\nprint(add(1))', '5@print', { dropped: ['k <- 1\n'] });
 		const factoryOf = (between: string, use = 'print(add(1))') => `adder <- function(n) function(x) x + n\nk <- 1\nadd <- adder(k)\n${between}\n${use}`;
-		keeps('domains:hof a promise forced before the overwrite keeps the old value', factoryOf('add(1)\nk <- 100'), '6@print', { has: ['k <- 1\n'] });
-		keeps('domains:hof a conditional overwrite keeps the old value', factoryOf('if(runif(1) > 2) k <- 100'), '5@print', { has: ['k <- 1\n'] });
-		keeps('domains:hof a closure called through an earlier function stays conservative', factoryOf('g <- function() add(1)\nk <- 100', 'print(g())'), '6@print', { has: ['k <- 1\n'] });
-		keeps('domains:hof a closure aliased before the overwrite stays conservative', factoryOf('h <- add\nk <- 100', 'print(h(1))'), '6@print', { has: ['k <- 1\n'] });
+		keeps('domains:hof a promise forced before the overwrite keeps the old value', factoryOf('add(1)\nk <- 100'), '6@print', { kept: ['k <- 1\n'] });
+		keeps('domains:hof a conditional overwrite keeps the old value', factoryOf('if(runif(1) > 2) k <- 100'), '5@print', { kept: ['k <- 1\n'] });
+		keeps('domains:hof a closure called through an earlier function stays conservative', factoryOf('g <- function() add(1)\nk <- 100', 'print(g())'), '6@print', { kept: ['k <- 1\n'] });
+		keeps('domains:hof a closure aliased before the overwrite stays conservative', factoryOf('h <- add\nk <- 100', 'print(h(1))'), '6@print', { kept: ['k <- 1\n'] });
 		const plus = 'assign("+", function(a, b) a - b)\n2 + 3';
 		assertCallTargets(sec('domains:reflection a rebound plus calls the new function'), parser, plus, '2@+', { reaches: ['1@function'] });
-		keeps('domains:reflection the rebinding is part of the slice', plus, '2@+', { has: ['assign("+"'] });
-		keeps('domains:reflection an unrelated rebinding is not', 'assign("-", function(a, b) a + b)\n2 + 3', '2@+', { lacks: ['assign'] });
-		keeps('domains:reflection a rebinding through eval is part of the slice', 'eval(parse(text = "`+` <- function(a, b) a - b"))\n2 + 3', '2@+', { has: ['eval(parse'] });
-		keeps('domains:reflection body replacement is part of the slice', 'f <- function(a, b) a + b\nbody(f) <- quote(a - b)\nf(2, 3)', '3@f', { has: ['body(f) <- quote(a - b)'] });
-		keeps('domains:reflection a rebinding in a function body stays there', 'g <- function() {\n  assign("+", function(a, b) a - b)\n  2 + 3\n}\nprint(2 + 3)', '5@print', { lacks: ['assign'] });
-		keeps('vector: the length bound is part of the slice', 'n <- 4L\nx <- 1:n\nprint(x)', '3@print', { has: ['n <- 4L'] });
+		keeps('domains:reflection the rebinding is part of the slice', plus, '2@+', { kept: ['assign("+"'] });
+		keeps('domains:reflection an unrelated rebinding is not', 'assign("-", function(a, b) a + b)\n2 + 3', '2@+', { dropped: ['assign'] });
+		keeps('domains:reflection a rebinding through eval is part of the slice', 'eval(parse(text = "`+` <- function(a, b) a - b"))\n2 + 3', '2@+', { kept: ['eval(parse'] });
+		keeps('domains:reflection body replacement is part of the slice', 'f <- function(a, b) a + b\nbody(f) <- quote(a - b)\nf(2, 3)', '3@f', { kept: ['body(f) <- quote(a - b)'] });
+		keeps('domains:reflection a rebinding in a function body stays there', 'g <- function() {\n  assign("+", function(a, b) a - b)\n  2 + 3\n}\nprint(2 + 3)', '5@print', { dropped: ['assign'] });
+		keeps('vector: the length bound is part of the slice', 'n <- 4L\nx <- 1:n\nprint(x)', '3@print', { kept: ['n <- 4L'] });
 		const attr = 'x <- 1:6\ndim(x) <- c(2, 3)\nclass(x) <- "myclass"\ne <- structure(1:6, dim = c(2, 3), class = "myclass")\nprint(dim(x))\nprint(e)';
-		keeps('attr: the replacement sets the attribute', attr, '5@print', { has: ['x <- 1 : 6', 'dim(x) <- c(2, 3)'], lacks: ['structure'] });
-		keeps('attr: structure sets them in one call', attr, '6@print', { has: ['structure'], lacks: ['dim(x) <-', 'class(x) <-'] });
+		keeps('attr: the replacement sets the attribute', attr, '5@print', { kept: ['x <- 1 : 6', 'dim(x) <- c(2, 3)'], dropped: ['structure'] });
+		keeps('attr: structure sets them in one call', attr, '6@print', { kept: ['structure'], dropped: ['dim(x) <-', 'class(x) <-'] });
 		const shape = 'df <- data.frame(id = 2:3, points = c(4, 6))\nscore <- 42\nwith(df, {\n  print(score)\n})';
-		keeps('shape: a name in with may be a column or the variable', shape, '4@print', { has: ['df <- data.frame', 'score <- 42'] });
+		keeps('shape: a name in with may be a column or the variable', shape, '4@print', { kept: ['df <- data.frame', 'score <- 42'] });
 		const matrix = 'm <- matrix(1:6, nrow = 2)\nr <- t(m) %*% m\nprint(r)';
-		keeps('matrix: the product reads the matrix', matrix, '3@print', { has: ['m <- matrix(1:6, nrow = 2)'] });
-		keeps('order: a cell run again reads the run before', 'x <- 1\nx <- x * 2\nprint(x)', '3@print', { has: ['x <- 1', 'x <- x * 2'] });
+		keeps('matrix: the product reads the matrix', matrix, '3@print', { kept: ['m <- matrix(1:6, nrow = 2)'] });
+		keeps('order: a cell run again reads the run before', 'x <- 1\nx <- x * 2\nprint(x)', '3@print', { kept: ['x <- 1', 'x <- x * 2'] });
 		const graphics = 'df <- data.frame(age = 20:59, income = 2 * (20:59), name = paste0("p", 1:40))\nplot(df$age, df$income)\nw <- par("pin")[1]\nn <- floor(w / strwidth("label", "inches"))\ntext(df$age[1:n], df$income[1:n], df$name[1:n])';
-		keeps('state: the width depends on the device the plot opened', graphics, '4@n', { has: ['plot(df$age, df$income)', 'w <- par("pin")[1]'] });
+		keeps('state: the width depends on the device the plot opened', graphics, '4@n', { kept: ['plot(df$age, df$income)', 'w <- par("pin")[1]'] });
 		const noisy = 'noisy <- function(x) {\n  set.seed(1)\n  x + rnorm(1)\n}\nr <- runif(1)\na <- noisy(r)\nb <- noisy(runif(1))';
-		keeps('state: the seed set in the function is part of the slice', noisy, '7@b', { has: ['set.seed(1)', 'rnorm(1)'] });
+		keeps('state: the seed set in the function is part of the slice', noisy, '7@b', { kept: ['set.seed(1)', 'rnorm(1)'] });
 		const io = 'write.csv(iris, "data.csv")\ndf <- read.csv("data.csv")';
-		keeps('io: reading a file reads what was written to it', io, '2@df', { has: ['write.csv(iris, "data.csv")'] });
-		keeps('io: a file written later is not read', 'df <- read.csv("data.csv")\nwrite.csv(iris, "data.csv")', '1@df', { lacks: ['write.csv'] });
+		keeps('io: reading a file reads what was written to it', io, '2@df', { kept: ['write.csv(iris, "data.csv")'] });
+		keeps('io: a file written later is not read', 'df <- read.csv("data.csv")\nwrite.csv(iris, "data.csv")', '1@df', { dropped: ['write.csv'] });
 		const validity = 'x <- rnorm(20)\ny <- rnorm(20)\nt.test(x, y)';
-		keeps('validity: the test reads both samples', validity, '3@t.test', { has: ['x <- rnorm(20)', 'y <- rnorm(20)'] });
+		keeps('validity: the test reads both samples', validity, '3@t.test', { kept: ['x <- rnorm(20)', 'y <- rnorm(20)'] });
 		const pdf = 'name <- readline("File for the plot: ")\npdf(name)\nplot(1:10)\ndev.off()';
-		keeps('security: closing the device keeps the plot on it', pdf, '4@dev.off', { has: ['pdf(name)', 'plot(1:10)'] });
+		keeps('security: closing the device keeps the plot on it', pdf, '4@dev.off', { kept: ['pdf(name)', 'plot(1:10)'] });
 	});
 }));
 

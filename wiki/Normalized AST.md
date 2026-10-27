@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-27, 11:16:11 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -483,7 +483,7 @@ Info .. RNode
 
 </details>
 
-Node types are controlled by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/type.ts#L158"><code><span title="Types as we use them for our normalized AST. See RNode for a union type of all normalized AST nodes in-use. For each enum member, the respective normalized AST node should be referenced in the corresponding comment.">RType</span></code></a> enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/type.ts)), 
+Node types are controlled by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/type.ts#L160"><code><span title="Types as we use them for our normalized AST. See RNode for a union type of all normalized AST nodes in-use. For each enum member, the respective normalized AST node should be referenced in the corresponding comment.">RType</span></code></a> enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/type.ts)), 
 which is used to distinguish between different types of nodes.
 Additionally, every AST node is generic with respect to the `Info` type which allows for arbitrary decorations (e.g., parent inforamtion or dataflow constraints).
 Most notably, the `info` field holds the `id` of the node, which is used to reference the node in the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph).

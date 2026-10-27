@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-27, 11:16:11 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -826,7 +826,7 @@ Let's have a look at the normalized AST for the sample code `x <- 1; print(x)` (
 
 </details>
 
-This is… a lot! We get the type from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/type.ts#L158"><code><span title="Types as we use them for our normalized AST. See RNode for a union type of all normalized AST nodes in-use. For each enum member, the respective normalized AST node should be referenced in the corresponding comment.">RType</span></code></a> enum, the lexeme, location information, an id, the children of the node, and their parents.
+This is… a lot! We get the type from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/type.ts#L160"><code><span title="Types as we use them for our normalized AST. See RNode for a union type of all normalized AST nodes in-use. For each enum member, the respective normalized AST node should be referenced in the corresponding comment.">RType</span></code></a> enum, the lexeme, location information, an id, the children of the node, and their parents.
 While the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) wiki page provides you with information on how to interpret this data, we will focus on how we get it from the
 table provided by the [parsing](#parsing) step.
 

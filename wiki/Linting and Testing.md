@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-27, 11:16:11 UTC (v2.16.6, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -204,7 +204,7 @@ checkup`, where `npm run checkup -- mutations` runs just this job.
 
 The suite has three pieces:
 
-- the 40 passes, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L666"><code><span title="every pass a mutant is generated for; add to this list to check another rewrite">MutationPasses</span></code></a> in [test/functionality/_helper/mutation](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation).
+- the 40 passes, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L653"><code><span title="every pass a mutant is generated for; add to this list to check another rewrite">MutationPasses</span></code></a> in [test/functionality/_helper/mutation](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation).
 - the corpus of programs and the invariant checks run against their mutants, in [test/mutations/counterexample-checks.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/counterexample-checks.ts).
 - pass-level unit tests, in [test/mutations/r-mutations.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/r-mutations.test.ts), checking each pass on its own rather than against the corpus.
 
@@ -312,7 +312,7 @@ Besides, every mutant and every chain of a pass and the 4 passes after it is ana
 every query on tree-sitter, without R, in [test/mutations/robustness.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/robustness.ts): none of these
 tens of thousands of programs may make flowR fail, overflow the stack, or hang.
 
-A pass is a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L40"><code><span title="one rewrite, applied to every counterexample it fits">MutationPass</span></code></a> and sees the program as a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L75"><code><span title="A program to mutate, as flowR sees it: the statements of its normalized AST, the dataflow graph, and what the built-in configuration states about the calls it makes. Passes ask this instead of reading the code as text.">MutationProgram</span></code></a>: its normalized
+A pass is a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L38"><code><span title="one rewrite, applied to every counterexample it fits">MutationPass</span></code></a> and sees the program as a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L75"><code><span title="A program to mutate, as flowR sees it: the statements of its normalized AST, the dataflow graph, and what the built-in configuration states about the calls it makes. Passes ask this instead of reading the code as text.">MutationProgram</span></code></a>: its normalized
 AST and dataflow graph, and what the built-in configuration states about each call. It edits the code through
 a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L374"><code><span title="Text edits to a MutationProgram , applied all at once so each names its place in the original code. The criterion moves along with the lines edits add or remove before it.">Rewrite</span></code></a>, which moves the criterion along with the lines the edits add or remove.
 

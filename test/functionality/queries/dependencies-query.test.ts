@@ -735,6 +735,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('the time-series filter of stats is none', 'stats::filter(x, rep(1, 3))', { library: [{ nodeId: '1@filter', functionName: '::', value: 'stats' }], write: [printed(10, Identifier.make('filter', 'stats'), ['x'])] });
 			testQuery('a bare filter is the one of stats', 'filter(x, rep(1, 3))', { write: [printed(10, 'filter', ['x'])] });
 			testQuery('a user-defined filter is none', 'filter <- function(x) x\ny <- filter(df)', {});
+			testQuery('an assignment into a part of a data frame transforms it', 'd <- data.frame(x = 1:3)\nd$y <- d$x * 2\nv <- 1:3\nv[1] <- 5', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('data.table updates by reference and groups', 'dt[, z := x + 1]\nm <- dt[, mean(x), by = g]', { transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['dt'], assignedTo: 'dt' }, { nodeId: '2@[', functionName: '[', inputVariables: ['dt'] }] });
 			testQuery('base functions', 'm <- merge(a, b)\ns <- subset(a, x > 1)', { transform: [
 				{ nodeId: '1@merge', functionName: 'merge', inputVariables: ['a', 'b'], assignedTo: 'm' },
 				{ nodeId: '2@subset', functionName: 'subset', inputVariables: ['a'], assignedTo: 's' }
@@ -1005,7 +1007,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('read.csv text parameter reads inline data', 'a <- read.csv(text="hello, world")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'constant', assignedTo: 'a' }], write: [] });
 		testQuery('fread takes the path as its first argument', 'd <- data.table::fread("a.csv")', { library: [{ nodeId: '1@fread', functionName: '::', value: 'data.table' }], read: [{ nodeId: '1@data.table::fread', functionName: Identifier.make('fread', 'data.table'), value: 'a.csv', assignedTo: 'd' }] });
 		testQuery('a print method writing a file', 'print(tab, file = "o.tex")', { write: [{ nodeId: '1@print', functionName: 'print', value: 'o.tex', inputVariables: ['tab'] }] });
-		testQuery('an update by reference prints nothing', 'a[, z := x + 1]', { write: [] });
+		testQuery('an update by reference prints nothing', 'a[, z := x + 1]', { write: [], transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['a'], assignedTo: 'a' }] });
 		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv', assignedTo: 'a' }], write: [] });
 		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv', assignedTo: 'a' }], write: [] });
 	});

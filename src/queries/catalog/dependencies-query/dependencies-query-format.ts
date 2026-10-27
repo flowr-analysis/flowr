@@ -1,6 +1,12 @@
 import { filterLineParser, type BaseQueryFormat, type BaseQueryMeta, type BasicQueryData } from '../../base-query-format';
 import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
-import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { queryHeader } from '../../query-print';
 import type { SupportedQuery } from '../../query';
@@ -60,6 +66,50 @@ export interface DependencyCategorySettings {
 /** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
 export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
+
+/** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
+const GroupingArguments: ReadonlySet<string> = new Set(['by', 'keyby']);
+
+/** an entry for a call transforming the data the symbol `target` holds */
+function transformOf(nodeId: NodeId, functionName: Identifier, target: RSymbol<ParentInformation>): DependencyInfo {
+	const name = Identifier.getName(target.content);
+	return { nodeId, functionName, assignedTo: name, inputVariables: [name] };
+}
+
+/**
+ * What transforms data by its syntax rather than by a function: data.table's update by reference (`dt[, z := x + 1]`)
+ * and grouping (`dt[, mean(x), by = g]`), and an assignment into a part of a data frame, like `d$y <- d$x * 2` or
+ * `d[d$x > 1, "z"] <- 0`. The last only where the shape inference knows the target to be a data frame, as `x[1] <- 2`
+ * on a vector transforms no data.
+ */
+async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
+	const [dataflow, ast] = await Promise.all([data.analyzer.dataflow(), data.analyzer.normalize()]);
+	/* an update by reference or a grouping */
+	const groups = (a: RArgument<ParentInformation> | typeof EmptyArgument) => a !== EmptyArgument && ((a.name !== undefined && GroupingArguments.has(Identifier.getName(a.name.content)))
+		|| (a.value !== undefined && DfgVertex.hasOrigin(dataflow.graph.getVertex(a.value.info.id), BuiltInProcName.TableAssignment)));
+	const byTable: DependencyInfo[] = [];
+	RProject.visitAst(ast.ast, n => {
+		if(RAccess.is(n) && n.operator === '[' && RSymbol.is(n.accessed) && n.access.some(groups)) {
+			/* an update by reference changes the table itself, a grouping yields a new one */
+			const updates = n.access.some(a => a !== EmptyArgument && a.value !== undefined && DfgVertex.hasOrigin(dataflow.graph.getVertex(a.value.info.id), BuiltInProcName.TableAssignment));
+			const name = Identifier.getName(n.accessed.content);
+			byTable.push({ nodeId: n.info.id, functionName: '[', inputVariables: [name], ...updates ? { assignedTo: name } : {} });
+		}
+	});
+	const parts = dataflow.graph.verticesOfType(VertexType.FunctionCall)
+		.filter(([, call]) => DfgVertex.hasOrigin(call, BuiltInProcName.Replacement))
+		.flatMap(([id, call]) => {
+			const node = ast.idMap.get(id);
+			return RAccess.is(node) && RSymbol.is(node.accessed) ? [{ id, functionName: call.name, target: node.accessed }] : [];
+		}).toArray();
+	if(parts.length === 0) {
+		return byTable;
+	}
+	const criterion = (target: RSymbol<ParentInformation>) => SlicingCriterion.fromId(target.info.id);
+	const { absint } = await data.analyzer.query([{ type: 'absint', inference: 'df-shape', criteria: parts.map(p => criterion(p.target)) }]);
+	const shapes = absint.result as ReadonlyMap<SlicingCriterion, { isBottom(): boolean } | undefined>;
+	return [...byTable, ...parts.filter(p => shapes.get(criterion(p.target))?.isBottom() === false).map(p => transformOf(p.id, p.functionName, p.target))];
+}
 
 /**
  * The categories flowR searches for by default. The functions of the categories flowR derives from its
@@ -140,8 +190,13 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 		functions:        VisualizeFunctions
 	},
 	'transform': {
-		queryDisplayName: 'Data Transformations',
-		functions:        transformFunctions(env.builtInIndex)
+		queryDisplayName:   'Data Transformations',
+		functions:          transformFunctions(env.builtInIndex),
+		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
+			if(!ignoreDefault) {
+				result.push(...await dataFrameParts(data));
+			}
+		}
 	},
 	'test': {
 		queryDisplayName: 'Tests',

@@ -26,6 +26,7 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { SliceDirection } from '../../src/util/slice-direction';
+import { SlicingCriterion } from '../../src/slicing/criterion/parse';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
 import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
@@ -2201,14 +2202,11 @@ async function focusRelated(node: DepNode | undefined): Promise<void> {
 	}
 	try {
 		const built = await analyzer();
-		const answer = await built.query([SliceDirection.Backward, SliceDirection.Forward].map(direction => ({
-			type: 'static-slice', criteria: ids.map(id => `$${String(id)}`), direction, noReconstruction: true
-		})) as never) as unknown as { 'static-slice'?: { results?: Record<string, { slice?: { result?: Iterable<NodeId> } }> } };
+		const answer = await built.query([{ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) }]);
 		if(request !== focusRequest) {
 			return;
 		}
-		const sliced = Object.values(answer['static-slice']?.results ?? {}).flatMap(r => [...r.slice?.result ?? []]);
-		related = { code, key: node.key, ids: new Set([...ids, ...sliced].map(String)) };
+		related = { code, key: node.key, ids: new Set([...ids, ...answer.dependencies['.meta'].focus ?? []].map(String)) };
 	} catch{ /* what cannot be sliced grays nothing out */ }
 	paintRelated();
 }

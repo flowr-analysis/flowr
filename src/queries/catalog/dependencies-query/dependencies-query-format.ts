@@ -1,4 +1,6 @@
-import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryMeta, type BasicQueryData } from '../../base-query-format';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { queryHeader } from '../../query-print';
 import type { SupportedQuery } from '../../query';
@@ -28,7 +30,8 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { collectImplicitEchoes } from './implicit-echo';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
-import { uniqueArrayMerge } from '../../../util/collections/arrays';
+import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
+import { SourceRange } from '../../../util/range';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
@@ -164,9 +167,19 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 	 * Off by default: for most callers these are noise, not a dependency they need to act on.
 	 */
 	readonly assumedPackages?:        boolean
+	/**
+	 * Focus on the dependencies at these criteria, like `2@read.csv`: the answer names every node that takes part in them,
+	 * what they depend on and what depends on them, in {@link DependenciesQueryMeta#focus}, so a client can gray out the rest.
+	 */
+	readonly focus?:                  readonly SlicingCriterion[]
 }
 
-export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
+export interface DependenciesQueryMeta extends BaseQueryMeta {
+	/** the nodes taking part in the dependencies the query {@link DependenciesQuery#focus|focuses} on */
+	readonly focus?: readonly NodeId[]
+}
+
+export type DependenciesQueryResult = { readonly '.meta': DependenciesQueryMeta } & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
 export interface DependencyInfo extends Record<string, unknown> {
@@ -283,19 +296,29 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 export const DependenciesQueryDefinition = {
 	title:           'Dependencies Query',
 	executor:        executeDependenciesQuery,
-	asciiSummarizer: (formatter, analyzer, queryResults, result, queries) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(queryHeader('dependencies', formatter, out['.meta'].timing));
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[], analyzer.inspectContext()))) {
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}
+		const focus = out['.meta'].focus;
+		if(focus !== undefined) {
+			const { idMap } = await analyzer.normalize();
+			const lines = uniqueArray(focus.flatMap(id => SourceRange.getStartLine(idMap.get(id)?.location) ?? [])).sort((a, b) => a - b);
+			result.push(`   ${bold('focus', formatter)} ${faint('the lines taking part:', formatter)} ${lines.join(', ')}`);
+		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine:  filterLineParser('dependencies', 'focus'),
+	completer: criteriaQueryCompleter,
+	syntax:    '@dependencies (<crit>;...) <code | file://path>',
+	schema:    Joi.object({
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
 		...Object.fromEntries(DefaultDependencyCategoryNames.map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
 		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
+		focus:                  Joi.array().items(Joi.string()).optional().description('Focus on the dependencies at these slicing criteria: the result names every node taking part in them in `.meta.focus`.'),
 		assumedPackages:        Joi.boolean().optional().description('Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false.'),
 		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),

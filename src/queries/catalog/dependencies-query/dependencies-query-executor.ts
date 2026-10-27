@@ -1,4 +1,6 @@
 import { executeQueriesOfSameType } from '../../query';
+import { SliceDirection } from '../../../util/slice-direction';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
@@ -49,6 +51,7 @@ export async function executeDependenciesQuery({
 				enabledCategories:      query.enabledCategories === undefined && q.enabledCategories === undefined ? undefined : [...(query.enabledCategories ?? []), ...(q.enabledCategories ?? [])],
 				ignoreDefaultFunctions: query.ignoreDefaultFunctions || q.ignoreDefaultFunctions,
 				assumedPackages:        query.assumedPackages || q.assumedPackages,
+				focus:                  query.focus === undefined && q.focus === undefined ? undefined : [...query.focus ?? [], ...q.focus ?? []],
 				additionalCategories:   {
 					...query.additionalCategories,
 					...q.additionalCategories
@@ -114,10 +117,20 @@ export async function executeDependenciesQuery({
 		}
 	}
 
+	const focus = query.focus?.length ? await focusOf(data, query.focus) : undefined;
 	return {
-		...metaSince(now),
+		'.meta': { ...metaSince(now)['.meta'], ...focus === undefined ? {} : { focus } },
 		...results,
 	} as DependenciesQueryResult;
+}
+
+/** the nodes taking part in what the `criteria` name: the nodes themselves, what they depend on, and what depends on them */
+async function focusOf(data: BasicQueryData, criteria: readonly SlicingCriterion[]): Promise<NodeId[]> {
+	const { 'static-slice': slices } = await data.analyzer.query([SliceDirection.Backward, SliceDirection.Forward].map(direction =>
+		({ type: 'static-slice', criteria: [...criteria], direction, noReconstruction: true })));
+	const ast = await data.analyzer.normalize();
+	const named = criteria.map(c => SlicingCriterion.tryParse(c, ast.idMap)).filter(isNotUndefined);
+	return uniqueArray([...named, ...Object.values(slices.results).flatMap(r => [...r.slice.result])]);
 }
 
 /** what a call of a function does not do itself: loading a package or a script there is still what the function does */

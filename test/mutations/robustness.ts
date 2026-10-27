@@ -4,9 +4,8 @@ import { label } from '../functionality/_helper/label';
 import type { KnownParser } from '../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../src/r-bridge/retriever';
-import { MutationPasses, mutate, type MutationPass, type MutationTarget } from '../functionality/_helper/r-mutations';
-import { Counterexamples } from './counterexample-corpus';
-import { ChainedWith } from '../functionality/_helper/r-mutations';
+import type { ChainedWith, MutationTarget } from '../functionality/_helper/r-mutations';
+import { mutants } from './mutants';
 
 /** what a mutant may take to be analyzed and queried in full; a hang fails the test instead of the whole run */
 const Timeout = 30_000;
@@ -29,33 +28,19 @@ async function analyzesFully(parser: KnownParser, { code, criterion }: MutationT
 
 /**
  * Every mutant of every counterexample, and every chain of a pass and the {@link ChainedWith} passes after it, is
- * analyzed in full and queried, which must neither fail, overflow the stack, nor hang. No R is needed for this, so
- * the passes run on tree-sitter, and the passes are split into `shards` files that vitest runs in parallel.
+ * analyzed in full and queried, which must neither fail, overflow the stack, nor hang. Each program is analyzed only
+ * once (see `mutants.ts`), and no R is needed for this, so the mutants are split into `shards` files that vitest runs
+ * in parallel on tree-sitter.
  */
 export function robustnessChecks(shard: number, shards: number): void {
+	const { once, chained } = mutants();
+	const mine = [...once, ...chained].filter((_, at) => at % shards === shard);
 	describe(`analyzing mutants (${shard + 1}/${shards})`, withTreeSitter(parser => {
-		MutationPasses.forEach((first, at) => {
-			if(at % shards !== shard) {
-				return;
-			}
-			const chains: readonly (MutationPass | undefined)[] = [undefined, ...Array.from({ length: ChainedWith }, (_, k) => MutationPasses[(at + k + 1) % MutationPasses.length])];
-			describe(first.name, () => {
-				for(const { group, cases } of Counterexamples) {
-					for(const target of cases) {
-						for(const second of chains) {
-							test(label(`${group}: ${target.name}${second === undefined ? '' : ` then ${second.name}`}`, target.capabilities, ['other']), async ctx => {
-								const once = await mutate(parser, target, first);
-								const mutant = once === undefined || second === undefined ? once : await mutate(parser, once, second);
-								if(mutant === undefined) {
-									ctx.skip();
-									return;
-								}
-								await analyzesFully(parser, mutant);
-							}, Timeout);
-						}
-					}
-				}
-			});
-		});
+		for(const { group, target, passes, mutant, error } of mine) {
+			test(label(`${group}: ${target.name} by ${passes.join(' then ')}`, target.capabilities, ['other']), async() => {
+				assert.isUndefined(error, `the pass fails on:\n${target.code}`);
+				await analyzesFully(parser, mutant as MutationTarget);
+			}, Timeout);
+		}
 	}));
 }

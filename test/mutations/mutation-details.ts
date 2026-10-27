@@ -23,8 +23,8 @@ export function setup(): void {
 }
 
 /**
- * Merges what the shards recorded once all of them ran in full, and fails if a pass never mutated a counterexample,
- * as nothing it claims to check would be checked then.
+ * Merges what the shards recorded once all of them ran in full, and fails if a pass never made a mutant of its own,
+ * as it would check nothing then.
  */
 export function teardown(): void {
 	const files = fs.existsSync(MutationShardsDir) ? fs.readdirSync(MutationShardsDir) : [];
@@ -35,7 +35,7 @@ export function teardown(): void {
 	const used = new Set(shards.flatMap(s => s.usedPasses));
 	const idle = shards[0].availablePasses.filter(name => !used.has(name));
 	if(idle.length > 0) {
-		throw new Error(`these passes never applied, so nothing they claim to check is checked: ${idle.join(', ')}`);
+		throw new Error(`these passes never made a mutant no other pass made, so they check nothing: ${idle.join(', ')}`);
 	}
 	fs.writeFileSync(MutationDetailsFile, JSON.stringify({
 		passes:          MutationPasses.length,

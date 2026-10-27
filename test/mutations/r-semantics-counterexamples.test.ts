@@ -67,7 +67,7 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 			assert.deepStrictEqual(after.graphs, before.graphs, `the mutation changes a value or graph the REPL shows, ${what}`);
 		}
 	}
-	async function check(target: Counterexample): Promise<void> {
+	async function check(target: Counterexample, pass?: MutationPass): Promise<void> {
 		const what = `the program sliced for ${target.criterion} is:\n${target.code}`;
 		const sliced = await slice(shell, target);
 		assert.strictEqual(await run(target.code), target.expected, `the input does not print what this test claims it does, ${what}`);
@@ -78,7 +78,8 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		/* removing what only the criterion needs leaves a program that still runs */
 		const left = await removalSlice(shell, target);
 		assert.notMatch(await run(left), /R error:/, `what the removal slice leaves fails, ${slicedIs}\nand what is left without it is:\n${left}`);
-		for(const lacked of target.lacks ?? []) {
+		/* a slice keeps a call it needs whole, so what a pass moved into one stays with it */
+		for(const lacked of pass?.wrapsInCall ? [] : target.lacks ?? []) {
 			if(target.code.includes(lacked)) {
 				assert.notInclude(sliced, lacked, `the slice keeps what it does not need, ${slicedIs}`);
 			}
@@ -105,7 +106,7 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 						}
 						generatedMutants.add(id);
 						usedPasses.add(pass.name);
-						await check(mutant as Counterexample);
+						await check(mutant as Counterexample, pass);
 						assert.deepStrictEqual(await observeQueries(shell, mutant.code, mutant.renames), await observeQueries(shell, counterexample.code),
 							`the mutation changes what the queries report about the program, it is:\n${mutant.code}`);
 						await checkRepl(mutant as Counterexample, counterexample, pass);

@@ -10,6 +10,7 @@ describe.sequential('Backtick quoted names', withShell(shell => {
 		assertSliced(label('get of a name with a space', [...esc, 'name-created-resolved']), shell, '`my var` <- 1\nget("my var")', ['2@get'], '`my var` <- 1\nget("my var")');
 		assertSliced(label('backtick use of a string-defined name', [...esc, 'name-quoted']), shell, 'assign("x", 1)\n`x`', ['2@`x`'], 'assign("x", 1)\n`x`');
 		assertSliced(label('a backticked parameter shadows the global name', [...esc, 'formals', 'lexicographic-scope']), shell, 'x <- 1\nf <- function(`x`) x\nr <- f(2)', ['3@r'], 'f <- function(`x`) x\nr <- f(2)');
+		assertSliced(label('a backticked loop condition reads the update in the body', [...esc, 'while-loop']), shell, '`a b` <- 1\nk <- 0\nwhile(`a b` < 5) { `a b` <- `a b` + 1; k <- k + 1 }\nprint(k)', ['4@k'], '`a b` <- 1\nk <- 0\nwhile(`a b` < 5) {\n    `a b` <- `a b` + 1\n    k <- k + 1\n}\nk');
 		assertSliced(label('a parameter with a space is read in backticks', [...esc, 'formals', 'lexicographic-scope']), shell, '`a b` <- 1\nf <- function(`a b`) `a b` * 3\nr <- f(2)', ['3@r'], 'f <- function(`a b`) `a b` * 3\nr <- f(2)');
 	});
 	describe('strings keep their backticks', () => {

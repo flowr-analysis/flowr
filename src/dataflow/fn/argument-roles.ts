@@ -181,8 +181,12 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	const byName = formalsByName(definition, state);
 	const roles = new Map<NodeId, ArgProps>();
 	const add = (node: NodeId, props: ArgProps): void => {
+		/* forcing reaches only what the argument always is, not each branch it may pick: `if(c) a else b` forces neither */
+		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set());
+		const written = writtenFormal(node, byName, state);
 		for(const formal of aliasTargets(node, byName, state)) {
-			roles.set(formal, (roles.get(formal) ?? 0) | props);
+			const own = always === undefined || always.has(formal) || formal === written ? props : props & ~ArgProp.Forced;
+			roles.set(formal, (roles.get(formal) ?? 0) | own);
 		}
 	};
 	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
@@ -215,7 +219,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 	const called = Identifier.getName(vertex.name);
 	return [...state.graph.edgesFrom(id)]
 		.filter(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !handed.has(target) && !NodeId.isBuiltIn(target)
-			&& NodeId.recoverName(target, state.graph.idMap) === called)
+			&& NodeId.recoverBareName(target, state.graph.idMap) === called)
 		.map(([target]) => target);
 }
 
@@ -239,19 +243,24 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: 
 			}
 		}
 	}
-	const written = state.graph.idMap?.get(node);
-	const formal = RSymbol.is(written) ? byName.get(written.lexeme) : undefined;
+	const formal = writtenFormal(node, byName, state);
 	if(formal !== undefined) {
 		found.add(formal);
 	}
 	return found;
 }
 
+/** The formal an argument names as it is written, for an argument nothing links to it. */
+function writtenFormal(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): NodeId | undefined {
+	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
+	return name === undefined ? undefined : byName.get(name);
+}
+
 /** The formals of the definition by the name they are written as, to answer for an argument nothing links. */
 function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<string, NodeId> {
 	const byName = new Map<string, NodeId>();
 	for(const formal of Object.keys(definition.params)) {
-		const name = NodeId.recoverName(NodeId.normalize(formal), state.graph.idMap);
+		const name = NodeId.recoverBareName(NodeId.normalize(formal), state.graph.idMap);
 		if(name !== undefined) {
 			byName.set(name, NodeId.normalize(formal));
 		}

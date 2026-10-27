@@ -65,7 +65,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 				}
 			}
 			if(!linked || nonLocal) {
-				nonLocalReads.push({ nodeId, name: NodeId.recoverName(nodeId, graph.idMap), type });
+				nonLocalReads.push({ nodeId, name: NodeId.recoverBareName(nodeId, graph.idMap), type });
 			}
 		}
 	}
@@ -148,7 +148,7 @@ export function linkFunctionCallWithSingleTarget(
 		for(const captured of Dataflow.targetsOf(graph, node, EdgeType.Reads)) {
 			const frame = fnSubflow.graph.has(captured) ? undefined : RNode.findEnclosing(captured, idMap, RFunctionDefinition.is);
 			const owner = frame === undefined ? undefined : graph.getVertex(frame);
-			const name = NodeId.recoverName(captured, idMap);
+			const name = NodeId.recoverBareName(captured, idMap);
 			const envState = DfgVertex.isFunctionDefinition(owner) && name !== undefined ? Resolve.byName(name, owner.subflow.environment)?.filter(hasEnvState).find(d => d.nodeId === captured)?.envState : undefined;
 			if(envState !== undefined) {
 				linkFieldWritesOnCall(graph, id, fnId, node, captured, envState, idMap);
@@ -604,11 +604,11 @@ function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: Datafl
 			|| DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
 			return undefined;
 		} else if(DfgVertex.isVariableDefinition(vertex)) {
-			locals.add(NodeId.recoverName(node, idMap) ?? '');
+			locals.add(NodeId.recoverBareName(node, idMap) ?? '');
 		}
 	}
 	for(const param of Object.keys(factory.params)) {
-		locals.add(NodeId.recoverName(NodeId.normalize(param), idMap) ?? '');
+		locals.add(NodeId.recoverBareName(NodeId.normalize(param), idMap) ?? '');
 	}
 	return { factory: factory.id, locals };
 }

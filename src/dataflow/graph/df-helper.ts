@@ -12,7 +12,6 @@ import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { isBaseRPackage } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
 
@@ -200,9 +199,9 @@ export const Dataflow = {
 	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {
 		const byName = new DefaultMap<string, NodeId[]>(() => []);
 		for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-			const name = NodeId.recoverName(id, graph.idMap);
+			const name = NodeId.recoverBareName(id, graph.idMap);
 			if(name !== undefined) {
-				byName.get(RString.unquote(name)).push(id);
+				byName.get(name).push(id);
 			}
 		}
 		return byName;

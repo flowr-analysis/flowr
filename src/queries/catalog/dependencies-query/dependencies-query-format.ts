@@ -1,7 +1,12 @@
 import { filterLineParser, type BaseQueryFormat, type BaseQueryMeta, type BasicQueryData } from '../../base-query-format';
 import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
-import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import { EdgeType } from '../../../dataflow/graph/edge';
+import { DataFrameFunctions } from '../../../abstract-interpretation/data-frame/dataframe-semantics';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -67,6 +72,30 @@ export interface DependencyCategorySettings {
 export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
+/**
+ * Whether the variable read at `id` holds a data frame: it is defined by a call the data frame shape inference knows
+ * to return one ({@link DataFrameFunctions}, like `read.csv` or `merge`), or by an assignment into a part of one.
+ */
+function holdsDataFrame(id: NodeId, graph: DataflowGraph, seen: Set<NodeId> = new Set()): boolean {
+	if(seen.has(id)) {
+		return false;
+	}
+	seen.add(id);
+	return (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
+		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(by => {
+			const vertex = graph.getVertex(by);
+			if(!DfgVertex.isFunctionCall(vertex)) {
+				return false;
+			} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+				const target = graph.idMap?.get(by);
+				return RAccess.is(target) && holdsDataFrame((target.accessed as RNode<ParentInformation>).info.id, graph, seen);
+			}
+			const qualified = Dataflow.qualify(by, graph);
+			const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+			return qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`);
+		}));
+}
+
 /** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
 const GroupingArguments: ReadonlySet<string> = new Set(['by', 'keyby']);
 
@@ -79,7 +108,7 @@ function transformOf(nodeId: NodeId, functionName: Identifier, target: RSymbol<P
 /**
  * What transforms data by its syntax rather than by a function: data.table's update by reference (`dt[, z := x + 1]`)
  * and grouping (`dt[, mean(x), by = g]`), and an assignment into a part of a data frame, like `d$y <- d$x * 2` or
- * `d[d$x > 1, "z"] <- 0`. The last only where the shape inference knows the target to be a data frame, as `x[1] <- 2`
+ * `d[d$x > 1, "z"] <- 0`. The last only where the target is a data frame, see {@link holdsDataFrame}, as `x[1] <- 2`
  * on a vector transforms no data.
  */
 async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
@@ -102,13 +131,7 @@ async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
 			const node = ast.idMap.get(id);
 			return RAccess.is(node) && RSymbol.is(node.accessed) ? [{ id, functionName: call.name, target: node.accessed }] : [];
 		}).toArray();
-	if(parts.length === 0) {
-		return byTable;
-	}
-	const criterion = (target: RSymbol<ParentInformation>) => SlicingCriterion.fromId(target.info.id);
-	const { absint } = await data.analyzer.query([{ type: 'absint', inference: 'df-shape', criteria: parts.map(p => criterion(p.target)) }]);
-	const shapes = absint.result as ReadonlyMap<SlicingCriterion, { isBottom(): boolean } | undefined>;
-	return [...byTable, ...parts.filter(p => shapes.get(criterion(p.target))?.isBottom() === false).map(p => transformOf(p.id, p.functionName, p.target))];
+	return [...byTable, ...parts.filter(p => holdsDataFrame(p.target.info.id, dataflow.graph)).map(p => transformOf(p.id, p.functionName, p.target))];
 }
 
 /**

@@ -6,6 +6,8 @@ import type { DependencyInfo } from './dependencies-query-format';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { DfgVertex } from '../../../dataflow/graph/vertex';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -23,6 +25,10 @@ import type { FunctionInfo } from './function-info/function-info';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
 function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): RNode<ParentInformation> | undefined {
+	/* an assignment yields its value invisibly, be it an operator, a replacement call like `names(x) <- v`, or `assign` */
+	if(isAssignment(node, dataflow)) {
+		return undefined;
+	}
 	switch(node?.type) {
 		/* the loops hand back an invisible NULL, and the jumps never hand back anything at all */
 		case undefined:
@@ -51,12 +57,18 @@ function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: Dataf
 		/* whichever branch runs decides; without an `else` a false condition yields an invisible NULL */
 		case RType.IfThenElse:
 			return echoedValue(node.then, dataflow, invisible, seen) ?? echoedValue(node.otherwise, dataflow, invisible, seen);
-		case RType.BinaryOp:
-			return RBinaryOp.getOperatorInfo(node)?.usedAs === 'assignment' ? undefined : node;
-		/* a symbol, a constant, an access, a unary operator, or a function definition is printed as it stands */
+		/* a symbol, a constant, an access, an operator, or a function definition is printed as it stands */
 		default:
 			return node;
 	}
+}
+
+/** the processors of what assigns and so yields its value invisibly, a replacement (`x$a <- 1`) sitting on its target */
+const Assigning: readonly BuiltInProcName[] = [BuiltInProcName.Assignment, BuiltInProcName.SuperAssignment, BuiltInProcName.Replacement, BuiltInProcName.TableAssignment];
+
+function isAssignment(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation): boolean {
+	const vertex = node === undefined ? undefined : dataflow.graph.getVertex(node.info.id);
+	return (RBinaryOp.is(node) && RBinaryOp.getOperatorInfo(node)?.usedAs === 'assignment') || Assigning.some(p => DfgVertex.hasOrigin(vertex, p));
 }
 
 /** whether the list is a `( )` group rather than a `{ }` block, which is what makes its value visible */
@@ -75,7 +87,7 @@ function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfor
 	const arg = at < 0 ? undefined : node.arguments[at];
 	const value = typeof arg === 'object' && RArgument.is(arg) ? arg.value : undefined;
 	/* only a call, a block (`local({ ... })`) or an assignment (`return(x <- 1)`) can be invisible where the one around it is not, a symbol says nothing new */
-	return RFunctionCall.is(value) || RExpressionList.is(value) || (RBinaryOp.is(value) && RBinaryOp.getOperatorInfo(value)?.usedAs === 'assignment') ? value : undefined;
+	return RFunctionCall.is(value) || RExpressionList.is(value) || isAssignment(value, dataflow) ? value : undefined;
 }
 
 /** the last statement of a block, which is what its value comes from */
@@ -125,8 +137,9 @@ function isInvisible(name: Identifier, invisible: readonly FunctionInfo[]): bool
 /** what to report the echo under: the called name, or the operator or lexeme producing the value */
 function echoName(node: RNode<ParentInformation>, dataflow: DataflowInformation): Identifier {
 	switch(node.type) {
+		/* a call of no name, like `o$bump()`, is named by what it calls rather than by an id that moves with the code */
 		case RType.FunctionCall:
-			return callIdentifierOf(node, dataflow) ?? '';
+			return node.named ? callIdentifierOf(node, dataflow) ?? '' : RNode.lexeme(node.calledFunction) ?? '';
 		case RType.BinaryOp:
 		case RType.UnaryOp:
 		case RType.Access:

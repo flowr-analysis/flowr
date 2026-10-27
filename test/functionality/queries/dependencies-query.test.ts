@@ -1136,6 +1136,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			/* a call handing on its argument hands on that it is invisible, too */
 			testQuery('an assignment handed on by identity', 'identity(x <- 1)', {});
 			testQuery('a function returning an assignment', 'f <- function() return(x <- 1)\nf()', {});
+			/* a replacement is an assignment too, whose vertex sits on its target */
+			for(const target of ['x$a', 'names(x)', 'x[1]']) {
+				testQuery(`a function ending in the replacement ${target} <- ...`, `f <- function(x) ${target} <- 1\nf(list())`, {});
+			}
 			/* the body still runs, so what it prints on its own is still an output */
 			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout', inputVariables: ['i'] }] });
 		});

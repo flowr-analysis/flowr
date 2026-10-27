@@ -454,6 +454,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
 		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
 		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [], write: [printed('1@gzfile', 'gzfile')] });
+		testQuery('a connection opened on an unknown file reads an unknown file', 'read.csv(gzfile(d))', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', argumentId: '1@gzfile', lexemeOfArgument: 'gzfile(d)', value: 'unknown' }], write: [printed('1@read.csv', 'read.csv')] });
 
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x', argumentId: '1:12' }], write: [printed('1@read.table', 'read.table')] });
 

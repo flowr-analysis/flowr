@@ -6,9 +6,8 @@ import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../src/r-bridge/retriever';
 import { MutationPasses, mutate, type MutationPass, type MutationTarget } from '../functionality/_helper/r-mutations';
 import { Counterexamples } from './counterexample-corpus';
+import { ChainedWith } from '../functionality/_helper/r-mutations';
 
-/** how many passes follow each pass in a chain of two, so chains reach every pass without trying every pair */
-export const ChainedWith = 4;
 /** what a mutant may take to be analyzed and queried in full; a hang fails the test instead of the whole run */
 const Timeout = 30_000;
 

@@ -81,19 +81,24 @@ function holdsDataFrame(id: NodeId, graph: DataflowGraph, seen: Set<NodeId> = ne
 		return false;
 	}
 	seen.add(id);
+	/* a call handing back what it is given, like `(` in `d <- (data.frame(a = 1))`, holds a data frame if that does */
+	const makes = (by: NodeId): boolean => {
+		const vertex = graph.getVertex(by);
+		if(!DfgVertex.isFunctionCall(vertex) || seen.has(by)) {
+			return false;
+		}
+		seen.add(by);
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+			const target = graph.idMap?.get(by);
+			return RAccess.is(target) && holdsDataFrame((target.accessed as RNode<ParentInformation>).info.id, graph, seen);
+		}
+		const qualified = Dataflow.qualify(by, graph);
+		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+		return (qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`))
+			|| Dataflow.targetsOf(graph, by, EdgeType.Returns).some(makes);
+	};
 	return (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
-		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(by => {
-			const vertex = graph.getVertex(by);
-			if(!DfgVertex.isFunctionCall(vertex)) {
-				return false;
-			} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
-				const target = graph.idMap?.get(by);
-				return RAccess.is(target) && holdsDataFrame((target.accessed as RNode<ParentInformation>).info.id, graph, seen);
-			}
-			const qualified = Dataflow.qualify(by, graph);
-			const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
-			return qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`);
-		}));
+		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(makes));
 }
 
 /** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */

@@ -687,6 +687,9 @@ const identityPass = new PlainCallPass(identityArgument, (call, program) => {
 	return at < 0 ? undefined : `${program.token(call.functionName)}(${args.map((a, i) => i === at ? `identity(${program.text(a as RNodeWithParent)})` : program.text(a as RNodeWithParent)).join(', ')})`;
 });
 
+/** how many passes follow each pass in a chain of two the robustness checks try, so chains reach every pass without trying every pair */
+export const ChainedWith = 4;
+
 /** every pass a mutant is generated for; add to this list to check another rewrite */
 export const MutationPasses: readonly MutationPass[] = [
 	leadingNoise,

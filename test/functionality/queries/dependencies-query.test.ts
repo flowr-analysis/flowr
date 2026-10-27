@@ -736,6 +736,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a bare filter is the one of stats', 'filter(x, rep(1, 3))', { write: [printed(10, 'filter', ['x'])] });
 			testQuery('a user-defined filter is none', 'filter <- function(x) x\ny <- filter(df)', {});
 			testQuery('an assignment into a part of a data frame transforms it', 'd <- data.frame(x = 1:3)\nd$y <- d$x * 2\nv <- 1:3\nv[1] <- 5', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('a data frame handed through parentheses is one', 'd <- (data.frame(x = 1:3))\nd$y <- 2', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
 			testQuery('data.table updates by reference and groups', 'dt[, z := x + 1]\nm <- dt[, mean(x), by = g]', { transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['dt'], assignedTo: 'dt' }, { nodeId: '2@[', functionName: '[', inputVariables: ['dt'] }] });
 			testQuery('base functions', 'm <- merge(a, b)\ns <- subset(a, x > 1)', { transform: [
 				{ nodeId: '1@merge', functionName: 'merge', inputVariables: ['a', 'b'], assignedTo: 'm' },

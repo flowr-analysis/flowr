@@ -15,8 +15,7 @@ import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import { MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
-import { ChainedWith } from '../../test/mutations/robustness';
+import { ChainedWith, MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
 import { linkToQueryOfName } from './doc-util/doc-query';
 
 /** the categories of the passes, the passes of each in a collapsed list with what each does */

@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { compileRegex } from '../../../util/text/regex';
+import { isNotUndefined } from '../../../util/assert';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { FileRole, type FlowrFileProvider } from '../../../project/context/flowr-file';
 import { SourceLocation } from '../../../util/range';
@@ -62,15 +64,8 @@ const MaxEntries = 50_000;
 /** the `.Rbuildignore` patterns plus the defaults, compiled; a pattern that is no valid regular expression is skipped */
 function excludePatterns(rbuildignore: string | undefined): RegExp[] {
 	const lines = [...DefaultExcludePatterns, ...(rbuildignore?.split(/\r?\n/) ?? [])].filter(l => l.trim() !== '');
-	const result: RegExp[] = [];
-	for(const line of lines) {
-		try {
-			result.push(new RegExp(line, 'i'));
-		} catch{
-			/* R would fail on it as well, but that is not this listing's finding to make */
-		}
-	}
-	return result;
+	/* R would fail on an invalid one as well, but that is not this listing's finding to make */
+	return lines.map(line => compileRegex(line, 'i')).filter(isNotUndefined);
 }
 
 /** whether `R CMD build` drops the entry (and, for a directory, everything below it) */

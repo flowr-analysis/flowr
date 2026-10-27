@@ -31,7 +31,8 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 		}
 	},
 	// write functions that don't have argIndex are assumed to write to stdout
-	{ package: 'base',  name: 'print',      linkTo: OutputRedirects,                  resolveValue: false },
+	/* a print method may write to a file instead, like `print(xtable(d), file = "t.tex")` */
+	{ package: 'base',  name: 'print',      linkTo: OutputRedirects, argName: 'file', resolveValue: true },
 	{ package: 'graphics', name: 'stem',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
 	/* conditions and messages go to the message stream, which is stderr */
@@ -41,6 +42,10 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
 	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
 	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
+	/* `output = "default"` shows the table where R prints */
+	{ package: 'modelsummary', name: 'modelsummary', argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
+	{ package: 'modelsummary', name: 'msummary',     argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
+	{ package: 'modelsummary', name: 'datasummary',  argIdx: 2, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
 	{ package: 'base',  name: 'file.create',   argIdx: 'unnamed',             resolveValue: true },
 	{ package: 'base',  name: 'file.copy',     argIdx: 1, argName: 'to',      resolveValue: true },
 	{ package: 'base',  name: 'file.rename',   argIdx: 1, argName: 'to',      resolveValue: true },

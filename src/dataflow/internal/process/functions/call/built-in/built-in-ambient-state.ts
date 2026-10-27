@@ -587,10 +587,20 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 	const reads = kind === 'switch' ? [AmbientStateName.graphics] : [];
 	/* closing writes the file of the device, which its opening names unless we do not know the device closed */
 	const unnamedFile = kind === 'open' ? [] : [AmbientStateName.anyFile, AmbientStateName.files];
-	if(data.environment.level > 0) {
-		return withAccess(res, rootId, data, reads, [AmbientStateName.graphics, AmbientStateName.device, ...unnamedFile]);
-	}
 	const cds = data.cds ? [...data.cds] : undefined;
+	if(data.environment.level > 0) {
+		/* a device the body opened itself is the one a later close in the same body closes:
+		   `f <- function() { pdf("a.pdf"); plot(1); dev.off() }` writes `a.pdf` and no other file */
+		const here = kind === 'close' ? res.environment.current.memory.get(AmbientStateName.deviceOpenedHere) ?? [] : [];
+		for(const open of here) {
+			res.graph.addEdge(open.nodeId, rootId, EdgeType.Reads);
+		}
+		let environment = { ...res.environment, current: res.environment.current.removeAll([{ name: AmbientStateName.deviceOpenedHere }]) };
+		if(kind === 'open') {
+			environment = defineAmbient(environment, rootId, cds, [{ name: AmbientStateName.deviceOpenedHere, mode: 'local' }]);
+		}
+		return withAccess({ ...res, environment }, rootId, data, reads, [AmbientStateName.graphics, AmbientStateName.device, ...here.length > 0 ? [] : unnamedFile]);
+	}
 	const lookup = (name: string) => Resolve.byName(name, res.environment) ?? [];
 	const current = lookup(AmbientStateName.graphics);
 	const others = lookup(AmbientStateName.otherDevices);

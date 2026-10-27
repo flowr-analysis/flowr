@@ -47,6 +47,8 @@ export const AmbientStateName = {
 	/** the call that opened the active device, and those of the other open devices */
 	device:               '#device',
 	otherDevicesOpenedBy: '#device:other',
+	/** within a function, the call of its body that opened the active device, which only that body knows */
+	deviceOpenedHere:     '#device:here',
 	/** the color palette, which, other than the graphics parameters, all devices share */
 	palette:              '#palette',
 	/** the files on disk, which every call writing a file adds to and every call reading a file we cannot name reads */

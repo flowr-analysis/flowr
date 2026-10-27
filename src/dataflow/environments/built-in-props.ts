@@ -52,7 +52,12 @@ export enum ArgProp {
 	 * open to injection, so a call handing it unescaped data is a finding: system commands, R expressions,
 	 * database queries, HTML, or JavaScript.
 	 */
-	Injectable = 1 << 15
+	Injectable = 1 << 15,
+	/**
+	 * besides its value, the expression as written names a part of the result, like `a` in `data.frame(a)`,
+	 * which becomes the column `a`; passing `identity(a)` instead changes the name
+	 */
+	Deparsed   = 1 << 16
 }
 
 /**
@@ -171,7 +176,9 @@ export enum SemanticCallTag {
 	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
 	ChecksPackage   = 'checks-package',
 	/** registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` */
-	Declares        = 'declares'
+	Declares        = 'declares',
+	/** reads which environment it runs in, like `environment()` or `parent.frame()`, so moving the call into another frame changes its result */
+	Frames          = 'reflects-frame'
 }
 
 /** a bitfield of {@link ArgProp} */
@@ -434,7 +441,8 @@ const ArgPropNames: Readonly<Record<ArgProp, string>> = {
 	[ArgProp.Atomic]:     'atomic',
 	[ArgProp.Handle]:     'handle',
 	[ArgProp.Lazy]:       'lazy',
-	[ArgProp.Injectable]: 'injectable'
+	[ArgProp.Injectable]: 'injectable',
+	[ArgProp.Deparsed]:   'deparsed'
 };
 
 /** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */

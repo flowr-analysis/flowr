@@ -295,6 +295,8 @@ const SigDataDots: FnSig = [['.data', ArgProp.Value], ['...', ArgProp.Value]];
 const SigShape: FnSig  = [['x', ArgProp.Forced | ArgProp.Shape]];
 const SigXTable: FnSig = [['x', ArgProp.Forced | ArgProp.Value], ['table', ArgProp.Forced | ArgProp.Value]];
 const SigDots: FnSig  = [['...', ArgProp.Forced | ArgProp.Value]];
+/* the arguments name what they become, like the columns of `data.frame(a, b)` */
+const SigDotsDeparsed: FnSig = [['...', ArgProp.Forced | ArgProp.Value | ArgProp.Deparsed]];
 /* data.table's `set*` functions change their first argument in place */
 const DataTableSetter = { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true, readTarget: true, props: CallProp.Invisible, sig: [['x', ArgProp.Forced | ArgProp.Value | ArgProp.Written | ArgProp.Alias], ['...', ArgProp.Forced | ArgProp.Value]] as FnSig } as const;
 /* the calls that reshape, filter, join or aggregate data and are not data-masking, each under the package that declares it, so `stats::filter` is none */
@@ -625,8 +627,9 @@ export const WrittenBuiltinDefinitions = [
 	/* `hasArg(x)` is `missing()` asked the other way round: it too only looks at whether an argument was supplied */
 	{ type: 'function', names: [Identifier.from(['hasArg', PkgName.Methods])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['name', ArgProp.Presence]] }, assumePrimitive: true },
 	/* they fold everything they are handed into one result */
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'data.frame', 'order', 'any']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: SigDots }, assumePrimitive: true },
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['cbind', 'rbind']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigDots }, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'order', 'any']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: SigDots }, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['data.frame', 'table']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: SigDotsDeparsed }, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['cbind', 'rbind']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigDotsDeparsed }, assumePrimitive: true },
 	/* the separator sits behind the `...`, so R (and the {@link FnSig}) only ever matches it by its full name */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['paste', 'paste0']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['...', ArgProp.Forced | ArgProp.Value], ['sep', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn },
 	{ type: 'function', names: [Identifier.from(['file.path', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: [['...', ArgProp.Forced | ArgProp.Value], ['fsep', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn },
@@ -689,7 +692,7 @@ export const WrittenBuiltinDefinitions = [
 		names: [
 			...Identifier.fromAll(PkgName.Base, [
 				'rep', 'rep.int', 'seq.int', 'append', 'complex',
-				'matrix', 'array', 'table', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans',
+				'matrix', 'array', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans',
 				'solve', 'det', 'eigen', 'aperm',
 				/* string */
 				'grep', 'sub', 'gsub', 'substr', 'substring', 'strsplit', 'strrep', 'chartr', 'strtoi', 'shQuote',
@@ -1077,7 +1080,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['body', 'formals']), processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Lang, sig: [['fun', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['trace', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, tags: [SemanticCallTag.Eval], sig: [['what', ArgProp.Value], ['tracer', ArgProp.Value | ArgProp.Injectable], ['exit', ArgProp.Value | ArgProp.Injectable], ['at', ArgProp.Value], ['print', ArgProp.Flag], ['signature', ArgProp.Value], ['where', ArgProp.Value], ['edit', ArgProp.Flag]] }, assumePrimitive: false },
 	/* `environment()` without an argument is the frame the call sits in, which is how `as.list(environment())` gets at every argument */
-	{ type: 'function', names: [Identifier.from(['environment', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, frame: ArgProp.Value, sig: [['fun', ArgProp.Handle | ArgProp.Forced]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['environment', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, frame: ArgProp.Value, tags: [SemanticCallTag.Frames], sig: [['fun', ArgProp.Handle | ArgProp.Forced]] }, assumePrimitive: true },
 	{
 		type:      'function',
 		names:     Identifier.fromAll(PkgName.Base, ['.Call', '.External', '.C', '.Fortran', '.External2', '.Call.graphics', '.External.graphics']),
@@ -1199,7 +1202,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: ['<<-'], processor: BuiltInProcName.Assignment, config: { superAssignment: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['x', ArgProp.NoDefault], ['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias]] }, assumePrimitive: true },
 	{ type: 'function', names: ['->'], processor: BuiltInProcName.Assignment, config: { swapSourceAndTarget: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias], ['x', ArgProp.NoDefault]] }, assumePrimitive: true },
 	{ type: 'function', names: ['->>'], processor: BuiltInProcName.Assignment, config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible, sig: [['value', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Alias], ['x', ArgProp.NoDefault]] }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['data', PkgName.Utils])], processor: BuiltInProcName.DefineArgument, config: { props: CallProp.Invisible, superAssignment: true, sig: [['...', 0], ['list', ArgProp.Value], ['package', 0], ['lib.loc', 0], ['verbose', 0], ['envir', 0], ['overwrite', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['data', PkgName.Utils])], processor: BuiltInProcName.DefineArgument, config: { props: CallProp.Invisible | CallProp.Scope, superAssignment: true, sig: [['...', 0], ['list', ArgProp.Value], ['package', 0], ['lib.loc', 0], ['verbose', 0], ['envir', 0], ['overwrite', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['getHdata', PkgName.Hmisc])], processor: BuiltInProcName.DefineArgument, config: { superAssignment: true, sig: [['...', 0], ['list', ArgProp.Value], ['package', 0], ['lib.loc', 0], ['verbose', 0], ['envir', 0], ['overwrite', 0]] }, assumePrimitive: false },
 	/* only `&&`/`||` short-circuit */
 	{ type: 'function', names: [Identifier.from(['&&', PkgName.Base])], processor: BuiltInProcName.SpecialBinOp, config: { lazy: true, evalRhsWhen: true, props: CallProp.Pure, sig: [['x', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Atomic], ['y', ArgProp.NoDefault | ArgProp.Atomic]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.Logical },
@@ -1271,13 +1274,14 @@ export const WrittenBuiltinDefinitions = [
 		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
 		.map(([n]) => Identifier.from([n, PkgName.Base])),
 	processor: BuiltInProcName.StackEnv, config: {}, assumePrimitive: true },
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'topenv']), processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['parent.env', 'environmentName', 'as.environment', 'pos.to.env']), processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['parent.frame', 'topenv']), processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.Frames] }, assumePrimitive: true },
 	/* `sys.frame(sys.nframe())` is the own frame written the long way round, and its values are there to be read */
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['sys.frame', 'sys.frames']), processor: BuiltInProcName.Default, config: { frame: ArgProp.Value }, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['sys.frame', 'sys.frames']), processor: BuiltInProcName.Default, config: { frame: ArgProp.Value, tags: [SemanticCallTag.Frames] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['load', PkgName.Base])], processor: BuiltInProcName.Load, config: { props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
 	/* attach injects an environment's contents into the search path; detach reverses it (treated as unknown side effect) */
 	{ type: 'function', names: [Identifier.from(['globalVariables', PkgName.Utils])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Invisible, tags: [SemanticCallTag.Declares], sig: [['names', ArgProp.NoDefault], ['package', 0], ['add', 0]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['attach', PkgName.Base])], processor: BuiltInProcName.Attach, config: { props: CallProp.Invisible, sig: [['what', ArgProp.NoDefault], ['pos', 0], ['name', 0], ['warn.conflicts', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['attach', PkgName.Base])], processor: BuiltInProcName.Attach, config: { props: CallProp.Invisible | CallProp.Scope, sig: [['what', ArgProp.NoDefault], ['pos', 0], ['name', 0], ['warn.conflicts', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: ['for'],    processor: BuiltInProcName.ForLoop,    config: { props: CallProp.Invisible, sig: [['var', ArgProp.NoDefault | ArgProp.Nse], ['seq', ArgProp.NoDefault | ArgProp.Forced], ['expr', ArgProp.NoDefault]] }, assumePrimitive: true },
 	{ type: 'function', names: ['repeat'], processor: BuiltInProcName.RepeatLoop, config: { props: CallProp.Invisible, sig: [['expr', ArgProp.NoDefault | ArgProp.Forced]] }, assumePrimitive: true },
 	{ type: 'function', names: ['while'],  processor: BuiltInProcName.WhileLoop,  config: { props: CallProp.Invisible, sig: [['cond', ArgProp.NoDefault | ArgProp.Forced | ArgProp.Atomic], ['expr', ArgProp.NoDefault]] }, assumePrimitive: true },
@@ -1321,7 +1325,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['ddply', PkgName.Plyr])], processor: BuiltInProcName.Apply, config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['list', PkgName.Base])], processor: BuiltInProcName.List, config: { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['Recall', PkgName.Base])], processor: BuiltInProcName.Recall, config: { libFn: true, sig: [['...', 0]] }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['sys.function', PkgName.Base])], processor: BuiltInProcName.Recall, config: { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse, sig: [['which', 0]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['sys.function', PkgName.Base])], processor: BuiltInProcName.Recall, config: { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse, tags: [SemanticCallTag.Frames], sig: [['which', 0]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['c', PkgName.Base])], processor: BuiltInProcName.Vector, config: { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true, evalHandler: BuiltInEvalName.Vector },
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['e', ArgProp.Alias]] } },

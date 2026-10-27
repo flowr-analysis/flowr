@@ -179,7 +179,7 @@ export function globOf(name: string): RegExp | undefined {
 }
 
 /** The roles an argument can state, as the signature database words them. */
-export const RoleWords: readonly string[] = ['alias', 'forced', 'no default', 'value', 'shape', 'flag', 'resource', 'written', 'nse', 'callee', 'presence', 'bounds', 'atomic', 'handle', 'lazy', 'injectable'];
+export const RoleWords: readonly string[] = ['alias', 'forced', 'no default', 'value', 'shape', 'flag', 'resource', 'written', 'nse', 'callee', 'presence', 'bounds', 'atomic', 'handle', 'lazy', 'injectable', 'deparsed'];
 /** The properties a call can state, as the signature database words them. */
 export const PropWords: readonly string[] = ['pure', 'maybe pure', 'invisible', 'can throw', 'generic', 's3 method', 'changes scope', 'non deterministic', 'ambient state', 'sets ambient state', 'calls native code', 'produces language object', 'strict', 'concurrent', 'primitive'];
 
@@ -271,7 +271,7 @@ export const WordInfo: Readonly<Record<string, string>> = {
 	'alias':                    'handed back as the result', 'forced':                   'always evaluated', 'no default':               'declared without a default', 'value':                    'its value feeds the result',
 	'shape':                    'only length or attributes used', 'flag':                     'selects a behavior', 'resource':                 'names a file or connection', 'written':                  'may be modified',
 	'nse':                      'quoted, not evaluated', 'callee':                   'called as a function', 'presence':                 'only if it was given', 'bounds':                   'the result is one of its values',
-	'atomic':                   'plain data only', 'handle':                   'an open connection', 'lazy':                     'never evaluated', 'injectable':               'open to injection',
+	'atomic':                   'plain data only', 'handle':                   'an open connection', 'lazy':                     'never evaluated', 'injectable':               'open to injection', 'deparsed':                 'its expression names part of the result',
 	'pure':                     'computes a result, nothing else', 'maybe pure':               'pure if what it calls is', 'invisible':                'result is not printed', 'can throw':                'may raise an error',
 	'generic':                  'dispatches on its argument', 's3 method':                'method of a generic', 'changes scope':            'defines or removes variables', 'non deterministic':        'may differ between runs',
 	'ambient state':            'reads state outside its arguments', 'sets ambient state':       'changes options or devices', 'calls native code':        'uses C, C++ or Fortran',

@@ -31,6 +31,15 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, constFunction, ['3:1'], 'a <- function(x) 1\na(i)');
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities), shell, constFunction, ['2@a'], 'a <- function(x) { }');
+		/* the apply cannot resolve what is piped in, so it keeps its call as one of unknown effect */
+		assertSliced(label('a function piped into an apply is no call to make before the pipe', ['pipe-and-pipe-bind', 'name-normal', 'numbers', 'normal-definition']),
+			shell, 'r <- function(a, b) a + b |> Map(1:3, 4:6)\nr', ['2@r'], 'r <- function(a, b) b |> Map(1:3, 4:6)\nr');
+		assertSliced(label('an environment do.call makes is changed by a callee', ['environment-sharing', 'name-normal', 'numbers', 'newlines', 'dollar-access']),
+			shell, 'e <- do.call(new.env, list())\ne$a <- 1\nf <- function(en) en$a <- 42\nf(e)\nr <- e$a', ['5@r'], 'e <- do.call(new.env, list())\ne$a <- 1\nf <- function(en) en$a <- 42\nf(e)\nr <- e$a');
+		for(const wrap of ['(function() k)', 'identity(function() k)', 'invisible(function() k)']) {
+			assertSliced(label(`a closure handed on by ${wrap.split('(')[0] || '('} reads what holds when it is called`, ['closures', 'grouping', 'name-normal', 'numbers', 'newlines']),
+				shell, `k <- 5\nf <- ${wrap}\nk <- 9\nr <- f()`, ['4@r'], `f <- ${wrap}\nk <- 9\nr <- f()`);
+		}
 		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'a <- function(x) x <- 2');
 		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, '\nfoo(x, y)\nfoo(x, 3)\n    ', ['3@foo'], 'foo(x, 3)');
@@ -300,6 +309,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		const plainCaps: FlowrCapabilityId[] = ['name-normal', 'numbers', 'strings', 'newlines', 'normal-definition', 'implicit-return', 'call-normal'];
 		/* the generic has to evaluate its object to know the class, even though no method body reads it */
 		s3Case('dispatch forces its object', s3Caps, 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '5@v', 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
+		s3Case('a generic named by a variable around the function', s3Caps, 'g <- "p"\np <- function(x) UseMethod(g)\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '6@v', 'g <- "p"\np <- function(x) UseMethod(g)\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
 		s3Case('dispatch with dots forces its object', s3Caps, 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '5@v', 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "FOO"');
 		s3Case('next-method keeps the object as well', s3Caps, 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', '6@v', 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', '[1] "DEF"');
 		/* `NextMethod` passes on the current value of the formals, so the reassignment before it stays */

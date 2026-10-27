@@ -5,13 +5,13 @@ import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { EdgeType } from '../../../../../graph/edge';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -97,7 +97,12 @@ export function processS3Dispatch<OtherInfo>(
 		};
 	}
 
+	/* a generic named by a variable of the code around the function (`UseMethod(generic)`) is what it held as the function was made */
 	const accessedIdentifiers = NodeValue.knownStringsOf(generic.info.id, data);
+	if(accessedIdentifiers.length === 0 && RSymbol.is(generic)) {
+		const bound = data.environment.current.lookupLexically(Identifier.getName(generic.content)) ?? [];
+		accessedIdentifiers.push(...bound.flatMap(d => d.type === ReferenceType.BuiltInConstant || d.type === ReferenceType.BuiltInFunction ? [] : d.value ?? []).flatMap(value => NodeValue.knownStringsOf(value, data)));
+	}
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s3 dispatch with non-resolvable generic, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

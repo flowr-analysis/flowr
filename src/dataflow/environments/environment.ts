@@ -162,6 +162,17 @@ export class Environment implements IEnvironment {
 		return this.frame.get(name);
 	}
 
+	/**
+	 * The definitions of `name` as the code around a closure saw them when the closure was made: an emptied frame
+	 * answers with what it stood in for (see {@link superMemory}), so a free variable of a body finds its binding.
+	 */
+	public lookupLexically(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
+		if(this.builtInEnv) {
+			return undefined;
+		}
+		return this.lookup(name) ?? this.superMemory?.get(name) ?? this.parent?.lookupLexically(name);
+	}
+
 	/** Takes `map` as the bindings, sharing it until something writes. */
 	public adoptMap(map: MemoryView): void {
 		this.frame = Frame.of(map);

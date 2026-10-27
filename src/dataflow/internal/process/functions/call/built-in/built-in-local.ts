@@ -1,5 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
+import { updateNestedFunctionClosures } from './built-in-function-definition';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation, ExitPointType } from '../../../../../info';
 import { DfgVertex } from '../../../../../graph/vertex';
@@ -81,6 +82,8 @@ export function processLocal<OtherInfo>(
 		origin:                BuiltInProcName.Local
 	});
 
+	/* the functions made in the body see its scope, which is gone once `local` returns */
+	updateNestedFunctionClosures(dfExpr.graph, dfExpr.environment, []);
 	const resultEnvironment = envirResolution ? data.environment : REnvironment.popLocal(dfExpr.environment);
 	/* definitions of the local scope vanish with it, only what escaped it (e.g. via `<<-`) may bubble up */
 	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
@@ -89,9 +92,9 @@ export function processLocal<OtherInfo>(
 
 	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
 	graph.addEdge(rootId, expr.info.id, EdgeType.Returns);
-	/* the body only runs because `local` runs it */
+	/* the body only runs because `local` runs it; a definition is made by a call that says so already, and must not read as taking its value from `local` */
 	for(const [id, vertex] of dfExpr.graph.vertices(false)) {
-		if(!DfgVertex.isUse(vertex) && !DfgVertex.isValue(vertex)) {
+		if(!DfgVertex.isUse(vertex) && !DfgVertex.isValue(vertex) && !DfgVertex.isVariableDefinition(vertex)) {
 			graph.addEdge(id, rootId, EdgeType.Reads);
 		}
 	}

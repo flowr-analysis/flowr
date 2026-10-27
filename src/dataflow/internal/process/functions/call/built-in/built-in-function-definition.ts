@@ -341,7 +341,11 @@ function resolveIngoingRefs(
 	});
 }
 
-function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnvironmentInformation, openReads: IdentifierReference[]) {
+/**
+ * Resolves what the functions defined in `graph` read freely against `outEnvironment`, the scope they were made in,
+ * which is about to be popped (that of a function body, or of `local`). What none of it binds is added to `openReads`.
+ */
+export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnvironmentInformation, openReads: IdentifierReference[]) {
 	const open = new Set(openReads.map(r => r.nodeId));
 	const settled = new Set<NodeId>();
 	const superWrites = new DefaultMap<Identifier, NodeId[]>(() => []);
@@ -733,6 +737,8 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 		enclosing.push(frame);
 	}
 	let env = REnvironment.cleanOf(data.environment);
+	/* the global frame is emptied just the same, and keeps what it held for a lookup of what the closure was made in */
+	env.current.standsInFor(REnvironment.findGlobal(data.environment.current).memory);
 	for(let i = 0; i < level + 1; i++) {
 		env = REnvironment.pushLocal(env);
 		if(i === level) {

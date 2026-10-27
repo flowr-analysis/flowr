@@ -4,7 +4,7 @@ import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
-import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
+import { ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
@@ -257,6 +257,11 @@ export const Dataflow = {
 	sideEffects: {
 		propagateTransitive: propagateTransitiveSideEffects,
 		callGraphSummaries:  computeCallGraphSummaries,
+		/**
+		 * The global state each function may leave changed when called, as pseudo variable names ({@link AmbientStateName}),
+		 * including what the functions it calls change. Writes only to the function's own frame are left out.
+		 */
+		ambientWrites:       ambientWritesOfFunctions,
 	},
 	/**
 	 * Only returns the sub-part of the graph that is determined by the given selection.

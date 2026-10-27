@@ -202,7 +202,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	let lastEnv = data.environment;
 	/* `evalq(expr)` runs `expr` right here, in the frame it is called from */
 	const inPlace = args.length === 1 && Identifier.getName(name.content) === 'evalq';
-	const { information: res, processedArguments } = processKnownFunctionCall({
+	const { information: processed, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, alternativeArgsFrom,
 		keepArgumentGraphs: nse !== undefined || masked !== undefined,
 		origin:             useAsProcessor,
@@ -216,6 +216,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 			return { ...d, environment: lastEnv };
 		}
 	});
+	let res = processed;
 	if(nsePositions !== undefined) {
 		dropQuotedReferences(res, processedArguments, nsePositions, lastEnv);
 	}
@@ -233,6 +234,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
 		const valuePositions = FunctionSemantics.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape);
 		readArguments(res.graph, rootId, valuePositions.map(i => processedArguments[i]));
+	}
+	/* before the unknown side effect, which forgets the values of the variables the ambient state is named by */
+	if(ambient !== undefined) {
+		res = applyAmbientStateAccess(res, args, rootId, data, ambient);
 	}
 	if(hasUnknownSideEffects) {
 		handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects === true ? undefined : hasUnknownSideEffects);
@@ -261,7 +266,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		(res as { exitPoints: readonly ExitPoint[] }).exitPoints = [...exitPoints, { type: cfg, nodeId: rootId, cds: data.cds }];
 	}
 
-	return ambient === undefined ? res : applyAmbientStateAccess(res, args, rootId, data, ambient);
+	return res;
 }
 
 function readArguments(graph: DataflowGraph, rootId: NodeId, args: readonly (DataflowInformation | undefined)[]): void {

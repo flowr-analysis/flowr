@@ -16,6 +16,7 @@ import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
+import { ChainedWith } from '../../test/mutations/robustness';
 import { linkToQueryOfName } from './doc-util/doc-query';
 
 /** the categories of the passes, the passes of each in a collapsed list with what each does */
@@ -238,6 +239,10 @@ or moves code, ${linkToQueryOfName('resolve-value')}, ${ctx.replCmd('dataflow')}
 ${ctx.replCmd('controlflow')} have to print the same, up to the positions and names the pass changed.
 
 ${mutationCategories()}
+
+Besides, every mutant and every chain of a pass and the ${ChainedWith} passes after it is analyzed in full and asked
+every query on tree-sitter, without R, in ${linkFlowRSourceFile('test/mutations/robustness.ts')}: none of these
+tens of thousands of programs may make flowR fail, overflow the stack, or hang.
 
 A pass is a ${ctx.link('MutationPass')} and sees the program as a ${ctx.link('MutationProgram')}: its normalized
 AST and dataflow graph, and what the built-in configuration states about each call. It edits the code through

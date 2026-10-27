@@ -538,14 +538,17 @@ export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefine
 		? String(fieldNode.content.num) : undefined;
 }
 
-/** Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns. */
+/**
+ * Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns,
+ * and so may be a field of unknown kind, like the `read.csv` of `assign("f", read.csv, envir = e)`.
+ */
 export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean): void {
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
 		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
 			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
 		}
-		if(returnsFunctions && fd.type === ReferenceType.Function) {
+		if(returnsFunctions && (fd.type & (ReferenceType.Function | ReferenceType.Unknown)) !== 0) {
 			graph.addEdge(accessId, fd.nodeId, EdgeType.Returns);
 		}
 	}

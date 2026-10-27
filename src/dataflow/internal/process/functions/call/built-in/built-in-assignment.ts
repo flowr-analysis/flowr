@@ -461,6 +461,14 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		definedAt: normalResult.entryPoint,
 		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
+	if(envirResolution.stack === 'global' && normalResult.graph.hasVertex(fieldNode.info.id)) {
+		/* `e$f <- v` with `e` the global frame (`e <- globalenv()`, or `environment()` at the top level) is `f <<- v` */
+		const definition = { ...fieldDef, nodeId: fieldNode.info.id };
+		normalResult.graph.setDefinitionOfVertex(definition, [source.info.id]);
+		normalResult.graph.addEdge(fieldNode.info.id, source.info.id, EdgeType.DefinedBy);
+		normalResult.graph.addEdge(normalResult.entryPoint, envirResolution.envirNodeId, EdgeType.Reads);
+		return { ...normalResult, environment: REnvironment.define(definition, true, normalResult.environment) };
+	}
 	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation } = {
 		...envirResolution.envDef,

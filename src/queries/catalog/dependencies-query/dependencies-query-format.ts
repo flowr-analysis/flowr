@@ -42,6 +42,7 @@ import { collectImplicitEchoes } from './implicit-echo';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
+import { memoize } from '../../../util/collections/defaultmap';
 import { SourceRange } from '../../../util/range';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
@@ -72,41 +73,45 @@ export interface DependencyCategorySettings {
 export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
+/** a definition or call reached again while working it out makes nothing new */
+const NothingNew = { answer: false } as const;
+
 /**
  * Tells whether the variable read at an id holds a data frame: it is defined by a call the data frame shape inference
  * knows to return one ({@link DataFrameFunctions}, like `read.csv` or `merge`), by a call handing back what it is
- * given (`(` in `d <- (data.frame(a = 1))`), or by an assignment into a part of one. What each call makes is only
- * worked out once.
+ * given (`(` in `d <- (data.frame(a = 1))`), by a copy of a variable holding one (`k <- d`), or by an assignment
+ * into a part of one. What each definition and call
+ * makes is only worked out once.
  */
 function dataFrameHolders(graph: DataflowGraph): (id: NodeId) => boolean {
-	const made = new Map<NodeId, boolean>();
+	/* all of it starts at a call making a data frame, without one nothing holds one */
+	if(!graph.verticesOfType(VertexType.FunctionCall).some(([id]) => callsDataFrameFunction(graph, id))) {
+		return () => false;
+	}
 	const holds = (id: NodeId): boolean => (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
-		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(makes));
-	const makes = (by: NodeId): boolean => {
-		const known = made.get(by);
-		if(known !== undefined) {
-			return known;
-		}
-		/* a call reached again while working it out makes nothing new */
-		made.set(by, false);
-		const result = makesDataFrame(by);
-		made.set(by, result);
-		return result;
-	};
-	const makesDataFrame = (by: NodeId): boolean => {
+		&& defines(origin.id));
+	const defines = memoize((definition: NodeId) => Dataflow.targetsOf(graph, definition, EdgeType.DefinedBy).some(makes), NothingNew);
+	const makes = memoize((by: NodeId): boolean => {
 		const vertex = graph.getVertex(by);
-		if(!DfgVertex.isFunctionCall(vertex)) {
+		if(DfgVertex.isUse(vertex)) {
+			/* a copy, `k <- d`, or what a call hands back, `(d)` */
+			return holds(by);
+		} else if(!DfgVertex.isFunctionCall(vertex)) {
 			return false;
 		} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
 			const target = graph.idMap?.get(by);
 			return RAccess.is(target) && holds((target.accessed as RNode<ParentInformation>).info.id);
 		}
-		const qualified = Dataflow.qualify(by, graph);
-		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
-		return (qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`))
-			|| Dataflow.targetsOf(graph, by, EdgeType.Returns).some(makes);
-	};
+		return callsDataFrameFunction(graph, by) || Dataflow.targetsOf(graph, by, EdgeType.Returns).some(makes);
+	}, NothingNew);
 	return holds;
+}
+
+/** whether the call is one the data frame shape inference knows to return a data frame, see {@link DataFrameFunctions} */
+function callsDataFrameFunction(graph: DataflowGraph, call: NodeId): boolean {
+	const qualified = Dataflow.qualify(call, graph);
+	const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+	return qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`);
 }
 
 /** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
@@ -144,6 +149,9 @@ async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
 			const node = ast.idMap.get(id);
 			return RAccess.is(node) && RSymbol.is(node.accessed) ? [{ id, functionName: call.name, target: node.accessed }] : [];
 		}).toArray();
+	if(parts.length === 0) {
+		return byTable;
+	}
 	const holds = dataFrameHolders(dataflow.graph);
 	return [...byTable, ...parts.filter(p => holds(p.target.info.id)).map(p => transformOf(p.id, p.functionName, p.target))];
 }

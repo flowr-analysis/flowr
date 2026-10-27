@@ -24,7 +24,7 @@ import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
-import { uniqueArray } from '../../../util/collections/arrays';
+import { uniqueArray, uniqueArrayBy } from '../../../util/collections/arrays';
 import { memoize } from '../../../util/collections/defaultmap';
 import { attachesPackage } from './function-info/library-functions';
 import { describePlots } from './plot-description';
@@ -88,7 +88,8 @@ export async function executeDependenciesQuery({
 	const library = getResults(g, run, queryResults, 'library', functions.get('library') ?? [], data);
 	const attaching = library.filter(attachesPackage);
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
-		const results = c === 'library' ? library : getResults(g, run, queryResults, c, f, data, attaching);
+		/* a call of an alias of several functions of the category, `if(u) r <- read.csv else r <- read.table`, is one entry */
+		const results = uniqueArrayBy(c === 'library' ? library : getResults(g, run, queryResults, c, f, data, attaching), e => `${String(e.nodeId)}\0${String(e.argumentId)}\0${e.value ?? ''}`);
 		/* only default categories allow additional analyses */
 		if(enabled === undefined || enabled.includes(c)) {
 			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
@@ -159,19 +160,20 @@ function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast
 	});
 	const queue: Chain[] = [...byNode.entries().map(([id, entries]) => ({ nodeId: id, entries, root: id, context: new Map() }))];
 	const added: DependencyInfo[] = [];
-	for(let chain = queue.shift(); chain !== undefined; chain = queue.shift()) {
+	for(const chain of queue) {
 		const definition = RNode.findEnclosing(chain.nodeId, ast.idMap, RFunctionDefinition.is);
 		if(definition === undefined) {
 			continue;
 		}
+		const sole = uniqueArray(chain.entries.map(e => e.value));
+		const ask = askable(chain.root) ? revalue.get(chain.root) : undefined;
 		for(const call of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
 			const vertex = graph.getVertex(call);
 			if(!DfgVertex.isFunctionCall(vertex)) {
 				continue;
 			}
-			const context = new Map(chain.context).set(definition, call);
-			const sole = uniqueArray(chain.entries.map(e => e.value));
-			const asked = askable(chain.root) ? revalue.get(chain.root)?.(context) : undefined;
+			const context = () => new Map(chain.context).set(definition, call);
+			const asked = ask?.(context());
 			const values = asked?.length ? asked : sole.length === 1 ? sole : [undefined];
 			const sites = uniqueArray(values).filter(v => !known.has(key(call, v)) && !known.has(key(call, v, chain.root))).map((value): DependencyInfo => {
 				known.add(key(call, value, chain.root));
@@ -179,7 +181,7 @@ function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast
 			});
 			if(sites.length > 0) {
 				added.push(...sites);
-				queue.push({ nodeId: call, entries: sites, root: chain.root, context });
+				queue.push({ nodeId: call, entries: sites, root: chain.root, context: context() });
 			}
 		}
 	}
@@ -260,7 +262,7 @@ function makeCallContextQuery(this: void, [kind, functions]: [DependencyCategory
 		type:           'call-context',
 		callName:       f.name,
 		callTargets:    CallTargets.MustIncludeGlobal,
-		includeAliases: false,
+		includeAliases: true,
 		callNameExact:  true,
 		subkind:        f.name,
 		linkTo:         f.linkTo,

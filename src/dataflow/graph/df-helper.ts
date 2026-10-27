@@ -1,7 +1,7 @@
 import { DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
-import { getOriginInDfg } from '../origin/dfg-get-origin';
+import { getOriginInDfg, type Origin } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
 import { ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
@@ -10,7 +10,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
-import { isBaseRPackage } from '../../util/r-base-packages';
+import { baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
@@ -405,5 +405,25 @@ const resolveQualification: CallQualifier = (graph, id, vertex) => {
 	const origins = Dataflow.origin(graph, id);
 	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
 	const bare = Identifier.toQualified(origins, name, false);
-	return [bare, bare ?? Identifier.toQualified(origins, name, true)];
+	return [bare, bare ?? Identifier.toQualified(origins, name, true) ?? aliasedBaseR(graph, id, origins)];
 };
+
+/**
+ * The base-R function an aliased call resolves to when it reaches nothing of the analyzed code, `utils::read.csv` for the
+ * `f()` of `f <- read.csv`, which the origins alone cannot tell from a call of the code, as both read the definition of `f`.
+ * Only a call reading such a binding is one, as an unknown `stat_summary(fun = mean)` is said to call `mean` as well.
+ */
+function aliasedBaseR(graph: DataflowGraph, id: NodeId, origins: readonly Origin[] | undefined): Identifier | undefined {
+	if(!origins?.some(o => !('proc' in o) && !NodeId.isBuiltIn(o.id))) {
+		return undefined;
+	}
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.Calls) && !NodeId.isBuiltIn(target)) {
+			return undefined;
+		}
+	}
+	const names = new Set(origins.flatMap(o => 'proc' in o && NodeId.isBuiltIn(o.proc) ? [NodeId.fromBuiltIn(o.proc)] : []));
+	const [name] = names;
+	const owner = names.size === 1 ? baseRExportOwner(name) : undefined;
+	return owner === undefined ? undefined : Identifier.make(name, owner);
+}

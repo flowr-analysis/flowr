@@ -9,6 +9,7 @@ import { RBinaryOp } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-b
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
 	/** the state each function, named by what it is assigned to, may leave changed (sorted) */
@@ -98,5 +99,15 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 			assert.isUndefined(AmbientStateName.entryOf('#sink'));
 			assert.strictEqual(AmbientStateName.keyed(KeyedState.SearchPath, 'package:dplyr'), '#search-path:dplyr');
 		});
+	});
+}));
+
+describe('Ambient state stays small', withTreeSitter(ts => {
+	/* closing a device we cannot name merges the state of the active device with the others; each call may add its own definition, but no copies */
+	test(label('closing unnamed devices again and again', ['name-normal', 'call-normal'], ['dataflow']), async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest(requestFromInput(Array.from({ length: 40 }, () => 'dev.off(dev.list()["RStudioGD"])').join('\n')));
+		const { environment } = await analyzer.dataflow();
+		assert.isAtMost(Resolve.byName(AmbientStateName.graphics, environment)?.length ?? 0, 41);
 	});
 }));

@@ -1809,7 +1809,7 @@
 
 	/**
 	 * The views that stack what a release carries into one bar per release. `of` reads the value of a series
-	 * at that release, `extra` what the release wrote next to it. A part with a `cls` keeps that colour,
+	 * at that release, `extra` what the release wrote next to it. A part with a `cls` keeps that color,
 	 * every other takes the colour of the series named by `color`.
 	 */
 	const STACKS = {

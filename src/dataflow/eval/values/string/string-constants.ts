@@ -7,55 +7,55 @@ export function stringFrom(str: RStringValue | string): ValueString {
 	return { type: 'string', value: typeof str === 'string' ? { quotes: '"', str } : str };
 }
 
-/** the escapes standing for exactly one character, everything else R writes as a numeric code */
+/** the escapes of an R string that stand for one character each */
 const SimpleEscapes: Readonly<Record<string, string>> = {
-	n:    '\n',
-	r:    '\r',
-	t:    '\t',
-	b:    '\b',
-	a:    '\x07',
-	f:    '\f',
-	v:    '\v',
-	'\\': '\\',
-	'"':  '"',
-	'\'': '\'',
-	'`':  '`'
+	a: '\x07', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', '\\': '\\', '"': '"', '\'': '\'', '`': '`', ' ': ' ', '\n': '\n'
 };
+/** the escapes of an R string that state a code: octal, hex, and the unicode forms with and without braces */
+const CodedEscape = /^(?:([0-7]{1,3})|x([0-9a-fA-F]{1,2})|u\{([0-9a-fA-F]{1,4})\}|u([0-9a-fA-F]{1,4})|U\{([0-9a-fA-F]{1,8})\}|U([0-9a-fA-F]{1,8}))/;
 
-/** the largest code point there is, so an `\U` escape naming none of them is rejected instead of throwing */
-const MaxCodePoint = 0x10FFFF;
-
-/** `\xnn`, `\u{nnnn}`, `\unnnn`, `\U{nnnnnnnn}`, `\Unnnnnnnn`, an octal `\nnn`, or a single-character escape */
-const EscapePattern = /\\(?:x([0-9a-fA-F]{1,2})|u\{([0-9a-fA-F]{1,6})\}|u([0-9a-fA-F]{1,4})|U\{([0-9a-fA-F]{1,8})\}|U([0-9a-fA-F]{1,8})|([0-7]{1,3})|([\s\S]))/g;
-
-/** the characters an R string literal stands for (`"a\tb"` is three characters, not the four its source is written with); undefined for an escape R would reject */
+/**
+ * The characters R stores for the content of a string literal, with its escapes undone as R's parser undoes them:
+ * `a\tb` is three characters. It is `undefined` where R rejects the literal (an unknown escape such as `\.`, a nul)
+ * or stores a byte no character stands for (`\xff`).
+ */
 export
 function unescapeRString(this: void, str: string): string | undefined {
-	if(!str.includes('\\')) {
-		return str;
-	}
-	let rejected = false;
-	const out = str.replace(EscapePattern, (_all, hex?: string, uBraced?: string, u?: string, bigBraced?: string, big?: string, octal?: string, single?: string) => {
-		const code = hex ?? uBraced ?? u ?? bigBraced ?? big;
-		if(code !== undefined || octal !== undefined) {
-			const point = code !== undefined ? parseInt(code, 16) : parseInt(octal as string, 8);
-			rejected ||= point > MaxCodePoint;
-			return point > MaxCodePoint ? '' : String.fromCodePoint(point);
+	let out = '';
+	for(let i = 0; i < str.length; i++) {
+		if(str[i] !== '\\') {
+			out += str[i];
+			continue;
 		}
-		const simple = single === undefined ? undefined : SimpleEscapes[single];
-		rejected ||= simple === undefined;
-		return simple ?? '';
-	});
-	return rejected ? undefined : out;
+		const simple = SimpleEscapes[str[++i]];
+		if(simple !== undefined) {
+			out += simple;
+			continue;
+		}
+		const coded = CodedEscape.exec(str.slice(i));
+		if(coded === null) {
+			return undefined;
+		}
+		const [whole, octal, hex, ...unicode] = coded;
+		const code = parseInt(octal ?? hex ?? unicode.find(u => u !== undefined) ?? '', octal === undefined ? 16 : 8);
+		if(code === 0 || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF) || ((octal ?? hex) !== undefined && code > 0x7F)) {
+			return undefined;
+		}
+		out += String.fromCodePoint(code);
+		i += whole.length - 1;
+	}
+	return out;
+}
+
+/** the characters a string literal stands for, see {@link unescapeRString}: a raw string stands for its characters as written */
+export function contentOf(this: void, { str, flag }: RStringValue): string | undefined {
+	return flag === 'raw' ? str : unescapeRString(str);
 }
 
 /** the {@link ValueString} an R string literal stands for, escapes resolved (a raw string has none, so it stands for its characters as written); undefined for an escape R would reject */
 export
 function stringFromLiteral(this: void, value: RStringValue): ValueString | undefined {
-	if(value.flag === 'raw') {
-		return stringFrom(value);
-	}
-	const str = unescapeRString(value.str);
+	const str = contentOf(value);
 	return str === undefined ? undefined : stringFrom({ ...value, str });
 }
 

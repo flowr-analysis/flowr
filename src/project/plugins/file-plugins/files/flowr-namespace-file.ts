@@ -1,4 +1,5 @@
 import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { unescapeRString } from '../../../../dataflow/eval/values/string/string-constants';
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
@@ -19,7 +20,6 @@ import {
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
-import { RStringValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArray } from '../../../../util/collections/arrays';
 import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -119,14 +119,6 @@ export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, na
 	return nsInfo ? isExportedInInfo(name, nsInfo) : false;
 }
 
-/**
- * The regex an `exportPattern` states: the NAMESPACE writes it as an R string, whose escapes R undoes before it
- * reads the regex. `undefined` where R rejects the string.
- */
-export function exportPatternValue(this: void, pattern: string): string | undefined {
-	return RStringValue.value({ str: pattern, quotes: '"' });
-}
-
 /** As {@link isExportedInNamespaceFormat}, but for one already picked {@link NamespaceInfo}. */
 export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
 	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)
@@ -141,7 +133,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	for(const pattern of nsInfo.exportedPatterns) {
-		const regex = parseRRegexPattern(exportPatternValue(pattern) ?? pattern);
+		const regex = parseRRegexPattern(unescapeRString(pattern) ?? pattern);
 		if(regex.test(name)) {
 			return true;
 		}

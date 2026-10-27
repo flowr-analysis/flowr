@@ -1,4 +1,5 @@
 import { RNumberPool, RStringPool } from '../../_helper/provider';
+import { contentOf, unescapeRString } from '../../../../src/dataflow/eval/values/string/string-constants';
 import {
 	boolean2ts,
 	isBoolean,
@@ -126,10 +127,10 @@ describe('Bidirectional Value Translation', () => {
 				[String.raw`\u{D800}`, undefined],
 				['\\', undefined]
 			])('the value of "%s" is what R makes of it', (str, value) => {
-				assert.strictEqual(RStringValue.value({ str, quotes: '"' }), value);
+				assert.strictEqual(unescapeRString(str), value);
 			});
 			test('a raw string keeps its backslashes', () => {
-				assert.strictEqual(RStringValue.value({ str: String.raw`\d+`, quotes: '"', flag: 'raw' }), String.raw`\d+`);
+				assert.strictEqual(contentOf({ str: String.raw`\d+`, quotes: '"', flag: 'raw' }), String.raw`\d+`);
 			});
 		});
 	});

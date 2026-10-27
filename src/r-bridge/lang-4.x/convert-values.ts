@@ -190,48 +190,8 @@ export const RStringValue = {
 		} else {
 			throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`);
 		}
-	},
-	/**
-	 * The characters R stores for the string, with its escapes undone as R's parser undoes them. It is `undefined` where
-	 * R rejects the literal (an unknown escape such as `\.`, a nul) or stores a byte no character stands for (`\xff`).
-	 */
-	value(this: void, { str, flag }: RStringValue): string | undefined {
-		if(flag === 'raw') {
-			return str;
-		}
-		let out = '';
-		for(let i = 0; i < str.length; i++) {
-			if(str[i] !== '\\') {
-				out += str[i];
-				continue;
-			}
-			const simple = RStringEscapes[str[++i]];
-			if(simple !== undefined) {
-				out += simple;
-				continue;
-			}
-			const coded = RCodedEscape.exec(str.slice(i));
-			if(coded === null) {
-				return undefined;
-			}
-			const [whole, octal, hex, ...unicode] = coded;
-			const code = parseInt(octal ?? hex ?? unicode.find(u => u !== undefined) ?? '', octal === undefined ? 16 : 8);
-			if(code === 0 || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF) || ((octal ?? hex) !== undefined && code > 0x7F)) {
-				return undefined;
-			}
-			out += String.fromCodePoint(code);
-			i += whole.length - 1;
-		}
-		return out;
 	}
 } as const;
-
-/** the escapes of an R string that stand for one character each */
-const RStringEscapes: Readonly<Record<string, string>> = {
-	a: '\x07', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', '\\': '\\', '"': '"', '\'': '\'', '`': '`', ' ': ' ', '\n': '\n'
-};
-/** the escapes of an R string that state a code: octal, hex, and the unicode forms with and without braces */
-const RCodedEscape = /^(?:([0-7]{1,3})|x([0-9a-fA-F]{1,2})|u\{([0-9a-fA-F]{1,4})\}|u([0-9a-fA-F]{1,4})|U\{([0-9a-fA-F]{1,8})\}|U([0-9a-fA-F]{1,8}))/;
 
 export const RNa = 'NA';
 export const RNull = 'NULL';

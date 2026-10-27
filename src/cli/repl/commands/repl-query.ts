@@ -15,10 +15,10 @@ import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../..
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
-import { splitAtEscapeSensitive } from '../../../util/text/args';
+import { closingQuote, splitAtEscapeSensitive, unescapeArg } from '../../../util/text/args';
 import { Record } from '../../../util/record';
 import { requestFromInput } from '../../../r-bridge/retriever';
-import { RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
+import { unescapeRString } from '../../../dataflow/eval/values/string/string-constants';
 import { handlePathLikeInput } from '../path-input';
 
 /**
@@ -214,29 +214,16 @@ function parseQueryArgs(line: string) {
 }
 
 /**
- * Undoes a wrapping of the whole code in quotes, as `:query \@dependencies "library(x)"` writes it. A quote the
- * code itself contains ends the wrapping early, so it is left alone.
+ * Undoes a wrapping of the whole code in quotes, as `:query \@dependencies "library(x)"` writes it. Double quotes
+ * undo their escapes as R does, so `\n` separates statements; an escape R rejects, e.g. in a Windows path, is kept as written.
  */
 function unwrapQuotedInput(code: string): string {
 	const quote = code[0];
-	if((quote !== '"' && quote !== '\'') || code.length < 2 || code[code.length - 1] !== quote) {
-		return code;
-	}
-	let i = 1;
-	for(; i < code.length - 1; i++) {
-		if(code[i] === '\\') {
-			i++;
-		} else if(code[i] === quote) {
-			return code;
-		}
-	}
-	/* an escaped closing quote is no closing quote */
-	if(i !== code.length - 1) {
+	if((quote !== '"' && quote !== '\'') || closingQuote(code) !== code.length - 1) {
 		return code;
 	}
 	const inner = code.slice(1, -1);
-	/* a double-quoted wrapping undoes its escapes as R does, so `\n` separates statements; one R rejects, e.g. a Windows path, is kept as written */
-	return quote === '"' ? RStringValue.value({ str: inner, quotes: '"' }) ?? inner : inner;
+	return quote === '"' ? unescapeRString(inner) ?? inner : inner;
 }
 
 /**
@@ -245,16 +232,12 @@ function unwrapQuotedInput(code: string): string {
  */
 function splitQueryFromRest(line: string): readonly [query: string, rest: string] {
 	const trimmed = line.trimStart();
-	const quote = trimmed[0];
-	if(quote !== '"' && quote !== '\'') {
+	if(trimmed[0] !== '"' && trimmed[0] !== '\'') {
 		const space = trimmed.indexOf(' ');
 		return space < 0 ? [trimmed, ''] : [trimmed.slice(0, space), trimmed.slice(space + 1)];
 	}
-	let end = 1;
-	while(end < trimmed.length && !(trimmed[end] === quote && trimmed[end - 1] !== '\\')) {
-		end++;
-	}
-	return [trimmed.slice(1, end).replace(/\\(.)/g, '$1'), trimmed.slice(end + 1).trimStart()];
+	const end = closingQuote(trimmed) ?? trimmed.length;
+	return [unescapeArg(trimmed.slice(1, end)), trimmed.slice(end + 1).trimStart()];
 }
 
 export const queryCommand: ReplCodeCommand = {

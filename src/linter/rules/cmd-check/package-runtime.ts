@@ -24,7 +24,8 @@ import type { PackageFiles } from './package-files';
 import { onPackageFiles } from './file-checks';
 import { packageCode } from './package-code';
 import { parseRRegexPatternExactly } from '../../../util/r-regex';
-import { exportPatternValue, type NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { unescapeRString } from '../../../dataflow/eval/values/string/string-constants';
 
 export type PackageRuntimeKind =
 	/** `export(x)` of something the package does not define, which fails the installation ("undefined exports") */
@@ -139,10 +140,10 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 	return { names, dynamic, metadata, opaque: topLevelCalls.some(fn => !names.has(fn) && baseRExportOwner(fn) === undefined && !declaring.has(fn) && fn !== 'assign') };
 }
 
-/** what every namespace holds before the package code runs, which an export pattern sees as well */
+/** the names every namespace defines before the package code runs, which an export pattern can match as well */
 const NamespaceInternals = ['.packageName', '.__NAMESPACE__.', '.__S3MethodsTable__.'];
 
-/** whether a namespace part exports anything, the S3 methods it registers included, and the patterns `matches` says match a name */
+/** whether a namespace exports anything: an export, a registered S3 method, or a pattern that `matches` a name */
 function exportsAnything(ns: NamespaceInfo, matches: (pattern: string) => boolean): boolean {
 	return ns.exportedSymbols.length + ns.exportedFunctions.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length + ns.exportS3Generics.size > 0
 		|| ns.exportedPatterns.some(matches)
@@ -158,9 +159,9 @@ function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRunti
 	const certainty = defs.dynamic ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain;
 	const judged = !hidden && !defs.opaque && !defs.metadata;
 	const names = [...defs.names, ...NamespaceInternals];
-	/* a pattern R reads differently, or one that cannot be judged, may match anything */
+	/* a pattern that JavaScript reads differently from R, or that cannot be checked, is assumed to match */
 	const empty = new Set(judged ? ns.exportedPatterns.filter(pattern => {
-		const value = exportPatternValue(pattern);
+		const value = unescapeRString(pattern);
 		const regex = value === undefined ? undefined : parseRRegexPatternExactly(value);
 		return regex !== undefined && !names.some(n => regex.test(n));
 	}) : []);

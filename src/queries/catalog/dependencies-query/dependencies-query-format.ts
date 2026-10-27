@@ -73,32 +73,40 @@ export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'r
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
 /**
- * Whether the variable read at `id` holds a data frame: it is defined by a call the data frame shape inference knows
- * to return one ({@link DataFrameFunctions}, like `read.csv` or `merge`), or by an assignment into a part of one.
+ * Tells whether the variable read at an id holds a data frame: it is defined by a call the data frame shape inference
+ * knows to return one ({@link DataFrameFunctions}, like `read.csv` or `merge`), by a call handing back what it is
+ * given (`(` in `d <- (data.frame(a = 1))`), or by an assignment into a part of one. What each call makes is only
+ * worked out once.
  */
-function holdsDataFrame(id: NodeId, graph: DataflowGraph, seen: Set<NodeId> = new Set()): boolean {
-	if(seen.has(id)) {
-		return false;
-	}
-	seen.add(id);
-	/* a call handing back what it is given, like `(` in `d <- (data.frame(a = 1))`, holds a data frame if that does */
+function dataFrameHolders(graph: DataflowGraph): (id: NodeId) => boolean {
+	const made = new Map<NodeId, boolean>();
+	const holds = (id: NodeId): boolean => (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
+		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(makes));
 	const makes = (by: NodeId): boolean => {
-		const vertex = graph.getVertex(by);
-		if(!DfgVertex.isFunctionCall(vertex) || seen.has(by)) {
-			return false;
+		const known = made.get(by);
+		if(known !== undefined) {
+			return known;
 		}
-		seen.add(by);
-		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+		/* a call reached again while working it out makes nothing new */
+		made.set(by, false);
+		const result = makesDataFrame(by);
+		made.set(by, result);
+		return result;
+	};
+	const makesDataFrame = (by: NodeId): boolean => {
+		const vertex = graph.getVertex(by);
+		if(!DfgVertex.isFunctionCall(vertex)) {
+			return false;
+		} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
 			const target = graph.idMap?.get(by);
-			return RAccess.is(target) && holdsDataFrame((target.accessed as RNode<ParentInformation>).info.id, graph, seen);
+			return RAccess.is(target) && holds((target.accessed as RNode<ParentInformation>).info.id);
 		}
 		const qualified = Dataflow.qualify(by, graph);
 		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
 		return (qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`))
 			|| Dataflow.targetsOf(graph, by, EdgeType.Returns).some(makes);
 	};
-	return (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
-		&& Dataflow.targetsOf(graph, origin.id, EdgeType.DefinedBy).some(makes));
+	return holds;
 }
 
 /** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
@@ -113,7 +121,7 @@ function transformOf(nodeId: NodeId, functionName: Identifier, target: RSymbol<P
 /**
  * What transforms data by its syntax rather than by a function: data.table's update by reference (`dt[, z := x + 1]`)
  * and grouping (`dt[, mean(x), by = g]`), and an assignment into a part of a data frame, like `d$y <- d$x * 2` or
- * `d[d$x > 1, "z"] <- 0`. The last only where the target is a data frame, see {@link holdsDataFrame}, as `x[1] <- 2`
+ * `d[d$x > 1, "z"] <- 0`. The last only where the target is a data frame, see {@link dataFrameHolders}, as `x[1] <- 2`
  * on a vector transforms no data.
  */
 async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
@@ -136,7 +144,8 @@ async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
 			const node = ast.idMap.get(id);
 			return RAccess.is(node) && RSymbol.is(node.accessed) ? [{ id, functionName: call.name, target: node.accessed }] : [];
 		}).toArray();
-	return [...byTable, ...parts.filter(p => holdsDataFrame(p.target.info.id, dataflow.graph)).map(p => transformOf(p.id, p.functionName, p.target))];
+	const holds = dataFrameHolders(dataflow.graph);
+	return [...byTable, ...parts.filter(p => holds(p.target.info.id)).map(p => transformOf(p.id, p.functionName, p.target))];
 }
 
 /**

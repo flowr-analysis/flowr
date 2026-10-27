@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-27, 11:16:11 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-10-27, 20:45:07 UTC (v2.16.7, R v4.5.0), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -17,7 +17,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.16.6, R v4.6.1 (r-shell engine)
+> flowR repl v2.16.7, R v4.5.0 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -258,7 +258,7 @@ To explore these steps, let's use the REPL with the (simple, contrived) R code: 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.6, R v4.6.1 (r-shell engine)
+flowR repl v2.16.7, R v4.5.0 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -409,7 +409,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr --default-engine tree-sitter # or npm run flowr -- --default-engine tree-sitter
-> flowR repl v2.16.6, R grammar v14 (tree-sitter engine)
+> flowR repl v2.16.7, R grammar v14 (tree-sitter engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -1341,7 +1341,7 @@ parameter in that role.
 | :-- | --: | :-- |
 | `Forced` | 1353 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
 | `NoDefault` | 65 | declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it |
-| `Alias` | 40 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge. On `...` it is the last argument that is handed back, like in `{`. |
+| `Alias` | 41 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge. On `...` it is the last argument that is handed back, like in `{`. |
 | `Value` | 673 | the result is computed from the argument's value, like `x` in `sum(x)` |
 | `Shape` | 30 | only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` |
 | `Flag` | 75 | selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` |
@@ -1475,7 +1475,7 @@ You can explore the slicing using the REPL with the <span title="Description (Re
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.6, R grammar v14 (tree-sitter engine)
+flowR repl v2.16.7, R grammar v14 (tree-sitter engine)
 R> :query @static-slice (12@product) file://test/testfiles/example.R
 ```
 

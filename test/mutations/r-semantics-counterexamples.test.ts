@@ -33,11 +33,13 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		}
 	}
 	async function run(what: string): Promise<string> {
-		const guarded = `tryCatch(eval(parse(text = ${JSON.stringify(what)})), error = function(e) cat("R error:", conditionMessage(e), "\n"))`;
-		await shell.sendCommandWithOutput('flowr_wd <- getwd(); flowr_op <- options()');
+		/* a slice that drops what ends a loop runs forever, which must fail its test rather than hang the shell for every later one */
+		const guarded = `tryCatch({ setTimeLimit(elapsed = 10, transient = TRUE); eval(parse(text = ${JSON.stringify(what)})) }, error = function(e) cat("R error:", conditionMessage(e), "\n"), finally = setTimeLimit())`;
+		/* every program runs in a fresh directory of its own, so a slice dropping its `setwd` writes nothing into the repository */
+		await shell.sendCommandWithOutput('flowr_wd <- getwd(); flowr_op <- options(); flowr_search <- search(); flowr_dir <- tempfile("flowr-run-"); dir.create(flowr_dir); setwd(flowr_dir)');
 		const lines = await shell.sendCommandWithOutput(guarded, { automaticallyTrimOutput: true });
-		/* a program may change the working directory, which the next one must not see */
-		await shell.sendCommandWithOutput('setwd(flowr_wd); options(flowr_op); graphics.off(); rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
+		/* a program may change the working directory or attach packages, which the next one must not see */
+		await shell.sendCommandWithOutput('setwd(flowr_wd); unlink(flowr_dir, recursive = TRUE); options(flowr_op); graphics.off(); for(p in setdiff(search(), flowr_search)) try(detach(p, character.only = TRUE), silent = TRUE); rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
 		return lines.join('\n');
 	}
 	const observed = new Map<string, Promise<ReplObservation>>();

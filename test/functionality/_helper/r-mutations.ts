@@ -1,4 +1,9 @@
 import { escapeRegex } from '../../../src/util/text/strings';
+import { RString } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RFunctionCall } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
+import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -160,10 +165,14 @@ const bracedRhs: MutationPass = {
 	apply: target => rewriteAssignments(target, (name, rhs) => `${name} <- { ${rhs} }`)
 };
 
-function matchingCloseParen(text: string, open: number): number {
+/**
+ * Every character of `text` from `start` on that is no part of a string or a name in backticks, with the depth of
+ * the brackets around it: an opening bracket has the depth outside of it, and so does the bracket closing it.
+ */
+function* unquoted(text: string, start = 0): Generator<readonly [index: number, char: string, depth: number]> {
 	let depth = 0;
 	let quote: string | undefined;
-	for(let i = open; i < text.length; i++) {
+	for(let i = start; i < text.length; i++) {
 		const c = text[i];
 		if(quote !== undefined) {
 			if(c === '\\') {
@@ -172,18 +181,27 @@ function matchingCloseParen(text: string, open: number): number {
 				quote = undefined;
 			}
 			continue;
-		} else if(c === '"' || c === '\'') {
+		} else if(c === '"' || c === '\'' || c === '`') {
 			quote = c;
-		} else if(c === '(') {
-			depth++;
-		} else if(c === ')') {
+			continue;
+		} else if(')]}'.includes(c)) {
 			depth--;
-			if(depth === 0) {
-				return i;
-			}
+		}
+		yield [i, c, depth];
+		if('([{'.includes(c)) {
+			depth++;
 		}
 	}
-	return -1;
+}
+
+/** the bracket closing the one at `open` */
+function matchingBracket(text: string, open: number): number | undefined {
+	for(const [i, c, depth] of unquoted(text, open)) {
+		if(depth === 0 && i > open && ')]}'.includes(c)) {
+			return i;
+		}
+	}
+	return undefined;
 }
 
 function soleCall(text: string): { name: string, args: string } | undefined {
@@ -191,31 +209,15 @@ function soleCall(text: string): { name: string, args: string } | undefined {
 	if(head === null) {
 		return undefined;
 	}
-	const close = matchingCloseParen(text, head[1].length);
+	const close = matchingBracket(text, head[1].length);
 	return close === text.length - 1 ? { name: head[1], args: text.slice(head[1].length + 1, close) } : undefined;
 }
 
 function splitTopLevelArgs(text: string): string[] {
 	const parts: string[] = [];
-	let depth = 0;
-	let quote: string | undefined;
 	let start = 0;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-			continue;
-		} else if(c === '"' || c === '\'') {
-			quote = c;
-		} else if('([{'.includes(c)) {
-			depth++;
-		} else if(')]}'.includes(c)) {
-			depth--;
-		} else if(c === ',' && depth === 0) {
+	for(const [i, c, depth] of unquoted(text)) {
+		if(c === ',' && depth === 0) {
 			parts.push(text.slice(start, i));
 			start = i + 1;
 		}
@@ -223,6 +225,18 @@ function splitTopLevelArgs(text: string): string[] {
 	parts.push(text.slice(start));
 	return parts.map(p => p.trim()).filter(p => p !== '');
 }
+
+const Operand = String.raw`[A-Za-z.][\w.]*|"[^"\\]*"|'[^'\\]*'|\d+(?:\.\d+)?L?`;
+/* a sign and `:` bind tighter than the pipe, every other operator less tight (see `?Syntax`) */
+const TighterThanPipe = new RegExp(String.raw`^-?(?:${Operand})(?::-?(?:${Operand}))?$`);
+
+/** whether `text` is all the left side of a pipe gets, as the pipe takes no more than what binds tighter than it */
+function isPrimary(text: string): boolean {
+	return TighterThanPipe.test(text) || soleCall(text) !== undefined;
+}
+
+/** the `name =` an argument starts with, if it is passed by name */
+const NamedArgument = /^(?:[A-Za-z.][\w.]*|`[^`]*`)\s*=(?!=)\s*/;
 
 const nestedCallToPipe: MutationPass = {
 	name:        'nested call rewritten as a pipe',
@@ -239,7 +253,8 @@ const nestedCallToPipe: MutationPass = {
 				return undefined;
 			}
 			const [piped, ...rest] = splitTopLevelArgs(inner.args);
-			return piped === undefined ? undefined : `${name} <- ${piped} |> ${inner.name}(${rest.join(', ')}) |> ${outer.name}()`;
+			/* a pipe hands on its left side as the first unnamed argument, so a named one cannot be piped, nor anything but a primary */
+			return piped === undefined || NamedArgument.test(piped) || !isPrimary(piped) ? undefined : `${name} <- ${piped} |> ${inner.name}(${rest.join(', ')}) |> ${outer.name}()`;
 		})
 };
 
@@ -394,35 +409,6 @@ const semicolonJoined: MutationPass = {
 	}
 };
 
-const BracketClose: Readonly<Record<string, string>> = { '(': ')', '{': '}' };
-function findMatchingBracket(text: string, open: number): number | undefined {
-	const closeChar = BracketClose[text[open]];
-	let depth = 0;
-	let quote: string | undefined;
-	for(let i = open; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-			continue;
-		}
-		if(c === '"' || c === '\'') {
-			quote = c;
-		} else if(c === text[open]) {
-			depth++;
-		} else if(c === closeChar) {
-			depth--;
-			if(depth === 0) {
-				return i;
-			}
-		}
-	}
-	return undefined;
-}
-
 const ControlHeader = /^([A-Za-z.][\w.]* (<-|=) )?(if|for|while|function|\\)\s*\(/;
 interface ControlHead {
 	readonly keyword: 'if' | 'for' | 'while' | 'function' | '\\';
@@ -434,30 +420,13 @@ function controlHead(line: string): ControlHead | undefined {
 	if(m === null) {
 		return undefined;
 	}
-	const close = findMatchingBracket(line, m[0].length - 1);
+	const close = matchingBracket(line, m[0].length - 1);
 	return close === undefined ? undefined : { keyword: m[3] as ControlHead['keyword'], header: line.slice(0, close + 1), rest: line.slice(close + 1) };
 }
 
 function topLevelElseSplit(text: string): readonly [string, string] | undefined {
-	let depth = 0;
-	let quote: string | undefined;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-			continue;
-		}
-		if(c === '"' || c === '\'') {
-			quote = c;
-		} else if('([{'.includes(c)) {
-			depth++;
-		} else if(')]}'.includes(c)) {
-			depth--;
-		} else if(depth === 0 && i > 0 && /\s/.test(text[i - 1]) && /^else\b/.test(text.slice(i))) {
+	for(const [i, , depth] of unquoted(text)) {
+		if(depth === 0 && i > 0 && /\s/.test(text[i - 1]) && /^else\b/.test(text.slice(i))) {
 			return [text.slice(0, i), text.slice(i + 4)];
 		}
 	}
@@ -554,17 +523,21 @@ const CalledAsWritten: ReadonlySet<string> = new Set([
 	'library', 'require', 'requireNamespace', 'quote', 'bquote', 'substitute', 'expression', 'function', 'local', 'eval', 'evalq',
 	'tryCatch', 'try', 'withCallingHandlers', 'suppressWarnings', 'suppressMessages', 'invisible', 'with', 'within', 'subset', 'transform',
 	'switch', 'missing', 'on.exit', 'Recall', 'UseMethod', 'NextMethod', 'standardGeneric', 'environment', 'sys.call', 'match.arg',
-	'data', 'system.time', 'force', 'delayedAssign', 'makeActiveBinding', 'setRefClass', 'new', 'ls', 'rm', 'exists', 'get', 'get0', 'mget', 'assign'
+	'data', 'system.time', 'force', 'delayedAssign', 'makeActiveBinding', 'setRefClass', 'new', 'ls', 'rm', 'assign',
+	/* what looks a name up (`get`, `match.fun`, ...) flowR resolves only where the call is written as such */
+	...DefaultBuiltinConfig.flatMap(d => d.type === 'function' && d.processor === BuiltInProcName.Get ? d.names.map(n => Identifier.getName(n)) : [])
 ]);
 
 const doCall: MutationPass = {
 	name:  'call made by do.call',
 	apply: target => ArgumentsTakenLazily.test(target.code) ? undefined : rewriteAssignments(target, (name, rhs) => {
 		const call = soleCall(rhs);
-		if(call === undefined || CalledAsWritten.has(call.name) || /(^|[^\w.])function\s*\(|\\\(|\.\.\./.test(call.args)) {
+		const args = call === undefined ? [] : splitTopLevelArgs(call.args);
+		/* `list(...)` evaluates every argument the call might never have, so each has to be a value that cannot fail */
+		if(call === undefined || CalledAsWritten.has(call.name) || /(^|[^\w.])function\s*\(|\\\(|\.\.\./.test(call.args) || !args.every(a => isPureRhs(a.replace(NamedArgument, '')))) {
 			return undefined;
 		}
-		return `${name} <- do.call(${call.name}, list(${splitTopLevelArgs(call.args).join(', ')}))`;
+		return `${name} <- do.call(${call.name}, list(${args.join(', ')}))`;
 	})
 };
 
@@ -806,7 +779,7 @@ function conditionOf(header: string, keyword: 'if' | 'while'): readonly [string,
 
 /** whether a `;` outside of any bracket ends the construct early, so what follows it is no part of its body */
 function hasTopLevelSemicolon(text: string): boolean {
-	return bodyEnd(text, 0) < text.length && text[bodyEnd(text, 0)] === ';';
+	return text[bodyEnd(text, 0)] === ';';
 }
 
 const braced = (body: string): string => body.startsWith('{') ? body : `{ ${body} }`;
@@ -834,6 +807,8 @@ const ifElseSwapped: MutationPass = {
 
 const whileAsRepeat: MutationPass = {
 	name:  'while loop as a repeat loop',
+	/* the guard `if(!(cond)) break` is code of its own, dead where the condition always holds */
+	adds:  true,
 	apply: target => {
 		let changed = false;
 		const mutated = mapLines(target, lines => lines.map(l => {
@@ -892,26 +867,8 @@ const identityArgument: MutationPass = {
 
 /** where the body of a function written without braces ends, at the end of its line or the bracket enclosing it */
 function bodyEnd(text: string, start: number): number {
-	let depth = 0;
-	let quote: string | undefined;
-	for(let i = start; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-			continue;
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if('([{'.includes(c)) {
-			depth++;
-		} else if(')]}'.includes(c)) {
-			if(--depth < 0) {
-				return i;
-			}
-		} else if(depth === 0 && (c === ',' || c === ';' || c === '\n' || c === '#')) {
+	for(const [i, c, depth] of unquoted(text, start)) {
+		if(depth < 0 || (depth === 0 && (c === ',' || c === ';' || c === '\n' || c === '#'))) {
 			return i;
 		}
 	}
@@ -927,7 +884,7 @@ const explicitReturn: MutationPass = {
 		const heads = tokensOf(target.code).flatMap((t, i, all) => (t.text === 'function' || t.text === '\\') && all[i + 1]?.text === '(' ? [all[i + 1].index] : []);
 		let code = target.code;
 		for(const open of heads.reverse()) {
-			const close = findMatchingBracket(code, open);
+			const close = matchingBracket(code, open);
 			const start = close === undefined ? -1 : code.slice(close + 1).search(/\S/) + close + 1;
 			if(close === undefined || start <= close || code[start] === '{') {
 				continue;
@@ -949,9 +906,7 @@ const pipeAsCall: MutationPass = {
 		let changed = false;
 		const mutated = mapLines(target, lines => lines.map(l => {
 			const m = /^([A-Za-z.][\w.]* <- )?(.+?) \|> ([A-Za-z.][\w.]*)\((.*)\)$/.exec(l);
-			/* the pipe binds tighter than any operator, so only a primary on its left is the whole first argument */
-			const primary = /^([A-Za-z.][\w.]*|"[^"\\]*"|'[^'\\]*'|\d+(\.\d+)?L?)$/.test(m?.[2] ?? '') || soleCall(m?.[2] ?? '') !== undefined;
-			if(m === null || !primary || m[4].includes('|>') || /\b_\b/.test(m[4]) || soleCall(`${m[3]}(${m[4]})`) === undefined) {
+			if(m === null || !isPrimary(m[2]) || m[4].includes('|>') || /\b_\b/.test(m[4]) || soleCall(`${m[3]}(${m[4]})`) === undefined) {
 				return l;
 			}
 			changed = true;
@@ -1086,16 +1041,20 @@ export async function removalSlice(parser: KnownParser, { code, criterion }: Mut
 export async function mutate(parser: KnownParser, target: MutationTarget, pass: MutationPass): Promise<MutationTarget | undefined> {
 	return pass.apply(target, async name => {
 		const analyzer = await analyzerFor(parser, target.code);
+		/* a call is found as the call, but the name it is written with is where the name occurs */
 		return (await analyzer.runSearch(Q.var(name).build())).getElements()
-			.flatMap(e => RSymbol.is(e.node) && e.node.location !== undefined ? [e.node.location] : []);
+			.map(e => RFunctionCall.isNamed(e.node) ? e.node.functionName : e.node)
+			.flatMap(node => RSymbol.is(node) && node.location !== undefined ? [node.location] : []);
 	});
 }
 
 /** `text` with every name a pass gave a variable replaced by the one the variable had before */
 function unrenamed(text: string, renames: Readonly<Record<string, string>> = {}): string {
-	return Object.entries(renames).flatMap(([to, from]) => to.startsWith('`') ? [[to, from], [to.slice(1, -1), from]] : [[to, from]])
+	return Object.entries(renames).map(([to, from]) => [RString.unquote(to), from] as const)
 		.sort(([a], [b]) => b.length - a.length)
-		.reduce((t, [to, from]) => t.replace(new RegExp(String.raw`(?<![\w.])${escapeRegex(to)}(?![\w.])`, 'g'), from), text);
+		.reduce((t, [to, from]) => t.replace(new RegExp(String.raw`(?<![\w.])${escapeRegex(to)}(?![\w.])`, 'g'), from), text)
+		/* backticks around a syntactic name change nothing, neither in code nor in a message quoting it */
+		.replace(/`([A-Za-z]|\.(?!\d))([\w.]*)`/g, '$1$2');
 }
 
 /** what the queries say about a program, with every node id dropped, as a mutation moves those */
@@ -1120,7 +1079,7 @@ export async function observeQueries(parser: KnownParser, code: string, renames?
 		{ type: 'inspect-exception' }, { type: 'inspect-fn-props' }
 	]);
 	return {
-		dependencies: dependenciesOf(results.dependencies).map(d => unrenamed(d, renames)),
+		dependencies: dependenciesOf(results.dependencies).map(d => unrenamed(d, renames)).sort(),
 		higherOrder:  Object.values(results['inspect-higher-order'].higherOrder).map(String).sort(),
 		recursive:    Object.values(results['inspect-recursion'].recursive).map(String).sort(),
 		exceptions:   Object.values(results['inspect-exception'].exceptions).map(t => String(t.length)).sort(),
@@ -1153,9 +1112,12 @@ async function replLines(parser: KnownParser, line: string): Promise<string[]> {
 	return out.filter(l => !l.startsWith('All queries together required')).map(l => l.replace(/\s*\(\d+\W?ms\)/g, '').trimEnd());
 }
 
-/** the names as the program had them before the pass, and no position, as a pass moves those */
+/**
+ * The names as the program had them before the pass, and no position, as a pass moves those; mermaid's `#95;` escapes
+ * are undone first so a name reads as written.
+ */
 function neutralized(lines: readonly string[], renames: Readonly<Record<string, string>> = {}): string[] {
-	return lines.map(l => unrenamed(l, renames).replace(/\b\d+\.\d+(?:-\d+(?:\.\d+)?)?\b/g, '').replace(/\(node \d+\)|\{-?\d+@[^{}]*\}/g, ''));
+	return lines.map(l => unrenamed(l.replace(/#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code))), renames).replace(/\b\d+\.\d+(?:-\d+(?:\.\d+)?)?\b/g, '').replace(/\(node [^)]*\)|\{-?\d+@[^{}]*\}/g, ''));
 }
 
 function linterFindings(lines: readonly string[]): string[] {
@@ -1170,7 +1132,8 @@ function linterFindings(lines: readonly string[]): string[] {
 		} else if(level !== null) {
 			certainty = level[1];
 		} else if(/^\s*╰ /.test(line) && !line.includes('Metadata') && !line.includes('no findings')) {
-			findings.push(`${rule} ${certainty}: ${line.trim()}`);
+			/* what a finding says, not the ids and positions it names, which a pass moves */
+			findings.push(`${rule} ${certainty}: ${line.trim().replace(/\d+/g, '#')}`);
 		}
 	}
 	return findings.sort();
@@ -1182,11 +1145,14 @@ export async function observeRepl(parser: KnownParser, target: MutationTarget): 
 	const slice = await replLines(parser, `:query @static-slice (${target.criterion}) ${code}`);
 	const graphs = [];
 	for(const command of [`:query @resolve-value (${target.criterion})`, ':dataflow', ':normalize', ':cfg']) {
-		graphs.push(command.split(' ')[0], ...await replLines(parser, `${command} ${code}`));
+		/* the excerpt titling a function body may span lines and is cut at a fixed length, which a renaming moves */
+		const printed = (await replLines(parser, `${command} ${code}`)).join('\n').replace(/(?<=-body \[")body of [\s\S]*?(?="\])/g, '');
+		graphs.push(command.split(' ')[0], ...printed.split('\n'));
 	}
 	return {
 		slice:        slice.join('\n'),
-		dependencies: neutralized(await replLines(parser, `:query @dependencies ${code}`), target.renames),
+		/* which dependency is listed first follows which call the values were found through first, which is no part of the answer */
+		dependencies: neutralized(await replLines(parser, `:query @dependencies ${code}`), target.renames).sort(),
 		linter:       linterFindings(neutralized(await replLines(parser, `:query @linter ${code}`), target.renames)),
 		graphs:       neutralized(graphs, target.renames).map(l => l.replace(/\s+/g, ''))
 	};

@@ -29,7 +29,11 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		{ code: 'nm <- "vvv"\nvvv <- 8\nr <- get(nm)\nprint(r)', criterion: '4@r', expected: '[1] 8' },
 		{ code: 'if(TRUE) x <- 2\nprint(x)', criterion: '2@x', expected: '[1] 2' },
 		{ code: 'r <- sum(rev(1:3))\nprint(r)', criterion: '2@r', expected: '[1] 6' },
-		{ code: 'p <- "a/b.txt"\nr <- basename(p)\nprint(r)', criterion: '3@r', expected: '[1] "b.txt"' }
+		{ code: 'p <- "a/b.txt"\nr <- basename(p)\nprint(r)', criterion: '3@r', expected: '[1] "b.txt"' },
+		{ code: 'x <- 3\nif(x > 2) y <- 1 else y <- 2\nprint(y)', criterion: '3@y', expected: '[1] 1' },
+		{ code: 'i <- 0\nwhile(i < 3) i <- i + 1\nprint(i)', criterion: '3@i', expected: '[1] 3' },
+		{ code: 's <- 0\nfor(i in 1:3) s <- s + i\nprint(s)', criterion: '3@s', expected: '[1] 6' },
+		{ code: 'v <- 1:3\nr <- v |> sum()\nprint(r)', criterion: '3@r', expected: '[1] 6' }
 	];
 	describe('every mutant is a program R reads', () => {
 		for(const pass of MutationPasses) {
@@ -187,7 +191,8 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		});
 		test('a name used as an argument name, a field or a string keeps its spelling', async() => {
 			const mutant = await mutate(shell, { code: 'a <- 1\nb <- 2\nl <- list(a = 3)\nr <- l$a + b\nq <- "r"\nprint(r)', criterion: '6@r', expected: '[1] 5' }, passOf('every variable renamed'));
-			assert.strictEqual(mutant?.code, 'a <- 1\nmut_r1 <- 2\nmut_r2 <- list(a = 3)\nr <- mut_r2$a + mut_r1\nmut_r3 <- "r"\nprint(r)');
+			/* `q` is what base exports to quit R, so it keeps its spelling as well */
+			assert.strictEqual(mutant?.code, 'a <- 1\nmut_r1 <- 2\nmut_r2 <- list(a = 3)\nr <- mut_r2$a + mut_r1\nq <- "r"\nprint(r)');
 		});
 		test('a program reading names as data is left alone', async() => {
 			assert.isUndefined(await mutate(shell, { code: 'v1 <- 5\nr <- get(paste0("v", 1))\nprint(r)', criterion: '3@r', expected: '[1] 5' }, passOf('every variable renamed')));

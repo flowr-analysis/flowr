@@ -122,6 +122,8 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	 */
 	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	/** without arguments, the result is the frame the call runs in, like `environment()`, so within a function it reads every binding of the frame */
+	readonly readsFrame?:            boolean,
 	/** how the call reads or writes global state like the graphics parameters or the options, see {@link AmbientStateAccess} */
 	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[],
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
@@ -187,7 +189,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	if(scope !== undefined) {
 		return processAmbientScope(name, args, rootId, data, scope);
@@ -234,6 +236,17 @@ function defaultBuiltInProcessor<OtherInfo>(
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
 		const valuePositions = FunctionSemantics.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape);
 		readArguments(res.graph, rootId, valuePositions.map(i => processedArguments[i]));
+	}
+	/* a function's frame handed out outlives the call, the global one stays reachable through the names anyway */
+	if(readsFrame && args.length === 0 && data.environment.level > 0) {
+		/* the parameters it holds are what {@link BuiltInFnInfo#frame} states, as reading one must not force it */
+		for(const definitions of data.environment.current.memory.values()) {
+			for(const definition of definitions) {
+				if(!NodeId.isBuiltIn(definition.nodeId) && definition.type !== ReferenceType.Parameter) {
+					res.graph.addEdge(rootId, definition.nodeId, EdgeType.Reads);
+				}
+			}
+		}
 	}
 	/* before the unknown side effect, which forgets the values of the variables the ambient state is named by */
 	if(ambient !== undefined) {

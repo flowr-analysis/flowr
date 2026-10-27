@@ -1109,7 +1109,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['body', 'formals']), processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Lang, sig: [['fun', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['trace', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, tags: [SemanticCallTag.Eval], sig: [['what', ArgProp.Value], ['tracer', ArgProp.Value | ArgProp.Injectable], ['exit', ArgProp.Value | ArgProp.Injectable], ['at', ArgProp.Value], ['print', ArgProp.Flag], ['signature', ArgProp.Value], ['where', ArgProp.Value], ['edit', ArgProp.Flag]] }, assumePrimitive: false },
 	/* `environment()` without an argument is the frame the call sits in, which is how `as.list(environment())` gets at every argument */
-	{ type: 'function', names: [Identifier.from(['environment', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, frame: ArgProp.Value, tags: [SemanticCallTag.Frames], sig: [['fun', ArgProp.Handle | ArgProp.Forced]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['environment', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, readsFrame: true, frame: ArgProp.Value, tags: [SemanticCallTag.Frames], sig: [['fun', ArgProp.Handle | ArgProp.Forced]] }, assumePrimitive: true },
 	{
 		type:      'function',
 		names:     Identifier.fromAll(PkgName.Base, ['.Call', '.External', '.C', '.Fortran', '.External2', '.Call.graphics', '.External.graphics']),

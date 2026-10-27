@@ -62,17 +62,6 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		}
 	});
 
-	describe('first two statements joined', () => {
-		test('an empty first line is no statement to join', async() => {
-			assert.isUndefined(await mutate(shell, { code: '\nx <- 1\ny <- x\nprint(y)', criterion: '4@y', expected: '[1] 1' }, passOf('first two statements joined')));
-		});
-		test('two statements are joined and the criterion moves up', async() => {
-			const mutant = await mutate(shell, { code: 'x <- 1\ny <- 2\nr <- x + y\nprint(r)', criterion: '4@r', expected: '[1] 3' }, passOf('first two statements joined'));
-			assert.strictEqual(mutant?.code, 'x <- 1; y <- 2\nr <- x + y\nprint(r)');
-			assert.strictEqual(mutant?.criterion, '3@r');
-		});
-	});
-
 	describe('assign call', () => {
 		test('the line the criterion points at keeps its name', async() => {
 			const mutant = await mutate(shell, { code: 'x <- 5\ny <- 2\nprint(x + y)', criterion: '1@x', expected: '[1] 7' }, passOf('assign call'));

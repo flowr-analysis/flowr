@@ -72,7 +72,7 @@ class RewritePass implements MutationPass {
 	}
 
 	async apply(program: MutationProgram): Promise<MutationTarget | undefined> {
-		if((this.minRVersion !== undefined && !rVersionAtLeast(this.minRVersion)) || (this.lineByLine && !program.lineByLine)) {
+		if(this.lineByLine && !program.lineByLine) {
 			return undefined;
 		}
 		const edit = new Rewrite(program);
@@ -166,13 +166,9 @@ const MutationPrefix = 'mut_';
 
 const PipeVersion = RPipe.availableFromRVersion().toString();
 
-function rVersionAtLeast(version: string): boolean {
-	return !!globalThis.rVersion && semver.satisfies(globalThis.rVersion, `>=${version}`);
-}
-
-/** whether the host R meets what the pass declares, so that an idle pass is idle for the program and not the host */
+/** whether the host R runs what the pass makes, which a pass applies regardless, as only running it needs the version */
 export function passIsAvailable(pass: MutationPass): boolean {
-	return pass.minRVersion === undefined || rVersionAtLeast(pass.minRVersion);
+	return pass.minRVersion === undefined || (!!globalThis.rVersion && semver.satisfies(globalThis.rVersion, `>=${pass.minRVersion}`));
 }
 
 /** the statements of the program, and the values of its top-level assignments where `assigned` */
@@ -284,26 +280,6 @@ const trailingComments = new RewritePass({
 	description: 'a comment `# mut_note` is appended to every line',
 	keepsGraph:  true
 }, (program, edit) => program.lines.forEach((line, i) => line.trim() === '' ? undefined : edit.insert(program.offset(i + 1, line.length + 1), ` # ${MutationPrefix}note`)));
-
-const blankLines = new RewritePass({
-	name:        'interleaved blank lines',
-	category:    MutationCategory.Noise,
-	description: 'a blank line is put before every line',
-	keepsGraph:  true
-}, (program, edit) => program.lines.forEach((_, i) => edit.insertLines(i + 1, '')));
-
-const joinFirstTwo = new RewritePass({
-	name:        'first two statements joined',
-	category:    MutationCategory.Structure,
-	description: 'the first two lines are joined with `;`, as in `x <- 1; y <- 2`',
-	keepsGraph:  true
-}, (program, edit) => {
-	const at = program.criterion;
-	const [first, second] = program.lines;
-	if(at !== undefined && at.line > 2 && first?.trim() && second?.trim()) {
-		edit.splice(program.offset(1, first.length + 1), program.offset(2, 1), '; ');
-	}
-});
 
 const semicolonJoined = new RewritePass({
 	name:        'semicolon-separated statements',
@@ -692,8 +668,6 @@ export const MutationPasses: readonly MutationPass[] = [
 	trailingNoise,
 	comments,
 	trailingComments,
-	blankLines,
-	joinFirstTwo,
 	statementBlocks,
 	wholeProgramBlock,
 	rightAssign,

@@ -63,7 +63,7 @@ export const DEAD_CODE = {
 					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
 			).map(result => {
 				const own = ownNode(result, idMap);
-				/* a branch without braces cannot just go, as `if(c)  else b` does not parse, so it becomes the empty block a braced one leaves */
+				/* removing the unbraced branch of `if(c) x else b` leaves `if(c) else b`, which does not parse, so it becomes `{}` */
 				const fix = own === undefined ? undefined : isUnbracedBody(own, idMap)
 					? { type: 'replace' as const, loc: result.loc, replacement: '{}', description: 'Replace the unreachable code with an empty block' }
 					: isStatement(own, idMap) ? { type: 'remove' as const, loc: result.loc, description: 'Remove the unreachable code' } : undefined;
@@ -85,7 +85,7 @@ export const DEAD_CODE = {
 	}
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
-/** the node of the result that spans exactly what it reports, a child of a list, `undefined` if there is none */
+/** the expression whose location is exactly that of the result, `undefined` if there is none */
 function ownNode(result: DeadCodeResult, idMap: AstIdMap): RNode<ParentInformation> | undefined {
 	const ids = Array.isArray(result.involvedId) ? result.involvedId : [result.involvedId];
 	return ids.map(id => id === undefined ? undefined : idMap.get(id)).find(node => {
@@ -95,13 +95,13 @@ function ownNode(result: DeadCodeResult, idMap: AstIdMap): RNode<ParentInformati
 	});
 }
 
-/** whether the node is a whole statement of a block or the file, which can go without breaking the code around it */
+/** whether the node is a statement in a block or at the top level, so removing it leaves valid code */
 function isStatement(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
 	const parent = RNode.directParent(node, idMap);
 	return RExpressionList.is(parent) && (parent.grouping !== undefined || parent.info.parent === undefined);
 }
 
-/** whether the node is the body of an `if` or a loop written without braces, which is a list of its own and no block */
+/** whether the node is the unbraced body of an `if` or a loop, like `x <- 1` in `if(c) x <- 1` */
 function isUnbracedBody(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
 	const parent = RNode.directParent(node, idMap);
 	return RExpressionList.isImplicit(parent) && parent.info.parent !== undefined && parent.children.length === 1;

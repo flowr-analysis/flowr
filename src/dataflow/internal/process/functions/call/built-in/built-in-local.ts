@@ -82,7 +82,7 @@ export function processLocal<OtherInfo>(
 		origin:                BuiltInProcName.Local
 	});
 
-	/* the functions made in the body see its scope, which is gone once `local` returns */
+	/* in `local({ y <- 1; function() y })` the read of `y` is linked now, as the frame of `local` is dropped below */
 	updateNestedFunctionClosures(dfExpr.graph, dfExpr.environment, []);
 	const resultEnvironment = envirResolution ? data.environment : REnvironment.popLocal(dfExpr.environment);
 	/* definitions of the local scope vanish with it, only what escaped it (e.g. via `<<-`) may bubble up */
@@ -92,7 +92,7 @@ export function processLocal<OtherInfo>(
 
 	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
 	graph.addEdge(rootId, expr.info.id, EdgeType.Returns);
-	/* the body only runs because `local` runs it; a definition is made by a call that says so already, and must not read as taking its value from `local` */
+	/* `y` in `local(y <- 1)` gets its value from `1`, so a definition in the body gets no `Reads` edge to `local` */
 	for(const [id, vertex] of dfExpr.graph.vertices(false)) {
 		if(!DfgVertex.isUse(vertex) && !DfgVertex.isValue(vertex) && !DfgVertex.isVariableDefinition(vertex)) {
 			graph.addEdge(id, rootId, EdgeType.Reads);

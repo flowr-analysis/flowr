@@ -97,7 +97,7 @@ export function processS3Dispatch<OtherInfo>(
 		};
 	}
 
-	/* a generic named by a variable of the code around the function (`UseMethod(generic)`) is what it held as the function was made */
+	/* in `g <- "p"; f <- function(x) UseMethod(g)` the generic is the value of `g` where `f` is defined */
 	const accessedIdentifiers = NodeValue.knownStringsOf(generic.info.id, data);
 	if(accessedIdentifiers.length === 0 && RSymbol.is(generic)) {
 		const bound = data.environment.current.lookupLexically(Identifier.getName(generic.content)) ?? [];

@@ -25,7 +25,7 @@ import type { FunctionInfo } from './function-info/function-info';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
 function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): RNode<ParentInformation> | undefined {
-	/* an assignment yields its value invisibly, be it an operator, a replacement call like `names(x) <- v`, or `assign` */
+	/* an assignment returns its value invisibly: `x <- 1`, `names(x) <- v` and `assign("x", 1)` print nothing */
 	if(isAssignment(node, dataflow)) {
 		return undefined;
 	}
@@ -63,7 +63,7 @@ function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: Dataf
 	}
 }
 
-/** the processors of what assigns and so yields its value invisibly, a replacement (`x$a <- 1`) sitting on its target */
+/** the processors of assignments; the vertex of a replacement like `x$a <- 1` sits on its target `x` */
 const Assigning: readonly BuiltInProcName[] = [BuiltInProcName.Assignment, BuiltInProcName.SuperAssignment, BuiltInProcName.Replacement, BuiltInProcName.TableAssignment];
 
 function isAssignment(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation): boolean {
@@ -86,7 +86,7 @@ function aliased(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfor
 		?.findIndex(([, p]) => (p & ArgProp.Alias) !== 0) ?? -1;
 	const arg = at < 0 ? undefined : node.arguments[at];
 	const value = typeof arg === 'object' && RArgument.is(arg) ? arg.value : undefined;
-	/* only a call, a block (`local({ ... })`) or an assignment (`return(x <- 1)`) can be invisible where the one around it is not, a symbol says nothing new */
+	/* only a call, a block or an assignment can make a result invisible: `return(x <- 1)` prints nothing, `return(x)` does */
 	return RFunctionCall.is(value) || RExpressionList.is(value) || isAssignment(value, dataflow) ? value : undefined;
 }
 
@@ -137,7 +137,7 @@ function isInvisible(name: Identifier, invisible: readonly FunctionInfo[]): bool
 /** what to report the echo under: the called name, or the operator or lexeme producing the value */
 function echoName(node: RNode<ParentInformation>, dataflow: DataflowInformation): Identifier {
 	switch(node.type) {
-		/* a call of no name, like `o$bump()`, is named by what it calls rather than by an id that moves with the code */
+		/* a call without a name, like `o$bump()`, is named by the code it calls, `o$bump`, as its id changes with any edit */
 		case RType.FunctionCall:
 			return node.named ? callIdentifierOf(node, dataflow) ?? '' : RNode.lexeme(node.calledFunction) ?? '';
 		case RType.BinaryOp:

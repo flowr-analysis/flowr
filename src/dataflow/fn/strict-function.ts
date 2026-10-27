@@ -121,7 +121,7 @@ function enclosingDefinition(id: NodeId, idMap: AstIdMap, graph: DataflowGraph):
 	return RNode.findEnclosing(id, idMap, node => DfgVertex.isFunctionDefinition(graph.getVertex(node.info.id)));
 }
 
-/** The dispatching call as the code writes it: `UseMethod(generic, object)` keeps its vertex on the generic it names. */
+/** The `UseMethod` call of a dispatch vertex: the vertex sits on the generic argument, `"f"` in `UseMethod("f", x)`. */
 function dispatchCallOf(id: NodeId, idMap: AstIdMap): RNodeWithParent | undefined {
 	const node = idMap.get(id);
 	const argument = node !== undefined && node.info.role === RoleInParent.ArgumentValue ? RNode.directParent(node, idMap) : undefined;

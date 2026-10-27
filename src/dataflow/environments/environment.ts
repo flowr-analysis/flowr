@@ -163,8 +163,9 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * The definitions of `name` as the code around a closure saw them when the closure was made: an emptied frame
-	 * answers with what it stood in for (see {@link superMemory}), so a free variable of a body finds its binding.
+	 * The definitions of `name` in this frame and the frames around it, looking into what an emptied frame stood in
+	 * for (see {@link superMemory}). For `g <- "p"; f <- function(x) UseMethod(g)` the frames are emptied while the
+	 * body of `f` is analyzed, and this still finds `g <- "p"`.
 	 */
 	public lookupLexically(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
 		if(this.builtInEnv) {

@@ -75,8 +75,8 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the call reaches beyond what we can see even when the callee resolves, like `rlang::exec` */
 	readonly hasUnknownSideEffects?:  boolean
 	/**
-	 * the call is the one it makes, as `do.call(f, list(1, b = 2))` is `f(1, b = 2)`: the elements of a list written
-	 * out are the arguments, and what the call returns is what it returns
+	 * Set for `do.call`: it is processed like the call it makes, so `do.call(f, list(1, b = 2))` is processed like
+	 * `f(1, b = 2)` and returns what `f` returns.
 	 */
 	readonly isTheCall?:              boolean
 }
@@ -129,7 +129,7 @@ export function processApply<OtherInfo>(
 	const { functionName, anonymous, asString, computed } = resolvedFn;
 	let functionId: NodeId = resolvedFn.functionId;
 	if(!anonymous && !computed && !information.graph.hasVertex(functionId)) {
-		/* a function piped in (`f |> Map(1:3)`) is the pipe's to process, after this call, so it cannot become the call here */
+		/* in `f |> Map(1:3)` the function comes from the pipe, which is processed after this call, so the call it makes is unknown */
 		dataflowLogger.warn(`Function argument ${Identifier.toString(functionName)} is not processed yet, treating the call as unknown`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
@@ -160,7 +160,7 @@ export function processApply<OtherInfo>(
 			nodeId:  arg.entryPoint
 		};
 	}).filter((_, i) => i !== index);
-	/* a list written out in place hands over its elements, which the function then receives one by one */
+	/* `do.call(f, list(a, b))` passes `a` and `b` to `f` as separate arguments */
 	const spread = isTheCall && handedOn.length === 1 ? information.graph.getVertex(FunctionArgument.getReference(handedOn[0]) as NodeId) : undefined;
 	const allOtherArguments = DfgVertex.isFunctionCall(spread) && DfgVertex.hasOrigin(spread, BuiltInProcName.List) ? spread.args : handedOn;
 
@@ -210,7 +210,7 @@ export function processApply<OtherInfo>(
 		});
 		/* once the call has its arguments, which may name the files it accesses */
 		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
-		/* `do.call(new.env, list())` creates an environment just like `new.env()` does, and so does the call it makes */
+		/* `do.call(new.env, list())` returns a new environment, so both calls get the origin `new.env()` has */
 		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)
 			?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.NewEnv)) {
 			for(const call of [information.graph.getVertex(rootId), information.graph.getVertex(functionId)]) {

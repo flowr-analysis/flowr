@@ -181,7 +181,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	const byName = formalsByName(definition, state);
 	const roles = new Map<NodeId, ArgProps>();
 	const add = (node: NodeId, props: ArgProps): void => {
-		/* forcing reaches only what the argument always is, not each branch it may pick: `if(c) a else b` forces neither */
+		/* forcing `if(c) a else b` evaluates only one of `a` and `b`, so neither is forced for certain */
 		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set());
 		const written = writtenFormal(node, byName, state);
 		for(const formal of aliasTargets(node, byName, state)) {
@@ -250,13 +250,16 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: 
 	return found;
 }
 
-/** The formal an argument names as it is written, for an argument nothing links to it. */
+/**
+ * The formal parameter a symbol argument names. In `f <- function(x) quote(x)` the `x` of `quote` is never evaluated,
+ * so no edge links it to the formal `x`, and its name is all there is to go by.
+ */
 function writtenFormal(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): NodeId | undefined {
 	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
 	return name === undefined ? undefined : byName.get(name);
 }
 
-/** The formals of the definition by the name they are written as, to answer for an argument nothing links. */
+/** The formals of `definition` by name, for {@link writtenFormal}. */
 function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<string, NodeId> {
 	const byName = new Map<string, NodeId>();
 	for(const formal of Object.keys(definition.params)) {

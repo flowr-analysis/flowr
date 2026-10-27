@@ -44,7 +44,7 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
  */
 export function sourcedDeterministicCountingIdGenerator(path: string, location?: SourceRange, start = 0): () => NodeId {
 	let id = start;
-	/* without a location, `path` has to tell the code apart on its own, as the id of the call parsing it does */
+	/* without a location the ids carry only `path`, as in `eval::13-0`, where the path already names the `eval` call */
 	const prefix = location === undefined ? path : `${path}:${location[0]}:${location[1]}`;
 	return () => `${prefix}-${id++}`;
 }

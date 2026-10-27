@@ -150,7 +150,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	/** whether the call sits in a promise that may never be forced, as `stop` in `f(1, stop("x"))` where `f` leaves it be */
+	/** whether the call is in an argument that may never be evaluated: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
 	private mayStayUnforced(id: NodeId): boolean {
 		const promised = this.config.dfg.getVertex(id)?.cds?.filter(cd => cd.byPromise === true) ?? [];
 		if(promised.length === 0) {

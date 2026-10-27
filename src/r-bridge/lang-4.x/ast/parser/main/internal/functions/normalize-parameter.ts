@@ -44,7 +44,7 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 		name:    {
 			type:    RType.Symbol,
 			location,
-			/* a parameter written in backticks binds the name without them, as every symbol reading it does */
+			/* a parameter written as `` `x` `` binds `x`, the name a read in the body uses */
 			content: Identifier.getName(Identifier.make(content)),
 			lexeme:  content,
 			info:    {

@@ -265,7 +265,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@p_load', functionName: 'p_load', value: 'c' }
 		] });
 
-		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }] });
+		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stderr' }] });
 
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', {
 			write: [
@@ -1002,7 +1002,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Read from string', () => {
-		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', { read: [], write: [] });
+		testQuery('read.csv text parameter reads inline data', 'a <- read.csv(text="hello, world")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'constant', assignedTo: 'a' }], write: [] });
 		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv', assignedTo: 'a' }], write: [] });
 		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv', assignedTo: 'a' }], write: [] });
 	});

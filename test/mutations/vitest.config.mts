@@ -21,7 +21,7 @@ export default defineConfig({
 		},
 		/* reuse the functionality suite's setup so `label(...)` claims and the summary pipeline stay identical */
 		setupFiles:  [`./${TestSuites.functionality.folder}/test-setup.ts`],
-		globalSetup: [`./${TestSuites.functionality.folder}/test-setup-global.ts`],
+		globalSetup: [`./${TestSuites.functionality.folder}/test-setup-global.ts`, `./${TestSuites.mutations.folder}/mutation-details.ts`],
 		reporters:   process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',

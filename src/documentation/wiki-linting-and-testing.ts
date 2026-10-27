@@ -221,7 +221,7 @@ checkup\`, where \`npm run checkup -- mutations\` runs just this job.
 The suite has three pieces:
 
 - the ${MutationPasses.length} passes, ${ctx.link('MutationPasses')} in ${linkFlowRSourceFile('test/functionality/_helper/mutation')}.
-- the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/r-semantics-counterexamples.test.ts')}.
+- the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/counterexample-checks.ts')}.
 - pass-level unit tests, in ${linkFlowRSourceFile('test/mutations/r-mutations.test.ts')}, checking each pass on its own rather than against the corpus.
 
 Every program in the corpus is a counterexample flowR once sliced wrongly (a function called through a list, a

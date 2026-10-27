@@ -5,25 +5,28 @@ import { withShell } from '../functionality/_helper/shell';
 import { decorateLabelContext, label } from '../functionality/_helper/label';
 import type { RShell } from '../../src/r-bridge/shell';
 import { Counterexamples, type Counterexample } from './counterexample-corpus';
+import { MutationShardsDir, type MutationShardDetails } from './mutation-details';
 import type { MutationPass, ReplObservation } from '../functionality/_helper/r-mutations';
-import { MutationCategory, MutationPasses, mutate, observeQueries, observeRepl, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
+import { MutationPasses, mutate, observeQueries, observeRepl, passIsAvailable, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 
-const generatedMutants = new Set<string>();
-const attemptedMutants = new Set<string>();
-const usedPasses = new Set<string>();
-const knownGroups = new Set<string>();
-const knownTargets = new Set<string>();
-const knownCapabilities = new Set<string>();
+/** what a shard exercised, kept per shard as the shards of one worker share this module */
+class Exercised {
+	readonly generatedMutants = new Set<string>();
+	readonly attemptedMutants = new Set<string>();
+	readonly usedPasses = new Set<string>();
+	readonly groups = new Set<string>();
+	readonly targets = new Set<string>();
+	readonly capabilities = new Set<string>();
+}
 
-const MutationDetailsFile = 'coverage/flowr-mutation-details.json';
 
-function counterexamples(shell: RShell, group: string, cases: readonly Counterexample[]): void {
-	knownGroups.add(group);
+function counterexamples(shell: RShell, exercised: Exercised, group: string, cases: readonly Counterexample[]): void {
+	exercised.groups.add(group);
 	for(const { name, capabilities } of cases) {
-		knownTargets.add(`${group}: ${name}`);
+		exercised.targets.add(`${group}: ${name}`);
 		for(const capability of capabilities) {
-			knownCapabilities.add(capability);
+			exercised.capabilities.add(capability);
 		}
 	}
 	async function run(what: string): Promise<string> {
@@ -61,7 +64,7 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 			assert.deepStrictEqual(after.graphs, before.graphs, `the mutation changes a value or graph the REPL shows, ${what}`);
 		}
 	}
-	async function check(target: Counterexample, pass?: MutationPass): Promise<void> {
+	async function check(target: Counterexample): Promise<void> {
 		const what = `the program sliced for ${target.criterion} is:\n${target.code}`;
 		const sliced = await slice(shell, target);
 		assert.strictEqual(await run(target.code), target.expected, `the input does not print what this test claims it does, ${what}`);
@@ -72,10 +75,10 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 		/* removing what only the criterion needs leaves a program that still runs */
 		const left = await removalSlice(shell, target);
 		assert.notMatch(await run(left), /R error:/, `what the removal slice leaves fails, ${slicedIs}\nand what is left without it is:\n${left}`);
-		/* a slice keeps a call it needs whole, so what a pass moved into one stays with it */
-		for(const lacked of pass?.wrapsInCall ? [] : target.lacks ?? []) {
-			if(target.code.includes(lacked)) {
-				assert.notInclude(sliced, lacked, `the slice keeps what it does not need, ${slicedIs}`);
+		/* a code fragment the slice must leave out, as far as the mutant still has it */
+		for(const dropped of target.dropped ?? []) {
+			if(target.code.includes(dropped)) {
+				assert.notInclude(sliced, dropped, `the slice keeps what it does not need, ${slicedIs}`);
 			}
 		}
 	}
@@ -92,15 +95,15 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 				for(const counterexample of cases) {
 					const id = `${group}: ${counterexample.name} [${pass.name}]`;
 					test(counterexample.name, async(ctx) => {
-						attemptedMutants.add(id);
+						exercised.attemptedMutants.add(id);
 						const mutant = await mutate(shell, counterexample, pass);
 						if(mutant === undefined) {
 							ctx.skip();
 							return;
 						}
-						generatedMutants.add(id);
-						usedPasses.add(pass.name);
-						await check(mutant as Counterexample, pass);
+						exercised.generatedMutants.add(id);
+						exercised.usedPasses.add(pass.name);
+						await check(mutant as Counterexample);
 						assert.deepStrictEqual(await observeQueries(shell, mutant.code, mutant.renames), await observeQueries(shell, counterexample.code),
 							`the mutation changes what the queries report about the program, it is:\n${mutant.code}`);
 						await checkRepl(mutant as Counterexample, counterexample, pass);
@@ -111,36 +114,32 @@ function counterexamples(shell: RShell, group: string, cases: readonly Counterex
 	});
 }
 
-describe('Counterexamples against R semantics', { concurrent: false }, withShell(shell => {
-	for(const { group, cases } of Counterexamples) {
-		counterexamples(shell, group, cases);
-	}
-
-	describe('bookkeeping', () => {
-		const partialRun = () => attemptedMutants.size < knownTargets.size * MutationPasses.length;
-		test('every pass mutates at least one counterexample', ctx => {
-			if(partialRun()) {
+/**
+ * Checks every counterexample and its mutants against R, see {@link Counterexamples}. The cases are split into
+ * `shards` files, each running on its own R shell, so vitest runs them in parallel; each shard records what it
+ * exercised in {@link MutationShardsDir}, which {@link mergeMutationDetails} merges once all have run.
+ */
+export function counterexampleChecks(shard: number, shards: number): void {
+	let at = 0;
+	const mine = Counterexamples
+		.map(({ group, cases }) => ({ group, cases: cases.filter(() => at++ % shards === shard) }))
+		.filter(({ cases }) => cases.length > 0);
+	describe(`Counterexamples against R semantics (${shard + 1}/${shards})`, { concurrent: false }, withShell(shell => {
+		const exercised = new Exercised();
+		for(const { group, cases } of mine) {
+			counterexamples(shell, exercised, group, cases);
+		}
+		test('record what this shard exercised', ctx => {
+			if(exercised.attemptedMutants.size < exercised.targets.size * MutationPasses.length) {
 				ctx.skip();
 				return;
 			}
-			const idle = MutationPasses.filter(passIsAvailable).map(p => p.name).filter(name => !usedPasses.has(name));
-			assert.deepStrictEqual(idle, [], 'these passes never applied, so nothing they claim to check is checked');
+			fs.mkdirSync(MutationShardsDir, { recursive: true });
+			const shardDetails: MutationShardDetails = {
+				shards, groups:          [...exercised.groups], counterexamples: exercised.targets.size, capabilities:    [...exercised.capabilities], mutants:         exercised.generatedMutants.size,
+				usedPasses:      [...exercised.usedPasses], availablePasses: MutationPasses.filter(passIsAvailable).map(p => p.name)
+			};
+			fs.writeFileSync(path.join(MutationShardsDir, `${shard}.json`), JSON.stringify(shardDetails));
 		});
-		test('record what this run exercised', ctx => {
-			if(partialRun()) {
-				ctx.skip();
-				return;
-			}
-			assert.isAbove(generatedMutants.size, 0, 'nothing was mutated, so there is no run to record');
-			fs.mkdirSync(path.dirname(MutationDetailsFile), { recursive: true });
-			fs.writeFileSync(MutationDetailsFile, JSON.stringify({
-				passes:          MutationPasses.length,
-				groups:          knownGroups.size,
-				counterexamples: knownTargets.size,
-				capabilities:    knownCapabilities.size,
-				mutants:         generatedMutants.size,
-				categories:      Object.fromEntries(Object.values(MutationCategory).map(c => [c, MutationPasses.filter(p => p.category === c).map(p => p.name)]))
-			}));
-		});
-	});
-}));
+	}));
+}

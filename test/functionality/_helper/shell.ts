@@ -6,7 +6,10 @@ import { decorateLabelContext, dropTestLabel, modifyLabelName, type TestLabel, t
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
+import { type fileProtocol, type RParseRequests, requestFromInput } from '../../../src/r-bridge/retriever';
+import { minRVersionOf } from '../../../src/r-bridge/lang-4.x/ast/model/syntax-version';
+import { MIN_VERSION_PIPE_PLACEHOLDER_EXTRACT } from '../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { normalizeTreeSitterTreeToAst } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import {
 	type AstIdMap,
 	deterministicCountingIdGenerator,
@@ -252,11 +255,30 @@ function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean 
 	return false;
 }
 
-/** Automatically skip a test if the given configuration is not met */
-export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
+/** Automatically skip a test whose `code` uses syntax the R at hand cannot parse, even if the test does not state its {@link TestConfiguration.minRVersion} */
+function skipTestBecauseSyntaxTooNew(code: string): boolean {
+	if(globalThis.rVersion && semver.gte(globalThis.rVersion, MIN_VERSION_PIPE_PLACEHOLDER_EXTRACT)) {
+		return false;
+	}
+	const ts = new TreeSitterExecutor();
+	let needed: semver.SemVer | undefined;
+	try {
+		const parsed = ts.parse(requestFromInput(code), contextFromInput(code));
+		needed = minRVersionOf(normalizeTreeSitterTreeToAst([{ parsed, filePath: undefined }], true).files.map(f => f.root));
+	} catch{
+		/* code tree-sitter cannot read either is left to the test */
+	} finally {
+		ts.close();
+	}
+	return needed !== undefined && skipTestBecauseInsufficientRVersion(`>=${needed.version}`);
+}
+
+/** Automatically skip a test if the given configuration is not met, or if the R at hand cannot parse its `code` */
+export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>, code?: string): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
-		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
+		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`)
+		|| code !== undefined && skipTestBecauseSyntaxTooNew(code);
 }
 
 /**
@@ -267,7 +289,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	ignoreColumns:  boolean,
 	skipTreeSitter: boolean
 }>) {
-	const skip = skipTestBecauseConfigNotMet(userConfig);
+	const skip = skipTestBecauseConfigNotMet(userConfig, input);
 	const labelContext: TestLabelContext[] = skip ? [] : ['desugar-shell'];
 	const skipTreeSitter = userConfig?.skipTreeSitter;
 	if(!skipTreeSitter) {
@@ -313,7 +335,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 /** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(name, async function() {
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig, input))(name, async function() {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			parser:  shell,
@@ -337,7 +359,7 @@ export function assertOutput(name: string | TestLabel, parser: KnownParser, inpu
 		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
 	}
 	const effectiveName = decorateLabelContext(name, ['output']);
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${input})`, async function() {
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig, typeof input === 'string' ? input : undefined))(`${effectiveName} (input: ${input})`, async function() {
 		if(!(parser instanceof RShell)) {
 			throw new Error(`Parser for output test must be an RShell, got ${parser.constructor.name}`);
 		}
@@ -399,7 +421,7 @@ export function assertDataflow(
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	const assumed = assumedPackagesOf(userConfig);
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig, parser instanceof RShell && typeof input === 'string' ? input : undefined))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		let analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
@@ -472,7 +494,7 @@ function printIdMapping(ids: readonly NodeId[], map: AstIdMap): string {
 /** Note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids. */
 export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)) {
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig, input))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   getId,
 			context: contextFromInput(input),
@@ -554,7 +576,7 @@ export function assertSliced(
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const assumed = assumedPackagesOf(testConfig);
-	const skip = skipTestBecauseConfigNotMet(testConfig);
+	const skip = skipTestBecauseConfigNotMet(testConfig, input);
 	const failType = testConfig?.testCaseFailType;
 	/* whether the test of `parser` is expected to fail */
 	const fails = (parser: 'shell' | 'tree-sitter') => failType === 'fail-both' || failType === `fail-${parser}`;
@@ -717,7 +739,7 @@ export function assertDiced(
 	userConfig?: Partial<TestConfiguration>
 ): void {
 	const effectiveName = typeof name === 'string' ? name : decorateLabelContext(name, ['slice']);
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`[dice] ${effectiveName}`, async function() {
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig, input))(`[dice] ${effectiveName}`, async function() {
 		const { staticDice } = await import('../../../src/slicing/static/static-slicer');
 		const { reconstructToCode } = await import('../../../src/reconstruct/reconstruct');
 		const { doNotAutoSelect } = await import('../../../src/reconstruct/auto-select/auto-select-defaults');
@@ -798,7 +820,7 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 
 /** asserts that the slice for `criterion`, run by {@link printedByR}, prints `lastLine` last, as the whole program does */
 export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string, config?: Partial<TestConfiguration>) {
-	test.skipIf(skipTestBecauseConfigNotMet(config))(name, async({ skip }) => {
+	test.skipIf(skipTestBecauseConfigNotMet(config, code))(name, async({ skip }) => {
 		await skipWithoutRPackages(code, skip);
 		const slice = await sliceOf(parser, code, criterion);
 		const [program, sliced] = await Promise.all([printedByR(code), printedByR(slice)]);
@@ -845,7 +867,7 @@ export async function skipWithoutRPackages(code: string, skip: (condition: boole
  * prints last (all of it with `whole`) and does not hold `dropped`; `sigdb` turns the shipped signature database on.
  */
 export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, dropped, whole, sigdb }: { criterion?: SlicingCriterion, dropped?: string, whole?: boolean, sigdb?: boolean } = {}) {
-	test(name, async({ skip }) => {
+	test.skipIf(skipTestBecauseConfigNotMet(undefined, code))(name, async({ skip }) => {
 		await skipWithoutRPackages(code, skip);
 		const lines = code.split('\n');
 		const disabled = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;

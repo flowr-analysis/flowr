@@ -9,10 +9,10 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
-import type { FunctionArgument } from '../../../../../graph/graph';
+import { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { type Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { ClosureRefs } from '../../../../linker';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -74,6 +74,11 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly resolveValue?:           boolean
 	/** the call reaches beyond what we can see even when the callee resolves, like `rlang::exec` */
 	readonly hasUnknownSideEffects?:  boolean
+	/**
+	 * the call is the one it makes, as `do.call(f, list(1, b = 2))` is `f(1, b = 2)`: the elements of a list written
+	 * out are the arguments, and what the call returns is what it returns
+	 */
+	readonly isTheCall?:              boolean
 }
 
 /**
@@ -86,7 +91,7 @@ export function processApply<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: BuiltInApplyConfiguration
 ): DataflowInformation {
-	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects } = config;
+	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects, isTheCall } = config;
 	/* the length is one-based and the argument mapping zero-based, so the function sits at `indexOfFunction` */
 	const resFn = processKnownFunctionCall({
 		name, args, rootId, data, sig: FunctionSemantics.call.signature.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
@@ -123,6 +128,12 @@ export function processApply<OtherInfo>(
 	}
 	const { functionName, anonymous, asString, computed } = resolvedFn;
 	let functionId: NodeId = resolvedFn.functionId;
+	if(!anonymous && !computed && !information.graph.hasVertex(functionId)) {
+		/* a function piped in (`f |> Map(1:3)`) is the pipe's to process, after this call, so it cannot become the call here */
+		dataflowLogger.warn(`Function argument ${Identifier.toString(functionName)} is not processed yet, treating the call as unknown`);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		return information;
+	}
 	if(computed) {
 		/* the call the computed name stands for gets a vertex of its own, which reads the name */
 		const nameId = functionId;
@@ -136,7 +147,7 @@ export function processApply<OtherInfo>(
 		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	}
 
-	const allOtherArguments: FunctionArgument[] = processedArguments.map((arg, i) => {
+	const handedOn: FunctionArgument[] = processedArguments.map((arg, i) => {
 		const counterpart = args[i];
 		if(!arg || counterpart === EmptyArgument) {
 			return EmptyArgument;
@@ -149,6 +160,9 @@ export function processApply<OtherInfo>(
 			nodeId:  arg.entryPoint
 		};
 	}).filter((_, i) => i !== index);
+	/* a list written out in place hands over its elements, which the function then receives one by one */
+	const spread = isTheCall && handedOn.length === 1 ? information.graph.getVertex(FunctionArgument.getReference(handedOn[0]) as NodeId) : undefined;
+	const allOtherArguments = DfgVertex.isFunctionCall(spread) && DfgVertex.hasOrigin(spread, BuiltInProcName.List) ? spread.args : handedOn;
 
 	if(anonymous) {
 		const rootFnId = functionId;
@@ -196,20 +210,35 @@ export function processApply<OtherInfo>(
 		});
 		/* once the call has its arguments, which may name the files it accesses */
 		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
-		/* `do.call(new.env, list())` creates an environment just like `new.env()` does */
-		const call = information.graph.getVertex(rootId);
-		if(DfgVertex.isFunctionCall(call) && Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)
+		/* `do.call(new.env, list())` creates an environment just like `new.env()` does, and so does the call it makes */
+		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)
 			?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.NewEnv)) {
-			call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
+			for(const call of [information.graph.getVertex(rootId), information.graph.getVertex(functionId)]) {
+				if(DfgVertex.isFunctionCall(call)) {
+					call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
+				}
+			}
 		}
 	}
 
-	for(const [i, arg] of processedArguments.entries()) {
-		if(arg && !(anonymous && i === index)) {
-			information.graph.addEdge(functionId, arg.entryPoint, EdgeType.Argument);
+	if(allOtherArguments === handedOn) {
+		for(const [i, arg] of processedArguments.entries()) {
+			if(arg && !(anonymous && i === index)) {
+				information.graph.addEdge(functionId, arg.entryPoint, EdgeType.Argument);
+			}
+		}
+	} else {
+		for(const arg of allOtherArguments) {
+			const ref = FunctionArgument.getReference(arg);
+			if(ref !== undefined) {
+				information.graph.addEdge(functionId, ref, EdgeType.Argument);
+			}
 		}
 	}
 
+	if(isTheCall) {
+		information.graph.addEdge(rootId, functionId, EdgeType.Returns);
+	}
 	if(resolveInEnvironment !== 'global') {
 		return information;
 	}

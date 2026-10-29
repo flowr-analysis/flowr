@@ -24,6 +24,7 @@ import {
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
+import { FlowrAnalyzerRSessionFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rsession-file-plugin';
 import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
 import { FlowrAnalyzerPackageVersionsNamespaceFilePlugin } from './package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
@@ -102,6 +103,7 @@ export const BuiltInPlugins = [
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:rnw', FlowrAnalyzerSweaveFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
+	['file:rout', FlowrAnalyzerRSessionFilePlugin],
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['versions:namespace', FlowrAnalyzerPackageVersionsNamespaceFilePlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],

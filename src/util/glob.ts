@@ -5,6 +5,7 @@
 import type ignore from 'ignore';
 import { RPath } from './files';
 import { log } from './log';
+import { compileRegex } from './text/regex';
 
 const rbuildignoreLog = log.getSubLogger({ name: 'rbuildignore' });
 
@@ -43,10 +44,11 @@ export function rbuildignoreMatcher(content: string): (relativePath: string) => 
 		if(trimmed.length === 0) {
 			continue;
 		}
-		try {
-			patterns.push(new RegExp(trimmed, 'i'));
-		} catch{
+		const pattern = compileRegex(trimmed, 'i');
+		if(pattern === undefined) {
 			rbuildignoreLog.warn(`Ignoring invalid .Rbuildignore pattern '${trimmed}'.`);
+		} else {
+			patterns.push(pattern);
 		}
 	}
 	if(patterns.length === 0) {

@@ -23,11 +23,11 @@ export interface BasicQueryData {
 }
 
 /** {@link SupportedQuery#fromLine} for a query whose only argument is an optional multi-criterion `filter` */
-export function filterLineParser<T extends string>(type: T) {
+export function filterLineParser<T extends string>(type: T, key = 'filter') {
 	return function(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<T> {
 		const criteria = sliceCriteriaParser(line[0]);
 		return {
-			query: { type, filter: criteria } as ParsedQueryLine<T>['query'],
+			query: { type, [key]: criteria } as ParsedQueryLine<T>['query'],
 			rCode: queryLineCode(line, criteria ? 1 : 0)
 		};
 	};

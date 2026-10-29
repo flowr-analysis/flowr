@@ -600,13 +600,13 @@ export const FlowrConfig = {
 				assumeImplicitEcho:        true
 			},
 			linter: {
-				disabledRules: [],
-				/* the R CMD check rules only make sense for a package, which re-enables them below */
+				/* tests and the R CMD check rules only make sense for a package, which re-enables them below */
+				disabledRules: ['software-has-tests'],
 				disabledTags:  ['cmd-check']
 			},
 			specializeConfig: {
 				/* a package's top-level code runs at install time, its results are not echoed to anyone */
-				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } }, linter: { disabledTags: [] } },
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } }, linter: { disabledRules: [], disabledTags: [] } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */

@@ -1,6 +1,7 @@
 import type { DataflowLensQuery, DataflowLensQueryResult } from './dataflow-lens-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { escapeRegExp } from '../../../abstract-interpretation/data-frame/arguments';
@@ -36,11 +37,8 @@ export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, que
 		}
 	}, analyzer.inspectContext().env.makeCleanEnv());
 
-	const timing = Date.now() - now;
 	return {
-		'.meta': {
-			timing
-		},
+		...metaSince(now),
 		simplifiedGraph
 	};
 }

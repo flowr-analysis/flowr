@@ -24,6 +24,10 @@ describe('Arguments', () => {
 		positive('a \\"b c" d "e f" g', ['a', '"b', 'c d e', 'f g']);
 		positive('a\\ b', ['a b']);
 		positive('-c "2@x" -r "x <- 3 * 4\n y <- x * 2', ['-c', '2@x', '-r', 'x <- 3 * 4\n y <- x * 2']);
+		positive('(2@`a b`) x', ['(2@`a b`)', 'x']);
+		positive('(2@`a b`) x', ['(2@`a b`)', 'x'], false);
+		positive('`a "b` c', ['`a "b`', 'c']);
+		positive('"a `b" c', ['a `b', 'c']);
 	});
 
 	describe('split statements', () => {

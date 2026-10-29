@@ -1,4 +1,4 @@
-import type { InspectHigherOrderQuery, InspectHigherOrderQueryResult } from './inspect-higher-order-query-format';
+import type { InspectHigherOrderQuery } from './inspect-higher-order-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -11,8 +11,7 @@ import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 /**
  * Execute higher-order function inspection queries on the given analyzer.
  */
-export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): Promise<InspectHigherOrderQueryResult> {
-	const start = Date.now();
+export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): Promise<Record<NodeId, boolean>> {
 	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
 
 	const graph = (await analyzer.dataflow()).graph;
@@ -30,10 +29,5 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 		result[id] = FunctionSemantics.isHigherOrder(id, graph, { ctx: analyzer.inspectContext(), invertedGraph, argumentFacts });
 	}
 
-	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
-		higherOrder: result
-	};
+	return result;
 }

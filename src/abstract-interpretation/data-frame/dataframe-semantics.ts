@@ -488,6 +488,9 @@ const DataFrameSemantics = {
 	conditionSemantics: {}
 } satisfies DataFrameSemanticsDefinition;
 
+/** the functions the shape inference knows to return a data frame, qualified as `pkg::name`, like `utils::read.csv` */
+export const DataFrameFunctions: ReadonlySet<string> = new Set(Object.keys(DataFrameSemantics.functionCalls));
+
 /**
  * The options of the abstract semantics of the data frame shape inference (see {@link DataFrameShapeSemantics}).
  */

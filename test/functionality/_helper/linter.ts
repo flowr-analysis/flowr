@@ -118,6 +118,12 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 		}).sort()
 	}) as LintingRuleResult<Name>);
 }
+/** keeps only the fields some expected result states */
+function statedFields(expected: readonly Record<string, unknown>[]): (result: object) => object {
+	const keys = new Set(expected.flatMap(e => Object.keys(e)));
+	return r => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k)));
+}
+
 /** Asserts the linting results, comparing only the fields the expected results state (the union over all of them, so state a field for every result or none).*/
 export function assertLinterFields<Name extends LintingRuleNames>(
 	parser: KnownParser,
@@ -127,10 +133,8 @@ export function assertLinterFields<Name extends LintingRuleNames>(
 	emptyFiles: readonly string[] = [],
 	assumeLoaded?: readonly string[]
 ) {
-	const keys = new Set(expected.flatMap(e => Object.keys(e)));
 	const setup: LinterTestSetup = { addFiles: emptyFiles.map(f => new FlowrInlineTextFile(f, '')), assumeLoaded };
-	assertLinterWithCleanup(`${ruleName}: ${JSON.stringify(code)}`, parser, code, ruleName, expected, undefined, setup as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
-		r => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k))));
+	assertLinterWithCleanup(`${ruleName}: ${JSON.stringify(code)}`, parser, code, ruleName, expected, undefined, setup as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup, statedFields(expected));
 }
 
 /** extra setup of {@link assertLinterPackage}: the package files besides the linted one, and where the linted code lives */
@@ -158,14 +162,12 @@ export function assertLinterPackage<Name extends LintingRuleNames>(
 ) {
 	const { files, file, ...config } = setup;
 	const all: Record<string, string | null> = { DESCRIPTION: 'Package: pkg\nVersion: 1.0\nTitle: A Package\nLicense: MIT\n', ...files };
-	const keys = new Set(expected.flatMap(e => Object.keys(e)));
 	const cfg = {
 		...config,
 		useAsFilePath: `${TestPackageRoot}/${file ?? 'R/code.R'}`,
 		addFiles:      [...Object.entries(all).filter(([, c]) => c !== null).map(([p, c]) => new FlowrInlineTextFile(`${TestPackageRoot}/${p}`, c as string)), ...config.addFiles ?? []]
 	} as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup;
-	assertLinterWithCleanup(name, parser, code, ruleName, expected, undefined, cfg,
-		r => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k))));
+	assertLinterWithCleanup(name, parser, code, ruleName, expected, undefined, cfg, statedFields(expected));
 }
 
 /** Asserts the lines the findings of `rule` start at, as the linter query of a fresh analyzer reports them */

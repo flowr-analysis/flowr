@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { defaultInputClassifierConfig, type InputSourcesQuery, type InputSourcesQueryResult } from './input-sources-query-format';
 import { log } from '../../../util/log';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
@@ -50,14 +51,12 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				df.graph,
 				fdef ? RNode.collectAllIds(fdef) : undefined
 			);
-			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages);
+			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages, df.environment);
 		}
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

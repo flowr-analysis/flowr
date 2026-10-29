@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -42,8 +42,7 @@ Query: **inspect-exception**\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"inspect-exception":{".meta":{},"exceptions":{"20":[{"id":11,"cds":[{"id":18,"when":true}]}],"40":[],"44":[]}},".meta":{}}
@@ -70,7 +69,7 @@ safeFail <- function(x) {
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 ```mermaid
@@ -274,7 +273,7 @@ end
     41 -.->|"flow"| 42
     linkStyle 18 stroke:gray,color:gray;
     41 -->|"calls"| anon-40
-    42 -->|"returns, arg"| 31
+    42 -->|"reads, returns, arg"| 31
     42 -->|"reads, calls, arg"| 41
     42 -->|"reads, calls"| 40
     42 -->|"returns"| 38
@@ -309,6 +308,6 @@ end
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Inspect Exceptions of Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts#L14"><code><span title="Execute exception function inspection queries on the given analyzer.">executeExceptionQuery</span></code></a>.
+The Inspect Exceptions of Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts#L15"><code><span title="Execute exception function inspection queries on the given analyzer.">executeExceptionQuery</span></code></a>.
 
 </details>

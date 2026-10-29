@@ -20,7 +20,8 @@ import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { AmbientStateName, ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
+import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
@@ -460,6 +461,14 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		definedAt: normalResult.entryPoint,
 		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
+	if(envirResolution.stack === 'global' && normalResult.graph.hasVertex(fieldNode.info.id)) {
+		/* `e$f <- v` with `e` the global frame (`e <- globalenv()`, or `environment()` at the top level) is `f <<- v` */
+		const definition = { ...fieldDef, nodeId: fieldNode.info.id };
+		normalResult.graph.setDefinitionOfVertex(definition, [source.info.id]);
+		normalResult.graph.addEdge(fieldNode.info.id, source.info.id, EdgeType.DefinedBy);
+		normalResult.graph.addEdge(normalResult.entryPoint, envirResolution.envirNodeId, EdgeType.Reads);
+		return { ...normalResult, environment: REnvironment.define(definition, true, normalResult.environment) };
+	}
 	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation } = {
 		...envirResolution.envDef,
@@ -639,17 +648,20 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			/* only a copied environment needs an identity, its holders are rebound on every field write */
 			envId = copied === undefined ? undefined : copied.envId ?? copied.nodeId;
 		} else {
-			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
+			/* `(list(...))` and `{ mk() }` hand on the value of what they hold */
+			const entry = valueEntry ?? sourceArg.entryPoint;
+			const value = data.completeAst.idMap.get(entry) ?? source;
+			const entryVertex = sourceArg.graph.getVertex(entry);
 			if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
-				envState = resolveListToEnvState(source, data);
+				envState = resolveListToEnvState(value, data);
 			} else if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
-				returnsEnvState = resolveClassMethodsToEnvState(source, data);
+				returnsEnvState = resolveClassMethodsToEnvState(value, data);
 			} else if(DfgVertex.isFunctionDefinition(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
 			} else if(DfgVertex.isFunctionCall(entryVertex) && entryVertex.name) {
 				envState = findReturnsEnvState(Resolve.byNameAndType(entryVertex.name, data.environment, ReferenceType.Function));
 			}
-			envState ??= resolveConstructorInstanceEnvState(source, data);
+			envState ??= resolveConstructorInstanceEnvState(value, data);
 		}
 	}
 

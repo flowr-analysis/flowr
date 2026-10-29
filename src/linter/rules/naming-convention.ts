@@ -6,7 +6,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { collectCalledNames, isS3MethodName } from './unused-definition';
 import { Dataflow } from '../../dataflow/graph/df-helper';
@@ -244,10 +244,10 @@ export const NAMING_CONVENTION = {
 			}
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} (${result.detectedCasing})`,
-		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
-	},
+	prettyPrint: prettyPrint(
+		result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} (${result.detectedCasing})`,
+		result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
+	),
 	info: {
 		name:            'Naming Convention',
 		// detects casing heuristically so correctness is not ensured using default config, but checks all identifiers in the code for naming convention match

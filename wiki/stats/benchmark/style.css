@@ -1186,6 +1186,31 @@ footer { margin-top: 1.5rem; }
 	cursor: default;
 }
 
+/* the views of a tile sit above its numbers, so they need no separator of their own */
+.view-tabs {
+	margin: 0 0 .6rem;
+	border-top: none;
+	padding-top: 0;
+}
+
+.composition.stack {
+	display: block;
+}
+
+.composition.stack svg {
+	width: 100%;
+	height: auto;
+	display: block;
+	margin: .3rem 0;
+}
+
+/* the parts of a stacked chart, filled stronger than a single sparkline so the layers tell apart */
+.stack-area {
+	fill: var(--c);
+	opacity: .35;
+	stroke: none;
+}
+
 .facts .composition {
 	border-top: 1px solid var(--border);
 }

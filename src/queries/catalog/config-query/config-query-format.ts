@@ -368,6 +368,5 @@ export const ConfigQueryDefinition = {
 		update:  Joi.object().optional().description('An optional partial configuration to update the current configuration with before returning it. Only the provided fields will be updated, all other fields will remain unchanged.'),
 		inspect: Joi.array().items(Joi.string()).optional().description('An optional `.`-separated path (as a string array) to read a single configuration value instead of returning the whole configuration.'),
 		reset:   Joi.boolean().optional().description('If true, discard every prior update and revert to the config the analyzer was created with, before returning it.')
-	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.'),
-	flattenInvolvedNodes: () => []
+	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.')
 } as const satisfies SupportedQuery<'config'>;

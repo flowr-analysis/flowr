@@ -76,6 +76,5 @@ export const LocationMapQueryDefinition = {
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.'),
 		span: Joi.string().valid(...Object.values(LocationMapSpan)).optional().description('How much of the source the reported range covers: the token itself (default), the whole subtree of the node, or the top-level statement it belongs to.')
-	}).description('The location map query retrieves the location of every id in the ast.'),
-	flattenInvolvedNodes: () => []
+	}).description('The location map query retrieves the location of every id in the ast.')
 } as const satisfies SupportedQuery<'location-map'>;

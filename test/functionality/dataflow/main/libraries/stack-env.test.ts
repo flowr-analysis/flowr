@@ -21,6 +21,15 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 		emptyGraph().addEdge('3@$', '1@x', EdgeType.Reads),
 		opts);
 
+	assertDataflow(label('globalenv() lets $<- define in the global env', ['search-path', 'dynamic-environment-resolution']), ts,
+		'g <- globalenv()\ng$x <- 1\nprint(x)',
+		emptyGraph().addEdge('3@x', '2@x', EdgeType.Reads),
+		opts);
+	assertDataflow(label('environment() at the top level lets $<- define in the global env', ['search-path', 'dynamic-environment-resolution']), ts,
+		'e <- environment()\ne$x <- 1\nprint(x)',
+		emptyGraph().addEdge('3@x', '2@x', EdgeType.Reads),
+		opts);
+
 	assertDataflow(label('emptyenv() is empty and does not resolve', ['search-path', 'dynamic-environment-resolution']), ts,
 		'x <- 1\ne <- emptyenv()\ne$x',
 		emptyGraph(),

@@ -29,7 +29,16 @@ async function openDefault(): Promise<PackageSignatureSource | undefined> {
 }
 
 /** bump when the emitted store *format* changes, so a regeneration is forced even if the bundle is unchanged */
-const formatVersion = 8;
+const formatVersion = 9;
+
+/**
+ * Base has no NAMESPACE, so what its sources bind is what it exports, the temporaries its `zzz.R` binds and removes
+ * again included (`f`, `i`, `env`, ...). Of such a name nothing is known beyond it: no manual page, no place in the sources.
+ */
+function leftOver(db: PackageSignatureSource, pkg: string, name: string): boolean {
+	const fn = pkg === 'base' ? db.functionByName(pkg, name) : undefined;
+	return fn !== undefined && fn.topic === undefined && fn.file === undefined && fn.props.every(p => p === 'exported');
+}
 
 /** a cheap identity of the bundle (read from the manifest/header, no shard decompression) to detect changes */
 function bundleFingerprint(db: PackageSignatureSource): string {
@@ -93,7 +102,7 @@ async function main(): Promise<void> {
 	for(const pkg of claimOrder) {
 		const names: string[] = [];
 		for(const name of db.lookup(pkg)?.exported ?? []) {
-			if(!claimed.has(name)) {
+			if(!claimed.has(name) && !leftOver(db, pkg, name)) {
 				claimed.add(name);
 				names.push(name);
 			}

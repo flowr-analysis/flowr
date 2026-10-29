@@ -1,5 +1,4 @@
 import { bold, faint, supportsHyperlinks } from './text/ansi';
-import { SemVer } from 'semver';
 import type { KnownParser } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
@@ -7,18 +6,9 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
 import { compareByCodeUnit } from './text/strings';
+import { flowrVersion, versionDate } from './flowr-version';
 
-// this is automatically replaced with the current version by release-it
-const version = '2.16.4';
-// this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
-const versionDate = '2026-10-19T19:06:26Z';
-
-/**
- * Retrieves the current flowR version as a new {@link SemVer} object.
- */
-export function flowrVersion(): SemVer {
-	return new SemVer(version);
-}
+export { flowrVersion } from './flowr-version';
 
 type Version = `${number}.${number}.${number}`;
 

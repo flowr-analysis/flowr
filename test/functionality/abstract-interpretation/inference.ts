@@ -176,7 +176,7 @@ export function testInferredValues<Domains extends AbstractProduct, Key extends 
 		});
 	}
 	if(options?.skipRun !== true) {
-		test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(name, ['absint']), async({ skip }) => {
+		test.skipIf(skipTestBecauseConfigNotMet(options, code))(decorateLabelContext(name, ['absint']), async({ skip }) => {
 			if(typeof options?.skipRun === 'function' ? options.skipRun() : options?.skipRun) {
 				skip();
 			}

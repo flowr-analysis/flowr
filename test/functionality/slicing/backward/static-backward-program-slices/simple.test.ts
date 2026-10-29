@@ -68,6 +68,10 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 			shell, 'f <- log(y) ~ x\nn <- length(f)\nn', ['3@n'], 'f <- log(y) ~ x\nn <- length(f)\nn',
 			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
 		);
+		assertSliced(label('a formula reads the names it binds', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls', 'model-formula']),
+			shell, 'y <- c(1, 2, 4)\nx <- c(1, 2, 3)\nz <- 5\nm <- coef(lm(y ~ x))[[2]]\nm', ['5@m'], 'y <- c(1, 2, 4)\nx <- c(1, 2, 3)\nm <- coef(lm(y ~ x))[[2]]\nm',
+			{ expectedOutput: '[1] 1.5', expectedSliceOutput: '[1] 1.5' }
+		);
 		assertSliced(label('one-sided formula', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'newlines', 'function-calls']),
 			shell, 'f <- ~ x + 1\nn <- length(f)\nn', ['3@n'], 'f <- ~ x + 1\nn <- length(f)\nn',
 			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' }

@@ -1,12 +1,43 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 18:04:52 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
-_This query is requested with the type `dependencies`._
+_This query is requested with the type `dependencies`._\
+Run in the REPL: `:query @dependencies (<crit>;...) <code | file://path>`
 
 This query extracts all dependencies from an R script, using a combination of a [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context)
 and more advanced tracking in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph).
 Loaded libraries are resolved against the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
+
+The query reports one list of entries per category, each entry a call and the `value` it reads or writes, like the
+file of a `read.csv`:
+
+| Category | Functions known | For example | Value where none is named |
+|----------|----------------:|-------------|---------------------------|
+| **Inputs** | | | |
+| `library` (Libraries) | 22 | `library`, `require`, `loadNamespace`, `requireNamespace` | `unknown` |
+| `remote` (Remote Installs) | 10 | `install_github`, `install_gitlab`, `install_bitbucket`, `install_git` | `unknown` |
+| `source` (Sourced Files) | 4 | `source`, `sys.source`, `source_url`, `source_gist` | `unknown` |
+| `read` (Read Data) | 162 | `scan`, `read.dcf`, `read.fwf`, `readRenviron` | `unknown` |
+| **Outputs** | | | |
+| `write` (Outputs) | 161 | `raster_pdf`, `pdf`, `postscript`, `xfig` | `stdout` |
+| `visualize` (Visualizations) | 499 | `ggplot`, `ggplotly`, `ggMarginal`, `ggcorrplot` |  |
+| **What the script does with data** | | | |
+| `transform` (Data Transformations) | 140 | `subset`, `transform`, `filter`, `filter_out` |  |
+| `statistics` (Statistics) | 74 | `lm`, `glm`, `nls`, `lmer` |  |
+| `test` (Tests) | 14 | `test_that`, `describe`, `it`, `test_file` |  |
+
+What the `value` of an entry tells, and the fields that say more:
+
+| Entry | How to tell | Meaning |
+|-------|-------------|---------|
+| a file, package, or URL | `value` names it | the call reads or writes it, like `"data.csv"` |
+| inline data | `value` is `constant` | The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). |
+| an unknown resource | `value` is `unknown` | The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. |
+| console output | `value` is `stdout` or `stderr` | `print` and `cat` write to `stdout`, `message` and `warning` to `stderr` |
+| auto-printed output | `implicit` is set | the output is not written by a call asking for it: R echoes the top-level statement on its own |
+| through a call of the program | `via` is set | Set on a call of a function of the program that does what this entry reports, transitively: the call of `report()` writes what the `cat()` in its body writes. It names the entry within the called function. The <code>value</code> is the one of this call, `save("a.csv")` writes `a.csv` even if other calls of `save` name other files. |
+| part of another output | its id is in another entry's `parts` | The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a file, the device opener and closer around it. Answers *which statements produce this output* without rebuilding it from <code>linkedIds</code> . A part is reported as an entry of its own as well, so to count plots rather than graphics calls, count the entries no other entry lists in its parts. |
 
 For a script reading `library(x)`, the following query returns the loaded library:
 
@@ -26,8 +57,7 @@ Query: **dependencies** (3 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -78,7 +108,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (6 ms)\
+Query: **dependencies** (5 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -86,9 +116,8 @@ Query: **dependencies** (6 ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**sample.R** _via source (node 3)_\
 &nbsp;&nbsp;&nbsp;**Read Data** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**data.csv** _via read.csv (node 14)_\
-&nbsp;&nbsp;&nbsp;**Outputs** _(2)_\
+&nbsp;&nbsp;&nbsp;**Outputs** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stdout** _via print (node 41)_\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stdout** _auto-printed by + (node 31)_\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 28)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 30, linked 28)_
@@ -97,8 +126,7 @@ Query: **dependencies** (6 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -108,7 +136,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "remote": [],
     "source": [{"nodeId":3,"functionName":"source","value":"sample.R"}],
     "read": [{"nodeId":14,"functionName":"read.csv","assignedTo":"data","value":"data.csv"}],
-    "write": [{"nodeId":41,"functionName":"print","value":"stdout"},{"nodeId":31,"functionName":"+","value":"stdout","implicit":true,"inputVariables":["data","x","y"]}],
+    "write": [{"nodeId":41,"functionName":"print","value":"stdout"}],
     "visualize": [
       {"nodeId":28,"functionName":"ggplot","inputVariables":["data","x","y"],"parts":[30]},
       {"nodeId":30,"functionName":"geom_point","linkedIds":[28],"inputVariables":["data","x","y"]}
@@ -155,7 +183,7 @@ In the meantime we offer several properties to overwrite the default behavior (e
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (1 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_
 
@@ -163,8 +191,7 @@ Query: **dependencies** (2 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -219,8 +246,7 @@ Query: **dependencies** (0 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -255,7 +281,7 @@ sd(c(1, 2, 3))
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 ```mermaid
@@ -305,6 +331,200 @@ convention and `R_DEFAULT_PACKAGES` (or `options(defaultPackages=)`) can drop an
 there and cannot be detached -- so it is never something the script could have asked for, and never something to
 suggest a `library` call for.
 
+To see what takes part in a dependency, ask the query to `focus` on it: `.meta.focus` then lists every node the
+dependency depends on and every node that depends on it, so a client can gray out the rest. In the REPL, the
+criteria go in parentheses, as with <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> `@dependencies (3@read.csv)`, which prints the lines taking part:
+
+```json
+[
+  {
+    "type": "dependencies",
+    "focus": [
+      "3@read.csv"
+    ],
+    "enabledCategories": [
+      "read"
+    ]
+  }
+]
+```
+
+ <details> <summary style="color:gray">Show Results</summary>
+
+_Results (prettified and summarized):_
+
+Query: **dependencies** (1 ms)\
+&nbsp;&nbsp;&nbsp;**Read Data** _(1)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**a.csv** _via read.csv (node 10)_\
+&nbsp;&nbsp;&nbsp;**focus** _the lines taking part:_ 1, 3, 5
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis ran (including parsing and normalization and the query) within the generation environment.
+
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
+
+```json
+{
+  "dependencies": {
+    ".meta": {"focus":[10,8,0,2,1,11,6,18,20]},
+    "library": [],
+    "remote": [],
+    "source": [],
+    "read": [{"nodeId":10,"functionName":"read.csv","assignedTo":"d","value":"a.csv"}],
+    "write": [],
+    "visualize": [],
+    "transform": [],
+    "test": [],
+    "statistics": []
+  },
+  ".meta": {}
+}
+```
+
+</details>
+
+<details> <summary style="color:gray">Original Code</summary>
+
+```r
+f <- "a.csv"
+g <- 2
+d <- read.csv(f)
+h <- g + 1
+print(d)
+```
+
+<details>
+
+<summary style="color:gray">Dataflow Graph of the R Code</summary>
+
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
+We encountered unknown side effects (with ids: 20 (linked)) during the analysis.
+
+```mermaid
+flowchart LR
+    1{{"`*#91;RString#93;* **#34;a.csv#34;**
+      *1.6-12* (**id: 1**)`"}}
+    0["`*#91;RSymbol#93;* **f**
+      *1.1* (**id: 0**, v: 1)`"]
+    2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *1.1-12* (**id: 2**)
+    arg: (0, 1)`"]]
+    built-in:_60_-["`Built-In:
+#60;#45;`"]
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    4{{"`*#91;RNumber#93;* **2**
+      *2.6* (**id: 4**)`"}}
+    3["`*#91;RSymbol#93;* **g**
+      *2.1* (**id: 3**, v: 4)`"]
+    5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *2.1-6* (**id: 5**)
+    arg: (3, 4)`"]]
+    8(["`*#91;RSymbol#93;* **f**
+      *3.15* (**id: 8**)`"])
+    10[["`*#91;RFunctionCall#93;* utils#58;#58;**read.csv**
+      *3.6-16* (**id: 10**)
+    arg: (8)`"]]
+    built-in:read.csv["`Built-In:
+read.csv`"]
+    style built-in:read.csv stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    6["`*#91;RSymbol#93;* **d**
+      *3.1* (**id: 6**, v: 10)`"]
+    11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *3.1-16* (**id: 11**)
+    arg: (6, 10)`"]]
+    13(["`*#91;RSymbol#93;* **g**
+      *4.6* (**id: 13**)`"])
+    14{{"`*#91;RNumber#93;* **1**
+      *4.10* (**id: 14**)`"}}
+    15[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
+      *4.6-10* (**id: 15**)
+    arg: (13, 14)`"]]
+    built-in:_43_["`Built-In:
+#43;`"]
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    12["`*#91;RSymbol#93;* **h**
+      *4.1* (**id: 12**, v: 15)`"]
+    16[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *4.1-10* (**id: 16**)
+    arg: (12, 15)`"]]
+    18(["`*#91;RSymbol#93;* **d**
+      *5.7* (**id: 18**)`"])
+    20[["`*#91;RFunctionCall#93;* base#58;#58;**print**
+      *5.1-8* (**id: 20**)
+    arg: (18)`"]]
+    built-in:print["`Built-In:
+print`"]
+    style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
+    0 -->|"defined-by"| 1
+    2 -->|"reads, arg"| 1
+    2 -->|"returns, arg"| 0
+    2 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
+    4 -.->|"flow"| 3
+    linkStyle 7 stroke:gray,color:gray;
+    3 -->|"defined-by, flow"| 5
+    3 -->|"defined-by"| 4
+    5 -->|"reads, arg"| 4
+    5 -->|"returns, arg"| 3
+    5 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 12 stroke:gray;
+    5 -.->|"flow"| 8
+    linkStyle 13 stroke:gray,color:gray;
+    8 -->|"reads"| 0
+    8 -.->|"flow"| 10
+    linkStyle 15 stroke:gray,color:gray;
+    10 -->|"reads, arg"| 8
+    10 -.->|"flow"| 6
+    linkStyle 17 stroke:gray,color:gray;
+    10 -.->|"reads, calls"| built-in:read.csv
+    linkStyle 18 stroke:gray;
+    6 -->|"defined-by, flow"| 11
+    6 -->|"defined-by"| 10
+    11 -->|"reads, arg"| 10
+    11 -->|"returns, arg"| 6
+    11 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 23 stroke:gray;
+    11 -.->|"flow"| 13
+    linkStyle 24 stroke:gray,color:gray;
+    13 -->|"reads"| 3
+    13 -.->|"flow"| 14
+    linkStyle 26 stroke:gray,color:gray;
+    14 -.->|"flow"| 15
+    linkStyle 27 stroke:gray,color:gray;
+    15 -->|"reads, arg"| 13
+    15 -->|"reads, arg"| 14
+    15 -.->|"flow"| 12
+    linkStyle 30 stroke:gray,color:gray;
+    15 -.->|"reads, calls"| built-in:_43_
+    linkStyle 31 stroke:gray;
+    12 -->|"defined-by, flow"| 16
+    12 -->|"defined-by"| 15
+    16 -->|"reads, arg"| 15
+    16 -->|"returns, arg"| 12
+    16 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 36 stroke:gray;
+    16 -.->|"flow"| 18
+    linkStyle 37 stroke:gray,color:gray;
+    18 -->|"reads"| 6
+    18 -.->|"flow"| 20
+    linkStyle 39 stroke:gray,color:gray;
+    20 -->|"reads, returns, arg"| 18
+    20 -.->|"reads, calls"| built-in:print
+    linkStyle 41 stroke:gray;
+```
+
+</details>
+
+</details>
+	
+</details>
+
 Beyond libraries, files and outputs, the query knows the `visualize` category (plots) and the `transform` category
 (`Data Transformations`): the calls that reshape, filter, join or aggregate data, like `dplyr::filter`, `tidyr::pivot_longer`,
 `merge`, `aggregate` or `data.table::setDT`. The category is read from the built-in configuration: every built-in labeled
@@ -328,7 +548,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (4 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\
@@ -341,8 +561,7 @@ Query: **dependencies** (4 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -386,7 +605,7 @@ ggsave("small.png", plot = p)
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 38 (linked)) during the analysis.
 
 ```mermaid
@@ -642,6 +861,7 @@ ggtitle`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
     %%   aes:                        {**ggplot2::aes** (id: built-in:aes, type: BuiltInFunction, def. @built-in:aes)}
@@ -751,8 +971,6 @@ ggtitle`"]
     %%   theme_dark:                 {**ggplot2::theme_dark** (id: built-in:theme_dark, type: BuiltInFunction, def. @built-in:theme_dark)}
     %%   theme_classic:              {**ggplot2::theme_classic** (id: built-in:theme_classic, type: BuiltInFunction, def. @built-in:theme_classic)}
     %%   theme_linedraw:             {**ggplot2::theme_linedraw** (id: built-in:theme_linedraw, type: BuiltInFunction, def. @built-in:theme_linedraw)}
-    %%   theme_update:               {**ggplot2::theme_update** (id: built-in:theme_update, type: BuiltInFunction, def. @built-in:theme_update)}
-    %%   theme_replace:              {**ggplot2::theme_replace** (id: built-in:theme_replace, type: BuiltInFunction, def. @built-in:theme_replace)}
     %%   theme_grey:                 {**ggplot2::theme_grey** (id: built-in:theme_grey, type: BuiltInFunction, def. @built-in:theme_grey)}
     %%   theme_bw:                   {**ggplot2::theme_bw** (id: built-in:theme_bw, type: BuiltInFunction, def. @built-in:theme_bw)}
     %%   theme_sub_axis:             {**ggplot2::theme_sub_axis** (id: built-in:theme_sub_axis, type: BuiltInFunction, def. @built-in:theme_sub_axis)}
@@ -929,6 +1147,8 @@ ggtitle`"]
     %%   expand_limits:              {**ggplot2::expand_limits** (id: built-in:expand_limits, type: BuiltInFunction, def. @built-in:expand_limits)}
     %%   expand_scale:               {**ggplot2::expand_scale** (id: built-in:expand_scale, type: BuiltInFunction, def. @built-in:expand_scale)}
     %%   guides:                     {**ggplot2::guides** (id: built-in:guides, type: BuiltInFunction, def. @built-in:guides)}
+    %%   theme_update:               {**ggplot2::theme_update** (id: built-in:theme_update, type: BuiltInFunction, def. @built-in:theme_update)}
+    %%   theme_replace:              {**ggplot2::theme_replace** (id: built-in:theme_replace, type: BuiltInFunction, def. @built-in:theme_replace)}
     %%   last_plot:                  {**ggplot2::last_plot** (id: built-in:last_plot, type: BuiltInFunction, def. @built-in:last_plot)}
     %%   quo:                        {**ggplot2::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
     %%   quos:                       {**ggplot2::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
@@ -945,17 +1165,20 @@ ggtitle`"]
     %%   syms:                       {**ggplot2::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:                   {**ggplot2::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:                   {**ggplot2::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   gg_dep:                     {**ggplot2::gg_dep** (id: built-in:gg_dep, type: BuiltInFunction, def. @built-in:gg_dep)}
     %%   is.ggplot:                  {**ggplot2::is.ggplot** (id: built-in:is.ggplot, type: BuiltInFunction, def. @built-in:is.ggplot)}
     %%   guide_train:                {**ggplot2::guide_train** (id: built-in:guide_train, type: BuiltInFunction, def. @built-in:guide_train)}
     %%   aes_auto:                   {**ggplot2::aes_auto** (id: built-in:aes_auto, type: BuiltInFunction, def. @built-in:aes_auto)}
     %%   aes_:                       {**ggplot2::aes_** (id: built-in:aes_, type: BuiltInFunction, def. @built-in:aes_)}
+    %%   gg_dep:                     {**ggplot2::gg_dep** (id: built-in:gg_dep, type: BuiltInFunction, def. @built-in:gg_dep)}
     %%   element_line:               {**ggplot2::element_line** (id: built-in:element_line, type: BuiltInFunction, def. @built-in:element_line)}
     %%   element_rect:               {**ggplot2::element_rect** (id: built-in:element_rect, type: BuiltInFunction, def. @built-in:element_rect)}
     %%    library-load:              {**ggplot2:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
-    %%   small: {**small** (id: 8, type: Unknown, def. @26)}
-    %%   p:     {**p** (id: 27, type: Unknown, def. @47)}
+    %%   #search-path:dplyr:   {**#search-path:dplyr** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:         {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7)}
+    %%   #search-path:ggplot2: {**#search-path:ggplot2** (id: 7, type: Variable, def. @7)}
+    %%   small:                {**small** (id: 8, type: Unknown, def. @26)}
+    %%   p:                    {**p** (id: 27, type: Unknown, def. @47)}
     54[["`*#91;RFunctionCall#93;* **ggsave**
       *6.1-29* (**id: 54**)
     arg: (49, plot (53))`"]]
@@ -1101,6 +1324,7 @@ ggsave`"]
     54 -->|"reads"| 7
     54 -.->|"reads, calls"| built-in:ggsave
     linkStyle 93 stroke:gray;
+    54 -->|"reads"| 45
 ```
 
 </details>
@@ -1111,6 +1335,6 @@ ggsave`"]
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L36"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
+The Dependencies Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dependencies-query/dependencies-query-executor.ts#L42"><code><span title="Executes a dependencies query.">executeDependenciesQuery</span></code></a>.
 
 </details>

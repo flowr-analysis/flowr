@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-25, 20:08:08 UTC (v2.16.6), do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
@@ -17,7 +17,7 @@ For a script reading `read.csv("i_do_not_exist.csv")`, the following query retur
 
 _Results (prettified and summarized):_
 
-Query: **linter** (21 ms)\
+Query: **linter** (25 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -36,6 +36,7 @@ Query: **linter** (21 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
+&nbsp;&nbsp;&nbsp;╰ **Overwritten File** (overwritten-file): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_
 
@@ -43,8 +44,7 @@ Query: **linter** (21 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -79,6 +79,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       },
       "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
       "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
+      "overwritten-file": {"results":[],".meta":{"totalFiles":0}},
       "unescaped-arguments": {"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},
       "namespace-access": {"results":[],".meta":{"unresolved":0}}
     },
@@ -100,7 +101,7 @@ You can also configure which rules to apply and what settings to use for these r
 
 _Results (prettified and summarized):_
 
-Query: **linter** (8 ms)\
+Query: **linter** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30
@@ -109,8 +110,7 @@ Query: **linter** (8 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -135,6 +135,6 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts#L19"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
+The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts#L20"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
 
 </details>

@@ -28,6 +28,7 @@ import { isNotUndefined } from '../../../../../util/assert';
 import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/built-in-props';
 import { queryFnProps } from '../../../../environments/query-fn-props';
 import { REnvironment } from '../../../../environments/environment';
+import { InternalGenerics } from '../../../../environments/default-builtin-config';
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
@@ -199,8 +200,9 @@ export function processNamedCall<OtherInfo>(
 	for(const own of toRun) {
 		alternatives.push(own.processor(name, args, rootId, data));
 		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
-		/* unless flowR states how it accesses the state, as for `withr::with_options` */
-		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg));
+		/* unless flowR states how it accesses the state, as for `withr::with_options`, or the export is a method the primitive dispatches to (lubridate's `rep`) */
+		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg))
+			&& !InternalGenerics.has(Identifier.getName(own.name as Identifier));
 	}
 	if(defaultProcessor && !shadowable) {
 		processDefault();

@@ -73,11 +73,13 @@ async function main(): Promise<void> {
 		[name, entries.map(({ pkg, props, args }) =>
 			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(',')])
 		]))).replaceAll('</', '<\\/');
+	/* a replacement function, since the bundle holds `$` followed by a backtick, which a replacement string would expand */
+	const script = await pageScript();
 	const page = Template
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
 		.replaceAll('<!--FUNCTIONS-->', group(blobs.count))
-		.replace('<!--MAIN-SCRIPT-->', await pageScript())
+		.replace('<!--MAIN-SCRIPT-->', () => script)
 		.replace('"<!--KINDS-->"', kinds)
 		.replace('"<!--STATED-->"', stated)
 		.replace('"<!--FORMALS-->"', JSON.stringify(Object.fromEntries(index.formals)).replaceAll('</', '<\\/'))

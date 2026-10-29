@@ -14,7 +14,7 @@ import { arraySum } from '../../util/collections/arrays';
 import { Ternary } from '../../util/logic';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
+import { prettyPrint, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { Top } from '../../abstract-interpretation/domains/lattice';
@@ -129,14 +129,14 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 		return { results, '.meta': metadata };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Access of ${result.type} ` +
+	prettyPrint: prettyPrint(
+		result => `Access of ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' ' +
 			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]: result => `Accessed ${result.type} ` +
+		result => `Accessed ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' does not exist ' +
 			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`
-	},
+	),
 	info: {
 		name:          'Dataframe Access Validation',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],

@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { HappensBeforeQuery, HappensBeforeQueryResult } from './happens-before-query-format';
 import { HappensBeforeKey } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
@@ -34,9 +35,7 @@ export async function executeHappensBefore({ analyzer }: BasicQueryData, queries
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }

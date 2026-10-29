@@ -28,6 +28,20 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 	});
 
+	describe('the file of a finding', () => {
+		test('every finding names its file, a sourced one included', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addFile(new FlowrInlineTextFile('helpers.R', 'f <- function() read.csv("/home/me/data.csv")'));
+			analyzer.addFile(new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(f())'));
+			analyzer.addRequest({ request: 'file', content: 'main.R' });
+			const { results } = await executeLinterQuery({ analyzer }, [{ type: 'linter', rules: ['absolute-file-paths'] }]);
+			const found = (results['absolute-file-paths'] as { results: { loc: readonly unknown[] }[] }).results;
+			const files = found.map(f => f.loc[4]);
+			assert.include(files, 'helpers.R', 'the path written in the sourced file is found there');
+			assert.notInclude(files, undefined, 'every finding names its file');
+		});
+	});
+
 	describe('project-kind specialization', () => {
 		async function defaultRuleKeys(description?: string): Promise<string[]> {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
@@ -48,6 +62,16 @@ describe('flowR linter', withTreeSitter(parser => {
 			const keys = await defaultRuleKeys('Package: Foo\nVersion: 1.0\n');
 			assert.isTrue(keys.includes('software-has-license'), `got ${keys.join(', ')}`);
 			assert.isTrue(keys.includes('software-has-tests'), `got ${keys.join(', ')}`);
+		});
+
+		test('a multi-file project that is not a package does not run software-has-tests by default', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addFile(new FlowrInlineTextFile('/project/helpers.R', 'f <- function() 1'));
+			analyzer.addFile(new FlowrInlineTextFile('/project/main.R', 'source("helpers.R")\nprint(f())'));
+			analyzer.addRequest({ request: 'file', content: '/project/main.R' });
+			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter' }])).results);
+			assert.isTrue(keys.includes('software-has-license'), `got ${keys.join(', ')}`);
+			assert.isFalse(keys.includes('software-has-tests'), `got ${keys.join(', ')}`);
 		});
 
 		const cmdCheckRules = (Object.keys(LintingRules) as LintingRuleNames[]).filter(r => (LintingRules[r].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) && (LintingRules[r].info as { activeByDefault?: boolean }).activeByDefault !== false);

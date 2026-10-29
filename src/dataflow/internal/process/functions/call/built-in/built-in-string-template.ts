@@ -122,7 +122,7 @@ export function processStringTemplate<OtherInfo>(
 		}
 		const template = arg.value;
 		/* one generator for the whole template so its interpolations do not collide on the same ids */
-		const generator = sourcedDeterministicCountingIdGenerator(`${name.lexeme}::${template.info.id}`, template.location);
+		const generator = sourcedDeterministicCountingIdGenerator(`${name.lexeme}::${template.info.id}`);
 		for(const code of interpolationsOf(template.content.str, open, close, config.markup)) {
 			const result = sourceRequest(rootId, requestFromInput(code), data, information, false, generator, true);
 			/* the template stands where the call does, so what it leaves open resolves against the bindings here */

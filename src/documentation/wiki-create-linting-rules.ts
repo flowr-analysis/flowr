@@ -102,7 +102,7 @@ After registering the rule, add its entry to ${ctx.link('LintingRuleExamples')}:
 
 New linting rules should be covered by tests following the existing linter test pattern. The test file should be named \`lint-<my-new-rule>.test.ts\`. Existing linter tests can be used as references for the expected structure.
 
-The linter wiki automatically extracts additional examples from these tests by reading \`assertLinter\` calls. If a test should not appear as a generated wiki example, add \`/* @ignore-in-wiki */\` to the test.
+The wiki page of the rule shows only its example from ${ctx.link('LintingRuleExamples')} and links the test file, so adding tests leaves the wiki unchanged.
 For general information on creating and regenerating wiki pages, see ${ctx.linkPage('wiki/FAQ')}, especially the FAQ entry on creating new wiki pages. The linter overview and the generated rule documentation can then be inspected through ${ctx.linkPage('wiki/Linter')}. 
 `;
 	}

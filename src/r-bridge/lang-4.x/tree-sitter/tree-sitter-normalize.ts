@@ -105,7 +105,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.Program: {
 				const [comments, children] = splitCommentNodes(nonErrorChildren(node));
 				const body = children.map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
-				const remainingComments = linkCommentsToNextNodes(body, comments);
+				const remainingComments = linkCommentsToNextNodes(node, body, comments);
 				return {
 					type:     RType.ExpressionList,
 					children: body.map(n => n[1]),
@@ -122,7 +122,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [comments, children] = splitCommentNodes(nonErrorChildren(node));
 				const opening = children[0];
 				const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
-				const remainingComments = linkCommentsToNextNodes(body, comments);
+				const remainingComments = linkCommentsToNextNodes(node, body, comments);
 				const closing = children[children.length - 1];
 				const openText = opening.text;
 				const closeText = closing.text;
@@ -543,7 +543,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					name: {
 						type:     RType.Symbol,
 						location: nameRange,
-						content:  nameText,
+						content:  Identifier.getName(Identifier.make(nameText)),
 						lexeme:   nameText,
 						info:     {
 							fullRange:  range,
@@ -668,64 +668,28 @@ function splitCommentNodes(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRN
 	return [comments, others];
 }
 
-/**
- * Find the first sibling of the given node that is not a comment, starting from the given node and going to the right.
- * @param snode      - the node for which to find the first non-comment sibling
- * @param knownNexts - cache map from node id to the id of the first non-comment sibling
- */
-function findFirstNonCommentSibling(snode: SyntaxNode, knownNexts: Map<number, SyntaxNode | null>): SyntaxNode | null {
-	const cache = knownNexts.get(snode.id);
-	if(cache !== undefined) {
-		return cache;
-	}
-	const cursor = snode.parent?.walk();
-	if(!cursor) {
-		return null;
-	}
-	const linkCaches: number[] = [snode.id];
-	cursor.gotoFirstChild();
-	while(cursor.nodeId !== snode.id && cursor.gotoNextSibling()) {
-		/* skip */
-	}
-	cursor.gotoNextSibling();
-	while(cursor.nodeType === TreeSitterType.Comment && cursor.gotoNextSibling()) {
-		/* skip */
-		linkCaches.push(cursor.nodeId);
-	}
-	const cur = cursor.currentNode;
-	for(const id of linkCaches) {
-		knownNexts.set(id, cur);
-	}
-	cursor.delete();
-	return cur;
-}
-
-function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
-	if(comments.length === 0) {
+function linkCommentsToNextNodes(parent: SyntaxNode, nodes: readonly SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
+	if(comments.length === 0 || nodes.length === 0) {
 		return comments;
 	}
-	const remain: SyntaxAndRNode[] = [];
-	const cacheMap = new Map<number, SyntaxNode | null>();
-	const nodeById = new Map<number, SyntaxAndRNode>(nodes.map(n => [n[0].id, n]));
-	for(const [commentSyntaxNode, commentNode] of comments) {
-		let sibling: SyntaxNode | null;
-		const prev = commentSyntaxNode.previousSibling;
-		if(prev?.endIndex === commentSyntaxNode.startIndex) {
-			// if there is a sibling on the same line, we link the comment to that node
-			sibling = prev;
-		} else {
-			sibling = findFirstNonCommentSibling(commentSyntaxNode, cacheMap);
-		}
-		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
-		const [, node] = (sibling ? nodeById.get(sibling.id) : undefined) ?? nodes[0] ?? [];
-		if(node) {
-			node.info.adToks ??= [];
-			node.info.adToks.push(commentNode);
-		} else {
-			remain.push([commentSyntaxNode, commentNode]);
-		}
+	const nodeById = new Map(nodes.map(([s, n]) => [s.id, n]));
+	/* one pass over the siblings, walking them per comment is quadratic in long scripts */
+	const siblings = parent.children;
+	const indexOf = new Map(siblings.map((s, i) => [s.id, i]));
+	const nextNonComment: (SyntaxNode | undefined)[] = [];
+	for(let i = siblings.length - 2; i >= 0; i--) {
+		nextNonComment[i] = siblings[i + 1].type === TreeSitterType.Comment ? nextNonComment[i + 1] : siblings[i + 1];
 	}
-	return remain;
+	for(const [commentSyntaxNode, commentNode] of comments) {
+		const i = indexOf.get(commentSyntaxNode.id) ?? -1;
+		const prev = siblings[i - 1];
+		// if there is a sibling on the same line, we link the comment to that node
+		const sibling = prev?.endIndex === commentSyntaxNode.startIndex ? prev : nextNonComment[i];
+		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
+		const node = (sibling && nodeById.get(sibling.id)) ?? nodes[0][1];
+		(node.info.adToks ??= []).push(commentNode);
+	}
+	return [];
 }
 
 function getNodesUntil(nodes: SyntaxNode[], type: TreeSitterType | string, startIndex = 0): SyntaxNode[] {

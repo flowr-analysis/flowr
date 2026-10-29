@@ -30,7 +30,8 @@ import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
-import { AmbientStateName, applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
+import { applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { REnvironment } from '../../../../../environments/environment';
 
@@ -318,7 +319,8 @@ export function processExpressionList<OtherInfo>(
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: DataflowInformation | undefined;
 	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
-	const autoPrint = data.referenceChain.length <= 1 && data.environment.level === 0 && data.completeAst.ast.files.some(f => f.root.info.id === rootId);
+	const fileRoot = data.completeAst.ast.files.some(f => f.root.info.id === rootId);
+	const autoPrint = data.referenceChain.length <= 1 && data.environment.level === 0 && fileRoot;
 	let initialState: Set<IdentifierReference> | undefined;
 	const hooks: DataflowInformation['hooks'] = [];
 
@@ -329,7 +331,16 @@ export function processExpressionList<OtherInfo>(
 			continue;
 		}
 		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
+		/* a statement runs first where it is first analyzed, a file sourced again later does not move it */
+		const order = fileRoot && !data.statementOrder?.has(expression.info.id) ? data.statementOrder : undefined;
+		const span: [number, number] | undefined = order === undefined ? undefined : [order.size, Infinity];
+		if(span !== undefined) {
+			order?.set(expression.info.id, span);
+		}
 		let processed = processDataflowFor(expression, data);
+		if(span !== undefined) {
+			span[1] = order?.size ?? Infinity;
+		}
 		const printed = autoPrint && autoPrints(expression, processed, data);
 		if(printed) {
 			processed = readsOfAutoPrint(processed, expression, data);

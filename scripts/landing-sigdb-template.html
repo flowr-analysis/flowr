@@ -20,16 +20,25 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; }
 <!--FOOTER-CSS-->
 
-p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .when { font-size: .9em; }
-.search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .search input {
-	flex: 1 1 18rem; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	padding: .7rem .9rem; border-radius: .6rem; border: 1px solid var(--border);
-	background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
+	flex: 1 1 auto; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	padding-right: 2.4rem;
 }
-.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.search select { font: inherit; padding: .7rem .6rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
+.qwrap { position: relative; flex: 1 1 18rem; display: flex; background: var(--panel); border-radius: .6rem; }
+.qwrap input { position: relative; z-index: 1; background: transparent; }
+.qwrap.colored input { color: transparent; caret-color: var(--fg); }
+.qwrap.colored input::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.hl { position: absolute; inset: 0; z-index: 0; overflow: hidden; white-space: pre; pointer-events: none; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: .7rem 2.4rem .7rem .9rem; border: 1px solid transparent; color: var(--fg); }
+.hl .punct { color: var(--muted); }
+.hl .op { color: color-mix(in srgb, var(--muted) 62%, #6f86b3); }
+.hl .role { color: color-mix(in srgb, #3b73c4 72%, var(--fg)); font-weight: 500; }
+.hl .prop { color: color-mix(in srgb, #c27a12 70%, var(--fg)); font-weight: 500; }
+.hl .regex { color: color-mix(in srgb, #8a5cc2 70%, var(--fg)); }
+.hl .bad { color: #c0392b; text-decoration: underline wavy; }
+.search input::-webkit-search-cancel-button { appearance: none; }
+#problem { margin: .6rem 0 0; font-size: .85rem; color: color-mix(in srgb, #c0392b 72%, var(--fg)); }
+#problem[hidden] { display: none; }
 #status { min-height: 1.6em; margin: .7rem 0 0; color: var(--muted); font-size: .9rem; }
 .filters { display: flex; flex-wrap: wrap; gap: .35rem; margin: .8rem 0 0; }
 .filters button {
@@ -40,6 +49,48 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .filters button:hover:not(:disabled) { color: var(--fg); border-color: var(--accent); }
 .filters button:disabled { opacity: .4; cursor: default; }
 .mix { order: 2; margin-left: auto; display: flex; align-items: center; gap: .45rem; }
+.group { display: contents; }
+.optwrap { position: relative; }
+.iconbtn { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; padding: 0; cursor: pointer; border-radius: .6rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted); box-shadow: var(--shadow); transition: color .12s, border-color .12s; }
+.iconbtn:hover, .iconbtn[aria-expanded="true"] { color: var(--fg); border-color: var(--accent); }
+.opts { position: absolute; top: calc(100% + .25rem); right: 0; z-index: 10; display: flex; flex-direction: column; gap: .4rem; padding: .5rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--panel); box-shadow: var(--shadow); }
+.opts[hidden] { display: none; }
+.opts select { padding: .4rem .5rem; font-size: .85rem; }
+.filters button.groupbtn { border-style: dashed; }
+.groupbtn::before { content: '+'; margin-right: .45em; }
+.group[data-open="true"] > .groupbtn::before, .groupbtn[aria-expanded="true"]::before { content: '\2212'; }
+.group[data-open="true"] > .groupbtn { color: var(--fg); }
+.filters button[hidden] { display: none; }
+.helpbtn { z-index: 2; position: absolute; top: .35rem; right: .45rem; width: 1.3rem; height: 1.3rem; padding: 0; display: grid; place-items: center; font: inherit; font-size: .75rem; line-height: 1; cursor: pointer; border-radius: 50%; border: 1px solid currentColor; background: none; color: var(--muted); opacity: .6; transition: opacity .12s, color .12s; }
+.helpbtn:hover, .helpbtn:focus-visible { color: var(--fg); opacity: 1; }
+.suggest { position: absolute; top: calc(100% + .2rem); left: 0; z-index: 10; min-width: 15rem; max-width: 100%; margin: 0; padding: 0; list-style: none; border-radius: .4rem; border: 1px solid var(--border); background: var(--panel); box-shadow: var(--shadow); max-height: 14rem; overflow-y: auto; font-size: .85rem; }
+.suggest li { padding: .1rem .5rem; cursor: pointer; white-space: nowrap; display: flex; align-items: baseline; }
+.suggest .label { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.suggest .label b { font-weight: 700; color: var(--accent); }
+.suggest .detail { color: var(--muted); font-size: .78rem; margin-left: .6rem; }
+.suggest li.none { opacity: .45; }
+.suggest li[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+.suggest li[aria-selected="true"] .label b { color: var(--accent-fg); }
+.suggest li[aria-selected="true"] .detail { color: var(--accent-fg); opacity: .85; }
+.suggest[hidden] { display: none; }
+.help { max-width: min(38rem, 92vw); padding: 1rem 1.3rem; border-radius: .8rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); box-shadow: var(--shadow); }
+.help::backdrop { background: rgb(0 0 0 / .35); }
+.help { max-height: 85vh; overflow: hidden; padding: 0; }
+/* the scrolling part sits inside the rounded card, so the scrollbar follows its corners instead of poking out of them */
+.help .helpscroll { max-height: calc(85vh - 2px); overflow-y: auto; padding: 1rem 1.3rem; }
+.help h3 { margin: 1rem 0 .3rem; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.help .try { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; padding: .05rem .4rem; margin-right: .3rem; cursor: pointer; border-radius: .3rem; border: 1px solid var(--border); background: var(--sunk); color: var(--fg); }
+.help .try:hover { border-color: var(--accent); color: var(--accent); }
+.help .words { display: grid; grid-template-columns: 1fr; gap: 0; }
+.help dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .15rem .7rem; font-size: .82rem; }
+.help dt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.help dd { margin: 0; color: var(--muted); }
+.help h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+.help ul { padding-left: 1.2rem; }
+.help li { margin: .4rem 0; }
+.help code { font-size: .85em; }
+.help form { text-align: right; }
+.help button { font: inherit; padding: .3rem .9rem; cursor: pointer; border-radius: .5rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg); }
 .mixlabel, .filterlabel { font-size: .72rem; color: var(--muted); }
 .filterlabel { align-self: center; margin-right: .1rem; }
 #scope {
@@ -147,6 +198,9 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 /* what the call does is the part worth keeping when the formals no longer fit */
 #hits .stated .ret, #hits .stated .kind { flex: none; }
 #hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
+#hits .stated mark.want { border-radius: .2rem; padding: 0 .15rem; color: inherit; }
+#hits .stated mark.want.role { color: color-mix(in srgb, #3b73c4 72%, var(--fg)); background: color-mix(in srgb, #3b73c4 14%, transparent); }
+#hits .stated mark.want.prop { color: color-mix(in srgb, #c27a12 70%, var(--fg)); background: color-mix(in srgb, #c27a12 15%, transparent); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
@@ -188,17 +242,61 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 </p>
 
 <div class="search">
-	<input id="q" type="search" spellcheck="false" autocomplete="off" autofocus placeholder="dplyr::filter" aria-label="Function name">
-	<select id="sort" aria-label="How to sort">
-		<option value="auto">best match</option>
-		<option value="best">closest match</option>
-	</select>
-	<select id="mode" aria-label="How to match">
-		<option value="fuzzy">fuzzy</option>
-		<option value="prefix">starts with</option>
-		<option value="contains">contains</option>
-	</select>
+	<span class="qwrap">
+		<div id="hl" class="hl" aria-hidden="true"></div>
+		<ul id="suggest" class="suggest" role="listbox" hidden></ul>
+		<input id="q" type="search" spellcheck="false" autocomplete="off" autofocus placeholder="dplyr::filter, or *([alias],*) [pure]" title="name(arguments)[function props]: [role] constrains an argument ([role]+ all of them, [role]? at least one), * stands for any arguments, [pure] or [invisible] constrains the function" aria-label="Function name">
+		<button type="button" id="help" class="helpbtn" title="how the search syntax works" aria-label="Search syntax help">?</button>
+	</span>
+	<span class="optwrap">
+	<button type="button" id="optbtn" class="iconbtn" aria-expanded="false" title="sort and match options" aria-label="Sort and match options"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 4.5h12M2 8h12M2 11.5h12"/><circle cx="10.5" cy="4.5" r="1.5" fill="var(--panel)"/><circle cx="5.5" cy="8" r="1.5" fill="var(--panel)"/><circle cx="11" cy="11.5" r="1.5" fill="var(--panel)"/></svg></button>
+		<span id="opts" class="opts" hidden>
+			<select id="sort" aria-label="How to sort">
+				<option value="auto">best match</option>
+				<option value="best">closest match</option>
+			</select>
+			<select id="mode" aria-label="How to match">
+				<option value="fuzzy">fuzzy</option>
+				<option value="prefix">starts with</option>
+				<option value="contains">contains</option>
+			</select>
+		</span>
+	</span>
 </div>
+<dialog id="helpdialog" class="help"><div class="helpscroll">
+	<h2>Search syntax</h2>
+	<p>A query is <code>name(arguments) [properties]</code>, every part optional. Without arguments or properties it is just a name, so <code>+</code>, <code>*</code>, <code>[[</code> and <code>%in%</code> search for exactly that. Click an example to try it.</p>
+	<h3>Names</h3>
+	<ul>
+		<li><button type="button" class="try" data-q="read*">read*</button> <code>*</code> in a name matches any text, over the whole name (<code>*csv</code>, <code>*read*</code>)</li>
+		<li><button type="button" class="try" data-q="dplyr::filter">dplyr::filter</button> only what that package exports</li>
+		<li><button type="button" class="try" data-q="*([alias],*)">*(&hellip;)</button> a lone <code>*</code> as the name means any function</li>
+	</ul>
+	<ul>
+		<li><button type="button" class="try" data-q="/^read\.(csv|table)$/">/regex/</button> between slashes, a regular expression over the whole name, ignoring case. It works for argument names too: <button type="button" class="try" data-q="*(/^file/?)">*(/^file/?)</button></li>
+	</ul>
+	<h3>Arguments</h3>
+	<ul>
+		<li><code>(x, y)</code> arguments by name, in order. Without a <code>*</code> the count has to match</li>
+		<li><button type="button" class="try" data-q="*(x?)">*(x?)</button> has an argument called <code>x</code>, anywhere. <code>x[value]?</code> adds a role</li>
+		<li><button type="button" class="try" data-q="*([alias],*)">*([alias],*)</button> the first argument has a role, the rest is anything. Several roles: <code>[alias,forced]</code></li>
+		<li><button type="button" class="try" data-q="*(file[resource])">*(file[resource])</button> exactly one argument, called <code>file</code>, with that role</li>
+		<li><code>*</code> any number of arguments, including none. <code>+</code> one or more</li>
+		<li><button type="button" class="try" data-q="*([value]+) [pure]">[role]+</button> one or more arguments, <b>all</b> with the role. <code>[role]*</code> zero or more, all with it</li>
+		<li><button type="button" class="try" data-q="*([value]?) [pure]">[role]?</button> <b>at least one</b> argument has the role, the others may be anything</li>
+	</ul>
+	<h3>The function</h3>
+	<ul>
+		<li><button type="button" class="try" data-q="[pure] *">[pure]</button> a property of the call as a whole. It may come first, last or right after the name, and several add up</li>
+		<li><button type="button" class="try" data-q="[invisible] *([value]?)">[invisible] *([value]?)</button> combines with arguments</li>
+	</ul>
+	<p>Only functions with a flowR signature can answer argument and property questions, and one signature has to satisfy all of it. Typing <code>[</code> lists the words that fit, grayed when nothing would match. The filter groups above ask the same without typing.</p>
+	<div class="words">
+		<div><h3>Argument roles</h3><dl id="helproles"></dl></div>
+		<div><h3>Function properties</h3><dl id="helpprops"></dl></div>
+	</div>
+	<form method="dialog"><button>close</button></form>
+</div></dialog>
 <div class="filters" id="filters">
 	<span class="filterlabel">filter:</span>
 	<button type="button" id="scope" hidden></button>
@@ -211,6 +309,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 		</span>
 	</span>
 </div>
+<p id="problem" class="problem" role="status" hidden></p>
 <p id="status">Type a name to search.</p>
 <ul id="hits"></ul>
 

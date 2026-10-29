@@ -65,7 +65,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 				}
 			}
 			if(!linked || nonLocal) {
-				nonLocalReads.push({ nodeId, name: NodeId.recoverName(nodeId, graph.idMap), type });
+				nonLocalReads.push({ nodeId, name: NodeId.recoverBareName(nodeId, graph.idMap), type });
 			}
 		}
 	}
@@ -148,7 +148,7 @@ export function linkFunctionCallWithSingleTarget(
 		for(const captured of Dataflow.targetsOf(graph, node, EdgeType.Reads)) {
 			const frame = fnSubflow.graph.has(captured) ? undefined : RNode.findEnclosing(captured, idMap, RFunctionDefinition.is);
 			const owner = frame === undefined ? undefined : graph.getVertex(frame);
-			const name = NodeId.recoverName(captured, idMap);
+			const name = NodeId.recoverBareName(captured, idMap);
 			const envState = DfgVertex.isFunctionDefinition(owner) && name !== undefined ? Resolve.byName(name, owner.subflow.environment)?.filter(hasEnvState).find(d => d.nodeId === captured)?.envState : undefined;
 			if(envState !== undefined) {
 				linkFieldWritesOnCall(graph, id, fnId, node, captured, envState, idMap);
@@ -212,10 +212,22 @@ export type CalledFunctions = {
 	calledBuiltIns?:     readonly NodeId[]
 };
 
+/**
+ * Whether the call `info` may get its function from `target`, which it has the edge `e` to. An unnamed call reads
+ * the expression that gives its function. A named call that only reads another call reads state that call wrote,
+ * like the options, unless that call binds the name. No call binds a name that resolves to nothing (`unbound`),
+ * and a call processed by default (`options()`, `par()`) binds no name at all.
+ */
+function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, target: NodeId, e: DfEdge, unbound = false): boolean {
+	const vertex = graph.getVertex(target);
+	return DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || DfEdge.includesType(e, EdgeType.Calls | EdgeType.DefinedByOnCall) || !DfgVertex.isFunctionCall(vertex)
+		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default)));
+}
+
 function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap, isRoot: boolean): CalledFunctions | undefined {
 	const readIds = new Set<NodeId>();
 	for(const [t, e] of graph.edgesFrom(id)) {
-		if(!NodeId.isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits)) {
+		if(!NodeId.isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits) && mayBeFunctionSource(graph, info, t, e)) {
 			readIds.add(t);
 		}
 	}
@@ -278,8 +290,10 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		functionCallDefs = Resolve.byNameAndType(info.name, known, refType)?.map(d => d.nodeId) ?? [];
 	}
 	const followBits = DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || functionCallDefs.length === 0 ? FCallLinkReadBits : EdgeType.Calls;
+	const unbound = known !== undefined && functionCallDefs.length === 0;
 	for(const [target, edge] of graph.edgesFrom(call)) {
-		if(DfEdge.includesType(edge, followBits) && DfEdge.doesNotIncludeType(edge, EdgeType.Argument) && (known !== undefined || !NodeId.isBuiltIn(target))) {
+		if(DfEdge.includesType(edge, followBits) && DfEdge.doesNotIncludeType(edge, EdgeType.Argument) && (known !== undefined || !NodeId.isBuiltIn(target))
+			&& mayBeFunctionSource(graph, info, target, edge, unbound)) {
 			functionCallDefs.push(target);
 		}
 	}
@@ -300,19 +314,21 @@ export function getAllLinkedFunctionDefinitions(
 ): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
 	const result = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 	const builtIns = new Set<BuiltIn>();
-	const potential: [NodeId, boolean][] = Array.from(functionDefinitionReadIds, id => [id, false]);
-	const visited = new Set<NodeId>();
-	const expanded = new Set<NodeId>();
-	const expandedViaAccess = new Set<NodeId>();
+	/* `call` is the call whose return led into the current body, so a parameter it binds holds only what it passes */
+	const potential: [NodeId, boolean, NodeId | undefined][] = Array.from(functionDefinitionReadIds, id => [id, false, undefined]);
+	const visited = new Set<string>();
+	const expanded = new Set<string>();
+	const expandedViaAccess = new Set<string>();
+	const at = (id: NodeId, call: NodeId | undefined) => `${id}@${call ?? ''}`;
 
 	while(potential.length !== 0) {
-		const [cid, viaAccess] = potential.pop() as [NodeId, boolean];
+		const [cid, viaAccess, call] = potential.pop() as [NodeId, boolean, NodeId | undefined];
 		const done = viaAccess ? expandedViaAccess : expanded;
-		if(done.has(cid)) {
+		if(done.has(at(cid, call))) {
 			continue;
 		}
-		done.add(cid);
-		visited.add(cid);
+		done.add(at(cid, call));
+		visited.add(at(cid, call));
 		if(NodeId.isBuiltIn(cid)) {
 			builtIns.add(cid);
 			continue;
@@ -327,22 +343,30 @@ export function getAllLinkedFunctionDefinitions(
 		const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
 		const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess);
 		let hasReturnEdge = false;
-		let followTargets: NodeId[] | undefined;
+		let followTargets: [NodeId, boolean][] | undefined;
 		/* a list handed on as a whole (a loop, an apply) yields its entries, an access the entry it names */
 		const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
+		/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
+		const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? cid : call;
 		for(const [target, e] of dataflowGraph.edgesFrom(cid)) {
 			if(DfEdge.includesType(e, handedBack)) {
 				hasReturnEdge = true;
-				if(!visited.has(target)) {
-					potential.push([target, nextViaAccess]);
+				if(!visited.has(at(target, returnedTo))) {
+					potential.push([target, nextViaAccess, returnedTo]);
 				}
-			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && !visited.has(target)) {
-				(followTargets ??= []).push(target);
+			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits)) {
+				(followTargets ??= []).push([target, DfEdge.includesType(e, EdgeType.DefinedByOnCall)]);
 			}
 		}
 		if(!hasReturnEdge && followTargets) {
-			for(const target of followTargets) {
-				potential.push([target, nextViaAccess]);
+			/* a parameter the call binds holds only what that call passes, the walk then goes on in the caller */
+			const passed = call === undefined ? undefined : new Set(Dataflow.targetsOf(dataflowGraph, call, EdgeType.Argument));
+			const bound = followTargets.some(([target, onCall]) => onCall && passed?.has(target));
+			for(const [target, onCall] of followTargets) {
+				const next = onCall ? undefined : call;
+				if((!bound || !onCall || passed?.has(target)) && !visited.has(at(target, next))) {
+					potential.push([target, nextViaAccess, next]);
+				}
 			}
 		}
 	}
@@ -514,14 +538,17 @@ export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefine
 		? String(fieldNode.content.num) : undefined;
 }
 
-/** Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns. */
+/**
+ * Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns,
+ * and so may be a field of unknown kind, like the `read.csv` of `assign("f", read.csv, envir = e)`.
+ */
 export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean): void {
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
 		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
 			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
 		}
-		if(returnsFunctions && fd.type === ReferenceType.Function) {
+		if(returnsFunctions && (fd.type & (ReferenceType.Function | ReferenceType.Unknown)) !== 0) {
 			graph.addEdge(accessId, fd.nodeId, EdgeType.Returns);
 		}
 	}
@@ -581,11 +608,11 @@ function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: Datafl
 			|| DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
 			return undefined;
 		} else if(DfgVertex.isVariableDefinition(vertex)) {
-			locals.add(NodeId.recoverName(node, idMap) ?? '');
+			locals.add(NodeId.recoverBareName(node, idMap) ?? '');
 		}
 	}
 	for(const param of Object.keys(factory.params)) {
-		locals.add(NodeId.recoverName(NodeId.normalize(param), idMap) ?? '');
+		locals.add(NodeId.recoverBareName(NodeId.normalize(param), idMap) ?? '');
 	}
 	return { factory: factory.id, locals };
 }

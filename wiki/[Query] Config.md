@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-25, 18:02:51 UTC (v2.16.6), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -25,8 +25,7 @@ Query: **config** (0 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -82,7 +81,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "project": {"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false,"assumeImplicitEcho":true},
       "linter": {"disabledRules":["software-has-license","software-has-tests"],"disabledTags":["cmd-check"]},
       "specializeConfig": {
-        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledTags":[]}},
+        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledRules":[],"disabledTags":[]}},
         "project": {"solver":{"resolveSource":{"assumeFilesExist":true}}},
         "shiny-app": {"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},
         "script": {"inherit":"unknown"},
@@ -141,7 +140,7 @@ Please note that, in the REPL, a special syntax starting with `+` (which should 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.3, R v4.6.1 (r-shell engine)
+flowR repl v2.16.6, R v4.6.1 (r-shell engine)
 R> :query @config +solver.slicer.threshold=10000
 ```
 
@@ -164,7 +163,7 @@ one path segment, `**` any number. This only reads: setting a value still names 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.3, R v4.6.1 (r-shell engine)
+flowR repl v2.16.6, R v4.6.1 (r-shell engine)
 R> :query @config **.enabled
 ```
 

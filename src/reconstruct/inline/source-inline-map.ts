@@ -39,7 +39,7 @@ export interface InlineWarning {
 }
 
 /**
- * Connect each `source()` call node to the index of the file it sources in `ast.ast.files` (index 0 is main).
+ * Connect each `source()` call node to the index of the file it sources in `ast.ast.files`, whichever file flowR loaded first.
  *
  * A `source()` call lives in its parent file, so we reach its sourced block via the control dependency the
  * dataflow analysis adds (see {@link sourceRequest}): a vertex whose innermost cd (`cds[0]`) is a source call
@@ -61,7 +61,7 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 
 	// resolved file path -> its index (paths are unique per stored file)
 	const pathToIndex = new Map<string, number>();
-	for(let i = 1; i < files.length; i++) {
+	for(let i = 0; i < files.length; i++) {
 		const path = files[i].root.info.file;
 		if(path !== undefined) {
 			pathToIndex.set(path, i);
@@ -105,9 +105,11 @@ export function buildSourceInlineMap(ast: NormalizedAst, graph: DataflowGraph): 
 			argToIndex.set(arg, idx);
 		}
 	}
+	/* a file the project analyzes on its own as well has no block under the call, its path still names it */
+	const byPath = (arg: string) => [...pathToIndex].find(([path]) => path === arg || path.endsWith(`/${arg}`))?.[1];
 	for(const [callId, arg] of sourceArgs) {
 		if(arg !== undefined && !map.has(callId)) {
-			const idx = argToIndex.get(arg);
+			const idx = argToIndex.get(arg) ?? byPath(arg);
 			if(idx !== undefined) {
 				map.set(callId, idx);
 			}

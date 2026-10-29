@@ -6,6 +6,7 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from './function-semantics';
 import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ExitPoint } from '../info';
@@ -120,6 +121,13 @@ function enclosingDefinition(id: NodeId, idMap: AstIdMap, graph: DataflowGraph):
 	return RNode.findEnclosing(id, idMap, node => DfgVertex.isFunctionDefinition(graph.getVertex(node.info.id)));
 }
 
+/** The `UseMethod` call of a dispatch vertex: the vertex sits on the generic argument, `"f"` in `UseMethod("f", x)`. */
+function dispatchCallOf(id: NodeId, idMap: AstIdMap): RNodeWithParent | undefined {
+	const node = idMap.get(id);
+	const argument = node !== undefined && node.info.role === RoleInParent.ArgumentValue ? RNode.directParent(node, idMap) : undefined;
+	return argument === undefined ? node : RNode.directParent(argument, idMap);
+}
+
 /** The definitions whose body dispatches, with what each dispatch does with the arguments. */
 function dispatchingDefinitions(graph: DataflowGraph): Map<NodeId, DispatchInformation> {
 	const idMap = graph.idMap;
@@ -135,7 +143,7 @@ function dispatchingDefinitions(graph: DataflowGraph): Map<NodeId, DispatchInfor
 		if(within === undefined) {
 			continue;
 		}
-		const node = idMap.get(id);
+		const node = dispatchCallOf(id, idMap);
 		const known = dispatch.get(within);
 		dispatch.set(within, {
 			named:   (RFunctionCall.is(node) && node.arguments.length > 1) || (known?.named ?? false),
@@ -526,10 +534,15 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 		const owner = idMap.get(idMap.get(param)?.info.parent ?? -1)?.info.parent;
 		for(const read of Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
 			found.push(read);
+			/* only a closure within the function owning the parameter captures it, a read elsewhere is no call of one */
+			const closures: NodeId[] = [];
 			let closure = RNode.findEnclosing(read, idMap, RFunctionDefinition.is);
 			while(closure !== undefined && closure !== owner) {
-				found.push(...Dataflow.sourcesOf(graph, closure, EdgeType.Calls));
+				closures.push(closure);
 				closure = RNode.strictlyEnclosingFunction(closure, idMap);
+			}
+			if(closure === owner) {
+				found.push(...closures.flatMap(c => Dataflow.sourcesOf(graph, c, EdgeType.Calls)));
 			}
 			/* a read that is an argument hands the promise on */
 			for(const holder of Dataflow.sourcesOf(graph, read, EdgeType.Argument)) {

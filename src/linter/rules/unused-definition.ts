@@ -1,15 +1,19 @@
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFix, LintingResultCertainty, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { FunctionArgument } from '../../dataflow/graph/graph';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isNotUndefined } from '../../util/assert';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -31,6 +35,8 @@ import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
+import { isTop } from '../../dataflow/eval/values/r-value';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -151,8 +157,8 @@ export interface UnusedDefinitionMetadata extends MergeableRecord {
 }
 
 const InterestingEdgesVariable = EdgeType.Reads | EdgeType.Calls | EdgeType.DefinesOnCall;
-/* include read as this could print the function definition */
-const InterestingEdgesFunction = EdgeType.Reads | EdgeType.Calls;
+/* a read may print the definition, and a call handing it back unchanged, like `(` in `f <- (function() 1)`, passes it on */
+const InterestingEdgesFunction = EdgeType.Reads | EdgeType.Calls | EdgeType.Returns;
 const InterestingEdgesTargets = EdgeType.SideEffectOnCall;
 
 /**
@@ -193,26 +199,34 @@ function hasContractedSignature(
  * so says nothing; the same property on a call within it, as `assign` states, is an effect of its own.
  */
 function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
-	if(!DfgVertex.isFunctionCall(df.graph.getVertex(id))) {
+	const vertex = df.graph.getVertex(id);
+	if(!DfgVertex.isFunctionCall(vertex)) {
 		return false;
 	}
-	/* what a call that binds the very name in question does to that name is not what keeps it alive */
-	const worthKeeping = id === binds ? { props: ImpureProps.props & ~CallProp.Scope, tags: ImpureProps.tags } : ImpureProps;
-	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), worthKeeping);
+	/* two properties do not count: the `Scope` effect of the assignment being removed, which is the binding itself, and
+	   the `MayPure` of `do.call(f, args)` with a known `f`, as `f` is checked on its own as part of the value */
+	const ignored = (id === binds ? CallProp.Scope : 0) | (runsOnlyKnownFunctions(vertex, df) ? CallProp.MayPure : 0);
+	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), { props: ImpureProps.props & ~ignored, tags: ImpureProps.tags });
 }
 
-function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
+/** whether the functions handed to a call like `do.call(f, args)` are all known, see {@link Dataflow.callsOnlyKnownFunctions} */
+function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): boolean {
+	const handed = vertex.args.map(FunctionArgument.getReference)
+		.filter(r => r !== undefined && RSymbol.is(graph.idMap?.get(r)) && DfgVertex.isFunctionCall(graph.getVertex(r))) as NodeId[];
+	return handed.length > 0 && handed.every(h => Dataflow.callsOnlyKnownFunctions(h, graph, environment));
+}
+
+function getAssignmentPeer(node: RNode<ParentInformation>, ast: NormalizedAst, dfg: DataflowGraph): { statement: RNode<ParentInformation>, value: RNode<ParentInformation> } | undefined {
 	const parent = RNode.directParent(node, ast.idMap);
-	if(!RBinaryOp.is(parent)) {
-		return undefined;
+	if(RBinaryOp.is(parent)) {
+		return parent.lhs.info.id === node.info.id ? { statement: parent, value: parent.rhs }
+			: parent.rhs.info.id === node.info.id ? { statement: parent, value: parent.lhs } : undefined;
 	}
-	if(parent.lhs.info.id === node.info.id) {
-		return { statement: parent, value: parent.rhs };
-	}
-	if(parent.rhs.info.id === node.info.id) {
-		return { statement: parent, value: parent.lhs };
-	}
-	return undefined;
+	/* `assign("x", 1)` assigns like `x <- 1`: the first argument names the target, the second is the value */
+	const call = RArgument.is(parent) ? RNode.directParent(parent, ast.idMap) : undefined;
+	const definition = dfg.getVertex(node.info.id);
+	const value = DfgVertex.isVariableDefinition(definition) && definition.source?.length === 1 ? ast.idMap.get(definition.source[0]) : undefined;
+	return RFunctionCall.is(call) && value !== undefined && DfgVertex.hasOrigin(dfg.getVertex(call.info.id), BuiltInProcName.Assignment) ? { statement: call, value } : undefined;
 }
 
 function yieldsFunctionValue(node: RNode<ParentInformation>, ast: NormalizedAst, dfg: DataflowGraph): boolean {
@@ -242,7 +256,10 @@ function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAs
 /** Whether the definition's value has obligations, like side effects, so the definition cannot be removed. */
 function hasImportantArgs(definedBys: readonly NodeId[], df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
 	const dfg = df.graph;
-	return definedBys.some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, binds)
+	/* removing `u <- (runif(1))` removes the `runif` call too, which changes the random seed; calls in a function body defined there do not run */
+	const values = definedBys.filter(d => d !== binds).map(d => dfg.idMap?.get(d)).filter(isNotUndefined);
+	const runs = RNode.collectAllIdsWithStop(values, RFunctionDefinition.is).union(new Set(definedBys));
+	return runs.values().some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, binds)
 		|| dfg.edgesTo(d).values().some(edge => DfEdge.includesType(edge, InterestingEdgesTargets))
 		|| dfg.edgesFrom(d).entries().some(([target, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target)));
 }
@@ -256,10 +273,10 @@ function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<Dataflow
 		return undefined;
 	}
 	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
-	if(hasImportantArgs(definedBys, df, variable.info.parent)) {
+	const assignment = getAssignmentPeer(variable, ast, dfg);
+	if(hasImportantArgs(definedBys, df, assignment?.statement.info.id ?? variable.info.parent)) {
 		return undefined;
 	}
-	const assignment = getAssignmentPeer(variable, ast);
 	const totalRangeToRemove = SourceLocation.merge([
 		...definedBys.map(d => SourceLocation.fromNode(ast.idMap.get(d))),
 		SourceLocation.fromNode(assignment?.value),
@@ -269,7 +286,7 @@ function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<Dataflow
 		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
-	const description = `Remove unused definition of \`${variable.lexeme}\``;
+	const description = `Remove unused definition of \`${NodeId.recoverBareName(variable.info.id, ast.idMap)}\``;
 	const statement = assignment?.statement ?? variable;
 	if(isStandaloneStatement(statement, ast)) {
 		return yieldsFunctionValue(statement, ast, dfg) ? undefined : [{ type: 'remove', loc: totalRangeToRemove, description }];
@@ -305,6 +322,24 @@ function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boole
 	return false;
 }
 
+/**
+ * Whether `node` writes into a parameter (`output$plot <- ...` in a Shiny server) that may hold an environment, so the
+ * caller sees the write. It may unless every call in the code passes a value flowR resolves, which is never an environment.
+ */
+function mayWriteIntoCallerObject(node: RNode<ParentInformation>, graph: DataflowGraph, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	if(node.info.role !== RoleInParent.Accessed) {
+		return false;
+	}
+	const environment = ctx.env.makeCleanEnv();
+	return Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads).some(param => {
+		if(idMap.get(param)?.info.role !== RoleInParent.ParameterName) {
+			return false;
+		}
+		const handed = Dataflow.targetsOf(graph, param, EdgeType.DefinedByOnCall);
+		return handed.length === 0 || handed.some(arg => isTop(Resolve.toValue(arg, { graph, idMap, environment, ctx })));
+	});
+}
+
 export const UNUSED_DEFINITION = {
 	createSearch: config => Q.all().filter(
 		config.includeFunctionDefinitions ? F.or(VertexType.VariableDefinition, VertexType.FunctionDefinition) : VertexType.VariableDefinition),
@@ -327,7 +362,7 @@ export const UNUSED_DEFINITION = {
 			if(!vertex || (!DfgVertex.isVariableDefinition(vertex) && DfgVertex.isFunctionDefinition(vertex) && !config.includeFunctionDefinitions)) {
 				return false;
 			}
-			if(s3GenericParams.has(node.info.id)) {
+			if(s3GenericParams.has(node.info.id) || mayWriteIntoCallerObject(node, graph, normalize.idMap, ctx)) {
 				return false;
 			}
 			// an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, so it is used
@@ -353,7 +388,7 @@ export const UNUSED_DEFINITION = {
 				}
 				return [{
 					certainty:    LintingResultCertainty.Uncertain,
-					variableName: node.lexeme,
+					variableName: NodeId.recoverBareName(node.info.id, normalize.idMap),
 					involvedId:   node.info.id,
 					loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 					quickFix:     quickFixForUnused(node, dataflow, normalize)
@@ -362,10 +397,10 @@ export const UNUSED_DEFINITION = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)} is unused`
-	},
+	prettyPrint: prettyPrint(
+		result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)}`,
+		result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)} is unused`
+	),
 	info: {
 		name:          'Unused Definitions',
 		description:   'Finds definitions that are never used.',

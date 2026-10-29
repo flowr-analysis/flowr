@@ -1,6 +1,7 @@
 import { log } from '../../../util/log';
 import type { IdMapQuery, IdMapQueryResult } from './id-map-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 
 /**
  * Executes the given ID map queries using the provided analyzer.
@@ -13,9 +14,7 @@ export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: r
 	const startTime = Date.now();
 	const idMap = (await analyzer.normalize()).idMap;
 	return {
-		'.meta': {
-			timing: Date.now() - startTime
-		},
+		...metaSince(startTime),
 		idMap
 	};
 }

@@ -19,6 +19,7 @@ import { UNDEFINED_SYMBOL } from './rules/undefined-symbol';
 import { UNUSED_IMPORT } from './rules/unused-import';
 import { SYNTACTICALLY_VALID } from './rules/syntactically-valid';
 import { UNCLOSED_CONNECTION } from './rules/unclosed-connection';
+import { OVERWRITTEN_FILE } from './rules/overwritten-file';
 import { UNESCAPED_ARGUMENTS } from './rules/unescaped-arguments';
 import { NAMESPACE_ACCESS } from './rules/namespace-access';
 import { CLASS_STRING_COMPARISON } from './rules/cmd-check/class-string-comparison';
@@ -67,6 +68,7 @@ export const LintingRules = {
 	'unused-import':                   UNUSED_IMPORT,
 	'syntactically-valid':             SYNTACTICALLY_VALID,
 	'unclosed-connection':             UNCLOSED_CONNECTION,
+	'overwritten-file':                OVERWRITTEN_FILE,
 	'unescaped-arguments':             UNESCAPED_ARGUMENTS,
 	'namespace-access':                NAMESPACE_ACCESS,
 	'class-string-comparison':         CLASS_STRING_COMPARISON,

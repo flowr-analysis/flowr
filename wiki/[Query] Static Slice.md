@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Static Slice Query">Static Slice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).\
 _This query is requested with the type `static-slice`._\
-Run in the REPL: `:query @static-slice (<crit>;...)[fiIcB] <code | file://path>`
+Run in the REPL: `:query @static-slice (<crit>;...)[fricIB] <code | file://path>`
 
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
@@ -45,8 +45,7 @@ x
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -84,7 +83,7 @@ you can use the `noReconstruction` flag.
 
 _Results (prettified and summarized):_
 
-Query: **static-slice** (4 ms)\
+Query: **static-slice** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice "4@x" \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}
 
@@ -92,8 +91,7 @@ Query: **static-slice** (4 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"static-slice":{".meta":{},"results":{"4@x":{"slice":{"timesHitThreshold":0,"result":[9,0,2,1],"slicedFor":[9],"freeNames":[],".meta":{}}}}},".meta":{}}
@@ -128,8 +126,7 @@ x
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -177,8 +174,7 @@ print(greeting)
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -204,6 +200,6 @@ This query replaces the old [`request-slice`](https://github.com/flowr-analysis/
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Static Slice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts#L26"><code><span title="Execute static slice queries, catching duplicates with the same fingerprint">executeStaticSliceQuery</span></code></a>.
+The Static Slice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts#L29"><code><span title="Execute static slice queries, catching duplicates with the same fingerprint">executeStaticSliceQuery</span></code></a>.
 
 </details>

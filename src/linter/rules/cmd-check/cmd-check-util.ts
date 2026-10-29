@@ -11,14 +11,14 @@ import type { ParentInformation, AstIdMap, NormalizedAst  } from '../../../r-bri
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { isBaseRPackage } from '../../../util/r-base-packages';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingResult } from '../../linter-format';
+import { prettyPrint, type LintingResult } from '../../linter-format';
+export { at } from '../../linter-util';
+import { builtInOf } from '../../linter-util';
 import { SourceLocation } from '../../../util/range';
 import { VertexType, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 
@@ -137,12 +137,6 @@ export function calledDefinitions(graph: DataflowGraph, call: NodeId, idMap: Ast
 	return defs;
 }
 
-/** Whether the call reaches the built-in function only, and no definition of the code. */
-export function isBuiltInCall(graph: DataflowGraph, id: NodeId): boolean {
-	const origins = Dataflow.origin(graph, id);
-	return origins === undefined || origins.every(o => o.type === OriginType.BuiltInFunctionOrigin);
-}
-
 /** Whether the node or an ancestor is quoted or otherwise evaluated elsewhere (`quote(...)`, a data mask). */
 export function isQuoted(graph: DataflowGraph, id: NodeId, idMap: AstIdMap): boolean {
 	for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
@@ -158,31 +152,24 @@ export function isStandardPackage(pkg: string): boolean {
 	return isBaseRPackage(pkg) && pkg !== 'methods' && pkg !== 'stats4';
 }
 
-/** The certainty, involved node, and location of a finding at a node or location. */
-export function at(where: RNode<ParentInformation> | SourceLocation | undefined, certain = true): Pick<LintingResult, 'certainty' | 'involvedId' | 'loc'> {
-	const node = Array.isArray(where) ? undefined : where;
-	return {
-		certainty:  certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain,
-		involvedId: node?.info.id,
-		loc:        (node ? SourceLocation.fromNode(node) : where as SourceLocation | undefined) ?? SourceLocation.invalid()
-	};
-}
-
 /** The pretty printers of a rule: `query` describes a result, the full one is its message and location. */
 export function printer<R extends CmdCheckResult>(query: (r: R) => string) {
-	return {
-		[LintingPrettyPrintContext.Query]: (r: R) => `${query(r)} at ${SourceLocation.format(r.loc)}`,
-		[LintingPrettyPrintContext.Full]:  (r: R) => `${r.message} at ${SourceLocation.format(r.loc)}`
-	};
+	return prettyPrint<R>(r => `${query(r)} at ${SourceLocation.format(r.loc)}`, r => `${r.message} at ${SourceLocation.format(r.loc)}`);
 }
 
-/** The calls (by name, if given) of package code, with the node and vertex of each; `builtIn` drops redefined ones. */
-export function* packageCalls(graph: DataflowGraph, idMap: AstIdMap, pkg: PackageInfo, names?: ReadonlySet<string>, builtIn = false): Generator<{ id: NodeId, name: string, node: RNode<ParentInformation>, vertex: DataflowGraphVertexFunctionCall }> {
+/** The calls (by name, if given) of package code, with the node and vertex of each; those resolving to a built-in, named by it. */
+export function* packageCalls(graph: DataflowGraph, idMap: AstIdMap, pkg: PackageInfo, names?: ReadonlySet<string>): Generator<{ id: NodeId, name: string, node: RNode<ParentInformation>, vertex: DataflowGraphVertexFunctionCall }> {
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		const name = Identifier.getName(vertex.name);
 		const node = idMap.get(id);
-		if(node !== undefined && (names === undefined || names.has(name)) && pkg.isPackageCode(node.info.file) && (!builtIn || isBuiltInCall(graph, id))) {
+		const resolved = builtInOf(graph, id);
+		const name = resolved === undefined ? undefined : Identifier.getName(resolved);
+		if(node !== undefined && name !== undefined && (names === undefined || names.has(name)) && pkg.isPackageCode(node.info.file)) {
 			yield { id, name, node, vertex };
 		}
 	}
 }
+
+/** the extensions R reads as data sets from a package's `data` directory, including the compressed forms */
+export const DataSetExtensions: readonly string[] = ['R', 'r', 'RData', 'rdata', 'rda', 'TXT', 'CSV',
+	...['tab', 'txt', 'csv'].flatMap(e => [e, ...['gz', 'bz2', 'xz'].map(c => `${e}.${c}`)])];
+export const DataFile = new RegExp(`\\.(${DataSetExtensions.map(e => e.replaceAll('.', '\\.')).join('|')})$`);

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 15:03:10 UTC (v2.16.6), do not edit directly._
 <h2 id="Call-Context Query">Call-Context Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds all calls in a set of files that matches specified criteria.\
@@ -69,8 +69,7 @@ Query: **call-context** (0 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -116,19 +115,24 @@ Now let's say we want to query _all_ uses of the `my_test_function`:
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
-&nbsp;&nbsp;&nbsp;╰ **.** (2 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (2 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1))
+Query: **call-context** (0 ms)\
+&nbsp;&nbsp;&nbsp;╰ **.** (3 hits):\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (3 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1)), _`my_test_function()`_ (L.5)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{"call-context":{".meta":{},"kinds":{".":{"subkinds":{".":[{"id":4,"name":"foo","aliasRoots":[1]},{"id":12,"name":"bar","aliasRoots":[1]}]}}}},".meta":{}}
+{
+  "call-context": {
+    ".meta": {},
+    "kinds": {".":{"subkinds":{".":[{"id":4,"name":"foo","aliasRoots":[1]},{"id":12,"name":"bar","aliasRoots":[1]},{"id":14,"name":"my_test_function"}]}}}
+  },
+  ".meta": {}
+}
 ```
 
 </details>
@@ -139,6 +143,6 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Call-Context Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/call-context-query-executor.ts#L266"><code><span title="Multi-stage call context query resolve. 1. Resolve all calls in the DF graph that match the respective DefaultCallContextQueryFormat#callName regex. 2. If there is an alias attached, consider all call traces. 3. Identify their respective call targets, if DefaultCallContextQueryFormat#callTargets is set to be non-any. This happens during the main resolution! 4. Attach linkTo calls to the respective...">executeCallContextQueries</span></code></a>.
+The Call-Context Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/call-context-query-executor.ts#L312"><code><span title="Multi-stage call context query resolve. 1. Resolve all calls in the DF graph that match the respective DefaultCallContextQueryFormat#callName regex. 2. If there is an alias attached, consider all call traces. 3. Identify their respective call targets, if DefaultCallContextQueryFormat#callTargets is set to be non-any. This happens during the main resolution! 4. Attach linkTo calls to the respective...">executeCallContextQueries</span></code></a>.
 
 </details>

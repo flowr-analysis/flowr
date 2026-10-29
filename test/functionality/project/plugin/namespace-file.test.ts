@@ -45,7 +45,7 @@ export(coord_cartesian)
 export(ggsave)
 export(fortify)
 export(scale_type)
-exportPattern("^[^\\.]\\.*$")
+exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
@@ -85,7 +85,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.length, 1);
-			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.]\\.*$');
+			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\\\.]\\\\.*$', 'as written, the escapes of the R string included');
 		});
 
 		test('isExported', () => {
@@ -93,6 +93,8 @@ importMethodsFrom(BiocGenerics,combine)`));
 			assert.isDefined(deps?.namespaceInfo);
 			assert.isFalse(isExportedInInfo('ggplot2', deps?.namespaceInfo));
 			assert.isTrue(isExportedInInfo('ggplot', deps?.namespaceInfo));
+			assert.isTrue(isExportedInInfo('q..', deps?.namespaceInfo), 'the pattern is read as R reads its string, "\\\\." is a literal dot');
+			assert.isFalse(isExportedInInfo('q\\x', deps?.namespaceInfo), 'no backslash is left in the pattern');
 		});
 	});
 

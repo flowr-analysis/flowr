@@ -39,7 +39,7 @@ import { type AmbientScope, type AmbientStateAccess, AmbientStateAccessType, app
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
-import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsElement, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import { StringFold } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
 import { resolveAsGet } from '../eval/resolve/resolve-get';
@@ -95,12 +95,14 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 ) => DataflowInformation;
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
-	type:         ReferenceType.BuiltInFunction
-	definedAt:    BuiltIn
-	processor:    BuiltInIdentifierProcessor
-	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & BuiltInFnInfo & { libFn?: boolean }
+	type:           ReferenceType.BuiltInFunction
+	definedAt:      BuiltIn
+	processor:      BuiltInIdentifierProcessor
+	config?:        ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & BuiltInFnInfo & { libFn?: boolean }
 	/** folds a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
-	evalHandler?: BuiltInEvalHandler
+	evalHandler?:   BuiltInEvalHandler
+	/** the processor's name, for a call made on our behalf (`do.call(new.env, list())`) that does not run it */
+	processorName?: BuiltInProcName
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -120,6 +122,8 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	 */
 	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	/** without arguments, the result is the frame the call runs in, like `environment()`, so within a function it reads every binding of the frame */
+	readonly readsFrame?:            boolean,
 	/** how the call reads or writes global state like the graphics parameters or the options, see {@link AmbientStateAccess} */
 	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[],
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
@@ -185,7 +189,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	if(scope !== undefined) {
 		return processAmbientScope(name, args, rootId, data, scope);
@@ -200,7 +204,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	let lastEnv = data.environment;
 	/* `evalq(expr)` runs `expr` right here, in the frame it is called from */
 	const inPlace = args.length === 1 && Identifier.getName(name.content) === 'evalq';
-	const { information: res, processedArguments } = processKnownFunctionCall({
+	const { information: processed, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, alternativeArgsFrom,
 		keepArgumentGraphs: nse !== undefined || masked !== undefined,
 		origin:             useAsProcessor,
@@ -214,6 +218,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 			return { ...d, environment: lastEnv };
 		}
 	});
+	let res = processed;
 	if(nsePositions !== undefined) {
 		dropQuotedReferences(res, processedArguments, nsePositions, lastEnv);
 	}
@@ -222,7 +227,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
-	const alias = layout !== undefined && layout.alias >= 0 ? processedArguments[layout.alias] : undefined;
+	const alias = layout !== undefined && layout.alias >= 0 ? processedArguments[layout.alias === layout.rest ? processedArguments.length - 1 : layout.alias] : undefined;
 	if(alias !== undefined) {
 		res.graph.addEdge(rootId, alias.entryPoint, EdgeType.Returns);
 	}
@@ -231,6 +236,21 @@ function defaultBuiltInProcessor<OtherInfo>(
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
 		const valuePositions = FunctionSemantics.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape);
 		readArguments(res.graph, rootId, valuePositions.map(i => processedArguments[i]));
+	}
+	/* a function's frame handed out outlives the call, the global one stays reachable through the names anyway */
+	if(readsFrame && args.length === 0 && data.environment.level > 0) {
+		/* the parameters it holds are what {@link BuiltInFnInfo#frame} states, as reading one must not force it */
+		for(const definitions of data.environment.current.memory.values()) {
+			for(const definition of definitions) {
+				if(!NodeId.isBuiltIn(definition.nodeId) && definition.type !== ReferenceType.Parameter) {
+					res.graph.addEdge(rootId, definition.nodeId, EdgeType.Reads);
+				}
+			}
+		}
+	}
+	/* before the unknown side effect, which forgets the values of the variables the ambient state is named by */
+	if(ambient !== undefined) {
+		res = applyAmbientStateAccess(res, args, rootId, data, ambient);
 	}
 	if(hasUnknownSideEffects) {
 		handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects === true ? undefined : hasUnknownSideEffects);
@@ -259,7 +279,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		(res as { exitPoints: readonly ExitPoint[] }).exitPoints = [...exitPoints, { type: cfg, nodeId: rootId, cds: data.cds }];
 	}
 
-	return ambient === undefined ? res : applyAmbientStateAccess(res, args, rootId, data, ambient);
+	return res;
 }
 
 function readArguments(graph: DataflowGraph, rootId: NodeId, args: readonly (DataflowInformation | undefined)[]): void {
@@ -310,12 +330,19 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
 }
 
-/** A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well. */
+/**
+ * A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well.
+ * Closing a device writes the file its opening already wrote, and only a device's file name may number its pages (`plot%03d.png`).
+ */
 function withFileAccess<Config>(config: Config): Config {
 	const { tags, ambient, sig } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[], sig?: FnSig };
 	const type = !tags?.includes(SemanticCallTag.File) ? undefined : tags.includes(SemanticCallTag.Writes) ? AmbientStateAccessType.WriteFiles : tags.includes(SemanticCallTag.Reads) ? AmbientStateAccessType.ReadFiles : undefined;
 	const stated = [ambient ?? []].flat();
-	return type === undefined || stated.some(a => a.type === type) ? config : { ...config, ambient: [...stated, { type, sig: tags?.includes(SemanticCallTag.Glob) ? undefined : sig }] };
+	if(type === undefined || stated.some(a => a.type === type || a.type === AmbientStateAccessType.CloseDevice)) {
+		return config;
+	}
+	const numbered = stated.some(a => a.type === AmbientStateAccessType.OpenDevice);
+	return { ...config, ambient: [...stated, { type, sig: tags?.includes(SemanticCallTag.Glob) ? undefined : sig, numbered }] };
 }
 
 export const BuiltInProcessorMapper = {
@@ -379,7 +406,8 @@ export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
 	[BuiltInEvalName.StringFn]:   StringFold.call,
 	[BuiltInEvalName.Group]:      resolveAsGroup,
-	[BuiltInEvalName.Get]:        resolveAsGet
+	[BuiltInEvalName.Get]:        resolveAsGet,
+	[BuiltInEvalName.Element]:    resolveAsElement
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
@@ -428,14 +456,15 @@ export class BuiltIns {
 			const n = Identifier.getName(name);
 			const id = NodeId.toBuiltIn(n);
 			const d: IdentifierDefinition[] = [{
-				type:        ReferenceType.BuiltInFunction,
-				definedAt:   id,
-				cds:         undefined,
-				processor:   (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never),
+				type:          ReferenceType.BuiltInFunction,
+				definedAt:     id,
+				cds:           undefined,
+				processor:     (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never),
 				config,
-				evalHandler: mappedEval,
+				evalHandler:   mappedEval,
+				processorName: processor,
 				name,
-				nodeId:      id
+				nodeId:        id
 			}];
 			this.set(n, d, assumePrimitive, Identifier.getNamespace(name));
 		}

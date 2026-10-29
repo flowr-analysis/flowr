@@ -20,7 +20,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../../../../../util/assert';
-import type { FnSig } from '../../../../../environments/built-in-props';
+import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
 
 function namesDenotedBy<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
@@ -91,7 +91,13 @@ export function processGet<OtherInfo>(
 	if(targets.length === 0) {
 		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has no resolvable name argument, skipping`);
 		// dynamic, unresolvable name: reached-but-unknown rather than dropped
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
+		const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true });
+		/* `match.fun(f)` hands back the function `f` holds, as it only looks up what names one */
+		const handedBack = config.sig?.[0] !== undefined && (config.sig[0][1] & ArgProp.Alias) !== 0 ? processedArguments[0] : undefined;
+		if(handedBack !== undefined && retrieve !== undefined && !RString.is(retrieve)) {
+			information.graph.addEdge(rootId, handedBack.entryPoint, EdgeType.Returns);
+		}
+		return information;
 	}
 	/* a computed name is an expression the call evaluates and reads */
 	const nameExpression = RString.is(retrieve) ? undefined : args[0];

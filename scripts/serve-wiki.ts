@@ -7,7 +7,6 @@ import http from 'http';
 import path from 'path';
 
 const Root = path.resolve('wiki');
-const [page = '', port = '8000'] = process.argv.slice(2);
 
 const Types: Readonly<Record<string, string>> = {
 	'.html': 'text/html',
@@ -22,20 +21,58 @@ const Types: Readonly<Record<string, string>> = {
 	'.md':   'text/markdown'
 };
 
-http.createServer((req, res) => {
-	let file = path.join(Root, decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname));
-	if(!file.startsWith(Root)) {
-		res.writeHead(403).end();
-		return;
-	}
-	if(fs.existsSync(file) && fs.statSync(file).isDirectory()) {
-		file = path.join(file, 'index.html');
-	}
-	fs.readFile(file, (err, content) => {
-		if(err) {
-			res.writeHead(404).end('not found');
+const ReloadPath = '/__reload';
+const ReloadScript = `<script>new EventSource('${ReloadPath}').onmessage = () => location.reload();</script>`;
+
+/** Serves `wiki/`; with `live`, the returned function reloads every served page. */
+export function serveWiki(page = '', port = 8000, live = false): () => void {
+	const listening = new Set<http.ServerResponse>();
+	const server = http.createServer((req, res) => {
+		const at = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
+		if(live && at === ReloadPath) {
+			res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }).write('\n');
+			listening.add(res);
+			req.on('close', () => listening.delete(res));
 			return;
 		}
-		res.writeHead(200, { 'Content-Type': Types[path.extname(file)] ?? 'application/octet-stream' }).end(content);
+		let file = path.join(Root, at);
+		if(!file.startsWith(Root)) {
+			res.writeHead(403).end();
+			return;
+		}
+		if(fs.existsSync(file) && fs.statSync(file).isDirectory()) {
+			file = path.join(file, 'index.html');
+		}
+		fs.readFile(file, (err, content) => {
+			if(err) {
+				res.writeHead(404).end('not found');
+				return;
+			}
+			const type = Types[path.extname(file)] ?? 'application/octet-stream';
+			res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' })
+				.end(live && type === 'text/html' ? content.toString().replace('</body>', `${ReloadScript}</body>`) : content);
+		});
 	});
-}).listen(Number(port), '127.0.0.1', () => console.log(`serving wiki/ on http://localhost:${port}/${page}`));
+	/* a busy port (often an earlier preview) moves on to the next one instead of failing */
+	const listen = (at: number): void => {
+		server.once('error', (e: NodeJS.ErrnoException) => {
+			if(e.code !== 'EADDRINUSE') {
+				throw e;
+			}
+			console.log(`port ${at} is busy, trying ${at + 1}`);
+			listen(at + 1);
+		});
+		server.listen(at, '127.0.0.1');
+	};
+	server.on('listening', () => {
+		server.removeAllListeners('error');
+		console.log(`serving wiki/ on http://localhost:${(server.address() as { port: number }).port}/${page}${live ? ', reloading on every rebuild' : ''}`);
+	});
+	listen(port);
+	return () => listening.forEach(res => res.write('data: reload\n\n'));
+}
+
+if(require.main === module) {
+	const [page, port] = process.argv.slice(2);
+	serveWiki(page, port === undefined ? undefined : Number(port));
+}

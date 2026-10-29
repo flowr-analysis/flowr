@@ -23,7 +23,7 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument, type RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -40,6 +40,16 @@ import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
  * @see {@link Selection#inlineFull}
  */
 export type InlineFull = boolean | 'banner';
+/**
+ * Whether to splice resolvable `source()` calls: `true` splices them, `'banner'` additionally marks where each
+ * spliced file begins and ends with a banner comment naming it.
+ */
+export type InlineSources = boolean | 'banner';
+
+/** The banner comment that names a file where an inlining puts it, or where it ends (`end`). */
+export function fileBanner(path: string | undefined, end = false): string {
+	return `# ---- ${end ? 'end of ' : ''}${path ?? '<inline>'} ----`;
+}
 
 interface Selection {
 	/** The set of node ids to be reconstructed. */
@@ -50,7 +60,7 @@ interface Selection {
 	 * If set, selected `source()` calls are replaced by the (spliced) reconstruction of the sourced file, producing a
 	 *  single self-contained reconstruction. Requires {@link Selection#sourceMap}; overrides {@link Selection#reconstructFiles}.
 	 */
-	inlineSources?:    boolean
+	inlineSources?:    InlineSources
 	/**
 	 * If set, every file is reconstructed into a single self-contained text, in flowR's loading order; files sourced
 	 *  explicitly are spliced into their `source()` call instead of repeated at the top level (`'banner'` names each).
@@ -418,7 +428,8 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 			visited:     visited.union(new Set([config.currentFile ?? 0, targetFile])),
 			currentFile: targetFile
 		};
-		return stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
+		const spliced = stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
+		return config.banner ? [{ line: fileBanner(path), indent: 0 }, ...spliced, { line: fileBanner(path, true), indent: 0 }] : spliced;
 	}
 	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
 	if(RFunctionCall.isNamed(call, 'source')) {
@@ -427,6 +438,41 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 		reconstructLogger.warn(`unresolved source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
 	}
 	return undefined;
+}
+
+function isBlock(n: RNode<ParentInformation> | undefined): boolean {
+	return RExpressionList.is(n) && n.grouping?.[0].content === '{';
+}
+
+/**
+ * A call handed a block, like `local({ x <- 1; y <- 2 })`, with only the statements of the block the slice selects;
+ * every other argument is kept as written.
+ */
+function reconstructCallOfBlock(call: RNamedFunctionCall<ParentInformation>, args: readonly (Code | typeof EmptyArgument)[], config: ReconstructionConfiguration): Code | undefined {
+	const blocks = call.arguments.filter(a => a !== EmptyArgument && isBlock(a.value)).map(a => (a as RArgument<ParentInformation>).value as RExpressionList<ParentInformation>);
+	/* a block the slice keeps whole stays as it is written */
+	if(blocks.every(b => b.children.every(c => isSelected(config, c)))) {
+		return undefined;
+	}
+	const parts = call.arguments.map((a, i): Code => {
+		if(a === EmptyArgument) {
+			return plain('');
+		} else if(!isBlock(a.value)) {
+			const value = a.value === undefined ? '' : reconstructableSource(a.value);
+			return plain(a.name === undefined ? value : `${RNode.ownLexeme(a.name) ?? ''} = ${value}`);
+		}
+		const block = args[i];
+		const body = block === EmptyArgument || block.length === 0 ? plain('{}') : block;
+		return a.name === undefined ? body : [{ ...body[0], line: `${RNode.ownLexeme(a.name) ?? ''} = ${body[0].line}` }, ...body.slice(1)];
+	});
+	const lines: PrettyPrintLine[] = [{ line: `${RNode.ownLexeme(call.functionName) ?? reconstructableSource(call.functionName)}(`, indent: 0 }];
+	parts.forEach((part, i) => {
+		const last = lines[lines.length - 1];
+		last.line += (i > 0 ? ', ' : '') + part[0].line;
+		lines.push(...part.slice(1));
+	});
+	lines[lines.length - 1].line += ')';
+	return lines;
 }
 
 function reconstructFunctionCall(
@@ -455,7 +501,7 @@ function reconstructFunctionCall(
 		return reconstructSpecialInfixFunctionCall(args, call);
 	}
 	if(call.named && selected) {
-		return foldToConst(call);
+		return reconstructCallOfBlock(call, args, configuration) ?? foldToConst(call);
 	}
 	if(functionName.length === 0 && args.every(a => a === undefined || a.length === 0)) {
 		return [];
@@ -485,6 +531,8 @@ interface ReconstructionConfiguration<Info = ParentInformation> extends Mergeabl
 	autoSelectIf:   AutoSelectPredicate
 	/** @see {@link Selection#inlineSources} */
 	inlineSources?: boolean
+	/** whether each spliced file is marked by banner comments, see {@link InlineSources} */
+	banner?:        boolean
 	/** @see {@link Selection#sourceMap} */
 	sourceMap?:     ReadonlyMap<NodeId, number>
 	/** the set of file indices currently being inlined on the active path (used to break cyclic `source()` inlining) */
@@ -599,7 +647,9 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		const warnings: InlineWarning[] = [];
 		const sourceMap = selection.sourceMap ?? new Map<NodeId, number>();
 		const splicedIn = new Set<number>(sourceMap.values());
-		const indices = selection.inlineFull ? ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i)) : [0];
+		const roots = ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i));
+		/* the program starts in the first file no other one sources, wherever flowR happened to load it */
+		const indices = selection.inlineFull ? roots : [roots[0] ?? 0];
 		const parts: string[] = [];
 		for(const i of indices) {
 			const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
@@ -607,13 +657,14 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 				autoSelectIf:  autoSelectIfWrapper,
 				fullAst:       ast,
 				inlineSources: true,
+				banner:        selection.inlineFull === 'banner' || selection.inlineSources === 'banner',
 				sourceMap,
 				visited:       new Set<number>([i]),
 				currentFile:   i,
 				warnings
 			}));
 			if(code.length > 0) {
-				parts.push(selection.inlineFull === 'banner' ? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}` : code);
+				parts.push(selection.inlineFull === 'banner' ? `${fileBanner(ast.ast.files[i].filePath)}\n${code}` : code);
 			}
 		}
 		return {

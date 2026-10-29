@@ -1,17 +1,17 @@
 import {
-	LintingPrettyPrintContext,
+	prettyPrint,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
 	LintingRuleCertainty
 } from '../linter-format';
+import { RValue } from '../../dataflow/eval/values/r-value';
+import { functionFinderUtil } from './function-finder-util';
 import { SourceLocation, SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
-import { Q } from '../../search/flowr-search-builder';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrFilter } from '../../search/flowr-search-filters';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
@@ -19,9 +19,8 @@ import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../datafl
 import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ControlDependency, happensInEveryBranch } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
@@ -61,18 +60,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 }
 
 export const SEEDED_RANDOMNESS = {
-	createSearch: config => Q.all().filter(VertexType.FunctionCall)
-		.with(Enrichment.CallTargets, {
-			onlyBuiltin:  true,
-			qualifyNames: false // we don't use qualified names for this rule yet
-		})
-		.filter({
-			name: FlowrFilter.MatchesEnrichment,
-			args: {
-				enrichment: Enrichment.CallTargets,
-				test:       { targets: Identifier.regex(...config.randomnessConsumers) }
-			}
-		}),
+	createSearch:        config => functionFinderUtil.createSearch(config.randomnessConsumers, false),
 	processSearchResult: async(elements, config, data) => {
 		const { graph } = await data.dataflow();
 		const ctx = data.inspectContext();
@@ -219,9 +207,7 @@ export const SEEDED_RANDOMNESS = {
 			],
 			randomnessConsumers: [
 				...ctx.env.deriveFromIndex(randomnessConsumers),
-				'princomp', 'pointLabel', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
-				'rxor', 'rmvnorm', 'randomForest',
-				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n',
+				'generateSeedVectors', 'rxor', 'permuted', 'data_shuffle',
 			],
 		}),
 		tags:        [LintingRuleTag.Smell, LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
@@ -230,10 +216,10 @@ export const SEEDED_RANDOMNESS = {
 		name:        'Seeded Randomness',
 		description: 'Finds randomness-based function calls not preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  (result, _meta) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)} is called without a preceding random seed function like \`set.seed\``
-	}
+	prettyPrint: prettyPrint(
+		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
+		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)} is called without a preceding random seed function like \`set.seed\``
+	)
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
@@ -264,6 +250,6 @@ function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunct
 		v.type === 'number' ||
 		v.type === 'logical' ||
 		v.type === 'string' ||
-		v.type === 'interval' && v.startInclusive && v.endInclusive && v.start.type === 'number' && v.end.type === 'number' && asValue(v.start.value).num === asValue(v.end.value).num)
+		RValue.numberOf(v) !== undefined)
 	       ?? false;
 }

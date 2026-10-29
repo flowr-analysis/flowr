@@ -3,48 +3,17 @@ import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
-import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
-import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Ggplot2Namespace, namespacePackage, ggplot2Package, addPackages } from '../../../_helper/sigdb';
 import { label } from '../../../_helper/label';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-library';
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
-const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
-const namespaceContent = `S3method(fortify,data.frame)
-	S3method(fortify,lm)
-	S3method(fortify,default)
-	S3method(fortify,map)
-	S3method(scale_type,Date)
-	S3method(scale_type,POSIXt)
-	S3method(scale_type,character)
-	S3method(scale_type,numeric)
-	S3method(scale_type,factor)
-	S3method(scale_type,default)
-	S3method(ggplot,default)
-	S3method(print,ggproto)
-	S3method(print,rel)
-	export("+")
-	export(ggplot)
-	export(aes)
-	export(geom_point)
-	export(geom_line)
-	export(theme_bw)
-	export(coord_cartesian)
-	export(ggsave)
-	export(fortify)
-	export(scale_type)
-	exportPattern("^[^\\\\.]\\\\.*$")
-	import(grid)
-	import(rlang)
-	importFrom(scales,alpha)
-	importFrom(stats,setNames)`;
 
-const namespaceInfo = setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent)).content().current, ggplot2Callable);
 
 describe('Link libraries', withTreeSitter(ts => {
 	assertDataflow(label('ggplot links to ggplot2', ['library-loading', 'search-path']), ts, 'library(ggplot2)\nggplot()\nggplot()',
@@ -54,10 +23,7 @@ describe('Link libraries', withTreeSitter(ts => {
 			.addEdge(NodeId.fromPkgFn('ggplot2', 'ggplot'), '1@library', EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: a => {
-				a.context().deps.addDependency(new Package({
-					name:          'ggplot2',
-					namespaceInfo: namespaceInfo
-				}));
+				addPackages(a, ggplot2Package());
 			},
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -81,10 +47,7 @@ describe('Link libraries', withTreeSitter(ts => {
 			.addEdge(NodeId.fromPkgFn('ggplot2', 'aes'), '1@library', EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: a => {
-				a.context().deps.addDependency(new Package({
-					name:          'ggplot2',
-					namespaceInfo: namespaceInfo
-				}));
+				addPackages(a, ggplot2Package());
 			},
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -101,14 +64,8 @@ describe('Link libraries', withTreeSitter(ts => {
 			.addEdge('2@library', '2@dplyr', EdgeType.Argument),
 		{
 			modifyAnalyzer: a => {
-				a.context().deps.addDependency(new Package({
-					name:          'ggplot2',
-					namespaceInfo: namespaceInfo
-				}));
-				a.context().deps.addDependency(new Package({
-					name:          'dplyr',
-					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(across)')).content().current, ['across'])
-				}));
+				addPackages(a, ggplot2Package());
+				addPackages(a, namespacePackage('dplyr', 'export(across)', ['across']));
 			},
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -127,14 +84,8 @@ describe('Link libraries', withTreeSitter(ts => {
 			.addEdge('1@library', '1@pkgA', EdgeType.Argument),
 		{
 			modifyAnalyzer: a => {
-				a.context().deps.addDependency(new Package({
-					name:          'pkgA',
-					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(x)\nexport(a)\nexport(b)\nexport(y)')).content().current, ['x', 'a', 'b', 'y'])
-				}));
-				a.context().deps.addDependency(new Package({
-					name:          'pkgB',
-					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(x)\nexport(y)\nexport(c)\nexport(d)\nexport(e)')).content().current, ['x', 'y', 'c', 'd', 'e'])
-				}));
+				addPackages(a, namespacePackage('pkgA', 'export(x)\nexport(a)\nexport(b)\nexport(y)', ['x', 'a', 'b', 'y']));
+				addPackages(a, namespacePackage('pkgB', 'export(x)\nexport(y)\nexport(c)\nexport(d)\nexport(e)', ['x', 'y', 'c', 'd', 'e']));
 			},
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -145,10 +96,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: namespaceInfo
-		}));
+		addPackages(analyzer, ggplot2Package());
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
@@ -164,10 +112,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent)).content().current, ['ggplot', 'aes', 'geom_point', 'print.rel'])
-		}));
+		addPackages(analyzer, namespacePackage('ggplot2', Ggplot2Namespace, ['ggplot', 'aes', 'geom_point', 'print.rel']));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
@@ -183,14 +128,8 @@ describe('Link libraries', withTreeSitter(ts => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: namespaceInfo
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random1',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
-		}));
+		addPackages(analyzer, ggplot2Package());
+		addPackages(analyzer, namespacePackage('random1', 'export(test1)\nexport(test2)', ['test1', 'test2']));
 		analyzer.addRequest('library(ggplot2)\nlibrary(random1)');
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
@@ -254,10 +193,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@fa', NodeId.fromPkgFn('prod', 'fa'), EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: (a: FlowrAnalyzer) => {
-				a.context().deps.addDependency(new Package({
-					name:          'prod',
-					namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(fa)')).content().current
-				}));
+				addPackages(a, namespacePackage('prod', 'export(fa)'));
 			},
 			expectIsSubgraph: true, resolveIdsAsCriterion: true
 		});
@@ -285,7 +221,7 @@ describe('Link libraries', withTreeSitter(ts => {
 	// what a selection needs is not what the program loads: a `library()` nothing calls into does not count
 	test('Dataflow.packagesOf reports what the selection calls into', async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.context().deps.addDependency(new Package({ name: 'ggplot2', namespaceInfo: namespaceInfo }));
+		addPackages(analyzer, ggplot2Package());
 		analyzer.addRequest('library(ggplot2)\nlibrary(unused)\np <- ggplot()\nx <- 1\n');
 		const df = await analyzer.dataflow();
 		const ast = await analyzer.normalize();

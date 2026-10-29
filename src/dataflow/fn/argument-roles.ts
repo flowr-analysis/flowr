@@ -181,8 +181,12 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	const byName = formalsByName(definition, state);
 	const roles = new Map<NodeId, ArgProps>();
 	const add = (node: NodeId, props: ArgProps): void => {
+		/* forcing `if(c) a else b` evaluates only one of `a` and `b`, so neither is forced for certain */
+		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set());
+		const written = writtenFormal(node, byName, state);
 		for(const formal of aliasTargets(node, byName, state)) {
-			roles.set(formal, (roles.get(formal) ?? 0) | props);
+			const own = always === undefined || always.has(formal) || formal === written ? props : props & ~ArgProp.Forced;
+			roles.set(formal, (roles.get(formal) ?? 0) | own);
 		}
 	};
 	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
@@ -215,7 +219,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 	const called = Identifier.getName(vertex.name);
 	return [...state.graph.edgesFrom(id)]
 		.filter(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !handed.has(target) && !NodeId.isBuiltIn(target)
-			&& NodeId.recoverName(target, state.graph.idMap) === called)
+			&& NodeId.recoverBareName(target, state.graph.idMap) === called)
 		.map(([target]) => target);
 }
 
@@ -239,19 +243,27 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: 
 			}
 		}
 	}
-	const written = state.graph.idMap?.get(node);
-	const formal = RSymbol.is(written) ? byName.get(written.lexeme) : undefined;
+	const formal = writtenFormal(node, byName, state);
 	if(formal !== undefined) {
 		found.add(formal);
 	}
 	return found;
 }
 
-/** The formals of the definition by the name they are written as, to answer for an argument nothing links. */
+/**
+ * The formal parameter a symbol argument names. In `f <- function(x) quote(x)` the `x` of `quote` is never evaluated,
+ * so no edge links it to the formal `x`, and its name is all there is to go by.
+ */
+function writtenFormal(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): NodeId | undefined {
+	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
+	return name === undefined ? undefined : byName.get(name);
+}
+
+/** The formals of `definition` by name, for {@link writtenFormal}. */
 function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<string, NodeId> {
 	const byName = new Map<string, NodeId>();
 	for(const formal of Object.keys(definition.params)) {
-		const name = NodeId.recoverName(NodeId.normalize(formal), state.graph.idMap);
+		const name = NodeId.recoverBareName(NodeId.normalize(formal), state.graph.idMap);
 		if(name !== undefined) {
 			byName.set(name, NodeId.normalize(formal));
 		}
@@ -289,8 +301,11 @@ function matchArgumentProps(vertex: DataflowGraphVertexFunctionCall, state: Role
 		if(props === 0) {
 			continue;
 		}
-		for(const argument of bound.get(formal) ?? []) {
-			found.push([props, values.get(argument) ?? argument]);
+		const given = bound.get(formal) ?? [];
+		for(const [i, argument] of given.entries()) {
+			/* an alias on `...` is only the last argument */
+			const had = formal === '...' && i < given.length - 1 ? props & ~ArgProp.Alias : props;
+			found.push([had, values.get(argument) ?? argument]);
 		}
 	}
 	return found;

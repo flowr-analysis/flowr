@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Guess Dependency Versions Query">Guess Dependency Versions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Guesses the version range each dependency must have, from declared constraints and actual code usage.\
@@ -41,7 +41,7 @@ that produced the bound:
 
 _Results (prettified and summarized):_
 
-Query: **guess-dep-versions** (131 ms)\
+Query: **guess-dep-versions** (104 ms)\
 &nbsp;&nbsp;&nbsp;╰ R _4.5.3_ _(config)_\
 &nbsp;&nbsp;&nbsp;_evidence_: d declared  t transitive  s signature  D date  b base-r  # available  i indirect\
 &nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, dplyr@1.2.1, tidyselect@1.2.1 (works with all newest versions)\
@@ -59,8 +59,7 @@ Query: **guess-dep-versions** (131 ms)\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
@@ -186,6 +185,6 @@ says how much the guess added).
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Guess Dependency Versions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor.ts#L208"><code><span title="Executes a guess-dep-versions query.">executeGuessDepVersionsQuery</span></code></a>.
+The Guess Dependency Versions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor.ts#L209"><code><span title="Executes a guess-dep-versions query.">executeGuessDepVersionsQuery</span></code></a>.
 
 </details>

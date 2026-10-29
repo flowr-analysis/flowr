@@ -1,6 +1,6 @@
 import path from 'path';
 import type { SyntaxNode } from 'web-tree-sitter';
-import { LintingPrettyPrintContext, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { prettyPrint, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -13,9 +13,9 @@ import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { packageInfo, projectNodes } from './cmd-check-util';
-import { type FileResult, fileFindings } from './file-checks';
-import { type PackageFiles, packageFiles } from './package-files';
+import { projectNodes } from './cmd-check-util';
+import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
+import type { PackageFiles } from './package-files';
 
 /** what is wrong with a package file, named after the `R CMD check` finding it corresponds to */
 export type PackageMetafilesKind =
@@ -298,12 +298,7 @@ function checkRelativeLinks(files: PackageFiles, report: Report): number {
 /** Port of the `R CMD check` notes on `INDEX`, `demo/00Index`, `inst/CITATION`, CITATION locations, and relative links of README, NEWS and vignettes. */
 export const PACKAGE_METAFILES = {
 	createSearch:        () => Q.from([]),
-	processSearchResult: (_elements, config, data) => {
-		const ctx = data.inspectContext();
-		const files = packageFiles(ctx, packageInfo(ctx).name);
-		if(files === undefined) {
-			return { results: [], '.meta': { checkedFiles: 0 } };
-		}
+	processSearchResult: onPackageFiles({ checkedFiles: 0 }, (files, _pkg, config, data) => {
 		const { results, add } = fileFindings<PackageMetafilesKind>(files);
 		const report: Report = (kind, file, line, message) => add(kind, file, message, line);
 		let checked = 0;
@@ -320,11 +315,11 @@ export const PACKAGE_METAFILES = {
 			checked += checkRelativeLinks(files, report);
 		}
 		return { results, '.meta': { checkedFiles: checked } };
-	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	},
+	}),
+	prettyPrint: prettyPrint(
+		result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
+		result => `${result.message} (at ${SourceLocation.format(result.loc)})`
+	),
 	info: {
 		name:          'Package Metafiles',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],

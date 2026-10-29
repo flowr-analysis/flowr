@@ -31,6 +31,9 @@ describe('flowR linter', withTreeSitter(parser => {
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
 				'x <- list()\nx$a <- 2\nprint(x)',
 				'x <- new.env()\nx$a <- 2\nprint(x)',
+				/* a parameter may be an environment (a Shiny `output`), which a write changes for the caller as well */
+				'server <- function(input, output) { output$plot <- input$x }\nshiny::shinyApp(NULL, server)',
+				'e <- new.env()\nf <- function(x) { x$a <- 1 }\nf(e)',
 				/* the first `x <- 42` is *not* unused as it serves as an anchor for the global redefinition within the nested function! */
 				`f <- function() {
    x <- 42
@@ -61,7 +64,6 @@ print(x)`,
 				/* same, with a braced dispatcher body */
 				'setGeneric("bar", function(obj) { standardGeneric("bar") })'
 			]) {
-				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
 			}
 			/* a package export (via NAMESPACE) is the public API and must not be reported even without a local caller */
@@ -89,8 +91,11 @@ print(x)`,
 				/* the super-assignment is the value `f` returns, so removing it changes what `f(2)` gives */
 				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', undefined],
 				['function() { 42 }', '1@function', SourceRange.from(1, 1, 1, 17)],
-				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', undefined],
+				/* the inner function is not what `f` returns, so nothing reads or prints it */
+				['f <- function() {\n function() { 42 }\n 1 }\nprint(f())', '2@function', SourceRange.from(2, 2, 2, 18)],
 				['f <- function(i) { tmp <- i * 2 }\nprint(f(2))', '1@tmp', undefined],
+				/* every call hands over a number, which is no environment, so the write is lost */
+				['f <- function(x) { x$a <- 1 }\nf(3)', '1:20', undefined],
 				['f <- function(v) { x <<- v * 2; 1 }\nf(2)', '1@x', SourceRange.from(1, 20, 1, 30)],
 				['f <- function(i) { tmp <- i * 2; 1 }\nprint(f(2))', '1@tmp', SourceRange.from(1, 20, 1, 31)],
 				['res <- tryCatch(log(-1), warning = function(w) { z <- 1; NA })\nprint(res)', '1@z', SourceRange.from(1, 50, 1, 55)],
@@ -103,7 +108,6 @@ print(x)`,
 
 print(f()())`, '4@x', undefined]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
-				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
 					const ids = SlicingCriterion.decodeAll(criteria.split(';') as SlicingCriteria, ast.idMap);
 					return ids.map(({ id }) => {
@@ -133,6 +137,26 @@ print(f()())`, '4@x', undefined]
 		});
 
 		describe('a definition nested inside a larger expression', () => {
+			for(const value of ['runif(1)', '(runif(1))', '{ runif(1) }']) {
+				assertLinter(`a draw in ${value} keeps its effect on the seed`, parser, `u <- ${value}\nprint(1)`, 'unused-definitions',
+					[{ certainty: LintingResultCertainty.Uncertain, variableName: 'u', loc: [1, 1, 1, 1], quickFix: undefined }]);
+			}
+			assertLinter('a closure made in local reads the scope of local', parser, 'local({\nk <- 10\nfs <- list(a = function(x) x + k)\nr <- sapply(fs, function(f) f(2))\nprint(r)\n})', 'unused-definitions', []);
+			assertLinter('a function handed on by parentheses is the value of its variable', parser, 'f <- (function() 1)\nr <- f\nprint(r)', 'unused-definitions', []);
+			assertLinter('a closure made and called through do.call is used', parser, 'adder <- function(n) function(x) x + n\nadd2 <- do.call(adder, list(2))\nr <- do.call(add2, list(5))\nprint(r)', 'unused-definitions', []);
+			assertLinter('do.call is as pure as what it calls', parser, 'df2 <- do.call(setNames, list(1, "A"))\nprint(1)', 'unused-definitions',
+				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'df2', loc: [1, 1, 1, 3], quickFix: [{ type: 'remove', loc: [1, 1, 1, 38], description: 'Remove unused definition of `df2`' }] }]);
+			assertLinter('do.call of a draw keeps its effect on the seed', parser, 'u <- do.call(runif, list(1))\nprint(1)', 'unused-definitions',
+				[{ certainty: LintingResultCertainty.Uncertain, variableName: 'u', loc: [1, 1, 1, 1], quickFix: undefined }]);
+			assertLinter('assign is removed as the assignment it is', parser,
+				'assign("k", 5)\nk <- 9\nprint(k)',
+				'unused-definitions',
+				[{
+					certainty:    LintingResultCertainty.Uncertain,
+					variableName: 'k',
+					loc:          [1, 8, 1, 10],
+					quickFix:     [{ type: 'remove', loc: [1, 1, 1, 14], description: 'Remove unused definition of `k`' }]
+				}]);
 			assertLinter('assignment nested in a call argument keeps its value', parser,
 				'`my var` <- 1\n`my var` + 1\nprint(x <- get("my var"))',
 				'unused-definitions',

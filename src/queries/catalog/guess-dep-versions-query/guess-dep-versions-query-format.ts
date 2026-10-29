@@ -1,7 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import Joi from 'joi';
 import { queryHeader } from '../../query-print';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, italic, faint, color, Colors, type OutputFormatter } from '../../../util/text/ansi';
 import { RVersion, type VersionString } from '../../../util/r-version';
@@ -572,6 +571,5 @@ export const GuessDepVersionsQueryDefinition = {
 			prefer: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('A version to prefer per dependency when it survives the constraints.'),
 			limit:  Joi.number().integer().min(0).optional().description('Cap the number of version combinations considered. Combinations whose versions cannot be loaded together are skipped, so fewer assignments may come out.')
 		}).optional().description('Also explode the guessed space into concrete per-dependency version assignments.')
-	}).description('Guesses the possible version range of every dependency from declared constraints and signature-database usage.'),
-	flattenInvolvedNodes: (): NodeId[] => []
+	}).description('Guesses the possible version range of every dependency from declared constraints and signature-database usage.')
 } as const satisfies SupportedQuery<'guess-dep-versions'>;

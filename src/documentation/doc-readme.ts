@@ -220,8 +220,7 @@ ${res}
 		code:      example,
 		marks:     [PlaygroundBox.Slice],
 		collapsed: [PlaygroundBox.Deps],
-		at:        '11@sum',
-		dim:       true
+		at:        '11@sum'
 	}, 'the slicing example')}
 
 

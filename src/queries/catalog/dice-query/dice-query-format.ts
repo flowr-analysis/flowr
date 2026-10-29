@@ -86,7 +86,7 @@ export const DiceQueryDefinition = {
 	),
 	fromLine:  diceQueryLineParser,
 	completer: diceQueryCompleter,
-	syntax:    '@dice (<crit>;...->crit;...)[iIcB] <code | file://path>',
+	syntax:    `@dice (<crit>;...->crit;...)[${SharedSliceFlags.map(f => f.flag).join('')}] <code | file://path>`,
 	schema:    Joi.object({
 		type: Joi.string().valid('dice').required().description('The type of the query.'),
 		from: Joi.array().items(Joi.string()).min(1).required().description('Slicing criteria for the start of the dice (forward slice seeds).'),

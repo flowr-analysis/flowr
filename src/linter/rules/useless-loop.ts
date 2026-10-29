@@ -3,7 +3,8 @@ import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { at } from '../linter-util';
+import { type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
@@ -35,10 +36,8 @@ export const USELESS_LOOP = {
 		}).filter(loop =>
 			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, data.inspectContext())
 		).map(res => ({
-			certainty:  LintingResultCertainty.Certain,
-			name:       res.node.lexeme as string,
-			loc:        SourceLocation.fromNode(res.node) ?? SourceLocation.invalid(),
-			involvedId: res.node.info.id
+			...at(res.node),
+			name: res.node.lexeme as string
 		} satisfies UselessLoopResult));
 
 		return {
@@ -48,10 +47,9 @@ export const USELESS_LOOP = {
 			}
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`
-	},
+	prettyPrint: prettyPrint(
+		result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`
+	),
 	info: {
 		name:          'Useless Loops',
 		description:   'Finds loops that iterate only once.',

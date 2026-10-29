@@ -18,5 +18,7 @@ export enum BuiltInEvalName {
 	/** the groupings `(` and `{`, see {@link resolveAsGroup} */
 	Group = 'eval:group',
 	/** the by-name lookups, from `get` to `match.fun`, see {@link resolveAsGet} */
-	Get = 'eval:get'
+	Get = 'eval:get',
+	/** the element access `x[[i]]`, see {@link resolveAsElement} */
+	Element = 'eval:element'
 }

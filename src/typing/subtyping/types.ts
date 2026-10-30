@@ -2,6 +2,7 @@ import { inspect } from 'util';
 import { guard } from '../../util/assert';
 import type { SimpleType, DataType } from '../types';
 import { DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
+import { UnresolvedRDataType } from '../unification/types';
 
 // let idCounter = 0;
 
@@ -113,11 +114,42 @@ export class UnresolvedRTypeVariable {
 	// readonly id = idCounter++;
 	readonly lowerBound: UnresolvedRTypeUnion;
 	readonly upperBound: UnresolvedRTypeIntersection;
+	/**
+	 * TODO: maybe remove this, isn't used as of now
+	 * Suppose a type variable exists through two or more scopes.
+	 * In this case, for the inner scope, we may create a new type variable
+	 * which references the original one as its `parent`.
+	 *
+	 * If `parent` is defined, `this.parent` is a supertype
+	 * of (or the same type as) `this`, so constraining an
+	 * unresolved type variable may also affect its parent.
+	 *
+	 * ```R
+	 * # parent: int or string
+	 * x <- foo()
+	 * if (is.integer(x)) {
+	 *   # new type variable,
+	 *   # parent: int or string
+	 *   # local: int
+	 *   print(x)
+	 *   # constrain local *and* parent
+	 *   x <- bar()
+	 * }
+	 * # constraint applied from the local assignment is
+	 * # also applied to the parent, so it manifests here.
+	 * baz(x)
+	 * ```
+	 *
+	 * TODO: in loops, do parent constraints need to be propagated to children
+	 *       if a variable's type is widened at the end of a loop iteration?
+	 */
+	readonly parent?: UnresolvedRTypeVariable;
 	public lexeme?: string;
 
-	constructor(lowerBounds: UnresolvedDataType[] = [], upperBounds: UnresolvedDataType[] = []) {
-		this.lowerBound = new UnresolvedRTypeUnion(...lowerBounds);
-		this.upperBound = new UnresolvedRTypeIntersection(...upperBounds);
+	constructor(lowerBounds: UnresolvedDataType[] | UnresolvedRTypeUnion = [], upperBounds: UnresolvedDataType[] | UnresolvedRTypeIntersection = [], parent: undefined | UnresolvedRTypeVariable = undefined) {
+		this.lowerBound = lowerBounds instanceof UnresolvedRTypeUnion ? lowerBounds : new UnresolvedRTypeUnion(...lowerBounds);
+		this.upperBound = upperBounds instanceof UnresolvedRTypeIntersection ? upperBounds : new UnresolvedRTypeIntersection(...upperBounds);
+		this.parent = parent;
 	}
 }
 
@@ -172,6 +204,11 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 		}
 		for(const upperBound of supertype.upperBound.types) {
 			constrain(subtype, upperBound, cache, prunableVariables);
+		}
+		if (supertype.parent) {
+			/// widening a type variable must widen its parent, see docs of `.parent`.
+			// does not apply to the case where the type variable is a subtype.
+			constrain(subtype, supertype.parent);
 		}
 	} else if(subtype instanceof UnresolvedRFunctionType && supertype instanceof UnresolvedRFunctionType) {
 		const subtypeParameterKeys = new Set(subtype.parameterTypes.keys());

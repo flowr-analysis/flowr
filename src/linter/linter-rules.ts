@@ -41,6 +41,7 @@ import { PACKAGE_METAFILES } from './rules/cmd-check/package-metafiles';
 import { RD_FILES } from './rules/cmd-check/rd-files';
 import { PACKAGE_DATA } from './rules/cmd-check/package-data';
 import { PACKAGE_RUNTIME } from './rules/cmd-check/package-runtime';
+import { AUTOLOAD_FILES } from './rules/autoload-files';
 
 /**
  * The registry of currently supported linting rules.
@@ -88,7 +89,8 @@ export const LintingRules = {
 	'package-metafiles':               PACKAGE_METAFILES,
 	'rd-files':                        RD_FILES,
 	'package-data':                    PACKAGE_DATA,
-	'package-runtime':                 PACKAGE_RUNTIME
+	'package-runtime':                 PACKAGE_RUNTIME,
+	'autoload-files':                  AUTOLOAD_FILES
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

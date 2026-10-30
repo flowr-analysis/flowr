@@ -20,7 +20,8 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 				SlicingCriterion.parse(node, result.normalize.idMap),
 				result.dataflow.graph, cfg,
 				result.normalize,
-				context
+				context,
+				name
 			);
 			assert(actual === expectedLoopsOnlyOnce, `Expected to ${expectedLoopsOnlyOnce ? 'loop only once' : 'loop multiple times'}`);
 		});
@@ -34,16 +35,25 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 		checkLoop('Simple For with Alias', 'x <- c(1); for(i in x) { print(i) }', '1@for', true);
 	});
 
+	describe('Nested Branches', () => {
+		// Fails
+		checkLoop('Conditional break followed by unconditional', 'repeat { if(x) { break } \n break  }', '1@repeat', true);
+		checkLoop('Branch before break', 'repeat { if(u) {} \n break  }', '1@repeat', true);
+	});
+
 	describe('Nested Loops', () => {
 		checkLoop('Nested in if', 'if(u) { for(i in c(1)) { print(i) } }', '1@for', true);
 		checkLoop('Nested in if with break', 'if(u) { for(i in c(1,2)) { print(i); break } }', '1@for', true);
-
 
 		checkLoop('Nested for, inner breaks 1', 'for(i in 1:10) {\n for(j in 1:10) { break; } }', '2@for', true);
 		checkLoop('Nested for, inner breaks 2', 'for(i in 1:10) {\n for(j in 1:10) { break; } }', '1@for', false);
 
 		checkLoop('Nested for, both break 1', 'for(i in 1:10) {\n break; \n for(j in 1:10) { break; } }', '1@for', true);
 		checkLoop('Nested for, both break 2', 'for(i in 1:10) { \n for(j in 1:10) { break; } \n break; }', '2@for', true);
+
+		checkLoop('Deeply Nested', 'for(i in 1:10) { repeat { while(TRUE) { break; } } }', '1@while', true);
+		checkLoop('Deeply Nested with condition', 'for(i in 1:10) { repeat { while(TRUE) { if(TRUE) { break; } } } }', '1@while', true);
+		checkLoop('Deeply Nested with condition', 'for(i in 1:10) { repeat { while(TRUE) { if(FALSE) { break; } } } }', '1@while', false);
 	});
 
 	describe('Stopped Loop', () => {
@@ -77,21 +87,24 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	// Negative Tests
 	describe('Negative', () => {
 		checkLoop('Normal For',     'for (i in c(1,2)) { print(42); }',                                    '1@for',    false);
+		checkLoop('Empty For',     'for (i in c(1,2)) {  }',                                               '1@for',    false);
 		checkLoop('repeat',         'repeat { print(42); }',                                               '1@repeat', false);
 		checkLoop('while',          'while(TRUE) { print(42) }',                                           '1@while',  false);
-		checkLoop('stopifnot(TRUE)', 'while(TRUE) { stopifnot(TRUE) }',                                     '1@while',  false);
+		checkLoop('stopifnot(TRUE)', 'while(TRUE) { stopifnot(TRUE) }',                                    '1@while',  false);
 		checkLoop('unknown while',  'while(x) { print(42) }',                                              '1@while',  false);
+
+		checkLoop('break after next',  'repeat { next; break }',                                           '1@repeat',  false);
 
 		checkLoop('Useful Loop before uselss', 'for (i in c(1,2)) { print(42); }\nrepeat { break; }',      '1@for',    false);
 		checkLoop('Useful Loop after  uselss', 'repeat { break; }\nfor (i in c(1,2)) { print(42); }',      '2@for',    false);
 
 		checkLoop('false break', 'for (i in c(1,2)) { if (FALSE) { break } }',                             '1@for',    false);
+		checkLoop('nested condition', 'for (i in c(1,2)) { if (TRUE) { if (FALSE) { break } } }',          '1@for',    false);
 
 		describe('Branches', () => {
 			const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
 			const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
 			const branchVariants = ['if (FALSE)', 'if (u)'];
-
 
 			for(const loop of loopVariants) {
 				for(const stop of stopVariants) {

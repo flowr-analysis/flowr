@@ -27,7 +27,9 @@ export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop,
  * @param ctx         - current flowr analyzer context
  * @returns           true if the given loop only iterates once, `undefined` if we cannot tell
  */
-export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
+export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext, what?: string): boolean | undefined {
+	console.log("HIII");
+	console.log("what is", what);
 	const vertex = dataflow.getVertex(loop);
 	if(!vertex) {
 		return undefined;
@@ -55,7 +57,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		dfg:                  dataflow,
 		ctx,
 		defaultVisitingOrder: 'forward'
-	}).loopsOnlyOnce();
+	}, what).loopsOnlyOnce();
 }
 
 function holdsOneElement(value: Lift<Value>, element = false): boolean {
@@ -74,8 +76,11 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 	private onlyLoopyOnce = false;
 	private withinLoop = new Set<NodeId>();
 
-	constructor(private readonly loopToCheck: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
+	private what: string | undefined;
+
+	constructor(private readonly loopToCheck: NodeId, config: SemanticCfgGuidedVisitorConfiguration, what?: string) {
 		super(config);
+		this.what = what;
 	}
 
 	protected startVisitor(_: readonly NodeId[]): void {
@@ -102,14 +107,21 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 				this.visitNode(current);
 			}
 		}
-
+		
+		// for (const current of this.withinLoop.values()) {
+		// 	if (!g.hasVertex(current) || !this.visitNode(current)) {
+		// 		continue;
+		// 	}
+		// 	this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
+		// }
+		
 		this.onlyLoopyOnce = this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 	}
 
 	private breaks({ call }: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		const filtered = call.cds?.filter(c => this.withinLoop.has(c.id)) ?? [];
-
+		console.log(this.what, call);
 		if(filtered.length > 0) {
 			this.loopCds = (this.loopCds ?? []).concat(filtered);
 		}

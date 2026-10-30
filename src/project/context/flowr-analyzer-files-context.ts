@@ -1,4 +1,5 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
+import { type RecordedRun, recordsRuns } from '../plugins/file-plugins/files/recorded-runs';
 import type {
 	RParseRequestFromText,
 	RParseRequest,
@@ -635,6 +636,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getFileByPath(path: string): FlowrFileProvider | undefined {
 		return this.files.get(RPath.of(path)) ?? this.inlineFiles.find(f => f.path() === path);
+	}
+
+	/** the runs a notebook or transcript recorded with their output, `undefined` if the file is not found or records none */
+	public recordedRuns(path: string): readonly RecordedRun[] | undefined {
+		const file = this.getFileByPath(path);
+		return recordsRuns(file) ? file.recorded() : undefined;
 	}
 
 	public getFileCount(): number {

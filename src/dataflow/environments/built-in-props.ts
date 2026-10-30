@@ -52,7 +52,12 @@ export enum ArgProp {
 	 * open to injection, so a call handing it unescaped data is a finding: system commands, R expressions,
 	 * database queries, HTML, or JavaScript.
 	 */
-	Injectable = 1 << 15
+	Injectable = 1 << 15,
+	/**
+	 * besides its value, the expression as written names a part of the result, like `a` in `data.frame(a)`,
+	 * which becomes the column `a`; passing `identity(a)` instead changes the name
+	 */
+	Deparsed   = 1 << 16
 }
 
 /**
@@ -169,7 +174,11 @@ export enum SemanticCallTag {
 	/** puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` */
 	AttachesPackage = 'attaches-package',
 	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
-	ChecksPackage   = 'checks-package'
+	ChecksPackage   = 'checks-package',
+	/** registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` */
+	Declares        = 'declares',
+	/** reads which environment it runs in, like `environment()` or `parent.frame()`, so moving the call into another frame changes its result */
+	Frames          = 'reflects-frame'
 }
 
 /** a bitfield of {@link ArgProp} */
@@ -301,6 +310,32 @@ function getPropMask(this: void, selector: PropSelector): PropMask {
 	return { props, tags };
 }
 
+/** How a property reads: the word for it, the short form a signature shows where there is one, and what it means. */
+export interface PropWord {
+	readonly word:   string
+	readonly short?: string
+	readonly about:  string
+}
+
+/** the {@link CallProp} bits as words, in the order they are declared */
+const CallPropWords: Readonly<Record<CallProp, PropWord>> = {
+	[CallProp.Pure]:       { word: 'pure', about: 'computes a result, nothing else' },
+	[CallProp.MayPure]:    { word: 'maybe pure', short: 'maypure', about: 'pure if what it calls is' },
+	[CallProp.Throws]:     { word: 'can throw', short: 'throws', about: 'may raise an error' },
+	[CallProp.Invisible]:  { word: 'invisible', short: 'invis', about: 'the result is not printed' },
+	[CallProp.Generic]:    { word: 'generic', about: 'dispatches on its argument' },
+	[CallProp.Method]:     { word: 's3 method', short: 's3', about: 'a method of a generic' },
+	[CallProp.Scope]:      { word: 'changes scope', short: 'scope', about: 'defines or removes variables' },
+	[CallProp.NonDet]:     { word: 'non deterministic', short: 'nondet', about: 'may differ between runs' },
+	[CallProp.Ambient]:    { word: 'ambient state', short: 'ambient', about: 'reads state outside its arguments' },
+	[CallProp.Configures]: { word: 'sets ambient state', short: 'configures', about: 'changes options or devices' },
+	[CallProp.Ffi]:        { word: 'calls native code', short: 'ffi', about: 'uses C, C++ or Fortran' },
+	[CallProp.Lang]:       { word: 'produces language object', short: 'lang', about: 'returns code as data' },
+	[CallProp.Strict]:     { word: 'strict', about: 'evaluates every argument' },
+	[CallProp.Concurrent]: { word: 'concurrent', short: 'async', about: 'runs in parallel' },
+	[CallProp.Primitive]:  { word: 'primitive', about: 'implemented in the R core' }
+};
+
 /**
  * Helper functions to work with {@link CallProp}s and {@link SemanticCallTag}s of calls.
  * All helpers use {@link PropSelector}s to identify call properties.
@@ -355,11 +390,13 @@ export const CallProps = {
 			...Record.entries(SemanticCallTag).filter(([, prop]) => mask.tags.has(prop)).map(([name]) => name)
 		];
 	},
-	/** Gets the string labels for stated properties {@link CallPropLabels}. */
+	/** the {@link CallProp} bits as words, in the order they are declared */
+	vocabulary: CallPropWords,
+	/** Gets the string labels for stated properties, see {@link CallPropWords}. */
 	labels(this: void, stated: StatedProps | undefined): string[] {
 		return [...CallProps.words(stated?.props), ...stated?.tags ?? []];
 	},
-	/** The {@link CallPropLabels} words for a bare {@link CallProps} bitfield, as inferred functions carry one. */
+	/** The {@link CallPropWords} for a bare {@link CallProps} bitfield, as inferred functions carry one. */
 	words(this: void, props: CallProps | undefined): string[] {
 		return wordsOf(CallPropEntries, props);
 	},
@@ -415,24 +452,25 @@ export const FnSig = {
 	only:    forcingOnly
 } as const;
 
-/** the {@link ArgProp} bit to its name; integer keys iterate in ascending bit order */
-const ArgPropNames: Readonly<Record<ArgProp, string>> = {
-	[ArgProp.Forced]:     'forced',
-	[ArgProp.NoDefault]:  'no default',
-	[ArgProp.Alias]:      'alias',
-	[ArgProp.Value]:      'value',
-	[ArgProp.Shape]:      'shape',
-	[ArgProp.Flag]:       'flag',
-	[ArgProp.Resource]:   'resource',
-	[ArgProp.Written]:    'written',
-	[ArgProp.Nse]:        'nse',
-	[ArgProp.Callee]:     'callee',
-	[ArgProp.Presence]:   'presence',
-	[ArgProp.Bounds]:     'bounds',
-	[ArgProp.Atomic]:     'atomic',
-	[ArgProp.Handle]:     'handle',
-	[ArgProp.Lazy]:       'lazy',
-	[ArgProp.Injectable]: 'injectable'
+/** the {@link ArgProp} bits as words; integer keys iterate in ascending bit order */
+const ArgPropWords: Readonly<Record<ArgProp, PropWord>> = {
+	[ArgProp.Forced]:     { word: 'forced', short: 'F', about: 'always evaluated' },
+	[ArgProp.NoDefault]:  { word: 'no default', short: 'R', about: 'declared without a default' },
+	[ArgProp.Alias]:      { word: 'alias', about: 'handed back as the result' },
+	[ArgProp.Value]:      { word: 'value', short: 'val', about: 'its value feeds the result' },
+	[ArgProp.Shape]:      { word: 'shape', about: 'only length or attributes used' },
+	[ArgProp.Flag]:       { word: 'flag', about: 'selects a behavior' },
+	[ArgProp.Resource]:   { word: 'resource', short: 'res', about: 'names a file or connection' },
+	[ArgProp.Written]:    { word: 'written', short: 'out', about: 'may be modified' },
+	[ArgProp.Nse]:        { word: 'nse', about: 'quoted, not evaluated' },
+	[ArgProp.Callee]:     { word: 'callee', short: 'fn', about: 'called as a function' },
+	[ArgProp.Presence]:   { word: 'presence', short: 'seen', about: 'only whether it was given matters' },
+	[ArgProp.Bounds]:     { word: 'bounds', about: 'the result is one of its values' },
+	[ArgProp.Atomic]:     { word: 'atomic', about: 'plain data only' },
+	[ArgProp.Handle]:     { word: 'handle', about: 'an open connection' },
+	[ArgProp.Lazy]:       { word: 'lazy', short: 'L', about: 'never evaluated' },
+	[ArgProp.Injectable]: { word: 'injectable', about: 'open to injection' },
+	[ArgProp.Deparsed]:   { word: 'deparsed', about: 'its expression names part of the result' }
 };
 
 /** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */
@@ -445,24 +483,6 @@ function maskOfNames(this: void, of: Record<string, string | number>, names: rea
 	return mask;
 }
 
-/** the properties as the words a reader wants, in the order they are declared */
-const CallPropLabels: Readonly<Record<CallProp, string>> = {
-	[CallProp.Pure]:       'pure',
-	[CallProp.MayPure]:    'maybe pure',
-	[CallProp.Throws]:     'can throw',
-	[CallProp.Invisible]:  'invisible',
-	[CallProp.Generic]:    'generic',
-	[CallProp.Method]:     's3 method',
-	[CallProp.Scope]:      'changes scope',
-	[CallProp.NonDet]:     'non deterministic',
-	[CallProp.Ambient]:    'ambient state',
-	[CallProp.Configures]: 'sets ambient state',
-	[CallProp.Ffi]:        'calls native code',
-	[CallProp.Lang]:       'produces language object',
-	[CallProp.Strict]:     'strict',
-	[CallProp.Concurrent]: 'concurrent',
-	[CallProp.Primitive]:  'primitive'
-};
 
 /** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
 function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {
@@ -470,23 +490,23 @@ function wordsOf(this: void, entries: readonly (readonly [number, string])[], ma
 }
 
 /** A bit-keyed word table as `[bit, word]` pairs in ascending bit order, for {@link wordsOf}; shared by {@link ArgProps} and {@link CallProps}. */
-function bitEntries(this: void, byBit: Readonly<Record<number, string>>): readonly (readonly [number, string])[] {
-	return Object.entries(byBit).map(([bit, word]) => [Number(bit), word] as const);
+function bitEntries(this: void, byBit: Readonly<Record<number, PropWord>>): readonly (readonly [number, string])[] {
+	return Object.entries(byBit).map(([bit, { word }]) => [Number(bit), word] as const);
 }
 
-const ArgPropEntries = bitEntries(ArgPropNames);
-const CallPropEntries = bitEntries(CallPropLabels);
+const ArgPropEntries = bitEntries(ArgPropWords);
+const CallPropEntries = bitEntries(CallPropWords);
 
 /**
  * Utility functions for {@link ArgProps|argument property bitfields}.
  */
 export const ArgProps = {
-	/** the {@link ArgProp} bit to its name, in ascending bit order */
-	names: ArgPropNames,
+	/** the {@link ArgProp} bits as words, in ascending bit order */
+	vocabulary: ArgPropWords,
 	/** What an argument is used for, as words; see {@link wordsOf}. */
-	words: (props: ArgProps | undefined): string[] => wordsOf(ArgPropEntries, props),
+	words:      (props: ArgProps | undefined): string[] => wordsOf(ArgPropEntries, props),
 	/** The mask the given {@link ArgProp} member names stand for; see {@link maskOfNames}. */
-	mask:  (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
+	mask:       (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
 } as const;
 
 /**

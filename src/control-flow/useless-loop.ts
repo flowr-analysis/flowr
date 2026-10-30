@@ -1,6 +1,6 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { Resolve } from '../dataflow/environments/resolve-helper';
-import { isValue, type Lift, type Value } from '../dataflow/eval/values/r-value';
+import { isValue, RValue, type Lift, type Value } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
@@ -27,9 +27,7 @@ export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop,
  * @param ctx         - current flowr analyzer context
  * @returns           true if the given loop only iterates once, `undefined` if we cannot tell
  */
-export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext, what?: string): boolean | undefined {
-	console.log("HIII");
-	console.log("what is", what);
+export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
 	const vertex = dataflow.getVertex(loop);
 	if(!vertex) {
 		return undefined;
@@ -57,7 +55,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		dfg:                  dataflow,
 		ctx,
 		defaultVisitingOrder: 'forward'
-	}, what).loopsOnlyOnce();
+	}).loopsOnlyOnce();
 }
 
 function holdsOneElement(value: Lift<Value>, element = false): boolean {
@@ -65,8 +63,7 @@ function holdsOneElement(value: Lift<Value>, element = false): boolean {
 		return false;
 	}
 	return value.type === 'vector' ? isValue(value.elements) && value.elements.length === 1 && holdsOneElement(value.elements[0], true)
-		: value.type === 'interval' ? isValue(value.start) && isValue(value.end) && value.startInclusive && value.endInclusive
-			&& isValue(value.start.value) && isValue(value.end.value) && value.start.value.num === value.end.value.num
+		: value.type === 'interval' ? RValue.numberOf(value) !== undefined
 			: (value.type === 'string' || value.type === 'logical' || (element && value.type === 'number')) && isValue(value.value);
 }
 
@@ -78,9 +75,8 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 	private what: string | undefined;
 
-	constructor(private readonly loopToCheck: NodeId, config: SemanticCfgGuidedVisitorConfiguration, what?: string) {
+	constructor(private readonly loopToCheck: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
 		super(config);
-		this.what = what;
 	}
 
 	protected startVisitor(_: readonly NodeId[]): void {
@@ -107,21 +103,13 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 				this.visitNode(current);
 			}
 		}
-		
-		// for (const current of this.withinLoop.values()) {
-		// 	if (!g.hasVertex(current) || !this.visitNode(current)) {
-		// 		continue;
-		// 	}
-		// 	this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
-		// }
-		
+
 		this.onlyLoopyOnce = this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 	}
 
 	private breaks({ call }: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		const filtered = call.cds?.filter(c => this.withinLoop.has(c.id)) ?? [];
-		console.log(this.what, call);
 		if(filtered.length > 0) {
 			this.loopCds = (this.loopCds ?? []).concat(filtered);
 		}

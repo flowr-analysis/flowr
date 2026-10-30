@@ -33,7 +33,9 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import type { BuiltInLookup } from '../../../../../fn/frame-reflection';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../../graph/df-helper';
-import { REnvironment } from '../../../../../environments/environment';
+import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
+import { SourceRange } from '../../../../../../util/range';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -89,6 +91,7 @@ export function processTryCatch<OtherInfo>(
 				const raised = errorsOfWarnings(block, info.environment, info.graph, data);
 				for(const site of raised) {
 					info.graph.addEdge(site.nodeId, rootId, EdgeType.Reads);
+					info.graph.addEdge(rootId, site.nodeId, EdgeType.Reads);
 				}
 				(arg.exitPoints as ExitPoint[]) = arg.exitPoints.concat(raised);
 				raising.push(...order(block, []));
@@ -187,6 +190,8 @@ export function processTryCatch<OtherInfo>(
 		if(call !== undefined) {
 			call.cds = [...call.cds ?? [], { id: rootId, when: true }];
 		}
+		/* whether the block raises decides what the construct yields, its value or that of a handler */
+		info.graph.addEdge(rootId, id, EdgeType.Reads);
 	}
 	const environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
 	return {
@@ -195,6 +200,42 @@ export function processTryCatch<OtherInfo>(
 		environment: applyKills(environment, escapingKills),
 		kill:        escapingKills
 	};
+}
+
+/**
+ * Links what a block catching errors may raise because a warning turns into one, where the `warn` option that does
+ * so is only known after linking: `g(options, warn = 2)` sets it through the function `g` is handed. Every call of
+ * the block written after such a write may then raise, so the construct's value reads it, and it reads the write.
+ */
+export function linkLateWarningsAsErrors(graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap): void {
+	const writes = (Resolve.byName(AmbientStateName.warnsAsErrors, environment) ?? []).filter(d => DfgVertex.isFunctionCall(graph.getVertex(d.nodeId)));
+	if(writes.length === 0) {
+		return;
+	}
+	const startOf = (id: NodeId) => idMap.get(id)?.location;
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const call = DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) ? idMap.get(id) : undefined;
+		const [block] = RFunctionCall.is(call) ? call.arguments : [];
+		const at = startOf(id);
+		const before = at === undefined ? [] : writes.filter(w => {
+			const written = startOf(w.nodeId);
+			return written !== undefined && SourceRange.compare(written, at) < 0 && !Dataflow.hasEdge(graph, id, w.nodeId, EdgeType.Reads);
+		});
+		if(block === undefined || block === EmptyArgument || before.length === 0) {
+			continue;
+		}
+		RNode.visitAst(block, n => {
+			if(RFunctionDefinition.is(n)) {
+				return true;
+			} else if(DfgVertex.isFunctionCall(graph.getVertex(n.info.id))) {
+				graph.addEdge(id, n.info.id, EdgeType.Reads);
+				for(const write of before) {
+					graph.addEdge(n.info.id, write.nodeId, EdgeType.Reads);
+				}
+			}
+			return false;
+		});
+	}
 }
 
 /** Orders the raising calls in every body a block catching errors may run, once per definition and after linking bound all calls. */
@@ -330,11 +371,5 @@ function constrainExitPoints(exitPoints: readonly ExitPoint[], constrain: Readon
 		return exitPoints;
 	}
 	const cds = Array.from(constrain, id => ({ id, when: true }));
-	return exitPoints.map(e => {
-		if(e.cds) {
-			e.cds.push(...cds);
-			return e;
-		}
-		return { ...e, cds };
-	});
+	return exitPoints.map(e => ({ ...e, cds: e.cds ? [...e.cds, ...cds] : cds }));
 }

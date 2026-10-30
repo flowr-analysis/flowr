@@ -5,7 +5,8 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
+import { callsBuiltIn, namesWith } from '../../linter-util';
 import { Enrichment } from '../../../search/search-executor/search-enrichers';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
@@ -87,8 +88,6 @@ export interface DependencyDeclarationMetadata extends MergeableRecord {
 	readonly unresolvedLoads: number
 }
 
-/** the S4 functions marking code to need `methods` */
-const S4Definers: ReadonlySet<string> = new Set(['setClass', 'setMethod', 'setGeneric', 'setRefClass', 'setValidity', 'setClassUnion']);
 const PackageName = /^[A-Za-z][A-Za-z0-9.]*[A-Za-z0-9]$/;
 
 /** the packages R attaches by default, which `library` calls may name without a DESCRIPTION entry */
@@ -96,10 +95,8 @@ function isDefaultPackage(pkg: string): boolean {
 	return AttachedBasePackageSet.has(pkg) && pkg !== 'methods';
 }
 
-const LoadFunctions: ReadonlySet<string> = new Set(['library', 'require', 'loadNamespace', 'requireNamespace']);
-
 /** the packages a piece of code loads or accesses, read off its syntax as `tools:::.check_packages_used_helper` does */
-function packagesUsedIn(ast: NormalizedAst): { pkg: string, node: RNode<ParentInformation>, how: string }[] {
+function packagesUsedIn(ast: NormalizedAst, loaders: ReadonlySet<string>): { pkg: string, node: RNode<ParentInformation>, how: string }[] {
 	const result: { pkg: string, node: RNode<ParentInformation>, how: string }[] = [];
 	for(const node of projectNodes(ast)) {
 		if(RSymbol.is(node)) {
@@ -115,7 +112,7 @@ function packagesUsedIn(ast: NormalizedAst): { pkg: string, node: RNode<ParentIn
 		const fn = Identifier.getName(node.functionName.content);
 		const args = node.arguments.filter(a => a !== EmptyArgument);
 		const named = (n: string) => args.find(a => a.name !== undefined && Identifier.getName(a.name.content) === n)?.value;
-		if(LoadFunctions.has(fn)) {
+		if(loaders.has(fn)) {
 			const value = named('package') ?? args.find(a => a.name === undefined)?.value;
 			const characterOnly = named('character.only');
 			if(RString.is(value)) {
@@ -146,7 +143,7 @@ function otherCodeFindings(files: PackageFiles, declared: ReadonlySet<string>, d
 		}
 		const reported = new Set<string>();
 		const isDeclared = (pkg: string) => declared.has(pkg) || isBaseRPackage(pkg);
-		for(const { pkg, node, how } of packagesUsedIn(ast)) {
+		for(const { pkg, node, how } of packagesUsedIn(ast, namesWith(data.inspectContext().env.builtInIndex, SemanticCallTag.LoadsPackage))) {
 			if(isDeclared(pkg) || reported.has(pkg) || !PackageName.test(pkg)) {
 				continue;
 			}
@@ -252,12 +249,13 @@ export const DEPENDENCY_DECLARATION = {
 		}
 
 		/* pkg::f and pkg:::f */
+		const s4Definers = new Set(ctx.env.builtInIndex.with(SemanticCallTag.Declares).filter(n => Identifier.getNamespace(n) === PkgName.Methods).map(n => Identifier.getName(n)));
 		let usesS4 = false;
 		for(const node of projectNodes(ast)) {
 			if(!pkg.isPackageCode(node.info.file)) {
 				continue;
 			}
-			if(RFunctionCall.isNamed(node, S4Definers)) {
+			if(RFunctionCall.is(node) && callsBuiltIn(df.graph, node.info.id, s4Definers)) {
 				usesS4 = true;
 			}
 			if(!RSymbol.is(node)) {

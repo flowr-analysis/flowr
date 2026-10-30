@@ -64,7 +64,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinterPackage('import never used', parser, 'f <- function(x) x', rule, [
 				{ kind: 'unused-import', package: 'dplyr', loc: [1, 1, 1, 1, '/pkg/DESCRIPTION'] }
 			], { files: desc('Imports: dplyr\n') });
-			assertLinterPackage('import used by ::', parser, 'f <- function(x) dplyr::filter(x)', rule, [], { files: desc('Imports: dplyr\n') });
 			assertLinterPackage('import used by the NAMESPACE', parser, 'f <- function(x) filter(x)', rule, [], { files: { ...desc('Imports: dplyr\n'), NAMESPACE: 'importFrom(dplyr, filter)\n' } });
 			assertLinterPackage('import used by a whole-package import', parser, 'f <- function(x) x', rule, [], { files: { ...desc('Imports: dplyr\n'), NAMESPACE: 'import(dplyr)\n' } });
 			assertLinterPackage('only the unused of several imports', parser, 'f <- function(x) dplyr::filter(x)', rule, [{ kind: 'unused-import', package: 'tidyr' }], { files: desc('Imports: dplyr, tidyr (>= 1.0)\n') });

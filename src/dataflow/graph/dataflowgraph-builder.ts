@@ -73,7 +73,7 @@ export class DataflowGraphBuilder<
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: readonly ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
@@ -113,7 +113,7 @@ export class DataflowGraphBuilder<
 			onlyBuiltIn?:        boolean,
 			environment?:        REnvironmentInformation,
 			builtInEnvironment?: IEnvironment,
-			cds?:                ControlDependency[],
+			cds?:                readonly ControlDependency[],
 			origin?:             FunctionOriginInformation[]
 			link?:               DataflowGraphVertexAstLink,
 			omitArgs?:           boolean
@@ -175,7 +175,7 @@ export class DataflowGraphBuilder<
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name?: string,
-		info?: { cds?: ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
+		info?: { cds?: readonly ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
 			id:  NodeId.normalize(id),
@@ -219,7 +219,7 @@ export class DataflowGraphBuilder<
 	 * @param asRoot  - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public constant(id: NodeId, options?: { cds?: ControlDependency[] }, asRoot: boolean = true) {
+	public constant(id: NodeId, options?: { cds?: readonly ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
 			id:          NodeId.normalize(id),

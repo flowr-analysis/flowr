@@ -19,4 +19,24 @@ plot(y)
 		] });
 		assert.strictEqual(String(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).content()), '# # Title\n# some prose\n# \n# more\nx <- 1\nx');
 	});
+	test('records what each code cell printed', () => {
+		const notebook = JSON.stringify({ cells: [
+			{ cell_type: 'markdown', source: 'prose' },
+			{ cell_type: 'code', source: 'x <- 1', outputs: [] },
+			{ cell_type: 'code', source:    ['cat("a")\n', 'x'], outputs:   [
+				{ output_type: 'stream', name: 'stdout', text: ['a\n'] },
+				{ output_type: 'execute_result', data: { 'text/plain': '[1] 1' } }
+			] }
+		] });
+		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded(), [
+			{ code: 'x <- 1', output: '', plots: 0, images: [] },
+			{ code: 'cat("a")\nx', output: 'a\n\n[1] 1', plots: 0, images: [] }
+		]);
+	});
+	test('counts the plots a cell drew and survives a notebook it cannot read', () => {
+		const notebook = JSON.stringify({ cells: [{ cell_type: 'code', source: 'plot(1)', outputs: [{ output_type: 'display_data', data: { 'image/png': 'AAAA', 'text/plain': '<Figure>' } }] }] });
+		assert.strictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded()[0].plots, 1);
+		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', notebook)).recorded()[0].images, ['data:image/png;base64,AAAA']);
+		assert.deepStrictEqual(FlowrJupyterFile.from(new FlowrInlineTextFile('n.ipynb', '{ not json')).recorded(), []);
+	});
 });

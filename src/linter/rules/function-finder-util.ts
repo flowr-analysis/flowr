@@ -3,7 +3,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { FlowrFilter } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceLocation } from '../../util/range';
-import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
+import { prettyPrint, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
@@ -33,20 +33,16 @@ export interface FunctionsMetadata extends MergeableRecord {
  * This helper object collects utility functions used to create linting rules that search for specific functions.
  */
 export const functionFinderUtil = {
-	createSearch: (functions: readonly Identifier[]) => {
-		return (
-			Q.all().filter(VertexType.FunctionCall)
-				.with(Enrichment.CallTargets, { onlyBuiltin: true })
-				.filter({
-					name: FlowrFilter.MatchesEnrichment,
-					args: {
-						enrichment: Enrichment.CallTargets,
-						test:       {
-							targets: Identifier.regex(...functions)
-						}
-					}
-				})
-		);
+	createSearch: (functions?: readonly Identifier[], qualifyNames = true) => {
+		const search = Q.all().filter(VertexType.FunctionCall)
+			.with(Enrichment.CallTargets, { onlyBuiltin: true, qualifyNames });
+		return functions === undefined ? search : search.filter({
+			name: FlowrFilter.MatchesEnrichment,
+			args: {
+				enrichment: Enrichment.CallTargets,
+				test:       { targets: Identifier.regex(...functions) }
+			}
+		});
 	},
 	async processSearchResult<T extends FlowrSearchElement<ParentInformation>[]>(
 		this: void,
@@ -85,12 +81,10 @@ export const functionFinderUtil = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: (functionType: string) => {
-		return {
-			[LintingPrettyPrintContext.Query]: (result: FunctionsResult) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
-			[LintingPrettyPrintContext.Full]:  (result: FunctionsResult) => `Function \`${result.function}\` called at ${SourceLocation.format(result.loc)} is related to ${functionType}`
-		};
-	},
+	prettyPrint: (functionType: string) => prettyPrint(
+		(result: FunctionsResult) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
+		result => `Function \`${result.function}\` called at ${SourceLocation.format(result.loc)} is related to ${functionType}`
+	),
 	async requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
 		pool: ReadonlyMap<string, FunctionInfo>,

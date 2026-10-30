@@ -24,7 +24,7 @@ describe('release version bump', () => {
 		assert.throws(() => bumpVersion("const versionDate = '';\n", '1.0.1', date), /lost its/);
 	});
 	test('the real version file still has both lines', () => {
-		const real = fs.readFileSync('src/util/version.ts', 'utf-8');
+		const real = fs.readFileSync('src/util/flowr-version.ts', 'utf-8');
 		const bumped = bumpVersion(real, '99.0.0', date);
 		assert.include(bumped, "const version = '99.0.0'");
 		assert.include(bumped, "const versionDate = '2026-10-11T09:36:30Z'");
@@ -39,9 +39,9 @@ describe('release version bump', () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-bump-'));
 		try {
 			fs.mkdirSync(path.join(dir, 'src/util'), { recursive: true });
-			fs.writeFileSync(path.join(dir, 'src/util/version.ts'), source);
+			fs.writeFileSync(path.join(dir, 'src/util/flowr-version.ts'), source);
 			execFileSync(process.execPath, [tsNode, '--transpile-only', path.resolve('scripts/bump-version.ts'), '4.5.6'], { cwd: dir, stdio: 'pipe' });
-			assert.include(fs.readFileSync(path.join(dir, 'src/util/version.ts'), 'utf-8'), "const version = '4.5.6'");
+			assert.include(fs.readFileSync(path.join(dir, 'src/util/flowr-version.ts'), 'utf-8'), "const version = '4.5.6'");
 			assert.throws(() => execFileSync(process.execPath, [tsNode, '--transpile-only', path.resolve('scripts/bump-version.ts')], { cwd: dir, stdio: 'pipe' }));
 		} finally {
 			fs.rmSync(dir, { recursive: true, force: true });

@@ -1,18 +1,17 @@
 import { DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
-import { getOriginInDfg } from '../origin/dfg-get-origin';
+import { getOriginInDfg, type Origin } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
-import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
+import { ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
-import { isBaseRPackage } from '../../util/r-base-packages';
+import { baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
 
@@ -185,6 +184,16 @@ export const Dataflow = {
 		return getAllFunctionCallTargets(call, graph, environment);
 	},
 	/**
+	 * Whether every function the call may run is a built-in or one the program defines, so that what flowR knows
+	 * about those functions is all there is to know about the call. In `f <- function(x) x; do.call(f, list(1))` the
+	 * symbol `f` is called this way, while in `g <- get(name); g(1)` it is not known what `g` runs.
+	 * A call of a name the program binds nowhere runs what a package exports under that name, which counts as known.
+	 * @see {@link Dataflow.callTargetsOf} - for the targets themselves
+	 */
+	callsOnlyKnownFunctions(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): boolean {
+		return Dataflow.callTargetsOf(call, graph, environment).every(t => NodeId.isBuiltIn(t) || DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/**
 	 * The calls within the body of a function definition, id and vertex paired.
 	 * @see {@link Dataflow.calleeIdsOf} - for what a single call calls
 	 */
@@ -200,9 +209,9 @@ export const Dataflow = {
 	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {
 		const byName = new DefaultMap<string, NodeId[]>(() => []);
 		for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-			const name = NodeId.recoverName(id, graph.idMap);
+			const name = NodeId.recoverBareName(id, graph.idMap);
 			if(name !== undefined) {
-				byName.get(RString.unquote(name)).push(id);
+				byName.get(name).push(id);
 			}
 		}
 		return byName;
@@ -248,6 +257,11 @@ export const Dataflow = {
 	sideEffects: {
 		propagateTransitive: propagateTransitiveSideEffects,
 		callGraphSummaries:  computeCallGraphSummaries,
+		/**
+		 * The global state each function may leave changed when called, as pseudo variable names ({@link AmbientStateName}),
+		 * including what the functions it calls change. Writes only to the function's own frame are left out.
+		 */
+		ambientWrites:       ambientWritesOfFunctions,
 	},
 	/**
 	 * Only returns the sub-part of the graph that is determined by the given selection.
@@ -391,5 +405,25 @@ const resolveQualification: CallQualifier = (graph, id, vertex) => {
 	const origins = Dataflow.origin(graph, id);
 	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
 	const bare = Identifier.toQualified(origins, name, false);
-	return [bare, bare ?? Identifier.toQualified(origins, name, true)];
+	return [bare, bare ?? Identifier.toQualified(origins, name, true) ?? aliasedBaseR(graph, id, origins)];
 };
+
+/**
+ * The base-R function an aliased call resolves to when it reaches nothing of the analyzed code, `utils::read.csv` for the
+ * `f()` of `f <- read.csv`, which the origins alone cannot tell from a call of the code, as both read the definition of `f`.
+ * Only a call reading such a binding is one, as an unknown `stat_summary(fun = mean)` is said to call `mean` as well.
+ */
+function aliasedBaseR(graph: DataflowGraph, id: NodeId, origins: readonly Origin[] | undefined): Identifier | undefined {
+	if(!origins?.some(o => !('proc' in o) && !NodeId.isBuiltIn(o.id))) {
+		return undefined;
+	}
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.Calls) && !NodeId.isBuiltIn(target)) {
+			return undefined;
+		}
+	}
+	const names = new Set(origins.flatMap(o => 'proc' in o && NodeId.isBuiltIn(o.proc) ? [NodeId.fromBuiltIn(o.proc)] : []));
+	const [name] = names;
+	const owner = names.size === 1 ? baseRExportOwner(name) : undefined;
+	return owner === undefined ? undefined : Identifier.make(name, owner);
+}

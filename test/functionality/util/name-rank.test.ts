@@ -29,6 +29,8 @@ describe('Name ranking', () => {
 		{ name: 'merge', needle: 'mer', baseR: true, base: true }, { name: 'merge', needle: 'mer' });
 	beats('a function before a lone value',
 		{ name: 'count', needle: 'cou' }, { name: 'count', needle: 'cou', variable: true });
+	beats('a name the script defines before one flowR knows',
+		{ name: 'year1', needle: 'yea', local: true, variable: true }, { name: 'year', needle: 'yea', known: true, baseR: true });
 	beats('the closer fuzzy match first',
 		{ name: 'select', needle: 'slt', rank: 0 }, { name: 'select', needle: 'slt', rank: 3 });
 

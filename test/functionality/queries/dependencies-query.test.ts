@@ -136,8 +136,68 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ nodeId: '3@g', functionName: 'g', value: 'stdout', via: 10 }
 			]
 		});
+		testQuery('each call writes only the file it names', 'save_it <- function(p) write.csv(d, p)\nsave_it("a.csv")\nsave_it("b.csv")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'a.csv', via: 8 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'b.csv', via: 8 }
+			]
+		});
+		testQuery('a call gets the file built from its own argument', 'save_it <- function(n) { p <- file.path("out", paste0(n, ".csv")); write.csv(d, p) }\nsave_it("a")\nsave_it("b")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out/b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out/a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'out/a.csv', via: 23 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'out/b.csv', via: 23 }
+			]
+		});
+		testQuery('a call that leaves a parameter out gets its default', 'save_it <- function(n, ext = ".csv") write.csv(d, paste0(n, ext))\nsave_it("a")\nsave_it("b", ".txt")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.txt', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.txt', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'a.csv', via: 16 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'b.txt', via: 16 }
+			]
+		});
+		testQuery('a call through another function of the program gets its own file', 'inner <- function(k) write.csv(d, k)\nouter <- function(n) inner(paste0("x-", n))\nouter("a")\nouter("b")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'x-b', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'x-a', inputVariables: ['d'] },
+				{ nodeId: '2@inner', functionName: 'inner', value: 'x-b', via: 8 },
+				{ nodeId: '2@inner', functionName: 'inner', value: 'x-a', via: 8 },
+				{ nodeId: '3@outer', functionName: 'outer', value: 'x-a', via: 23 },
+				{ nodeId: '4@outer', functionName: 'outer', value: 'x-b', via: 23 }
+			]
+		});
+		testQuery('a piped call gets the file piped into it', 'save_it <- function(p) write.csv(d, p)\n"a.csv" |> save_it()\nsave_it("b.csv")', {
+			write: [
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
+				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'a.csv', inputVariables: ['d'] },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'a.csv', via: 8 },
+				{ nodeId: '3@save_it', functionName: 'save_it', value: 'b.csv', via: 8 }
+			]
+		});
 		testQuery('a function ending in an invisible call echoes nothing', 'save_it <- function(p) write.csv(d, p)\nsave_it("r.csv")', {
 			write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'r.csv', inputVariables: ['d'] }, { nodeId: '2@save_it', functionName: 'save_it', value: 'r.csv', via: 8 }]
+		});
+		testQuery('a function ending in ggsave echoes nothing, also when called through another', 'save_it <- function(p) ggplot2::ggsave(p)\nvia <- function(p) save_it(p)\nvia("r.pdf")', {
+			library: [{ nodeId: 3, functionName: '::', value: 'ggplot2' }],
+			write:   [
+				{ nodeId: 6, functionName: ['ggsave', 'ggplot2', false], value: 'r.pdf' },
+				{ nodeId: '2@save_it', functionName: 'save_it', value: 'r.pdf', via: 6 },
+				{ nodeId: '3@via', functionName: 'via', value: 'r.pdf', via: 16 }
+			]
+		});
+		testQuery('a function ending in a visible call echoes, also when called through another', 'make_it <- function(p) file.create(p)\nvia <- function(p) make_it(p)\nvia("r.txt")', {
+			write: [
+				{ nodeId: '1@file.create', functionName: 'file.create', value: 'r.txt', inputVariables: ['p'] },
+				{ nodeId: '3@via', functionName: 'via', value: 'stdout', implicit: true },
+				{ nodeId: '2@make_it', functionName: 'make_it', value: 'r.txt', via: 6 },
+				{ nodeId: '3@via', functionName: 'via', value: 'r.txt', via: 16 }
+			]
 		});
 		/* the function of the program decides, not the built-in it shadows: an assignment hands its value back invisibly */
 		testQuery('a function ending in an assignment echoes nothing, even shadowing a built-in', 'points <- function() { x <- 2 }\npoints()', { write: [] });
@@ -205,7 +265,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@p_load', functionName: 'p_load', value: 'c' }
 		] });
 
-		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }] });
+		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv', assignedTo: 'x' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stderr' }] });
 
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', {
 			write: [
@@ -284,7 +344,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '4@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: '3@lapply', functionName: 'lapply', value: 'stdout', implicit: true, inputVariables: ['v'] }], library: [
+		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: 10, functionName: 'c', value: 'stdout' }, { nodeId: 14, functionName: 'c', value: 'stdout' }, { nodeId: '3@lapply', functionName: 'lapply', value: 'stdout', implicit: true, inputVariables: ['v'] }], library: [
 			{ nodeId: '3@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'v', argumentId: '3:8' },
 		] });
 
@@ -394,6 +454,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
 		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }], write: [printed('1@gzfile', 'gzfile')] });
 		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [], write: [printed('1@gzfile', 'gzfile')] });
+		testQuery('a connection opened on an unknown file reads an unknown file', 'read.csv(gzfile(d))', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', argumentId: '1@gzfile', lexemeOfArgument: 'gzfile(d)', value: 'unknown' }], write: [printed('1@read.csv', 'read.csv')] });
 
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x', argumentId: '1:12' }], write: [printed('1@read.table', 'read.table')] });
 
@@ -418,6 +479,29 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }], write: [printed('1@read.table', 'read.table')] });
 		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
 			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }], write: [printed('2@read.csv', 'read.csv')] });
+		describe('a reader under another name', () => {
+			testQuery('bound to a name', 'f <- read.csv\nx <- f("a.csv")', { read: [{ nodeId: '2@f', functionName: 'f', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('bound twice', 'a <- read.csv\nb <- a\nx <- b("a.csv")', { read: [{ nodeId: '3@b', functionName: 'b', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('bound to one of two readers', 'if(u) r <- read.csv else r <- read.table\nx <- r("a.csv")', { read: [{ nodeId: '2@r', functionName: 'r', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('of a package', 'rd <- readr::read_csv\nx <- rd("a.csv")', { library: [{ nodeId: '1@read_csv', functionName: '::', value: 'readr' }], read: [{ nodeId: '2@rd', functionName: 'rd', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('in a list', 'm <- list(r = read.csv)\nx <- m$r("a.csv")', { read: [{ nodeId: 14, functionName: 'unnamed-fc-14', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('in parentheses', 'x <- (read.csv)("a.csv")', { read: [{ nodeId: 7, functionName: 'unnamed-fc-7', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('handed as an argument', 'g <- function(p) p("a.csv")\nx <- g(read.csv)', { read: [{ nodeId: 6, functionName: 'p', value: 'a.csv' }, { nodeId: '2@g', functionName: 'g', via: 6, value: 'a.csv' }] });
+			testQuery('a function handed to an unknown call is not called by the name of the call', 'x <- lapply(c("a", "b"), function(y) data[y])', {});
+			testQuery('only the element called of a list', 'm <- list(r = read.csv, o = print)\nx <- m$o("a.csv")', { write: [{ nodeId: 17, functionName: 'unnamed-fc-17', value: 'stdout' }] });
+			testQuery('not a reader of the code named like one', 'read.csv <- function(p) 1\nf <- read.csv\nx <- f("a.csv")', {});
+			testQuery('not a name rebound to an unknown function', 'read.csv <- gar\nf <- read.csv\nx <- f("a.csv")', {});
+			testQuery('not after the name is bound again', 'f <- read.csv\nf <- print\nx <- f("a.csv")', { write: [{ nodeId: '3@f', functionName: 'f', value: 'stdout' }] });
+			testQuery('not where a local binding shadows it', 'f <- read.csv\ng <- function() { f <- print; f("a.csv") }\ng()', { write: [{ nodeId: 12, functionName: 'f', value: 'stdout' }, { nodeId: '3@g', functionName: 'g', value: 'stdout', implicit: true }] });
+			testQuery('looked up by its name', 'x <- get("read.csv")("a.csv")', { read: [{ nodeId: 7, functionName: 'unnamed-fc-7', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('returned by a function', 'f <- function() read.csv\nx <- f()("a.csv")', { read: [{ nodeId: 10, functionName: 'unnamed-fc-10', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('assigned by name', 'assign("f", read.csv)\nx <- f("a.csv")', { read: [{ nodeId: '2@f', functionName: 'f', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('assigned into an environment', 'e <- new.env()\nassign("f", read.csv, envir = e)\nx <- e$f("a.csv")', { read: [{ nodeId: 20, functionName: 'unnamed-fc-20', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('put into an environment', 'e <- new.env()\ne[["f"]] <- read.csv\nx <- e[["f"]]("a.csv")', { read: [{ nodeId: 17, functionName: 'unnamed-fc-17', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('put into the global environment', 'e <- environment()\ne$f <- read.csv\nx <- f("a.csv")', { read: [{ nodeId: '3@f', functionName: 'f', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('matched as a function', 'f <- read.csv\nx <- match.fun(f)("a.csv")', { read: [{ nodeId: 10, functionName: 'unnamed-fc-10', assignedTo: 'x', value: 'a.csv' }] });
+			testQuery('the default of a parameter', 'f <- function(fun = read.csv) fun("a.csv")\nx <- f()', { read: [{ nodeId: 7, functionName: 'fun', value: 'a.csv' }, { nodeId: '2@f', functionName: 'f', via: 7, value: 'a.csv' }] });
+		});
 		testQuery('write (path built in a local)', 'p <- file.path("out", "r.csv")\nwrite.csv(x, p)',
 			{ write: [{ nodeId: '2@write.csv', functionName: 'write.csv', value: 'out/r.csv', inputVariables: ['x'] }] });
 
@@ -674,13 +758,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('the time-series filter of stats is none', 'stats::filter(x, rep(1, 3))', { library: [{ nodeId: '1@filter', functionName: '::', value: 'stats' }], write: [printed(10, Identifier.make('filter', 'stats'), ['x'])] });
 			testQuery('a bare filter is the one of stats', 'filter(x, rep(1, 3))', { write: [printed(10, 'filter', ['x'])] });
 			testQuery('a user-defined filter is none', 'filter <- function(x) x\ny <- filter(df)', {});
+			testQuery('an assignment into a part of a data frame transforms it', 'd <- data.frame(x = 1:3)\nd$y <- d$x * 2\nv <- 1:3\nv[1] <- 5', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('a data frame handed through parentheses is one', 'd <- (data.frame(x = 1:3))\nd$y <- 2', { transform: [{ nodeId: '2@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('a copy of a data frame is one', 'd <- data.frame(x = 1:3)\nk <- d\nk$y <- 2', { transform: [{ nodeId: '3@$', functionName: '$<-', assignedTo: 'k', inputVariables: ['k'] }] });
+			testQuery('a copy through parentheses is one', 'd <- data.frame(x = 1:3)\ne <- (d)\ne[1, 1] <- 2', { transform: [{ nodeId: '3@[', functionName: '[<-', assignedTo: 'e', inputVariables: ['e'] }] });
+			testQuery('a copy on one branch is one', 'd <- data.frame(x = 1:3)\nif(u) q <- d else q <- 1\nq$m <- 2', { transform: [{ nodeId: '3@$', functionName: '$<-', assignedTo: 'q', inputVariables: ['q'] }] });
+			testQuery('a reader under another name makes one', 'f <- read.csv\nd <- f(p)\nd$y <- 2', { read: [{ nodeId: '2@f', functionName: 'f', assignedTo: 'd', value: 'unknown', argumentId: '2@p', lexemeOfArgument: 'p' }], transform: [{ nodeId: '3@$', functionName: '$<-', assignedTo: 'd', inputVariables: ['d'] }] });
+			testQuery('a copy of a vector is none', 'v <- 1:3\nk <- v\nk[1] <- 2', {});
+			testQuery('data.table updates by reference and groups', 'dt[, z := x + 1]\nm <- dt[, mean(x), by = g]', { transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['dt'], assignedTo: 'dt' }, { nodeId: '2@[', functionName: '[', inputVariables: ['dt'] }] });
 			testQuery('base functions', 'm <- merge(a, b)\ns <- subset(a, x > 1)', { transform: [
 				{ nodeId: '1@merge', functionName: 'merge', inputVariables: ['a', 'b'], assignedTo: 'm' },
 				{ nodeId: '2@subset', functionName: 'subset', inputVariables: ['a'], assignedTo: 's' }
 			] });
 			testQuery('stats functions', 'a <- aggregate(x ~ g, data = d, FUN = sum)', { transform: [{ nodeId: '1@aggregate', functionName: 'aggregate', inputVariables: ['d'], assignedTo: 'a' }] });
 			testQuery('tidyr', 'library(tidyr)\nw <- pivot_wider(long, names_from = k)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'tidyr' }], transform: [{ nodeId: '2@pivot_wider', functionName: 'pivot_wider', inputVariables: ['long'], assignedTo: 'w' }] }, {}, [], ['tidyr']);
-			testQuery('data.table', 'library(data.table)\nsetDT(dt)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'data.table' }], transform: [{ nodeId: '2@setDT', functionName: 'setDT', inputVariables: ['dt'] }], write: [printed(7, 'setDT', ['dt'])] }, {}, [], ['data.table']);
+			testQuery('data.table', 'library(data.table)\nsetDT(dt)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'data.table' }], transform: [{ nodeId: '2@setDT', functionName: 'setDT', inputVariables: ['dt'] }] }, {}, [], ['data.table']);
 			testDplyr('disabled', 'library(dplyr)\nfilter(df, x)', dplyr, { enabledCategories: ['library'] });
 			testDplyr('ignoring the defaults', 'dplyr::mutate(df, x)', {}, { ignoreDefaultFunctions: true, enabledCategories: ['transform'] });
 			testQuery('custom function', 'my_verb(df)', { transform: [{ nodeId: '1@my_verb', functionName: 'my_verb', inputVariables: ['df'] }], write: [printed(3, 'my_verb', ['df'])] }, { transformFunctions: [{ name: 'my_verb' }] });
@@ -941,7 +1033,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Read from string', () => {
-		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', { read: [], write: [] });
+		testQuery('read.csv text parameter reads inline data', 'a <- read.csv(text="hello, world")', { read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'constant', assignedTo: 'a' }], write: [] });
+		testQuery('fread takes the path as its first argument', 'd <- data.table::fread("a.csv")', { library: [{ nodeId: '1@fread', functionName: '::', value: 'data.table' }], read: [{ nodeId: '1@data.table::fread', functionName: Identifier.make('fread', 'data.table'), value: 'a.csv', assignedTo: 'd' }] });
+		testQuery('a print method writing a file', 'print(tab, file = "o.tex")', { write: [{ nodeId: '1@print', functionName: 'print', value: 'o.tex', inputVariables: ['tab'] }] });
+		testQuery('an update by reference prints nothing', 'a[, z := x + 1]', { write: [], transform: [{ nodeId: '1@[', functionName: '[', inputVariables: ['a'], assignedTo: 'a' }] });
 		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv', assignedTo: 'a' }], write: [] });
 		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv', assignedTo: 'a' }], write: [] });
 	});
@@ -1073,6 +1168,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a right assignment', '1 -> x', {});
 			testQuery('a super assignment', 'x <<- 1', {});
 			testQuery('a replacement', 'names(x) <- "a"', {});
+			/* a call handing on its argument hands on that it is invisible, too */
+			testQuery('an assignment handed on by identity', 'identity(x <- 1)', {});
+			testQuery('a function returning an assignment', 'f <- function() return(x <- 1)\nf()', {});
+			/* a replacement is an assignment too, whose vertex sits on its target */
+			for(const target of ['x$a', 'names(x)', 'x[1]']) {
+				testQuery(`a function ending in the replacement ${target} <- ...`, `f <- function(x) ${target} <- 1\nf(list())`, {});
+			}
 			/* the body still runs, so what it prints on its own is still an output */
 			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout', inputVariables: ['i'] }] });
 		});

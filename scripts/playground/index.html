@@ -10,11 +10,11 @@
 <style>
 <!--THEME-LIGHT
 	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
-	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; --mark: #e0a300; --markline: #b07d00; color-scheme: light;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; --mark: #e0a300; --markline: #b07d00; --plot-filter: none; color-scheme: light;
 -->
 <!--THEME-DARK
 	--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
-	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
+	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; --plot-filter: invert(.9) hue-rotate(180deg); color-scheme: dark;
 -->
 <!--THEME-CSS:own-->
 * { box-sizing: border-box; }
@@ -191,7 +191,14 @@ code, pre { font-family: var(--mono); }
 #repl .out a { color: var(--accent); }
 :is(#repl, #runr .out) .bad { color: #d55e00; }
 :is(#repl, #runr .out) .note { color: var(--muted); }
-:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; background: #fff; }
+:is(#repl, #runr) .out canvas { display: block; max-width: 100%; height: auto; margin: .4rem 0; border-radius: .3rem; filter: var(--plot-filter, none); }
+.figures { margin: .4rem 0; }
+.figure-tabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: .25rem 0; }
+.figure-tab { padding: .1rem .5rem; border: 1px solid var(--border); border-radius: .3rem; background: none; color: var(--muted); font: inherit; font-size: .75rem; cursor: pointer; }
+.figure-tab.on { border-color: var(--accent); color: var(--fg); }
+.figure-view img { display: block; max-width: 100%; height: auto; border-radius: .3rem; background: #fff; }
+.figure-view { container-type: inline-size; }
+.figure-view object { display: block; width: 100%; max-height: 70vh; border: 0; border-radius: .3rem; }
 #runr:not(.shiny) .via .shinylive, #runr.shiny .via .webr, #runr.shiny #runrtrust { display: none; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
 #repl .ask > span { color: var(--accent); font-family: var(--mono); }
@@ -256,8 +263,10 @@ code, pre { font-family: var(--mono); }
 #runrstate, #runrbytes, #runr .via { font-weight: 400; letter-spacing: .02em; text-transform: none; }
 /* one line however narrow the card: the words give way, the bar keeps its width */
 #runrstate, #runr .via { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-#runrbytes { font-variant-numeric: tabular-nums; }
-#runrprogress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
+.runr-bytes { font-variant-numeric: tabular-nums; }
+.runr-progress { flex: none; width: 5rem; height: .4rem; accent-color: var(--accent); }
+/* a cell and the repl wait with the same bar, as the card is closed while they run */
+.runr-meter { display: flex; align-items: center; gap: .5rem; }
 #runr .via a { color: inherit; text-decoration: underline dotted; }
 #runr .via a:hover { color: var(--accent); }
 #runrtrust { cursor: help; }
@@ -320,6 +329,7 @@ code, pre { font-family: var(--mono); }
 	background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: none;
 }
 /* the completion list, in the page's own colours rather than CodeMirror's */
+.cm-tooltip-autocomplete > ul { border-radius: calc(.4rem - 1px); }
 .cm-tooltip-autocomplete > ul > li { padding: .1rem .5rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: var(--accent-fg); }
 .cm-completionLabel { font-family: var(--mono); }
@@ -619,6 +629,15 @@ code, pre { font-family: var(--mono); }
 }
 #panel .lints .lint:hover { background: color-mix(in srgb, var(--hue) 10%, var(--panel)); border-color: color-mix(in srgb, var(--hue) 40%, var(--border)); }
 #panel .lints .lint .says { line-height: 1.4; }
+#panel .lints .lint.member { margin-left: 1rem; }
+#panel .lints .lint.member[hidden] { display: none; }
+#panel .lints .lintgroup .says { color: var(--muted); }
+#panel .lints .lintgroup .toggle { justify-self: end; font-size: .72rem; color: var(--muted); }
+#panel .lints .lintgroup .toggle::after {
+	content: ''; display: inline-block; width: .35rem; height: .35rem; margin-left: .35rem;
+	border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-.15rem) rotate(45deg); transition: transform .12s;
+}
+#panel .lints .lintgroup.open .toggle::after { transform: translateY(.05rem) rotate(-135deg); }
 #panel .lints .lint .at {
 	justify-self: end; padding: 0 .4rem; border-radius: 1rem; font-size: .72rem;
 	background: var(--sunk); border: 1px solid var(--border);
@@ -751,7 +770,7 @@ code, pre { font-family: var(--mono); }
 	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
 		<section id="runr" hidden aria-live="polite" data-webr-start-bytes="<!--WEBR-START-BYTES-->">
-			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a class="webr" href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a><a class="shinylive" href="https://shinylive.io/r/examples/" target="_blank" rel="noopener" title="Shiny on webR, running in your browser">Shinylive</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" hidden></progress><span id="runrbytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
+			<div class="head"><span id="runrtitle">R output</span> <span class="via">by <a class="webr" href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener" title="R compiled to WebAssembly, running in your browser">webR</a><a class="shinylive" href="https://shinylive.io/r/examples/" target="_blank" rel="noopener" title="Shiny on webR, running in your browser">Shinylive</a> <span id="runrtrust"></span></span> <span id="runrstate"></span><progress id="runrprogress" class="runr-progress" hidden></progress><span id="runrbytes" class="runr-bytes" hidden></span><button type="button" id="runrstop" hidden>stop</button><button type="button" id="runrclear" class="spins" hidden title="forget what earlier runs, cells, and the repl left in R: variables, attached packages, and options"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg>clear</button><button type="button" id="runrclose" aria-label="Close the R output">close</button></div>
 			<div class="out" id="runrout"></div>
 			<div class="grip" id="runrgrip" role="separator" aria-label="Drag to resize the R output" title="drag to resize"></div>
 		</section>

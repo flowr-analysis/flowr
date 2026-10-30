@@ -11,6 +11,7 @@ import { FunctionArgument } from '../dataflow/graph/graph';
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { log } from '../util/log';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
@@ -27,6 +28,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly cachedSwitch:     Map<NodeId, { id: NodeId | undefined } | 'unknown'> = new Map();
 	private readonly caught:           Map<NodeId, boolean> = new Map();
+	private forcing:                   ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -133,17 +135,29 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onStopCall(data: OnCall): void {
-		this.cachedStatements.set(data.call.id, true);
+		if(!this.mayStayUnforced(data.call.id)) {
+			this.cachedStatements.set(data.call.id, true);
+		}
 	}
 
 	protected onStopIfNotCall(data: OnCall): void {
-		if(this.cachedStatements.has(data.call.id)) {
+		if(this.cachedStatements.has(data.call.id) || this.mayStayUnforced(data.call.id)) {
 			return;
 		}
 		const arg = this.getBoolArgValue(data);
 		if(arg !== undefined) {
 			this.cachedStatements.set(data.call.id, !arg);
 		}
+	}
+
+	/** whether the call is in an argument that may never be evaluated: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
+	private mayStayUnforced(id: NodeId): boolean {
+		const promised = this.config.dfg.getVertex(id)?.cds?.filter(cd => cd.byPromise === true) ?? [];
+		if(promised.length === 0) {
+			return false;
+		}
+		this.forcing ??= FunctionSemantics.promiseForcing(this.config.dfg, { ctx: this.config.ctx });
+		return promised.some(cd => this.forcing?.(cd.id, id) !== Ternary.Always);
 	}
 
 	/**

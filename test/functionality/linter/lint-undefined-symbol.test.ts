@@ -26,6 +26,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('builtin is not flagged', parser, 'print("hi")\nc(1, 2)',
 				'undefined-symbol', []);
 
+			assertLinter('a call of an accessed function is not flagged', parser, 'f <- function(coord, d) coord$transform(d, 1)\nf(list(transform = identity), 2)',
+				'undefined-symbol', []);
+
 			assertLinter('only the undefined call is flagged', parser, 'g <- function() 1\ng()\nh()',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'h', kind: 'function', loc: [3, 1, 3, 3] }]);
 

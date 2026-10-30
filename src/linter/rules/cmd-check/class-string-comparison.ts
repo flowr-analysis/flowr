@@ -13,8 +13,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import { callsBuiltIn } from '../../linter-util';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { NodeValue } from '../../../dataflow/eval/resolve/node-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
@@ -39,13 +38,9 @@ export interface ClassStringComparisonMetadata extends MergeableRecord {
 
 const LogicalOps: ReadonlySet<string> = new Set(['&&', '||', '&', '|']);
 
-/** whether the node is a call of the built-in `class`, not of a redefinition */
+/** whether the node is a call of the built-in `class`, however it is reached */
 function isBuiltinClassCall(node: RNode<ParentInformation>, graph: DataflowGraph): node is RFunctionCall<ParentInformation> {
-	if(!RFunctionCall.isNamed(node, 'class') || node.arguments.length !== 1 || node.arguments[0] === EmptyArgument) {
-		return false;
-	}
-	const origins = Dataflow.origin(graph, node.info.id);
-	return origins === undefined || origins.every(o => o.type === OriginType.BuiltInFunctionOrigin);
+	return RFunctionCall.is(node) && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument && callsBuiltIn(graph, node.info.id, 'class');
 }
 
 /** the class names `node` stands for: a string literal, or (if allowed) what flowR resolves it to */

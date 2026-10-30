@@ -5,7 +5,7 @@
  */
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
-import { el } from '../page-lib/dom';
+import { button, el } from '../page-lib/dom';
 import { compressToEncodedURIComponent } from 'lz-string';
 
 
@@ -46,6 +46,7 @@ interface WebR {
 	readonly FS: {
 		mkdir(path: string): Promise<unknown>
 		writeFile(path: string, data: Uint8Array): Promise<unknown>
+		readFile(path: string): Promise<Uint8Array<ArrayBuffer>>
 	}
 }
 
@@ -87,22 +88,28 @@ const transfers = new Map<string, number>();
 
 const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(1);
 
+/** every bar that shows the download, in the head of the card and in a cell or the repl line waiting for it */
 function showProgress(): void {
-	const bar = document.getElementById('runrprogress') as HTMLProgressElement | null;
-	const bytes = document.getElementById('runrbytes');
-	if(bar === null || bytes === null) {
-		return;
-	}
-	bar.hidden = bytes.hidden = step === undefined;
 	const loaded = arraySum([...transfers.values()]);
-	if(step?.total !== undefined && loaded < step.total) {
-		bar.max = step.total;
-		bar.value = loaded;
-		bytes.textContent = `${megabytes(loaded)} of ${megabytes(step.total)} MB`;
-	} else {
-		bar.removeAttribute('value');
-		bytes.textContent = step?.total !== undefined ? step.then : loaded > 0 ? `${megabytes(loaded)} MB` : '';
+	for(const bar of document.querySelectorAll<HTMLProgressElement>('progress.runr-progress')) {
+		const bytes = bar.nextElementSibling as HTMLElement;
+		bar.hidden = bytes.hidden = step === undefined;
+		if(step?.total !== undefined && loaded < step.total) {
+			bar.max = step.total;
+			bar.value = loaded;
+			bytes.textContent = `${megabytes(loaded)} of ${megabytes(step.total)} MB`;
+		} else {
+			bar.removeAttribute('value');
+			bytes.textContent = step?.total !== undefined ? step.then : loaded > 0 ? `${megabytes(loaded)} MB` : '';
+		}
 	}
+}
+
+/** the progress of the card's head for output the card does not show, as the card is closed while a cell or the repl runs */
+function meterRow(...lead: HTMLElement[]): HTMLElement {
+	const row = el('div', 'note runr-meter');
+	row.append(...lead, el('progress', 'runr-progress'), el('span', 'runr-bytes'));
+	return row;
 }
 
 function beginStep(next?: Step): void {
@@ -279,7 +286,111 @@ function classOf(type: string): string | undefined {
 interface Sink {
 	readonly line:   (text: string, cls?: string) => void
 	readonly plot:   (canvas: HTMLCanvasElement) => void
+	readonly append: (node: HTMLElement) => void
 	readonly status: (text: string) => void
+}
+
+/** a figure the script saved to a file rather than drew */
+interface Figure {
+	readonly name:    string
+	readonly blob:    Blob
+	/** width over height of the first page of a PDF, so the viewer takes the figure's shape */
+	readonly aspect?: number
+}
+
+/** the text of the PDF with its compressed streams inflated, where cairo keeps the page objects */
+async function pdfText(data: Uint8Array): Promise<string> {
+	const latin1 = new TextDecoder('latin1');
+	const text = latin1.decode(data);
+	const parts = [text];
+	for(const found of text.matchAll(/\/FlateDecode[^]*?stream\r?\n/g)) {
+		const start = found.index + found[0].length;
+		/* the line break before `endstream` is not part of the data, and the inflater rejects trailing bytes */
+		const end = text.slice(0, text.indexOf('endstream', start)).trimEnd().length;
+		if(end <= start) {
+			continue;
+		}
+		const inflated = await new Response(new Blob([data.slice(start, end)]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer().catch(() => undefined);
+		if(inflated !== undefined) {
+			parts.push(latin1.decode(inflated));
+		}
+	}
+	return parts.join('\n');
+}
+
+/** the PDF's page count and the shape of its first page */
+async function pdfShape(data: Uint8Array): Promise<{ readonly pages: number, readonly aspect?: number }> {
+	const text = await pdfText(data);
+	const pages = Number(/\/Type\s*\/Pages\b[^>]*?\/Count\s+(\d+)/s.exec(text)?.[1] ?? 1);
+	const box = /\/MediaBox\s*\[\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\]/.exec(text)?.slice(1).map(Number);
+	return { pages, aspect: box && box[3] !== box[1] ? (box[2] - box[0]) / (box[3] - box[1]) : undefined };
+}
+
+const FigureTypes: Readonly<Record<string, string>> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', pdf: 'application/pdf' };
+/** every figure file below the working directory, with its size and time so an overwritten one counts as new */
+const FigureFiles = `local({
+	f <- list.files(recursive = TRUE, pattern = "[.](${Object.keys(FigureTypes).join('|')})$", ignore.case = TRUE)
+	i <- file.info(f)
+	paste(f, i$size, as.numeric(i$mtime), sep = "\t")
+})`;
+/** a script writing hundreds of figures would only clog the card */
+const MaxFigures = 24;
+
+/** the figures written since `before` listed the working directory */
+async function savedFigures(s: Session, before: readonly string[]): Promise<Figure[]> {
+	const known = new Set(before);
+	const [dir] = await s.r.evalRRaw('getwd()', 'string[]');
+	const figures: Figure[] = [];
+	for(const entry of (await s.r.evalRRaw(FigureFiles, 'string[]')).filter(e => !known.has(e)).slice(0, MaxFigures)) {
+		const name = entry.slice(0, entry.indexOf('\t'));
+		const data = await s.r.FS.readFile(`${dir}/${name}`).catch(() => undefined);
+		const type = FigureTypes[name.slice(name.lastIndexOf('.') + 1).toLowerCase()];
+		/* R opens Rplots.pdf for a plot drawn without a device, and leaves it there without a page */
+		const shape = type === FigureTypes.pdf && data !== undefined ? await pdfShape(data) : undefined;
+		if(data !== undefined && data.length > 0 && shape?.pages !== 0) {
+			figures.push({ name, blob: new Blob([data], { type }), aspect: shape?.aspect });
+		}
+	}
+	return figures;
+}
+
+/** one tab per saved figure, showing one at a time so a dozen files do not push the console out of sight */
+function figureTabs(figures: readonly Figure[]): HTMLElement {
+	const tabs = el('div', 'figure-tabs');
+	const view = el('div', 'figure-view');
+	let url: string | undefined;
+	const show = (figure: Figure, tab: Element): void => {
+		if(url !== undefined) {
+			URL.revokeObjectURL(url);
+		}
+		url = URL.createObjectURL(figure.blob);
+		for(const t of tabs.children) {
+			t.classList.toggle('on', t === tab);
+		}
+		if(figure.blob.type === 'application/pdf') {
+			const pdf = el('object');
+			pdf.type = figure.blob.type;
+			/* the page fills the width with no toolbar, so it reads like the images beside it */
+			/* chrome hides its toolbar for the first hints, firefox keeps it but fits the page for the last */
+			pdf.data = `${url}#toolbar=0&navpanes=0&view=Fit&zoom=page-fit`;
+			/* the page's own shape plus room for the viewer's toolbar */
+			pdf.style.height = `calc(100cqw / ${figure.aspect ?? 4 / 3} + 2.5rem)`;
+			view.replaceChildren(pdf);
+		} else {
+			const img = el('img');
+			img.alt = figure.name;
+			img.src = url;
+			view.replaceChildren(img);
+		}
+	};
+	for(const figure of figures) {
+		const tab = button('figure-tab', figure.name, `show ${figure.name}, which the script saved`, () => show(figure, tab));
+		tabs.append(tab);
+	}
+	show(figures[0], tabs.children[0]);
+	const box = el('div', 'figures');
+	box.append(el('div', 'note meta', figures.length === 1 ? 'saved figure:' : 'saved figures:'), tabs, view);
+	return box;
 }
 
 function canvasOf(image: ImageBitmap, plot: PlotSize): HTMLCanvasElement {
@@ -293,10 +404,19 @@ function canvasOf(image: ImageBitmap, plot: PlotSize): HTMLCanvasElement {
 	return canvas;
 }
 
+/** whether the guard already keeps files of webR, so starting it needs no download */
+async function webrStored(): Promise<boolean> {
+	try {
+		return (await (await caches.open('flowr-webr-verified')).keys()).length > 0;
+	} catch{
+		return false;
+	}
+}
+
 /** runs `code` in the page's R session, giving up silently once `current` fails */
 async function evaluate(code: string, wanted: () => Promise<readonly string[]>, sink: Sink, plot: PlotSize, current: () => boolean, project?: RunInput): Promise<{ readonly said: boolean, readonly took: number }> {
 	if(session === undefined) {
-		sink.status('downloading R, only once...');
+		sink.status(await webrStored() ? 'starting R...' : 'downloading R, only once...');
 		beginStep({ counts: url => url.startsWith(WebRBase) && !url.startsWith(`${WebRBase}vfs/`), total: startBytes, then: 'starting R...' });
 	}
 	const s = await start().finally(() => beginStep());
@@ -315,9 +435,11 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 		if(project !== undefined) {
 			await provideFiles(s, project);
 		}
+		const figuresBefore = project === undefined ? [] : await s.r.evalRRaw(FigureFiles, 'string[]');
 		const started = performance.now();
 		const result = await shelter.captureR(code, { withAutoprint: true, throwJsException: false, captureGraphics: plot });
 		const took = performance.now() - started;
+		const figures = project === undefined ? [] : await savedFigures(s, figuresBefore);
 		if(!current()) {
 			return { said: false, took };
 		}
@@ -327,7 +449,10 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 		for(const image of result.images) {
 			sink.plot(canvasOf(image, plot));
 		}
-		return { said: result.output.length > 0 || result.images.length > 0, took };
+		if(figures.length > 0) {
+			sink.append(figureTabs(figures));
+		}
+		return { said: result.output.length > 0 || result.images.length > 0 || figures.length > 0, took };
 	} finally {
 		await shelter.purge();
 	}
@@ -361,6 +486,8 @@ let repl = 0;
  */
 export async function evalInR(code: string, packagesOf: PackageFinder, line: (text: string, cls?: string) => void, into: HTMLElement): Promise<void> {
 	const mine = ++repl;
+	const meter = into.appendChild(meterRow());
+	showProgress();
 	try {
 		await evaluate(code, () => packagesOf(code), {
 			line,
@@ -368,6 +495,7 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 				into.append(canvas);
 				into.scrollTop = into.scrollHeight;
 			},
+			append: node => into.append(node),
 			status: text => {
 				if(text.startsWith('downloading') || text.startsWith('installing')) {
 					line(text, 'note');
@@ -376,6 +504,8 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 		}, plotSize(into), () => mine === repl);
 	} catch(e) {
 		line(e instanceof Error ? e.message : String(e), 'bad');
+	} finally {
+		meter.remove();
 	}
 }
 
@@ -452,6 +582,9 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 		if(into === undefined && matchMedia('(max-width: 52rem)').matches) {
 			card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		}
+		const cellState = el('span');
+		const meter = into?.insertBefore(meterRow(cellState), into.firstChild);
+		showProgress();
 		const begin = performance.now();
 		try {
 			const input = await what();
@@ -479,12 +612,13 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 			const { said, took } = await evaluate(input.code, () => packagesOf(), {
 				line,
 				plot:   canvas => sink.append(canvas),
+				append: node => sink.append(node),
 				status: text => {
-					state.textContent = text;
+					state.textContent = cellState.textContent = text;
 				}
 			}, plotSize(target), () => run === running, input);
 			if(run === running) {
-				if(!said) {
+				if(!said && into === undefined) {
 					line('no output', 'note meta');
 				}
 				done(`took ${(Math.round(performance.now() - begin) / 1000).toFixed(1)} s`);
@@ -496,6 +630,7 @@ export function setupRunR(prepare: () => Promise<RunInput>, packagesOf: PackageF
 				done('');
 			}
 		} finally {
+			meter?.remove();
 			if(into !== undefined && run === running) {
 				into.replaceChildren(...sink.childNodes);
 			}

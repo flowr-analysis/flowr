@@ -32,6 +32,8 @@ export type { SourcePosition, SourceLocationLike } from './util/range';
 export { Dataflow } from './dataflow/graph/df-helper';
 export { DataflowGraph } from './dataflow/graph/graph';
 export { DfgVertex, VertexType } from './dataflow/graph/vertex';
+/* the names of the global state (options, environment variables, devices, ...) calls change, see `Dataflow.sideEffects.ambientWrites` */
+export { AmbientStateName, KeyedState } from './dataflow/environments/ambient-state-name';
 export type { DataflowGraphVertexInfo } from './dataflow/graph/vertex';
 export { DfEdge, EdgeType } from './dataflow/graph/edge';
 export { FunctionSemantics } from './dataflow/fn/function-semantics';

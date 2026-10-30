@@ -26,6 +26,7 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { SliceDirection } from '../../src/util/slice-direction';
+import { SlicingCriterion } from '../../src/slicing/criterion/parse';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
 import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
@@ -48,15 +49,18 @@ import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.
 import { blank, button, el } from '../page-lib/dom';
 import { explain } from '../page-lib/lint-text';
 import { evalInR, type RunInput, setupRunR } from './run-r';
-import { FlowrInlineTextFile } from '../../src/project/context/flowr-file';
-import { cellTitles, languageOf, NotebookRun, notebookAsScript, notebookCells, rewriteCells, writesR } from './notebook';
+import { FileRole, FlowrInlineTextFile } from '../../src/project/context/flowr-file';
+import { isRSession, sessionAsScript } from './r-session';
+import { cellTitles, languageOf, loadNotebook, NotebookRun, notebookCells, rewriteCells, writesR } from './notebook';
 import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
 import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
 import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
 import { cranPageUrl } from '../../src/util/r-package-urls';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
+import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { VertexType } from '../../src/dataflow/graph/vertex';
 import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
@@ -282,12 +286,14 @@ function paint(code: string, into: HTMLElement): void {
 		span.textContent = text;
 		into.append(span);
 	};
-	highlightCode(code, rLanguage.parser.parse(code), highlight, (text, classes) => {
+	const tree = rLanguage.parser.parse(code);
+	highlightCode(code, tree, highlight, (text, classes) => {
 		/* the mode hands out whole unstyled runs, and a call name inside one is marked like in the editor */
 		let cursor = 0;
 		for(const found of text.matchAll(/[A-Za-z.][\w._]*/g)) {
 			const start = found.index;
-			if(start === undefined || Keywords.has(found[0]) || !/^\s*\(/.test(code.slice(at + start + found[0].length))) {
+			if(start === undefined || Keywords.has(found[0]) || !/^\s*\(/.test(code.slice(at + start + found[0].length))
+				|| /string|comment/i.test(tree.resolveInner(at + start, 1).name)) {
 				continue;
 			}
 			if(start > cursor) {
@@ -323,7 +329,7 @@ const callMarks = ViewPlugin.fromClass(class {
 		for(const { from, to } of view.visibleRanges) {
 			const text = view.state.doc.sliceString(from, to);
 			for(const found of text.matchAll(/[A-Za-z.][\w._]*(?=\s*\()/g)) {
-				if(found.index !== undefined && !Keywords.has(found[0])) {
+				if(found.index !== undefined && !Keywords.has(found[0]) && !spelledOut(view.state, from + found.index)) {
 					marks.push(Decoration.mark({ class: 'cm-call' }).range(from + found.index, from + found.index + found[0].length));
 				}
 			}
@@ -679,7 +685,7 @@ const Loading = /\b(?:library|require|loadNamespace|requireNamespace|attachNames
 const BaseRPackages = new Set(baseRPackages());
 
 /** one name to offer, weighed by the {@link rankName} the signature browser ranks its hits with */
-function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string> }): Completion & { boost: number } {
+function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string>, local?: boolean }): Completion & { boost: number } {
 	const dot = label.indexOf('.');
 	/* `print.foo` is a method of `print` when the generic is a name of its own, as the database decides it */
 	const generic = dot > 0 ? label.slice(0, dot) : undefined;
@@ -690,7 +696,8 @@ function offer(label: string, needle: string, where: { pkg?: string, type: strin
 		baseR:    where.pkg !== undefined && BaseRPackages.has(where.pkg),
 		base:     where.pkg === 'base',
 		s3:       generic !== undefined && (knownNames.has(generic) || (where.siblings?.has(generic) ?? false)),
-		variable: where.type === 'variable'
+		variable: where.type === 'variable',
+		local:    where.local
 	});
 	return { label, type: where.type, detail: where.detail, boost: points };
 }
@@ -782,6 +789,9 @@ function parametersOf(called: string): string[] {
 	return call.includes('(') ? [...params.matchAll(/(?:^|,\s*)([A-Za-z.][\w.]*)(?=\s*(?:=|,|$))/g)].map(m => m[1]).filter(p => p !== '...') : [];
 }
 
+/** the names the last analysis saw defined, which reaches those the text alone does not show (`assign("x", 1)`) */
+let flowrDefined: readonly string[] = [];
+
 function complete(context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> {
 	/* a comment is prose, so nothing there completes */
 	if(!writesR(context.state, files[active].name, context.state.doc.lineAt(context.pos).number)
@@ -824,7 +834,7 @@ function complete(context: CompletionContext): CompletionResult | null | Promise
 	return {
 		from:    word.from,
 		options: [...named, ...ranked([
-			...defined.map(label => offer(label, needle, { type: 'variable', detail: 'in this script' })),
+			...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
 			/* what the script attached is nearer than what flowR knows without it */
 			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
 			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
@@ -988,7 +998,9 @@ interface ShownDep { readonly kind: string, readonly line?: number, readonly fro
 let shownDeps: readonly ShownDep[] = [];
 
 function depsOver(from: number, to: number): Node[] {
-	return shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to).map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
+	/* a call standing for several entries in the function it calls says the same thing for each of them */
+	const over = shownDeps.filter(d => d.said !== undefined && d.from < to && from < d.to);
+	return [...new Map(over.map(d => [`${d.kind}\0${d.said?.name}\0${d.said?.why}`, d])).values()].map(d => depMessage(d.kind, d.said as NonNullable<ShownDep['said']>));
 }
 
 let shareTimer = 0;
@@ -1354,7 +1366,7 @@ function elsewhere(node: { info: { file?: string } } | undefined): string | unde
 	return file === files[active].name ? undefined : file;
 }
 
-const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb)$/i;
+const Analyzed = /\.(r|rmd|rmarkdown|qmd|ipynb|rout|rsession|rconsole)$/i;
 const Wanted = (name: string) => (Analyzed.test(name) || /\.zip$|(^|\/)(DESCRIPTION|LICEN[CS]E(\.md|\.txt)?)$/i.test(name)) && !/(^|\/)(__MACOSX|\.)/.test(name);
 
 async function entryFiles(entry: FileSystemEntry): Promise<[string, Blob][]> {
@@ -1392,7 +1404,7 @@ async function unzip(blob: Blob): Promise<[string, Blob][]> {
 }
 
 function asProjectFile(name: string, text: string): [string, string] {
-	return /\.ipynb$/i.test(name) ? [`${name}.R`, notebookAsScript(text)] : [name, text];
+	return /\.ipynb$/i.test(name) ? [`${name}.R`, loadNotebook(`${name}.R`, text)] : [name, text];
 }
 async function readable(found: readonly [string, Blob][], failed: string[]): Promise<[string, string][]> {
 	const read: [string, string][] = [];
@@ -1431,7 +1443,7 @@ function load(found: Promise<[string, Blob][]> | [string, Blob][]): void {
 		if(failed.length > 0) {
 			showTook(`could not open ${failed.join(', ')}`);
 		} else if(read.length === 0) {
-			showTook('nothing to open: flowR reads R scripts, R Markdown, Quarto, Jupyter notebooks, and zips of them');
+			showTook('nothing to open: flowR reads R scripts, R console sessions, R Markdown, Quarto, Jupyter notebooks, and zips of them');
 		}
 	}).catch((e: unknown) => showTook(`could not open that: ${String(e)}`));
 }
@@ -1763,12 +1775,16 @@ async function packagesOf(code?: string): Promise<readonly string[]> {
 	const found = (answer.dependencies?.library ?? []).map(d => d.value).filter((v): v is string => v !== undefined && v !== 'unknown');
 	return uniqueArray(found).filter(p => !BaseRPackages.has(p));
 }
+/** the project as R sees it on disk, a console transcript as the script it records */
+const runnableFiles = () => projectFiles().map(([name, text]) => [name, isRSession(name, text) ? sessionAsScript(text) : text] as const);
 async function toRun(): Promise<RunInput> {
 	const name = files[active].name;
-	const code = Analyzed.test(name) && !/\.r$/i.test(name)
-		? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
-		: textOf(active);
-	return { code, files: projectFiles(), fresh: runFresh };
+	const code = isRSession(name, textOf(active))
+		? sessionAsScript(textOf(active))
+		: Analyzed.test(name) && !/\.r$/i.test(name)
+			? (await analyzer()).context().files.resolveRequest({ request: 'file', content: name }).r.content
+			: textOf(active);
+	return { code, files: runnableFiles(), fresh: runFresh };
 }
 const RunFreshKey = 'flowr-playground-run-fresh';
 /** whether the run button starts R over like `Rscript` or continues the session the cells share */
@@ -1799,7 +1815,7 @@ runMode.addEventListener('click', () => openMenu(runMode, [
 const runner = setupRunR(toRun, packagesOf, () => editor.state.facet(NotebookRun)[0]?.(editor, runFresh));
 /** cells share one R session, next to the project files as they are now */
 function runCell(code: string, title: string, into?: HTMLElement, fresh = false): Promise<number | undefined> {
-	return runner(() => Promise.resolve({ code, files: projectFiles(), fresh }), title, into);
+	return runner(() => Promise.resolve({ code, files: runnableFiles(), fresh }), title, into);
 }
 
 /** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
@@ -2186,14 +2202,11 @@ async function focusRelated(node: DepNode | undefined): Promise<void> {
 	}
 	try {
 		const built = await analyzer();
-		const answer = await built.query([SliceDirection.Backward, SliceDirection.Forward].map(direction => ({
-			type: 'static-slice', criteria: ids.map(id => `$${String(id)}`), direction, noReconstruction: true
-		})) as never) as unknown as { 'static-slice'?: { results?: Record<string, { slice?: { result?: Iterable<NodeId> } }> } };
+		const answer = await built.query([{ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) }]);
 		if(request !== focusRequest) {
 			return;
 		}
-		const sliced = Object.values(answer['static-slice']?.results ?? {}).flatMap(r => [...r.slice?.result ?? []]);
-		related = { code, key: node.key, ids: new Set([...ids, ...sliced].map(String)) };
+		related = { code, key: node.key, ids: new Set([...ids, ...answer.dependencies['.meta'].focus ?? []].map(String)) };
 	} catch{ /* what cannot be sliced grays nothing out */ }
 	paintRelated();
 }
@@ -2311,7 +2324,14 @@ async function analyzer(code?: string, open?: string) {
 		built.addRequest({ request: 'text', content: code });
 	} else {
 		/* `open` stands in for the open file, as it is about to be rather than as it is */
-		built.addFile(...projectFiles().map(([name, text]) => new FlowrInlineTextFile(name, open !== undefined && name === files[active].name ? open : text)));
+		built.addFile(...projectFiles().map(([name, text]) => {
+			const content = open !== undefined && name === files[active].name ? open : text;
+			const file = new FlowrInlineTextFile(name, isRSession(name, content) ? sessionAsScript(content) : content);
+			if(isRSession(name, content)) {
+				file.assignRole(FileRole.Source);
+			}
+			return file;
+		}));
 		built.addRequest(...files.filter(f => Analyzed.test(f.name)).map(f => ({ request: 'file' as const, content: f.name })));
 	}
 	return built;
@@ -2338,6 +2358,10 @@ interface Finding { loc?: SourceLocation, quickFix?: LintQuickFix[], involvedId?
 
 /* the finding whose details are open, which a new analysis opens again */
 let openedLint: string | undefined;
+/** the rules whose grouped findings are unfolded, kept across analyses like the opened finding */
+const openedLintGroups = new Set<string>();
+/** from this many findings on, a rule's findings fold into one row, so ten unused names do not bury the one error */
+const LintGroupFrom = 3;
 
 /** the rule that reports code which does not parse */
 const SyntaxRule = 'syntactically-valid';
@@ -2845,6 +2869,9 @@ async function analyze(): Promise<number> {
 	};
 	const took = performance.now() - started;
 	showStats({ parse: parsed, normalize: normalizing, dataflow, lint: answers.linter?.['.meta']?.timing ?? 0 }, info.graph);
+	flowrDefined = uniqueArray([...info.graph.verticesOfType(VertexType.VariableDefinition)]
+		.map(([id]) => RString.unquote(NodeId.recoverName(id, idMap) ?? ''))
+		.filter((name): name is string => name !== undefined && /^[A-Za-z.][\w.]*$/.test(name)));
 
 	panel.replaceChildren();
 	panel.classList.add('fresh');
@@ -2999,6 +3026,9 @@ async function analyze(): Promise<number> {
 		found.length === 0 ? undefined : [errors > 0 ? `${errors} error${errors === 1 ? '' : 's'}` : '', found.length > errors ? `${found.length - errors} warning${found.length - errors === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), acts);
 	const lints = el('div', 'lints');
 	lints.dataset.mark = PlaygroundBox.Lints;
+	/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
+	const lintKeyOf = (f: typeof found[number]): string => `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
+	const rowsOf = new Map<string, HTMLElement[]>();
 	for(const f of found) {
 		const said = el('span', 'says', f.message);
 		const chip = el('span', 'rule');
@@ -3024,8 +3054,7 @@ async function analyze(): Promise<number> {
 		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
 		line.title = 'a click goes there, alt-click highlights this finding in the link';
 		line.append(chip, said, tag(f.file === undefined ? f.line ? `L${f.line}` : 'project' : `${f.file}${f.at ? `:${f.at}` : ''}`, 'at'));
-		/* one rule may report several findings on a line (two undefined names in one call), so the column and message tell them apart */
-		const lintKey = `${f.rule}@${f.file ?? ''}:${f.at ?? ''}:${f.loc?.[1] ?? ''}:${f.message}`;
+		const lintKey = lintKeyOf(f);
 		line.addEventListener('click', event => {
 			if(event.altKey || (event.target as HTMLElement).closest('.lintmore') !== null) {
 				return;
@@ -3040,7 +3069,45 @@ async function analyze(): Promise<number> {
 		if(openedLint === lintKey) {
 			line.append(ruleDetails(f.rule, f.quickFix, followUp(f)));
 		}
-		lints.append(linkRow(line, [f.line]));
+		rowsOf.set(f.rule, [...rowsOf.get(f.rule) ?? [], linkRow(line, [f.line])]);
+	}
+	for(const [rule, rows] of rowsOf) {
+		if(rows.length < LintGroupFrom) {
+			lints.append(...rows);
+			continue;
+		}
+		const of = found.filter(f => f.rule === rule);
+		/* most messages name what they are about in backticks, which makes for a better summary than a count alone */
+		const names = of.map(f => /`([^`]+)`/.exec(f.message)?.[1]);
+		const summary = names.every(n => n !== undefined) ? `${of.length} findings: ${uniqueArray(names).join(', ')}` : `${of.length} findings`;
+		const chip = el('span', 'rule');
+		chip.dataset.category = category(rule);
+		chip.append(tag(rule, 'rulename'));
+		const head = el('div', 'lint lintgroup');
+		head.dataset.category = chip.dataset.category;
+		head.title = 'a click shows or hides the findings of this rule';
+		const lines = of.map(f => f.line);
+		const toggle = el('span', 'toggle');
+		head.append(chip, el('span', 'says', summary), toggle);
+		const fold = (open: boolean): void => {
+			for(const row of rows) {
+				row.hidden = !open;
+			}
+			head.classList.toggle('open', open);
+			toggle.textContent = open ? 'hide' : 'show';
+		};
+		head.addEventListener('click', () => {
+			const open = !openedLintGroups.delete(rule);
+			if(open) {
+				openedLintGroups.add(rule);
+			}
+			fold(open);
+		});
+		for(const row of rows) {
+			row.classList.add('member');
+		}
+		fold(openedLintGroups.has(rule) || of.some(f => lintKeyOf(f) === openedLint));
+		lints.append(linkRow(head, lines), ...rows);
 	}
 	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
 	panel.append(...sliceBlock);

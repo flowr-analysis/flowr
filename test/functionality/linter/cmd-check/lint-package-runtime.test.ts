@@ -27,16 +27,35 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinterPackage('definitions by other packages are unknown (R.oo)', parser, 'setMethodS3("readMat", "default", function(con, ...) NULL)', rule, [], { files: { NAMESPACE: 'export(readMat)\nS3method(readMat, default)\n' } });
 			assertLinterPackage('literal assign defines the name', parser, 'assign("helper", function() 1)', rule, [], { files: { NAMESPACE: 'export(helper)\n' } });
 			assertLinterPackage('export patterns are not checked', parser, 'f <- function() 1', rule, [], { files: { NAMESPACE: 'exportPattern("^[^.]")\n' } });
+			assertLinterPackage('export pattern matching nothing', parser, 'f <- function() 1\n.g <- function() 2', rule, [
+				{ kind: 'empty-export-pattern', certainty: LintingResultCertainty.Certain, loc: [2, 1, 2, 1, '/pkg/NAMESPACE'] }
+			], { files: { NAMESPACE: 'export(f)\nexportPattern("^api_")\n' } });
+			assertLinterPackage('escaped export pattern reads as R reads it', parser, 'f <- function() 1\n.hidden <- 2', rule, [], { files: { NAMESPACE: 'exportPattern("^\\\\.")\n' } });
+			assertLinterPackage('export pattern R reads differently is not judged', parser, 'f <- function() 1', rule, [], { files: { NAMESPACE: 'exportPattern("\\\\<api")\n' } });
+			assertLinterPackage('export patterns cannot be judged next to class metadata', parser, 'setClass("P", representation(n = "numeric"))', rule, [], { files: { NAMESPACE: 'exportPattern("^\\\\.__C__")\n' } });
+			assertLinterPackage('a broken export pattern is all the package exports', parser, 'f <- function() 1\neval(quote(g <- 1))', rule, [
+				{ kind: 'empty-export-pattern', certainty: LintingResultCertainty.Uncertain },
+				{ kind: 'no-exports', certainty: LintingResultCertainty.Uncertain }
+			], { files: { NAMESPACE: 'exportPattern("^api_")\n' } });
+			assertLinterPackage('package exporting nothing', parser, 'f <- function() 1', rule, [
+				{ kind: 'no-exports', certainty: LintingResultCertainty.Certain }
+			], { files: { NAMESPACE: 'importFrom(stats, median)\n' } });
+			assertLinterPackage('export checks can be turned off', parser, 'f <- function() 1', rule, [], { files: { NAMESPACE: 'export(g)\nexportPattern("^api_")\n' }, checkExports: false });
+			assertLinterPackage('a package may export nothing', parser, 'f <- function() 1', rule, [
+				{ kind: 'empty-export-pattern', certainty: LintingResultCertainty.Certain }
+			], { files: { NAMESPACE: 'exportPattern("^api_")\n' }, requireExports: false });
+			assertLinterPackage('registered S3 methods are exports', parser, 'print.foo <- function(x, ...) x', rule, [], { files: { NAMESPACE: 'S3method(print, foo)\n' } });
+			assertLinterPackage('a data package needs no exports', parser, 'f <- function() 1', rule, [], { files: { NAMESPACE: '', 'data/mydata.rda': '' } });
 			assertLinterPackage('S3 method without its function', parser, 'print.foo <- function(x, ...) x', rule, [
 				{ kind: 'missing-s3-method', loc: [2, 1, 2, 1, '/pkg/NAMESPACE'] }
 			], { files: { NAMESPACE: 'S3method(print, foo)\nS3method(format, foo)\n' } });
 			assertLinterPackage('S3 method registered under another function name', parser, 'fmt_foo <- function(x, ...) "foo"', rule, [], { files: { NAMESPACE: 'S3method(format, foo, fmt_foo)\n' } });
 			assertLinterPackage('import from an undeclared package', parser, 'f <- function(x) filter(x)', rule, [
 				{ kind: 'undeclared-namespace-import', loc: [1, 1, 1, 1, '/pkg/NAMESPACE'] }
-			], { files: { NAMESPACE: 'importFrom(dplyr, filter)\n' } });
-			assertLinterPackage('import from a declared package', parser, 'f <- function(x) filter(x)', rule, [], { files: { DESCRIPTION: desc('Imports: dplyr\n'), NAMESPACE: 'importFrom(dplyr, filter)\n' } });
-			assertLinterPackage('import from a base package needs no declaration', parser, 'f <- function(x) median(x)', rule, [], { files: { NAMESPACE: 'importFrom(stats, median)\nimport(utils)\n' } });
-			assertLinterPackage('import from methods needs a declaration', parser, 'f <- function(x) is(x)', rule, [{ kind: 'undeclared-namespace-import' }], { files: { NAMESPACE: 'importFrom(methods, is)\n' } });
+			], { files: { NAMESPACE: 'importFrom(dplyr, filter)\nexport(f)\n' } });
+			assertLinterPackage('import from a declared package', parser, 'f <- function(x) filter(x)', rule, [], { files: { DESCRIPTION: desc('Imports: dplyr\n'), NAMESPACE: 'importFrom(dplyr, filter)\nexport(f)\n' } });
+			assertLinterPackage('import from a base package needs no declaration', parser, 'f <- function(x) median(x)', rule, [], { files: { NAMESPACE: 'importFrom(stats, median)\nimport(utils)\nexport(f)\n' } });
+			assertLinterPackage('import from methods needs a declaration', parser, 'f <- function(x) is(x)', rule, [{ kind: 'undeclared-namespace-import' }], { files: { NAMESPACE: 'importFrom(methods, is)\nexport(f)\n' } });
 			assertLinterPackage('no NAMESPACE, nothing to check', parser, 'f <- function() 1', rule, []);
 		});
 
@@ -95,8 +114,8 @@ describe('flowR linter', withTreeSitter(parser => {
 					fs.rmSync(root, { recursive: true, force: true });
 				}
 			});
-			assertLinterPackage('translation packages are no packages', parser, 'f <- function() 1', rule, [{ kind: 'extension-type' }], { files: { DESCRIPTION: desc('Type: Translation\n'), NAMESPACE: '' } });
-			assertLinterPackage('installed package handed in', parser, 'f <- function() 1', rule, [{ kind: 'not-source-package' }], { files: { NAMESPACE: '', 'Meta/package.rds': '' } });
+			assertLinterPackage('translation packages are no packages', parser, 'f <- function() 1', rule, [{ kind: 'extension-type' }], { files: { DESCRIPTION: desc('Type: Translation\n'), NAMESPACE: 'export(f)\n' } });
+			assertLinterPackage('installed package handed in', parser, 'f <- function() 1', rule, [{ kind: 'not-source-package' }], { files: { NAMESPACE: 'export(f)\n', 'Meta/package.rds': '' } });
 		});
 
 		describe('scope', () => {

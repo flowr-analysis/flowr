@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
+import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -179,12 +179,12 @@ export const NO_LEAKED_CREDENTIALS = {
 		}
 		return { results: [...results.values()], '.meta': { totalChecked } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: NoLeakedCredentialsResult) =>
+	prettyPrint: prettyPrint(
+		(result: NoLeakedCredentialsResult) =>
 			`Possible hardcoded credential in \`${result.variableName}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]: (result: NoLeakedCredentialsResult) =>
+		(result: NoLeakedCredentialsResult) =>
 			`Variable \`${result.variableName}\` at ${SourceLocation.format(result.loc)} appears to contain a hardcoded credential`
-	},
+	),
 	info: {
 		name:          'No Leaked Credentials',
 		description:   'Finds hardcoded credentials assigned to variables or passed as arguments whose names suggest they hold passwords, tokens, or API keys, handed to authentication functions, or whose values match known credential formats (AWS, GitHub, Slack, Stripe, Google, JWT, SSH, URLs with passwords).',

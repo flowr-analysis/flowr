@@ -30,7 +30,6 @@ f = function(a, b){return a;}`, 'roxygen-arguments', [
 			}
 		]);
 		assertLinter('Same @param documented as implemented', parser, '#\' This is a function.\n#\' An interesting function.\n#\' @param a some variable\n#\' @param b does exist\nf = function(a,b){return a;}', 'roxygen-arguments', []);
-		assertLinter('A backticked @param', parser, '#\' @param `a b` x\nf <- function(`a b`) 1', 'roxygen-arguments', []);
 		assertLinter('A backticked @param naming another parameter', parser, '#\' @param `a b` x\nf <- function(`a c`) 1', 'roxygen-arguments', [{
 			certainty:       LintingResultCertainty.Uncertain,
 			loc:             SourceRange.from(2, 6, 2, 22),

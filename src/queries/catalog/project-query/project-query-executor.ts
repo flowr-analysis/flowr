@@ -1,6 +1,8 @@
 import { log } from '../../../util/log';
+import path from 'path';
 import type { ProjectDependencyStats, ProjectQuery, ProjectQueryResult } from './project-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { FileRole } from '../../../project/context/flowr-file';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import type { DeclaredPackages } from '../../../project/context/flowr-analyzer-meta-context';
@@ -59,6 +61,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	}
 	const startTime = Date.now();
 	const withDf = queries.some(q => q.withDf);
+	const showFiles = queries.some(q => q.showFiles);
 	// we need to know what is considered by the analyzer
 	if(withDf) {
 		await analyzer.dataflow();
@@ -66,18 +69,27 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 
 	const ctx = analyzer.inspectContext();
 	const basePackages = new Set(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
-	const roleCounts: Record<FileRole, number> = {} as Record<FileRole, number>;
-	for(const file of Object.values(FileRole)) {
-		roleCounts[file] = ctx.files.getFilesByRole(file).length;
+
+	let roleCounts: Record<FileRole, number> | undefined;
+	let roleFiles: Record<FileRole, readonly string[]> | undefined;
+	if(showFiles) {
+		roleFiles = {} as Record<FileRole, readonly string[]>;
+		for(const file of Object.values(FileRole)) {
+			roleFiles[file] = ctx.files.getFilesByRole(file).map(r => path.basename(r.path()));
+		}
+	} else {
+		roleCounts = {} as Record<FileRole, number>;
+		for(const file of Object.values(FileRole)) {
+			roleCounts[file] = ctx.files.getFilesByRole(file).length;
+		}
 	}
+
 	// whichever plugin read the metadata (DESCRIPTION, rproject.toml, a lockfile) contributed it to the context,
 	// so nothing here has to know which file the project happens to use
 	const declared = ctx.meta.getDeclaredPackages();
 	const hasDeclarations = Object.values(declared).some(g => g !== undefined);
 	return {
-		'.meta': {
-			timing: Date.now() - startTime
-		},
+		...metaSince(startTime),
 		name:         ctx.meta.getProjectName() ?? ctx.meta.getProjectTitle(),
 		files:        Array.from(ctx.files.consideredFilesList()),
 		authors:      ctx.meta.getAuthors(),
@@ -86,7 +98,9 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 		rVersion:     ctx.meta.getRVersion(),
 		licenses:     ctx.meta.getLicenses(),
 		roleCounts:   roleCounts,
+		roleFiles:    roleFiles,
 		kind:         ctx.projectKind(),
-		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined
+		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined,
+		dfaPerformed: analyzer.peekDataflow() !== undefined
 	};
 }

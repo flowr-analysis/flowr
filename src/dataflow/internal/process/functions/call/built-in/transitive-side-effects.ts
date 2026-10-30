@@ -15,6 +15,8 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
+import type { DataflowInformation } from '../../../../../info';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
@@ -53,13 +55,16 @@ export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environme
 	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the
 	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or the target of a
 	 * `calls` edge. Both are read off the graph once here instead of per export binding. */
-	const called = new Set<NodeId>(graph.vertices(true).map(([id]) => id));
+	const called = new Set<NodeId>(graph.vertices(true).map(([id]) => id).filter(NodeId.isBuiltIn));
 	for(const [, outgoing] of graph.edges()) {
 		for(const [target, edge] of outgoing) {
-			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+			if(NodeId.isBuiltIn(target) && DfEdge.includesType(edge, EdgeType.Calls)) {
 				called.add(target);
 			}
 		}
+	}
+	if(called.size === 0) {
+		return;
 	}
 	/* export node id -> its loading `library()`/`use()` call, from the final environment */
 	const loaders = new Map<NodeId, NodeId>();
@@ -201,6 +206,13 @@ type NamedDefinition = InGraphIdentifierDefinition & { name: string };
 
 /** The ambient writes of body calls only linking resolved to a built-in (see {@link writesOfHiddenBuiltIn}), linking their reads as well. */
 function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInformation): Map<NodeId, NamedDefinition[]> {
+	const { writes, reads } = hiddenBuiltInAccess(graph, environment);
+	linkHiddenReads(graph, reads);
+	return writes;
+}
+
+/** The ambient writes and reads of body calls only linking resolved to a built-in, per call. */
+function hiddenBuiltInAccess(graph: DataflowGraph, environment: REnvironmentInformation): { writes: Map<NodeId, NamedDefinition[]>, reads: Map<NodeId, string[]> } {
 	const builtIns = REnvironment.findBuiltIn(environment.current);
 	const writes = new Map<NodeId, NamedDefinition[]>();
 	const reads = new Map<NodeId, string[]>();
@@ -225,8 +237,7 @@ function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInfo
 			}
 		}
 	}
-	linkHiddenReads(graph, reads);
-	return writes;
+	return { writes, reads };
 }
 
 /** A hidden call reads the state where the functions running it are called. */
@@ -347,6 +358,22 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
 			}
 		}
 	}
+}
+
+/**
+ * The global state each function may leave changed when it is called, as the names of the pseudo variables it changes
+ * (see {@link AmbientStateName}): `#option:digits` for `options(digits = 3)`, `#env:PATH` for `Sys.setenv(PATH = "")`, or `#sink`.
+ * A function reports what its callees report as well, so with `a01 <- function() options(digits = 3)` and `a22 <- function() a01()`,
+ * both set `#option:digits`. What a function only changes within its own frame (`withr::local_options`) is left out.
+ * @param info - the dataflow information of the whole program
+ * @returns      per function-definition vertex the state it may change, which is empty for a function changing none
+ * @useInstead {@link Dataflow.sideEffects.ambientWrites}
+ */
+export function ambientWritesOfFunctions(this: void, info: Pick<DataflowInformation, 'graph' | 'environment'>): Map<NodeId, ReadonlySet<string>> {
+	const hidden = hiddenBuiltInAccess(info.graph, info.environment).writes;
+	const names = escapedDefinitionMap(info.graph, hidden);
+	const summary = computeCallGraphSummaries(info.graph, escapedDefinitions(hidden));
+	return new Map(summary.entries().map(([id, definitions]) => [id, new Set(definitions.values().flatMap(d => names.get(d) ?? []).map(d => d.name).filter(AmbientStateName.is))]));
 }
 
 /**

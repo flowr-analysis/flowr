@@ -133,8 +133,16 @@ export const NodeId = {
 	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
 	 */
 	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
-
 		return idMap?.get(id)?.lexeme;
+	},
+	/**
+	 * The name the {@link RNode|node} the id belongs to binds or reads, without the backticks or quotes R lets it be
+	 * written in (`"x"` and `x` in backticks both name `x`), which is how the environments know it.
+	 * @see {@link NodeId.recoverName} - for the lexeme as written
+	 */
+	recoverBareName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
+		const lexeme = NodeId.recoverName(id, idMap);
+		return lexeme === undefined ? undefined : RString.unquote(lexeme);
 	},
 	/**
 	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and

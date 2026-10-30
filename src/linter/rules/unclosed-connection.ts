@@ -19,7 +19,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation, SourceRange } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
 import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -231,10 +231,10 @@ export const UNCLOSED_CONNECTION = {
 		}
 		return { results, '.meta': { totalOpened: opens.size, totalClosed: closes.length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Unclosed connection at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `The connection opened at ${SourceLocation.format(result.loc)} is not closed on every path that opens it`
-	},
+	prettyPrint: prettyPrint(
+		result => `Unclosed connection at ${SourceLocation.format(result.loc)}`,
+		result => `The connection opened at ${SourceLocation.format(result.loc)} is not closed on every path that opens it`
+	),
 	info: {
 		name:          'Unclosed Connection',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Smell, LintingRuleTag.QuickFix],

@@ -33,6 +33,11 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 	return hash;
 }
 
+/** digests plain strings and primitives as one string, which spares {@link objectHash} a reflective walk (and works in the browser, where `crypto` is stubbed) */
+function digest(parts: readonly (string | number | boolean | undefined)[]): Fingerprint {
+	return objectHash(JSON.stringify(parts), HashOptions);
+}
+
 function memoryHash(memory: MemoryView): Fingerprint {
 	let hash = memoryHashes.get(memory);
 	if(hash !== undefined) {
@@ -41,14 +46,14 @@ function memoryHash(memory: MemoryView): Fingerprint {
 	const lazy = memory instanceof Frame ? memory.lazy() : undefined;
 	if(lazy !== undefined) {
 		/* an attached package's exports: hashing what they bind would build a definition for every one of them */
-		hash = objectHash(`${lazy.origin}|${[...lazy.keys()].join(',')}`, HashOptions);
+		hash = digest([lazy.origin, ...lazy.keys()]);
 	} else {
 		const entries: string[] = [];
 		for(const [name, definitions] of memory) {
 			entries.push(`${String(name)}=${definitions.map(definitionHash).join(',')}`);
 		}
 		entries.sort();
-		hash = objectHash(entries, HashOptions);
+		hash = digest(entries);
 	}
 	memoryHashes.set(memory, hash);
 	return hash;
@@ -57,7 +62,7 @@ function memoryHash(memory: MemoryView): Fingerprint {
 function frameHash(frame: Environment): Fingerprint {
 	let hash = frameHashes.get(frame);
 	if(hash === undefined) {
-		hash = objectHash([frame.n, frame.t, frame.closure, frame.globalEnv === true, memoryHash(frame.memory)], HashOptions);
+		hash = digest([frame.n, frame.t, frame.closure, frame.globalEnv === true, memoryHash(frame.memory)]);
 		frameHashes.set(frame, hash);
 	}
 	return hash;

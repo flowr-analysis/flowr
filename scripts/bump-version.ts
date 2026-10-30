@@ -1,10 +1,10 @@
 import fs from 'fs';
 
-const VersionFile = 'src/util/version.ts';
+const VersionFile = 'src/util/flowr-version.ts';
 const VersionLine = /const version = '[\d.]+'/;
 const DateLine = /const versionDate = '[^']*'/;
 
-/** `src/util/version.ts` with the released version and date written in, throws on a malformed version or missing line */
+/** `src/util/flowr-version.ts` with the released version and date written in, throws on a malformed version or missing line */
 export function bumpVersion(source: string, version: string, date: Date): string {
 	if(!/^\d+\.\d+\.\d+$/.test(version)) {
 		throw new Error(`expected a version like 1.2.3, got ${version}`);

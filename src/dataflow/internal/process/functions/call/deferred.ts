@@ -1,4 +1,3 @@
-import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -14,6 +13,7 @@ import { linkCallToDefinitions } from '../../../linker';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { Dataflow } from '../../../../graph/df-helper';
+import { RoleInParent } from '../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -35,7 +35,7 @@ interface NameIndex {
 /** The vertices of `type` by their unquoted name. */
 export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idMap: AstIdMap<Info & ParentInformation>): Map<string, NodeId[]> {
 	const named = graph.vertexIdsOfType(type).filter(id => NodeId.recoverName(id, idMap) !== undefined);
-	return Map.groupBy(named, id => RString.unquote(NodeId.recoverName(id, idMap) as string));
+	return Map.groupBy(named, id => NodeId.recoverBareName(id, idMap) as string);
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
@@ -52,9 +52,9 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
 				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
-					const name = NodeId.recoverName(def, idMap);
+					const name = NodeId.recoverBareName(def, idMap);
 					if(name !== undefined) {
-						names.push([def, RString.unquote(name), true]);
+						names.push([def, name, true]);
 					}
 				}
 			}
@@ -142,9 +142,10 @@ export const Deferred = {
 	/**
 	 * Links the expression rooted at `expr` to the bindings it may meet when it is evaluated. Given the reads
 	 * that may force it, control flow rules out what no force can reach; without them every binding stays a
-	 * candidate.
+	 * candidate. An argument (`inCallerFrame`) is evaluated in the frame of its call, so the parameters and local
+	 * bindings of the function forcing it are none it can meet, even though they come before the force.
 	 */
-	link<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, forces?: ForceSites): void {
+	link<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, forces?: ForceSites, inCallerFrame = false): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
 		/* one walk per direction answers every candidate, so the sets are built once and only when asked for */
@@ -167,8 +168,8 @@ export const Deferred = {
 			reach.always.set(use, always);
 			return always;
 		};
-		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
-		const bindingName = forces === undefined ? undefined : RString.unquote(NodeId.recoverName(forces.binding, idMap) ?? '');
+		/* `delayedAssign` names its variable with a string literal */
+		const bindingName = forces === undefined ? undefined : NodeId.recoverBareName(forces.binding, idMap) ?? '';
 		for(const [node, name, writes] of within) {
 			if(writes) {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */
@@ -187,7 +188,7 @@ export const Deferred = {
 					}
 				}
 			} else {
-				const seen = (index.definitions.get(name) ?? []).filter(seenByAForce);
+				const seen = (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && (!inCallerFrame || visibleFrom(expr, d, graph, idMap)));
 				for(const definition of seen) {
 					graph.addEdge(node, definition, EdgeType.Reads);
 				}
@@ -199,3 +200,12 @@ export const Deferred = {
 		}
 	}
 } as const;
+
+/** Whether the binding `definition` lives in a frame `expr` sees: not a parameter or a local binding of a function `expr` is not within. */
+function visibleFrom<Info>(expr: NodeId, definition: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): boolean {
+	const node = idMap.get(definition);
+	const parent = node?.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+	const local = node?.info.role === RoleInParent.ParameterName || DfgVertex.hasOrigin(graph.getVertex(parent?.info.id ?? ''), BuiltInProcName.Assignment);
+	const frame = local ? RNode.findEnclosing(definition, idMap, RFunctionDefinition.is) : undefined;
+	return frame === undefined || RNode.findEnclosing(expr, idMap, n => n.info.id === frame) !== undefined;
+}

@@ -14,7 +14,7 @@ export function printSignatureHelp(output: ReplOutput): void {
 	const ex = (cmd: string, desc: string): void => output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
 	output.stdout(bold('Signature Database Query', f) + italic('  (inspects the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
-	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [--cg] [--cg-max <n>]`);
+	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [<name>(<arg>, [<role>], *) [<prop>]] [--cg] [--cg-max <n>]`);
 	output.stdout('');
 	output.stdout(bold('Examples', f));
 	ex(':query @signature', 'summarize the loaded databases');
@@ -24,6 +24,7 @@ export function printSignatureHelp(output: ReplOutput): void {
 	ex(':query @signature gg*@* geom_*', 'search every release in the history, not just the latest');
 	ex(':query @signature ggplot2@<=2021.05', 'select releases by date (YYYY.MM.DD: <=2026, >=2021.05)');
 	ex(':query @signature ggplot2 * --param data --param mapping', 'functions with both parameters (repeat/comma-separate --param; alone it searches all packages)');
+	ex(':query @signature p*([alias]) [invisible]', 'flowR\'s own view by argument roles and call properties: name(arg, [role], name[role], *) [prop]; `...` only counts when named');
 	ex(':query @signature stats * --required 3', 'functions with exactly 3 required parameters');
 	ex(':query @signature dplyr::lead --cg', 'a function plus its transitive call graph as a mermaid.live link');
 	ex(':query @signature dplyr::lead --cg-max 80', 'the same, capped at 80 nodes instead of the default');

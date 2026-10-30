@@ -39,6 +39,7 @@ import { AttachedBasePackages, AttachedBasePackageSet, baseRPackages } from '../
 import { resolveAttachPosition } from './built-in-envir-utils';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { sexpTypeToReferenceType } from './built-in-load';
+import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig {
@@ -50,6 +51,8 @@ export interface LibraryProcessorConfig {
 	readonly fromImports?:   boolean;
 	/** `box::use(pkg[a, b])`: attach only the symbols listed in the `[...]` bracket */
 	readonly boxUse?:        boolean;
+	/** the state the call changes besides the environment, like the search path */
+	readonly ambient?:       AmbientStateAccess | readonly AmbientStateAccess[];
 }
 
 /** Restricts/aliases which exports of a package are attached; `undefined` fields attach every export. */
@@ -74,6 +77,17 @@ export function processLibrary<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: LibraryProcessorConfig = {}
+): DataflowInformation {
+	const info = loadPackages(name, args, rootId, data, config);
+	return config.ambient === undefined ? info : applyAmbientStateAccess(info, args, rootId, data, config.ambient);
+}
+
+function loadPackages<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: LibraryProcessorConfig
 ): DataflowInformation {
 	/* we do not really know what loading the library does and what side effects it causes, hence we mark it as an unknown side effect */
 	if(args.length === 0) {
@@ -298,7 +312,7 @@ function parseUseSpec<OtherInfo>(
 }
 
 /** Materialize the empty built-in function-definition vertex for a package export (idempotent). */
-export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, cds?: ControlDependency[]): void {
+export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, cds?: readonly ControlDependency[]): void {
 	if(graph.hasVertex(builtInId)) {
 		return;
 	}

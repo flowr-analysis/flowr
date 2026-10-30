@@ -239,6 +239,17 @@ export function uniqueArray<T>(a: Iterable<T>): T[] {
 }
 
 /**
+ * Returns the elements of the given array without those whose key an earlier element already has.
+ */
+export function uniqueArrayBy<T, K>(a: readonly T[], keyFn: (elem: T) => K): T[] {
+	const seen = new Set<K>();
+	return a.filter(e => {
+		const key = keyFn(e);
+		return !seen.has(key) && seen.add(key) !== undefined;
+	});
+}
+
+/**
  * Groups the elements of the given array by the key returned by the given key function.
  */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {

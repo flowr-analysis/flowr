@@ -54,17 +54,12 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 }
 #release:hover { border-color: var(--accent); color: var(--accent); }
 
-p.lead { color: var(--muted); margin: 0 0 1.2rem; max-width: 52rem; }
-.search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.4rem; }
+p.lead { max-width: 52rem; }
+.search { margin-bottom: 1.4rem; }
 .search input {
-	flex: 1 1 20rem; font: inherit; padding: .7rem .9rem; border-radius: .6rem;
-	border: 1px solid var(--border); background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
+	flex: 1 1 20rem;
 }
-.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.search select {
-	font: inherit; font-size: .9rem; padding: .7rem .6rem; border-radius: .6rem;
-	border: 1px solid var(--border); background: var(--panel); color: var(--fg); cursor: pointer;
-}
+.search select { font-size: .9rem; cursor: pointer; }
 .search select:hover { border-color: var(--accent); color: var(--accent); }
 
 /* one card per category; the card links into its full view */

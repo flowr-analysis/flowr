@@ -2,6 +2,7 @@ import { log } from '../../../util/log';
 import type { DataflowClusterQuery, DataflowClusterQueryResult } from './cluster-query-format';
 import { findAllClusters } from '../../../dataflow/cluster';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 
 /**
  * Executes the given dataflow cluster queries using the provided analyzer.
@@ -14,9 +15,7 @@ export async function executeDataflowClusterQuery({ analyzer }: BasicQueryData, 
 	const start = Date.now();
 	const clusters = findAllClusters((await analyzer.dataflow()).graph);
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		clusters
 	};
 }

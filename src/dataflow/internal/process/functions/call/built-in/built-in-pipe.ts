@@ -143,21 +143,20 @@ export function processPipe<OtherInfo>(
 		}
 	}
 
+	const argId = lhs.info.id;
+	/* a placeholder stands for the lhs wherever it is, in an argument (`x |> f(y = _)`) or at the head of an extraction (`x |> _$a`) */
+	if(occurrenceIds.length > 1) {
+		log.warn(`Expected exactly one occurrence of the pipe placeholder '${Identifier.toString(pipePlaceholderName)}' in the rhs of the pipe, but found ${occurrenceIds.length}. Linking all occurrences to the lhs.`);
+	}
+	for(const occId of occurrenceIds) {
+		information.graph.addEdge(occId, argId, EdgeType.Reads);
+	}
 	if(treatedAsFunctionCall || RFunctionCall.is(rhs)) {
 		const functionCallNode = information.graph.getVertex(rhs.info.id);
 		guard(DfgVertex.isFunctionCall(functionCallNode), () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 
-		// make the lhs an argument node (or link it to placeholders within the rhs call):
-		const argId = lhs.info.id;
-
-		if(occurrenceIds.length > 0) {
-			if(occurrenceIds.length !== 1) {
-				log.warn(`Expected exactly one occurrence of the pipe placeholder '${Identifier.toString(pipePlaceholderName)}' in the rhs of the pipe, but found ${occurrenceIds.length}. Linking all occurrences to the lhs.`);
-			}
-			for(const occId of occurrenceIds) {
-				information.graph.addEdge(occId, argId, EdgeType.Reads);
-			}
-		} else {
+		// without a placeholder the lhs becomes the first argument of the rhs call
+		if(occurrenceIds.length === 0) {
 			dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
 			functionCallNode.args.unshift({
 				name:   undefined,
@@ -172,7 +171,7 @@ export function processPipe<OtherInfo>(
 			markPipedDataMask(rhs, information.graph);
 		}
 
-	} else {
+	} else if(occurrenceIds.length === 0) {
 		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${rhs.type} instead.`);
 	}
 

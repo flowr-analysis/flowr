@@ -1,5 +1,6 @@
 import { escapeRegex } from '../../../util/text/strings';
-import { LintingPrettyPrintContext, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { contentOf } from '../../../dataflow/eval/values/string/string-constants';
+import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -180,13 +181,6 @@ function parseUsageEntry(entry: string): UsageCall | 'ignored' | undefined {
 /** canonical form of a literal default value, `undefined` for anything that is not one */
 type Literal = string;
 
-const Escapes: Readonly<Record<string, string>> = { n: '\n', t: '\t', r: '\r', '0': '\0', a: '\x07', b: '\b', f: '\f', v: '\v' };
-
-/** the value of the content of a string literal, i.e. with its escape sequences resolved */
-function unescape(str: string, raw = false): string {
-	return raw ? str : str.replace(/\\(.)/gs, (_, c: string) => Escapes[c] ?? c);
-}
-
 /** infinite numbers are written `Inf` and `-Inf` in R */
 function infinite(num: number): Literal | undefined {
 	return num === Infinity ? 'k:Inf' : num === -Infinity ? 'k:-Inf' : undefined;
@@ -194,7 +188,7 @@ function infinite(num: number): Literal | undefined {
 
 function literalOfCode(node: RNode<ParentInformation> | undefined): Literal | undefined {
 	switch(node?.type) {
-		case RType.String:  return `s:${unescape(node.content.str, node.content.flag === 'raw')}`;
+		case RType.String:  return `s:${contentOf(node.content) ?? node.content.str}`;
 		case RType.Logical: return `l:${node.content}`;
 		case RType.Number:  return infinite(node.content.num) ?? `n:${node.content.num}`;
 		case RType.UnaryOp: {
@@ -213,7 +207,7 @@ function literalOfDocs(text: string): Literal | undefined {
 	if(/^(["'])[\s\S]*\1$/.test(text)) {
 		try {
 			const value = RStringValue.fromRLexeme(text);
-			return `s:${unescape(value.str, value.flag === 'raw')}`;
+			return `s:${contentOf(value) ?? value.str}`;
 		} catch{
 			return undefined;
 		}
@@ -361,10 +355,9 @@ export const DOCUMENTATION_MISMATCH = {
 		}
 		return { results, '.meta': { consideredObjects, consideredPages: pages.length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	},
+	prettyPrint: prettyPrint(
+		result => `${result.message} at ${SourceLocation.format(result.loc)}`
+	),
 	info: {
 		name:          'Documentation Mismatch',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Documentation, LintingRuleTag.Bug],

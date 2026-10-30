@@ -129,8 +129,11 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('Alias with inclusion and explicit', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true }), q(/foo/)], r([{ id: 4, aliasRoots: [1], name: 'foo' }, { id: 4, name: 'foo' }]));
 		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: ['4-get-name'], name: 'foo' }]));
 		testQuery('Two level alias', 'foo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [1], name: 'bar' }]));
-		testQuery('Multi level alias with intermediate (fst)', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 10, aliasRoots: [4, 0], name: 'bar' }]));
-		testQuery('Multi level alias with intermediate (snd)', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/foo/, { includeAliases: true })], r([{ id: 10, aliasRoots: [7, 3], name: 'bar' }]));
+		testQuery('Multi level alias with intermediate is not the rebound name', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], baseResult({}));
+		testQuery('Multi level alias with intermediate is not the binding', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/foo/, { includeAliases: true })], baseResult({}));
+		testQuery('Multi level alias with intermediate is what the names hold', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/gar/, { includeAliases: true })], r([{ id: 10, aliasRoots: [1], name: 'bar' }]));
+		testQuery('Alias of a function of the code', 'foo <- function() 1\nbar <- foo\nbar()', [q(/foo/, { includeAliases: true })], r([{ id: 9, aliasRoots: [6], name: 'bar' }]));
+		testQuery('No alias walk without a function used as a value', 'print(1)\nfoo <- 3', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasRoots: [NodeId.toBuiltIn('print')], name: 'print' }]));
 		testQuery('Multiple aliases', 'foo <- print\nbar <- print\nfoo()\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [1], name: 'foo' }, { id: 9, aliasRoots: [4], name: 'bar' }]));
 		testQuery('Multiple potential aliases', 'if(u) foo <- print else foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 11, aliasRoots: [2, 6], name: 'foo' }]));
 		testQuery('Alias by return', 'f <- function() print\nx <- f()\nx()', [q(/print/, { includeAliases: true })], r([{ id: 10, aliasRoots: [1], name: 'x' }]));
@@ -138,6 +141,13 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('Alias by parameter', 'f <- function(p) { p() }\nf(print)', [q(/print/, { includeAliases: true })], r([{ id: 6, aliasRoots: [11], name: 'p' }]));
 		testQuery('Alias another function', 'f <- bar\nf()', [q(/print/, { includeAliases: true })], baseResult({}));
 		testQuery('Only partial aliases', 'f <- bar\nf()\ng <- print\ng()', [q(/print/, { includeAliases: true }), q(/bar/)], r([{ id: 9, aliasRoots: [6], name: 'g' }]));
+		testQuery('No alias through a handed function', 'stat_summary(fun = print)', [q(/print/, { includeAliases: true })], baseResult({}));
+		testQuery('No alias through the body of an anonymous function', 'lapply(x, function(y) print(y))', [q(/print/, { includeAliases: true })], r([{ id: 8, aliasRoots: [NodeId.toBuiltIn('print')], name: 'print' }]));
+		testQuery('No alias through a call drawing into a plot', 'plot(1)\nlines(2)', [q(/plot/, { includeAliases: true })], r([{ id: 3, aliasRoots: [NodeId.toBuiltIn('plot')], name: 'plot' }]));
+		testQuery('No alias through the arguments of a call', 'd <- read.csv("a")\nnames(d) <- y', [q(/read.csv/, { includeAliases: true })], r([{ id: 4, aliasRoots: [NodeId.toBuiltIn('read.csv')], name: 'read.csv' }]));
+		testQuery('No alias through the package providing a function', 'library(dplyr)\nfilter(d, x)', [q(/library/, { includeAliases: true })], r([{ id: 3, aliasRoots: [NodeId.toBuiltIn('library')], name: 'library' }]));
+		testQuery('No alias through a pipe continued', 'library(dplyr)\nd %>% ungroup() %>% filter(x)', [q(/ungroup/, { includeAliases: true })], r([{ id: 9, aliasRoots: [NodeId.toBuiltIn('ungroup')], name: 'ungroup' }]));
+		testQuery('Alias computed by an expression', 'm <- list(r = print)\nm$r()', [q(/print/, { includeAliases: true })], r([{ id: 11, aliasRoots: [3], name: 'unnamed-fc-11' }]));
 	});
 	describe('Multiple Kinds', () => {
 		testQuery('Multiple Kinds', 'print(1); foo(2)', [q(/print/, { kind: 'print-kind' }), q(/foo/, { kind: 'foo-kind' })], baseResult({

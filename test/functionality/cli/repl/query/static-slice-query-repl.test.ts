@@ -1,6 +1,10 @@
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { SupportedQueries } from '../../../../../src/queries/query';
-import { assertCriteriaReplParser, assertReplParser } from '../../../_helper/repl';
+import { assertCriteriaReplParser, assertReplParser, discardingReplOutput } from '../../../_helper/repl';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { replProcessAnswer } from '../../../../../src/cli/repl/core';
+import { voidFormatter } from '../../../../../src/util/text/ansi';
+import { label } from '../../../_helper/label';
 import { SliceDirection } from '../../../../../src/util/slice-direction';
 
 describe('Static Slice Query REPL Parser', () => {
@@ -95,5 +99,23 @@ describe('Static Slice Query REPL Parser', () => {
 			}],
 			rCode: 'someCode',
 		},
+	});
+});
+
+describe('Static Slice Query in the REPL', () => {
+	async function sliced(line: string): Promise<string[]> {
+		const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
+		const out: string[] = [];
+		await replProcessAnswer(analyzer, { ...discardingReplOutput, formatter: voidFormatter, stdout: s => out.push(...s.split('\n')) }, line, false);
+		return out;
+	}
+	test(label('quoted code undoes its escapes, as the code commands read it', ['name-normal', 'newlines'], ['other']), async() => {
+		assert.deepStrictEqual((await sliced(':query @static-slice (2@y) "x <- \\"a\\"\\ny <- x"')).slice(0, 2), ['x <- "a"', 'y <- x']);
+	});
+	test(label('an escape R rejects keeps the code as written', ['name-normal', 'strings'], ['other']), async() => {
+		assert.deepStrictEqual((await sliced(':query @static-slice (1@x) "x <- \'\\d\'"'))[0], 'x <- \'\\d\'');
+	});
+	test(label('the result is printed with the formatter of the output', ['name-normal'], ['other']), async() => {
+		assert.notInclude((await sliced(':query @static-slice (1@x) x <- 1')).join('\n'), '\u001b[');
 	});
 });

@@ -1,4 +1,5 @@
 import type { FlowrCapability } from '../r-bridge/data/types';
+import { unescapeArg } from '../util/text/args';
 import { flowrCapabilities } from '../r-bridge/data/data';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
@@ -57,9 +58,9 @@ function claimedCapabilities(array: string): string[] {
 	return uniqueArray(ids);
 }
 
-/** a test name as the source spells it, with its escapes (`\\name`) resolved */
+/** a test name as the source spells it, with its escapes (`\\name`) resolved and kept on one line */
 function unescapeSource(name: string): string {
-	return name.replace(/\\([^])/g, (_, c: string) => /[ntr]/.test(c) ? ' ' : c);
+	return unescapeArg(name).replace(/[\n\r\t]/g, ' ');
 }
 
 /** the capabilities a `// \@signature <ids>` comment on the line of `index` or the line above names */

@@ -3,6 +3,26 @@
  * @module
  */
 
+/** what a backslash escape in an argument stands for where it names a control character; any other escaped character stands for itself */
+const ArgEscapes: Readonly<Record<string, string>> = { n: '\n', t: '\t', r: '\r', v: '\v', f: '\f', b: '\b' };
+
+/** `text` with its backslash escapes undone, as an argument reads them: `a\"b` is `a"b` */
+export function unescapeArg(text: string): string {
+	return text.replace(/\\([^])/g, (_, c: string) => ArgEscapes[c] ?? c);
+}
+
+/** where the quote opened at `start` of `text` is closed, a backslash escaping the character after it; `undefined` if it is not */
+export function closingQuote(text: string, start = 0): number | undefined {
+	for(let i = start + 1; i < text.length; i++) {
+		if(text[i] === '\\') {
+			i++;
+		} else if(text[i] === text[start]) {
+			return i;
+		}
+	}
+	return undefined;
+}
+
 /**
  * This splits an input string on the given split string (e.g., ` `), but checks if the string is quoted or escaped.
  *
@@ -10,6 +30,7 @@
  * this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
  *
  * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
+ * A name in backticks is never split either, and keeps its backticks, as they belong to the name.
  * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
  * @param split       - The character or character sequence to split on (can not be backslash or quote!)
@@ -17,7 +38,7 @@
 export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split: RegExp | string = ' '): string[] {
 	const args = [];
 	let current = '';
-	let inQuotes: false | '"' | '\'' = false;
+	let inQuotes: false | '"' | '\'' | '`' = false;
 	let escaped = false;
 
 	for(let i = 0; i < inputString.length;  i++) {
@@ -25,22 +46,18 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 
 		if(escaped) {
 			escaped = false;
-			switch(c) {
-				case 'n': current += '\n'; break;
-				case 't': current += '\t'; break;
-				case 'r': current += '\r'; break;
-				case 'v': current += '\v'; break;
-				case 'f': current += '\f'; break;
-				case 'b': current += '\b'; break;
-				default: current += c;
-			}
+			current += ArgEscapes[c] ?? c;
 		} else if(!inQuotes
 				&& current !== ''
 				&& (split instanceof RegExp ? split.test(inputString.slice(i)) : inputString.slice(i, i + split.length) === split)
 		) {
 			args.push(current);
 			current = '';
-		} else if(c === '"' || c === "'") {
+		} else if(c === '`' && (!inQuotes || inQuotes === c)) {
+			/* a name in backticks may hold a space, and the backticks are part of the name, so they are always kept */
+			inQuotes = inQuotes ? false : c;
+			current += c;
+		} else if((c === '"' || c === "'") && inQuotes !== '`') {
 			if(!inQuotes) {
 				inQuotes = c;
 				if(escapeQuote) {

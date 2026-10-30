@@ -172,7 +172,7 @@ function collectRmTargets<OtherInfo>(
 }
 
 /** Builds the {@link KillReference|kills} produced by an `rm` call from its resolved {@link RmTargets}. */
-function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDependency[] | undefined, killedBy: NodeId): KillReference[] {
+function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly ControlDependency[] | undefined, killedBy: NodeId): KillReference[] {
 	const kills: KillReference[] = [];
 	if(targets.all) {
 		kills.push({ kind: 'all', cds });
@@ -187,7 +187,7 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDepend
 }
 
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
-function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: ControlDependency[] | undefined): DataflowInformation {
+function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId));
 	const environment = REnvironment.define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
 	return { ...res, environment };

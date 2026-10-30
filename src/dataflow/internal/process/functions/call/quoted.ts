@@ -173,7 +173,7 @@ export const Quoted = {
 						const forces = forcesOf(graph, parameter, flow, forcing, reachOf);
 						if(forces !== undefined && !linkedWith.get(argument).has(forces)) {
 							linkedWith.get(argument).add(forces);
-							Deferred.link(graph, argument, index, idMap, forces);
+							Deferred.link(graph, argument, index, idMap, forces, true);
 						}
 					}
 				}

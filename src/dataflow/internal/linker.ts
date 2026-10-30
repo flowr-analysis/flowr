@@ -65,7 +65,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 				}
 			}
 			if(!linked || nonLocal) {
-				nonLocalReads.push({ nodeId, name: NodeId.recoverName(nodeId, graph.idMap), type });
+				nonLocalReads.push({ nodeId, name: NodeId.recoverBareName(nodeId, graph.idMap), type });
 			}
 		}
 	}
@@ -148,7 +148,7 @@ export function linkFunctionCallWithSingleTarget(
 		for(const captured of Dataflow.targetsOf(graph, node, EdgeType.Reads)) {
 			const frame = fnSubflow.graph.has(captured) ? undefined : RNode.findEnclosing(captured, idMap, RFunctionDefinition.is);
 			const owner = frame === undefined ? undefined : graph.getVertex(frame);
-			const name = NodeId.recoverName(captured, idMap);
+			const name = NodeId.recoverBareName(captured, idMap);
 			const envState = DfgVertex.isFunctionDefinition(owner) && name !== undefined ? Resolve.byName(name, owner.subflow.environment)?.filter(hasEnvState).find(d => d.nodeId === captured)?.envState : undefined;
 			if(envState !== undefined) {
 				linkFieldWritesOnCall(graph, id, fnId, node, captured, envState, idMap);
@@ -346,7 +346,8 @@ export function getAllLinkedFunctionDefinitions(
 		let followTargets: [NodeId, boolean][] | undefined;
 		/* a list handed on as a whole (a loop, an apply) yields its entries, an access the entry it names */
 		const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
-		const returnedTo = DfgVertex.isFunctionCall(vertex) ? cid : call;
+		/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
+		const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? cid : call;
 		for(const [target, e] of dataflowGraph.edgesFrom(cid)) {
 			if(DfEdge.includesType(e, handedBack)) {
 				hasReturnEdge = true;
@@ -478,11 +479,11 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 }
 
-function addControlDependency(holder: { cds?: ControlDependency[] | undefined }, cd: ControlDependency): boolean {
+function addControlDependency(holder: { cds?: readonly ControlDependency[] | undefined }, cd: ControlDependency): boolean {
 	if(holder.cds?.some(c => c.id === cd.id)) {
 		return false;
 	}
-	(holder.cds ??= []).push(cd);
+	holder.cds = [...holder.cds ?? [], cd];
 	return true;
 }
 
@@ -537,14 +538,17 @@ export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefine
 		? String(fieldNode.content.num) : undefined;
 }
 
-/** Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns. */
+/**
+ * Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns,
+ * and so may be a field of unknown kind, like the `read.csv` of `assign("f", read.csv, envir = e)`.
+ */
 export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean): void {
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
 		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
 			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
 		}
-		if(returnsFunctions && fd.type === ReferenceType.Function) {
+		if(returnsFunctions && (fd.type & (ReferenceType.Function | ReferenceType.Unknown)) !== 0) {
 			graph.addEdge(accessId, fd.nodeId, EdgeType.Returns);
 		}
 	}
@@ -604,11 +608,11 @@ function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: Datafl
 			|| DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
 			return undefined;
 		} else if(DfgVertex.isVariableDefinition(vertex)) {
-			locals.add(NodeId.recoverName(node, idMap) ?? '');
+			locals.add(NodeId.recoverBareName(node, idMap) ?? '');
 		}
 	}
 	for(const param of Object.keys(factory.params)) {
-		locals.add(NodeId.recoverName(NodeId.normalize(param), idMap) ?? '');
+		locals.add(NodeId.recoverBareName(NodeId.normalize(param), idMap) ?? '');
 	}
 	return { factory: factory.id, locals };
 }

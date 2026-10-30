@@ -1,4 +1,4 @@
-import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
+import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
@@ -12,22 +12,21 @@ import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argu
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
-import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall, type RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { callsBuiltIn } from '../linter-util';
 
 const ConditionConstructors: ReadonlySet<string> = new Set(['simpleCondition', 'simpleError', 'simpleWarning', 'simpleMessage', 'errorCondition', 'warningCondition']);
 
 /** whether the call builds a condition object, for which `stop` ignores `call.`: a constructor, or a class naming `condition` */
 function isConditionObject(signaled: RNamedFunctionCall<ParentInformation>, graph: DataflowGraph, data: ReadonlyFlowrAnalysisProvider): boolean {
-	if(ConditionConstructors.has(Identifier.getName(signaled.functionName.content))) {
+	if(callsBuiltIn(graph, signaled.info.id, ConditionConstructors)) {
 		return true;
 	}
 	const vertex = graph.getVertex(signaled.info.id);
@@ -73,14 +72,10 @@ export const STOP_WITH_CALL_ARG = {
 						const idMap = dataflow.graph.idMap;
 						const fCall = dataflow.graph.getVertex(element.node.info.id) as DataflowGraphVertexFunctionCall;
 						/* a call that hands over `stop` itself, like `do.call(stop, args)`, states its arguments elsewhere */
-						if(!RFunctionCall.is(element.node) || Identifier.getName(fCall.name) !== 'stop') {
+						if(!RFunctionCall.is(element.node) || !callsBuiltIn(dataflow.graph, element.node.info.id, 'stop')) {
 							return false;
 						}
 						if(idMap !== undefined && RNode.findEnclosing(element.node.info.id, idMap, RFunctionDefinition.is) === undefined) {
-							return false;
-						}
-						// only built-in functions
-						if(Dataflow.origin(dataflow.graph, element.node.info.id)?.some(e => e.type !== OriginType.BuiltInFunctionOrigin)) {
 							return false;
 						}
 						// filter out function calls with argument "call." set to false
@@ -109,10 +104,10 @@ export const STOP_WITH_CALL_ARG = {
 			'.meta': meta
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `\`stop()\` without \`call. = FALSE\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `\`stop()\` at ${SourceLocation.format(result.loc)} is called without \`call. = FALSE\`, so the error message names the call it was raised in, which is usually not intended. Pass \`call. = FALSE\` to leave it out.`,
-	},
+	prettyPrint: prettyPrint(
+		result => `\`stop()\` without \`call. = FALSE\` at ${SourceLocation.format(result.loc)}`,
+		result => `\`stop()\` at ${SourceLocation.format(result.loc)} is called without \`call. = FALSE\`, so the error message names the call it was raised in, which is usually not intended. Pass \`call. = FALSE\` to leave it out.`
+	),
 	info: {
 		name:          'Stop Without Call',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.QuickFix],

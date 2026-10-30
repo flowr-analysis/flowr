@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-19, 07:43:23 UTC (v2.16.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 21:18:48 UTC (v2.16.7), do not edit directly._
 <h2 id="Inspect Recursive Functions Query">Inspect Recursive Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are recursive\
@@ -25,8 +25,7 @@ Query: **inspect-recursion**\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"inspect-recursion":{".meta":{},"recursive":{"21":true}},".meta":{}}
@@ -44,7 +43,7 @@ fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 ```mermaid
@@ -70,9 +69,9 @@ subgraph "flow-21" [function 21]
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
-      *1.50* (**id: 12**, 16+, 19-)`"])
+      *1.50* (**id: 12**, 16+)`"])
     13{{"`*#91;RNumber#93;* **1**
-      *1.54* (**id: 13**, 16+, 19-)`"}}
+      *1.54* (**id: 13**, 16+)`"}}
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
       *1.50-54* (**id: 14**, 16+, 19-)
     arg: (12, 13)`"]]
@@ -209,8 +208,7 @@ Query: **inspect-recursion**\
 
 The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {"inspect-recursion":{".meta":{},"recursive":{"21":true}},".meta":{}}
@@ -228,7 +226,7 @@ fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis ran (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 ```mermaid
@@ -254,9 +252,9 @@ subgraph "flow-21" [function 21]
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
-      *1.50* (**id: 12**, 16+, 19-)`"])
+      *1.50* (**id: 12**, 16+)`"])
     13{{"`*#91;RNumber#93;* **1**
-      *1.54* (**id: 13**, 16+, 19-)`"}}
+      *1.54* (**id: 13**, 16+)`"}}
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
       *1.50-54* (**id: 14**, 16+, 19-)
     arg: (12, 13)`"]]
@@ -373,6 +371,6 @@ end
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Inspect Recursive Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-recursion-query/inspect-recursion-query-executor.ts#L10"><code><span title="Execute recursion function inspection queries on the given analyzer.">executeRecursionQuery</span></code></a>.
+The Inspect Recursive Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts#L262"><code>executor</code></a>.
 
 </details>

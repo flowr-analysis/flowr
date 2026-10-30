@@ -2,6 +2,7 @@ import type {
 	InspectExceptionQuery, InspectExceptionQueryResult
 } from './inspect-exception-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ExceptionPoint, ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
 import { QueryFunctionFilter } from '../../query-function-filter';
@@ -29,9 +30,7 @@ export async function executeExceptionQuery({ analyzer }: BasicQueryData, querie
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		/* collecting walks whatever the call graph holds, reporting stays with the definitions someone wrote */
 		exceptions: Object.fromEntries(Object.entries(result).filter(([id]) => QueryFunctionFilter.written(id)))
 	};

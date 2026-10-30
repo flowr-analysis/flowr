@@ -21,7 +21,6 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 				result.dataflow.graph, cfg,
 				result.normalize,
 				context,
-				name
 			);
 			assert(actual === expectedLoopsOnlyOnce, `Expected to ${expectedLoopsOnlyOnce ? 'loop only once' : 'loop multiple times'}`);
 		});
@@ -36,9 +35,13 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	});
 
 	describe('Nested Branches', () => {
-		// Fails
 		checkLoop('Conditional break followed by unconditional', 'repeat { if(x) { break } \n break  }', '1@repeat', true);
 		checkLoop('Branch before break', 'repeat { if(u) {} \n break  }', '1@repeat', true);
+		checkLoop('Only one is conditional', 'repeat { if(u) { break } \n break  }', '1@repeat', true);
+		checkLoop('One does not', 'repeat { if(FALSE) { break } \n break  }', '1@repeat', true);
+		checkLoop('Always true', 'repeat { if(u) { break } \n if(TRUE) { break }  }', '1@repeat', true);
+		checkLoop('Always false', 'repeat { if(FALSE) { break } \n if(TRUE) { break }  }', '1@repeat', true);
+		checkLoop('Both false', 'repeat { if(FALSE) { break } \n if(FALSE) { break }  }', '1@repeat', false);
 	});
 
 	describe('Nested Loops', () => {

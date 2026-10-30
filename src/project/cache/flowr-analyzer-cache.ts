@@ -45,6 +45,8 @@ function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
 	private args:             FlowrAnalyzerCacheOptions<Parser>;
 	private pipeline:         AnalyzerPipelineExecutor<Parser> = undefined as unknown as AnalyzerPipelineExecutor<Parser>;
+	/** the steps of the tape run so far, which the next caller waits for */
+	private running:          Promise<unknown> = Promise.resolve();
 	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
 	private callGraphCache:   CallGraph | undefined = undefined;
 
@@ -104,11 +106,16 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
 		guard(this.args.context.files.hasRequests(),
 			'At least one request must be set to run the analysis pipeline');
-		if(force) {
-			this.reset();
-		}
-		/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
-		return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+		/* one tape: a second caller, as `analyzer.normalize()` while `analyzer.dataflow()` still runs, waits for the steps before */
+		const run = this.running.then(() => {
+			if(force) {
+				this.reset();
+			}
+			/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
+			return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+		});
+		this.running = run.catch(() => undefined);
+		return run;
 	}
 
 	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
@@ -140,8 +147,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#peekParse} - to get the parse output if already available without triggering a new parse.
 	 */
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {
-		const d = this.get();
-		return this.runTapeUntil(force, () => d.parse);
+		return this.runTapeUntil(force, () => this.get().parse);
 	}
 
 	/**
@@ -159,8 +165,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#peekNormalize} - to get the normalized AST if already available without triggering a new normalization.
 	 */
 	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
-		const d = this.get();
-		return this.runTapeUntil(force, () => d.normalize);
+		return this.runTapeUntil(force, () => this.get().normalize);
 	}
 
 	/**
@@ -178,8 +183,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
 	 */
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
-		const d = this.get();
-		return this.runTapeUntil(force, () => d.dataflow);
+		return this.runTapeUntil(force, () => this.get().dataflow);
 	}
 
 	/**

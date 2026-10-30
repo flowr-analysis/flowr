@@ -30,11 +30,11 @@ describe('eval', { concurrent: false }, withTreeSitter(tr => {
 	assertDataflow(label('simple eval use - from 2 variables', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'built-in-parsing', 'newlines']),
 		tr, 'x <- 1\ny <- 1\na <- 2\nz <- eval(parse(text="x+y"))', emptyGraph()
 			.definedBy('4@z', '4@eval')
-			.addEdge(17, 'eval::17:4:6-2', EdgeType.Returns)
-			.addEdge('eval::17:4:6-2', 'eval::17:4:6-0', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('eval::17:4:6-2', 'eval::17:4:6-1', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('eval::17:4:6-0', '1@x', EdgeType.Reads)
-			.addEdge('eval::17:4:6-1', '2@y', EdgeType.Reads),
+			.addEdge(17, 'eval::17-2', EdgeType.Returns)
+			.addEdge('eval::17-2', 'eval::17-0', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('eval::17-2', 'eval::17-1', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('eval::17-0', '1@x', EdgeType.Reads)
+			.addEdge('eval::17-1', '2@y', EdgeType.Reads),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
@@ -93,11 +93,11 @@ describe('evalText', { concurrent: false }, withTreeSitter(tr => {
 	assertDataflow(label('simple evalText use  - from 2 variables', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		tr, 'x <- 1\ny <- 1\na <- 2\nz <- evalText("x+y")', emptyGraph()
 			.definedBy('4@z', '4@evalText')
-			.addEdge(13, 'evalText::13:4:6-2', EdgeType.Returns)
-			.addEdge('evalText::13:4:6-2', 'evalText::13:4:6-0', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('evalText::13:4:6-2', 'evalText::13:4:6-1', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('evalText::13:4:6-0', '1@x', EdgeType.Reads)
-			.addEdge('evalText::13:4:6-1', '2@y', EdgeType.Reads),
+			.addEdge(13, 'evalText::13-2', EdgeType.Returns)
+			.addEdge('evalText::13-2', 'evalText::13-0', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('evalText::13-2', 'evalText::13-1', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('evalText::13-0', '1@x', EdgeType.Reads)
+			.addEdge('evalText::13-1', '2@y', EdgeType.Reads),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,

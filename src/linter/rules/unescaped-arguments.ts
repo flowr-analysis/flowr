@@ -29,7 +29,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { Record } from '../../util/record';
 import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { uniqueArray } from '../../util/collections/arrays';
@@ -459,12 +459,12 @@ export const UNESCAPED_ARGUMENTS = {
 			'.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped }
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result =>
+	prettyPrint: prettyPrint(
+		result =>
 			`Unescaped ${result.category} argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]: result =>
+		result =>
 			`The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches a ${result.category} call unescaped (input: ${result.input.join(', ')})`
-	},
+	),
 	info: {
 		name:          'Unescaped Arguments',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Shiny, LintingRuleTag.QuickFix],

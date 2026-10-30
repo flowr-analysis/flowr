@@ -76,7 +76,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			],
 			{ builtin: 1, sigdb: 0 }
 		);
-		/* @ignore-in-wiki */
 		assertLinter('wiki example', parser, `
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))

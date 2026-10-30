@@ -1,5 +1,5 @@
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
-import { stringFromLiteral, unescapeRString } from './string/string-constants';
+import { contentOf, stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { assertUnreachable, guard } from '../../../util/assert';
 
@@ -172,8 +172,10 @@ export function stringifyValue(value: Lift<Value>): string {
  */
 export const RValue = {
 	name:            'RValue',
-	/** What the escapes in a string literal stand for; see {@link unescapeRString}. */
+	/** What the escapes in the content of a string literal stand for; see {@link unescapeRString}. */
 	unescapeString:  unescapeRString,
+	/** What a string literal stands for, raw or not; see {@link contentOf}. */
+	contentOf,
 	/** The string a literal stands for, `undefined` when R would not accept it; see {@link stringFromLiteral}. */
 	ofStringLiteral: stringFromLiteral,
 	/** The number the value stands for, collapsing an interval that admits a single one. */

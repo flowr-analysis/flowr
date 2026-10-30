@@ -1,4 +1,5 @@
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { FunctionInfoPackageHit, FunctionInfoQuery, FunctionInfoQueryResult } from './function-info-query-format';
 import { builtinModelsOf } from './function-origin';
 import { isBaseRPackage } from '../../../util/r-base-packages';
@@ -29,7 +30,7 @@ export function executeFunctionInfoQuery({ analyzer }: BasicQueryData, queries: 
 		};
 	});
 	return Promise.resolve({
-		'.meta': { timing: Date.now() - start },
+		...metaSince(start),
 		name:    query.name,
 		packages,
 		builtin: builtinModelsOf(query.name, analyzer.inspectContext())

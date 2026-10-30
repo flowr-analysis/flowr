@@ -83,6 +83,8 @@ describe('is-strict-function', withTreeSitter(ts => {
 	testStrict('methods agreeing settle the question', 'f <- function(x) UseMethod("f")\nf.default <- function(x) x\nf.numeric <- function(x) x + 1', '1@function', Ternary.Always, { x: Ternary.Always });
 	testStrict('the dispatch object is forced even when no method reads it', 'f <- function(x, y) UseMethod("f")\nf.default <- function(x, y) 1', '1@function', Ternary.Maybe, { x: Ternary.Always, y: Ternary.Maybe });
 	testStrict('a named object moves what the dispatch forces', 'f <- function(x, y) UseMethod("f", y)\nf.default <- function(x, y) 1', '1@function', Ternary.Maybe, { x: Ternary.Maybe, y: Ternary.Always });
+	testStrict('a computed generic forces the object as a literal one does', 'f <- function(x, y) UseMethod(paste0("", "f"))\nf.default <- function(x, y) 1', '1@function', Ternary.Maybe, { x: Ternary.Always, y: Ternary.Maybe });
+	testStrict('a computed generic with a named object', 'f <- function(x, y) UseMethod(paste0("", "f"), y)\nf.default <- function(x, y) 1', '1@function', Ternary.Maybe, { x: Ternary.Maybe, y: Ternary.Always });
 	testStrict('S4 dispatches on its object as well', 'setGeneric("g", function(x) standardGeneric("g"))\nsetMethod("g", "numeric", function(x) x)', '1@function', Ternary.Always, { x: Ternary.Always });
 
 	/* what `NextMethod` reaches decides for the method holding it */

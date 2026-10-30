@@ -14,12 +14,14 @@ import fs from 'fs';
 /* the wiki is generated with the bundled signature database, which the tests otherwise leave out; a checkout without
    the generated database (`npm run sigdb:sync`) cannot show what some examples need, so these tests wait for it */
 const manifest = defaultSigDbPath();
-const hasSigDb = manifest !== undefined && fs.existsSync(manifest) && defaultSigDbPaths().length > 0;
+/* resolved once: other suites write sigdb files concurrently, so a rescan per test could see a half-written database */
+const sigDbPaths = defaultSigDbPaths();
+const hasSigDb = manifest !== undefined && fs.existsSync(manifest) && sigDbPaths.length > 0;
 describe('the wiki example of every linting rule, with a quick fix exactly when the rule is tagged for one', withTreeSitter(parser => {
 	for(const [name, { example, config }] of Object.entries(LintingRuleExamples)) {
 		test.runIf(hasSigDb)(name, async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser)
-				.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(...defaultSigDbPaths())).build();
+				.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(...sigDbPaths)).build();
 			if(typeof example === 'string') {
 				analyzer.addRequest(example);
 			} else {

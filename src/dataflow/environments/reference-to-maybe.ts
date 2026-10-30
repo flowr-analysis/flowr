@@ -3,7 +3,7 @@ import { Identifier, ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
-import { appendCds, withCds } from '../info';
+import { withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { DfgVertex } from '../graph/vertex';
@@ -52,12 +52,8 @@ export function applyCdsToDefinitions(environments: REnvironmentInformation, nam
 	}
 }
 
-function addCds(target: { cds?: ControlDependency[] }, cds: readonly ControlDependency[] | undefined): void {
-	if(target.cds) {
-		appendCds(target.cds, cds);
-	} else {
-		target.cds = cds ? Array.from(cds) : [];
-	}
+function addCds(target: { cds?: readonly ControlDependency[] }, cds: readonly ControlDependency[] | undefined): void {
+	target.cds = withCds(target.cds, cds);
 }
 
 /**

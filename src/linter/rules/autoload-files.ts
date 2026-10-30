@@ -1,16 +1,12 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
-import type { FlowrFileProvider } from '../../project/context/flowr-file';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty  } from '../linter-format';
 import { FileRole } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
-import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
-import { isNotUndefined } from '../../util/assert';
 import type { QueryResults } from '../../queries/query';
-import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
-import type { FlowrLaxSourcingOptions } from '../../config';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
+import { requestFromInput } from '../../r-bridge/retriever';
 
 export interface AutoloadResult extends LintingResult {
 	readonly filePath: string;
@@ -25,10 +21,60 @@ export interface AutoloadConfig extends MergeableRecord {
 export const AUTOLOAD_FILES = {
 	createSearch:        () => undefined as never,
 	processSearchResult: async(_elements, config, data) => {
-		const results: AutoloadResult[] = [];
-		const patterns = config.allowedFilePatterns.map(p => typeof p == 'string' ? new RegExp(p) : p);
 		const ctx = data.inspectContext();
-		const wdRootsFor = WorkingDirectory.rootsResolver((await data.dataflow()).graph, (await data.controlflow()).graph, ctx);
+		const patterns = config.allowedFilePatterns.map(p => typeof p === 'string' ? new RegExp(p) : p);
+		let startupFiles = ctx.files.getFilesByRole(FileRole.Startup).filter(f => !patterns.some(p => p.exec(f.path())));
+		if(!config.allowEmptyFiles) {
+			startupFiles = startupFiles.filter(f => f.content().toString().trim().length > 0);
+		}
+		const ret: { results: AutoloadResult[], '.meta': MergeableRecord } = { results: [], '.meta': {} };
+		if(startupFiles.length <= 0) {
+			return ret;
+		}
+
+		// "top-level" startup files
+		for(const file of startupFiles) {
+			ret.results.push({
+				certainty:  LintingResultCertainty.Certain,
+				filePath:   file.path(),
+				involvedId: undefined,
+				loc:        undefined
+			});
+		}
+
+		// use dependency query to find files that are sourced by our top-level startup files (and recursively)
+		let deps: QueryResults<'dependencies'>;
+		let df: DataflowGraph;
+		// TODO die fake files hier weiterleiten
+		const analyzer = await new FlowrAnalyzerBuilder().setConfig(ctx.config).build();
+		try {
+			for(const file of startupFiles) {
+				// TODO hier kann man auch ein virtual/inline file angeben, dann gibt es die existenz probleme nicht
+				analyzer.addRequest(requestFromInput(`file://${file.path()}`));
+			}
+			deps = await analyzer.query([{ type: 'dependencies', enabledCategories: ['source'] }]);
+			df = (await analyzer.dataflow()).graph;
+		} finally {
+			analyzer.close();
+		}
+		console.log(deps);
+
+		for(const sourced of deps.dependencies.source) {
+			console.log(sourced);
+			if(sourced.value === undefined || sourced.nodeId === undefined) {
+				continue;
+			}
+			console.log(sourced.value);
+			const node = df.idMap?.get(sourced.nodeId);
+			if(node === undefined) {
+				continue;
+			}
+			console.log(node);
+		}
+
+		return ret;
+
+		/*const wdRootsFor = WorkingDirectory.rootsResolver(, (await data.controlflow()).graph, ctx);
 		for(const file of ctx.files.getFilesByRole(FileRole.Startup)) {
 			await analyzeFile(file, []);
 		}
@@ -83,7 +129,7 @@ export const AUTOLOAD_FILES = {
 					await analyzeFile(sourcedFile, referenceChain);
 				}
 			}
-		}
+		}*/
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: (result) => `File \`${result.filePath}\``,

@@ -1,0 +1,410 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>ControlFlow | @eagleoutice/flowr - v2.16.8</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.16.8</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_dataflow_internal_control-flow.html">src/dataflow/internal/control-flow</a></li>
+<li><a href="" aria-current="page">ControlFlow</a></li></ul>
+<h1>Variable ControlFlow<code class="tsd-tag">Const</code></h1></div>
+<div class="tsd-signature"><span class="tsd-kind-variable">ControlFlow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>    <span class="tsd-kind-call-signature">alwaysExits</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">info</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">context</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">branchesTo</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">target</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">cd</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">canComplete</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">info</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">continuesWith</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">next</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">entryOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">info</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">inSequence</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">parts</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> (<a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">last</span><span class="tsd-signature-symbol">?:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isExpression</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isStatement</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">jumpsTo</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">kind</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_dataflow_info.ExitPointType.html" class="tsd-signature-type tsd-kind-enum">ExitPointType</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">target</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;ControlFlow&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">outsidePromises</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">data</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">picksOneOf</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">parts</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> (<a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">joinsAt</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">hasDefault</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">promise</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">promise</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">forcing</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_util_logic.Ternary.html" class="tsd-signature-type tsd-kind-enum">Ternary</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">holder</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ExitPoint.html" class="tsd-signature-type tsd-kind-interface">ExitPoint</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">withinPromise</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">data</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">holder</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol"> = ...</span></div>
+<div class="tsd-comment tsd-typography"><p>Records the control flow of a program in the <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-kind-class">DataflowGraph</a> while the dataflow analysis walks it.
+The ControlFlowGraph is a view on what is recorded here.</p>
+<p>The control flow is modeled in post-order: everything a construct is made of runs before the construct
+itself, so its own vertex is where its parts join again and where it is left.</p>
+</div>
+<div class="tsd-type-declaration">
+<h4>Type Declaration</h4>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5 id="alwaysexits"><span class="tsd-kind-method">alwaysExits</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="alwaysexits-1"><span class="tsd-kind-call-signature">alwaysExits</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">info</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">context</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#alwaysexits-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whether the subtree always jumps away instead of being left normally, i.e. whether a non-default exit
+point happens in every branch. The control dependencies in <code>context</code> (like a promise's) hold for the whole subtree.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">info</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a></span></li>
+<li><span><span class="tsd-kind-parameter">context</span>: <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = []</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#canComplete|canComplete() - for whether it can be left normally at all</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-1">{ </span><span class="hl-3">break</span><span class="hl-1"> }            </span><span class="hl-4"># always exits</span><br/><span class="hl-1">{ </span><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-8">u</span><span class="hl-1">) </span><span class="hl-3">break</span><span class="hl-1"> }      </span><span class="hl-4"># only maybe</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L75">src/dataflow/internal/control-flow.ts:75</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="branchesto"><span class="tsd-kind-method">branchesTo</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="branchesto-1"><span class="tsd-kind-call-signature">branchesTo</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">target</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">cd</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#branchesto-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whatever <code>from</code> completes at continues with <code>target</code>, but only under the given control dependency.
+Hand over the very dependency the vertices behind the branch carry, so both say the same thing.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">from</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a></span></li>
+<li><span><span class="tsd-kind-parameter">target</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li>
+<li><span><span class="tsd-kind-parameter">cd</span>: <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-1">See<a href="#see-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#continuesWith|continuesWith() - if it always continues</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-1">Example<a href="#example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-8">u</span><span class="hl-1">) </span><span class="hl-8">a</span><span class="hl-1"> </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-8">b</span><span class="hl-1"> </span><span class="hl-4"># `a` is reached when `u` holds, `b` when it does not</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L125">src/dataflow/internal/control-flow.ts:125</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="cancomplete"><span class="tsd-kind-method">canComplete</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="cancomplete-1"><span class="tsd-kind-call-signature">canComplete</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">info</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#cancomplete-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whether the subtree can be left normally instead of always jumping away.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">info</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-2">See<a href="#see-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#alwaysExits|alwaysExits() - for whether it always jumps away</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-2">Example<a href="#example-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-1">{ </span><span class="hl-7">1</span><span class="hl-1"> }     </span><span class="hl-4"># can complete</span><br/><span class="hl-1">{ </span><span class="hl-3">break</span><span class="hl-1"> } </span><span class="hl-4"># cannot</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L100">src/dataflow/internal/control-flow.ts:100</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="continueswith"><span class="tsd-kind-method">continuesWith</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="continueswith-1"><span class="tsd-kind-call-signature">continuesWith</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">next</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#continueswith-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whatever <code>from</code> completes at continues with <code>next</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">from</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a></span></li>
+<li><span><span class="tsd-kind-parameter">next</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-3">See<a href="#see-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#branchesTo|branchesTo() - if it only continues under a condition</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-3">Example<a href="#example-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">f</span><span class="hl-1">(); </span><span class="hl-0">g</span><span class="hl-1">() </span><span class="hl-4"># the call to `g` continues what `f` completes</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L111">src/dataflow/internal/control-flow.ts:111</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="entryof"><span class="tsd-kind-method">entryOf</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="entryof-1"><span class="tsd-kind-call-signature">entryOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">info</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><a href="#entryof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The node control flow enters the given subtree at.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">info</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-4">Example<a href="#example-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-8">x</span><span class="hl-1"> + </span><span class="hl-7">1</span><span class="hl-1"> </span><span class="hl-4"># the `+` is entered at `x`</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L34">src/dataflow/internal/control-flow.ts:34</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="insequence"><span class="tsd-kind-method">inSequence</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="insequence-1"><span class="tsd-kind-call-signature">inSequence</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">parts</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> (<a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">last</span><span class="tsd-signature-symbol">?:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#insequence-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The parts run one after the other and the last one continues with <code>last</code>, if it is given.
+Parts that are <code>undefined</code> are skipped, which keeps optional arguments cheap to handle.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">parts</span>: <span class="tsd-signature-keyword">readonly</span> (<a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">last</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>the node control flow enters the sequence at, or <code>last</code> if there is nothing to enter</p>
+
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-5">Example<a href="#example-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">f</span><span class="hl-1">(</span><span class="hl-8">a</span><span class="hl-1">, </span><span class="hl-8">b</span><span class="hl-1">) </span><span class="hl-4"># `a`, then `b`, then the call</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L206">src/dataflow/internal/control-flow.ts:206</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="isexpression"><span class="tsd-kind-method">isExpression</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="isexpression-1"><span class="tsd-kind-call-signature">isExpression</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isexpression-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whether the node runs as part of a larger expression instead of as a statement of its own.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">id</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-4">See<a href="#see-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#isStatement|isStatement() - for the other kind</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-6">Example<a href="#example-6" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-8">x</span><span class="hl-1"> + </span><span class="hl-7">1</span><span class="hl-1">) </span><span class="hl-4"># `x + 1` and `x` are expressions, the call is a statement</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L62">src/dataflow/internal/control-flow.ts:62</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="isstatement"><span class="tsd-kind-method">isStatement</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="isstatement-1"><span class="tsd-kind-call-signature">isStatement</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isstatement-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whether the node runs as a statement of the program instead of as part of a larger expression.
+Assignments count as statements wherever they stand.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">id</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-5">See<a href="#see-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#isExpression|isExpression() - for the other kind</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-7">Example<a href="#example-7" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-8">x</span><span class="hl-1"> + </span><span class="hl-7">1</span><span class="hl-1">) </span><span class="hl-4"># the call is a statement, `x + 1` and `x` are expressions</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L46">src/dataflow/internal/control-flow.ts:46</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="jumpsto"><span class="tsd-kind-method">jumpsTo</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="jumpsto-1"><span class="tsd-kind-call-signature">jumpsTo</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">kind</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_dataflow_info.ExitPointType.html" class="tsd-signature-type tsd-kind-enum">ExitPointType</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">target</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#jumpsto-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Every jump of the given kind within <code>from</code> lands on <code>target</code>, which reads a <code>break</code> as it decides how often a loop runs.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">from</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a></span></li>
+<li><span><span class="tsd-kind-parameter">kind</span>: <a href="../enums/src_dataflow_info.ExitPointType.html" class="tsd-signature-type tsd-kind-enum">ExitPointType</a></span></li>
+<li><span><span class="tsd-kind-parameter">target</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-8">Example<a href="#example-8" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-3">while</span><span class="hl-1">(</span><span class="hl-8">u</span><span class="hl-1">) { </span><span class="hl-3">break</span><span class="hl-1"> } </span><span class="hl-4"># the `break` lands on the loop it leaves</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L137">src/dataflow/internal/control-flow.ts:137</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="name"><code class="tsd-tag">Readonly</code><span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">&quot;ControlFlow&quot;</span></h5></li>
+<li class="tsd-parameter">
+<h5 id="outsidepromises"><span class="tsd-kind-method">outsidePromises</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="outsidepromises-1"><span class="tsd-kind-call-signature">outsidePromises</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">data</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a><a href="#outsidepromises-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>A function defined within a promise: forcing the promise only creates it, its body runs once it is called,
+so neither the definition nor its body depend on the call holding the promise.</p>
+</div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="outsidepromisesdata"><span class="tsd-kind-type-parameter">Data</span> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span></span></li></ul></section>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">data</span>: <a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a class="tsd-signature-type tsd-kind-type-parameter" href="#outsidepromisesdata">Data</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-9">Example<a href="#example-9" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">f</span><span class="hl-1">(</span><span class="hl-3">function</span><span class="hl-1">() </span><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-7">1</span><span class="hl-1">)) </span><span class="hl-4"># the print runs when `f` calls its argument, which `f(...)` itself does not decide</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L167">src/dataflow/internal/control-flow.ts:167</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="picksoneof"><span class="tsd-kind-method">picksOneOf</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="picksoneof-1"><span class="tsd-kind-call-signature">picksOneOf</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">parts</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> (<a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">from</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">joinsAt</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">hasDefault</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#picksoneof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The parts before <code>from</code> run in sequence, the ones after it are alternatives of which at most one runs.
+Whichever one it is, control joins on <code>joinsAt</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span>
+<div class="tsd-comment tsd-typography"><p>the graph to record in</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">parts</span>: <span class="tsd-signature-keyword">readonly</span> (<a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span></span>
+<div class="tsd-comment tsd-typography"><p>the arguments of the call, in the order they run</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">from</span>: <span class="tsd-signature-type">number</span></span>
+<div class="tsd-comment tsd-typography"><p>the index the alternatives start at</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">joinsAt</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span>
+<div class="tsd-comment tsd-typography"><p>the call the alternatives belong to</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">hasDefault</span>: <span class="tsd-signature-type">boolean</span></span>
+<div class="tsd-comment tsd-typography"><p>whether one alternative runs when none of the others matched</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>the node control flow enters the call at</p>
+
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-10">Example<a href="#example-10" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-3">switch</span><span class="hl-1">(</span><span class="hl-8">k</span><span class="hl-1">, </span><span class="hl-8">a</span><span class="hl-1"> = </span><span class="hl-7">1</span><span class="hl-1">, </span><span class="hl-8">b</span><span class="hl-1"> = </span><span class="hl-7">2</span><span class="hl-1">) </span><span class="hl-4"># `k`, then one arm, then the switch</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L249">src/dataflow/internal/control-flow.ts:249</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="promise"><span class="tsd-kind-method">promise</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="promise-1"><span class="tsd-kind-call-signature">promise</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">graph</span><span class="tsd-signature-symbol">:</span> <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">promise</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">forcing</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_util_logic.Ternary.html" class="tsd-signature-type tsd-kind-enum">Ternary</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">holder</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ExitPoint.html" class="tsd-signature-type tsd-kind-interface">ExitPoint</a><span class="tsd-signature-symbol">[]</span><a href="#promise-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The jumps within a promise, an argument or default R evaluates only if <code>holder</code> forces it. A jump</p>
+<ul>
+<li>never runs if the promise is Ternary#Never|never forced, so control resumes at <code>holder</code>,</li>
+<li>leaves whenever reached if it is Ternary#Always|always forced,</li>
+<li>otherwise stays an exit under a <code>byPromise</code> dependency on <code>holder</code>, and control may resume at <code>holder</code> as well,
+until FunctionSemantics.settleJumpsInPromises settles it.</li>
+</ul>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">graph</span>: <a href="../classes/src_dataflow_graph_graph.DataflowGraph.html" class="tsd-signature-type tsd-kind-class">DataflowGraph</a></span></li>
+<li><span><span class="tsd-kind-parameter">promise</span>: <a href="../interfaces/src_dataflow_info.DataflowCfgInformation.html" class="tsd-signature-type tsd-kind-interface">DataflowCfgInformation</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li>
+<li><span><span class="tsd-kind-parameter">forcing</span>: <a href="../enums/src_util_logic.Ternary.html" class="tsd-signature-type tsd-kind-enum">Ternary</a></span></li>
+<li><span><span class="tsd-kind-parameter">holder</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_dataflow_info.ExitPoint.html" class="tsd-signature-type tsd-kind-interface">ExitPoint</a><span class="tsd-signature-symbol">[]</span></h4><p>the exit points the holder takes over from the promise</p>
+
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-11">Example<a href="#example-11" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">g</span><span class="hl-1">(</span><span class="hl-3">return</span><span class="hl-1">(</span><span class="hl-7">1</span><span class="hl-1">))           </span><span class="hl-4"># whether this returns is up to `g`</span><br/><span class="hl-3">function</span><span class="hl-1">(</span><span class="hl-8">x</span><span class="hl-1"> = </span><span class="hl-3">break</span><span class="hl-1">) </span><span class="hl-8">x</span><span class="hl-1">  </span><span class="hl-4"># the `break` runs where `x` is first used</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L187">src/dataflow/internal/control-flow.ts:187</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="withinpromise"><span class="tsd-kind-method">withinPromise</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="withinpromise-1"><span class="tsd-kind-call-signature">withinPromise</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">data</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">holder</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a><a href="#withinpromise-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>What is handed to <code>holder</code> runs only once <code>holder</code> forces it, so it is analyzed under that control
+dependency: a definition within a promise may not happen, and what it would overwrite stays visible.</p>
+</div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="withinpromisedata"><span class="tsd-kind-type-parameter">Data</span> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span></span></li></ul></section>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">data</span>: <a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a></span></li>
+<li><span><span class="tsd-kind-parameter">holder</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a class="tsd-signature-type tsd-kind-type-parameter" href="#withinpromisedata">Data</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-6">See<a href="#see-6" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>ControlFlow#promise|promise() - for the jumps within a promise</p>
+</div>
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-12">Example<a href="#example-12" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="r"><span class="hl-0">g</span><span class="hl-1">(</span><span class="hl-8">x</span><span class="hl-1"> &lt;- </span><span class="hl-7">2</span><span class="hl-1">) </span><span class="hl-4"># `x` is 2 afterwards only if `g` forces its argument</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L156">src/dataflow/internal/control-flow.ts:156</a></li></ul></aside></div></li></ul></li></ul></div>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-helper">
+<h4 class="tsd-anchor-link" id="helper">Helper<a href="#helper" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>control-flow</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/b53a3da4f2b93eacafcc33ee110b3dffb0a13d60/src/dataflow/internal/control-flow.ts#L25">src/dataflow/internal/control-flow.ts:25</a></li></ul></aside></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.16.8</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

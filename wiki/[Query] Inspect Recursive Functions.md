@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 21:18:48 UTC (v2.16.7), do not edit directly._
 <h2 id="Inspect Recursive Functions Query">Inspect Recursive Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are recursive\
@@ -69,9 +69,9 @@ subgraph "flow-21" [function 21]
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
-      *1.50* (**id: 12**, 16+, 19-)`"])
+      *1.50* (**id: 12**, 16+)`"])
     13{{"`*#91;RNumber#93;* **1**
-      *1.54* (**id: 13**, 16+, 19-)`"}}
+      *1.54* (**id: 13**, 16+)`"}}
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
       *1.50-54* (**id: 14**, 16+, 19-)
     arg: (12, 13)`"]]
@@ -252,9 +252,9 @@ subgraph "flow-21" [function 21]
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
-      *1.50* (**id: 12**, 16+, 19-)`"])
+      *1.50* (**id: 12**, 16+)`"])
     13{{"`*#91;RNumber#93;* **1**
-      *1.54* (**id: 13**, 16+, 19-)`"}}
+      *1.54* (**id: 13**, 16+)`"}}
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
       *1.50-54* (**id: 14**, 16+, 19-)
     arg: (12, 13)`"]]

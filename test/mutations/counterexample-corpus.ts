@@ -102,7 +102,11 @@ export const Counterexamples: readonly CounterexampleGroup[] = [
 	] },
 
 	{ group: 'Loops', cases: [
-		{ name: 'while(TRUE) stops at its break', capabilities: ['while-loop', 'break'], code: 'i <- 0\nwhile(TRUE) { i <- i + 1; if(i >= 3) break }\nprint(i)', criterion: '3@print', expected: '[1] 3' }
+		{ name: 'while(TRUE) stops at its break', capabilities: ['while-loop', 'break'], code: 'i <- 0\nwhile(TRUE) { i <- i + 1; if(i >= 3) break }\nprint(i)', criterion: '3@print', expected: '[1] 3' },
+		{ name: 'an if before a break does not control it', capabilities: ['repeat-loop', 'break', 'if'], code: 'x <- 1\nu <- runif(1) > 2\nrepeat { if(u) {}\n x <- 2\n break }\nprint(x)', criterion: '6@print', expected: '[1] 2', dropped: ['runif', 'if(u)'] },
+		{ name: 'a branch with a definition before a break does not control it', capabilities: ['repeat-loop', 'break', 'if'], code: 'x <- 1\nu <- runif(1) > 2\nrepeat { if(u) { y <- 3 }\n x <- 2\n break }\nprint(x)', criterion: '6@print', expected: '[1] 2', dropped: ['runif', 'if(u)', 'y <- 3'] },
+		{ name: 'an if-else before a break in while(TRUE) does not control it', capabilities: ['while-loop', 'break', 'if'], code: 'x <- 1\nu <- runif(1) > 2\nwhile(TRUE) { if(u) {} else {}\n x <- 2\n break }\nprint(x)', criterion: '6@print', expected: '[1] 2', dropped: ['runif', 'if(u)'] },
+		{ name: 'an if before a conditional break does not control the loop', capabilities: ['repeat-loop', 'break', 'if'], code: 'i <- 0\nu <- runif(1) > 2\nrepeat { i <- i + 1\n if(u) {}\n if(i >= 3) break }\nprint(i)', criterion: '6@print', expected: '[1] 3', dropped: ['runif', 'if(u)'] }
 	] },
 
 	{ group: 'Communication through files', cases: [

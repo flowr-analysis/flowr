@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-10-27, 21:18:48 UTC (v2.16.7, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -27,7 +27,7 @@ Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-
 > There is also a simplified version available with <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the simplified dataflow graph (aliases: :ds*, :dfs*)">`:dataflowsimple*`</span> that does not show everything but is easier to read.
 > For small graphs, you can also use <span title="Description (Repl Command): Returns an ASCII representation of the dataflow graph (aliases: :df!)">`:dataflowascii`</span> to print the graph as ASCII art.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L767"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L761"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
 >
 > Also, check out the [flowr-analysis/sample-analyzer-df-diff](https://github.com/flowr-analysis/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -538,7 +538,7 @@ The respective vertex is more or less a dummy vertex.
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -686,7 +686,7 @@ you can see from the implementation.
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -1277,7 +1277,7 @@ and it should not be relied on as it may under-approximate the actual calling ta
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -1377,7 +1377,7 @@ The related function argument references are defined like this:
             * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
             * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
             */
-           cds?:            ControlDependency[] | undefined
+           cds?:            readonly ControlDependency[] | undefined
        }
        ```
        
@@ -2558,7 +2558,7 @@ The implementation is relatively sparse and similar to the other marker vertices
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -2943,7 +2943,7 @@ The vertex object in the dataflow graph stores multiple things, including all ex
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -3105,7 +3105,7 @@ And if you are interested in the exit points, they are defined like this:
         * (e.g., if the `return` is contained within an `if` statement).
         * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
         */
-       readonly cds?:   ControlDependency[]
+       readonly cds?:   readonly ControlDependency[]
    }
    ```
    

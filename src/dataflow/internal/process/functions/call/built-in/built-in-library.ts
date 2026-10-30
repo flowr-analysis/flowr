@@ -312,7 +312,7 @@ function parseUseSpec<OtherInfo>(
 }
 
 /** Materialize the empty built-in function-definition vertex for a package export (idempotent). */
-export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, cds?: ControlDependency[]): void {
+export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, cds?: readonly ControlDependency[]): void {
 	if(graph.hasVertex(builtInId)) {
 		return;
 	}

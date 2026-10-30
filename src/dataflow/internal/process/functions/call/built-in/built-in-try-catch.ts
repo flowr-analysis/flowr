@@ -371,11 +371,5 @@ function constrainExitPoints(exitPoints: readonly ExitPoint[], constrain: Readon
 		return exitPoints;
 	}
 	const cds = Array.from(constrain, id => ({ id, when: true }));
-	return exitPoints.map(e => {
-		if(e.cds) {
-			e.cds.push(...cds);
-			return e;
-		}
-		return { ...e, cds };
-	});
+	return exitPoints.map(e => ({ ...e, cds: e.cds ? [...e.cds, ...cds] : cds }));
 }

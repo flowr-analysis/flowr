@@ -95,7 +95,7 @@ function withAccess<OtherInfo>(
 }
 
 /** Applies the writes of the call `rootId` to the environment, see {@link withAccess}. */
-function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds: ControlDependency[] | undefined, writes: readonly (string | AmbientWrite)[]): REnvironmentInformation {
+function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds: readonly ControlDependency[] | undefined, writes: readonly (string | AmbientWrite)[]): REnvironmentInformation {
 	for(const write of writes) {
 		const { name, mode } = typeof write === 'string' ? { name: write, mode: undefined } : write;
 		const accumulates = Accumulating.has(name) || name.startsWith(AmbientStateName.file(''));
@@ -116,13 +116,13 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
 }
 
 /** What an assignment writes beyond its target: only a global `.Random.seed` sets {@link AmbientStateName.rng}. */
-export function ambientWritesOfAssignment(environment: REnvironmentInformation, target: Identifier, rootId: NodeId, cds: ControlDependency[] | undefined, global: boolean): REnvironmentInformation {
+export function ambientWritesOfAssignment(environment: REnvironmentInformation, target: Identifier, rootId: NodeId, cds: readonly ControlDependency[] | undefined, global: boolean): REnvironmentInformation {
 	environment = ambientWritesOfRelease(environment, [target], rootId, cds);
 	return global && Identifier.getName(target) === AmbientStateName.rngVariable ? defineAmbient(environment, rootId, cds, [AmbientStateName.rng, AmbientStateName.rngKind]) : environment;
 }
 
 /** Rebinding or removing the names (all of them if `undefined`) may release an object a finalizer is registered for. */
-export function ambientWritesOfRelease(environment: REnvironmentInformation, names: readonly Identifier[] | undefined, rootId: NodeId, cds: ControlDependency[] | undefined): REnvironmentInformation {
+export function ambientWritesOfRelease(environment: REnvironmentInformation, names: readonly Identifier[] | undefined, rootId: NodeId, cds: readonly ControlDependency[] | undefined): REnvironmentInformation {
 	const holders = (Resolve.byName(AmbientStateName.finalizers, environment) ?? []).map(d => (d as { holder?: string }).holder);
 	const released = holders.some(h => h === undefined || names === undefined || names.some(n => Identifier.getName(n) === h));
 	return released ? defineAmbient(environment, rootId, cds, [AmbientStateName.finalizers]) : environment;

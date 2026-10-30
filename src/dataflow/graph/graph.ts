@@ -741,16 +741,10 @@ export class DataflowGraph<
 		to = NodeId.normalize(to);
 		const vertex = this.getVertex(from);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
-		if(vertex.cds) {
-			for(const { id, when: cond } of vertex.cds) {
-				if(id === to && when !== cond) {
-					return this;
-				}
-			}
-		} else {
-			vertex.cds = [];
+		if(vertex.cds?.some(c => c.id === to && c.when !== when)) {
+			return this;
 		}
-		vertex.cds.push({ id: to, when });
+		vertex.cds = [...vertex.cds ?? [], { id: to, when }];
 		return this;
 	}
 

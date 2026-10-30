@@ -632,7 +632,7 @@ export interface IdentifierReference {
 	 * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
 	 * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	cds?:            ControlDependency[] | undefined
+	cds?:            readonly ControlDependency[] | undefined
 }
 
 /**

@@ -479,11 +479,11 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 }
 
-function addControlDependency(holder: { cds?: ControlDependency[] | undefined }, cd: ControlDependency): boolean {
+function addControlDependency(holder: { cds?: readonly ControlDependency[] | undefined }, cd: ControlDependency): boolean {
 	if(holder.cds?.some(c => c.id === cd.id)) {
 		return false;
 	}
-	(holder.cds ??= []).push(cd);
+	holder.cds = [...holder.cds ?? [], cd];
 	return true;
 }
 

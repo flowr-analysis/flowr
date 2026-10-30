@@ -43,7 +43,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
-	cds:          ControlDependency[] | undefined
+	cds:          readonly ControlDependency[] | undefined
 	/**
 	 * Describes the collection of AST vertices that contributed to this vertex.
 	 * For example, this is useful with replacement operators, telling you which assignment operator caused them

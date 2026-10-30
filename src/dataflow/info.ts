@@ -143,7 +143,7 @@ export interface ExitPoint {
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly cds?:   ControlDependency[]
+	readonly cds?:   readonly ControlDependency[]
 }
 
 /** `exit` leaving through the construct `rootId`, which keeps the jump it stands for. */
@@ -154,7 +154,7 @@ export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
 /**
  * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
-export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: readonly ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
 	for(const ep of add) {
 		if(ep.type !== ExitPointType.Default) {
 			existing.push(ep);
@@ -355,7 +355,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 /**
  * Calculates the difference between two lists of control dependencies.
  */
-export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
+export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: readonly ControlDependency[] | undefined, b: readonly ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
 			info.report.addComment(`${info.position}Different control dependencies: ${JSON.stringify(a)} vs. ${JSON.stringify(b)}`);

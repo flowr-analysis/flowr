@@ -1,6 +1,7 @@
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { Bottom, Top } from '../abstract-interpretation/domains/lattice';
 import { guard } from '../util/assert';
+import { SetLiftDomain } from './set-lift-domain';
 
 export type LatticeElements<Top, Bottom> = (symbol | Top | Bottom)[];
 
@@ -156,5 +157,21 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 
 	abstract(_concrete: ReadonlySet<Elements[number]> | typeof Top): this {
 		return this.create(this._value);
+	}
+
+	get elements(): ReadonlySet<Elements[number]> {
+		return this._config.elements;
+	}
+
+	get baseTop(): this & AbstractDomain<Elements[number], Top, Bot, Top> {
+		return this.create(this._config.top) as this & AbstractDomain<Elements[number], Top, Bot, Top>;
+	}
+
+	get baseBottom(): this & AbstractDomain<Elements[number], Top, Bot, Bot> {
+		return this.create(this._config.bottom) as this & AbstractDomain<Elements[number], Top, Bot, Bot>;
+	}
+
+	public setLift(): SetLiftDomain<Top, Bot, Elements> {
+		return new SetLiftDomain(this);
 	}
 }

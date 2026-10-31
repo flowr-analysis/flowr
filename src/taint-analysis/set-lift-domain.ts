@@ -1,75 +1,79 @@
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FiniteDomain, LatticeElements } from './finite-domain';
 
+export type SetLiftValue<E> = ReadonlySet<E>;
+export type SetLiftTop<E> = ReadonlySet<E>;
+export type SetLiftBottom<E> = ReadonlySet<E>;
+
 export class SetLiftDomain<
 	Top extends symbol,
 	Bottom extends symbol,
 	Elements extends LatticeElements<Top, Bottom>
 > extends AbstractDomain<
-		ReadonlySet<Elements[number]>,
-		ReadonlySet<Elements[number]>,
-		ReadonlySet<Elements[number]>,
-		ReadonlySet<Elements[number]>
+		SetLiftValue<Elements[number]>,
+		SetLiftTop<Elements[number]>,
+		SetLiftBottom<Elements[number]>,
+	SetLiftValue<Elements[number]> | SetLiftTop<Elements[number]> | SetLiftBottom<Elements[number]>
 	> {
 	constructor(
 		private readonly base: FiniteDomain<Top, Bottom, Elements>,
-		value: ReadonlySet<Elements[number]> = new Set()
+		value: SetLiftValue<Elements[number]> = new Set()
 	) {
 		super(value);
 	}
 
-	public create(value: ReadonlySet<Elements[number]>): this {
+	create(value: SetLiftValue<Elements[number]> | SetLiftTop<Elements[number]> | SetLiftBottom<Elements[number]>): this {
 		return new SetLiftDomain<Top, Bottom, Elements>(this.base, value) as this;
 	}
 
-	public top(): this & AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>> {
+	top(): this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftTop<Elements[number]>> {
 		return this.create(new Set([this.base.baseTop.value]));
 	}
 
-	public bottom(): this & AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>> {
+	bottom(): this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftBottom<Elements[number]>> {
 		return this.create(new Set([this.base.baseBottom.value]));
 	}
 
-	protected equalsValue(this: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>, other: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>): boolean {
+	protected equalsValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
 		throw new Error('Method not implemented.');
 	}
 
-	protected leqValue(this: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>, other: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>): boolean {
+	protected leqValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
 		throw new Error('Method not implemented.');
 	}
 
-	protected joinValue(this: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>, other: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>): this {
+	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
 		throw new Error('Method not implemented.');
 	}
 
-	protected meetValue(this: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>, other: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>): this {
+	protected meetValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
 		throw new Error('Method not implemented.');
 	}
 
-	protected jsonify(this: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>): unknown {
+	protected jsonify(): unknown {
 		return [...this.value].reduce( // just a draft dont know if this makes sense yet
 			(acc, value) => acc.concat(value.description ?? value.toString()),
 			''
 		);
 	}
 
-	protected stringify(this: AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>>): string {
+	protected stringify(): string {
 		return [...this.value].reduce( // just a draft dont know if this makes sense yet
 			(acc, value) => acc.concat(value.description ?? value.toString()),
 			''
 		);
 	}
 
-	isTop(): this is this & AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>> {
-		return this.isSingletonEqual(this.base.baseTop.value);
+	isTop(): this is this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftTop<Elements[number]>> {
+		return this.isSingletonEqual(this.base.baseTop.value) || this.isFullSet(this.value);
 	}
 
-	isBottom(): this is this & AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>> {
-		return this.isSingletonEqual(this.base.baseBottom.value);
+	isBottom(): this is this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftBottom<Elements[number]>> {
+		return this.isSingletonEqual(this.base.baseBottom.value) || this.value.size === 0;
 	}
 
-	isValue(): this is this & AbstractDomain<ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>, ReadonlySet<Elements[number]>> {
-		throw new Error('Method not implemented.');
+	isValue(): this is this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftValue<Elements[number]>> {
+		return !this.isBottom() && !this.isTop();
 	}
 
 	private isFullSet(value: ReadonlySet<Elements[number]>): boolean {
@@ -78,8 +82,8 @@ export class SetLiftDomain<
             && [...elements].every(element => value.has(element));
 	}
 
-	private isSingletonEqual(element: Elements[number]): boolean{
-		return this.value.size == 1 && this.value.has(element);
+	private isSingletonEqual(element: Elements[number]): boolean {
+		return this.value.size === 1 && this.value.has(element);
 	}
 
 	narrow(other: this): this {

@@ -4,7 +4,6 @@ import type { FiniteDomain, LatticeElements } from './finite-domain';
 export type SetLiftValue<E> = ReadonlySet<E>;
 export type SetLiftTop<E> = ReadonlySet<E>;
 export type SetLiftBottom<E> = ReadonlySet<E>;
-
 export class SetLiftDomain<
 	Top extends symbol,
 	Bottom extends symbol,
@@ -17,9 +16,14 @@ export class SetLiftDomain<
 	> {
 	constructor(
 		private readonly base: FiniteDomain<Top, Bottom, Elements>,
-		value: SetLiftValue<Elements[number]> = new Set()
+		value: Elements[number] | SetLiftValue<Elements[number]> = new Set()
 	) {
-		super(value);
+		const lifted: SetLiftValue<Elements[number]> =
+			typeof value === 'symbol'
+				? new Set([value])
+				: value;
+
+		super(lifted);
 	}
 
 	create(value: SetLiftValue<Elements[number]> | SetLiftTop<Elements[number]> | SetLiftBottom<Elements[number]>): this {
@@ -35,7 +39,8 @@ export class SetLiftDomain<
 	}
 
 	protected equalsValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
-		throw new Error('Method not implemented.');
+		return this.value.size === other.value.size
+            && [...this.value].every(element => other.value.has(element));
 	}
 
 	protected leqValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {

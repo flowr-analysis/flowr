@@ -1,12 +1,12 @@
+/**
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * @lintIgnore use-instead
+ */
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowGraph } from '../graph/graph';
-import {
-	type DataflowGraphVertexArgument,
-	type DataflowGraphVertexFunctionDefinition,
-	FunctionCallVertex,
-	FunctionDefinitionVertex
-} from '../graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionDefinition, DfgVertex } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { NodeValue } from '../eval/resolve/node-value';
@@ -14,7 +14,8 @@ import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Resolve } from '../environments/resolve-helper';
-import { NoEdges } from '../graph/graph';
+import { argumentRolesOfFunctions } from './argument-roles';
+import { ArgProp } from '../environments/built-in-props';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
 	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId)).filter(isNotUndefined);
@@ -25,29 +26,25 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 			continue;
 		}
 		seen.add(current.id);
-		if(FunctionDefinitionVertex.is(current)) {
+		if(DfgVertex.isFunctionDefinition(current)) {
 			return true;
 		}
-		const next = graph.outgoingEdges(current.id) ?? NoEdges;
-		for(const [t, e] of next) {
-			if(DfEdge.includesType(e, EdgeType.Returns)) {
-				const v = graph.getVertex(t);
-				if(v) {
-					workingQueue.push(v);
-				}
+		/* a call hands back what its callee returns, never the callee; a returned name is followed to what it holds */
+		const follow = DfgVertex.isFunctionCall(current) ? EdgeType.Returns : EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy;
+		for(const [t, e] of graph.edgesFrom(current.id)) {
+			const v = DfEdge.includesType(e, follow) && !NodeId.isBuiltIn(t) ? graph.getVertex(t) : undefined;
+			if(v) {
+				workingQueue.push(v);
 			}
 		}
 	}
 	return false;
 }
 
-/**
- * Whether the argument hands over a built-in function (`f(print)`), which has no definition in the graph and
- * hence no `function-definition` value to resolve to.
- */
+/** Whether the argument hands over a built-in function (`f(print)`) rather than calling one (`lapply(1:3, f)`, which hands over its result). */
 function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
-		if(!DfEdge.includesType(edge, EdgeType.Reads) || !NodeId.isBuiltIn(target)) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Calls) || !NodeId.isBuiltIn(target)) {
 			continue;
 		}
 		const defs = Resolve.byNameAndType(NodeId.fromBuiltIn(target), ctx.env.makeCleanEnv(), ReferenceType.Function);
@@ -58,23 +55,68 @@ function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlo
 	return false;
 }
 
-function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
-	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
+/** The definitions the given node can hand over, to tell an argument being the definition under inspection from one holding another. */
+function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
+	const found = new Set<NodeId>();
+	const seen = new Set<NodeId>();
+	const workingQueue: NodeId[] = [id];
+	while(workingQueue.length > 0) {
+		const current = workingQueue.pop() as NodeId;
+		if(seen.has(current) || NodeId.isBuiltIn(current)) {
+			continue;
+		}
+		seen.add(current);
+		const vertex = graph.getVertex(current);
+		if(DfgVertex.isFunctionDefinition(vertex)) {
+			found.add(current);
+			continue;
+		}
+		/* what a call reads beyond its arguments (state it depends on, writes it follows) is no value it hands back */
+		const isCall = DfgVertex.isFunctionCall(vertex);
+		for(const [t, e] of graph.edgesFrom(current)) {
+			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.DefinedBy) || (DfEdge.includesType(e, EdgeType.Reads) && (!isCall || DfEdge.includesType(e, EdgeType.Argument)))) {
+				workingQueue.push(t);
+			}
+		}
+	}
+	return found;
+}
 
+/** What an argument is, which no definition it is looked at for changes. */
+export interface ArgumentFacts {
+	readonly behind:  ReadonlySet<NodeId>
+	/** whether it hands over a function, only worked out once something asks */
+	carriesFunction?: boolean
+}
+
+function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph, facts?: Map<NodeId, ArgumentFacts>): boolean {
+	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 	for(const [callerId, e] of callSites ?? []) {
 		if(!DfEdge.includesType(e, EdgeType.Calls)) {
 			continue;
 		}
 		const caller = graph.getVertex(callerId);
-		if(!caller || !FunctionCallVertex.is(caller)) {
+		if(!DfgVertex.isFunctionCall(caller)) {
 			continue;
 		}
 		for(const arg of caller.args) {
 			if(arg === EmptyArgument) {
 				continue;
 			}
-			const value = NodeValue.inGraph.setOf(arg.nodeId, graph, ctx, { resolve: VariableResolve.Alias });
-			if(value?.elements.some(e => e.type === 'function-definition') || readsBuiltInFunction(arg.nodeId, graph, ctx)) {
+			/* an apply-family call carries the callback among its arguments, which says nothing about the callback itself */
+			let known = facts?.get(arg.nodeId);
+			if(known === undefined) {
+				known = { behind: definitionsBehind(arg.nodeId, graph) };
+				facts?.set(arg.nodeId, known);
+			}
+			if(known.behind.size === 1 && known.behind.has(def.id)) {
+				continue;
+			}
+			if(known.carriesFunction === undefined) {
+				const value = NodeValue.setOf(arg.nodeId, Resolve.info(graph, ctx), { resolve: VariableResolve.Alias });
+				known.carriesFunction = value?.elements.some(e => e.type === 'function-definition') || readsBuiltInFunction(arg.nodeId, graph, ctx);
+			}
+			if(known.carriesFunction) {
 				return true;
 			}
 		}
@@ -82,24 +124,32 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 	return false;
 }
 
+/** Whether the body uses a formal as a function ({@link ArgProp.Callee}), which no call site has to show. */
+function callsAFormal(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	const roles = argumentRolesOfFunctions([id], graph, { ctx })[id] ?? {};
+	return Object.values(roles).some(props => (props & ArgProp.Callee) !== 0);
+}
+
+/** What to ask for beyond the definition itself, see {@link isHigherOrder}. */
+export interface HigherOrderFunctionsOptions {
+	/** how to ask what a built-in states, and to resolve the value an argument carries */
+	readonly ctx:            ReadOnlyFlowrAnalyzerContext
+	/** the graph with edges reversed, to speed up repeat queries over the same call sites */
+	readonly invertedGraph?: DataflowGraph
+	/** what is known about the arguments, to share between the definitions asked about in one go; a call site reaching several of them resolves its arguments once */
+	readonly argumentFacts?: Map<NodeId, ArgumentFacts>
+}
+
 /**
- * Determines whether the function with the given id is a higher-order function, i.e.,
- * either takes a function as an argument or (may) returns a function.
- * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
- * if no function is passed as an argument.
- * Please note that inspecting higher order functions can be sped up (if queries multiple times) by providing an inverted graph as well!
+ * Whether the function is higher-order: it takes a function argument, may return one, or calls one of its own
+ * formals as a function. `function(x) x` alone is not higher-order.
+ * @useInstead {@link FunctionSemantics.isHigherOrder}
  */
-export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
+export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph, argumentFacts }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);
-	if(!vert || !FunctionDefinitionVertex.is(vert)) {
+	if(!DfgVertex.isFunctionDefinition(vert)) {
 		return false;
 	}
-
-	// 1. check whether any of the exit types is a function
-	if(isAnyReturnAFunction(vert, graph)) {
-		return true;
-	}
-
-	// 2. check whether any of the callsites passes a function
-	return inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
+	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph, argumentFacts);
 }
+

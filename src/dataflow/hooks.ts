@@ -17,7 +17,7 @@ export interface HookInformation {
 	/** The id of the function definition which is added by the hook */
 	id:     NodeId,
 	/** Control dependencies under which the hook was registered */
-	cds?:   ControlDependency[],
+	cds?:   readonly ControlDependency[],
 	/** Whether the hook is added on top of existing ones (true) or replaces them (false) */
 	add?:   boolean,
 	/** Whether the hook is executed after existing ones (true) or before (false) */

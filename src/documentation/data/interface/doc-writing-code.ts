@@ -19,7 +19,6 @@ async function staticSliceExample() {
 			criteria: ['3@x']
 		}
 	]);
-	//console.log(result['static-slice']);
 	return result;
 }
 
@@ -33,6 +32,8 @@ export function explainWritingCode(_shell: RShell, ctx: GeneralDocContext): stri
 ### Creating Analyses with _flowR_
 
 Nowadays, instances of the ${ctx.link(FlowrAnalyzer)} should be used as central frontend to get analysis results from _flowR_.
+The entry points an analysis is written against are re-exported from the package root (\`import { FlowrAnalyzerBuilder } from '@eagleoutice/flowr'\`);
+everything else stays reachable under its own path, as in \`@eagleoutice/flowr/dataflow/graph/graph\`.
 For example, a program slice can be created like this:
 
 ${
@@ -92,7 +93,7 @@ make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, rea
 	})
 }
 
-You can start a new "session" simply by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
+You can start a new "session" by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
 
 However, there are several options that may be of interest 
 (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).

@@ -1,5 +1,7 @@
 import type { Range } from 'semver';
+import { compareByCodeUnit } from '../../../util/text/strings';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import {
 	DefaultCandidateCap,
 	type GuessDepVersionsQuery,
@@ -36,6 +38,7 @@ import {
 } from '../../../project/dependency-version-space';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { SourceRange } from '../../../util/range';
 
 /** flowR's curated builtin-library function to package map (e.g. `ggplot` to `ggplot2`), disambiguating an orphan call several packages re-export */
 const BuiltinLibraryByFunction: ReadonlyMap<string, string> = new Map(
@@ -56,7 +59,7 @@ type Locator = (id: NodeId | undefined) => string | undefined;
 function locatorOf(idMap: AstIdMap): Locator {
 	return id => {
 		const node = id === undefined ? undefined : idMap.get(id);
-		const at = node?.location ?? node?.info.fullRange;
+		const at = SourceRange.ownFromNode(node);
 		return at === undefined ? undefined : `${node?.info.file ? node.info.file + ':' : ''}${at[0]}:${at[1]}`;
 	};
 }
@@ -214,7 +217,7 @@ export async function executeGuessDepVersionsQuery(
 	const sources = deps.signatureSources();
 	if(sources.length === 0) {
 		return {
-			'.meta':      { timing: Date.now() - start },
+			...metaSince(start),
 			dependencies: [],
 			message:      'No signature database is loaded; version guessing needs the signature database (see the Signature Database wiki).'
 		};
@@ -339,7 +342,7 @@ export async function executeGuessDepVersionsQuery(
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
-		const orphanCalls = [...orphans.attributed.get(g.name) ?? []].sort(([a], [b]) => a.localeCompare(b));
+		const orphanCalls = [...orphans.attributed.get(g.name) ?? []].sort(([a], [b]) => compareByCodeUnit(a, b));
 		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
 			used:               usage.has(g.name),
 			linkedWith:         linkedWith.get(g.name),
@@ -360,7 +363,7 @@ export async function executeGuessDepVersionsQuery(
 		: undefined;
 
 	return compactRecord({
-		'.meta':          { timing: Date.now() - start },
+		...metaSince(start),
 		dependencies,
 		dateCutoff:       cutoff ? isoDay(cutoff) : undefined,
 		rVersion,

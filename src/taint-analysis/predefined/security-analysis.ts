@@ -78,7 +78,7 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 	)
 	.through(
 		{
-			identifier: [ 'shQuote', PkgName.Base ],
+			identifier: ['shQuote', PkgName.Base],
 			taint:      Top
 		},
 		{

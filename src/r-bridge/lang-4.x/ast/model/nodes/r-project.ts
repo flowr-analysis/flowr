@@ -31,15 +31,16 @@ export interface RProject<Info = NoInfo> {
 
 /**
  * Helper object to identify RProject nodes by their type and to provide related functions.
+ * @helper ast
  * @see {@link RNode.visitAst} - to visit all nodes in the project
  */
 export const RProject = {
 	name: 'RProject',
 	/**
 	 * Visits all nodes in the project by visiting the root of each file.
-	 * @param project          - The project to visit file by file
-	 * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
-	 * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
+	 * @param project - The project to visit file by file
+	 * @param onVisit - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+	 * @param onExit  - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
 	 */
 	visitAst<OtherInfo>(this: void, project: RProject<OtherInfo>, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>) {
 		return RNode.visitAst(project.files.map(f => f.root), onVisit, onExit);

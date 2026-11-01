@@ -1,4 +1,3 @@
-/* eslint-disable */
 /*
  * GENERATED, do not edit: base names the flowr-sigdb base export list drops (it kept only plain closures,
  * discarding `.Primitive`/`.Internal`-backed ones) plus base constants. R 4.6.0 (2026-04-24). Regenerate:

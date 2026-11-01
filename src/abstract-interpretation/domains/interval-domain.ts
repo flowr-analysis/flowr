@@ -97,9 +97,14 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.create([Math.max(this.lower, other.lower), Math.min(this.upper, other.upper)]);
 	}
 
+	/** The open (unconstrained) lower bound of the interval; subclasses over a restricted domain (e.g. {@link PosIntervalDomain}) may tighten it. */
+	protected minLower(): number {
+		return -Infinity;
+	}
+
 	protected widenValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
 		return this.create([
-			this.lower <= other.lower ? this.lower : -Infinity,
+			this.lower <= other.lower ? this.lower : this.minLower(),
 			this.upper >= other.upper ? this.upper : +Infinity
 		]);
 	}
@@ -109,7 +114,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			return this.bottom();
 		}
 		return this.create([
-			this.lower === -Infinity ? other.lower : this.lower,
+			this.lower === this.minLower() ? other.lower : this.lower,
 			this.upper === +Infinity ? other.upper : this.upper
 		]);
 	}
@@ -164,75 +169,59 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.bottom();
 	}
 
-	public add(other: this | IntervalLift): this {
+	/** Unwraps `this` and `other` to {@link IntervalValue}s and runs `op` with them, as long as both are actual values; falls back to Bottom otherwise. Shared by the binary numeric operations below. */
+	protected binaryOp(other: this | IntervalLift, op: (thisValue: IntervalValue, otherValue: IntervalValue) => this): this {
 		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
 		if(this.isValue() && otherValue !== Bottom) {
-			return this.create([this.lower + otherValue[0], this.upper + otherValue[1]]);
+			return op(this.value, otherValue);
 		}
 		return this.bottom();
+	}
+
+	public add(other: this | IntervalLift): this {
+		return this.binaryOp(other, (thisValue, otherValue) => this.create([thisValue[0] + otherValue[0], thisValue[1] + otherValue[1]]));
 	}
 
 	public subtract(other: this | IntervalLift): this {
-		const otherValue = other instanceof AbstractDomain ? other.value : other;
-
-		if(this.isValue() && otherValue !== Bottom) {
-			return this.create([this.lower - otherValue[0], this.upper - otherValue[1]]);
-		}
-		return this.bottom();
+		return this.binaryOp(other, (thisValue, otherValue) => this.create([thisValue[0] - otherValue[0], thisValue[1] - otherValue[1]]));
 	}
 
 	public multiply(other: this | IntervalLift): this {
-		const otherValue = other instanceof AbstractDomain ? other.value : other;
-
-		if(this.isValue() && otherValue !== Bottom) {
+		return this.binaryOp(other, (thisValue, otherValue) => {
 			const products = [
-				this.value[0] * otherValue[0],
-				this.value[0] * otherValue[1],
-				this.value[1] * otherValue[0],
-				this.value[1] * otherValue[1]
+				thisValue[0] * otherValue[0],
+				thisValue[0] * otherValue[1],
+				thisValue[1] * otherValue[0],
+				thisValue[1] * otherValue[1]
 			];
 			return this.create([Math.min(...products), Math.max(...products)]);
-		}
-		return this.bottom();
+		});
 	}
 
 	public divide(other: this | IntervalLift): this {
-		const otherValue = other instanceof AbstractDomain ? other.value : other;
-
-		if(this.isValue() && otherValue !== Bottom) {
+		return this.binaryOp(other, (thisValue, otherValue) => {
 			if(otherValue[0] <= 0 && 0 <= otherValue[1]) {
 				return this.top();
 			}
 			return this.multiply(this.create([1 / otherValue[1], 1 / otherValue[0]]));
-		}
-		return this.bottom();
+		});
 	}
 
 	public min(other: this | IntervalLift): this {
-		const otherValue = other instanceof AbstractDomain ? other.value : other;
-
-		if(this.isValue() && otherValue !== Bottom) {
-			return this.create([Math.min(this.lower, otherValue[0]), Math.min(this.upper, otherValue[1])]);
-		}
-		return this.bottom();
+		return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.min(thisValue[0], otherValue[0]), Math.min(thisValue[1], otherValue[1])]));
 	}
 
 	public max(other: this | IntervalLift): this {
-		const otherValue = other instanceof AbstractDomain ? other.value : other;
-
-		if(this.isValue() && otherValue !== Bottom) {
-			return this.create([Math.max(this.lower, otherValue[0]), Math.max(this.upper, otherValue[1])]);
-		}
-		return this.bottom();
+		return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0], otherValue[0]), Math.max(thisValue[1], otherValue[1])]));
 	}
 
 	/**
-	 * Extends the lower bound of the current abstract value down to -∞.
+	 * Extends the lower bound of the current abstract value down to {@link minLower}.
 	 */
 	public widenDown(): this {
 		if(this.isValue()) {
-			return this.create([-Infinity, this.upper]);
+			return this.create([this.minLower(), this.upper]);
 		}
 		return this.bottom();
 	}

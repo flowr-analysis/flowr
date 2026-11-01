@@ -1,3 +1,4 @@
+import { Identifier } from '../../../../../dataflow/environments/identifier';
 import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';
@@ -41,6 +42,28 @@ export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFu
 /**
  * Helper for working with {@link RFunctionCall} AST nodes.
  */
+declare const calledNameChecked: unique symbol;
+
+/** A named call that also passed a check of its name, which says nothing about the named calls that did not. */
+export type RNamedFunctionCallOf<Info = NoInfo> = RNamedFunctionCall<Info> & { readonly [calledNameChecked]: true };
+
+/**
+ * Type guard for {@link RNamedFunctionCall} nodes, optionally only for calls of the given function name.
+ * A name is matched like {@link Identifier.matches} does: a plain `'foo'` holds for `foo()` and `pkg::foo()` alike,
+ * a namespaced `Identifier.make('foo', 'pkg')` only for `pkg::foo()`. A set holds plain names, compared without namespace.
+ */
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info>;
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name: Identifier | ReadonlySet<string>): node is RNamedFunctionCallOf<Info>;
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name?: Identifier | ReadonlySet<string>): boolean {
+	if(!RFunctionCall.is(node) || node.named !== true) {
+		return false;
+	} else if(name === undefined) {
+		return true;
+	}
+	const called = node.functionName.content;
+	return Identifier.is(name) ? Identifier.matches(name, called) : name.has(Identifier.getName(called));
+}
+
 export const RFunctionCall = {
 	...RNode,
 	name: 'RFunctionCall',
@@ -51,11 +74,12 @@ export const RFunctionCall = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionCall<Info> {
 		return node?.type === RType.FunctionCall;
 	},
+	isNamed,
 	/**
-	 * Type guard for {@link RNamedFunctionCall} nodes.
+	 * The name of the function a named call calls, `undefined` for anything else.
 	 */
-	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info> {
-		return RFunctionCall.is(node) && node.named === true;
+	calledName<Info = NoInfo>(this: void, node: RNode<Info> | undefined): Identifier | undefined {
+		return RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
 	},
 	/**
 	 * Type guard for {@link RUnnamedFunctionCall} nodes.
@@ -66,9 +90,9 @@ export const RFunctionCall = {
 	/**
 	 * Bind a call's `arguments` to the formal `paramNames`, R's argument matching.
 	 *
-	 * Kept here rather than forwarding to {@link MatchArgs.toNames}: this module is loaded before the dataflow
+	 * Kept here rather than forwarding to {@link FunctionSemantics.call.match.toNames}: this module is loaded before the dataflow
 	 * layer exists, so importing the wall from here would drag it into the AST model at load time.
-	 * @useInstead {@link MatchArgs.toNames}
+	 * @useInstead {@link FunctionSemantics.call.match.toNames}
 	 */
 	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
 		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);

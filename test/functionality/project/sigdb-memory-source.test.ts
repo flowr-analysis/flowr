@@ -6,7 +6,6 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { NoEdges } from '../../../src/dataflow/graph/graph';
 
 /**
  * The source the playground ships instead of a database file: it has to answer what a package brings into
@@ -59,7 +58,7 @@ describe('In-memory signature source', withTreeSitter(parser => {
 		analyzer.addRequest({ request: 'text', content: 'library(dplyr)\ndf <- data.frame(id = 1:3)\nfilter(df, id > 2)' });
 		const dataflow = await analyzer.dataflow();
 		const idMap = (await analyzer.normalize()).idMap;
-		const targets = [...dataflow.graph.outgoingEdges(SlicingCriterion.parse('3@filter', idMap)) ?? NoEdges].map(([target]) => target);
+		const targets = [...dataflow.graph.edgesFrom(SlicingCriterion.parse('3@filter', idMap))].map(([target]) => target);
 		assert.include(targets, NodeId.fromPkgFn('dplyr', 'filter'), 'the call reaches dplyr, not the filter of stats');
 		assert.include(targets, SlicingCriterion.parse('1@library', idMap), 'and reads the load that attached it');
 	});

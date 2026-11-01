@@ -1,6 +1,6 @@
-import { describe } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../_helper/shell';
-import { label } from '../../_helper/label';
+import { describe, assert, test } from 'vitest';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
+import { label, decorateLabelContext } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { ExitPointType } from '../../../../src/dataflow/info';
@@ -9,6 +9,40 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+
+assumeLoadedPackages('R6');
+
+/** the call graph of both fibonacci definitions, up to how they recurse */
+function fibGraph() {
+	return emptyGraph()
+		.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
+		.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
+		.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
+		.calls('7@fib', '1@function')
+		.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
+		.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
+		.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
+			out:               [],
+			in:                [],
+			unknownReferences: [],
+			entryPoint:        '2@if',
+			graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
+			environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
+		}, { readParams: [[1, true]] })
+		.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
+		.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
+		.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
+		.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
+		.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
+		.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
+		.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
+		.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
+		.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
+		.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
+		.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+');
+}
 
 describe('Call Graph Generation', withTreeSitter(ts => {
 	assertDataflow(label('sample calls', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
@@ -61,8 +95,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.call('5@*', '*', [argumentInCall('5@foo'), argumentInCall('5@2')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('5@*', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@*', '5@foo')
 			.call('5@foo', 'foo', [argumentInCall('5@y')], { omitArgs: true })
-			.calls('5@foo', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true }
+			.calls('5@foo', '1@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 	assertDataflow(label('recursion', ['function-calls', 'function-definitions', 'recursion']),
 		ts,
@@ -74,43 +108,18 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		}
 		fib(5)
 		`,
-		emptyGraph()
-			.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
-			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
-			.calls('7@fib', '1@function')
-			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
-			.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
-			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '2@if',
-				graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
-				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
-			}, { readParams: [[1, true]] })
-			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
-			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
-			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
-			.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
-			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
-			.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
-			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
-			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+')
-			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
+		fibGraph()
+			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls('5@+', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@+', 22)
 			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(22, '1@function').calls(22, 31)
 			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(28, '1@function').calls(28, 31)
-			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
+			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 22, when: true, byPromise: true }, { id: 15, when: false }] })
 			.calls(20, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-		, { context: 'call-graph', resolveIdsAsCriterion: true }
+			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 28, when: true, byPromise: true }, { id: 15, when: false }] })
+			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default)),
+		{ context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 
 	assertDataflow(label('with alias chain', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
@@ -124,8 +133,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			u <- bar(4)
 			`,
 		emptyGraph()
-			.calls('7@bar', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('7@bar', '1@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('with alias in nest', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
@@ -143,10 +152,9 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('6@inc', '1@function')
 			.calls('1@function', '2@return')
 			.calls('8@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
-			.calls('8@<-', '8@add')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('8@<-', '8@add'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-
 
 	assertDataflow(label('higher-order fn', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
@@ -159,8 +167,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			u <- f(increment, 5)
 			`,
 		emptyGraph()
-			.calls('2@g', '4@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('2@g', '4@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	for(const { name, code, call } of [
@@ -183,40 +191,40 @@ nm <- "handler_foo"
 fn <- get(nm)
 fn(5)`,
 		emptyGraph()
-			.calls('4@fn', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('4@fn', '1@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('get resolves a name built from constants', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
 		ts,
 		'handler_foo <- function(a) { a + 1 }\nfn <- get(paste0("handler_", "foo"))\nfn(5)',
 		emptyGraph()
-			.calls('3@fn', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('3@fn', '1@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('unresolved get is reached-but-unknown, not dropped', ['function-calls', 'resolution', 'built-in']),
 		ts,
 		'nm <- 5\nget(nm)',
 		emptyGraph()
-			.markIdForUnknownSideEffects('2@get')
-		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.markIdForUnknownSideEffects('2@get'),
+		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('unresolved do.call target is reached-but-unknown, not dropped', ['function-calls', 'resolve-arguments', 'built-in']),
 		ts,
 		'f <- function(x) do.call(paste0("h_", x), list(5))',
 		emptyGraph()
-			.markIdForUnknownSideEffects('1@do.call')
-		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.markIdForUnknownSideEffects('1@do.call'),
+		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('dispatch on an opaque object is reached-but-unknown, not dropped', ['function-calls', 'built-in', 'named-arguments']),
 		ts,
 		'f <- function(obj) obj$method(5)',
 		emptyGraph()
-			.markIdForUnknownSideEffects('1@obj$method')
-		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.markIdForUnknownSideEffects('1@obj$method'),
+		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('ping-pong-rec', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
@@ -237,8 +245,8 @@ fn(5)`,
 			`,
 		emptyGraph()
 			.calls('11@a', '1@function')
-			.calls('5@b', '7@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('5@b', '7@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('call graph with scoped alias', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
@@ -247,8 +255,8 @@ fn(5)`,
 f <- function(x) { g(x) }
 f(1)`,
 		emptyGraph()
-			.calls('2@g', NodeId.toBuiltIn('eval'))
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('2@g', NodeId.toBuiltIn('eval')),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('call graph with scoped, unknown, alias', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
@@ -257,24 +265,24 @@ f(1)`,
 f <- function(x) { g(x) }
 f(1)`,
 		emptyGraph()
-			.calls('2@g', '1@rofl')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('2@g', '1@rofl'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('correctly track assignments', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
 		'f <- function() {\n x <- 2; 3 }',
 		emptyGraph()
-			.calls('1@function', '2@<-')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('1@function', '2@<-'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('Handle finally in tryCatch', ['exceptions-and-errors', 'function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
 		'f = function() { tryCatch({ 1 }, finally=function() { x <- 2 }) }',
 		emptyGraph()
-			.calls('1@tryCatch', '1@<-')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('1@tryCatch', '1@<-'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('Handle S3', ['function-calls', 'oop-s3']),
@@ -290,10 +298,9 @@ f.numeric <- function(x) {
 }`,
 		emptyGraph()
 			.calls('6@"f"', '2@function')
-			.calls('6@"f"', '8@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('6@"f"', '8@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-
 
 	assertDataflow(label('Recursion with Recall', ['anonymous-bindings']),
 		ts,
@@ -302,8 +309,8 @@ f.numeric <- function(x) {
 			}
 			`,
 		emptyGraph()
-			.calls('2@Recall', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			.calls('2@Recall', '1@function'),
+		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('fibonacci with recall', ['anonymous-bindings', 'function-calls', 'function-definitions', 'recursion']),
@@ -316,33 +323,8 @@ f.numeric <- function(x) {
 		}
 		fib(5)
 		`,
-		emptyGraph()
-			.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
-			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
-			.calls('7@fib', '1@function')
-			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
-			.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
-			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '2@if',
-				graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
-				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
-			}, { readParams: [[1, true]] })
-			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
-			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
-			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
-			.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
-			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
-			.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
-			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
-			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+')
-			.call('5@+', '+', [argumentInCall('5@Recall'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
+		fibGraph()
+			.call('5@+', '+', [argumentInCall('5@Recall'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls('5@+', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@+', 22)
 			.call(22, UnnamedFunctionCallPrefix + '22-Recall', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }], origin: [BuiltInProcName.Recall] })
 			.calls(22, '1@function').calls(22, 31).calls(22, NodeId.toBuiltIn('Recall'))
@@ -351,8 +333,8 @@ f.numeric <- function(x) {
 			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(20, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default))
-		, { context: 'call-graph', resolveIdsAsCriterion: true }
+			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default)),
+		{ context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 
 	for(const { name, code, call } of [
@@ -387,4 +369,12 @@ f.numeric <- function(x) {
 			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [edge] }
 		);
 	}
+
+	test(decorateLabelContext(label('domains:hof a closure handed to lapply is reachable', ['name-normal', 'function-calls']), ['dataflow']), async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest('adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');
+		const { idMap } = await analyzer.normalize();
+		const unreachable = new Set((await analyzer.query([{ type: 'call-graph', reportUnreachable: true }]))['call-graph'].unreachable);
+		assert.isFalse(unreachable.has(SlicingCriterion.parse('1:22', idMap)), 'inner function');
+	});
 }));

@@ -31,6 +31,12 @@ export class FlowrSweaveFile extends FlowrFile {
 		return this.data;
 	}
 
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns the content of the Sweave file, which is the R code without the latex code, no-eval blocks, ...
@@ -40,7 +46,15 @@ export class FlowrSweaveFile extends FlowrFile {
 		return this.data.content;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrSweaveFile): FlowrSweaveFile {
+	/**
+	 * Lifts a file to a {@link FlowrSweaveFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already a Sweave file
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrSweaveFile, role?: FileRole): FlowrSweaveFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrSweaveFile ? file : new FlowrSweaveFile(file);
 	}
 }
@@ -89,7 +103,7 @@ const ReusePattern = /^<<([^>]*)>>/;
 /**
  * Parse a Sweave file into joined content and blocks
  * @param raw - raw contents of file
- * @returns Joined Content and Blocks
+ * @returns   Joined Content and Blocks
  */
 export function parseSweave(raw: string): SweaveInfo {
 	const lines = raw.split(/\r?\n/);
@@ -165,7 +179,7 @@ const evalWithFlagPattern = /eval\s*=\s*(TRUE|FALSE)/i;
 /**
  * Parses a Sweave Code Block Start if it can find one
  * @param line - the line to parse
- * @returns info about options and name if code block start was found
+ * @returns    info about options and name if code block start was found
  */
 export function parseSweaveCodeblockStart(line: string): SweaveBlockOptions | SweaveReuseOptions | undefined {
 	const match = line.match(CodeBlockStartPattern);

@@ -3,6 +3,7 @@ import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { VertexType } from '../../../../src/dataflow/graph/vertex';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**
  * `Dataflow.qualify` answers from a cache the graph holds, as resolving a call again is what costs.
@@ -46,5 +47,23 @@ describe('Dataflow qualify cache', () => {
 			assert.deepEqual(bare.get(id), Dataflow.qualify(id, graph, false), `plain qualification of ${id}`);
 		}
 		assert.isUndefined(all.get(3));
+	});
+});
+
+describe('Dataflow qualify of aliased calls', () => {
+	const qualify = (graph: Parameters<typeof Dataflow.qualify>[1], id: number) => {
+		const q = Dataflow.qualify(id, graph);
+		return q === undefined ? undefined : Identifier.toString(q);
+	};
+	const aliased = () => emptyGraph().defineVariable(0, 'f').call(1, 'f', []).reads(1, 0).calls(1, NodeId.toBuiltIn('read.csv'));
+
+	test('a call reaching only a built-in under another name is that built-in', () => {
+		assert.strictEqual(qualify(aliased(), 1), 'utils::read.csv');
+	});
+	test('a call that may reach the analyzed code too stays bare', () => {
+		assert.isUndefined(qualify(aliased().defineVariable(2, 'g').calls(1, 2), 1));
+	});
+	test('a call handed a built-in is not that built-in', () => {
+		assert.isUndefined(qualify(emptyGraph().call(1, 'stat_summary', []).calls(1, NodeId.toBuiltIn('mean')), 1));
 	});
 });

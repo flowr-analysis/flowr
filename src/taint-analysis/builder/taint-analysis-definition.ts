@@ -1,10 +1,8 @@
-import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
-import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
-import type { TaintComponent, TaintProduct } from '../composite-taint-visitor';
-import { CompositeTaintInferenceVisitor } from '../composite-taint-visitor';
-import type { TaintVisitorConfiguration } from '../taint-visitor';
-import { TaintInferenceVisitor } from '../taint-visitor';
+import type { AbsintVisitorConfiguration } from '../../abstract-interpretation/absint-inference';
+import { type TaintComponent, TaintInterpreter, type TaintProduct, type TaintVisitorConfiguration } from '../taint-visitor';
 import { guard } from '../../util/assert';
+import { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import type { ReportTemplate } from './report-template';
@@ -26,8 +24,10 @@ export interface RunnableTaintAnalysisDefinition<Name extends string = string> {
 	readonly name: Name;
 	/** The optional message reported when the analysis produces a finding. */
 	readonly msg?: ReportTemplate;
-	/** Creates the abstract interpretation visitor that conducts the taint analysis for the given visitor configuration. */
-	createVisitor(config: AbsintVisitorConfiguration, fnCategories?: TaintFnCategory[]): AbstractInterpretationVisitor<AnyStateDomain>;
+	/** Creates the abstract interpreter that conducts the taint analysis for the given configuration. */
+	createVisitor(config: TaintVisitorConfiguration, fnCategories?: TaintFnCategory[]): TaintInterpreter;
+	/** The result state of `interpreter` (created by {@link createVisitor}) for this analysis. */
+	resultState(interpreter: TaintInterpreter): StateAbstractDomain<AnyAbstractDomain>;
 }
 
 /** Options for composing multiple taint analyses into a {@link CompositeTaintAnalysisDefinition}. */
@@ -125,18 +125,26 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 		return this;
 	}
 
-	public createVisitor(config: TaintVisitorConfiguration, fnCategories: TaintFnCategory[] = []): AbstractInterpretationVisitor<AnyStateDomain> {
+	public createVisitor(config: TaintVisitorConfiguration, fnCategories: TaintFnCategory[] = []): TaintInterpreter {
 		const completeMapper = this.mapper.clone();
 
 		// Add mappings from function categories.
 		// Categories added to the individual analysis take precedence over passed categories.
-		const finalFnCategories = [ ...this.categories, ...fnCategories];
-		for(const category of finalFnCategories ) {
+		const finalFnCategories = [...this.categories, ...fnCategories];
+		for(const category of finalFnCategories) {
 			const resolved = resolveCategoryToTaintMappings<Domain>(category);
 			completeMapper.pushMappingIfNotExists(resolved);
 		}
 
-		return new TaintInferenceVisitor(this.domain, completeMapper, { ...this.config, ...config });
+		return new TaintInterpreter([{ name: this.name, domain: this.domain, mapper: completeMapper }], { ...this.config, ...config });
+	}
+
+	/** The end state of this single analysis, holding its own taint lattice values rather than a product of them. */
+	public resultState(interpreter: TaintInterpreter): StateAbstractDomain<Domain> {
+		const end = interpreter.getEndState();
+		return end.isBottom()
+			? StateAbstractDomain.bottom(this.domain, false)
+			: new StateAbstractDomain(new Map(end.entries(this.name) as [NodeId, Domain][]), this.domain, false);
 	}
 
 	public getPartialDefinition(): this {
@@ -146,7 +154,7 @@ export class TaintAnalysisDefinition<Name extends string = string, Domain extend
 	/**
 	 * Composes at least two taint analysis definitions into a single composite taint analysis.
 	 * The component analyses are evaluated simultaneously during a single control-flow traversal and their taints are
-	 * combined into a product of the lattice values per each CFG node (see {@link CompositeTaintInferenceVisitor}).
+	 * combined into a product of the lattice values per each CFG node (see {@link TaintInterpreter}).
 	 * @param name        - The unique name of the resulting composite taint analysis
 	 * @param definitions - The component taint analysis definitions to compose (must have unique names)
 	 * @param options     - Optional reductions (for a reduced product) and a report message
@@ -187,12 +195,16 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 		return this;
 	}
 
-	public createVisitor(config: AbsintVisitorConfiguration, _fnCategories?: TaintFnCategory[]): AbstractInterpretationVisitor<AnyStateDomain> {
+	public createVisitor({ fnCallHook: _hook, ...config }: TaintVisitorConfiguration, _fnCategories?: TaintFnCategory[]): TaintInterpreter {
 		const components: TaintComponent[] = this.definitions.map(def => ({
 			name:   def.name,
 			domain: def.domain,
 			mapper: def.mapper,
 		}));
-		return new CompositeTaintInferenceVisitor(components, this.reductions, config);
+		return new TaintInterpreter(components, config, this.reductions);
+	}
+
+	public resultState(interpreter: TaintInterpreter): StateAbstractDomain<AnyAbstractDomain> {
+		return interpreter.getEndState();
 	}
 }

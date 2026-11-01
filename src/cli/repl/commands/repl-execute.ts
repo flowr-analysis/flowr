@@ -9,9 +9,9 @@ import type { RShellInformation } from '../../../r-bridge/parser';
  */
 export async function tryExecuteRShellCommand({ output, analyzer, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
 	const parserInfo = analyzer.parserInformation();
-	if(!allowRSessionAccess){
+	if(!allowRSessionAccess) {
 		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })} 
-If you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag${ parserInfo.name !== 'r-shell' ? '. Additionally, please enable the r-shell engine, e.g., with ' + output.formatter.format('--default-engine r-shell', { style: FontStyles.Bold }) : ''}. Please be careful of the security implications of this action. When running flowR with npm, you have to use an extra ${output.formatter.format('--', { style: FontStyles.Bold })} to separate flowR from npm arguments.`);
+If you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag${parserInfo.name !== 'r-shell' ? '. Additionally, please enable the r-shell engine, e.g., with ' + output.formatter.format('--default-engine r-shell', { style: FontStyles.Bold }) : ''}. Please be careful of the security implications of this action. When running flowR with npm, you have to use an extra ${output.formatter.format('--', { style: FontStyles.Bold })} to separate flowR from npm arguments.`);
 	} else if(parserInfo.name === 'r-shell') {
 		await executeRShellCommand(output, analyzer, remainingLine);
 	} else {
@@ -35,7 +35,7 @@ export const executeCommand: ReplCommand = {
 	description:   'Execute the given code as R code. This requires the `--r-session-access` flag to be set and requires the r-shell engine.',
 	isCodeCommand: false,
 	usageExample:  ':execute',
-	aliases:       [ 'e', 'r' ],
+	aliases:       ['e', 'r'],
 	script:        false,
 	fn:            tryExecuteRShellCommand
 };

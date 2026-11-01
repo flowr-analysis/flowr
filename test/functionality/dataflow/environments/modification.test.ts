@@ -4,9 +4,10 @@ import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IEnvironment } from '../../../../src/dataflow/environments/environment';
-import { overwriteEnvironment } from '../../../../src/dataflow/environments/overwrite';
-import { appendEnvironment } from '../../../../src/dataflow/environments/append';
+import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import type { Identifier, IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { assert, describe, test } from 'vitest';
+import { REnvironment } from '../../../../src/dataflow/environments/environment';
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {
@@ -19,14 +20,19 @@ function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment
 	expect(got.map(d => d.definedAt), `${name} should be defined at ${JSON.stringify(definedAt)}. ${message ?? ''}`).to.deep.equal(definedAt);
 }
 
+/** a named variable definition, as {@link REnvironment.define} demands the name to be present */
+function named(name: Identifier, definedAt: NodeId): IdentifierDefinition & { name: Identifier } {
+	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, cds: undefined };
+}
+
 describe('Modification', () => {
 	describe('Global', () => {
 		test(label('Different variables', ['global-scope', 'name-normal'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1');
 			const overwrite = defaultEnv().defineVariable('y', '_2');
-			const result = overwriteEnvironment(clean, overwrite);
+			const result = REnvironment.overwrite(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for x and y').to.equal(2);
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well');
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well');
 		});
@@ -34,9 +40,9 @@ describe('Modification', () => {
 		test(label('Same variables', ['global-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1');
 			const overwrite = defaultEnv().defineVariable('x', '_2');
-			const result = overwriteEnvironment(clean, overwrite);
+			const result = REnvironment.overwrite(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one definition for x').to.equal(1);
 			existsDefinedAt('x', ['_2'], result.current);
 		});
 	});
@@ -46,10 +52,10 @@ describe('Modification', () => {
 		test(label('Different variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('long', '_1');
 			const overwrite = defaultEnv().defineVariable('short', '_2');
-			const result = overwriteEnvironment(clean, overwrite);
+			const result = REnvironment.overwrite(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for long and short').to.equal(2);
 			existsDefinedAt('long', ['_1'], result.current);
 			existsDefinedAt('short', ['_2'], result.current);
 		});
@@ -57,10 +63,10 @@ describe('Modification', () => {
 		test(label('Same variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('long', '_1');
 			const overwrite = defaultEnv().defineVariable('long', '_2');
-			const result = overwriteEnvironment(clean, overwrite);
+			const result = REnvironment.overwrite(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be only one definition for long').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one definition for long').to.equal(1);
 			existsDefinedAt('long', ['_2'], result.current);
 		});
 	});
@@ -71,9 +77,9 @@ describe('Append', () => {
 		test(label('Different variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1', '_1');
 			const append = defaultEnv().defineVariable('y', '_2', '_2');
-			const result = appendEnvironment(clean, append);
+			const result = REnvironment.append(clean, append);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for x and y').to.equal(2);
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well');
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well');
 		});
@@ -81,9 +87,9 @@ describe('Append', () => {
 		test(label('Same variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1', '_1');
 			const append = defaultEnv().defineVariable('x', '_2', '_2');
-			const result = appendEnvironment(clean, append);
+			const result = REnvironment.append(clean, append);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one symbol defined (for x)').to.equal(1);
 			existsDefinedAt('x', ['_1', '_2'], result.current);
 		});
 	});
@@ -93,10 +99,10 @@ describe('Append', () => {
 		test(label('Different variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('local-long', '_1');
 			const append = defaultEnv().defineVariable('local-short', '_2');
-			const result = appendEnvironment(clean, append);
+			const result = REnvironment.append(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for local-long and local-short').to.equal(2);
 			existsDefinedAt('local-long', ['_1'], result.current);
 			existsDefinedAt('local-short', ['_2'], result.current);
 		});
@@ -104,11 +110,48 @@ describe('Append', () => {
 		test(label('Same variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('local-long', '_1');
 			const append = defaultEnv().defineVariable('local-long', '_2');
-			const result = appendEnvironment(clean, append);
+			const result = REnvironment.append(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one definition for local-long').to.equal(1);
 			existsDefinedAt('local-long', ['_1', '_2'], result.current);
+		});
+	});
+
+	describe('Super assignment', () => {
+		test(label('binds in the closest enclosing frame holding the name', ['lexicographic-scope'], ['other']), () => {
+			const env = defaultEnv().defineVariable('x', '_1').pushEnv().defineVariable('x', '_2').pushEnv();
+			const result = REnvironment.define(named('x', '_3'), true, env);
+			assert.isUndefined(result.current.memory.get('x'), 'the frame the write happens in must stay untouched');
+			existsDefinedAt('x', ['_3'], result.current.parent, 'the closest enclosing frame is rebound');
+			existsDefinedAt('x', ['_1'], result.current.parent.parent, 'the global frame is left alone');
+		});
+
+		test(label('falls back to the global frame', ['global-scope'], ['other']), () => {
+			const env = defaultEnv().pushEnv().pushEnv();
+			const result = REnvironment.define(named('x', '_3'), true, env);
+			assert.isUndefined(result.current.memory.get('x'), 'nothing binds in the frame the write happens in');
+			assert.isUndefined(result.current.parent.memory.get('x'), 'nothing binds in the enclosing frame');
+			existsDefinedAt('x', ['_3'], result.current.parent.parent, 'the global frame takes the write');
+		});
+
+		/* a function body is analyzed with its enclosing frames emptied, so they only know what they stood in for */
+		test(label('a stand-in frame binds what its lexical frame held', ['lexicographic-scope'], ['other']), () => {
+			const lexical = defaultEnv().defineVariable('x', '_1').pushEnv().defineVariable('x', '_2');
+			const standIn = defaultEnv().pushEnv();
+			standIn.current.standsInFor(lexical.current.memory);
+			const result = REnvironment.define(named('x', '_3'), true, standIn.pushEnv());
+			existsDefinedAt('x', ['_3'], result.current.parent, 'the stand-in frame takes the write');
+			assert.isUndefined(result.current.parent.parent.memory.get('x'), 'the global frame is left alone');
+		});
+
+		test(label('a stand-in frame that held nothing passes the write on', ['global-scope'], ['other']), () => {
+			const lexical = defaultEnv().defineVariable('y', '_1');
+			const standIn = defaultEnv().pushEnv();
+			standIn.current.standsInFor(lexical.current.memory);
+			const result = REnvironment.define(named('x', '_3'), true, standIn.pushEnv());
+			assert.isUndefined(result.current.parent.memory.get('x'), 'the stand-in frame never held `x`');
+			existsDefinedAt('x', ['_3'], result.current.parent.parent, 'the global frame takes the write');
 		});
 	});
 });

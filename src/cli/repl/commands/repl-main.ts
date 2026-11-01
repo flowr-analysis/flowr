@@ -1,4 +1,4 @@
-import { type OutputFormatter, formatter, italic } from '../../../util/text/ansi';
+import { type OutputFormatter, formatter } from '../../../util/text/ansi';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**
@@ -65,11 +65,11 @@ export interface ReplBaseCommand {
 	script:       boolean
 	/** Example of how to use the command, for example `:slicer --help` */
 	usageExample: string
-}
-
-/** Prints the given command's usage example; the reusable way for any command to show how it should be invoked. */
-export function printUsage(output: ReplOutput, command: ReplBaseCommand): void {
-	output.stderr(`Usage: ${italic(command.usageExample, output.formatter)}`);
+	/**
+	 * Commands that may act beyond analyzing code, e.g., spawn processes, write files, or change the user's global state,
+	 * are only available to the local user and refused for remote clients of the server (see {@link replProcessAnswer}).
+	 */
+	localOnly?:   boolean
 }
 
 export interface ReplCommand extends ReplBaseCommand {

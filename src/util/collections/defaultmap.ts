@@ -65,3 +65,22 @@ export class DefaultMap<K, V = K> {
 		return this.internal.size;
 	}
 }
+
+/**
+ * `fn`, answered once per key and remembered from then on -- an answer of `undefined` included, which is
+ * what separates this from a {@link DefaultMap} generator.
+ * For a recursive `fn`, `reentry` is the answer for a key asked again while its own answer is worked out,
+ * like `false` for whether a call `f <- function() f()` returns a data frame.
+ */
+export function memoize<K, V>(fn: (key: K) => V, reentry?: { readonly answer: V }): (key: K) => V {
+	const known = new Map<K, V>();
+	return key => {
+		if(!known.has(key)) {
+			if(reentry !== undefined) {
+				known.set(key, reentry.answer);
+			}
+			known.set(key, fn(key));
+		}
+		return known.get(key) as V;
+	};
+}

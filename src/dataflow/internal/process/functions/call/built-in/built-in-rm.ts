@@ -15,12 +15,13 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { applyKills } from '../../../../../environments/apply-kill';
-import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
-import { resolveArgToEnvir } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { ambientWritesOfRelease } from './built-in-ambient-state';
+import { REnvironment } from '../../../../../environments/environment';
 
 /** The variables an `rm` call targets for removal, and the frame it removes them from. */
 interface RmTargets<OtherInfo> {
@@ -42,7 +43,7 @@ interface RmFrameArg<OtherInfo> {
 
 /** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope */
 function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	if(!RFunctionCall.is(value) || !value.named) {
+	if(!RFunctionCall.isNamed(value)) {
 		return false;
 	}
 	const [fn, ns] = Identifier.toArray(value.functionName.content);
@@ -50,7 +51,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 		return false;
 	}
 	// a `pattern`/`envir` argument restricts the listing, so only a plain listing clears everything
-	const listsEverything = value.arguments.every(a => a !== EmptyArgument && a.name !== undefined && (Identifier.getName(a.name.content) === 'all.names' || Identifier.getName(a.name.content) === 'sorted'));
+	const listsEverything = value.arguments.every(a => RArgument.isNamed(a) && ['all.names', 'sorted'].includes(Identifier.getName(a.name.content)));
 	if(!listsEverything) {
 		return false;
 	}
@@ -90,7 +91,7 @@ function targetsCurrentFrame<OtherInfo>(
 }
 
 /** The role R's argument matching gives `arg`; anything but an exactly named formal belongs to `...`. */
-function roleOf<OtherInfo>(arg: Exclude<PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, typeof EmptyArgument>): RmFormalRole | 'dots' {
+function roleOf<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation>): RmFormalRole | 'dots' {
 	return (arg.name === undefined ? undefined : RmFormals[arg.name.content]) ?? 'dots';
 }
 
@@ -171,7 +172,7 @@ function collectRmTargets<OtherInfo>(
 }
 
 /** Builds the {@link KillReference|kills} produced by an `rm` call from its resolved {@link RmTargets}. */
-function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDependency[] | undefined): KillReference[] {
+function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly ControlDependency[] | undefined, killedBy: NodeId): KillReference[] {
 	const kills: KillReference[] = [];
 	if(targets.all) {
 		kills.push({ kind: 'all', cds });
@@ -180,15 +181,15 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: ControlDepend
 		kills.push({ kind: 'unknown', cds });
 	}
 	for(const { name, nodeId } of targets.names) {
-		kills.push({ kind: 'named', reference: { nodeId, name, cds, type: ReferenceType.Variable } });
+		kills.push({ kind: 'named', reference: { nodeId, name, cds, type: ReferenceType.Variable }, killedBy });
 	}
 	return kills;
 }
 
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
-function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: ControlDependency[] | undefined): DataflowInformation {
-	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds));
-	const environment = define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
+function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
+	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId));
+	const environment = REnvironment.define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
 	return { ...res, environment };
 }
 
@@ -220,10 +221,11 @@ export function processRm<OtherInfo>(
 	}
 	const nse = nonStandardArguments(args);
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
+		keepArgumentGraphs: true,
 		name, args, rootId, data,
-		origin:    BuiltInProcName.Rm,
+		origin:             BuiltInProcName.Rm,
 		/* an unevaluated name must not resolve against the environment */
-		patchData: (d, i) => nse.has(i) ? { ...d, environment: d.ctx.env.makeCleanEnv() } : d
+		patchData:          (d, i) => nse.has(i) ? { ...d, environment: REnvironment.cleanOf(d.environment) } : d
 	});
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [...nse]);
 
@@ -241,7 +243,7 @@ export function processRm<OtherInfo>(
 	if(targets.frame !== undefined) {
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope
 		if(targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
-			const envir = resolveArgToEnvir(targets.frame.arg, data);
+			const envir = envirOf(resolveArgToEnvirOrAmbiguous(targets.frame.arg, data));
 			if(envir) {
 				return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
 			}
@@ -251,6 +253,10 @@ export function processRm<OtherInfo>(
 	}
 
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
-	const kills = buildKills(targets, data.cds);
-	return kills.length > 0 ? { ...res, environment: applyKills(res.environment, kills), kill: kills } : res;
+	const kills = buildKills(targets, data.cds, rootId);
+	if(kills.length === 0) {
+		return res;
+	}
+	const names = targets.all || targets.unknown ? undefined : targets.names.map(n => n.name);
+	return { ...res, environment: ambientWritesOfRelease(applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
 }

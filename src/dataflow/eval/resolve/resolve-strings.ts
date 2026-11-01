@@ -1,14 +1,16 @@
 import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { Identifier, PkgName } from '../../environments/identifier';
-import { Top, type Value } from '../values/r-value';
+import { isValue, RValue, Top, type Value } from '../values/r-value';
+import { setOf } from '../values/sets/set-constants';
 import { stringFrom } from '../values/string/string-constants';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { matchCallArguments } from './match-arguments';
-import { Resolve } from '../../environments/resolve-helper';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { NodeValue } from './node-value';
 
 /** everything after the last separator, with trailing separators dropped first (`a/b/` is `b`, `/` is the empty string) */
 function basename(path: string): string {
@@ -47,8 +49,23 @@ export interface StringFn {
 	/** parameters a call may supply that change nothing for the single strings we fold, like `paste`'s `collapse` */
 	readonly ignored?:  readonly string[];
 	/** the fold over the supplied arguments, in declaration order */
-	/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- each entry types its own parameters, the registry cannot */
-	readonly fold:      (...args: any[]) => string | number | undefined;
+	/* a method, so each entry may type its own parameters */
+	fold(...args: unknown[]): string | number | undefined;
+}
+
+/** `sprintf` with only `%s`, `%d` (or `%i`) and `%%` in its format and one argument for each, `undefined` for anything else (a width, a precision, another conversion) */
+function format(fmt: string, parts: readonly string[]): string | undefined {
+	let next = 0;
+	let failed = false;
+	const formatted = fmt.replace(/%(.)/g, (_, conversion: string) => {
+		if(conversion === '%') {
+			return '%';
+		}
+		const part = parts[next++];
+		failed ||= part === undefined || (conversion !== 's' && !(/[di]/.test(conversion) && /^-?\d+$/.test(part)));
+		return part ?? '';
+	});
+	return failed || next !== parts.length || fmt.replaceAll('%%', '').endsWith('%') ? undefined : formatted;
 }
 
 /**
@@ -64,6 +81,7 @@ export const StringFns = {
 	paste:       { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: ' ' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
 	paste0:      { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: '' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
 	'file.path': { pkg: PkgName.Base, params: ['...', 'fsep'], defaults: { fsep: '/' }, fold: (parts: string[], fsep: string) => parts.join(fsep) },
+	sprintf:     { pkg: PkgName.Base, params: ['fmt', '...'], fold: (fmt: string, parts: string[] = []) => format(fmt, parts) },
 	/* the project root stays implicit, so the fold yields the path below it */
 	here:        { pkg: PkgName.Here, params: ['...'], fold: (parts: string[]) => parts.length > 0 ? parts.join('/') : '.' },
 	/* the path splits, which only ever treat `/` as a separator, so a Windows path keeps its non-`\` parts */
@@ -86,7 +104,7 @@ export const PasteLikeCalls: ReadonlySet<string> =
  * when the name is not one of them, an argument does not resolve, or the call does not match what the entry
  * declares. Shared by the value solver ({@link resolveAsStringFn}) and construction-time name resolution.
  */
-export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg: (arg: RNode<Info>) => string | undefined): string | number | undefined {
+function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolveArg: (arg: RNode<Info>) => string | undefined): string | number | undefined {
 	const known = StringFns[Identifier.getName(node.functionName.content) as keyof typeof StringFns] as StringFn | undefined;
 	if(known === undefined) {
 		return undefined;
@@ -100,9 +118,6 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
 	if(matched === undefined) {
 		return undefined;
 	}
-	/* a fold that reads the characters cannot run on source text with an escape still in it (`\t` is two chars
-	 * there); joining does not read them, so the entries collecting a `...` are exempt */
-	const literal = !known.params.includes('...');
 	const args: (string | string[])[] = [];
 	for(const [at, slot] of matched.entries()) {
 		if(Array.isArray(slot)) {
@@ -123,7 +138,7 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
 		}
 		// the argument *was* given, so failing to resolve it means we do not know the result, defaults do not apply
 		const value = resolveArg(slot as RNode<Info>);
-		if(value === undefined || (literal && value.includes('\\'))) {
+		if(value === undefined) {
 			return undefined;
 		}
 		args.push(value);
@@ -131,19 +146,113 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
 	return args.length > 0 ? known.fold(...args) : undefined;
 }
 
+/** the string a single value stands for, coercing a number or logical like `as.character` does if `coerce` is set */
+function valueAsString(this: void, value: Value, coerce: boolean): string | undefined {
+	if(value.type === 'string' && isValue(value.value)) {
+		return value.value.str;
+	}
+	if(!coerce) {
+		return undefined;
+	}
+	const num = RValue.numberOf(value);
+	if(num !== undefined) {
+		return Number.isInteger(num) && Math.abs(num) < 1e5 ? String(num) : undefined;
+	}
+	if(value.type === 'logical' && isValue(value.value) && value.value !== 'maybe') {
+		return value.value ? 'TRUE' : 'FALSE';
+	}
+	return undefined;
+}
+
+/** every string an argument may hold (e.g. the variable of a `for` loop), `undefined` if any of its values is none */
+function argAsStrings(this: void, id: NodeId, against: BuiltInEvalHandlerArgs, coerce: boolean): string[] | undefined {
+	const set = NodeValue.setOf(id, against);
+	if(set === undefined || set.elements.length === 0) {
+		return undefined;
+	}
+	const strings = set.elements.map(e => valueAsString(e, coerce));
+	return strings.includes(undefined) ? undefined : strings as string[];
+}
+
+/** how many combinations of argument values a fold is tried for, as `paste0(i, j)` of two long loops is no value worth listing */
+const MaxFoldCombinations = 256;
+
+/**
+ * Every value a fold may yield for the values its arguments may hold, one fold for each combination of them,
+ * `undefined` if an argument does not resolve to strings or there are too many combinations.
+ * The values are resolved once, as the solver does not resolve a node again while it is still resolving the call.
+ */
+function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation>, args: BuiltInEvalHandlerArgs, coerce: boolean): (string | number)[] | undefined {
+	const options = new Map<NodeId, string[]>();
+	let unresolved = false;
+	const first = foldStringCall(node, arg => {
+		const strings = argAsStrings(arg.info.id, args, coerce);
+		if(strings === undefined) {
+			unresolved = true;
+			return undefined;
+		}
+		options.set(arg.info.id, strings);
+		return strings[0];
+	});
+	if(unresolved || first === undefined) {
+		return undefined;
+	}
+	const combinations = [...options.values()].reduce((n, o) => n * o.length, 1);
+	if(combinations > MaxFoldCombinations) {
+		return undefined;
+	}
+	const ids = [...options.keys()];
+	const pick = new Map<NodeId, string>();
+	const results: (string | number)[] = [];
+	const enumerate = (at: number): boolean => {
+		if(at === ids.length) {
+			const folded = foldStringCall(node, arg => pick.get(arg.info.id));
+			if(folded !== undefined) {
+				results.push(folded);
+			}
+			return folded !== undefined;
+		}
+		return options.get(ids[at])?.every(s => {
+			pick.set(ids[at], s);
+			return enumerate(at + 1);
+		}) ?? false;
+	};
+	return enumerate(0) ? results : undefined;
+}
+
 /**
  * Resolves any call of a {@link StringFns} entry to a {@link Value}, with its arguments in any order R accepts:
- * a join like `paste0("cfg_", k)` when every part resolves to a single string constant, and a transformation
- * like `basename(p)` when its argument does. Anything that does not resolve stays `Top`.
+ * a join like `paste0("cfg_", k)` when every part resolves to a single string constant (coercing a joined
+ * number or logical the way `as.character` would), and a transformation like `basename(p)` when its argument
+ * does. Anything that does not resolve stays `Top`.
  */
-export function resolveAsStringFn(args: BuiltInEvalHandlerArgs): Value {
+function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
 	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;
 	}
-	const folded = foldStringCall(node, arg => Resolve.toSingleString(arg.info.id, args));
+	const joined = PasteLikeCalls.has(Identifier.getName(node.functionName.content));
+	const folded = foldAcrossValues(node, args, joined);
 	if(folded === undefined) {
 		return Top;
 	}
-	return typeof folded === 'number' ? intervalFrom(folded, folded) : stringFrom(folded);
+	const asValue = (f: string | number): Value => typeof f === 'number' ? intervalFrom(f, f) : stringFrom(f);
+	return folded.length === 1 ? asValue(folded[0]) : setOf(folded.map(asValue));
 }
+
+/**
+ * Folding the string built-ins, from `paste` to `basename`.
+ *
+ * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
+ * {@link NodeValue} or {@link Resolve}.
+ */
+export const StringFold = {
+	/** every string built-in that is folded, see {@link StringFns} */
+	fns:       StringFns,
+	/** the calls pasting their arguments together, see {@link PasteLikeCalls} */
+	pasteLike: PasteLikeCalls,
+	/** What a string call amounts to; see {@link resolveAsStringFn}. */
+	call:      resolveAsStringFn,
+	/** The string a call in the AST folds to; see {@link foldStringCall}. */
+	fold:      foldStringCall
+} as const;

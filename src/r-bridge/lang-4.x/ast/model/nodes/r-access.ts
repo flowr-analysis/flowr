@@ -33,6 +33,7 @@ export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>;
 
 /**
  * Helper for working with {@link RAccess} AST nodes.
+ * @helper ast
  */
 export const RAccess = {
 	...RNode,

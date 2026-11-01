@@ -1,7 +1,7 @@
 import { BuiltInIndex } from '../dataflow/environments/query-fn-props';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { ArgProp, PropSelector } from '../dataflow/environments/built-in-props';
-import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/mappers/arguments';
+import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/arguments';
 import type { TaintConditionFunction, TaintConditionMapping } from './taint-mapping';
 import { isNotUndefined } from '../util/assert';
 

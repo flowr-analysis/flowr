@@ -7,8 +7,8 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvType, REnvironment, SearchPathPackagePrefix, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { FunctionCallVertex } from '../../../../../graph/vertex';
-import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { DfgVertex } from '../../../../../graph/vertex';
+import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/default-builtin-config';
 import type { Identifier } from '../../../../../environments/identifier';
@@ -55,21 +55,25 @@ function fixedStackEnv(kind: StackEnvKind | undefined, data: StackEnvContext): R
 	}
 }
 
+/** The kind of stack environment `node` denotes, if it does; a user definition of the same name shadows the built-in. */
+export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<StackEnvContext, 'environment'>): StackEnvKind | undefined {
+	const symbol = RSymbol.is(node) ? node.content
+		: RFunctionCall.calledName(node);
+	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;
+	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
+		return undefined;
+	}
+	return kind;
+}
+
 /**
  * The stack environment an AST `node` denotes directly: a `.GlobalEnv`/`.BaseEnv` symbol, a
  * `globalenv()`/`baseenv()`/`emptyenv()` call, the current env via `environment()`, the parent via `parent.env(e)`,
  * or a named search-path entry via `as.environment("package:x")`. Returns `undefined` otherwise.
  */
 export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data: StackEnvContext): REnvironmentInformation | undefined {
-	if(node === undefined) {
-		return undefined;
-	}
-	const symbol = RSymbol.is(node) ? node.content
-		: RFunctionCall.isNamed(node) && RSymbol.is(node.functionName) ? node.functionName.content
-			: undefined;
-	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;
-	// a user definition of the same name shadows the built-in, so the node no longer denotes a stack env
-	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
+	const kind = stackEnvKindOf(node, data);
+	if(kind === undefined) {
 		return undefined;
 	}
 	const firstArg = RFunctionCall.is(node) && node.arguments.length > 0 && node.arguments[0] !== EmptyArgument ? node.arguments[0].value : undefined;
@@ -97,7 +101,7 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	}
 	if(name.startsWith(SearchPathPackagePrefix)) {
 		const pkg = name.slice(SearchPathPackagePrefix.length);
-		for(let env: Environment | undefined = REnvironment.findGlobal(data.environment.current).parent; env !== undefined && !env.builtInEnv; env = env.parent) {
+		for(const env of REnvironment.searchPath(data.environment.current)) {
 			if(env.n === pkg && env.t === EnvType.Namespace) {
 				return { current: env, level: 0 };
 			}
@@ -106,18 +110,21 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	return undefined;
 }
 
-/** The stack environment `sourceInfo`'s entry call refers to (`e <- globalenv()`, `e <- environment()`), or `undefined`. */
-export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext): REnvironmentInformation | undefined {
-	const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	if(!FunctionCallVertex.is(vertex) || vertex.name === undefined) {
+/**
+ * The stack environment `sourceInfo`'s value comes from (`e <- globalenv()`, `e <- environment()`), or `undefined`.
+ * @param entryPoint - the node the value comes from, if that is not the entry point of `sourceInfo` itself
+ */
+export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext, entryPoint: NodeId | undefined = sourceInfo.entryPoint): REnvironmentInformation | undefined {
+	const vertex = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
+	if(!DfgVertex.isFunctionCall(vertex) || vertex.name === undefined) {
 		return undefined;
 	}
 	const kind = stackEnvKind(String(vertex.name));
-	if(vertex.origin.includes(BuiltInProcName.StackEnv)) {
+	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.StackEnv)) {
 		return fixedStackEnv(kind, data);
 	}
 	/* `environment()` goes through the default processor; with an argument it denotes a closure's env instead */
-	return kind === StackEnvKind.Current && vertex.args.length === 0 && vertex.origin.includes(BuiltInProcName.Default)
+	return kind === StackEnvKind.Current && vertex.args.length === 0 && DfgVertex.hasOrigin(vertex, BuiltInProcName.Default)
 		? { current: data.environment.current, level: data.environment.level }
 		: undefined;
 }

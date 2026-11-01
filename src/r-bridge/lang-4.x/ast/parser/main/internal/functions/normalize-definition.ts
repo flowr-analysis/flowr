@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
+import { ensureExpressionList, retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { guard, isNotUndefined } from '../../../../../../../util/assert';
 import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { tryNormalizeParameter } from './normalize-parameter';
@@ -13,9 +13,9 @@ import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 /**
  * Tries to parse the given data as a function definition.
- * @param data - The data used by the parser (see {@link NormalizerData})
+ * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
+ * @returns              The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
 export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionDefinition | undefined {
 	const fnBase = mappedWithName[0];
@@ -54,10 +54,6 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 		lexeme:     content,
 		parameters: parameters as RParameter[],
 		body:       ensureExpressionList(body[0]),
-		info:       {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:       currentSourceInfo(data)
 	};
 }

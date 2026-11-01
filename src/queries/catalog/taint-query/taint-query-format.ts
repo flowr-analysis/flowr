@@ -88,7 +88,7 @@ function taintQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	} else if(line.length > 0) {
 		input = line[0];
 	}
-	return { query: [{ type: 'taint', defs: defs }], rCode: input } ;
+	return { query: [{ type: 'taint', defs: defs }], rCode: input };
 }
 
 export const TaintQueryDefinition = {

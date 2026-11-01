@@ -1,4 +1,5 @@
 import type { PackageSignatureSource } from './reader';
+import { compareByCodeUnit } from '../../util/text/strings';
 import type { VersionRelease } from './sigdb-version';
 import type { LibraryExports } from './schema';
 import type { ResolvedDependency } from './decode';
@@ -55,6 +56,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return this.hasVersion(pkg, version);
 	}
 
+	/** an in-memory source states no repository */
+	public sourceOf(): undefined {
+		return undefined;
+	}
+
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
 		const found = this.packages.get(pkg);
 		/* a source given no version has one answer and gives it whatever is asked for: it cannot say no */
@@ -75,7 +81,7 @@ export class MemorySignatureSource implements PackageSignatureSource {
 	public packagesExporting(name: string): readonly string[] {
 		return [...this.packages]
 			.filter(([, p]) => p.exported.includes(name))
-			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || an.localeCompare(bn))
+			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || compareByCodeUnit(an, bn))
 			.map(([pkg]) => pkg);
 	}
 
@@ -109,6 +115,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 			return undefined;
 		}
 		return [...found.deps ?? []];
+	}
+
+	/** an in-memory package states its exports, never its class relations */
+	public classes(): undefined {
+		return undefined;
 	}
 
 	public packageNames(): string[] {

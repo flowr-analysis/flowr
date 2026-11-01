@@ -1,10 +1,11 @@
-import { MatchArgs } from '../../../src/dataflow/graph/match-args';
 import { afterAll, describe, expect, test } from 'vitest';
+import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { SigParameter } from '../../../src/project/sigdb/decode';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { cleanupSigTmpDirs, expFn, sigTmpDir, ver, writeAndOpen } from '../_helper/sigdb';
 import type { FunctionArgument } from '../../../src/dataflow/graph/graph';
+import { ArgProp } from '../../../src/dataflow/environments/built-in-props';
 
 /** minimal named argument (`name = value`); only `name.content` is read by the matcher */
 const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: name } } as unknown as PotentiallyEmptyRArgument);
@@ -12,7 +13,7 @@ const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: n
 const pos = (): PotentiallyEmptyRArgument => ({ name: undefined } as unknown as PotentiallyEmptyRArgument);
 
 const match = (args: readonly PotentiallyEmptyRArgument[], params: readonly string[]) =>
-	MatchArgs.toNames(args, params);
+	FunctionSemantics.call.match.toNames(args, params);
 
 describe('RFunctionCall.matchArgumentsToParameters (R argument matching)', () => {
 	test('exact name match', () => {
@@ -122,7 +123,7 @@ describe('matching against a signature\'s formals', () => {
 	});
 });
 
-describe('MatchArgs.toSpec against a sigdb signature', () => {
+describe('FunctionSemantics.call.match.toSpec against a sigdb signature', () => {
 	// ggplot(data, mapping, ..., environment) -- the parameters as the signature database records them
 	const ggplotSig = [
 		{ name: 'data' }, { name: 'mapping' }, { name: '...' }, { name: 'environment' }
@@ -132,24 +133,24 @@ describe('MatchArgs.toSpec against a sigdb signature', () => {
 
 	test('positional: ggplot(mtcars, aes(x)) -> data = mtcars, mapping = aes', () => {
 		const args = [pArg('mtcars'), pArg('aes')];
-		expect(MatchArgs.toSpec(args, ggplotSig).get('data')).toEqual(['mtcars']);
-		expect(MatchArgs.toSpec(args, ggplotSig).get('mapping')).toEqual(['aes']);
+		expect(FunctionSemantics.call.match.toSpec(args, ggplotSig).get('data')).toEqual(['mtcars']);
+		expect(FunctionSemantics.call.match.toSpec(args, ggplotSig).get('mapping')).toEqual(['aes']);
 	});
 
 	test('named: ggplot(data = mtcars, aes(x)) -> data by name, aes fills mapping positionally', () => {
 		const args = [nArg('data', 'mtcars'), pArg('aes')];
-		const m = MatchArgs.toSpec(args, ggplotSig);
+		const m = FunctionSemantics.call.match.toSpec(args, ggplotSig);
 		expect(m.get('data')).toEqual(['mtcars']);
 		expect(m.get('mapping')).toEqual(['aes']);
 	});
 
 	test('pmatch: ggplot(d = mtcars) -> `d` uniquely resolves to data', () => {
-		expect(MatchArgs.toSpec([nArg('d', 'mtcars')], ggplotSig).get('data')).toEqual(['mtcars']);
+		expect(FunctionSemantics.call.match.toSpec([nArg('d', 'mtcars')], ggplotSig).get('data')).toEqual(['mtcars']);
 	});
 
 	test('an overflow argument at the `...` position collects into `...`', () => {
 		const args = [pArg('mtcars'), pArg('aes'), pArg('extra')];   // data, mapping, then `...`
-		expect(MatchArgs.toSpec(args, ggplotSig).get('...')).toEqual(['extra']);
+		expect(FunctionSemantics.call.match.toSpec(args, ggplotSig).get('...')).toEqual(['extra']);
 	});
 });
 
@@ -161,7 +162,7 @@ describe('matching against a real signature-database signature', () => {
 		const b = new SigDbBuilder();
 		b.addPackage('cranpkg', { latest: '1.0.0', downloads: 5 });
 		b.addVersion('cranpkg', '1.0.0', ver([{ ...expFn('cranfn'), params: [
-			{ name: 'x', forced: true }, { name: 'na.rm' }, { name: '...' }
+			{ name: 'x', props: ArgProp.Forced }, { name: 'na.rm' }, { name: '...' }
 		] }]));
 		const db = await writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
 		try {

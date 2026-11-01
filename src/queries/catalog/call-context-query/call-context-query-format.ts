@@ -1,10 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeCallContextQueries } from './call-context-query-executor';
-import { type OutputFormatter, bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import type { OutputFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
-import { asciiCallContext } from '../../query-print';
+import { asciiCallContext, queryHeader } from '../../query-print';
 import { CallTargets } from './identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
@@ -97,7 +96,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
-	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
+	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | readonly LinkTo<CallName, AttachLinkInfo>[];
 }
 
 export interface CallContextQuerySubKindResult {
@@ -152,7 +151,7 @@ export const CallContextQueryDefinition = {
 	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
 		result.push(
-			`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`,
+			queryHeader('call-context', formatter, out['.meta'].timing),
 			asciiCallContext(formatter, out, (await analyzer.normalize()).idMap)
 		);
 		return true;

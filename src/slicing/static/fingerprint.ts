@@ -2,7 +2,7 @@ import objectHash from 'object-hash';
 import type { Environment, REnvironmentInformation } from '../../dataflow/environments/environment';
 import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
-import type { BuiltInMemory } from '../../dataflow/environments/built-in';
+import { Frame, type MemoryView } from '../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Fingerprint = string;
@@ -16,13 +16,12 @@ const HashOptions = {
 	replacer:                  (v: unknown) => isDefaultBuiltInEnvironment(v) ? undefined : v
 } as const satisfies objectHash.NormalOption;
 
-/* definitions, definition maps, and frames are shared across the environments a slice builds, and a definition may
- * hold a whole environment of its own (`envState`), so each is hashed once instead of on every fingerprint. The
- * map is keyed separately from the frame because cloning a frame shares its definitions until one side writes
- * (see {@link Environment#clone}): the graph holds many frames per distinct set of definitions, and hashing that
- * set is what costs. */
+/* definitions, bindings, and frames are shared across the environments a slice builds, and a definition may hold
+ * a whole environment of its own (`envState`), so each is hashed once instead of on every fingerprint. Bindings
+ * are keyed apart from the frame because cloning shares them until one side writes (see {@link Environment#clone}):
+ * the graph holds many frames per distinct set of bindings, and hashing that set is what costs. */
 const definitionHashes = new WeakMap<IdentifierDefinition & object, Fingerprint>();
-const memoryHashes = new WeakMap<BuiltInMemory, Fingerprint>();
+const memoryHashes = new WeakMap<MemoryView & object, Fingerprint>();
 const frameHashes = new WeakMap<Environment, Fingerprint>();
 
 function definitionHash(definition: IdentifierDefinition): Fingerprint {
@@ -34,24 +33,36 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 	return hash;
 }
 
-function memoryHash(memory: BuiltInMemory): Fingerprint {
+/** digests plain strings and primitives as one string, which spares {@link objectHash} a reflective walk (and works in the browser, where `crypto` is stubbed) */
+function digest(parts: readonly (string | number | boolean | undefined)[]): Fingerprint {
+	return objectHash(JSON.stringify(parts), HashOptions);
+}
+
+function memoryHash(memory: MemoryView): Fingerprint {
 	let hash = memoryHashes.get(memory);
-	if(hash === undefined) {
+	if(hash !== undefined) {
+		return hash;
+	}
+	const lazy = memory instanceof Frame ? memory.lazy() : undefined;
+	if(lazy !== undefined) {
+		/* an attached package's exports: hashing what they bind would build a definition for every one of them */
+		hash = digest([lazy.origin, ...lazy.keys()]);
+	} else {
 		const entries: string[] = [];
 		for(const [name, definitions] of memory) {
 			entries.push(`${String(name)}=${definitions.map(definitionHash).join(',')}`);
 		}
 		entries.sort();
-		hash = objectHash(entries, HashOptions);
-		memoryHashes.set(memory, hash);
+		hash = digest(entries);
 	}
+	memoryHashes.set(memory, hash);
 	return hash;
 }
 
 function frameHash(frame: Environment): Fingerprint {
 	let hash = frameHashes.get(frame);
 	if(hash === undefined) {
-		hash = objectHash([frame.n, frame.t, frame.closure, frame.globalEnv === true, memoryHash(frame.memory)], HashOptions);
+		hash = digest([frame.n, frame.t, frame.closure, frame.globalEnv === true, memoryHash(frame.memory)]);
 		frameHashes.set(frame, hash);
 	}
 	return hash;

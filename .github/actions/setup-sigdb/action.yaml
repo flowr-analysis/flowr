@@ -1,0 +1,24 @@
+name: "Setup the Signature Database"
+description: "Restore the cached signature database bundles and sync them, so every test and page backed by the database checks something instead of skipping or failing"
+
+inputs:
+  token:
+    description: "The token the sync downloads the bundles with"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: "💾 Cache the Signature Database Bundles"
+      uses: actions/cache@v5
+      with:
+        # only the bundles, the shards unpacked next to them are re-derived on demand
+        path: ~/.cache/flowr/sigdb/bundles
+        key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
+
+    - name: "⬇️ Sync the Signature Database"
+      # through the same script as the tests, so the node dependencies the sync runs on are installed
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: bash .github/workflows/scripts/run-flowr-command.sh sigdb:sync

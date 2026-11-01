@@ -133,8 +133,12 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 
 	describe('Resolve Value', () => {
 		testResolve('Constant Value',       '1@x', 'x <- 5', set([5]));
+		/* setting graphics parameters or options is tracked as global state, it does not invalidate the variables */
+		testResolve('Value after par',      '3@x', 'x <- 5 \n par(mfrow=c(1,2)) \n x', set([5]));
+		testResolve('Value after options',  '3@x', 'x <- 5 \n options(digits=2) \n x', set([5]));
 		testResolve('Constant Value Str',   '1@x', 'x <- "foo"', set(['foo']));
 		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
+		testResolve('Brace block',          '2@x', 'x <- { 1 + 2 } \n x', set([3]));
 
 		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
 	});
@@ -159,13 +163,32 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testWithGraphAndEnvironment('Not yet supported', resolveWith => {
 			// Not yet Supported
 			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
-			testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top, resolveWith);
 			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
 
 			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);
 			testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top, resolveWith);
 			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', set([8]), Allow.Top, resolveWith);
 		});
+	});
+
+	describe('Resolve by name', () => {
+		testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]));
+		testResolve('Get0',                 '3@x', 'y <- 5 \n x <- get0("y") \n x', set([5]));
+		testResolve('Get of a folded name', '4@x', 'y <- 5 \n nm <- "y" \n x <- get(nm) \n x', set([5]));
+		testResolve('Get of a folded call', '3@x', 'y <- paste0("a", "b") \n x <- get("y") \n x', set(['ab']));
+		testResolve('Get non-syntactic',    '3@x', '`my var` <- 1 \n x <- get("my var") \n x', set([1]));
+		testResolve('Match fun',            '3@x', 'f <- function() 1 \n x <- match.fun("f") \n x', setFrom({ type: 'function-definition' }));
+		testResolve('Get without env',      '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.ExactOnly, With.GraphOnly);
+	});
+
+	describe('Resolve by name (unknown)', () => {
+		testResolve('Get with envir',       '4@x', 'e <- new.env() \n y <- 5 \n x <- get("y", envir = e) \n x', Top);
+		testResolve('Get with pos',         '3@x', 'y <- 5 \n x <- get("y", 2) \n x', Top);
+		testResolve('Get with inherits',    '3@x', 'y <- 5 \n x <- get("y", inherits = FALSE) \n x', Top);
+		testResolve('Get with mode',        '3@x', 'y <- 5 \n x <- get("y", mode = "numeric") \n x', Top);
+		testResolve('Mget',                 '3@x', 'y <- 5 \n x <- mget("y") \n x', Top);
+		testResolve('Get of itself',        '2@x', 'x <- get("x") \n x', Top);
+		testResolve('Get of a redefinition', '4@x', 'get <- function(n) 0 \n y <- 5 \n x <- get("y") \n x', set([0]), Allow.Top);
 	});
 
 	describe('Resolve Value (distractors)', () => {
@@ -297,9 +320,10 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testResolve('unicode',            '2@x', 'x <- toupper("héllo") \n x',      set(['HÉLLO']));
 		testResolve('unicode nchar',      '2@x', 'x <- nchar("héllo") \n x',        set([5]));
 		testResolve('unresolved',         '2@x', 'x <- toupper(Sys.getenv("P")) \n x',  Top);
-		/* we see the source text, in which an escape is still a backslash and a letter */
-		testResolve('escape untouched',   '2@x', 'x <- toupper("a\\tb") \n x',      Top);
-		testResolve('escape not counted', '2@x', 'x <- nchar("a\\tb") \n x',        Top);
+		/* a literal stands for the characters R reads it as, not for the source text spelling them out */
+		testResolve('escape folded',      '2@x', 'x <- toupper("a\\tb") \n x',      set(['A\tB']));
+		testResolve('escape counted',     '2@x', 'x <- nchar("a\\tb") \n x',        set([3]));
+		testResolve('backslash counted',  '2@x', 'x <- nchar("a\\\\b") \n x',       set([3]));
 		/* a second argument changes what these do, so the plain fold would be wrong */
 		testResolve('nchar in bytes',     '2@x', 'x <- nchar("ab", type = "bytes") \n x', Top);
 		testResolve('trimws one side',    '2@x', 'x <- trimws("  a  ", which = "left") \n x', Top);
@@ -341,7 +365,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testResolve('quoted argument',     '2@x', 'x <- abs(quote(a)) \n x',                     Top);
 		testResolve('grouping redefined',  '3@x', '`(` <- function(a) 0 \n x <- (1 + 2) \n x',   Top);
 		testResolve('conditionally redefined', '3@x', 'if(u) abs <- function(a) 0 \n x <- abs(-1) \n x', Top);
-		testResolve('brace block',         '2@x', 'x <- { 1 + 2 } \n x',                         Top);
+		testResolve('brace redefined',     '3@x', '`{` <- function(a) 0 \n x <- { 1 + 2 } \n x', Top);
 		testResolve('removed again',       '3@x', 'x <- 1 + 1 \n rm(x) \n x',                    Top);
 		/* `NA` and `NaN` make R answer `NA`, never a logical */
 		testResolve('NaN compared',        '2@x', 'x <- NaN > 1 \n x',                           Top);
@@ -387,7 +411,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		});
 	});
 	describe.each<[string, With]>([
-		['Graph only',  With.GraphOnly  ],
+		['Graph only',  With.GraphOnly],
 		['Environment', With.Environment],
 	])('Resolve built-in constants (%s)', (_name, resolveWith) => {
 		testResolve('T resolves to true',         '1@T',    'T',             set([true]),  Allow.ExactOnly, resolveWith);
@@ -408,10 +432,15 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 			['FALSE', false],
 			['F',     false],
 			['NULL',  null],
-			['NA',    null],
 		])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 			const result = Resolve.toBuiltIn(identifier, defaultEnv(), wantedValue);
 			assert.strictEqual(result, Ternary.Always, 'should be Ternary.Always');
+		});
+
+		/* an `NA` is a value R has and flowR cannot hold, so it answers anything rather than `NULL` */
+		test.each(['NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_'])("Identifier '%s' is no null", identifier => {
+			assert.strictEqual(Resolve.toBuiltIn(identifier, defaultEnv(), null), Ternary.Never, 'should be Ternary.Never');
+			assert.deepEqual(Resolve.toConstants(identifier, defaultEnv()), Top);
 		});
 
 		// Maybe Resolve
@@ -446,7 +475,6 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 				['FALSE', false],
 				['F',     false],
 				['NULL',  null],
-				['NA',    null],
 			])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 				const defs = Resolve.toConstants(identifier, defaultEnv());
 				assert.deepEqual(defs, setFrom(valueFromTsValue(wantedValue)));

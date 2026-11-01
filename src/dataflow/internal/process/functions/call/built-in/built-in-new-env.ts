@@ -6,13 +6,12 @@ import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../..
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { unpackArg } from '../argument/unpack-argument';
-import { FunctionCallVertex } from '../../../../../graph/vertex';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { REnvironment } from '../../../../../environments/environment';
 
 const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
 
@@ -37,7 +36,7 @@ export function processNewEnv<OtherInfo>(
 	if(data.ctx.config.solver.trackEnvironments) {
 		const parentState = resolveNewEnvParentArg(args, data);
 		const vertex = result.graph.getVertex(rootId);
-		if(parentState !== undefined && FunctionCallVertex.is(vertex)) {
+		if(parentState !== undefined && DfgVertex.isFunctionCall(vertex)) {
 			vertex.newEnvParent = parentState;
 		}
 	}
@@ -63,7 +62,7 @@ function resolveNewEnvParentArg<OtherInfo>(
 		if(RArgument.isEmpty(arg) || arg.name?.content !== 'parent') {
 			continue;
 		}
-		const node = unpackArg(arg);
+		const node = RArgument.valueOf(arg);
 		if(!node) {
 			return undefined;
 		}
@@ -104,12 +103,12 @@ export function createFreshEnvState(
 ): REnvironmentInformation {
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-		if(FunctionCallVertex.is(vertex) && vertex.newEnvParent !== undefined) {
+		if(DfgVertex.isFunctionCall(vertex) && vertex.newEnvParent !== undefined) {
 			return {
 				current: new Environment(vertex.newEnvParent.current),
 				level:   vertex.newEnvParent.level + 1
 			};
 		}
 	}
-	return pushLocalEnvironment(data.environment);
+	return REnvironment.pushLocal(data.environment);
 }

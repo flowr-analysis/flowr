@@ -104,16 +104,18 @@ describe('Taint Propagation', () => {
 	});
 
 	describe('Loops', () => {
-		testPropagate('taint assigned every iteration, but pre-loop value is untracked: post-loop read is Top', 'x <- 1\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', { '5@y': undefined });
+		testPropagate('taint assigned every iteration, but pre-loop value is untracked: post-loop read is Top', 'x <- 1\nfor (i in seq_len(n)) {\n  x <- taint()\n}\ny <- x', { '5@y': undefined });
 		testPropagate('same shape with while loop', 'x <- 1\nwhile (cond) {\n  x <- taint()\n}\ny <- x', { '5@y': undefined });
-		testPropagate('pre-loop value is explicit Top (not untracked): post-loop read joins to Top', 'x <- unmappedFn()\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', { '5@y': Top });
+		testPropagate('pre-loop value is explicit Top (not untracked): post-loop read joins to Top', 'x <- unmappedFn()\nfor (i in seq_len(n)) {\n  x <- taint()\n}\ny <- x', { '5@y': Top });
 		testPropagate('pre-loop value already carries the same taint the loop reassigns every iteration: fixpoint stays concrete', 'x <- taint()\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', { '5@y': TaintA });
-		testPropagate('loop reassigns to different, incomparable taint: the post-loop read joins pre-loop and body taints', 'x <- taint()\nfor (i in 1:3) {\n  x <- TaintB()\n}\ny <- x', { '5@y': TaintC });
+		testPropagate('loop reassigns to different, incomparable taint: the post-loop read joins pre-loop and body taints', 'x <- taint()\nfor (i in seq_len(n)) {\n  x <- TaintB()\n}\ny <- x', { '5@y': TaintC });
+		testPropagate('a loop over a non-empty range always runs, so the body taint replaces an untracked pre-loop value', 'x <- 1\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', { '5@y': TaintA });
+		testPropagate('a loop over a non-empty range always runs, so the body taint replaces the pre-loop taint', 'x <- taint()\nfor (i in 1:3) {\n  x <- TaintB()\n}\ny <- x', { '5@y': TaintB });
 	});
 
 	describe('Expression Structure', () => {
 		testPropagate('pipe forwards the taint of the final stage', 'y <- 1 |> taint()', { '1@y': TaintA });
-		testPropagate('magrittr pipe forwards the taint of the final stage', 'y <- 1 %>% taint()', { '1@y': TaintA });
+		testPropagate('magrittr pipe forwards the taint of the final stage', 'library(magrittr)\ny <- 1 %>% taint()', { '2@y': TaintA });
 		testPropagate('a `{ ...; last }` block takes the taint of its last expression only', 'y <- { 1; taint() }', { '1@y': TaintA });
 	});
 

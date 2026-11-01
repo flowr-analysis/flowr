@@ -1,7 +1,7 @@
 /** use this to ensure that all cases are covered in case of a selection */
 
 /* v8 ignore next */
-import { flowrVersion } from './version';
+import { flowrVersion } from './flowr-version';
 
 /**
  * Verifies, that the given code path is never reached.
@@ -24,14 +24,14 @@ export function assertUnreachable(x: never): never {
 /**
  * Verifies that the given value is not undefined.
  * This especially helps with a `.filter`
+ * @see {@link isUndefined}
+ * @see {@link isNotNull}
  * @example
  * ```ts
  * const values: (number | undefined)[] = [1, 2, undefined, 4];
  * const definedValues: number[] = values.filter(isNotUndefined);
  * // definedValues is now of type number[]
  * ```
- * @see {@link isUndefined}
- * @see {@link isNotNull}
  */
 export function isNotUndefined<T>(this: void, x: T | undefined): x is T {
 	return x !== undefined;
@@ -40,14 +40,14 @@ export function isNotUndefined<T>(this: void, x: T | undefined): x is T {
 /**
  * Verifies that the given value is undefined.
  * This especially helps with a `.filter`
+ * @see {@link isNotUndefined}
+ * @see {@link isNotNull}
  * @example
  * ```ts
  * const values: (number | undefined)[] = [1, 2, undefined, 4];
  * const undefinedValues: undefined[] = values.filter(isUndefined);
  * // undefinedValues is now of type undefined[]
  * ```
- * @see {@link isNotUndefined}
- * @see {@link isNotNull}
  */
 export function isUndefined<T>(this: void, x: T | undefined): x is undefined {
 	return x === undefined;
@@ -56,14 +56,14 @@ export function isUndefined<T>(this: void, x: T | undefined): x is undefined {
 /**
  * Verifies that the given value is not null.
  * This especially helps with a `.filter`
+ * @see {@link isUndefined}
+ * @see {@link isNotUndefined}
  * @example
  * ```ts
  * const values: (number | null)[] = [1, 2, null, 4];
  * const nonNullValues: number[] = values.filter(isNotNull);
  * // nonNullValues is now of type number[]
  * ```
- * @see {@link isUndefined}
- * @see {@link isNotUndefined}
  */
 export function isNotNull<T>(this: void, x: T | null): x is T {
 	return x !== null;
@@ -118,13 +118,29 @@ class GuardError extends Error {
 export type GuardMessage = string | (() => string);
 
 /**
- * @param assertion   - will be asserted
- * @param message     - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
+ * @param assertion - will be asserted
+ * @param message   - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
  * @throws GuardError - if the assertion fails
  */
 export function guard(assertion: unknown | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {
 	/* v8 ignore next 3 */
 	if(!assertion) {
 		throw new GuardError(typeof message === 'string' ? message : message());
+	}
+}
+
+/**
+ * Runs `step` over `file`, turning the stack overflow deeply nested code causes into a message saying so.
+ * R's own parser accepts nesting deeper than a JavaScript stack takes, so every recursive walk over an AST --
+ * normalizing it, decorating it, extracting its dataflow -- can hit this and has to say the same thing.
+ */
+export function guardNesting<T>(what: string, file: string | undefined, step: () => T): T {
+	try {
+		return step();
+	} catch(e) {
+		if(e instanceof RangeError) {
+			throw new Error(`${what} exceeded the call stack for '${file ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
+		}
+		throw e;
 	}
 }

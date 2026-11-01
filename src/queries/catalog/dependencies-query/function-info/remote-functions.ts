@@ -15,9 +15,9 @@ export const RemoteFunctions: FunctionInfo[] = [
 	{ name: 'install_svn',       argIdx: 0, argName: 'url',  resolveValue: true },
 	{ name: 'install_url',       argIdx: 0, argName: 'url',  resolveValue: true },
 	{ name: 'install_bioc',      argIdx: 0, argName: 'repo', resolveValue: true },
-	{ package: 'pak', name: 'pkg_install',  argIdx: 0, argName: 'pkg', resolveValue: true },
-	{ package: 'pak', name: 'pak',          argIdx: 0, argName: 'pkg', resolveValue: true },
-	{ package: 'renv', name: 'install',     argIdx: 0, argName: 'packages', resolveValue: true }
+	{ package: 'pak', name: 'pkg_install',  argIdx: 0, argName: 'pkg', resolveValue: true, invisible: true },
+	{ package: 'pak', name: 'pak',          argIdx: 0, argName: 'pkg', resolveValue: true, invisible: true },
+	{ package: 'renv', name: 'install',     argIdx: 0, argName: 'packages', resolveValue: true, invisible: true }
 ] as const;
 
 /** `github::`, `bioc::`, ... prefixes of a `pak` reference, and the `.git` a clone url ends in */

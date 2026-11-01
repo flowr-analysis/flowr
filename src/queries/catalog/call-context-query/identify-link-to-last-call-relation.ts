@@ -2,8 +2,8 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, FunctionDefinitionVertex } from '../../../dataflow/graph/vertex';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../dataflow/graph/vertex';
+import { EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -16,6 +16,7 @@ import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph'
 import { CfgVertex } from '../../../control-flow/control-flow-graph';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
@@ -40,11 +41,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 	if(outgoing === undefined) {
 		return 'no';
 	}
-	const callTargets = outgoing.entries()
-		.filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls))
-		.map(([t]) => t)
-		.toArray()
-    ;
+	const callTargets = Dataflow.targetsOf(graph, info.id, EdgeType.Calls);
 
 	let builtIn = false;
 
@@ -102,7 +99,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
  */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
-): (RNodeWithParent & { type: Types[number] } ) | undefined {
+): (RNodeWithParent & { type: Types[number] }) | undefined {
 	if(!call) {
 		return undefined;
 	}
@@ -197,7 +194,7 @@ export function identifyLinkToLastCallRelationSync(
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
 			const v = graph.getVertex(node);
-			return FunctionCallVertex.is(v) ? v : undefined;
+			return DfgVertex.isFunctionCall(v) ? v : undefined;
 		};
 
 	/* function bodies the walk steps into, collected while walking and drained afterwards */
@@ -222,7 +219,7 @@ export function identifyLinkToLastCallRelationSync(
 		 */
 		for(const target of CfgVertex.getCallTargets(cfg.getVertex(node)) ?? []) {
 			const definition = graph.getVertex(target);
-			if(FunctionDefinitionVertex.is(definition)) {
+			if(DfgVertex.isFunctionDefinition(definition)) {
 				searchFrom.push(...definition.exitPoints.map(e => e.nodeId));
 			}
 		}
@@ -230,6 +227,8 @@ export function identifyLinkToLastCallRelationSync(
 			const act = cascadeIf ? cascadeIf(vertex, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
+			} else if(act === CascadeAction.Block) {
+				return true;
 			}
 			const tar = satisfiesCallTargets(vertex, graph, CallTargets.MustIncludeGlobal);
 			if(tar !== 'no') {

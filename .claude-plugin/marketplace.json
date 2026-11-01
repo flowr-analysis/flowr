@@ -1,0 +1,15 @@
+{
+  "name": "flowr",
+  "description": "Static analysis of R code with flowR",
+  "owner": {
+    "name": "flowR",
+    "url": "https://github.com/flowr-analysis"
+  },
+  "plugins": [
+    {
+      "name": "flowr",
+      "source": "./mcp",
+      "description": "Slicing, linting, dependencies, version guessing, and signature search for R code: the flowR skill and MCP server"
+    }
+  ]
+}

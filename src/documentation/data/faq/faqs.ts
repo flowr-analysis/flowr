@@ -10,7 +10,8 @@ import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
 
 /**
- *
+ * Registers the wiki's frequently asked questions, so a page may link to one by id.
+ * @param ctx - the documentation context to register them with
  */
 export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	const wikiFaq = new FaqStore();
@@ -18,11 +19,11 @@ export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
 Tests are labeled based on the *flowR* capabilities that they test for.
-The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
+The list of supported capabilities can be found on the ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
 `)
 		.addFaq('How do I run *all checks* before pushing?', `
-Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run \`npm run checkup\`: it runs the linter, the functionality, system, and mutation tests, the wiki and landing page generation, and the docker image build + smoke test concurrently (the landing pages wait for the functionality and mutation test results), then prints one pass/fail summary.
 Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
@@ -79,6 +80,14 @@ To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 	;
 
 	wikiFaq.withTopic('flowr.use')
+		.addFaq('Where do I find *all the helper objects*?', `
+flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
+thing it is about (${ctx.link({ name: 'SourceLocation' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'DfgVertex' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'Identifier' }, undefined, { type: 'variable' })}, ...).
+The ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} wiki page lists every one of them, grouped by what
+it is about, so you can find the one that answers your question without knowing where it lives.
+`)
 		.addFaq('How to *watch* a file for changes in the REPL?', `
 Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
 flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.
@@ -116,12 +125,12 @@ sections in the output of \`sessionInfo()\`.
 		.addFaq('How to get *documentation* for a function or package?', `
 There are a couple of ways to get documentation for a function or package.
 
-🖥️ Firstly, if you have already installed the package the function originated from you can simply run \`?<package name>::<function name>\` in an R session to print the
+🖥️ Firstly, if you have already installed the package the function originated from you can run \`?<package name>::<function name>\` in an R session to print the
 relevant documentation. If you don't know the origin of the package, you can use
 \`??<function name>\` in an R shell to fuzzy find all documentations containing
 \`<function name>\` or something similar.
 
-🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
+🌐 Secondly, if you don't have or don't want to install the package you can google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)

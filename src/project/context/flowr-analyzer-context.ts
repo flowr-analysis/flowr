@@ -53,6 +53,8 @@ import {
 	type ReadOnlyFlowrAnalyzerGasContext
 } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
+import { type FnInfo, fnInfo } from '../../dataflow/environments/query-fn-props';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -74,6 +76,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly config:           FlowrConfig;
 	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
 	readonly activatedPlugins: ReadonlySet<string>;
+	/** What flowR knows about the function `name` (a bare or `pkg::` name), from its built-ins and the signature database, see {@link fnInfo}. */
+	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined;
 	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
 	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
@@ -249,7 +253,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext();
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
@@ -333,6 +337,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		return this;
 	}
 
+	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
+		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, version);
+	}
+
 	/**
 	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
 	 */
@@ -342,7 +350,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.meta.reset();
 		this.gas.reset();
 		this.activatedPlugins.clear();
-		this.receive( { type: InvalidationEventType.Full });
+		this.receive({ type: InvalidationEventType.Full });
 	}
 
 	receive(event: InvalidationEvent): void {
@@ -370,7 +378,7 @@ export function contextFromInput(
 	const context = new FlowrAnalyzerContext(config, plugins);
 	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {
 		const requests = requestFromInput(input);
-		context.addRequests(Array.isArray(requests) ? requests : [requests] );
+		context.addRequests(Array.isArray(requests) ? requests : [requests]);
 	} else {
 		const requests: RParseRequests = Array.isArray(input) ? input : [input];
 		context.addRequests(requests);

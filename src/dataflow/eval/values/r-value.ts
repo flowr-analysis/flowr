@@ -1,4 +1,5 @@
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
+import { contentOf, stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { assertUnreachable, guard } from '../../../util/assert';
 
@@ -64,17 +65,6 @@ export type Value = Lift<
         | ValueFunctionDefinition
 	    | ValueNull
 >;
-export type ValueType<V> = V extends { type: infer T } ? T : never;
-export type ValueTypes = ValueType<Value>;
-
-
-/**
- *
- */
-export function typeOfValue<V extends Value>(value: V): V['type'] {
-	return value.type;
-}
-
 /** Checks whether the given value is the top value */
 // @ts-expect-error -- this is a save cast
 export function isTop<V extends Lift<unknown>>(value: V): value is typeof Top {
@@ -129,16 +119,13 @@ function stringifyRNumberSuffix(value: RNumberValue): string {
 function renderString(value: RStringValue): string {
 	const quote = value.quotes;
 	const raw = value.flag === 'raw';
-	if(raw) {
-		return `r${quote}(${value.str})${quote}`;
-	} else {
-		return `${quote}${JSON.stringify(value.str).slice(1, -1)}${quote}`;
-	}
+	return raw ? `r${quote}(${value.str})${quote}` : `${quote}${JSON.stringify(value.str).slice(1, -1)}${quote}`;
 }
 
 
 /**
- *
+ * A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well.
+ * @param value - the value to print
  */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
@@ -181,9 +168,16 @@ export function stringifyValue(value: Lift<Value>): string {
  * This is the constant-folding view: it answers "is this one known constant" and nothing else. It runs no
  * fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated
  * abstract interpretation in `src/abstract-interpretation/`.
+ * @helper values
  */
 export const RValue = {
-	name: 'RValue',
+	name:            'RValue',
+	/** What the escapes in the content of a string literal stand for; see {@link unescapeRString}. */
+	unescapeString:  unescapeRString,
+	/** What a string literal stands for, raw or not; see {@link contentOf}. */
+	contentOf,
+	/** The string a literal stands for, `undefined` when R would not accept it; see {@link stringFromLiteral}. */
+	ofStringLiteral: stringFromLiteral,
 	/** The number the value stands for, collapsing an interval that admits a single one. */
 	numberOf(this: void, value: Value): number | undefined {
 		if(value.type === 'number') {

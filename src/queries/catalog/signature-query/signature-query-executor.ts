@@ -1,9 +1,11 @@
 import { satisfies as semverSatisfies, validRange } from 'semver';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { BasicQueryData } from '../../base-query-format';
 import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
 	SignatureMatchView, SignaturePackageMatch, SignatureFlowrView
 } from './signature-query-format';
+import { DefaultCallGraphMaxNodes } from './signature-query-format';
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
@@ -11,22 +13,25 @@ import { attachedAlongside } from '../../../project/attached-packages';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
+import type { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import type { ArgProps, BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
-import { ArgProp, CallProps } from '../../../dataflow/environments/built-in-props';
-import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
+import type { BuiltInFnInfo, FnSig } from '../../../dataflow/environments/built-in-props';
+import { ArgProp } from '../../../dataflow/environments/built-in-props';
+import { Identifier, PkgName, ReferenceType } from '../../../dataflow/environments/identifier';
+import { globOf, matchArgs, norm, parseSpec } from '../../../project/sigdb/spec-query';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
-import { groupGenericOf } from '../../../dataflow/environments/group-generics';
+import { groupGenericMembers, groupGenericOf, isGroupGeneric } from '../../../dataflow/environments/group-generics';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { dottedSplits } from '../../../util/text/strings';
+import { compactRecord } from '../../../util/objects';
+import { baseManualTopicUrl, cranMirrorRepoUrl, cranMirrorSourceUrl, cranPageUrl, rdrrTopicUrl, rSourceRef, rSourceUrl } from '../../../util/r-package-urls';
 
-/** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
-export function cranPageUrl(pkg: string): string {
-	return `https://cran.r-project.org/package=${encodeURIComponent(pkg)}`;
-}
+export { cranMirrorSourceUrl, cranPageUrl, rSourceRef, rSourceUrl };
+
 
 /** whether a pattern uses glob wildcards (`*`, `?`) */
 function hasGlob(pattern: string | undefined): boolean {
@@ -39,9 +44,9 @@ function globToRegExp(glob: string): RegExp {
 	return new RegExp(`^${escaped}$`);
 }
 
-/** a name matcher: exact equality, or a glob test when the pattern uses wildcards */
-function nameMatcher(pattern: string): (name: string) => boolean {
-	if(hasGlob(pattern)) {
+/** a name matcher: exact equality, or a glob test when the pattern uses wildcards (unless it is meant literally) */
+function nameMatcher(pattern: string, literal = false): (name: string) => boolean {
+	if(!literal && hasGlob(pattern)) {
 		const re = globToRegExp(pattern);
 		return name => re.test(name);
 	}
@@ -79,14 +84,14 @@ function parameterFilter(q: SignatureQuery): ((fn: DecodedFunction) => boolean) 
 	if(!hasParameterFilter(q)) {
 		return undefined;
 	}
-	const nameMatchers = q.parameters?.map(nameMatcher);
+	const nameMatchers = q.parameters?.map(p => nameMatcher(p));
 	const required = q.requiredParameters;
 	return fn => {
 		if(nameMatchers && !nameMatchers.every(m => fn.signature.some(p => m(p.name)))) {
 			return false;
 		}
 		// required = no default; `...` is never a required parameter to provide
-		return required === undefined || fn.signature.filter(p => p.name !== '...' && !p.optional).length === required;
+		return required === undefined || fn.signature.filter(p => p.name !== '...' && (p.props & ArgProp.NoDefault) !== 0).length === required;
 	};
 }
 
@@ -105,65 +110,22 @@ function releaseMatcher(spec: string): (entry: AvailableVersion) => boolean {
 	return e => byVersion(e.version);
 }
 
-/** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
-const CranGithubMirror = 'https://github.com/cran';
-
-/** the mirror repository of a CRAN package */
-function cranMirrorRepoUrl(pkg: string): string {
-	return `${CranGithubMirror}/${encodeURIComponent(pkg)}`;
-}
-
-/** deep-link a definition into the CRAN mirror at the package's version tag (falling back to `HEAD`) */
-export function cranMirrorSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
-	const ref = version ? encodeURIComponent(version) : 'HEAD';
-	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
-	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
-}
-
-/** read-only GitHub mirror of R's own SVN; base packages live under `src/library/<pkg>` */
-const RSourceMirror = 'https://github.com/wch/r-source';
-
-/**
- * The mirror ref holding an R version. The mirror carries no tags, only a `R-<major>-<minor>-branch` per release
- * series, so a link is exact to the minor release and points at its latest patch; `trunk` stands in when the version
- * is unknown.
- */
-export function rSourceRef(version: string | undefined): string {
-	const series = /^(\d+)\.(\d+)/.exec(version ?? '');
-	return series ? `R-${series[1]}-${series[2]}-branch` : 'trunk';
-}
-
-/** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
-	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
-	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
-}
-
 /** function/topic names that map cleanly to a man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /**
  * Best-effort documentation link: R's own manual for a base package, rdrr.io's `/cran/<pkg>/man/<fn>` for CRAN.
- *
- * Base R does not go to rdrr.io because that serves an older release, so everything R has gained since (`sort_by`,
- * `array2DF`, `chooseOpsMethod`, ...) is a dead link there.
+ * Base R skips rdrr.io since it serves an older release, so anything R has gained since is a dead link there.
  */
 export function helpPageUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
-	if(opts.base) {
-		return `https://stat.ethz.ch/R-manual/R-devel/library/${pkg}/html/${fn}.html`;
-	}
-	if(opts.cran) {
-		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
-	}
-	return undefined;
+	return opts.base ? baseManualTopicUrl(pkg, fn) : opts.cran ? rdrrTopicUrl(pkg, fn) : undefined;
 }
 
 /**
- * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use. rdrr.io only
- * serves a package's current release, so {@link helpPageUrl} silently answers for the wrong version whenever an older
- * one was asked for; this link cannot drift.
+ * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use -- unlike
+ * {@link helpPageUrl}, which silently answers for the wrong version since rdrr.io only serves a current release.
  */
 function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(topic)) {
@@ -181,9 +143,7 @@ function docUrlsFor(pkg: string, fn: DecodedFunction, version: string | undefine
 		return {};
 	}
 	const topic = fn.topic ?? fn.name;
-	const doc = helpPageUrl(pkg, topic, { base, cran });
-	const man = manPageUrl(pkg, topic, version, { base, cran });
-	return { ...(doc ? { docUrl: doc } : {}), ...(man ? { manUrl: man } : {}) };
+	return compactRecord({ docUrl: helpPageUrl(pkg, topic, { base, cran }), manUrl: manPageUrl(pkg, topic, version, { base, cran }) });
 }
 
 /** the source link of a definition: the CRAN mirror at its version tag, or the R sources mirror for a base package */
@@ -199,34 +159,26 @@ function sourceUrlFor(pkg: string, fn: DecodedFunction, version: string | undefi
 
 /** the trailing fields shared by every function view: definition location, source link, and documentation links */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
-	const source = sourceUrlFor(pkg, fn, version, base, cran);
 	return {
-		...(fn.file ? { file: fn.file } : {}),
-		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(source ? { sourceUrl: source } : {}),
+		...compactRecord({ file: fn.file, line: fn.line >= 0 ? fn.line : undefined, sourceUrl: sourceUrlFor(pkg, fn, version, base, cran) }),
 		...docUrlsFor(pkg, fn, version, base, cran)
 	};
-}
-
-/** the {@link ArgProp} bits of `props`, lowercased, as the names to print */
-function argRoles(props: ArgProps): string[] {
-	return Object.entries(ArgProp).filter(([, v]) => typeof v === 'number' && (props & v) !== 0).map(([k]) => k.toLowerCase());
 }
 
 /** the view of one {@link BuiltInFnInfo}: every declared parameter with what it is used for, and what comes back */
 function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): SignatureFlowrView {
 	/* every declared parameter, even one flowR says nothing about, so the answer is the whole signature */
-	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: argRoles(p) }));
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: FunctionSemantics.call.argument.words(p) }));
 	const params = args.map(a => a.name);
 	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
 	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
 	const same = params.every((n, i) => n === sigParams[i]);
-	return {
-		props: CallProps.names([info.props ?? 0, ...info.tags ?? []]).map(name => name.toLowerCase()),
-		...(args.length > 0 ? { args } : {}),
-		...(returns !== undefined ? { returns } : {}),
-		...(params.length > 0 && !same ? { parameters: params } : {})
-	};
+	return compactRecord({
+		props:      FunctionSemantics.call.props.names([info.props ?? 0, ...info.tags ?? []]).map(name => name.toLowerCase()),
+		args:       args.length > 0 ? args : undefined,
+		returns,
+		parameters: params.length > 0 && !same ? params : undefined
+	});
 }
 
 /**
@@ -242,9 +194,8 @@ function flowrView(env: REnvironmentInformation | undefined, pkg: string, name: 
 }
 
 /**
- * The view of a call flowR models itself but the signature database has no entry for: the primitives and
- * operators (`+`, `[`, `if`) that never appear in a package's sources, and anything a flowR configuration
- * adds. `pkg` narrows the lookup when the query named one, otherwise the built-in's own namespace is reported.
+ * The view of a call flowR models itself but the signature database has no entry for: primitives/operators and
+ * anything a flowR configuration adds. `pkg` narrows the lookup when named, else the built-in's own namespace is reported.
  */
 function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: string | undefined, name: string): SignatureFunctionView | undefined {
 	if(env === undefined) {
@@ -255,10 +206,10 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(definition === undefined) {
 		return undefined;
 	}
+	/* a definition that states no props and no signature is still a name flowR defines: `if`, `for`, `while`,
+	   `repeat` and `function` say nothing about themselves, and answering nothing for them would deny a call
+	   flowR very much knows. The view then carries the name alone, with no `flowr` block to state. */
 	const info = queryFnProps(definition.name ?? name, { environment: env });
-	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
-		return undefined;
-	}
 	const group = groupGenericOf(name);
 	const namespace = definition.name === undefined ? undefined : Identifier.getNamespace(definition.name);
 	if(pkg !== undefined && namespace !== undefined && namespace !== pkg) {
@@ -270,12 +221,26 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 		flowrOnly:  true,
 		exported:   true,
 		properties: [],
-		/* flowR states no defaults, so `required` stays `false` throughout; whether R forces a parameter it does know */
-		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, required: false, forced: (p & ArgProp.Forced) !== 0 })),
+		/* whatever the definition states, `NoDefault` included where the formals were read out of a real R */
+		parameters: (info?.sig ?? []).map(([n, p]) => ({ name: n, props: p })),
 		callees:    [],
-		flowr:      flowrViewOf(info, []),
-		...(group ? { s4group: { group } } : {})
+		...(info !== undefined ? { flowr: flowrViewOf(info, []) } : {}),
+		...(s4GroupView(name, group, false))
 	};
+}
+
+/** the {@link SignatureFunctionView.s4group} field for `asked`, answered by the entry `entryName` (`undefined` for none) */
+function s4GroupView(asked: string, group: string | undefined, viaGroup: boolean, entryName: string = asked): { s4group?: SignatureFunctionView['s4group'] } {
+	const groupEntry = isGroupGeneric(entryName) ? entryName : undefined;
+	if(group === undefined && groupEntry === undefined) {
+		return {};
+	}
+	return { s4group: {
+		group: group ?? groupEntry as string,
+		...(viaGroup ? { viaGroup: true } : {}),
+		/* the entry is the group itself, so it answers for every member it covers */
+		...(groupEntry ? { members: groupGenericMembers(groupEntry) } : {})
+	} };
 }
 
 /** the decoded view of one function, adding the CRAN-mirror source link */
@@ -286,22 +251,15 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
 		...(version !== undefined ? { version } : {}),
 		exported:   fn.exported,
 		properties: fn.props,
-		parameters: fn.signature.map(p => ({
-			name:     p.name,
-			required: !p.optional,
-			forced:   p.forced,
-			...(p.default !== undefined ? { default: p.default } : {})
-		})),
-		callees: fn.callees,
+		parameters: fn.signature.map(p => compactRecord({ name: p.name, props: p.props, default: p.default })),
+		callees:    fn.callees,
 		...locationFields(pkg, fn, version, opts.base, opts.cran)
 	};
 }
 
 /**
- * The detailed view of a single function within a package: its signature (parameters, forced/optional,
- * defaults), properties, definition location, call graph, and for a CRAN package a deep link into the
- * read-only CRAN GitHub mirror. `version` defaults to the source's latest; `undefined` when the source does
- * not carry that function.
+ * The detailed view of a single function within a package: signature, properties, definition location, call
+ * graph, and for a CRAN package a deep link into the read-only mirror; `version` defaults to the source's latest.
  */
 export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string, env?: REnvironmentInformation): SignatureFunctionView | undefined {
 	const fns = src.functions(pkg, version) ?? src.functions(pkg);
@@ -330,7 +288,7 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 		...(flowr ? { flowr } : {}),
 		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
 		...(s3method ? { s3method } : {}),
-		...(group ? { s4group: { group, ...(own === undefined ? { viaGroup: true } : {}) } } : {})
+		...(s4GroupView(fnName, group, own === undefined, fn.name))
 	};
 }
 
@@ -369,19 +327,10 @@ function isKnownS3Class(src: PackageSignatureSource, pkg: string, cls: string): 
 	return false;
 }
 
-/** the `generic.class` readings of a dotted name, longest generic first (`as.data.frame.matrix` before `as.data`) */
-function* dottedSplits(name: string): Generator<readonly [generic: string, cls: string]> {
-	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
-		yield [name.slice(0, dot), name.slice(dot + 1)];
-	}
-}
-
 /**
- * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not one.
- *
- * The crawled `s3-method` property settles it when present. It is missing for a base method whose generic lives in
- * another package (`stats` never flags `print.acf`, since `print` is in `base`), so then the prefix must name a
- * dispatching generic and the suffix a registered class. Dropping either check would split `data.frame` or `t.test`.
+ * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not one. The
+ * crawled `s3-method` property settles it when present; otherwise the prefix must name a dispatching generic and
+ * the suffix a registered class (missing for a base method whose generic lives in another package, e.g. `print.acf`).
  */
 function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, fn: DecodedFunction): { generic: string, class: string, package: string } | undefined {
 	const flagged = fn.props.includes('s3-method');
@@ -394,16 +343,12 @@ function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly D
 	return undefined;
 }
 
-/** how many nodes the call-graph render is capped at (cross-package expansion could otherwise explode into base R) */
-const CallGraphMaxNodes = 300;
-
 /**
- * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders:
- * a bare callee is attributed to the first namespace that exports it (the calling package, then its attached
- * `Depends`/`Imports`, then base R), qualified as `owner::fn`, and expanded there. Base R calls are qualified leaves
- * (their internals are noise); explicit `pkg::fn` calls resolve directly. Bounded by {@link CallGraphMaxNodes}.
+ * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders: a
+ * bare callee is attributed to the first namespace exporting it (the calling package, its attached deps, base R),
+ * qualified `owner::fn`, and expanded there (base R stays a leaf). Bounded by `maxNodes` (see {@link SignatureQuery.callGraphMaxNodes}).
  */
-function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string): string {
+function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string, maxNodes: number): string {
 	const bases = new Set(baseRPackages());
 	const exportsCache = new Map<string, ReadonlySet<string>>();
 	const exportsOf = (p: string, v?: string): ReadonlySet<string> => {
@@ -449,7 +394,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 	const edges: string[] = [];
 	const seen = new Set<string>();
 	const queue: { owner: string, ver?: string, name: string, id: string }[] = [{ owner: pkg, ver: version, name: root, id: rootId }];
-	while(queue.length > 0 && nodes.size < CallGraphMaxNodes) {
+	while(queue.length > 0 && nodes.size < maxNodes) {
 		const cur = queue.pop() as { owner: string, ver?: string, name: string, id: string };
 		const key = `${cur.owner}::${cur.name}`;
 		if(seen.has(key)) {
@@ -460,7 +405,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 			const r = resolve(cur.owner, cur.ver, callee);
 			edges.push(`  ${cur.id} --> ${node(r?.owner, r ? r.name : callee)}`);
 			// expand into a resolved same/other CRAN package (not base R, whose internals explode the graph), avoiding cycles
-			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < CallGraphMaxNodes) {
+			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < maxNodes) {
 				queue.push({ owner: r.owner, ver: r.owner === cur.owner ? cur.ver : src.latestVersion(r.owner)?.str, name: r.name, id: node(r.owner, r.name) });
 			}
 		}
@@ -495,28 +440,29 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 	const fnNames = new Set(fns.map(f => f.name));
 	const constants = exports.exported.filter(n => !fnNames.has(n));
 	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
-		.map(d => ({ type: DepTypeNames[d.type], name: d.name, ...(d.constraint ? { constraint: d.constraint } : {}) }));
+		.map(d => compactRecord({ type: DepTypeNames[d.type], name: d.name, constraint: d.constraint }));
 	const release = src.releaseDate(pkg, resolved);
 	const attaches = attachedAlongside(pkg, [src], resolved);
-	return {
+	return compactRecord({
 		name:          pkg,
 		version:       exports.version,
-		...(resolved && resolved !== exports.version ? { resolved } : {}),
+		resolved:      resolved && resolved !== exports.version ? resolved : undefined,
 		base,
 		cran:          exports.cran,
-		...(exports.cranUrl ? { cranUrl: exports.cranUrl } : {}),
-		...(exports.cran && !base ? { cranPage: cranPageUrl(pkg), repoUrl: cranMirrorRepoUrl(pkg) } : {}),
-		...(release && !Number.isNaN(release.getTime()) ? { releaseDate: release.toISOString().slice(0, 10) } : {}),
+		cranUrl:       exports.cranUrl,
+		cranPage:      exports.cran && !base ? cranPageUrl(pkg) : undefined,
+		repoUrl:       exports.cran && !base ? cranMirrorRepoUrl(pkg) : undefined,
+		releaseDate:   release && !Number.isNaN(release.getTime()) ? release.toISOString().slice(0, 10) : undefined,
 		exportsTotal:  exports.exported.length,
 		functionCount: exports.exported.length - constants.length,
 		constants,
 		internalCount: exports.internal.length,
 		deprecated:    exports.deprecated,
-		...(base && src.coreVersions(pkg) ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
+		coreVersions:  base ? src.coreVersions(pkg)?.map(v => v.str) : undefined,
 		dependencies:  deps,
-		...(attaches.length > 0 ? { attaches } : {}),
+		attaches:      attaches.length > 0 ? attaches : undefined,
 		functions:     fns.map(f => decodedToView(pkg, f, exports.version, { cran: exports.cran, base }))
-	};
+	});
 }
 
 /** a few near matches for a mistyped package/symbol (case-insensitive substring), for a friendly hint */
@@ -542,9 +488,8 @@ const ParamPreviewCap = 4;
 
 /**
  * A short preview of a function's parameters for a match, when the query filters by parameter, kept in signature
- * order (highlighting never reorders it): the matched parameters are always shown, padded with leading parameters
- * for context up to {@link ParamPreviewCap} and elided with `…` when any are dropped. Also returns the matched names
- * so the renderer can highlight them. `undefined` when no parameter filter is set.
+ * order: matched parameters always show, padded for context up to {@link ParamPreviewCap} and elided with `…`;
+ * also returns the matched names for highlighting. `undefined` when no parameter filter is set.
  */
 function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview: string[], matched: string[] } | undefined {
 	if(!hasParameterFilter(q)) {
@@ -554,7 +499,7 @@ function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview:
 	const matched = q.parameters?.length
 		? names.filter(n => q.parameters?.some(pat => nameMatcher(pat)(n)))
 		: [];
-	const show = new Set(matched.length > 0 ? matched : fn.signature.filter(p => p.name !== '...' && !p.optional).map(p => p.name));
+	const show = new Set(matched.length > 0 ? matched : fn.signature.filter(p => p.name !== '...' && (p.props & ArgProp.NoDefault) !== 0).map(p => p.name));
 	for(const n of names) {
 		if(show.size >= ParamPreviewCap) {
 			break;
@@ -595,9 +540,8 @@ function allAvailableVersions(sources: readonly PackageSignatureSource[], pkg: s
 }
 
 /**
- * The owning source that actually carries `version`: `current` is checked before `history`, so a
- * latest-version query never decompresses the (large) history shard. Returns the first owner when no version
- * was asked, or `undefined` when an explicit version is carried by none of them.
+ * The owning source that actually carries `version` (`current` before `history`, so a latest-version query never
+ * decompresses the history shard); the first owner when no version was asked, `undefined` if none carries it.
  */
 function sourceForVersion(owning: readonly PackageSignatureSource[], pkg: string, version: string | undefined): PackageSignatureSource | undefined {
 	if(version === undefined) {
@@ -607,7 +551,7 @@ function sourceForVersion(owning: readonly PackageSignatureSource[], pkg: string
 }
 
 /** the message shown when a known package has no release matching the requested version, listing what is available */
-function versionNotFoundMessage(pkg: string, lead: string, avail: readonly string[], base: boolean): string {
+function versionNotFoundMessage(lead: string, avail: readonly string[], base: boolean): string {
 	// only nudge towards a full-history bundle when one is *not* already mounted (a single known version)
 	const hint = !base && avail.length <= 1
 		? ' Only the latest CRAN version is loaded; download the full history with `:signature download` (or mount one with `:signature add <path>`).'
@@ -615,8 +559,148 @@ function versionNotFoundMessage(pkg: string, lead: string, avail: readonly strin
 	return `${lead}${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}`;
 }
 
+/**
+ * Whether a name that reads like a glob is one a source records verbatim: `*` and `%*%` are functions of `base`,
+ * and a name that exists is what was asked for, not a pattern.
+ */
+function isVerbatimFunction(sources: readonly PackageSignatureSource[], pkg: string, name: string, version: string | undefined): boolean {
+	return sources.some(s => s.has(pkg) && ((s.functions(pkg, version) ?? s.functions(pkg))?.some(f => f.name === name) ?? false));
+}
+
+/**
+ * A built-in read as if it were a database record, so the search filters ({@link parameterFilter},
+ * {@link matchedParamPreview}) apply to it unchanged. The required-parameter count is dropped, as only some
+ * definitions state it; {@link builtInMatches} keeps the fallback out of that filter for the same reason.
+ */
+function builtInAsDecoded(name: string, sig: FnSig | undefined): DecodedFunction {
+	return {
+		name,
+		line:      -1,
+		exported:  true,
+		props:     [],
+		signature: (sig ?? []).map(([param, props]) => ({ name: param, props: props & ~ArgProp.NoDefault })),
+		callees:   []
+	};
+}
+
+/** the names flowR's own built-in configuration registers under `pkg`, which a lookup falls back to */
+function builtInNamesOf(pkg: string, index: BuiltInIndex): string[] {
+	return index.entries
+		.filter(e => String(Identifier.getNamespace(e.name) ?? PkgName.Base) === pkg)
+		.map(e => String(Identifier.getName(e.name)));
+}
+
+/**
+ * The fallback a wildcard search takes when no loaded database records a name: the entries of flowR's own
+ * built-in configuration, which is where the primitives and operators (`+`, `[`, `if`) live and which answers
+ * even with no database mounted at all. Only entries the analysis still resolves are reported, so a
+ * configuration that drops the defaults drops them here too, and every hit is marked
+ * {@link SignatureMatchView.flowrOnly}.
+ *
+ * `seen` holds the `pkg::name` keys the database already answered, which win over the built-in view.
+ */
+function builtInMatches(
+	env: REnvironmentInformation | undefined, q: SignatureQuery, literalFunction: boolean,
+	seen: ReadonlySet<string>, room: number, index: BuiltInIndex
+): SignatureMatchView[] {
+	/* only the definitions whose formals were read out of a real R state `NoDefault`, so a required-parameter
+	   count over the built-ins would be a mix of researched and unstated: the fallback stays out of that filter */
+	if(env === undefined || room <= 0 || q.requiredParameters !== undefined) {
+		return [];
+	}
+	const pkgMatch = nameMatcher(q.package as string);
+	const fnMatch = q.function ? nameMatcher(q.function, literalFunction) : () => true;
+	const paramPred = parameterFilter(q);
+	const found: SignatureMatchView[] = [];
+	for(const entry of index.entries) {
+		if(found.length >= room) {
+			break;
+		}
+		const name = String(Identifier.getName(entry.name));
+		const pkg = String(Identifier.getNamespace(entry.name) ?? PkgName.Base);
+		if(!fnMatch(name) || !pkgMatch(pkg) || seen.has(`${pkg}::${name}`)) {
+			continue;
+		}
+		const decoded = builtInAsDecoded(name, entry.sig);
+		if(paramPred && !paramPred(decoded)) {
+			continue;
+		}
+		/* the same resolution the exact lookup uses, so the search never offers a name the detailed view denies */
+		if(flowrOnlyFunctionInfo(env, pkg, name) === undefined) {
+			continue;
+		}
+		const params = matchedParamPreview(decoded, q);
+		found.push({
+			package:   pkg,
+			name,
+			exported:  true,
+			flowrOnly: true,
+			...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
+			...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
+		});
+	}
+	return found;
+}
+
+/**
+ * Folds the built-in fallback ({@link builtInMatches}) into what the databases found, keeping the databases'
+ * answers first and the {@link MaxMatches} cap intact. A package search (no function, no parameter filter)
+ * lists packages rather than functions and is handed back untouched.
+ */
+function withBuiltInFallback(
+	found: Partial<SignatureQueryResult>, env: REnvironmentInformation | undefined,
+	q: SignatureQuery, literalFunction: boolean, index: BuiltInIndex
+): Partial<SignatureQueryResult> {
+	if(found.matches === undefined || found.truncated) {
+		return found;
+	}
+	const seen = new Set(found.matches.map(m => `${m.package}::${m.name}`));
+	const extra = builtInMatches(env, q, literalFunction, seen, MaxMatches - found.matches.length, index);
+	if(extra.length === 0) {
+		return found;
+	}
+	const matches = [...found.matches, ...extra];
+	return { ...found, matches, matchCount: matches.length };
+}
+
+/**
+ * The functions flowR's built-in configuration states a match for, for a spec like `p*([alias]) [invisible]`:
+ * the name (glob, `/regex/`, or a part of it), the roles of the arguments in order, and the call properties.
+ * The databases record none of the roles or properties, so only the built-ins can answer.
+ */
+function searchBuiltInSpec(spec: string, index: BuiltInIndex): Partial<SignatureQueryResult> {
+	const { rest, nameRegex, args, props } = parseSpec(spec);
+	const qualified = /^([\w.]+):::?(.*)$/.exec(rest);
+	const named = (qualified?.[2] ?? rest).trim();
+	const glob = nameRegex ?? globOf(named);
+	const needle = glob === undefined ? named.toLowerCase() : '';
+	const matches: SignatureMatchView[] = [];
+	let truncated = false;
+	for(const entry of index.entries) {
+		const name = String(Identifier.getName(entry.name));
+		const pkg = String(Identifier.getNamespace(entry.name) ?? PkgName.Base);
+		if((qualified && qualified[1] !== pkg) || (glob ? !glob.test(name) : !name.toLowerCase().includes(needle))) {
+			continue;
+		}
+		const have = FunctionSemantics.call.props.names([entry.props ?? 0, ...entry.tags ?? []]).map(norm);
+		if(!props.every(p => have.includes(p))) {
+			continue;
+		}
+		const sig = (entry.sig ?? []).map(([n, p]) => [n, FunctionSemantics.call.argument.words(p)] as const);
+		if(args !== undefined && (entry.sig === undefined || !matchArgs(args, sig))) {
+			continue;
+		}
+		if(matches.length >= MaxMatches) {
+			truncated = true;
+			break;
+		}
+		matches.push({ package: pkg, name, exported: true, flowrOnly: true, ...(sig.length > 0 ? { parameters: sig.map(([n]) => n) } : {}) });
+	}
+	return { matches, matchCount: matches.length, searched: index.entries.length, truncated };
+}
+
 /** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
-function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery): Partial<SignatureQueryResult> {
+function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery, literalFunction = false): Partial<SignatureQueryResult> {
 	const cap = MaxMatches;
 	const pkgMatch = nameMatcher(q.package as string);
 	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
@@ -656,10 +740,10 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 		return { packages, truncated };
 	}
 
-	const fnMatch = q.function ? nameMatcher(q.function) : () => true;
+	const fnMatch = q.function ? nameMatcher(q.function, literalFunction) : () => true;
 	// an exact function name lets us seek that one record (decoding only it) instead of decoding every function of
 	// every package, the difference between a fast `* ggplot` and one that decodes the whole database
-	const exactName = q.function !== undefined && !hasGlob(q.function);
+	const exactName = q.function !== undefined && (literalFunction || !hasGlob(q.function));
 	const matches: SignatureMatchView[] = [];
 	let searched = 0;
 	let truncated = false;
@@ -817,7 +901,9 @@ function collectShardStatus(sources: readonly PackageSignatureSource[]): ShardSt
 export async function executeSignatureQuery({ analyzer }: BasicQueryData, queries: readonly SignatureQuery[]): Promise<SignatureQueryResult> {
 	const start = Date.now();
 	const q = queries[queries.length - 1] ?? { type: 'signature' };
-	const deps = analyzer.inspectContext().deps;
+	const ctx = analyzer.inspectContext();
+	const deps = ctx.deps;
+	const builtIns = ctx.env.builtInIndex;
 	const databases: SignatureDatabaseView[] = deps.loadedSignatureDatabases()
 		.map(d => ({ scope: d.scope, version: d.version, date: d.date }));
 	// the plugin's loaded sources (bundled default + $FLOWR_SIGDB + anything added at runtime), so the query
@@ -830,28 +916,40 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		}
 	}
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
+	/* one clean environment for every built-in lookup of this query, as building one is not free */
+	let cleanEnv: REnvironmentInformation | undefined;
+	const env = () => cleanEnv ??= ctx.env.makeCleanEnv();
 	/* the built-in environment answers for the primitives no package's sources contain, see flowrOnlyFunctionInfo */
-	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(analyzer.inspectContext().env.makeCleanEnv(), pkg, name);
+	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(env(), pkg, name);
+
+	if(q.flowr !== undefined) {
+		return { ...meta(), ...searchBuiltInSpec(q.flowr, builtIns) };
+	}
 
 	if(!q.package) {
 		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
-		return { ...meta(), shards: collectShardStatus(sources) };
+		return { ...meta(), shards: collectShardStatus(sources), builtInCount: builtIns.entries.length };
 	}
 
 	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
 	// a date bound), or a parameter filter (which narrows a set of functions and so always goes through the search path)
-	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
-		const found = searchSources(sources, packages, q);
+	// a function name of one exact package that the database or flowR itself knows verbatim (`base::*`, `base::%*%`)
+	// names that function, so the exact answer wins over reading the name as a glob
+	const literalFunction = q.function !== undefined && hasGlob(q.function) && !hasGlob(q.package)
+		&& (isVerbatimFunction(sources, q.package, q.function, q.version) || builtIn(q.package, q.function) !== undefined);
+	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function) && !literalFunction) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
+		// what the databases record, then what only flowR's built-in configuration states (marked as such)
+		const found = withBuiltInFallback(searchSources(sources, packages, q, literalFunction), env(), q, literalFunction, builtIns);
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
 		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
 			const owning = sources.filter(s => s.has(q.package as string));
 			if(owning.length > 0) {
 				const avail = allAvailableVersions(owning, q.package);
-				return { ...meta(), message: versionNotFoundMessage(q.package, `no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
+				return { ...meta(), message: versionNotFoundMessage(`no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
 			}
 		}
-		if(found.matchCount === 0 && q.function !== undefined && !hasGlob(q.function)) {
+		if(found.matchCount === 0 && q.function !== undefined && (literalFunction || !hasGlob(q.function))) {
 			return { ...meta(), ...found, message: `No function named exactly '${q.function}'. Try a wildcard like '*${q.function}*'.` };
 		}
 		return { ...meta(), ...found };
@@ -872,13 +970,13 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const src = sourceForVersion(owning, q.package, version);
 	if(q.version !== undefined && src === undefined) {
 		const avail = allAvailableVersions(owning, q.package);
-		return { ...meta(), message: versionNotFoundMessage(q.package, `'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
+		return { ...meta(), message: versionNotFoundMessage(`'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
 	}
 	const resolvedSrc = src ?? owning[0];
 	if(q.function) {
-		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, analyzer.inspectContext().env.makeCleanEnv());
+		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, env());
 		if(fn) {
-			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
+			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name, q.callGraphMaxNodes ?? DefaultCallGraphMaxNodes) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
 		}
 		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself
@@ -891,11 +989,14 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 			...(exports?.exported ?? []),
 			...(resolvedSrc.functions(q.package, version) ?? resolvedSrc.functions(q.package) ?? []).map(f => f.name)
 		]);
+		// what the database cannot offer, flowR's own configuration still can; kept apart so the two are never confused
+		const fromBuiltIns = builtInNamesOf(q.package, builtIns).filter(n => !universe.has(n));
 		return {
 			...meta(),
-			package:     signaturePackageInfo(resolvedSrc, q.package, version),
-			message:     `'${q.package}' does not define '${q.function}'.`,
-			suggestions: suggest(universe, q.function)
+			package:            signaturePackageInfo(resolvedSrc, q.package, version),
+			message:            `'${q.package}' does not define '${q.function}'.`,
+			suggestions:        suggest(universe, q.function),
+			builtInSuggestions: suggest(fromBuiltIns, q.function)
 		};
 	}
 	return { ...meta(), package: signaturePackageInfo(resolvedSrc, q.package, version) };

@@ -4,6 +4,7 @@ import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { Identifier } from './identifier';
 import type { BuiltInFnInfo } from './built-in-props';
+import type { DeprecatedFunctionInformation } from './deprecation-info';
 
 export interface BaseBuiltInDefinition {
 	/** The type of the built-in configuration */
@@ -12,6 +13,8 @@ export interface BaseBuiltInDefinition {
 	readonly names:            Identifier[];
 	/** Should we assume that the value is a primitive? */
 	readonly assumePrimitive?: boolean;
+	/** Set when this entry deliberately re-states a name an earlier entry defines; without it a repeated name is an accident, and a test says so. */
+	readonly overrides?:       boolean;
 }
 
 /**
@@ -34,7 +37,7 @@ type ConfigOfProcessor<P extends keyof typeof BuiltInProcessorMapper> = ConfigOf
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
 	readonly type:         'function';
 	readonly processor:    BuiltInProcessor;
-	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean };
+	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean, deprInfo?: DeprecatedFunctionInformation };
 	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	readonly evalHandler?: BuiltInEvalName
 }
@@ -59,7 +62,6 @@ export type AnyBuiltInDefinition = BuiltInConstantDefinition<unknown> | AnyBuilt
  */
 export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }];
 
-
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.
  */
@@ -71,21 +73,30 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
 	return builtIns;
 }
 
+/** {@link DefaultBuiltinConfig} registered once; safe to share, as the environment adopts its maps copy-on-write. */
+let sharedDefaults: BuiltIns | undefined;
+
+/** The registered built-ins together with the definition list they were registered from. */
+export interface ConfiguredBuiltIns {
+	readonly builtIns:    BuiltIns;
+	readonly definitions: BuiltInDefinitions;
+}
+
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions.
- * @param definitions - the list of built-in definitions
+ * @param definitions  - the list of built-in definitions
  * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
  */
-export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): BuiltIns {
-	let builtIns = new BuiltIns();
-
-	if(loadDefaults) {
-		builtIns = getDefaultBuiltInDefinitions();
+export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): ConfiguredBuiltIns {
+	if(loadDefaults && definitions.length === 0) {
+		return { builtIns: sharedDefaults ??= getDefaultBuiltInDefinitions(), definitions: DefaultBuiltinConfig };
 	}
+
+	const builtIns = loadDefaults ? getDefaultBuiltInDefinitions() : new BuiltIns();
 
 	for(const definition of definitions) {
 		builtIns.registerBuiltInDefinition(definition);
 	}
 
-	return builtIns;
+	return { builtIns, definitions: !loadDefaults ? definitions : [...DefaultBuiltinConfig, ...definitions] };
 }

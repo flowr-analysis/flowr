@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
@@ -9,21 +10,20 @@ import { contextFromInput } from '../../../../../src/project/context/flowr-analy
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { interpolationsOf } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-string-template';
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
-import { recoverName } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
-import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 
 /** Whether the definition at the criterion is linked to anything, which a template only does for real code. */
 describe('Dataflow', withTreeSitter(ts => {
 	describe('string templates', () => {
 		function assertLinked(name: string, code: string, criterion: SlicingCriterion, linked: boolean): void {
-			test(label(name, ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
+			test(label(name, ['function-calls', 'built-in-evaluation', 'string-templates'], ['dataflow']), async() => {
 				const analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> =
 					await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
 				const graph = analysis.dataflow.graph;
 				const id = SlicingCriterion.parse(criterion, analysis.normalize.idMap);
 				guard(id !== undefined);
-				const edges = [...graph.ingoingEdges(id) ?? NoEdges, ...graph.outgoingEdges(id) ?? NoEdges];
+				const edges = [...graph.edgesTo(id), ...graph.edgesFrom(id)];
 				assert.strictEqual(edges.some(([, e]) => DfEdge.includesType(e, EdgeType.Reads)), linked);
 			});
 		}
@@ -50,10 +50,27 @@ describe('Dataflow', withTreeSitter(ts => {
 		assertLinked('cli interpolates plain braces', 'library(cli)\nx <- 5\ncli_alert_info("v={x}")', '2@x', true);
 		assertLinked('cli markup wraps an interpolation', 'library(cli)\nx <- 5\ncli_alert_info("{.val {x}}")', '2@x', true);
 		assertLinked('cli markup text is no code', 'library(cli)\nthing <- 5\ncli_text("{.strong thing}")', '2@thing', false);
-		test(label('cli_abort stays an error exit rather than a template', ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
+		test(label('cli_abort stays an error exit rather than a template', ['function-calls', 'built-in-evaluation', 'string-templates'], ['dataflow']), async() => {
 			const analysis = await createDataflowPipeline(ts, { context: contextFromInput('library(cli)\ncli_abort("boom")') }).allRemainingSteps();
-			const call = [...analysis.dataflow.graph.verticesOfType(VertexType.FunctionCall)].find(([id]) => recoverName(id, analysis.dataflow.graph.idMap) === 'cli_abort');
+			const call = [...analysis.dataflow.graph.verticesOfType(VertexType.FunctionCall)].find(([id]) => NodeId.recoverName(id, analysis.dataflow.graph.idMap) === 'cli_abort');
 			assert.isTrue((call?.[1].origin as readonly string[] | undefined)?.includes(BuiltInProcName.Stop));
+		});
+
+		test(label('every interpolation of one template gets a vertex of its own', ['function-calls', 'built-in-evaluation', 'string-templates'], ['dataflow']), async() => {
+			const code = 'library(glue)\nuser <- 1\nn <- 2\nglue("hi {user}, {n} items")';
+			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+			const graph = analysis.dataflow.graph;
+			/* the two interpolations are separate reads, so neither may end up merged into the other's vertex */
+			const reads = new Map<string, NodeId[]>();
+			for(const [id] of graph.verticesOfType(VertexType.Use)) {
+				const to = Dataflow.targetsOf(graph, id, EdgeType.Reads);
+				if(to.length > 0) {
+					reads.set(String(id), to);
+				}
+			}
+			const named = (id: NodeId) => NodeId.recoverName(id, analysis.normalize.idMap);
+			const targets = [...reads.values()].map(list => list.map(named).sort().join(','));
+			assert.deepStrictEqual(targets.sort(), ['n', 'user'], `each interpolation reads one name, got ${JSON.stringify([...reads])}`);
 		});
 
 		assertLinked('a plain string stays a string', 'x <- 5\nprint("{x}")', '1@x', false);

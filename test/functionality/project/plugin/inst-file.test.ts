@@ -5,6 +5,8 @@ import { FlowrConfig } from '../../../../src/config';
 import {
 	FlowrAnalyzerMetaInstFilesPlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-inst-file-plugin';
+import { FlowrAnalyzerMetaTestFilesPlugin } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-test-file-plugin';
+import { FlowrAnalyzerMetaVignetteFilesPlugin } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-vignette-file-plugin';
 
 
 describe('Inst-file', function() {
@@ -41,4 +43,20 @@ describe('Inst-file', function() {
 			'A normal R/foo.R file should not be marked as Installed'
 		);
 	});
+});
+
+describe('Folder roles match whole path segments only', () => {
+	for(const [plugin, matched, unmatched] of [
+		[new FlowrAnalyzerMetaTestFilesPlugin(), ['pkg/tests/a.R', 'tests/testthat/test-a.R', 'pkg/inst/tests/a.R', 'C:\\pkg\\tests\\a.R'], ['/tmp/test-workspace/pkg/R/f.R', '/home/u/contests/f.R', 'pkg/R/tests.R', 'pkg/latest/f.R']],
+		[new FlowrAnalyzerMetaVignetteFilesPlugin(), ['pkg/vignettes/intro.Rmd', 'C:\\pkg\\vignettes\\intro.Rmd'], ['/home/u/vignettes-draft/pkg/R/f.R', 'pkg/R/vignette.R']]
+	] as const) {
+		test(plugin.name, () => {
+			for(const path of matched) {
+				assert.isTrue(plugin.applies(path), path);
+			}
+			for(const path of unmatched) {
+				assert.isFalse(plugin.applies(path), path);
+			}
+		});
+	}
 });

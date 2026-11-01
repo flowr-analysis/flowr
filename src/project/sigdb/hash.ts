@@ -7,8 +7,11 @@ import { Hash53 } from '../../util/hash';
 import type { PkgBlob, SigDb } from './schema';
 import { blobTuple } from './decode';
 
+/** a bundle as it is hashed: the dictionary in any form that names its strings in order */
+type Hashable = Omit<Pick<SigDb, 'strings' | 'blobs' | 'pkgs' | 'meta'>, 'strings'> & { strings: Iterable<string> };
+
 /** the JSON chunks a bundle is hashed over: every dictionary string, every blob tuple, then the pkgs + meta maps */
-function* hashChunks(db: Pick<SigDb, 'strings' | 'blobs' | 'pkgs' | 'meta'>): Generator<string> {
+function* hashChunks(db: Hashable): Generator<string> {
 	for(const s of db.strings) {
 		yield JSON.stringify(s);
 	}
@@ -29,12 +32,12 @@ export function hashOf(chunks: Iterable<string>): string {
 }
 
 /** the self-contained content hash of a whole bundle (dictionary + blobs + routing/metadata) */
-export function contentHash(db: Pick<SigDb, 'strings' | 'blobs' | 'pkgs' | 'meta'>): string {
+export function contentHash(db: Hashable): string {
 	return hashOf(hashChunks(db));
 }
 
 /** stable hash of a shared dictionary */
-export function dictionaryHash(strings: readonly string[]): string {
+export function dictionaryHash(strings: Iterable<string>): string {
 	return hashOf((function*() {
 		for(const s of strings) {
 			yield JSON.stringify(s);

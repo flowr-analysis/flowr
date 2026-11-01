@@ -17,7 +17,7 @@ import { fileProtocol } from '../../../r-bridge/retriever';
 export interface FilesQuery extends BaseQueryFormat {
 	readonly type:              'files';
 	/** If you provide roles, only files with all the given roles are returned. Supply multiple queries if you want a union! */
-	readonly roles?:            FileRole[],
+	readonly roles?:            readonly FileRole[],
 	readonly matchesPathRegex?: string;
 }
 
@@ -75,7 +75,7 @@ function filesQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	} else if(line.length > 0) {
 		input = line[0];
 	}
-	return { query: [{ type: 'files', roles }], rCode: input } ;
+	return { query: [{ type: 'files', roles }], rCode: input };
 }
 
 function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {

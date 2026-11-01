@@ -1,4 +1,4 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
@@ -7,17 +7,15 @@ import type {
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
-import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
-import { type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
+import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, sliceRemovalParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
+import { summarizeSliceResults, type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
 import { SliceDirection } from '../../../util/slice-direction';
+import type { staticRemovalSlice } from '../../../slicing/static/removal-slice';
 
 /** Calculates and returns the static backward or forward slice from the given criteria */
 export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
@@ -26,6 +24,12 @@ export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
 	readonly criteria:   SlicingCriteria,
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	readonly direction?: SliceDirection
+	/**
+	 * Compute the removal slice instead (see {@link staticRemovalSlice}): the code that only exists for the criteria,
+	 * which can go while the rest keeps working. The result holds the removed statements, and the reconstruction is the
+	 * program without them. Ignores the {@link StaticSliceQuery#direction|direction}.
+	 */
+	readonly removal?:   boolean
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
@@ -33,8 +37,9 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	 * only contains the results of the slice steps to not repeat ourselves, this does not contain the reconstruction
 	 * if you set the {@link SliceQueryOptions#noReconstruction|noReconstruction} flag.
 	 *
-	 * The keys are serialized versions of the used queries (i.e., the result of `JSON.stringify`).
-	 * This implies that multiple slice queries with the same query configuration will _not_ be re-executed.
+	 * The keys are the {@link SliceQueryOptions#name|name} each query was given, and the serialized query
+	 * (i.e., the result of `JSON.stringify`) for the ones given none. Without a name, multiple slice queries
+	 * with the same query configuration are therefore _not_ re-executed.
 	 */
 	results: Record<string,
 		(Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
@@ -62,10 +67,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	const direction = sliceDirectionParser(line[0]);
 	const options = sliceQueryOptionsParser(line[0]);
 	if(!criteria || criteria.length === 0) {
-		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		output.stderr(SliceCriterionHelp);
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"', SliceCriterionHelp);
 	}
 	warnAboutSliceFlags(output, line[0], StaticSliceFlags);
 
@@ -74,55 +76,26 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 			type:      'static-slice',
 			criteria:  criteria,
 			direction: direction,
-			...options
-		}], rCode: queryLineCode(line) } ;
+			...options,
+			...sliceRemovalParser(line[0]) ? { removal: true } : {}
+		}], rCode: queryLineCode(line) };
 }
 
 export const StaticSliceQueryDefinition = {
 	title:           'Static Slice Query',
 	executor:        executeStaticSliceQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
-		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
-		if(Object.keys(out.results).length === 1) {
-			// just print the single result without fingerprint
-			const [, obj] = Object.entries(out.results)[0];
-			if('reconstruct' in obj) {
-				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
-				if(code.length === 1) {
-					result.push(
-						code[0]
-					);
-					return true;
-				}
-			}
-		}
-		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [fingerprint, obj] of Object.entries(out.results)) {
-			const { criteria, noMagicComments, noReconstruction } = JSON.parse(fingerprint) as StaticSliceQuery;
-			const addons = [];
-			if(noReconstruction) {
-				addons.push('no reconstruction');
-			}
-			if(noMagicComments) {
-				addons.push('no magic comments');
-			}
-			result.push(`   ╰ Slice for {${criteria.join(', ')}} ${addons.join(', ')}`);
-			if('reconstruct' in obj) {
-				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
-				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');
-			} else {
-				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
-			}
-		}
-		return true;
-	},
+	asciiSummarizer: (formatter, _analyzer, queryResults, result): boolean => summarizeSliceResults<StaticSliceQuery>(
+		formatter, 'static-slice', queryResults as QueryResults<'static-slice'>['static-slice'], result,
+		(key, q) => `Slice ${q === undefined ? `"${key}"` : `for {${q.criteria.join(', ')}}`}`
+	),
 	fromLine:  sliceQueryLineParser,
 	completer: criteriaQueryCompleter,
-	syntax:    '@static-slice (<crit>;...)[fiIcB] <code | file://path>',
+	syntax:    `@static-slice (<crit>;...)[${StaticSliceFlags.map(f => f.flag).join('')}] <code | file://path>`,
 	schema:    Joi.object({
 		type:      Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:  Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		direction: Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.'),
+		removal:   Joi.boolean().optional().description('Compute the removal slice instead: the code that only exists for the criteria, which can go while the rest keeps working. The result holds the removed statements, the reconstruction the program without them.'),
 		...SliceQueryOptionsSchema
 	}).description('Slice query used to slice the dataflow graph'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {

@@ -1,22 +1,25 @@
-import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { unpackArg } from '../argument/unpack-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { EdgeType } from '../../../../../graph/edge';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { ControlFlow } from '../../../../control-flow';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -28,9 +31,7 @@ interface S3DispatchConfig {
 	inferFromClosure?: boolean
 }
 
-/**
- * Process an S3 dispatch call like `UseMethod`.
- */
+/** Process an S3 dispatch call like `UseMethod`. */
 export function processS3Dispatch<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -43,20 +44,20 @@ export function processS3Dispatch<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const params = {
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), {
 		[config.args.generic]: 'generic',
 		[config.args.object]:  'object',
 		'...':                 '...'
-	};
-	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
-	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
+	});
+	const generic = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
+	const obj = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('object')?.[0]));
 	const dfObj = obj ? processDataflowFor(obj, data) : DataflowInformation.initialize(rootId, data);
+	const fnRef = { nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function };
 
-	if(ControlFlow.alwaysExits(dfObj)) {
+	if(ControlFlow.alwaysExits(dfObj, data.cds)) {
 		patchFunctionCall({
 			nextGraph:             dfObj.graph,
 			rootId,
@@ -77,24 +78,31 @@ export function processS3Dispatch<OtherInfo>(
 			argumentProcessResult: [dfObj],
 			origin:                BuiltInProcName.S3DispatchNext
 		});
-		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
-		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
-		const cfgEntry = ControlFlow.inSequence(dfObj.graph, [dfObj], rootId);
+		/* the next method receives the current values of the formals of the method it is called from */
+		const idMap = data.completeAst.idMap;
+		const enclosing = idMap.get(RNode.findEnclosing(rootId, idMap, RFunctionDefinition.is) ?? rootId);
+		const formals = RFunctionDefinition.is(enclosing) ? enclosing.parameters : [];
+		const formalReads = formals.map(param => ({ nodeId: rootId, name: param.name.content, cds: data.cds, type: ReferenceType.Variable }));
 		return {
 			hooks:             dfObj.hooks,
 			environment:       dfObj.environment,
 			exitPoints:        dfObj.exitPoints,
 			graph:             dfObj.graph,
 			entryPoint:        rootId,
-			cfgEntry,
+			cfgEntry:          ControlFlow.inSequence(dfObj.graph, [dfObj], rootId),
 			cfgExit:           rootId,
-			in:                ingoing,
+			in:                [...dfObj.in, ...dfObj.unknownReferences, fnRef, ...formalReads],
 			out:               dfObj.out,
 			unknownReferences: []
 		};
 	}
 
+	/* in `g <- "p"; f <- function(x) UseMethod(g)` the generic is the value of `g` where `f` is defined */
 	const accessedIdentifiers = NodeValue.knownStringsOf(generic.info.id, data);
+	if(accessedIdentifiers.length === 0 && RSymbol.is(generic)) {
+		const bound = data.environment.current.lookupLexically(Identifier.getName(generic.content)) ?? [];
+		accessedIdentifiers.push(...bound.flatMap(d => d.type === ReferenceType.BuiltInConstant || d.type === ReferenceType.BuiltInFunction ? [] : d.value ?? []).flatMap(value => NodeValue.knownStringsOf(value, data)));
+	}
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s3 dispatch with non-resolvable generic, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -125,24 +133,20 @@ export function processS3Dispatch<OtherInfo>(
 		argumentProcessResult: [dfGeneric, dfObj],
 		origin:                BuiltInProcName.Function
 	});
+	/* the method runs only as the dispatch does */
+	dfGeneric.graph.addEdge(generic.info.id, rootId, EdgeType.Reads);
 
-
-	const ingoing = dfObj.in.concat(dfGeneric.in, dfObj.unknownReferences, dfGeneric.unknownReferences);
-	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
-	for(const id of accessedIdentifiers) {
-		ingoing.push({ nodeId: generic.info.id, name: id, cds: data.cds, type: ReferenceType.S3MethodPrefix });
-	}
 	const graph = dfObj.graph.mergeWith(dfGeneric.graph);
-	const cfgEntry = ControlFlow.inSequence(graph, [dfGeneric, dfObj], rootId);
+	const methodPrefixes = accessedIdentifiers.map(id => ({ nodeId: generic.info.id, name: id, cds: data.cds, type: ReferenceType.S3MethodPrefix }));
 	return {
-		hooks:             dfGeneric.hooks.concat(dfObj?.hooks),
+		hooks:             dfGeneric.hooks.concat(dfObj.hooks),
 		environment:       dfGeneric.environment,
 		exitPoints:        dfObj.exitPoints.concat(dfGeneric.exitPoints),
 		graph,
 		entryPoint:        rootId,
-		cfgEntry,
+		cfgEntry:          ControlFlow.inSequence(graph, [dfGeneric, dfObj], rootId),
 		cfgExit:           rootId,
-		in:                ingoing,
+		in:                [...dfObj.in, ...dfGeneric.in, ...dfObj.unknownReferences, ...dfGeneric.unknownReferences, fnRef, ...methodPrefixes],
 		out:               dfGeneric.out.concat(dfObj.out),
 		unknownReferences: []
 	};

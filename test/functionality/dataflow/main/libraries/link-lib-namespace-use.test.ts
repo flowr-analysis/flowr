@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
@@ -8,6 +8,8 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
+
+assumeLoadedPackages('import');
 
 describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 	const twoExports = (a: FlowrAnalyzer): void => {
@@ -29,6 +31,17 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 
 	assertDataflow(label('import::from attaches only the named symbol', ['library-loading', 'search-path']), ts,
 		'import::from(pkgA, fa)\nfa()\nfb()',
+		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
+
+	/* R attaches only part of the exports for these (checked against R with dplyr's `filter`) */
+	assertDataflow(label('library include.only attaches only the named symbols', ['library-loading', 'search-path']), ts,
+		'library(pkgA, include.only = c("fa"))\nfa()\nfb()',
+		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
+
+	assertDataflow(label('require exclude leaves the named symbols out', ['library-loading', 'search-path']), ts,
+		'require(pkgA, exclude = "fb")\nfa()\nfb()',
 		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
 		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
 

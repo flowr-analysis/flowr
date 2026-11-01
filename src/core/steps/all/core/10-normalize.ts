@@ -39,6 +39,6 @@ export const NORMALIZE = {
 	processor,
 	executed:          PipelineStepStage.OncePerFile,
 	printer:           NormalizePrinters,
-	dependencies:      [ 'parse' ],
+	dependencies:      ['parse'],
 	requiredInput:     undefined as unknown as NormalizeRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>;

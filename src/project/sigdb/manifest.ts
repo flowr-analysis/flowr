@@ -4,6 +4,7 @@
  * out of `../sigdb` as pure format + filesystem discovery, with no dependency on the reader/writer classes.
  */
 import fs from 'fs';
+import { compareByCodeUnit } from '../../util/text/strings';
 import path from 'path';
 import { SigDbExt, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
@@ -103,16 +104,24 @@ const ManifestFilePattern = new RegExp(`\\.manifest\\.json${CompressedExtPattern
 /** a `<name>.sigs.ndjson` bundle, in any of the codecs we can read */
 const BundleFilePattern = new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`);
 
-function sigDbBundleDirs(watched?: [string, number][]): string[] {
+/** the bundle directories in the cache, the most recently synced first (it takes precedence) */
+export function sigDbBundleDirs(watched?: [string, number][]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
 	try {
 		const bundles = path.join(sigDbCacheDir(undefined, false), 'bundles');
 		const mtimeMs = fs.statSync(bundles).mtimeMs;
+		/* a bundle of every release synced so far stays in the cache, and the first one found wins: the most recently
+		   synced comes first, or an update to a release that happens to sort before the old one would be ignored */
 		const dirs = fs.readdirSync(bundles, { withFileTypes: true })
 			.filter(e => e.isDirectory())
-			.map(e => path.join(bundles, e.name));
+			.map(e => {
+				const dir = path.join(bundles, e.name);
+				return { dir, mtimeMs: fs.statSync(dir).mtimeMs };
+			})
+			.sort((a, b) => b.mtimeMs - a.mtimeMs)
+			.map(e => e.dir);
 		watched?.push([bundles, mtimeMs]);   // a bundle directory appearing here has to be picked up too
 		return dirs;
 	} catch{
@@ -190,11 +199,6 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
  * bundle dropped next to the shipped ones bumps that directory and the next call rescans.
  */
 const defaultSigDbPathsMemo = new Map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>();
-
-/** Forget what {@link defaultSigDbPaths} discovered, so the next call scans the filesystem again. */
-export function clearDefaultSigDbPathsMemo(): void {
-	defaultSigDbPathsMemo.clear();
-}
 
 /** Whether every directory the memoized scan read still carries the modification time it had back then */
 function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[]): boolean {
@@ -278,7 +282,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	// a standalone bundle is a `.sigs.ndjson` that is not a shard of a discovered manifest (`<manifest>.<shard>...`)
 	const prefixes = [...manifests.keys()].map(k => k.replace(/\.manifest\.json$/, ''));
 	const isShard = (name: string): boolean => {
-		const base = name.replace(new RegExp(`${SigDbExt.replace('.', '\\.')}$`), '');
+		const base = name.replace(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}$`), '');
 		return prefixes.some(p => base === p || base.startsWith(p + '.'));
 	};
 	const scopeRank = (name: string): number => {
@@ -286,7 +290,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 		return scope === -1 ? SigDbScopeOrder.length : scope;   // custom bundles sort after the known scopes
 	};
 	const orderedManifests = [...manifests.entries()]
-		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || a[0].localeCompare(b[0])).map(([, p]) => p);
+		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || compareByCodeUnit(a[0], b[0])).map(([, p]) => p);
 	const bundles = standalones.entries().filter(([name]) => !isShard(name)).map(([, p]) => p);
 	const paths = [...orderedManifests, ...bundles];
 	defaultSigDbPathsMemo.set(memoKey, { paths, watched });

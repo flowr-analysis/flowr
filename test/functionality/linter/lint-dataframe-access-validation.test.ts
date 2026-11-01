@@ -1,9 +1,12 @@
 import { describe } from 'vitest';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import type { DataFrameAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
-import { assertLinter } from '../_helper/linter';
-import { withTreeSitter } from '../_helper/shell';
+import { assertLinter, assertLintedLines } from '../_helper/linter';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { SourceRange } from '../../../src/util/range';
+import { decorateLabelContext, label } from '../_helper/label';
+
+assumeLoadedPackages('dplyr', 'magrittr');
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Data frame access validation', () => {
@@ -37,7 +40,7 @@ df3 <- df1 %>%
 
 print(df3${access})
 			`.trim();
-		};
+		}
 
 		describe('Valid data frame access', () => {
 			const testCases: string[] = [
@@ -88,7 +91,6 @@ print(df3${access})
 			];
 
 			for(const test of testCases) {
-				/* @ignore-in-wiki */
 				assertLinter(test, parser, test, 'dataframe-access-validation', []);
 			}
 		});
@@ -145,9 +147,14 @@ print(df3${access})
 			];
 
 			for(const [test, result] of testCases) {
-				/* @ignore-in-wiki */
 				assertLinter(test, parser, test, 'dataframe-access-validation', [{ ...result, certainty: LintingResultCertainty.Certain }]);
 			}
+		});
+
+		describe('Partial matching', () => {
+			assertLinter('dollar matches a prefix', parser, 'df <- data.frame(id = 1:5, value = "A")\ndf$val', 'dataframe-access-validation', []);
+			assertLinter('double bracket does not', parser, 'df <- data.frame(id = 1:5, value = "A")\ndf[["val"]]', 'dataframe-access-validation',
+				[{ type: 'column', accessed: 'val', access: '[[', operand: 'df', loc: [2, 1, 2, 11], certainty: LintingResultCertainty.Certain }]);
 		});
 
 		describe('Documentation test cases', () => {
@@ -212,4 +219,5 @@ print(df3${access})
 			);
 		});
 	});
+	assertLintedLines(decorateLabelContext(label('deps: a function handed to across is no column', ['name-normal', 'function-calls']), ['dataflow']), parser, 'library(dplyr)\ndf <- data.frame(a = 1:2)\nmutate(df, across(everything(), as.character))', 'dataframe-access-validation', []);
 }));

@@ -3,8 +3,9 @@
  * @module
  */
 import type ignore from 'ignore';
-import { toPosixPath } from './files';
+import { RPath } from './files';
 import { log } from './log';
+import { compileRegex } from './text/regex';
 
 const rbuildignoreLog = log.getSubLogger({ name: 'rbuildignore' });
 
@@ -17,7 +18,7 @@ export function loadIgnore(): typeof ignore {
 
 /** `ignore` rejects absolute and windows paths */
 function relative(filePath: string): string {
-	return toPosixPath(filePath).replace(/^([a-zA-Z]:)?\/+/, '');
+	return RPath.of(filePath).replace(/^([a-zA-Z]:)?\/+/, '');
 }
 
 /**
@@ -43,10 +44,11 @@ export function rbuildignoreMatcher(content: string): (relativePath: string) => 
 		if(trimmed.length === 0) {
 			continue;
 		}
-		try {
-			patterns.push(new RegExp(trimmed, 'i'));
-		} catch{
+		const pattern = compileRegex(trimmed, 'i');
+		if(pattern === undefined) {
 			rbuildignoreLog.warn(`Ignoring invalid .Rbuildignore pattern '${trimmed}'.`);
+		} else {
+			patterns.push(pattern);
 		}
 	}
 	if(patterns.length === 0) {

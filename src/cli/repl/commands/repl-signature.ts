@@ -3,15 +3,16 @@ import { bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { executeQueries } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
+import { FunctionInfoQueryDefinition } from '../../../queries/catalog/function-info-query/function-info-query-format';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import { downloadFullSigDb } from '../../../project/sigdb/sigdb-download';
+import { downloadFullSigDb, SigDbDownloadError } from '../../../project/sigdb/sigdb-download';
 import { persistSigDbPathToGlobalConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { signatureQueryCompleter } from '../../../queries/catalog/signature-query/signature-query-executor';
 import type { CommandCompletions } from '../core';
 
 /** treat the whole line as arguments, no R code to separate */
-function parseArgs(line: string) {
+function parseSignatureArgs(line: string) {
 	return { rCode: undefined, remaining: splitAtEscapeSensitive(line) };
 }
 
@@ -20,12 +21,14 @@ function joinArgs(args: readonly string[]): string {
 	return args.filter(a => a.length > 0).join(' ').trim();
 }
 
-function printHelp(output: ReplOutput): void {
+function printSignatureHelp(output: ReplOutput): void {
 	const f = output.formatter;
 	output.stdout(bold('Signature Database', f) + italic('  (inspect and extend the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
 	output.stdout(`  ${bold(':signature query', f)} ${italic('[<package>[@<version>][::<function>] [<function>]] [--param <name>] [--required <n>]', f)}`);
 	output.stdout(`      ${italic('inspect the database -- identical to :query @signature; with no package it summarizes the loaded databases and per-shard load state (run :signature query help for the full syntax)', f)}`);
+	output.stdout(`  ${bold(':signature info', f)} ${italic('<name> [<package>...]', f)}`);
+	output.stdout(`      ${italic('where a function comes from -- identical to :query @function-info; which packages export <name>, their signature, and whether flowR itself has a built-in definition for it', f)}`);
 	output.stdout(`  ${bold(':signature add', f)} ${italic('<path-to-.sigs.ndjson|.br|.manifest.json>', f)}`);
 	output.stdout(`      ${italic('mount an additional signature database/source (dictionaries + shards); takes precedence over the bundle', f)}`);
 	output.stdout(`  ${bold(':signature download', f)} ${italic('[<version>]', f)}`);
@@ -47,6 +50,19 @@ async function runQuery(output: ReplOutput, analyzer: ReplAnalyzer, args: readon
 	output.stdout(await asciiSummaryOfQueryResult(output.formatter, Date.now() - start, results, analyzer, queries));
 }
 
+async function runInfo(output: ReplOutput, analyzer: ReplAnalyzer, args: readonly string[]): Promise<void> {
+	const f = output.formatter;
+	const parsed = FunctionInfoQueryDefinition.fromLine(output, args, analyzer.flowrConfig).query;
+	const queries = parsed ? (Array.isArray(parsed) ? parsed : [parsed]) : [];
+	if(queries.length === 0) {
+		output.stderr(`Usage: ${italic(':signature info <name> [<package>...]', f)}`);
+		return;
+	}
+	const start = Date.now();
+	const results = await executeQueries({ analyzer }, queries);
+	output.stdout(await asciiSummaryOfQueryResult(f, Date.now() - start, results, analyzer, queries));
+}
+
 /** `:signature add <path>` -- mount an additional signature database/source (takes precedence over the bundle) */
 async function runAdd(output: ReplOutput, analyzer: ReplAnalyzer, rest: readonly string[]): Promise<void> {
 	const f = output.formatter;
@@ -66,12 +82,12 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 	const f = output.formatter;
 	const sigdb = analyzer.flowrConfig.solver.sigdb;
 	try {
-		const { dir, manifest, files } = await downloadFullSigDb({
+		const { tag, dir, manifest, files, downloaded, bytes, ms } = await downloadFullSigDb({
 			version:    rest.find(a => a.length > 0),
 			repo:       sigdb.downloadRepo,
 			onProgress: msg => output.stdout(italic(`  ${msg}`, f))
 		});
-		output.stdout(`Downloaded ${bold(String(files.length), f)} file(s) to ${bold(dir, f)}.`);
+		output.stdout(`Signature database ${bold(tag, f)}: ${bold(String(files.length), f)} file(s) in ${bold(dir, f)}, ${downloaded.length} fetched now (${(bytes / 1e6).toFixed(1)} MB in ${(ms / 1000).toFixed(1)}s).`);
 		if(manifest) {
 			await analyzer.context().deps.addDatabaseSource(manifest);
 			analyzer.reset();
@@ -83,7 +99,15 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 			output.stderr(italic(`Could not update global config (${(e as Error).message}); add ${dir} to solver.sigdb.additionalPaths manually.`, f));
 		}
 	} catch(e) {
-		output.stderr(`Download failed: ${(e as Error).message}`);
+		if(e instanceof SigDbDownloadError) {
+			output.stderr(`Download of ${e.tag} incomplete: ${e.completed} file(s) are in place, ${e.failed.length} failed:`);
+			for(const { name, reason } of e.failed) {
+				output.stderr(`  ${name}: ${reason}`);
+			}
+			output.stderr(italic('Run the command again to fetch only what is missing.', f));
+		} else {
+			output.stderr(`Download failed: ${(e as Error).message}`);
+		}
 	}
 }
 
@@ -93,9 +117,10 @@ type SignatureSubHandler = (output: ReplOutput, analyzer: ReplAnalyzer, rest: re
 /** every `:signature` subcommand keyed by name -- the single source driving both dispatch and completion */
 const signatureSubcommands = {
 	query:    runQuery,
+	info:     runInfo,
 	add:      runAdd,
 	download: runDownload,
-	help:     output => printHelp(output),
+	help:     output => printSignatureHelp(output),
 } satisfies Record<string, SignatureSubHandler>;
 
 /** the `:signature` subcommand names, offered as completions for its first argument */
@@ -118,12 +143,14 @@ export function replSignatureCompleter(splitLine: readonly string[], startingNew
 }
 
 export const signatureCommand: ReplCodeCommand = {
-	description:   'Inspect and extend the signature database: `query` (identical to :query @signature), `add <path>` to mount another database/source, `download` to fetch the full-history database.',
+	description:   'Inspect and extend the signature database: `query` (identical to :query @signature), `info <name>` for where a function comes from (identical to :query @function-info), `add <path>` to mount another database/source, `download` to fetch the full-history database.',
 	isCodeCommand: true,
 	usageExample:  ':signature <query|add|download> ...',
 	aliases:       ['sig'],
 	script:        false,
-	argsParser:    parseArgs,
+	// `add` mounts arbitrary local files and `download` fetches from the network and persists into the global config
+	localOnly:     true,
+	argsParser:    parseSignatureArgs,
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const [sub = 'help', ...rest] = remainingArgs.filter(a => a.length > 0);
 		const handler = signatureSubcommands[sub as keyof typeof signatureSubcommands];

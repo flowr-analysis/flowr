@@ -31,9 +31,16 @@ export interface FunctionInfo extends FunctionArgInfo {
 	/** default value for the argument if no binding value is found, please be aware, that categories can define global defaults, these are overwritten by the per-function defaults */
 	defaultValue?:       string
 	/** the function is not to be counted as a dependency if the argument is missing */
-	ignoreIf?:           'arg-missing' | 'mode-only-read' | 'mode-only-write' | 'arg-true' | 'arg-false' | 'arg-set',
+	ignoreIf?:           'arg-missing' | 'mode-only-read' | 'mode-only-write' | 'arg-true' | 'arg-false',
+	/**
+	 * the argument holding the data itself, like `text` in `read.table(text = "a b")`: a call passing it instead of
+	 * the file reads inline data, reported with the value {@link Constant}
+	 */
+	inline?:             FunctionArgInfo,
 	/** additional info on arguments - e.g. for the mode flag */
 	additionalArgs?:     Record<string, FunctionArgInfo>
 	/** string replacements to apply to resolved values, e.g. `{ '': 'stdin' }` */
 	stringReplacements?: Record<string, string>
+	/** the call hands back its result invisibly, so a top-level one prints nothing, even with its package not loaded */
+	invisible?:          true
 }

@@ -1,21 +1,24 @@
 /* currently this does not do work on function definitions */
 import type { ControlFlowInformation } from './control-flow-graph';
+import { Resolve } from '../dataflow/environments/resolve-helper';
 import { CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor, type OnCall } from './semantic-cfg-guided-visitor';
-import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { FunctionArgument } from '../dataflow/graph/graph';
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { log } from '../util/log';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -25,6 +28,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly cachedSwitch:     Map<NodeId, { id: NodeId | undefined } | 'unknown'> = new Map();
 	private readonly caught:           Map<NodeId, boolean> = new Map();
+	private forcing:                   ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -81,9 +85,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					}
 					const og = this.getValue(cause);
 					const w = CfgEdge.unpackWhen(edge);
-					if(og === Ternary.Always && w === RFalse) {
-						cfg.removeEdge(from, target);
-					} else if(og === Ternary.Never && w === RTrue) {
+					if((og === Ternary.Always && w === RFalse) || (og === Ternary.Never && w === RTrue)) {
 						cfg.removeEdge(from, target);
 					}
 				} else if(CfgEdge.isFlowDependency(edge) && this.isUnconditionalJump(from)) {
@@ -98,7 +100,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(this.cachedConditions.has(id)) {
 			return;
 		}
-		const value = NodeValue.inGraph.soleOf(valueId, this.config.dfg, this.config.ctx, 'logical', { idMap: this.config.normalizedAst.idMap });
+		const value = NodeValue.soleOf(valueId, Resolve.info(this.config.dfg, this.config.ctx), 'logical', { idMap: this.config.normalizedAst.idMap });
 		if(value === undefined || !isValue(value.value)) {
 			this.unableToCalculateValue(id);
 			return;
@@ -133,17 +135,29 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onStopCall(data: OnCall): void {
-		this.cachedStatements.set(data.call.id, true);
+		if(!this.mayStayUnforced(data.call.id)) {
+			this.cachedStatements.set(data.call.id, true);
+		}
 	}
 
 	protected onStopIfNotCall(data: OnCall): void {
-		if(this.cachedStatements.has(data.call.id)) {
+		if(this.cachedStatements.has(data.call.id) || this.mayStayUnforced(data.call.id)) {
 			return;
 		}
 		const arg = this.getBoolArgValue(data);
 		if(arg !== undefined) {
 			this.cachedStatements.set(data.call.id, !arg);
 		}
+	}
+
+	/** whether the call is in an argument that may never be evaluated: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
+	private mayStayUnforced(id: NodeId): boolean {
+		const promised = this.config.dfg.getVertex(id)?.cds?.filter(cd => cd.byPromise === true) ?? [];
+		if(promised.length === 0) {
+			return false;
+		}
+		this.forcing ??= FunctionSemantics.promiseForcing(this.config.dfg, { ctx: this.config.ctx });
+		return promised.some(cd => this.forcing?.(cd.id, id) !== Ternary.Always);
 	}
 
 	/**
@@ -156,22 +170,15 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(cached !== undefined) {
 			return cached;
 		}
-		let result = false;
-		for(let node = this.getNormalizedAst(id)?.info.parent; node !== undefined; ) {
-			const vertex = this.getDataflowGraph(node);
-			if(FunctionCallVertex.is(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Try)) {
-				result = true;
-				break;
-			}
-			node = this.getNormalizedAst(node)?.info.parent;
-		}
+		const result = RNode.iterateParents(this.getNormalizedAst(id), this.config.normalizedAst.idMap)
+			.some(node => DfgVertex.hasOrigin(this.getDataflowGraph(node.info.id), BuiltInProcName.Try));
 		this.caught.set(id, result);
 		return result;
 	}
 
 	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
 		const v = this.config.dfg.getVertex(cause);
-		if(!FunctionCallVertex.is(v) || !v.origin.includes(BuiltInProcName.Switch)) {
+		if(!DfgVertex.isFunctionCall(v) || !DfgVertex.hasOrigin(v, BuiltInProcName.Switch)) {
 			return false;
 		}
 		const selected = this.selectedSwitchArm(v);
@@ -198,7 +205,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private computeSelectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {
-		const target = NodeValue.inGraph.singleStringOf(FunctionArgument.getReference(v.args[0]), this.config.dfg, this.config.ctx, { idMap: this.config.normalizedAst.idMap });
+		const target = NodeValue.singleStringOf(FunctionArgument.getReference(v.args[0]), Resolve.info(this.config.dfg, this.config.ctx), { idMap: this.config.normalizedAst.idMap });
 		if(target === undefined) {
 			return 'unknown';
 		}

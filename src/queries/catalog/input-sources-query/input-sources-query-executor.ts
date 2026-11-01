@@ -1,5 +1,6 @@
 import type { BasicQueryData } from '../../base-query-format';
-import { DefaultInputClassifierConfig, type InputSourcesQuery, type InputSourcesQueryResult } from './input-sources-query-format';
+import { metaSince } from '../../query-meta';
+import { defaultInputClassifierConfig, type InputSourcesQuery, type InputSourcesQueryResult } from './input-sources-query-format';
 import { log } from '../../../util/log';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -24,12 +25,12 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const results: Record<string, InputSources> = {};
 	const nast = await analyzer.normalize();
 	const df = await analyzer.dataflow();
-	// flowR's defaults, extended by whatever the (possibly project-kind specialized) configuration adds
+	const ctx = analyzer.inspectContext();
 	const defaultConfig = addAll(
-		await resolveSearches(analyzer, DefaultInputClassifierConfig),
-		await resolveSearches(analyzer, analyzer.inspectContext().config.inputSources ?? {})
+		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
+		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
 	);
-	const packages = attachedPackages(analyzer, df.environment);
+	const packages = unqualifiedPackages(analyzer, df.environment);
 
 	for(const query of queries) {
 		const criteria: readonly SlicingCriterion[] = Array.isArray(query.criterion)
@@ -50,14 +51,12 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				df.graph,
 				fdef ? RNode.collectAllIds(fdef) : undefined
 			);
-			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages);
+			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages, df.environment);
 		}
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }
@@ -66,7 +65,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
  * The packages whose exports are usable without a namespace: those R has on its search path at the end of the
  * program, the ones the project declares, and the base packages R attaches on startup.
  */
-function attachedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<string> {
+function unqualifiedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<string> {
 	return new Set([
 		...REnvironment.attachedPackages(environment.current),
 		...analyzer.inspectContext().deps.getDependencies().map(d => d.name),
@@ -86,7 +85,7 @@ function addAll(base: InputClassifierConfig<InputClassifierFunctionIdentifiers>,
 }
 
 /** Config fields that hold structured values (not function searches) and are carried over verbatim. */
-const StructuredConfigKeys = ['linkedObjects', 'linkedEntryPoints', 'narrowing'] as const;
+const StructuredConfigKeys = ['linkedObjects', 'linkedEntryPoints', 'narrowing', 'templates'] as const;
 function isStructuredConfigKey(key: PropertyKey): key is typeof StructuredConfigKeys[number] {
 	return (StructuredConfigKeys as readonly PropertyKey[]).includes(key);
 }

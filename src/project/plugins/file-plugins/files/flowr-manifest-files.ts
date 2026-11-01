@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type FileRole, type StringableContent, FlowrFile } from '../../../context/flowr-file';
+import { type StringableContent, FlowrWrappedFile } from '../../../context/flowr-file';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DeclaredPackages } from '../../../context/flowr-analyzer-meta-context';
 import { Package } from '../../package-version-plugins/package';
@@ -7,21 +7,27 @@ import { log } from '../../../../util/log';
 
 export const manifestFileLog = log.getSubLogger({ name: 'flowr-manifest-file' });
 
-/** A project manifest that is no `DESCRIPTION` (an rv `rproject.toml`, a uvr `uvr.toml`). */
-export abstract class FlowrManifestFile<Content extends StringableContent = StringableContent> extends FlowrFile<Content> {
-	protected readonly wrapped: FlowrFileProvider;
-
-	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.roles);
-		this.wrapped = file;
-	}
-
+/**
+ * A project manifest that is no `DESCRIPTION` (an rv `rproject.toml`, a uvr `uvr.toml`).
+ * Prefer the static `from` method of the concrete subclass, which avoids re-wrapping and handles roles.
+ */
+export abstract class FlowrManifestFile<Content extends StringableContent = StringableContent> extends FlowrWrappedFile<Content> {
 	/** unlike the `Package` of a `DESCRIPTION` this is no namespace, such a project is no package */
 	public abstract projectName(): string | undefined;
 	/** `undefined` if the manifest only states a requirement like `>=4.0.0` */
 	public abstract rVersion(): string | undefined;
 	/** grouped as a `DESCRIPTION` groups them */
 	public abstract declares(): DeclaredPackages;
+
+	/** the parsed TOML of the wrapped file, empty (with a warning) if it does not parse */
+	protected parseTomlContent(): Record<string, unknown> {
+		try {
+			return parseToml(this.wrapped.content().toString());
+		} catch(e) {
+			manifestFileLog.warn(`Could not parse ${this.wrapped.path()}: ${(e as Error).message}`);
+			return {};
+		}
+	}
 }
 
 /** the `[project]` table of an `rproject.toml`, see https://a2-ai.github.io/rv-docs/config/ */
@@ -34,21 +40,7 @@ interface RvProject {
 /** The `rproject.toml` of an [rv](https://a2-ai.github.io/rv-docs/) project, lifted by {@link FlowrRProjectFile.from}. */
 export class FlowrRProjectFile extends FlowrManifestFile<DeepReadonly<RvProject>> {
 	protected loadContent(): RvProject {
-		try {
-			const toml = parseToml(this.wrapped.content().toString());
-			return (toml as { project?: RvProject }).project ?? {};
-		} catch(e) {
-			manifestFileLog.warn(`Could not parse ${this.wrapped.path()}: ${(e as Error).message}`);
-			return {};
-		}
-	}
-
-	/** rproject lifter, this does not re-create if already an rproject file */
-	public static from(file: FlowrFileProvider | FlowrRProjectFile, role?: FileRole): FlowrRProjectFile {
-		if(role) {
-			file.assignRole(role);
-		}
-		return file instanceof FlowrRProjectFile ? file : new FlowrRProjectFile(file);
+		return (this.parseTomlContent() as { project?: RvProject }).project ?? {};
 	}
 
 	public projectName(): string | undefined {
@@ -94,20 +86,7 @@ interface UvrManifest {
 /** The `uvr.toml` of a [uvr](https://github.com/nbafrank/uvr) project, lifted by {@link FlowrUvrManifestFile.from}. */
 export class FlowrUvrManifestFile extends FlowrManifestFile<DeepReadonly<UvrManifest>> {
 	protected loadContent(): UvrManifest {
-		try {
-			return parseToml(this.wrapped.content().toString());
-		} catch(e) {
-			manifestFileLog.warn(`Could not parse ${this.wrapped.path()}: ${(e as Error).message}`);
-			return {};
-		}
-	}
-
-	/** uvr manifest lifter, this does not re-create if already a uvr manifest file */
-	public static from(file: FlowrFileProvider | FlowrUvrManifestFile, role?: FileRole): FlowrUvrManifestFile {
-		if(role) {
-			file.assignRole(role);
-		}
-		return file instanceof FlowrUvrManifestFile ? file : new FlowrUvrManifestFile(file);
+		return this.parseTomlContent();
 	}
 
 	public projectName(): string | undefined {

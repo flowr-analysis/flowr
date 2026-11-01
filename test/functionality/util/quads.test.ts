@@ -55,28 +55,32 @@ describe('Quads', { concurrent: false }, withShell(shell => {
 <${idPrefix}1> <${domain}next> <${idPrefix}2> <${context}> .
 <${idPrefix}1> <${domain}tag> "use" <${context}> .
 <${idPrefix}1> <${domain}id> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}1> <${domain}cds> <${idPrefix}3> <${context}> .
+<${idPrefix}3> <${domain}id> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}3> <${domain}when> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
+<${idPrefix}3> <${domain}byPromise> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
 <${idPrefix}0> <${domain}vertices> <${idPrefix}2> <${context}> .
 <${idPrefix}2> <${domain}tag> "fcall" <${context}> .
 <${idPrefix}2> <${domain}id> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}2> <${domain}environment> <${idPrefix}3> <${context}> .
-<${idPrefix}3> <${domain}current> <${idPrefix}4> <${context}> .
-<${idPrefix}3> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}environment> <${idPrefix}4> <${context}> .
+<${idPrefix}4> <${domain}current> <${idPrefix}5> <${context}> .
+<${idPrefix}4> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}name> "foo" <${context}> .
 <${idPrefix}2> <${domain}onlyBuiltin> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
-<${idPrefix}2> <${domain}args> <${idPrefix}5> <${context}> .
-<${idPrefix}5> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}5> <${domain}type> "32"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}args> <${idPrefix}6> <${context}> .
+<${idPrefix}6> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}6> <${domain}type> "32"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}origin> "function" <${context}> .
-<${idPrefix}0> <${domain}edges> <${idPrefix}6> <${context}> .
-<${idPrefix}6> <${domain}next> <${idPrefix}7> <${context}> .
-<${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}6> <${domain}type> "reads" <${context}> .
-<${idPrefix}6> <${domain}type> "arg" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}7> <${context}> .
-<${idPrefix}7> <${domain}from> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}7> <${domain}to> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}7> <${domain}type> "flows-to" <${context}> .
+<${idPrefix}7> <${domain}next> <${idPrefix}8> <${context}> .
+<${idPrefix}7> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}7> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}7> <${domain}type> "reads" <${context}> .
+<${idPrefix}7> <${domain}type> "arg" <${context}> .
+<${idPrefix}0> <${domain}edges> <${idPrefix}8> <${context}> .
+<${idPrefix}8> <${domain}from> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}8> <${domain}to> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}8> <${domain}type> "flows-to" <${context}> .
     `);
 	});
 }));

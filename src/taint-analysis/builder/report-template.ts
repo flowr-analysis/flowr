@@ -76,7 +76,7 @@ export function renderReport(report: ReportTemplate, ctx: FindingContext): strin
  * The default report template which appends the function name or lexeme and line number of the finding to the explanatory string.
  * @param s - Human-readable explanation of the finding
  */
-export function defaultReportTemplate(s: string){
+export function defaultReportTemplate(s: string) {
 	return (f: FindingContext) => `${s} [${findingToken(f)} at ${f.locString}]`;
 }
 

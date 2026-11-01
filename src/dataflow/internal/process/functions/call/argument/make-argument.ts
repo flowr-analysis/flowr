@@ -42,5 +42,21 @@ export function wrapArgumentsUnnamed<OtherInfo>(
 	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	idMap: AstIdMap<OtherInfo>
 ) {
-	return nodes.map(n => FunctionArgument.isEmpty(n) || RArgument.is(n) ? n : toUnnamedArgument(n, idMap));
+	let needsWrap = false;
+	for(let i = 0; i < nodes.length; i++) {
+		const n = nodes[i];
+		if(!FunctionArgument.isEmpty(n) && !RArgument.is(n)) {
+			needsWrap = true;
+			break;
+		}
+	}
+	if(!needsWrap) {
+		return nodes as readonly (RArgument<OtherInfo & ParentInformation> | typeof EmptyArgument)[];
+	}
+	const result = new Array<RUnnamedArgument<OtherInfo & ParentInformation> | RArgument<OtherInfo & ParentInformation> | typeof EmptyArgument>(nodes.length);
+	for(let i = 0; i < nodes.length; i++) {
+		const n = nodes[i];
+		result[i] = FunctionArgument.isEmpty(n) || RArgument.is(n) ? n : toUnnamedArgument(n, idMap);
+	}
+	return result;
 }

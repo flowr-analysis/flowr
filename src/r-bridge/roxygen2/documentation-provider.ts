@@ -3,7 +3,7 @@ import type { NodeId } from '../lang-4.x/ast/model/processing/node-id';
 import type { RoxygenTag, RoxygenTagParam } from './roxygen-ast';
 import { KnownRoxygenTags } from './roxygen-ast';
 import { RType } from '../lang-4.x/ast/model/type';
-import type { RNode } from '../lang-4.x/ast/model/model';
+import { RNode } from '../lang-4.x/ast/model/model';
 import { parseRoxygenComment, parseRoxygenCommentsOfNode } from './roxygen-parse';
 
 export interface DocumentationInfo {
@@ -22,11 +22,7 @@ const CommentRetriever: CommentRetrievers = {
 		if(doc && paramName) {
 			if(Array.isArray(doc)) {
 				const res = (doc as RoxygenTag[]).filter(t => t.type === KnownRoxygenTags.Param && t.value.name === paramName);
-				if(res.length === 1) {
-					return res[0];
-				} else {
-					return res;
-				}
+				return res.length === 1 ? res[0] : res;
 			} else {
 				if((doc as RoxygenTag).type === KnownRoxygenTags.Param && (doc as RoxygenTagParam).value.name === paramName) {
 					return doc;
@@ -44,8 +40,8 @@ const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxy
  * Given a normalized AST and a node ID, returns the Roxygen documentation (if any) associated with that node.
  * Please note that this does more than {@link parseRoxygenCommentsOfNode}, as it also traverses up the AST to find documentation.
  * Additionally, this function instruments the normalized AST to cache the parsed documentation for future queries.
- * @param idMap   - The AST ID map to use for looking up nodes and traversing the AST.
- * @param nodeId  - The ID of the node to get documentation for.
+ * @param  idMap  - The AST ID map to use for looking up nodes and traversing the AST.
+ * @param  nodeId - The ID of the node to get documentation for.
  * @useInstead {@link RNode.documentation}
  */
 export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
@@ -90,7 +86,7 @@ function expandInheritsOfTags(tags: RoxygenTag | readonly RoxygenTag[], idMap: A
 
 function getDocumentationOfByName(name: string, idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
 	for(const [, node] of idMap) {
-		const nodeName = node.lexeme ?? node.info.fullLexeme;
+		const nodeName = RNode.ownLexeme(node);
 		if(nodeName !== name) {
 			continue;
 		}

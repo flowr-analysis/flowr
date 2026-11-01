@@ -10,17 +10,16 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
-import type { ForceArguments } from '../common';
 import { markAsAssignment } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { unpackArg } from '../argument/unpack-argument';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
-import { resolveNodeToStackEnv, stackEnvInheritsFields } from './built-in-stack-env';
+import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
+import { accessedFieldName, linkFieldReads } from '../../../../linker';
+import { StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 interface TableAssignmentProcessorMarker {
@@ -54,24 +53,24 @@ export function processAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
+	config: { treatIndicesAsString: boolean, resolveField?: boolean }
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Access ${Identifier.getName(name.content)} has less than 1 argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const head = args[0];
 
 	let fnCall: ProcessKnownFunctionCallResult;
 	if(RArgument.isEmpty(head)) {
 		// in this case we may be within a pipe
-		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Access });
 	} else if(config.treatIndicesAsString) {
-		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId, config);
+		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId);
 	} else {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
-		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, config, head);
+		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, head);
 	}
 
 	const info = fnCall.information;
@@ -95,16 +94,13 @@ export function processAccess<OtherInfo>(
 		const envState = stackEnvState
 			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
 		if(envState) {
-			const fieldNode = unpackArg(args[1]);
-			const fieldName = RString.is(fieldNode) ? fieldNode.content.str : (config.treatIndicesAsString ? fieldNode?.lexeme : undefined);
+			const fieldName = accessedFieldName(RArgument.valueOf(args[1]), config.treatIndicesAsString);
 			const fieldDefs = fieldName
 				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
-			for(const fd of fieldDefs ?? []) {
-				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
-				if(stackEnvState === undefined && fd.type === ReferenceType.Function) {
-					info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Returns);
-				}
+			linkFieldReads(info.graph, name.info.id, fieldDefs, stackEnvState === undefined);
+			if(fieldName !== undefined && !fieldDefs?.length && stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame) {
+				info.in = [...info.in, { name: fieldName, nodeId: name.info.id, type: ReferenceType.Variable, cds: data.cds }];
 			}
 		}
 	}
@@ -126,11 +122,7 @@ export function processAccess<OtherInfo>(
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
 		in:                RArgument.isEmpty(head) ? info.in : info.in.map(ref => {
-			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, info.graph, info.environment, false);
-			} else {
-				return ref;
-			}
+			return ref.nodeId === head.value?.info.id ? makeReferenceMaybe(ref, info.graph, info.environment, false) : ref;
 		})
 	};
 }
@@ -149,7 +141,6 @@ function processNumberBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	config: ForceArguments,
 	head: RArgument<OtherInfo & ParentInformation>,
 ) {
 	const existing = data.environment.current.memory.get(':=');
@@ -164,7 +155,7 @@ function processNumberBasedAccess<OtherInfo>(
 		nodeId:    tableAssignId
 	}]);
 
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Access });
 
 	/* recover the environment */
 	if(existing !== undefined) {
@@ -179,7 +170,6 @@ function processNumberBasedAccess<OtherInfo>(
 
 	return fnCall;
 }
-
 
 /**
  * Converts symbol arguments to string arguments within the specified range.
@@ -221,15 +211,13 @@ function processStringBasedAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
-	rootId: NodeId,
-	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
+	rootId: NodeId
 ) {
 	return processKnownFunctionCall({
 		name,
-		args:      symbolArgumentsToStrings(args),
+		args:   symbolArgumentsToStrings(args),
 		rootId,
 		data,
-		forceArgs: config.forceArgs,
-		origin:    BuiltInProcName.Access
+		origin: BuiltInProcName.Access
 	});
 }

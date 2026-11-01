@@ -22,13 +22,34 @@ export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
 
 
 /**
- *
+ * Asserts that the REPL parses `line` into the expected query.
+ * @param testCase - what to parse, with what, and what to expect
  */
 export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = FlowrConfig.default(), expectedParse }: ReplParserTestCase<QueryType>) {
 	test(label, () => {
 		const result = parser(discardingReplOutput, line, config as FlowrConfig);
 		assert.deepEqual(result, expectedParse);
 	});
+}
+
+/**
+ * The lines every criteria query parses alike: nothing from an empty or a broken line, and what `queryOf` makes
+ * of the criteria a line names, with and without code after them. Pass `multiple: false` for a query of one criterion.
+ */
+export function assertCriteriaReplParser<QueryType extends BaseQueryFormat['type']>(
+	parser: ReplParserTestCase<QueryType>['parser'],
+	queryOf: (criteria: readonly string[]) => object,
+	{ multiple = true }: { readonly multiple?: boolean } = {}
+): void {
+	const parsed = (criteria: readonly string[], rCode?: string): ParsedQueryLine<QueryType> => ({ query: queryOf(criteria) as ParsedQueryLine<QueryType>['query'], rCode });
+	assertReplParser({ parser, label: 'empty line', line: [''], expectedParse: { query: [] } });
+	assertReplParser({ parser, label: 'invalid line', line: ['(partial'], expectedParse: { query: [] } });
+	assertReplParser({ parser, label: 'single criterion', line: ['(1@var)'], expectedParse: parsed(['1@var']) });
+	if(multiple) {
+		const criteria = ['1@var', '$5', '2@var', '1:3'];
+		assertReplParser({ parser, label: 'multiple criteria', line: [`(${criteria.join(';')})`], expectedParse: parsed(criteria) });
+	}
+	assertReplParser({ parser, label: 'with code', line: ['(1@var)', 'someCode'], expectedParse: parsed(['1@var'], 'someCode') });
 }
 
 export interface ReplCompletionTestCase {
@@ -42,7 +63,8 @@ export interface ReplCompletionTestCase {
 
 
 /**
- *
+ * Asserts that the REPL completes a partial line into the expected candidates.
+ * @param testCase - what to complete, with what, and what to expect
  */
 export function assertReplCompletions({ completer, label, startingNewArg, splitLine, config = FlowrConfig.default(), expectedCompletions }: ReplCompletionTestCase) {
 	test(label, () => {

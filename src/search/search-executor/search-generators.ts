@@ -33,9 +33,6 @@ export type FlowrSearchGeneratorNode = {
 
 export type GeneratorNames = keyof typeof generators;
 
-export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode & { name: Name };
-
-
 /**
  * All supported generators!
  */
@@ -78,7 +75,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 
 	if(line && line < 0) {
 		guard(normalize.ast.files.length === 1, 'Currently, negative line numbers are only supported for single-file inputs');
-		const maxLines = normalize.ast.files[0].root.info.fullRange?.[2] ??
+		const maxLines = SourceRange.getEndLine(normalize.ast.files[0].root.info.fullRange) ??
 			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0
@@ -128,7 +125,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		}
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
-		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from, args.certainty)) {
+		for(const node of (queryDef.flattenInvolvedNodes?.(content as BaseQueryResult, args.from, args.certainty) ?? [])) {
 			nodes.add({ node: idMap.get(node) as RNode<ParentInformation> });
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
@@ -146,7 +143,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	})));
 }
 
-async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
 		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);

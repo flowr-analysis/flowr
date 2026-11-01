@@ -4,6 +4,7 @@ import type {
 	FilesQueryResult
 } from './files-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 
 /**
  * Executes the given files queries using the provided analyzer.
@@ -45,9 +46,7 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 	}
 
 	return Promise.resolve({
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		files
 	});
 }

@@ -15,8 +15,7 @@ print(iris)
 				.defineVariable('2@iris', undefined, { cds: [] }) // a classic maybe definition :)
 				.use('3@iris')
 				.reads('3@iris', '2@iris')
-				.definedBy('2@iris', '2:10')
-			,
+				.definedBy('2@iris', '2:10'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

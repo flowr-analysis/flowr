@@ -1,6 +1,5 @@
-import { afterAll, assert, describe, test } from 'vitest';
-import fs from 'fs';
-import os from 'os';
+import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
@@ -12,25 +11,9 @@ import {
 import { FlowrAnalyzerFullProjectDiscoveryPlugin, type FlowrAnalyzerProjectDiscoveryPlugin } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { isParseRequest } from '../../../../src/r-bridge/retriever';
 import type { FlowrFile } from '../../../../src/project/context/flowr-file';
+import { projectFixture } from './plugin-test-helper';
 
-const roots: string[] = [];
-afterAll(() => {
-	for(const r of roots) {
-		fs.rmSync(r, { recursive: true, force: true });
-	}
-});
-
-/** Materializes `files` (path to content) below a fresh temporary root. */
-function project(files: Record<string, string>): string {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-ignore-'));
-	roots.push(root);
-	for(const [file, content] of Object.entries(files)) {
-		const target = path.join(root, file);
-		fs.mkdirSync(path.dirname(target), { recursive: true });
-		fs.writeFileSync(target, content);
-	}
-	return root;
-}
+const project = projectFixture('flowr-ignore-');
 
 /**
  * The paths (relative to `root`) the given discovery plugin yields, posix-separated.
@@ -59,7 +42,7 @@ describe('Ignore-file project discovery', () => {
 		'.gitignore':    'scratch.R\n'
 	};
 
-	test('.Rbuildignore drops matching files and whole directories', () => {
+	test(label('.Rbuildignore drops matching files and whole directories', ['project-ignore-files'], ['other']), () => {
 		const got = discovered(new FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin(greedy()), project(files));
 		assert.notInclude(got, 'tests/big.R', 'a directory matched by ^tests$ is dropped entirely');
 		assert.notInclude(got, 'notes.md');
@@ -72,7 +55,7 @@ describe('Ignore-file project discovery', () => {
 		assert.includeMembers(got, ['tests/big.R', 'notes.md']);
 	});
 
-	test('the combined plugin respects both files', () => {
+	test(label('the combined plugin respects both files', ['project-ignore-files'], ['other']), () => {
 		const got = discovered(new FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin(undefined, greedy()), project(files));
 		assert.sameMembers(got, ['R/main.R', 'R/helper.R', '.Rbuildignore', '.gitignore']);
 	});

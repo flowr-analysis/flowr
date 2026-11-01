@@ -56,7 +56,7 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 	test('an id stays readable and relative to what was requested', async() => {
 		const mermaid = await mermaidOfSourcingProject(false);
 		assert.include(mermaid, 'v: ', 'the sourced file has to contribute origins');
-		assert.match(mermaid, /, we_ird\.R:\d+:\d+-\d+\+/, 'the conditional definition has to contribute a control dependency');
+		assert.match(mermaid, /, we_\d+_ird\.R:\d+:\d+-\d+\+/, 'the conditional definition has to contribute a control dependency');
 		const ids = [...mermaid.matchAll(/\*\*id: (.*?)\*\*/g)].map(m => m[1]);
 		assert.isNotEmpty(ids);
 		for(const id of ids) {

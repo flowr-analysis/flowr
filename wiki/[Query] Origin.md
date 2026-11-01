@@ -1,18 +1,15 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
 _This query is requested with the type `origin`._\
 Run in the REPL: `:query @origin (<criterion>) <code | file://path>`
 
-
 With this query you can use flowR's origin tracking to find out the read origins of a variable,
 the functions called by a call, and more.
 
 Using the example code `x <- 1
 print(x)` (with the `print(x)` in the second line), the following query returns the origins of `x` in the code:
-
-
 
 ```json
 [
@@ -23,58 +20,27 @@ print(x)` (with the `print(x)` in the second line), the following query returns 
 ]
 ```
 
-
 (This can be shortened to `@origin (2@x) "x <- 1\nprint(x)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **origin** (2 ms)\
+Query: **origin** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "origin": {
-    ".meta": {
-      "timing": 2
-    },
-    "results": {
-      "2@x": [
-        {
-          "type": 0,
-          "id": 0
-        }
-      ]
-    }
-  },
-  ".meta": {
-    "timing": 2
-  }
-}
+{"origin":{".meta":{},"results":{"2@x":[{"type":0,"id":0}]}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 x <- 1
@@ -85,10 +51,8 @@ print(x)
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -99,9 +63,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**)`"])
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -116,7 +80,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -128,25 +92,14 @@ print`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Origin Query query is `executeSearch` in [`./src/queries/catalog/origin-query/origin-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts).
+The Origin Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts#L11"><code><span title="Execute origin queries, catching duplicates with the same fingerprint">executeOriginQuery</span></code></a>.
 
 </details>

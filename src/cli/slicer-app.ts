@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { guard } from '../util/assert';
 import type { SliceResult } from '../slicing/static/slicer-types';
 import { log } from '../util/log';
@@ -54,7 +55,7 @@ async function getSlice() {
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
 	const config = (options['config-json'] ? FlowrConfig.parse(options['config-json']) : undefined)
-		?? FlowrConfig.fromFile(options['config-file']);
+		?? FlowrConfig.fromFile(options['config-file'] && path.resolve(options['config-file']));
 
 	await slicer.init(
 		options['input-is-text']

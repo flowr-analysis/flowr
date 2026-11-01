@@ -1,10 +1,11 @@
 import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from './flowr-analyzer-package-versions-plugin';
+import { compareByCodeUnit } from '../../../util/text/strings';
 import { SemVer, minVersion, type Range } from 'semver';
 import path from 'path';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
-import { availableVersionEntries, SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource } from '../../sigdb/reader';
+import { availableVersionEntries, SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource, setBlobCacheBudget } from '../../sigdb/reader';
 import { SigDbExt, type LibraryExports } from '../../sigdb/schema';
 import { defaultSigDbPaths } from '../../sigdb/manifest';
 import { resolveSource } from '../../sigdb/decompress';
@@ -14,19 +15,15 @@ import { FileRole } from '../../context/flowr-file';
 import { isSigDbEnabled, resolveAssumedRVersion, VersionSelection, type FlowrConfig } from '../../../config';
 import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
+import { DefaultMap } from '../../../util/collections/defaultmap';
+import { uniqueArray } from '../../../util/collections/arrays';
+import { SecureMode } from '../../../util/secure-mode';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
 
-/** map a resolved source's compressed extension to a codec name for display (`undefined` extension is a plain file) */
-function codecNameOf(ext: string | undefined): string {
-	switch(ext) {
-		case '.zst': return 'zstd';
-		case '.br':  return 'brotli';
-		case '.gz':  return 'gzip';
-		default:     return 'plain';
-	}
-}
+/** a resolved source's compressed extension as a codec name for display, a file without one is `plain` */
+const CodecNames: Readonly<Record<string, string>> = { '.zst': 'zstd', '.br': 'brotli', '.gz': 'gzip' };
 
 /** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
 function manifestFormat(set: SigDatabaseSet): string {
@@ -34,8 +31,8 @@ function manifestFormat(set: SigDatabaseSet): string {
 		...set.manifest.shards.map(s => s.path),
 		...(set.manifest.dicts?.map(d => d.path) ?? [])
 	];
-	const codecs = new Set(paths.map(p => codecNameOf(compressedExtOf(resolveSource(set.baseDir, p)))));
-	return codecs.size === 1 ? [...codecs][0] : 'mixed';
+	const codecs = uniqueArray(paths.map(p => CodecNames[compressedExtOf(resolveSource(set.baseDir, p)) ?? ''] ?? 'plain'));
+	return codecs.length === 1 ? codecs[0] : 'mixed';
 }
 
 /** describe one loaded source for `:version` / diagnostics: a single bundle, a sharded set, or an in-memory source */
@@ -83,97 +80,25 @@ export function reconstructS3Generics(exported: readonly string[]): Map<string, 
 	return generics;
 }
 
-/** the built {@link ExportIndex} of each source, see {@link ExportIndex.of} for why it is keyed by the source */
-const exportIndices = new WeakMap<PackageSignatureSource, ReadonlyMap<string, ExportIndexEntry>>();
-
 /**
- * `name -> the packages of a source exporting it`, filled one name at a time as it is asked for and shared by
- * every analyzer mounting that source. The eager {@link ExportIndex} answers the same question with no scan at
- * all, but it holds every export name of the bundle (~1.1M for the shipped one); a lint run asks for a few
- * hundred distinct names, so this keeps the memo proportional to what was actually asked instead.
+ * `name -> packages of a source exporting it`, filled lazily per name and shared by every analyzer mounting that
+ * source; this stays proportional to what a run actually asks about rather than scanning all ~1.1M export names up front.
  */
-const exportOwnersBySource = new WeakMap<PackageSignatureSource, Map<string, readonly string[]>>();
+const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<string, readonly string[]>>();
 
 /** The packages of `src` exporting `name`, most downloaded first, scanning only the first time a name is asked. */
 function exportOwners(src: PackageSignatureSource, name: string): readonly string[] {
 	let byName = exportOwnersBySource.get(src);
 	if(byName === undefined) {
-		byName = new Map();
+		byName = new DefaultMap(n => src.packagesExporting(n));
 		exportOwnersBySource.set(src, byName);
 	}
-	let owners = byName.get(name);
-	if(owners === undefined) {
-		owners = src.packagesExporting(name);
-		byName.set(name, owners);
-	}
-	return owners;
+	return byName.get(name);
 }
 
 /**
- * The packages exporting one name: the sole exporter bare, the rivals as an array. Roughly 95% of the names in a
- * bundle are exported by exactly one package, so giving those an array of their own would cost more than the
- * index itself.
- */
-export type ExportIndexEntry = string | string[];
-
-/**
- * The reverse `export name -> packages exporting it` view of a signature source, each entry ordered by download
- * count (descending, ties by name) so whoever has to pick one exporter starts with the package a script most
- * likely means.
- *
- * Building the view reads every package blob of a bundle, which is why {@link of} memoizes it on the source
- * object rather than on the caller: signature sources are opened once per process (see {@link getSharedSigSource})
- * and are immutable, so every analyzer mounting the same bundle shares one index instead of re-scanning the
- * database per analysis. It is deliberately analyzer-independent -- self-package exclusion belongs to the caller
- * (see {@link FlowrAnalyzerPackageVersionsSigDbPlugin.packagesExporting}), not to the index.
- */
-export const ExportIndex = {
-	name: 'ExportIndex',
-	/* not what `packagesExporting` uses: building this reads every package blob of the bundle to hold every export
-	 * name (~1.1M for the shipped one), which measured both slower and ~330MB heavier than the few hundred scans
-	 * {@link exportOwners} does for the names a run actually asks about. Kept for a caller that needs the whole
-	 * reverse mapping at once. */
-	/** The index of `src`, built on first use and shared by every later caller; see {@link ExportIndex}. */
-	of(this: void, src: PackageSignatureSource): ReadonlyMap<string, ExportIndexEntry> {
-		const cached = exportIndices.get(src);
-		if(cached !== undefined) {
-			return cached;
-		}
-		const index = new Map<string, ExportIndexEntry>();
-		for(const pkg of src.packageNames()) {
-			for(const exp of src.lookup(pkg)?.exported ?? []) {
-				const owners = index.get(exp);
-				if(owners === undefined) {
-					index.set(exp, pkg);
-				} else if(typeof owners === 'string') {
-					if(owners !== pkg) {
-						index.set(exp, [owners, pkg]);
-					}
-				} else if(owners[owners.length - 1] !== pkg) {
-					owners.push(pkg);
-				}
-			}
-		}
-		// sorting once per name here beats sorting at every lookup
-		for(const owners of index.values()) {
-			if(typeof owners !== 'string') {
-				owners.sort((a, b) => src.downloads(b) - src.downloads(a) || a.localeCompare(b));
-			}
-		}
-		exportIndices.set(src, index);
-		return index;
-	},
-	/** The packages an {@link ExportIndexEntry} names, as a list; empty when no package exports the name. */
-	owners(this: void, entry: ExportIndexEntry | undefined): readonly string[] {
-		return entry === undefined ? [] : typeof entry === 'string' ? [entry] : entry;
-	}
-} as const;
-
-/**
- * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the
- * {@link PackageSignatureSource} contract. For an R-core package it picks the version shipped with the assumed
- * R release (`solver.sigdb.assumedRVersion`), so `library(stats)` attaches that release's exports. Plain-file
- * sources load lazily; a `.br` or manifest source is mounted by {@link preload}. On by default.
+ * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the {@link PackageSignatureSource}
+ * contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a `.br`/manifest source needs {@link preload}; on by default.
  */
 export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name        = SigDbPluginName;
@@ -219,11 +144,15 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		this.resetAssembled();   // reload on (re)registration so config/source changes take effect (shared bundles are reused)
 		this.analyzerCtx = ctx;
 		if(isSigDbEnabled(ctx.config)) {
+			const budgetMb = ctx.config.solver.sigdb.blobCacheBudgetMb;
+			if(budgetMb !== undefined) {
+				setBlobCacheBudget(budgetMb * 1024 * 1024);
+			}
 			ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
 			if(ctx.config.solver.sigdb.warmInBackground) {
 				this.startBackgroundWarm();
 			}
-			if(ctx.config.solver.sigdb.autoSync) {
+			if(ctx.config.solver.sigdb.autoSync && !SecureMode.isEnabled()) {
 				this.startBackgroundSync(ctx);
 			}
 			if(ctx.config.solver.sigdb.versionSelection === VersionSelection.System) {
@@ -235,9 +164,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	private syncPromise: Promise<void> | undefined;
 
 	/**
-	 * Opt-in (`solver.sigdb.autoSync`) startup re-sync.
-	 * If the committed `sigdb.remote.json` link file lists shards whose cached copies are missing or hash-mismatched,
-	 * this will sync them.
+	 * Opt-in (`solver.sigdb.autoSync`) startup re-sync: if the committed `sigdb.remote.json` link file lists shards
+	 * whose cached copies are missing or hash-mismatched, this downloads and mounts them in the background.
 	 */
 	private startBackgroundSync(ctx: FlowrAnalyzerContext): void {
 		if(this.syncPromise !== undefined) {
@@ -249,16 +177,18 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(!dl.sigDbNeedsSync()) {
 				return;
 			}
-			sigDbLog.info('sigdb: committed link file changed, re-syncing shards in the background');
-			const { files } = await dl.downloadFullSigDb({
+			sigDbLog.info('sigdb: the committed link file names shards missing from the cache, syncing them in the background');
+			const { tag, files, downloaded, stale } = await dl.downloadFullSigDb({
 				repo:       ctx.config.solver.sigdb.downloadRepo,
 				onProgress: msg => sigDbLog.info(`sigdb sync: ${msg}`)
 			});
-			for(const manifest of files.filter(f => /\.manifest\.json(\.br)?$/.test(f))) {
+			const manifests = files.filter(f => dl.isManifestFile(f));
+			for(const manifest of manifests) {
 				await ctx.deps.addDatabaseSource(manifest);
 			}
+			sigDbLog.info(`sigdb sync: ${tag} ready (${downloaded.length} file(s) fetched, ${manifests.length} manifest(s) mounted${stale.length > 0 ? `, ${stale.length} older bundle(s) still cached` : ''})`);
 		})().catch((e: unknown) => {
-			sigDbLog.warn(`background sigdb sync failed (keeping the cached shards): ${(e as Error).message}`);
+			sigDbLog.warn(`background sigdb sync failed, analyzing with the signatures already cached: ${(e as Error).message}`);
 		});
 	}
 
@@ -284,9 +214,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * Read the system's installed package versions once (for `versionSelection: 'system'`), off the hot path. Only
-	 * an R-backed parser exposes `installedPackageVersions`; a tree-sitter (no-R) parser skips this, so `system`
-	 * gracefully falls back to `newest` in {@link resolve}. Idempotent; failures leave the map empty (same fallback).
+	 * Read the system's installed package versions once (for `versionSelection: 'system'`), off the hot path; only an
+	 * R-backed parser exposes `installedPackageVersions`, so a tree-sitter parser falls back to `newest` (see {@link resolve}). Idempotent; failures leave the map empty (same fallback).
 	 */
 	private warmInstalledVersions(): void {
 		if(this.installedVersionsPromise !== undefined || this.installedVersions !== undefined) {
@@ -326,12 +255,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * Packages in the loaded sources (respecting `self`-package exclusion) that export `name`, **most downloaded
-	 * first**, so whoever has to pick one (or show only a few) starts with the package a script most likely means.
-	 * Backed by {@link exportOwners}, which memoizes per *source* (and hence shares across every analyzer mounting
-	 * the same bundle), so the repeated hint lookups of a linter run scan every package once per distinct name
-	 * rather than once per call. Self-package exclusion is applied here rather than in that memo, which keeps the
-	 * memo analyzer-independent.
+	 * Packages in the loaded sources exporting `name`, self-package excluded, most downloaded first (so picking
+	 * the first is the package a script most likely means); backed by the per-source memo in {@link exportOwnersBySource}, filtered here rather than there so the memo stays analyzer-independent.
 	 */
 	public override packagesExporting(name: string): readonly string[] {
 		if(!isSigDbEnabled(this.analyzerCtx?.config)) {
@@ -341,35 +266,24 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(cached !== undefined) {
 			return cached;
 		}
-		const sources = this.loadSources();
-		const seen = new Set<string>();
-		const owners: string[] = [];
-		for(const src of sources) {
-			/* memoized per source, not per analyzer: the same handful of unresolved names comes back for every
-			 * file the linter walks, and a miss is a scan over every package of the bundle */
-			for(const pkg of exportOwners(src, name)) {
-				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
-					seen.add(pkg);
-					owners.push(pkg);
-				}
-			}
-		}
+		/* the historical bundle is not asked: a name is hinted so a `library()` can be added for it, and a package
+		   only that bundle carries is one nothing can attach today */
+		const sources = this.loadSources().filter(s => describeLoadedDatabase(s).scope !== 'history');
+		const owners = uniqueArray(sources.flatMap(src => exportOwners(src, name))).filter(pkg => !this.isSelfPackage(pkg));
 		// each source's list is already sorted; a merge of several needs one more pass to be globally ordered
 		if(owners.length > 1 && sources.length > 1) {
 			/* the comparator runs O(n log n) times, so each package is counted once up front */
 			const downloads = new Map(owners.map(pkg =>
 				[pkg, sources.reduce((m, s) => Math.max(m, s.has(pkg) ? s.downloads(pkg) : 0), 0)]));
-			owners.sort((a, b) => (downloads.get(b) as number) - (downloads.get(a) as number) || a.localeCompare(b));
+			owners.sort((a, b) => (downloads.get(b) as number) - (downloads.get(a) as number) || compareByCodeUnit(a, b));
 		}
 		this.exportsByName.set(name, owners);
 		return owners;
 	}
 
 	/**
-	 * The raw sources in priority order: explicit constructor sources, `$FLOWR_SIGDB`, then **every** bundled
-	 * database discovered in the data dirs (see {@link defaultSigDbPaths}), so an extra bundle dropped next to
-	 * the default (e.g. a downloaded full-history one) is mounted automatically. All bundled defaults are skipped
-	 * when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
+	 * The raw sources in priority order: explicit constructor sources, `$FLOWR_SIGDB`, then every bundled database
+	 * discovered in the data dirs (see {@link defaultSigDbPaths}), skipped when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
 	 */
 	private rawSources(config?: FlowrConfig): SigDbSource[] {
 		const sources = [...this.extraSources, ...envSources()];
@@ -453,9 +367,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * For a base package, the newest core version `<=` the assumed R version (see
-	 * {@link FlowrAnalyzerContext.resolvedRVersion}). If the assumed version predates every recorded core
-	 * release, the closest supported one (the earliest) is used and the substitution is logged once as info.
+	 * For a base package, the newest core version `<=` the assumed R version (see {@link FlowrAnalyzerContext.resolvedRVersion}).
+	 * If the assumed version predates every recorded core release, the closest supported (earliest) one is used and logged once as info.
 	 */
 	private baseVersionFor(src: PackageSignatureSource, name: string): string | undefined {
 		const versions = src.coreVersions(name);
@@ -463,12 +376,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			return undefined;
 		}
 		const target = this.analyzerCtx?.resolvedRVersion ?? resolveAssumedRVersion(undefined);
-		let chosen: RVersion | undefined;   // versions are ascending; keep the newest core release <= target
-		for(const v of versions) {
-			if(RVersion.compare(v.str, target) <= 0) {
-				chosen = v;
-			}
-		}
+		// versions are ascending; keep the newest core release <= target
+		let chosen = versions.findLast(v => RVersion.compare(v.str, target) <= 0);
 		if(chosen === undefined) {
 			// the assumed R version is older than the earliest recorded core release: fall back to the closest one
 			chosen = versions[0];
@@ -544,8 +453,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/**
 	 * Newest version satisfying the constraint. Fast path: prefer the source's latest (no history decompression for
-	 * the common `>=` case) and accept it when it satisfies; only otherwise enumerate the stored versions and pick
-	 * the highest satisfying one (e.g. an upper-bound or exact-old pin).
+	 * the common `>=` case); only when that fails to satisfy, enumerate stored versions and pick the highest match (e.g. an upper-bound or exact-old pin).
 	 */
 	private newestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
 		const pinned = range ? minVersion(range)?.version : undefined;
@@ -553,25 +461,18 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(info && (range === undefined || RRange.satisfies(info.version, range))) {
 			return info;
 		}
-		if(range !== undefined) {
-			const versions = this.availableVersions(src, name);
-			for(let i = versions.length - 1; i >= 0; i--) {
-				if(RRange.satisfies(versions[i], range)) {
-					return src.lookup(name, versions[i]);
-				}
-			}
+		if(range === undefined) {
+			return undefined;
 		}
-		return undefined;
+		const satisfying = this.availableVersions(src, name).findLast(version => RRange.satisfies(version, range));
+		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/** Lowest stored version satisfying the constraint (using the store's actual R-form version strings). */
 	private oldestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
-		for(const version of this.availableVersions(src, name)) {   // ascending
-			if(range === undefined || RRange.satisfies(version, range)) {
-				return src.lookup(name, version);
-			}
-		}
-		return undefined;
+		// versions are ascending, so the first satisfying one is the oldest
+		const satisfying = this.availableVersions(src, name).find(version => range === undefined || RRange.satisfies(version, range));
+		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/**
@@ -584,10 +485,15 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */
 	private toResolvedPackage(name: string, info: LibraryExports): Package {
-		const exported = info.exported.slice();
+		/* what the configuration states for the package is part of its interface, even where the database misses it */
+		const stated = this.analyzerCtx?.env.statedFor(name);
+		const exported = stated === undefined ? info.exported.slice() : uniqueArray([...info.exported, ...[...stated.keys()].map(String)]);
 		const namespaceInfo: NamespaceInfo = {
 			exportedSymbols:      exported,
 			exportedFunctions:    [],
+			exportedS4Methods:    [],
+			/* the database derives these from the very `exportClasses()` directives the field stands for */
+			exportedS4Classes:    info.s4Classes.slice(),
 			exportS3Generics:     reconstructS3Generics(exported),
 			exportedPatterns:     [],
 			importedPackages:     new Map(),

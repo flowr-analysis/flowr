@@ -31,26 +31,27 @@ describe('for', { concurrent: false }, withShell(shell => {
   x <- 3
 }
 x`, emptyGraph()
-				.use('5', 'z', { cds: [{ id: '13' }, { id: '8', when: true }] })
+				.use('5', 'z', { cds: [{ id: '13' }, { id: '8', when: false }] })
 				.use('14', 'x')
 				.reads('14', ['2', '9'])
-				.call('4', '<-', [argumentInCall('2'), argumentInCall('3')], { origin: [BuiltInProcName.Assignment], returns: ['2'], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true, cds: [{ id: '13' }, { id: '8', when: true }] })
+				.call('4', '<-', [argumentInCall('2'), argumentInCall('3')], { origin: [BuiltInProcName.Assignment], returns: ['2'], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true, cds: [{ id: '13' }, { id: '8', when: false }] })
 				.calls('4', NodeId.toBuiltIn('<-'))
 				.call('6', 'break', [], { origin: [BuiltInProcName.Break], returns: [], reads: [NodeId.toBuiltIn('break')], cds: [{ id: 13 }, { id: 8, when: true }], environment: defaultEnv().defineVariable('x', '2', '4') })
 				.calls('6', NodeId.toBuiltIn('break'))
 				.call('8', 'if', [argumentInCall('5'), argumentInCall('6'), EmptyArgument], { origin: [BuiltInProcName.IfThenElse], returns: ['6'], reads: [NodeId.toBuiltIn('if'), '5'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '2', '4'), cds: [{ id: '13' }, { id: '8', when: false }]  })
 				.calls('8', NodeId.toBuiltIn('if'))
-				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { origin: [BuiltInProcName.Assignment], returns: ['9'], reads: [NodeId.toBuiltIn('<-'), 10], onlyBuiltIn: true, cds: [{ id: '13' }, { id: 8, when: true }], environment: defaultEnv().defineVariable('x', '2', '4') })
+				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { origin: [BuiltInProcName.Assignment], returns: ['9'], reads: [NodeId.toBuiltIn('<-'), 10], onlyBuiltIn: true, cds: [{ id: '13' }, { id: '8', when: false }], environment: defaultEnv().defineVariable('x', '2', '4') })
 				.calls('11', NodeId.toBuiltIn('<-'))
-				.call('12', '{', [argumentInCall('4'), argumentInCall('8'), argumentInCall('11')], { origin: [BuiltInProcName.ExpressionList], returns: ['11'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '2', '4').defineVariable('x', '9', '11', []), cds: [{ id: '13' }, { id: '8', when: true }]  })
+				.call('12', '{', [argumentInCall('4'), argumentInCall('8'), argumentInCall('11')], { origin: [BuiltInProcName.ExpressionList], returns: ['11'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '2', '4').defineVariable('x', '9', '11', []), cds: [{ id: '13' }, { id: '8', when: false }]  })
 				.calls('12', NodeId.toBuiltIn('{'))
 				.call('13', 'repeat', [argumentInCall('12')], { origin: [BuiltInProcName.RepeatLoop], returns: [], reads: [NodeId.toBuiltIn('repeat')] })
 				.calls('13', NodeId.toBuiltIn('repeat'))
 				.nse('13', '12')
-				.constant('3', { cds: [{ id: '13' }, { id: '8', when: true }] })
-				.defineVariable('2', 'x', { definedBy: ['3', '4'], cds: [{ id: '13' }, { id: '8', when: true }] })
-				.constant('10', { cds: [{ id: '13' }, { id: '8', when: true }] })
-				.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13' }, { id: '8', when: true }] })
+				.reads('13', '6')
+				.constant('3', { cds: [{ id: '13' }] })
+				.defineVariable('2', 'x', { definedBy: ['3', '4'], cds: [{ id: '13' }, { id: '8', when: false }] })
+				.constant('10', { cds: [{ id: '13' }] })
+				.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13' }, { id: '8', when: false }] })
 		);
 	});
 
@@ -92,7 +93,7 @@ x`, emptyGraph()
 
 	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
 		.use('14', 'x')
-		.reads('14', ['0', '9'])
+		.reads('14', ['9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 		.calls('2', NodeId.toBuiltIn('<-'))
 		.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { origin: [BuiltInProcName.Default], returns: [], reads: ['4', '5', NodeId.toBuiltIn(':')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -116,7 +117,7 @@ x`, emptyGraph()
 		.use('10', 'x', { cds: [{ id: '13', when: true }] })
 		.reads('10', ['9', '0'])
 		.use('14', 'x')
-		.reads('14', ['0', '9'])
+		.reads('14', ['9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 		.calls('2', NodeId.toBuiltIn('<-'))
 		.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { origin: [BuiltInProcName.Default], returns: [], reads: ['4', '5', NodeId.toBuiltIn(':')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -147,7 +148,7 @@ x`, emptyGraph()
 		.use('13', 'x', { cds: [{ id: '16', when: true }] })
 		.reads('13', [9])
 		.use('17', 'x')
-		.reads('17', ['0', '12'])
+		.reads('17', ['12'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 		.calls('2', NodeId.toBuiltIn('<-'))
 		.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { origin: [BuiltInProcName.Default], returns: [], reads: ['4', '5', NodeId.toBuiltIn(':')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -174,7 +175,7 @@ x`, emptyGraph()
 		.use('6', 'i', { cds: [{ id: '11', when: true }] })
 		.reads('6', ['0', '7'])
 		.use('12', 'i')
-		.reads('12', ['0', '7'])
+		.reads('12', ['7'])
 		.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { origin: [BuiltInProcName.Default], returns: [], reads: ['1', '2', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
 		.calls('3', NodeId.toBuiltIn(':'))
 		.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { origin: [BuiltInProcName.Assignment], returns: ['7'], reads: [NodeId.toBuiltIn('<-'), 8], onlyBuiltIn: true, cds: [{ id: '11', when: true }] })
@@ -190,6 +191,34 @@ x`, emptyGraph()
 		.constant('8')
 		.defineVariable('7', 'i', { definedBy: ['8', '9'], cds: [{ id: '11', when: true }] })
 	);
+
+	describe('Loops that certainly run', () => {
+		const caps = ['name-normal', 'for-loop', 'numbers', 'newlines'] as const;
+		const options = { resolveIdsAsCriterion: true, expectIsSubgraph: true } as const;
+		/* the body overwrites x at least once, so the definition before the loop is dead */
+		for(const vector of ['1:3', '1:n', 'n:1', '5', 'c(1, 2)', '"a"', 'letters']) {
+			assertDataflow(label(`over ${vector}`, [...caps]), shell, `x <- 1\nfor(i in ${vector}) x <- 2\nx`,
+				emptyGraph().use('3@x').reads('3@x', '2@x'),
+				{ ...options, mustNotHaveEdges: [['3@x', '1@x']] }
+			);
+		}
+		/* the body may not run at all, or not reach the definition in its first iteration */
+		for(const [name, code] of [
+			['unknown vector', 'for(i in v) x <- 2'],
+			['empty vector', 'for(i in c()) x <- 2'],
+			['NULL', 'for(i in NULL) x <- 2'],
+			['range of unknowns (both may be empty factors)', 'for(i in u:v) x <- 2'],
+			['break before the definition', 'for(i in 1:3) { if(u) break; x <- 2 }'],
+			['next before the definition', 'for(i in 1:3) { if(u) next; x <- 2 }'],
+			['conditional definition', 'for(i in 1:3) if(u) x <- 2'],
+			['redefined colon', '`:` <- function(a, b) NULL; for(i in 1:3) x <- 2']
+		] as const) {
+			assertDataflow(label(`maybe: ${name}`, [...caps]), shell, `x <- 1\n${code}\nx`,
+				emptyGraph().use('3@x').reads('3@x', '1@x'),
+				options
+			);
+		}
+	});
 
 	describe('Branch coverage', () => {
 		describe('repeat', () => {
@@ -219,6 +248,7 @@ print(x)`,  emptyGraph()
 					.call('10', 'repeat', [argumentInCall('9')], { origin: [BuiltInProcName.RepeatLoop], returns: [], reads: [NodeId.toBuiltIn('repeat')], environment: defaultEnv().defineVariable('x', '0', '2') })
 					.calls('10', NodeId.toBuiltIn('repeat'))
 					.nse('10', '9')
+					.reads('10', '8')
 					.argument('14', '12')
 					.reads('14', '12')
 					.call('14', 'print', [argumentInCall('12')], { origin: [BuiltInProcName.Default], returns: ['12'], reads: [NodeId.toBuiltIn('print')], environment: defaultEnv().defineVariable('x', '5', '7') })
@@ -237,14 +267,14 @@ repeat {
       break
 }
 print(x)`, emptyGraph()
-					.use('8', 'foo', { cds: [{ id: '13' }, { id: '11', when: true }] })
+					.use('8', 'foo', { cds: [{ id: '13' }, { id: '11', when: false }] })
 					.use('15', 'x')
 					.reads('15', '5')
 					.reads('15', '0')
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 					.calls('2',  NodeId.toBuiltIn('<-'))
 					.argument('2', ['1', '0'])
-					.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { origin: [BuiltInProcName.Assignment], returns: ['5'], reads: [NodeId.toBuiltIn('<-'), 6], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2'), cds: [{ id: '13' }, { id: '11', when: true }] })
+					.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { origin: [BuiltInProcName.Assignment], returns: ['5'], reads: [NodeId.toBuiltIn('<-'), 6], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2'), cds: [{ id: '13' }, { id: '11', when: false }] })
 					.calls('7', NodeId.toBuiltIn('<-'))
 					.argument('7', ['6', '5'])
 					.call('9', 'break', [], { origin: [BuiltInProcName.Break],  returns: [], reads: [NodeId.toBuiltIn('break')], cds: [{ id: '13' }, { id: '11', when: true }], environment: defaultEnv().defineVariable('x', '5', '7') })
@@ -255,20 +285,21 @@ print(x)`, emptyGraph()
 					.calls('11', NodeId.toBuiltIn('if'))
 					.argument('12', '7')
 					.argument('12', '11')
-					.call('12', '{', [argumentInCall('7'), argumentInCall('11')], {  origin: [BuiltInProcName.ExpressionList], returns: ['11'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '5', '7'), cds: [{ id: '13' }, { id: '11', when: true }] })
+					.call('12', '{', [argumentInCall('7'), argumentInCall('11')], {  origin: [BuiltInProcName.ExpressionList], returns: ['11'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '5', '7'), cds: [{ id: '13' }, { id: '11', when: false }] })
 					.calls('12', NodeId.toBuiltIn('{'))
 					.argument('13', '12')
 					.call('13', 'repeat', [argumentInCall('12')], { origin: [BuiltInProcName.RepeatLoop], returns: [], reads: [NodeId.toBuiltIn('repeat')], environment: defaultEnv().defineVariable('x', '0', '2') })
 					.calls('13', NodeId.toBuiltIn('repeat'))
 					.nse('13', '12')
+					.reads('13', '9')
 					.argument('17', '15')
 					.reads('17', '15')
 					.call('17', 'print', [argumentInCall('15')], {  origin: [BuiltInProcName.Default], returns: ['15'], reads: [NodeId.toBuiltIn('print')], environment: defaultEnv().defineVariable('x', '5', '7') })
 					.calls('17', NodeId.toBuiltIn('print'))
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-					.constant('6', { cds: [{ id: '13' }, { id: '11', when: true }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], cds: [{ id: '13' }, { id: '11', when: true }] })
+					.constant('6', { cds: [{ id: '13' }] })
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], cds: [{ id: '13' }, { id: '11', when: false }] })
 					.markIdForUnknownSideEffects('17')
 			);
 			assertDataflow(label('Next', ['repeat-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
@@ -340,6 +371,7 @@ print(x)`, emptyGraph()
 					.calls('14', NodeId.toBuiltIn('for'))
 					.argument('14', '3')
 					.nse('14', '13')
+					.reads('14', '12')
 					.argument('18', '16')
 					.reads('18', '16')
 					.call('18', 'print', [argumentInCall('16')], { returns: ['16'], reads: [NodeId.toBuiltIn('print')], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('i', '3', '14') })
@@ -350,7 +382,7 @@ print(x)`, emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10')
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [ { id: '14', when: true }] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '14', when: true }] })
 					.markIdForUnknownSideEffects('18')
 			);
 			assertDataflow(label('Break in condition (for)', ['for-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
@@ -389,6 +421,7 @@ print(x)`,  emptyGraph()
 					.calls('17', NodeId.toBuiltIn('for'))
 					.argument('17', '3')
 					.nse('17', '16')
+					.reads('17', '13')
 					.argument('21', '19')
 					.reads('21', '19')
 					.call('21', 'print', [argumentInCall('19')], { returns: ['19'], reads: [NodeId.toBuiltIn('print')], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('i', '3', '17') })
@@ -399,7 +432,7 @@ print(x)`,  emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10')
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [ { id: '17', when: true }, { id: '15', when: false } ] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '17', when: true }, { id: '15', when: false }] })
 					.markIdForUnknownSideEffects('21')
 			);
 			assertDataflow(label('Next', ['for-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
@@ -474,6 +507,7 @@ print(x)`,  emptyGraph()
 					.calls('11', NodeId.toBuiltIn('while'))
 					.argument('11', '3')
 					.nse('11', '10')
+					.reads('11', '9')
 					.argument('15', '13')
 					.reads('15', '13')
 					.call('15', 'print', [argumentInCall('13')], { returns: ['13'], reads: [NodeId.toBuiltIn('print')], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '6', '8', []) })
@@ -517,6 +551,7 @@ print(x)`, emptyGraph()
 					.calls('14', NodeId.toBuiltIn('while'))
 					.argument('14', '3')
 					.nse('14', '13')
+					.reads('14', '10')
 					.argument('18', '16')
 					.reads('18', '16')
 					.call('18', 'print', [argumentInCall('16')], { returns: ['16'], reads: [NodeId.toBuiltIn('print')], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '6', '8', []) })

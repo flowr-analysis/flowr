@@ -2,7 +2,8 @@ import type { JsonEntry, NamedJsonEntry } from '../json/format';
 import { ParseError } from './normalizer-data';
 import { SourceRange } from '../../../../../util/range';
 import { type RawRType, RType } from '../../model/type';
-import type { RNode } from '../../model/model';
+import type { RNode, Source } from '../../model/model';
+import type { NormalizerData } from './normalizer-data';
 import { RExpressionList } from '../../model/nodes/r-expression-list';
 
 /**
@@ -16,7 +17,7 @@ export function extractLocation(ast: JsonEntry): SourceRange {
  * The JSON object that represents the input contains various meta-information.
  * This function extracts the meta-information and returns it.
  * @param entry - The JSON object to extract the meta-information from
- * @returns An object containing the passed entry, the location of the corresponding R-ast element, and the content of the passed entry
+ * @returns     An object containing the passed entry, the location of the corresponding R-ast element, and the content of the passed entry
  */
 export function retrieveMetaStructure(entry: JsonEntry): {
 	location: SourceRange
@@ -40,7 +41,7 @@ export function assureTokenType(token: string, expectedName: RawRType): void {
 /**
  * Extract the token-type of the given object. This is based on the knowledge, that all JSON objects created
  * from the R XML have a name attached.
- * @param content  - the JSON object to extract the token-type from
+ * @param content - the JSON object to extract the token-type from
  */
 export function getTokenType(content: JsonEntry): RawRType {
 	return content.token as RawRType;
@@ -92,4 +93,11 @@ export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<I
 		};
 	}
 	return node;
+}
+
+/**
+ * The source information of the node currently normalized, as given by `data`.
+ */
+export function currentSourceInfo(data: NormalizerData): Source {
+	return { fullRange: data.currentRange, adToks: [], fullLexeme: data.currentLexeme };
 }

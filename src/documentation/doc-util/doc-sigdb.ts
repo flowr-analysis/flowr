@@ -13,7 +13,7 @@ export function missingSigDbWarning(target: string): string {
 ${bold('!! no signature database installed !!', ansiFormatter)}
    [${target}] documents the signature database, but only the bundled base shard is present.
    Generating it now would replace the committed page with base-R-only numbers and examples.
-   Run ${bold('npm run sync:sigdb', ansiFormatter)} first (see wiki/Signature Database), or leave the page as it is.`);
+   Run ${bold('npm run sigdb:sync', ansiFormatter)} first (see wiki/Signature Database), or leave the page as it is.`);
 }
 
 /**

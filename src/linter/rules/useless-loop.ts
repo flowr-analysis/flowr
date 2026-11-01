@@ -1,9 +1,10 @@
 import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
-import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { at } from '../linter-util';
+import { type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
@@ -29,16 +30,14 @@ export const USELESS_LOOP = {
 		const results = elements.getElements().filter(e => {
 			const vertex = dataflow.graph.getVertex(e.node.info.id);
 			return vertex
-				&& FunctionCallVertex.is(vertex)
+				&& DfgVertex.isFunctionCall(vertex)
 				&& vertex.origin !== 'unnamed'
 				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0]);
 		}).filter(loop =>
 			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, data.inspectContext())
 		).map(res => ({
-			certainty:  LintingResultCertainty.Certain,
-			name:       res.node.lexeme as string,
-			loc:        SourceLocation.fromNode(res.node) ?? SourceLocation.invalid(),
-			involvedId: res.node.info.id
+			...at(res.node),
+			name: res.node.lexeme as string
 		} satisfies UselessLoopResult));
 
 		return {
@@ -48,17 +47,16 @@ export const USELESS_LOOP = {
 			}
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`
-	},
+	prettyPrint: prettyPrint(
+		result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`
+	),
 	info: {
 		name:          'Useless Loops',
-		description:   'Detect loops which only iterate once',
+		description:   'Finds loops that iterate only once.',
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability],
-		defaultConfig: {
+		defaultConfig: () => ({
 			loopyFunctions: loopyFunctions
-		}
+		})
 	}
 } as const satisfies LintingRule<UselessLoopResult, UselessLoopMetadata, UselessLoopConfig>;

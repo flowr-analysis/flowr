@@ -1,13 +1,10 @@
-import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -15,11 +12,9 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { HookInformation, KnownHooks } from '../../../../../hooks';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { valueSetGuard } from '../../../../../eval/values/general';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Resolve } from '../../../../../environments/resolve-helper';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
@@ -55,7 +50,7 @@ export function processRegisterHook<OtherInfo>(
 	}
 	params['...'] = '...';
 
-	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	const exprIds = new Set(argMaps.get('expr'));
 	const addIds = config.args.add ? new Set(argMaps.get('add')) : new Set<NodeId>();
 	const afterIds = config.args.after ? new Set(argMaps.get('after')) : new Set<NodeId>();
@@ -91,13 +86,12 @@ export function processRegisterHook<OtherInfo>(
 	});
 
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
-	const resolveArgs = NodeValue.infoOf(data, { graph: res.information.graph, environment: res.information.environment });
-	const shouldAdd = addIds.size === 0 ? config.args.add?.default :
-		Array.from(addIds).flatMap(id => valueSetGuard(Resolve.toValue(id, resolveArgs))?.elements ?? [])
+	const where = { graph: res.information.graph, environment: res.information.environment };
+	const isSet = (ids: ReadonlySet<NodeId>): boolean =>
+		Array.from(ids).flatMap(id => NodeValue.setOf(id, data, where)?.elements ?? [])
 			.some(v => v.type === 'logical' && v.value !== false);
-	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default :
-		Array.from(afterIds).flatMap(id => valueSetGuard(Resolve.toValue(id, resolveArgs))?.elements ?? [])
-			.some(v => v.type === 'logical' && v.value !== false);
+	const shouldAdd = addIds.size === 0 ? config.args.add?.default : isSet(addIds);
+	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default : isSet(afterIds);
 
 	const info = res.information;
 	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({

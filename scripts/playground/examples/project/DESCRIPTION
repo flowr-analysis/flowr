@@ -1,0 +1,8 @@
+Package: temperatures
+Title: Report Mean Temperatures
+Version: 0.1.0
+Authors@R: person("Ada", "Lovelace", email = "ada@example.org", role = c("aut", "cre"))
+Description: Converts temperatures to Fahrenheit and reports their mean.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1.0)

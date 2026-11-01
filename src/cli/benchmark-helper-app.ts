@@ -54,7 +54,7 @@ async function benchmark() {
 	guard((options['file-id'] === undefined) === (options['run-num'] === undefined), 'When giving a file-id or run-num, both have to be given');
 
 	// prefix for printing to console, includes file id and run number if present
-	const prefix = `[${options.input }${options['file-id'] === undefined ? '' : ` (file ${options['file-id']}, run ${options['run-num']})`}]`;
+	const prefix = `[${options.input}${options['file-id'] === undefined ? '' : ` (file ${options['file-id']}, run ${options['run-num']})`}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
 	const directory = path.parse(options.output).dir;
 	// ensure the directory exists if the path contains one

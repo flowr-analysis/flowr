@@ -10,6 +10,15 @@ import os from 'os';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 
+const RealWorldRdaDir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
+export const MissingRealWorldRda = `no .rda/.rdata fixture in ${RealWorldRdaDir}: run test/functionality/project/plugin/load-pipeline/setup.sh with a zenodo/zenodo_files.csv (see that folder's README.md) to download it`;
+/** every real-world `.rda`/`.rdata` fixture on disk, empty where the corpus was never downloaded */
+export function realWorldRdaFiles(): string[] {
+	return fs.existsSync(RealWorldRdaDir)
+		? fs.readdirSync(RealWorldRdaDir).filter(f => /\.(rda|rdata)$/i.test(f)).map(f => path.join(RealWorldRdaDir, f))
+		: [];
+}
+
 describe('rda-files', () => {
 	describe('load-pipeline random', () => {
 		const runs = 30;
@@ -152,13 +161,11 @@ describe('rda-files', () => {
 	});
 
 	describe('load-pipeline real-world', () => {
-		const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
-		if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
-			it.skip('skipped - no RDA files found', () => {});
+		const files = realWorldRdaFiles();
+		if(files.length === 0) {
+			it.skip(MissingRealWorldRda, () => {});
 			return;
 		}
-
-		const files = fs.readdirSync(dir).filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda')).map(file => path.join(dir, file));
 
 		for(const file of files) {
 			it(`File: ${file}`, () => {
@@ -182,9 +189,9 @@ describe('rda-files', () => {
 
 /**
  * Loads an RDA file in a fresh R environment and returns a map of variable names to their types.
- * @param file    - Path to the RDA file to load
- * @param rShell  - The R shell executor to use for running the R code
- * @returns A map from variable name to its R type string
+ * @param file   - Path to the RDA file to load
+ * @param rShell - The R shell executor to use for running the R code
+ * @returns      A map from variable name to its R type string
  */
 export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
 	const output = rShell.run(`

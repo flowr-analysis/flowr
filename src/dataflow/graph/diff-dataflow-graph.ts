@@ -1,18 +1,23 @@
+/**
+ * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached
+ * through the helper itself here; going through `Dataflow` would be a cycle.
+ * @lintIgnore use-instead
+ */
 import { FunctionArgument, type OutgoingEdges, UnknownSideEffect } from './graph';
+import { GraphHelper } from './graph-helper';
 import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { ControlFlowEdgeTypes, DfEdge } from './edge';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
-import { GraphDiff } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
-import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
+import { DfgVertex } from './vertex';
 
 
 /**
@@ -22,7 +27,7 @@ import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
-	GraphDiff.outgoingEdges(ctx, diffEdges, ctx.config.compareControlFlow ? undefined : withoutControlFlow);
+	GraphHelper.diff.outgoingEdges(ctx, diffEdges, ctx.config.compareControlFlow ? undefined : withoutControlFlow);
 }
 
 /**
@@ -51,13 +56,14 @@ function diffRootVertices(ctx: GraphDiffContext): void {
 		{ ...ctx, position: `${ctx.position}Unknown side effects differ in graphs. ` });
 }
 
+function reportDiffering(ctx: GenericDifferenceInformation<GraphDifferenceReport>, id: NodeId, prefix: string, a: unknown, b: unknown): void {
+	ctx.report.addComment(`${prefix}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`, { tag: 'vertex', id });
+}
+
 function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === '<value>' || b === '<value>') {
 		if(a !== b) {
-			ctx.report.addComment(
-				`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
-				{ tag: 'vertex', id: fn }
-			);
+			reportDiffering(ctx, fn, ctx.position, a, b);
 		}
 		return;
 	}
@@ -70,11 +76,11 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === false || b === false) {
 		if(a !== b) {
-			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`, { tag: 'vertex', id: fn });
+			reportDiffering(ctx, fn, ctx.position, a, b);
 		}
 		return;
 	} else if(a.length !== b.length) {
-		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`, { tag: 'vertex', id: fn });
+		reportDiffering(ctx, fn, `${ctx.position}Differs in number of arguments. `, a, b);
 		return;
 	}
 	for(let i = 0; i < a.length; ++i) {
@@ -110,17 +116,11 @@ export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
 	const lVert = ctx.left.vertices(true).toArray();
 	const rVert = ctx.right.vertices(true).toArray();
-	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
-		|| lVert.length > rVert.length && !ctx.config.rightIsSubgraph
-	) {
-		ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${lVert.length}, ${ctx.rightname} has ${rVert.length}`);
-	}
+	GraphHelper.diff.vertexCount(ctx, lVert.length, rVert.length);
 	for(const [id, lInfo] of lVert) {
 		const rInfoMay = ctx.right.get(id);
 		if(rInfoMay === undefined) {
-			if(!ctx.config.rightIsSubgraph) {
-				ctx.report.addComment(`Vertex ${id} is not present in ${ctx.rightname}`, { tag: 'vertex', id });
-			}
+			GraphHelper.diff.missingVertex(ctx, id);
 			continue;
 		}
 		const [rInfo] = rInfoMay;
@@ -130,8 +130,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			const lname = (lInfo.name as string | undefined) ?? recoverName(id, ctx.left.idMap) ?? '??';
-			const rname = (rInfo.name as string | undefined) ?? recoverName(id, ctx.right.idMap) ?? '??';
+			const lname = (lInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.left.idMap) ?? '??';
+			const rname = (rInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.right.idMap) ?? '??';
 			if(lname !== rname) {
 				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
 					tag: 'vertex',
@@ -144,14 +144,14 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			// compare arrays
 			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
 			if(!equalArrays) {
-				ctx.report.addComment(`Vertex ${id} differs in origin. ${ctx.leftname}: ${JSON.stringify(lInfo.origin, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.origin, jsonReplacer)}`, { tag: 'vertex', id });
+				reportDiffering(ctx, id, `Vertex ${id} differs in origin. `, lInfo.origin, rInfo.origin);
 			}
 		}
 
 		if(lInfo.link !== undefined || rInfo.link !== undefined) {
 			const equal = lInfo.link && rInfo.link && arrayEqual(lInfo.link.origin, rInfo.link.origin);
 			if(!equal) {
-				ctx.report.addComment(`Vertex ${id} differs in link. ${ctx.leftname}: ${JSON.stringify(lInfo.link, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.link, jsonReplacer)}`, { tag: 'vertex', id });
+				reportDiffering(ctx, id, `Vertex ${id} differs in link. `, lInfo.link, rInfo.link);
 			}
 		}
 
@@ -165,8 +165,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				position: `${ctx.position}Vertex ${id} differs in environment. `
 			});
 		}
-		if(FunctionCallVertex.is(lInfo)) {
-			if(!FunctionCallVertex.is(rInfo)) {
+		if(DfgVertex.isFunctionCall(lInfo)) {
+			if(!DfgVertex.isFunctionCall(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`);
 			} else {
 				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {
@@ -184,8 +184,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			}
 		}
 
-		if(FunctionDefinitionVertex.is(lInfo)) {
-			if(!FunctionDefinitionVertex.is(rInfo)) {
+		if(DfgVertex.isFunctionDefinition(lInfo)) {
+			if(!DfgVertex.isFunctionDefinition(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id });
 			} else {
 				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints, (a, b) => {
@@ -195,10 +195,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					diffControlDependencies(a.cds, b.cds, { ...ctx, position: '' });
 					return true;
 				})) {
-					ctx.report.addComment(
-						`Vertex ${id} differs in exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`,
-						{ tag: 'vertex', id }
-					);
+					reportDiffering(ctx, id, `Vertex ${id} differs in exit points. `, lInfo.exitPoints, rInfo.exitPoints);
 				}
 				if(
 					(lInfo.subflow.environment === undefined && rInfo.subflow.environment !== undefined && !ctx.config.leftIsSubgraph)
@@ -269,10 +266,7 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 	// sort by id
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			ctx.report.addComment(
-				`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
-				{ tag: 'vertex', id: fn }
-			);
+			reportDiffering(ctx, fn, ctx.position, a, b);
 		}
 		return;
 	}
@@ -297,7 +291,7 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 function diffHooks(left: HookInformation[], right: HookInformation[], ctx: GraphDiffContext, id: NodeId): void {
 	// compare length
 	if(left.length !== right.length) {
-		ctx.report.addComment(`Differs in number of hooks. ${ctx.leftname}: ${JSON.stringify(left, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(right, jsonReplacer)}`, { tag: 'vertex', id });
+		reportDiffering(ctx, id, 'Differs in number of hooks. ', left, right);
 		return;
 	}
 	// compare each hook
@@ -341,5 +335,5 @@ function diffEdge(edge: DfEdge, otherEdge: DfEdge, ctx: GraphDiffContext, id: No
  * Compares two sets of outgoing edges and reports differences.
  */
 export function diffEdges(ctx: GraphDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
-	GraphDiff.edges(ctx, id, lEdges, rEdges, diffEdge);
+	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
 }

@@ -1,21 +1,21 @@
 import { assert, test } from 'vitest';
-import type { AbsintVisitorConfiguration } from '../../../../src/abstract-interpretation/absint-visitor';
+import { isArray } from '../../../../src/util/collections/arrays';
+import type { AbstractInterpreter } from '../../../../src/abstract-interpretation/absint-inference';
 import { type AbstractDataFrameShape, DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import type { DataFrameShapeSemantics } from '../../../../src/abstract-interpretation/data-frame/dataframe-semantics';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
-import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import { type DataFrameOperations, DataFrameShapeAnalysis, type DataFrameShapeDomains } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AbstractValue } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, type Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalDomain } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { FlowrConfig } from '../../../../src/config';
-import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { type SlicingCriteria, SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { guard, isNotUndefined } from '../../../../src/util/assert';
+import type { SlicingCriteria, SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { Record } from '../../../../src/util/record';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
-import { type InferenceTestCase, type InferenceTestOptions, runInference, testInferredValues } from '../inference';
+import { type InferenceTestCase, type InferenceTestOptions, resolveInferenceNodeId, runInference, testInferredValues } from '../inference';
 
 /**
  * The expected data frame shape for data frame shape tests.
@@ -50,10 +50,10 @@ export interface DataFrameTestOptions extends InferenceTestOptions, Partial<Test
  *
  * Note that this functions inserts print statements for the shape properties in the code in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- * @param shell - The R shell to use to run the code.
- * @param code - The R code to infer the data frame shape for and to run for validation.
+ * @param shell    - The R shell to use to run the code.
+ * @param code     - The R code to infer the data frame shape for and to run for validation.
  * @param expected - The expected data frame shape constraints for each slicing criterion to test or a list of slicing criteria to validate the inferred shape for.
- * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
+ * @param options  - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
  */
 export function testInferredDataFrameShape(
 	shell: RShell,
@@ -61,9 +61,9 @@ export function testInferredDataFrameShape(
 	expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
-	const test = Array.isArray(expected) ? expected : Record.mapProperties(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
-	const inference = (config: AbsintVisitorConfiguration) => new DataFrameShapeInferenceVisitor({ ...config, trackOperations: false });
-	testInferredValues(options?.name ?? code.trim(), shell, code, test, inference, createOutputCode, parseOutput, options);
+	const test = isArray<SlicingCriterion>(expected) ? expected : Record.mapProps(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
+	const createAnalysis = () => new DataFrameShapeAnalysis({ trackOperations: false });
+	testInferredValues(options?.name ?? code.trim(), shell, code, test, createAnalysis, 'dataFrame', createOutputCode, parseOutput, options);
 }
 
 /**
@@ -74,12 +74,12 @@ export function testInferredDataFrameShape(
  *
  * Note that this functions inserts print statements for the shape properties in the code in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- * @param shell - The R shell to use to run the code.
- * @param fileArg - The file argument for the assertion run
- * @param textArg - The text argument for the validation run where the code is executed.
- * @param getCode - A function to get the R code for `fileArg` or `textArg` to infer the data frame shape for and to run for validation.
+ * @param shell    - The R shell to use to run the code.
+ * @param fileArg  - The file argument for the assertion run
+ * @param textArg  - The text argument for the validation run where the code is executed.
+ * @param getCode  - A function to get the R code for `fileArg` or `textArg` to infer the data frame shape for and to run for validation.
  * @param expected - The expected data frame shape constraints for each slicing criterion to test or a list of slicing criteria to validate the inferred shape for.
- * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
+ * @param options  - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
  */
 export function testInferredDataFrameShapeWithSource(
 	shell: RShell,
@@ -94,9 +94,9 @@ export function testInferredDataFrameShapeWithSource(
 
 /**
  * Tests that the mapped abstract data frame operations for given slicing criteria include expected abstract operations.
- * @param code - The R code to map the abstract operations for.
+ * @param code     - The R code to map the abstract operations for.
  * @param expected - A subset of the expected abstract data frame operations for each slicing criterion.
- * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
+ * @param options  - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
  */
 export function testMappedDataFrameOperations(
 	code: string,
@@ -104,10 +104,11 @@ export function testMappedDataFrameOperations(
 	options?: DataFrameTestOptions
 ) {
 	test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(options?.name ?? code.trim(), ['absint']), async() => {
-		const result = await runInference(code.trim(), config => new DataFrameShapeInferenceVisitor(config), options);
+		const analysis = new DataFrameShapeAnalysis();
+		const result = await runInference(code.trim(), () => analysis, options);
 
 		for(const [criterion, expectedOperations] of Record.entries(expected)) {
-			const operations = getInferredOperationsForCriterion(result, criterion) ?? [];
+			const operations = getInferredOperationsForCriterion(result, analysis.semantics.dataFrame, criterion) ?? [];
 			assert.containsSubset(operations, expectedOperations, `Expected abstract operations for criterion "${criterion}" to include ${JSON.stringify(expectedOperations)}, but got ${JSON.stringify(operations)}`);
 		}
 	});
@@ -115,9 +116,9 @@ export function testMappedDataFrameOperations(
 
 /**
  * Converts an expected data frame shape to a data frame domain.
- * @param shape - The expected data frame shape to convert to a data frame domain.
+ * @param shape  - The expected data frame shape to convert to a data frame domain.
  * @param config - An optional flowR configuration to use for the conversion (only the `abstractInterpretation.dataFrame.maxColNames` option is used, defaults to {@link FlowrConfig.default}).
- * @returns The data frame domain representing the expected data frame shape, or `undefined` if the expected shape is `undefined`.
+ * @returns      The data frame domain representing the expected data frame shape, or `undefined` if the expected shape is `undefined`.
  */
 function toDataFrameDomain(shape: ExpectedDataFrameShape | undefined, config?: FlowrConfig): DataFrameDomain | undefined {
 	if(shape === undefined) {
@@ -134,21 +135,18 @@ function toDataFrameDomain(shape: ExpectedDataFrameShape | undefined, config?: F
 
 /**
  * Retrieves the mapped abstract data frame operations for a given slicing criterion from the results of the inference.
- * @param inference - The data frame shape inference visitor after performing the inference, which contains the mapped abstract operations.
+ * @param inference - The abstract interpretation visitor after performing the inference.
+ * @param semantics - The data frame shape semantics containing the mapped abstract operations.
  * @param criterion - The slicing criterion for which to retrieve the abstract operations.
- * @returns The mapped abstract operations for the given slicing criterion, or `undefined` if no operations were mapped for it.
+ * @returns         The mapped abstract operations for the given slicing criterion, or `undefined` if no operations were mapped for it.
  */
-function getInferredOperationsForCriterion(inference: DataFrameShapeInferenceVisitor, criterion: SlicingCriterion): Readonly<DataFrameOperations> {
-	const idMap = inference.config.normalizedAst.idMap;
-	let nodeId = SlicingCriterion.parse(criterion, idMap);
-	const node = idMap.get(nodeId);
-
-	if(node?.info.role === RoleInParent.FunctionCallName) {
-		nodeId = node.info.parent ?? nodeId;
-	}
-	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
-
-	return inference.getAbstractOperations(nodeId);
+function getInferredOperationsForCriterion(
+	inference: AbstractInterpreter<DataFrameShapeDomains>,
+	semantics: DataFrameShapeSemantics,
+	criterion: SlicingCriterion
+): Readonly<DataFrameOperations> {
+	const nodeId = resolveInferenceNodeId(inference.config.normalizedAst.idMap, criterion);
+	return semantics.getAbstractOperations(nodeId);
 }
 
 /**

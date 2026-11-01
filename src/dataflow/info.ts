@@ -4,12 +4,11 @@ import type { BrandedIdentifier, IdentifierReference } from './environments/iden
 import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
-import { isNotUndefined } from '../util/assert';
 import type { HookInformation } from './hooks';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
-
+import type { DataflowBudgetExhaustion } from '../gas';
 
 /**
  * A control dependency links a vertex to the control flow element which
@@ -25,6 +24,8 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
+	/** whether this control dependency is a promise's: what stands under it runs only once the call `id` forces it, see {@link ControlFlow.withinPromise} */
+	readonly byPromise?:   boolean
 	/**
 	 * any file-exist assumptions made
 	 */
@@ -38,6 +39,7 @@ function sameControlDependency(a: ControlDependency, b: ControlDependency): bool
 
 /**
  * Utility functions to work with {@link ControlDependency|control dependencies}.
+ * @helper dataflow
  */
 export const ControlDependency = {
 	name:   'ControlDependency',
@@ -65,10 +67,14 @@ export const ControlDependency = {
 
 /** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
 export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {
-	if(!toAdd) {
-		return;
+	const adds = toAdd ?? [];
+	/* the lists often share a run copied from one growing list (e.g., the exits of every stopifnot in a script), so skip it */
+	const start = target.indexOf(adds[0]);
+	let i = 0;
+	while(start >= 0 && i < adds.length && target[start + i] === adds[i]) {
+		i++;
 	}
-	for(const add of toAdd) {
+	for(const add of adds.slice(i)) {
 		if(!target.some(have => sameControlDependency(have, add))) {
 			target.push(add);
 		}
@@ -77,7 +83,7 @@ export function appendCds(target: ControlDependency[], toAdd: readonly ControlDe
 
 /** A copy of `base` with `toAdd` appended, skipping the control dependencies that are already in there. */
 export function withCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
-	const result = base ? Array.from(base) : [];
+	const result = [...base ?? []];
 	appendCds(result, toAdd);
 	return result;
 }
@@ -92,7 +98,6 @@ export function negateControlDependency(cd: ControlDependency): ControlDependenc
 		when: cd.when === undefined ? undefined : !cd.when,
 	};
 }
-
 
 /**
  * Classifies the type of exit point encountered.
@@ -131,41 +136,41 @@ export interface ExitPoint {
 	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
 	readonly nodeId: NodeId,
+	/** The jump this exit stands for, when {@link ExitPoint#nodeId|nodeId} is a construct it leaves through */
+	readonly jump?:  NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly cds?:   ControlDependency[]
+	readonly cds?:   readonly ControlDependency[]
+}
+
+/** `exit` leaving through the construct `rootId`, which keeps the jump it stands for. */
+export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
+	return { ...exit, nodeId: rootId, jump: exit.jump ?? exit.nodeId };
 }
 
 /**
  * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
-export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
-	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
-	if(toAdd.length === 0) {
-		return;
-	}
-	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
-		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
-	).map(negateControlDependency)).filter(isNotUndefined);
-	for(const ep of toAdd) {
-		existing.push(ep);
-	}
-	for(const icd of invertedCds) {
-		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
-			invertExitCds.push(icd);
+export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: readonly ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+	for(const ep of add) {
+		if(ep.type !== ExitPointType.Default) {
+			existing.push(ep);
+			const ownCds = ControlDependency.minus(ep.cds ?? [], activeCds ?? []);
+			appendCds(invertExitCds, ownCds.map(negateControlDependency));
 		}
 	}
 }
 
 /**
- * Overwrites the existing exit points with the given ones, taking care of cds.
+ * Overwrites the existing exit points with the given ones, taking care of cds:
+ * the existing ones stay if the replacements only happen in some branches.
  */
 export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
 	const replaceCds = replace.flatMap(e => e.cds);
-	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds as ControlDependency[])) {
 		return replace;
 	}
 	return existing.concat(replace);
@@ -178,7 +183,7 @@ export function overwriteExitPoints(existing: readonly ExitPoint[], replace: Exi
  */
 export type KillReference =
 	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
-	| { readonly kind: 'named', readonly reference: IdentifierReference }
+	| { readonly kind: 'named', readonly reference: IdentifierReference, /** the call performing the removal */ readonly killedBy?: NodeId }
 	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
 	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> }
 	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */
@@ -250,10 +255,16 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 * @see {@link KillReference}
 	 */
 	kill?:             readonly KillReference[]
+	/**
+	 * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+	 * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+	 */
+	cutShort?:         DataflowBudgetExhaustion
 }
 
 /**
- * Helper object for {@link DataflowInformation}
+ * Helper object for {@link DataflowInformation}.
+ * @helper dataflow
  */
 export const DataflowInformation = {
 	name: 'DataflowInformation',
@@ -292,31 +303,26 @@ export function happensInEveryBranch(cds: readonly ControlDependency[] | undefin
 	return cds === undefined || (cds.length !== 0 && coversSet(cds));
 }
 
-function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
+function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]): boolean {
 	/* as deep as the surrounding branches, so the pairwise scan beats any set */
 	for(const { id, when } of cds) {
-		if(when !== true && when !== false) {
-			continue;
-		}
-		let counterpart = false;
-		for(const other of cds) {
-			if(other.id === id && other.when === !when) {
-				counterpart = true;
-				break;
-			}
-		}
-		if(!counterpart) {
+		if(when !== undefined && !hasCounterpart(cds, id, !when)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-/**
- * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
- * the list contains a dependency on the `true` and on the `false` case).
- * @see {@link happensInEveryBranch} - for the array-based version
- */
+function hasCounterpart(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[], id: NodeId, when: boolean): boolean {
+	for(const other of cds) {
+		if(other.id === id && other.when === when) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** As {@link happensInEveryBranch}, but for a set of control dependencies. */
 export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
 	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }
@@ -349,7 +355,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 /**
  * Calculates the difference between two lists of control dependencies.
  */
-export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
+export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: readonly ControlDependency[] | undefined, b: readonly ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
 			info.report.addComment(`${info.position}Different control dependencies: ${JSON.stringify(a)} vs. ${JSON.stringify(b)}`);

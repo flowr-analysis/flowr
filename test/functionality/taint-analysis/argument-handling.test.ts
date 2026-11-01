@@ -75,19 +75,19 @@ function argumentTest(
 describe('Taint Analysis', () => {
 	describe('Argument Evaluation', () => {
 		describe('default arguments are true', () => {
-			argumentTest( undefined, undefined, taint3);
+			argumentTest(undefined, undefined, taint3);
 		});
 		describe('both args true', () => {
-			argumentTest( true, true, taint3);
+			argumentTest(true, true, taint3);
 		});
 		describe('arg1 true and arg2 false', () => {
-			argumentTest( true, false, taint1);
+			argumentTest(true, false, taint1);
 		});
 		describe('arg1 false and arg2 true', () => {
-			argumentTest( false, true, taint2);
+			argumentTest(false, true, taint2);
 		});
 		describe('both args false', () => {
-			argumentTest( false, false, Top);
+			argumentTest(false, false, Top);
 		});
 	});
 });

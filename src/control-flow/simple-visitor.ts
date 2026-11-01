@@ -2,22 +2,17 @@ import { type ControlFlowGraph, CfgVertex, NoNeighbors } from './control-flow-gr
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ArrayQueue } from '../util/collections/queue';
 
-// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[], visitor: (node: NodeId) => boolean | void) => void;
-
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.
- * @param graph     - The control flow graph.
+ * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
- * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
- *
- * This function is of type {@link SimpleCfgVisitor}.
+ * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  * @see {@link visitCfgInOrder} for a traversal in order
  */
 export function visitCfgInReverseOrder(
 	graph: ControlFlowGraph,
 	startNodes: readonly NodeId[],
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
@@ -50,14 +45,12 @@ export function visitCfgInReverseOrder(
  * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
- *
- * This function is of type {@link SimpleCfgVisitor}.
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
  */
 export function visitCfgInOrder(
 	graph: ControlFlowGraph,
 	startNodes: readonly NodeId[],
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitor: (node: NodeId) => boolean | void
 ): Set<NodeId> {
 	const visited = new Set<NodeId>();

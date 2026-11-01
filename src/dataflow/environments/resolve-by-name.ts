@@ -1,16 +1,31 @@
 import { EnvType, type Environment, type REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { Identifier, type BrandedNamespace, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
+import { type BrandedIdentifier, Identifier, type BrandedNamespace, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isBaseRPackage } from '../../util/r-base-packages';
+
+/** how many answers a frozen layer memoizes before it starts over, so the memo cannot grow without bound */
+const TailCacheCap = 4096;
 
 /** A namespaced lookup only sees its matching layer; a bare lookup skips loaded-but-unattached namespaces (`requireNamespace`). */
 function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boolean {
-	if(ns !== undefined) {
-		return layer.n !== ns;
+	return ns !== undefined ? layer.n !== ns : layer.t === EnvType.LoadedNamespace;
+}
+
+/**
+ * What the built-in environment states about `pkg::name` for a package nothing attached: `pkg::fn` reaches its
+ * package in R whether or not it is on the search path, so a namespaced name has to find it here. Failing that,
+ * a package outside of base R never hands out a function of base R, so `config::get` is no `base::get`.
+ */
+function statedIn(builtIn: Environment, name: BrandedIdentifier, ns: BrandedNamespace | undefined): IdentifierDefinition[] | undefined {
+	const stated = ns === undefined ? undefined : builtIn.namespaces?.get(String(ns))?.get(name);
+	if(stated !== undefined || ns === undefined || isBaseRPackage(String(ns))) {
+		return stated ?? builtIn.lookup(name);
 	}
-	return layer.t === EnvType.LoadedNamespace;
+	const foreign = builtIn.lookup(name)?.filter(d => !isBaseRPackage(String(d.name === undefined ? undefined : Identifier.getNamespace(d.name))));
+	return foreign?.length ? foreign : undefined;
 }
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -22,7 +37,6 @@ const NonFunctionTargetTypes = ReferenceType.Variable | ReferenceType.Parameter 
 	| ReferenceType.Constant | ReferenceType.BuiltInConstant;
 
 const inEveryBranch = (d: IdentifierDefinition) => happensInEveryBranch(d.cds);
-const notAParameter = (d: IdentifierDefinition) => d.type !== ReferenceType.Parameter;
 
 const TargetTypePredicate = {
 	[ReferenceType.Unknown]:         () => true,
@@ -54,10 +68,10 @@ function ownDefinitions(id: Identifier, environment: REnvironmentInformation): r
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  * If the type you want to reference is unknown, please use {@link resolveByNameAnyType} instead.
- * @param id                 - The identifier to resolve (optionally namespaced)
- * @param environment        - The current environment used for name resolution
- * @param target             - The target (meta) type of the identifier to resolve
- * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
+ * @param    id          - The identifier to resolve (optionally namespaced)
+ * @param    environment - The current environment used for name resolution
+ * @param    target      - The target (meta) type of the identifier to resolve
+ * @returns              A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  * @useInstead {@link Resolve.byNameAndType}
  */
@@ -67,6 +81,15 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	}
 	const found = resolveByTargetType(id, environment, target);
 	return found === undefined && target === ReferenceType.NonFunction ? ownDefinitions(id, environment) : found;
+}
+
+function tailCacheOf(env: Environment, target: ReferenceType): Map<string, readonly IdentifierDefinition[] | undefined> {
+	env.tailCache ??= new Map();
+	let memo = env.tailCache.get(target);
+	if(memo === undefined) {
+		env.tailCache.set(target, memo = new Map<string, readonly IdentifierDefinition[] | undefined>());
+	}
+	return memo;
 }
 
 /** {@link resolveByName} without its two special targets, i.e. the plain walk up the environments. */
@@ -79,11 +102,24 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 	/* `current` can already be the built-in environment itself (e.g. `get(x, envir=baseenv())`);
 	 * it has no parent to walk to, so resolve directly instead of entering the loop below. */
 	if(current.builtInEnv) {
-		return current.memory.get(name);
+		return current.lookup(name);
 	}
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
+	/* the attached packages below the code's own frames are a dozen layers deep and nothing writes them, so the
+	 * walk through them is done once per name and target instead of once per resolution */
+	const flatten = ns === undefined && internal !== false && typeof id === 'string'
+		&& target !== ReferenceType.S3MethodPrefix && target !== ReferenceType.S7MethodPrefix;
+	let flattenAt: Environment | undefined;
 	do{
+		if(flatten && flattenAt === undefined && definitions === undefined && (current.t !== undefined || current.builtInEnv)) {
+			const memo = current.tailCache?.get(target);
+			const cached = memo?.get(name);
+			if(cached !== undefined || memo?.has(name)) {
+				return cached;
+			}
+			flattenAt = current;
+		}
 		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
@@ -92,12 +128,9 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
 			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
-			definition = current.memory.entries()
-				.filter(([defName]) => defName.startsWith(prefix))
-				.flatMap(([, defs]) => defs)
-				.toArray();
+			definition = current.memory.entries().filter(([defName]) => defName.startsWith(prefix)).flatMap(([, defs]) => defs).toArray();
 		} else {
-			definition = current.memory.get(name);
+			definition = current.lookup(name);
 			if(internal === false) {
 				definition = definition?.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
@@ -113,21 +146,19 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 					allOk = false;
 					break;
 				}
-				if(allOk && ((checkParameters && !notAParameter(def)) || !inEveryBranch(def))) {
+				if(allOk && ((checkParameters && def.type === ReferenceType.Parameter) || !inEveryBranch(def))) {
 					allOk = false;
 				}
 			}
 			if(allOk) {
+				if(flattenAt !== undefined) {
+					tailCacheOf(flattenAt, target).set(name, definition);
+				}
 				return definition;
 			}
-			/* never alias the environment's own array, it is appended to below */
-			const filtered = allWanted ? definition.slice() : definition.filter(wantedType);
+			const filtered = allWanted ? definition : definition.filter(wantedType);
 			if(filtered.length > 0) {
-				if(definitions) {
-					definitions.push(...filtered);
-				} else {
-					definitions = filtered;
-				}
+				(definitions ??= []).push(...filtered);
 			}
 		}
 		current = current.parent;
@@ -135,12 +166,19 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 
 	/* the built-in layer is handed over as it is, except to a value position: `filter(df, c > 2)` means the
 	   column `c`, never `base::c`, and only with nothing left does `ownDefinitions` have its say */
-	const known = current.memory.get(name);
+	const known = statedIn(current, name, ns);
 	const builtIns = target === ReferenceType.NonFunction ? known?.filter(wantedType) : known;
-	if(definitions) {
-		return builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns);
+	const result = definitions
+		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
+		: (builtIns === undefined || builtIns.length > 0 ? builtIns : undefined);
+	if(flattenAt !== undefined) {
+		const memo = tailCacheOf(flattenAt, target);
+		if(memo.size >= TailCacheCap) {
+			memo.clear();
+		}
+		memo.set(name, result);
 	}
-	return builtIns === undefined || builtIns.length > 0 ? builtIns : undefined;
+	return result;
 }
 
 /**
@@ -150,67 +188,50 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 export function resolveByNameAnyType(id: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	let current: Environment = environment.current;
 	/* only cache plain names: namespaced ids are arrays (no stable map key) and must not answer plain lookups */
-	const cacheable = typeof id === 'string';
-	if(cacheable) {
+	if(typeof id === 'string') {
 		const g = current.cache?.get(id);
 		if(g !== undefined) {
 			return g;
 		}
 	}
 	const name = Identifier.getName(id);
-	const ns = Identifier.getNamespace(id);
-	const internal = Identifier.accessesInternal(id);
-
 	/* `current` can already be the built-in environment itself */
 	if(current.builtInEnv) {
-		const ret = current.memory.get(name);
-		if(ret && cacheable) {
-			current.cache ??= new Map();
-			current.cache.set(id, ret);
-		}
-		return ret;
+		return remember(environment, id, current.lookup(name));
 	}
-
+	const ns = Identifier.getNamespace(id);
+	const internal = Identifier.accessesInternal(id);
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	do{
 		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
 		}
-		let definition = current.memory.get(name);
+		let definition = current.lookup(name);
 		if(definition) {
 			if(internal === false) {
 				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
 			if(definition.every(inEveryBranch)) {
-				if(cacheable) {
-					environment.current.cache ??= new Map();
-					environment.current.cache.set(id, definition);
-				}
-				return definition;
+				return remember(environment, id, definition);
 			} else if(definition.length > 0) {
-				if(definitions) {
-					definitions = definitions.concat(definition);
-				} else {
-					definitions = definition;
-				}
+				definitions = definitions ? definitions.concat(definition) : definition;
 			}
 		}
 		current = current.parent;
 	} while(!current.builtInEnv);
+	const builtIns = statedIn(current, name, ns);
+	if(definitions === undefined) {
+		return remember(environment, id, builtIns);
+	}
+	return remember(environment, id, builtIns === undefined ? definitions : definitions.concat(builtIns));
+}
 
-	const builtIns = current.memory.get(name);
-	let ret: IdentifierDefinition[] | undefined;
-	if(definitions) {
-		ret = builtIns === undefined ? definitions : definitions.concat(builtIns);
-	} else {
-		ret = builtIns;
+function remember(environment: REnvironmentInformation, id: Identifier, definitions: IdentifierDefinition[] | undefined): IdentifierDefinition[] | undefined {
+	if(definitions !== undefined && typeof id === 'string') {
+		(environment.current.cache ??= new Map()).set(id, definitions);
 	}
-	if(ret && cacheable) {
-		environment.current.cache ??= new Map();
-		environment.current.cache.set(id, ret);
-	}
-	return ret;
+	return definitions;
 }
 
 /**
@@ -227,35 +248,20 @@ export function resolvesToBuiltIn(name: Identifier, environment: REnvironmentInf
 
 /**
  * Checks whether the given identifier name resolves to a built-in constant with the given value.
- * @param name               - The name of the identifier to resolve
- * @param environment        - The current environment used for name resolution
- * @param wantedValue        - The built-in constant value to check for
- * @returns Whether the identifier always, never, or maybe resolves to the given built-in constant value
+ * @param    name        - The name of the identifier to resolve
+ * @param    environment - The current environment used for name resolution
+ * @param    wantedValue - The built-in constant value to check for
+ * @returns              Whether the identifier always, never, or maybe resolves to the given built-in constant value
  * @useInstead {@link Resolve.toBuiltIn}
  */
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
-	if(name === undefined) {
-		return Ternary.Never;
-	}
-	const definition = resolveByName(name, environment, ReferenceType.Constant);
-
+	const definition = name === undefined ? undefined : resolveByName(name, environment, ReferenceType.Constant);
 	if(definition === undefined) {
 		return Ternary.Never;
 	}
-
-	let all = true;
-	let some = false;
-	for(const def of definition) {
-		if(def.type === ReferenceType.BuiltInConstant && def.value === wantedValue) {
-			some = true;
-		} else {
-			all = false;
-		}
-	}
-
-	if(all) {
+	const isWanted = (def: IdentifierDefinition) => def.type === ReferenceType.BuiltInConstant && def.value === wantedValue;
+	if(definition.every(isWanted)) {
 		return Ternary.Always;
-	} else {
-		return some ? Ternary.Maybe : Ternary.Never;
 	}
+	return definition.some(isWanted) ? Ternary.Maybe : Ternary.Never;
 }

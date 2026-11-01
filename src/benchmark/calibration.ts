@@ -97,7 +97,3 @@ export function runCalibration(): bigint {
 	return best ?? 0n;
 }
 
-/** the checksum of the rounds run so far, only exposed so that the workload has an observable effect */
-export function calibrationChecksum(): number {
-	return sink;
-}

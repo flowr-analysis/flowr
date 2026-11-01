@@ -47,7 +47,7 @@ const loadingOrderLog = log.getSubLogger({ name: 'loading-order' });
  * If you are interested in inspecting these orders, refer to {@link ReadOnlyFlowrAnalyzerLoadingOrderContext}.
  * Plugins, however, can use this context directly to modify order guesses.
  */
-export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerLoadingOrderPlugin> implements ReadOnlyFlowrAnalyzerLoadingOrderContext{
+export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerLoadingOrderPlugin> implements ReadOnlyFlowrAnalyzerLoadingOrderContext {
 	public readonly name = 'flowr-analyzer-loading-order-context';
 
 	private rerunRequired: boolean;

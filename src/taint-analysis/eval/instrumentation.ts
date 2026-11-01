@@ -1,7 +1,7 @@
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from '../builder/taint-analysis';
-import { getVertexArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
+import { getVertexArguments } from '../../abstract-interpretation/data-frame/arguments';
 import { VariableResolve } from '../../config';
 import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';

@@ -1,4 +1,5 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
+import { type RecordedRun, recordsRuns } from '../plugins/file-plugins/files/recorded-runs';
 import type {
 	RParseRequestFromText,
 	RParseRequest,
@@ -18,18 +19,23 @@ import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-d
 import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
-import { commonDirectory, relativeTo } from '../../util/files';
+import { commonDirectory, relativeTo, RPath } from '../../util/files';
 import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
+import type {
+	FlowrRdFile, FlowrRdIndexFile, FlowrRdMacroFile, FlowrRdMetaFile, FlowrRdTopicIndexFile, RdIndex
+} from '../plugins/file-plugins/files/flowr-rd-file';
+import { FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
+import type { SysdataObject } from '../plugins/file-plugins/files/flowr-sysdata-file';
+import { FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 import { resetOnFullInvalidation } from '../cache/flowr-cache';
-
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -47,21 +53,24 @@ export interface RProjectAnalysisRequest {
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest;
 
 export type RoleBasedFiles = {
-	[FileRole.Description]: FlowrDescriptionFile[];
-	[FileRole.News]:        FlowrNewsFile[];
-	[FileRole.Namespace]:   FlowrNamespaceFile[];
-	[FileRole.Manifest]:    FlowrManifestFile[];
+	[FileRole.Description]:   FlowrDescriptionFile[];
+	[FileRole.News]:          FlowrNewsFile[];
+	[FileRole.Namespace]:     FlowrNamespaceFile[];
+	[FileRole.Manifest]:      FlowrManifestFile[];
+	/** what states which manual page documents a name: the `man/` pages and macros, an `INDEX`, and an installed package's `help/AnIndex` or `Meta/Rd.rds` */
+	[FileRole.Documentation]: (FlowrRdFile | FlowrRdIndexFile | FlowrRdMacroFile | FlowrRdTopicIndexFile | FlowrRdMetaFile)[];
 	/* currently no special support */
-	[FileRole.Vignette]:    FlowrFileProvider[];
-	[FileRole.Test]:        FlowrFileProvider[];
-	[FileRole.Install]:     FlowrFileProvider[];
-	[FileRole.License]:     FlowrFileProvider[];
-	[FileRole.VirtualEnv]:  FlowrFileProvider[];
-	[FileRole.Startup]:     FlowrFileProvider[];
-	[FileRole.Environment]: FlowrFileProvider[];
-	[FileRole.Source]:      FlowrFileProvider[];
-	[FileRole.Data]:        FlowrFileProvider[];
-	[FileRole.Other]:       FlowrFileProvider[];
+	[FileRole.Vignette]:      FlowrFileProvider[];
+	[FileRole.Test]:          FlowrFileProvider[];
+	[FileRole.Install]:       FlowrFileProvider[];
+	[FileRole.License]:       FlowrFileProvider[];
+	[FileRole.VirtualEnv]:    FlowrFileProvider[];
+	[FileRole.Startup]:       FlowrFileProvider[];
+	[FileRole.Environment]:   FlowrFileProvider[];
+	[FileRole.Source]:        FlowrFileProvider[];
+	/** a `data/datalist` ({@link FlowrDataListFile}), a package's system data ({@link FlowrSysdataFile}), or any other data file, which has no special support */
+	[FileRole.Data]:          (FlowrDataListFile | FlowrSysdataFile | FlowrFileProvider)[];
+	[FileRole.Other]:         FlowrFileProvider[];
 };
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
@@ -98,6 +107,18 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
 
 	/**
+	 * The project's manual, built from every {@link FileRole.Documentation} file loaded, answering which page
+	 * documents a name. Built on each call rather than kept, so hold on to the result instead of asking per name.
+	 */
+	documentation(): RdIndex;
+
+	/** The R objects `data(dataset)` brings into scope, per the project's `data/datalist`. Empty when no list mentions `dataset`, including projects that ship none. */
+	datasetObjects(dataset: string): readonly string[];
+
+	/** The objects a package's system data (`R/sysdata.rda`/`.rdx`) lazy-loads into its namespace: available package-internally, neither exported nor reachable through `data()`. Empty for a project that ships none. */
+	sysdataObjects(): readonly SysdataObject[];
+
+	/**
 	 * Get all files known to this context.
 	 * @returns An array of all files.
 	 */
@@ -107,7 +128,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * Checks both disk-backed files and inline files.
 	 * However, this will not load new files that have not yet been requested by flowR.
 	 * @param path - The exact path of the file.
-	 * @returns The file if found, otherwise `undefined`.
+	 * @returns    The file if found, otherwise `undefined`.
 	 */
 	getFileByPath(path: string): FlowrFileProvider | undefined;
 	/**
@@ -126,11 +147,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	hasFile(path: string): boolean;
 	/**
 	 * Check if a file exists at the given path, optionally ignoring case.
-	 * @param path - The path to the file.
+	 * @param path       - The path to the file.
 	 * @param ignoreCase - Whether to ignore case when checking for the file.
 	 *
 	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
-	 * @returns The actual path of the file if it exists, otherwise `undefined`.
+	 * @returns          The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;
 	/** The project root folder (common directory of the requested roots), or `undefined` if none was requested. */
@@ -167,6 +188,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @returns The number of files currently held by this context.
 	 */
 	getFileCount(): number;
+	/**
+	 * Whether there is any code to analyze, i.e. whether the analysis was handed at least one request. Without one
+	 * (e.g. for a package holding data only, or a folder with no R files), the analysis cannot run.
+	 */
+	hasRequests(): boolean;
 }
 
 /**
@@ -206,6 +232,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/** cached {@link root}, fixed on first use as the ids built from it have to stay stable */
 	private rootCache:        string | undefined = undefined;
 	private rootResolved      = false;
+	private caseIndex:        Map<string, Map<string, FilePath>> | undefined = undefined;
+	private readonly readdirCache = new Map<string, readonly string[] | undefined>();
 
 	constructor(
 		context: FlowrAnalyzerContext,
@@ -230,6 +258,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.requestedRoots.length = 0;
 		this.rootCache = undefined;
 		this.rootResolved = false;
+		this.caseIndex = undefined;
+		this.readdirCache.clear();
 	}
 
 	/** The directory the analysis was asked about: a `project`'s folder, or the one holding the requested file(s). */
@@ -336,17 +366,22 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.requestedRoots.push(request.content);
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
+			this.addDiscovered(req);
+		}
+	}
 
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
-		for(const req of expandedRequests) {
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+	/** The registered discovery plugins, or the built-in default when none are registered. */
+	private activeDiscoveryPlugins(): readonly FlowrAnalyzerProjectDiscoveryPlugin[] {
+		return this.discoveryPlugins.length > 0 ? this.discoveryPlugins : [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+	}
+
+	/** Adds a request a discovery plugin produced: expands it further if it is itself a parse request, otherwise adds the file directly. */
+	private addDiscovered(req: RParseRequest | FlowrFileProvider): void {
+		if(isParseRequest(req)) {
+			this.addRequest(req);
+		} else {
+			this.addFile(req, req.roles);
 		}
 	}
 
@@ -369,19 +404,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		const matchers = implicit.map(entry => globMatcher(entry));
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		for(const req of active.flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
 			const filePath = isParseRequest(req) ? (req.request === 'file' ? req.content : undefined) : req.path();
 			if(filePath === undefined || filePath === fileContent || !matchers.some(m => m(filePath))) {
 				continue;
 			}
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+			this.addDiscovered(req);
 		}
 	}
 
@@ -398,7 +426,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile | undefined, roles?: readonly FileRole[]) {
+		if(file === undefined) {
+			return;
+		}
 		const f = this.fileLoadPlugins(wrapFile(file, roles));
 
 		f.addOnInvalidate(c => {
@@ -408,9 +439,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
 		} else {
-			const exist = this.files.get(f.path());
+			const exist = this.files.get(RPath.of(f.path()));
 			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
-			this.files.set(f.path(), f);
+			this.files.set(RPath.of(f.path()), f);
+			this.caseIndex = undefined;
 		}
 
 		if(f.roles) {
@@ -424,11 +456,49 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public hasCached(path: string): boolean {
-		return this.files.has(path);
+		return this.files.has(RPath.of(path));
 	}
 
 	public hasFile(path: string): boolean {
 		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && onDisk(path));
+	}
+
+	private fileIndex(): ReadonlyMap<string, ReadonlyMap<string, FilePath>> {
+		if(this.caseIndex === undefined) {
+			const index = new Map<string, Map<string, FilePath>>();
+			for(const file of this.files.values()) {
+				const f = file.path();
+				const dir = RPath.dirname(f).toLowerCase();
+				let entries = index.get(dir);
+				if(entries === undefined) {
+					entries = new Map<string, FilePath>();
+					index.set(dir, entries);
+				}
+				const base = RPath.basename(f).toLowerCase();
+				if(!entries.has(base)) {
+					entries.set(base, f);
+				}
+			}
+			this.caseIndex = index;
+		}
+		return this.caseIndex;
+	}
+
+	private readdir(dir: string): readonly string[] | undefined {
+		const cached = this.readdirCache.get(dir);
+		if(cached !== undefined || this.readdirCache.has(dir)) {
+			return cached;
+		}
+		let entries: readonly string[] | undefined = undefined;
+		if(onDisk(dir)) {
+			try {
+				entries = fs.readdirSync(dir);
+			} catch(e) {
+				fileLog.warn(`Could not read '${dir}': ${e instanceof Error ? e.message : String(e)}`);
+			}
+		}
+		this.readdirCache.set(dir, entries);
+		return entries;
 	}
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {
@@ -439,37 +509,28 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(this.hasFile(p)) {
 				return p;
 			}
-			// walk the directory and find the first match
-			const dir = path.dirname(p);
-			const dirLower = dir.toLowerCase();
-			const file = path.basename(p).toLowerCase();
+			const file = RPath.basename(p).toLowerCase();
 			// try to find in local known files first
-			for(const f of this.files.keys()) {
-				if(path.dirname(f).toLowerCase() !== dirLower) {
-					continue;
-				}
-				const lf = path.basename(f).toLowerCase();
-				if(file === lf) {
-					return f;
-				}
+			const known = this.fileIndex().get(RPath.dirname(p).toLowerCase())?.get(file);
+			if(known !== undefined) {
+				return known;
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
-				let files: string[] | undefined;
-				if(onDisk(dir)) {
-					files = fs.readdirSync(dir);
-				} else {
+				const dir = path.dirname(p);
+				let realDir = dir;
+				let files = this.readdir(dir);
+				if(files === undefined) {
 					// try to find a dir in parent
 					const parentDir = path.dirname(dir);
-					if(onDisk(parentDir)) {
-						const parentFiles = fs.readdirSync(parentDir);
-						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
-						if(foundDir) {
-							files = fs.readdirSync(path.join(parentDir, foundDir));
-						}
+					const dirName = path.basename(dir).toLowerCase();
+					const foundDir = this.readdir(parentDir)?.find(f => f.toLowerCase() === dirName);
+					if(foundDir) {
+						realDir = path.join(parentDir, foundDir);
+						files = this.readdir(realDir);
 					}
 				}
 				const found = files?.find(f => f.toLowerCase() === file);
-				return found ? path.join(dir, found) : undefined;
+				return found ? path.join(realDir, found) : undefined;
 			}
 			return undefined;
 		} catch(e) {
@@ -500,7 +561,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	/** Resolve the file at `path`, loading it from disk through the {@link FlowrAnalyzerFilePlugin}s if unknown. */
 	public resolveFile(path: string): FlowrFileProvider | undefined {
-		const file = this.files.get(path);
+		const file = this.files.get(RPath.of(path));
 		if(file !== undefined && file !== null) {
 			return file;
 		}
@@ -539,6 +600,32 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.loadingOrder.getLoadingOrder();
 	}
 
+	public documentation(): RdIndex {
+		return rdIndexOf(this.getFilesByRole(FileRole.Documentation));
+	}
+
+	public datasetObjects(dataset: string): readonly string[] {
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrDataListFile) {
+				const objects = file.objectsOf(dataset);
+				if(objects.length > 0) {
+					return objects;
+				}
+			}
+		}
+		return [];
+	}
+
+	public sysdataObjects(): readonly SysdataObject[] {
+		const objects: SysdataObject[] = [];
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrSysdataFile) {
+				objects.push(...file.content());
+			}
+		}
+		return objects;
+	}
+
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {
 		return this.byRole[role];
 	}
@@ -548,10 +635,20 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public getFileByPath(path: string): FlowrFileProvider | undefined {
-		return this.files.get(path) ?? this.inlineFiles.find(f => f.path() === path);
+		return this.files.get(RPath.of(path)) ?? this.inlineFiles.find(f => f.path() === path);
+	}
+
+	/** the runs a notebook or transcript recorded with their output, `undefined` if the file is not found or records none */
+	public recordedRuns(path: string): readonly RecordedRun[] | undefined {
+		const file = this.getFileByPath(path);
+		return recordsRuns(file) ? file.recorded() : undefined;
 	}
 
 	public getFileCount(): number {
 		return this.files.size + this.inlineFiles.length;
+	}
+
+	public hasRequests(): boolean {
+		return this.loadingOrder.getUnorderedRequests().length > 0;
 	}
 }

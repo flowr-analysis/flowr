@@ -9,7 +9,7 @@
  */
 
 import type { NoInfo, RNode } from '../model';
-import { guard } from '../../../../../util/assert';
+import { guardNesting } from '../../../../../util/assert';
 import type { SourceRange } from '../../../../../util/range';
 import { BiMap } from '../../../../../util/collections/bimap';
 import type { MergeableRecord } from '../../../../../util/objects';
@@ -17,7 +17,6 @@ import { RoleInParent } from './role';
 import { RType } from '../type';
 import { foldAstStateful } from './stateful-fold';
 import type { NodeId } from './node-id';
-import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import { RPipe } from '../nodes/r-pipe';
 import { EmptyArgument, type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall } from '../nodes/r-function-call';
@@ -29,7 +28,7 @@ import type { RProject } from '../nodes/r-project';
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
  * @param data - the node to generate an id for
- * @returns a unique id for the given node
+ * @returns    a unique id for the given node
  */
 export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId;
 
@@ -41,44 +40,13 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 }
 
 /**
- * Generates ids with a fixed prefix and an incrementing counter.
+ *  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter.
  */
-export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => NodeId {
+export function sourcedDeterministicCountingIdGenerator(path: string, location?: SourceRange, start = 0): () => NodeId {
+	let id = start;
+	/* without a location the ids carry only `path`, as in `eval::13-0`, where the path already names the `eval` call */
+	const prefix = location === undefined ? path : `${path}:${location[0]}:${location[1]}`;
 	return () => `${prefix}-${id++}`;
-}
-
-/**
- *  Generates ids with a fixed source path and location information as prefix and an incrementing counter.
- */
-export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
-	let id = start;
-	const [sl, sc] = location;
-	return () => `${path}:${sl}:${sc}-${id++}`;
-}
-
-function loc2Id([sl, sc, el, ec]: SourceRange): string {
-	return `${sl}:${sc}-${el}:${ec}`;
-}
-
-/**
- * Generates the location id, used by {@link deterministicLocationIdGenerator}.
- * @param data - the node to generate an id for, must have location information
- */
-export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter): NodeId {
-	const loc = data.location;
-	guard(loc !== undefined, 'location must be defined to generate a location id');
-	return loc2Id(loc);
-}
-
-/**
- * Generates unique ids based on the locations of the node (see {@link nodeToLocationId}).
- * If a node has no location information, it will be assigned a unique counter-value.
- * @param start - the start value for the counter, in case nodes do not have location information
- */
-export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
-	let id = start;
-	return (data:  RProject<OtherInfo> | RNode<OtherInfo>) =>
-		'location' in data && data.location !== undefined ? nodeToLocationId(data) : `${id++}`;
 }
 
 export interface ParentContextInfo extends MergeableRecord {
@@ -143,10 +111,10 @@ export interface NormalizedAstDecorationConfiguration<OtherInfo> {
 
 /**
  * Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).
- * @param project - The AST to decorate
- * @param getId - The id generator: must generate a unique id für each passed node
+ * @param     project - The AST to decorate
+ * @param     getId   - The id generator: must generate a unique id für each passed node
+ * @returns           A decorated AST based on the input and the id provider.
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
- * @returns A decorated AST based on the input and the id provider.
  */
 export function decorateAst<OtherInfo = NoInfo>(
 	project: RProject<OtherInfo>,
@@ -162,11 +130,7 @@ export function decorateAst<OtherInfo = NoInfo>(
 
 	const folds = {
 		down: (n: RProject<OtherInfo> | RNode<OtherInfo>, nesting: number): number => {
-			if(nestForElement.has(n.type)) {
-				return nesting + 1;
-			} else {
-				return nesting;
-			}
+			return nestForElement.has(n.type) ? nesting + 1 : nesting;
 		},
 		foldNumber:   foldLeaf,
 		foldString:   foldLeaf,
@@ -202,15 +166,7 @@ export function decorateAst<OtherInfo = NoInfo>(
 		...project,
 		files: project.files.map(file => {
 			info.file = file.filePath;
-			let decoratedAst;
-			try {
-				decoratedAst = foldAstStateful(file.root, 0, folds);
-			} catch(e) {
-				if(e instanceof RangeError) {
-					throw new Error(`AST decoration exceeded the call stack for '${file.filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
-				}
-				throw e;
-			}
+			const decoratedAst = guardNesting('AST decoration', file.filePath, () => foldAstStateful(file.root, 0, folds));
 			decoratedAst.info.role = RoleInParent.Root;
 			decoratedAst.info.index = 0;
 			return {

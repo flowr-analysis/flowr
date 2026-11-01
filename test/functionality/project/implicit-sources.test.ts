@@ -41,9 +41,10 @@ function warningsFor(config: FlowrConfig, ...files: string[]): string[] {
 
 describe('Implicit sources', () => {
 	test('implicit sources follow the configured order, the other files keep theirs and stay in front', () => {
+		/* a folder that is not on disk, so no file of the checkout around the tests joins in */
 		assert.deepStrictEqual(
-			orderOf(withImplicit('global.R', 'ui.R', 'app.R'), 'app.R', 'b.R', 'ui.R', 'a.R', 'global.R'),
-			['b.R', 'a.R', 'global.R', 'ui.R', 'app.R']
+			orderOf(withImplicit('global.R', 'ui.R', 'app.R'), '/proj/app.R', '/proj/b.R', '/proj/ui.R', '/proj/a.R', '/proj/global.R'),
+			['/proj/b.R', '/proj/a.R', '/proj/global.R', '/proj/ui.R', '/proj/app.R']
 		);
 	});
 
@@ -55,7 +56,7 @@ describe('Implicit sources', () => {
 	});
 
 	test('without any implicit source the order is untouched', () => {
-		assert.deepStrictEqual(orderOf(FlowrConfig.default(), 'b.R', 'a.R'), ['b.R', 'a.R']);
+		assert.deepStrictEqual(orderOf(FlowrConfig.default(), '/proj/b.R', '/proj/a.R'), ['/proj/b.R', '/proj/a.R']);
 	});
 
 	test('a shiny app gets its implicit sources from the specialized config', () => {
@@ -112,7 +113,7 @@ describe('Implicit sources', () => {
 
 	test('a matching or an unset list warns about nothing', () => {
 		assert.isEmpty(warningsFor(withImplicit('global.R', 'app.R'), '/p/app.R', '/p/global.R'));
-		assert.isEmpty(warningsFor(withImplicit(), 'b.R', 'a.R'));
+		assert.isEmpty(warningsFor(withImplicit(), '/proj/b.R', '/proj/a.R'));
 	});
 
 	const roots: string[] = [];

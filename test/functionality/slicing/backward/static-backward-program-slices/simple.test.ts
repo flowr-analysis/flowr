@@ -1,8 +1,11 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
+
+assumeLoadedPackages('data.table');
 
 describe('Simple', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
@@ -29,6 +32,17 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 			shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)'
 		);
 	});
+	describe('Nested assignments', () => {
+		/* the value of a left assignment is its rhs, so an unselected target may be dropped */
+		assertSliced(label('drop the unused outer target', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+			shell, 'a <- b <- 4\nb', ['2@b'], 'b <- 4\nb',
+			{ expectedOutput: '[1] 4', expectedSliceOutput: '[1] 4' }
+		);
+		assertSliced(label('keep both targets', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+			shell, 'a <- b <- 4\na', ['2@a'], 'a <- b <- 4\na',
+			{ expectedOutput: '[1] 4', expectedSliceOutput: '[1] 4' }
+		);
+	});
 	describe('Assignments with the assign function', () => {
 		assertSliced(label('assign to string', []),
 			shell, 'x <- "a"\nassign(x, 3)\nprint(a)', ['3@a'], 'x <- "a"\nassign(x, 3)\na'
@@ -38,6 +52,29 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 		);
 		assertSliced(label('assign to other string', []),
 			shell, 'x <- "b"\nassign(x, 3)\nprint(a)', ['3@a'], 'a'
+		);
+	});
+	describe('Model formulae', () => {
+		/* the lhs of a formula is never evaluated, but it is part of the formula object and must not be dropped */
+		assertSliced(label('compound rhs keeps the lhs', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- y ~ x + 1\nn <- length(f)\nn', ['3@n'], 'f <- y ~ x + 1\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSliced(label('simple formula', ['name-normal', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- y ~ x\nn <- length(f)\nn', ['3@n'], 'f <- y ~ x\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSliced(label('call in the lhs of a formula', ['name-normal', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- log(y) ~ x\nn <- length(f)\nn', ['3@n'], 'f <- log(y) ~ x\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSliced(label('a formula reads the names it binds', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls', 'model-formula']),
+			shell, 'y <- c(1, 2, 4)\nx <- c(1, 2, 3)\nz <- 5\nm <- coef(lm(y ~ x))[[2]]\nm', ['5@m'], 'y <- c(1, 2, 4)\nx <- c(1, 2, 3)\nm <- coef(lm(y ~ x))[[2]]\nm',
+			{ expectedOutput: '[1] 1.5', expectedSliceOutput: '[1] 1.5' }
+		);
+		assertSliced(label('one-sided formula', ['name-normal', 'numbers', ...OperatorDatabase['~'].capabilities, ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'newlines', 'function-calls']),
+			shell, 'f <- ~ x + 1\nn <- length(f)\nn', ['3@n'], 'f <- ~ x + 1\nn <- length(f)\nn',
+			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' }
 		);
 	});
 	describe('Constant conditionals', () => {
@@ -165,7 +202,7 @@ a <- 5
     `, ['3@a'], 'a <- 5', { skipTreeSitter: true /* directives aren't supported yet! */ });
 	});
 	describe('The classic', () => {
-		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'strings', 'precedence'];
+		const capabilities: FlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'strings', 'precedence'];
 		const code = `
 sum <- 0
 product <- 1
@@ -245,6 +282,18 @@ product`
 			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
 			'x <- 2\nprint(x + 3)',
 			{ extendSlice: true }
+		);
+	});
+	describe('Removal through a call argument', () => {
+		assertSliced(label('nested rm', ['functions-with-global-side-effects']),
+			shell, 'x <- 1\nx <- 2\nrm(x)\nr <- exists("x")\nprint(r)', ['5@print'],
+			'r <- exists("x")\nprint(r)',
+			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE' }
+		);
+		assertSliced(label('piped rm', ['functions-with-global-side-effects', 'pipe-and-pipe-bind']),
+			shell, 'x <- 1\nx <- 2\nx |> rm()\nr <- exists("x")\nprint(r)', ['5@print'],
+			'r <- exists("x")\nprint(r)',
+			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE', minRVersion: MIN_VERSION_PIPE }
 		);
 	});
 }));

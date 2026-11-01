@@ -1,15 +1,16 @@
 import { Q } from '../../search/flowr-search-builder';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FlowrFilter } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceLocation } from '../../util/range';
-import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
+import { prettyPrint, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
@@ -18,7 +19,6 @@ import { Ternary } from '../../util/logic';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { AsyncOrSync } from 'ts-essentials';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface FunctionsResult extends LintingResult {
 	function: string
@@ -29,32 +29,20 @@ export interface FunctionsMetadata extends MergeableRecord {
 	totalFunctionDefinitions: number;
 }
 
-export interface FunctionsToDetectConfig extends MergeableRecord {
-	/**
-	 * The list of function names that should be marked in the given context.
-	 */
-	fns: readonly Identifier[]
-}
-
-
 /**
  * This helper object collects utility functions used to create linting rules that search for specific functions.
  */
 export const functionFinderUtil = {
-	createSearch: (functions: readonly Identifier[]) => {
-		return (
-			Q.all().filter(VertexType.FunctionCall)
-				.with(Enrichment.CallTargets, { onlyBuiltin: true })
-				.filter({
-					name: FlowrFilter.MatchesEnrichment,
-					args: {
-						enrichment: Enrichment.CallTargets,
-						test:       {
-							targets: Identifier.regex(...functions)
-						}
-					}
-				})
-		);
+	createSearch: (functions?: readonly Identifier[], qualifyNames = true) => {
+		const search = Q.all().filter(VertexType.FunctionCall)
+			.with(Enrichment.CallTargets, { onlyBuiltin: true, qualifyNames });
+		return functions === undefined ? search : search.filter({
+			name: FlowrFilter.MatchesEnrichment,
+			args: {
+				enrichment: Enrichment.CallTargets,
+				test:       { targets: Identifier.regex(...functions) }
+			}
+		});
 	},
 	async processSearchResult<T extends FlowrSearchElement<ParentInformation>[]>(
 		this: void,
@@ -93,21 +81,18 @@ export const functionFinderUtil = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: (functionType: string) => {
-		return {
-			[LintingPrettyPrintContext.Query]: (result: FunctionsResult) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
-			[LintingPrettyPrintContext.Full]:  (result: FunctionsResult) => `Function \`${result.function}\` called at ${SourceLocation.format(result.loc)} is related to ${functionType}`
-		};
-	},
+	prettyPrint: (functionType: string) => prettyPrint(
+		(result: FunctionsResult) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
+		result => `Function \`${result.function}\` called at ${SourceLocation.format(result.loc)} is related to ${functionType}`
+	),
 	async requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
 		pool: ReadonlyMap<string, FunctionInfo>,
 		analyzer: ReadonlyFlowrAnalysisProvider,
-		requireValue: RegExp | string | undefined
+		requireValue: RegExp | string | undefined,
+		identifier: Identifier | undefined
 	): Promise<Ternary> {
 		const dataflow = await analyzer.dataflow();
-		const identifier = Dataflow.qualify(element.node.info.id, dataflow.graph, true) ?? (element.node.lexeme !== undefined ? Identifier.parse(element.node.lexeme) : undefined);
-
 		/* if we have no additional info, we assume they always access the network */
 		if(identifier === undefined || requireValue === undefined) {
 			return Ternary.Always;
@@ -120,13 +105,19 @@ export const functionFinderUtil = {
 		}
 
 		const vert = dataflow.graph.getVertex(element.node.info.id);
-		if(FunctionCallVertex.is(vert)) {
+		if(DfgVertex.isFunctionCall(vert)) {
 			return hasArgumentValue(requireValue, vert, analyzer, dataflow.graph, info.resolveValue, info.argName, info.argIdx);
 		}
 
 		return Ternary.Never;
 	}
 };
+
+
+function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: string | undefined): boolean {
+	return call.args.some((arg, index) => arg !== EmptyArgument
+		&& (argName !== undefined ? arg.name === argName : index === argIdx));
+}
 
 /**
  * Test if a function call has an argument with a specific value
@@ -149,9 +140,9 @@ export function hasArgumentValue(
 		analyzer.inspectContext());
 	// we obtain all values, at least one of them has to trigger for the request
 	const argValues: string[] = args ? args.values().flatMap(s => Array.from(s)).filter(isNotUndefined).toArray() : [];
-	if(argValues.length === 0){
-		return Ternary.Maybe;
-	} else if(argValues.some(v => test instanceof RegExp ? test.test(v) : v === test)){
+	if(argValues.length === 0) {
+		return suppliesArgument(fnVertex, argIdx, argName) ? Ternary.Maybe : Ternary.Never;
+	} else if(argValues.some(v => test instanceof RegExp ? test.test(v) : v === test)) {
 		return Ternary.Always;
 	} else if(argValues.includes(Unknown)) {
 		return Ternary.Maybe;

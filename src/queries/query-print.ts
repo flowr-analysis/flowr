@@ -1,3 +1,4 @@
+import { SourceRange } from '../util/range';
 import { type OutputFormatter, bold, italic, markdownFormatter } from '../util/text/ansi';
 import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes, SupportedQueries } from './query';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -8,6 +9,12 @@ import { printAsMs } from '../util/text/time';
 import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import fs from 'fs';
+
+/** The first line of a query's ascii summary: its name and how long it took. */
+export function queryHeader(name: string, formatter: OutputFormatter, timing: number): string {
+	return `Query: ${bold(name, formatter)} (${printAsMs(timing, 0)})`;
+}
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
@@ -20,7 +27,7 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: O
 	if(node === undefined) {
 		return `UNKNOWN: ${id} (info: ${JSON.stringify(info)})`;
 	}
-	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
+	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${SourceRange.getStartLine(node.location)}${info ? ', ' + JSON.stringify(info) : ''})`;
 }
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {
@@ -136,4 +143,10 @@ export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 		result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
 	}
 	return formatter.format(result.join('\n'));
+}
+
+/** The requested roots that do not exist, if the analyzer found no requests to analyze at all (`undefined` otherwise). */
+export function missingRootsWithoutRequests(analyzer: ReadonlyFlowrAnalysisProvider): string[] | undefined {
+	const files = analyzer.inspectContext().files;
+	return !files.hasRequests() ? files.getRequestedRoots().filter(p => !fs.existsSync(p)) : undefined;
 }

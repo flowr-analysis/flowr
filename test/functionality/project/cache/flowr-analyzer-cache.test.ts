@@ -8,7 +8,7 @@ import { FlowrConfig } from '../../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
-describe('Analyzer Cache', withTreeSitter( (shell) => {
+describe('Analyzer Cache', withTreeSitter((shell) => {
 
 	function createCache(request: string) {
 		const data = {

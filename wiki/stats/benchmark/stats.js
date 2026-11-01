@@ -615,11 +615,11 @@
 		{ id: 'volume', title: 'Corpus size', about: 'how much input the suite covers', log: true, folded: true },
 		{ id: 'graphs', title: 'Graph size', about: 'how large the graphs the analysis builds are' },
 		{ id: 'dataframes', title: 'Data frame shapes', about: 'what the shape inference sees and how precise it is', folded: true },
-		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries', perVersion: true },
+		{ id: 'features', title: 'Feature set', about: 'the linting rules, queries, and plugins this version carries', perVersion: true },
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
-		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true }
+		{ id: 'tests', title: 'Tests and mutations', about: 'the labeled tests, what they cover, and the rewrites every counterexample is sliced through', perVersion: true, facts: true }
 	];
 
 	const PER_SLICE = ['static slicing', 'reconstruct code'];
@@ -635,7 +635,8 @@
 		if(n.startsWith('signature database')) {
 			return 'sigdb';
 		}
-		if(n === 'tests' || n.startsWith('tests ')) {
+		// what the counterexample suite carries is a property of the version too, so it joins the tests
+		if(n === 'tests' || n.startsWith('tests ') || n.startsWith('mutation ')) {
 			return 'tests';
 		}
 		// the totals dwarf the single phases and add nothing the phases do not show
@@ -645,7 +646,7 @@
 		if(n.startsWith('built-in definitions')) {
 			return 'builtins';
 		}
-		if(n === 'queries' || n.startsWith('linting rules')) {
+		if(n === 'queries' || n === 'plugins' || n.startsWith('linting rules') || n.startsWith('plugins (')) {
 			return 'features';
 		}
 		// only the three reductions that describe the slice itself, the rest is recorded but not shown
@@ -698,6 +699,10 @@
 		if(n.startsWith('signature database')) {
 			return 'flat';
 		}
+		// a mutant that is still sliced wrongly is a debt, every other mutation counter is coverage
+		if(n.startsWith('mutation ')) {
+			return n.includes('known-wrong') ? 'down' : 'up';
+		}
 		if(n.includes('reduction') || n === 'data frame shapes (exact)') {
 			return 'up';
 		}
@@ -713,10 +718,24 @@
 		return 'flat';
 	}
 
+	/** how many mutants a run could have sliced, as its `extra` states it, null if it does not */
+	function possibleOf(extra) {
+		const m = /out of (\d+) possible/.exec(String(extra || ''));
+		return m ? Number(m[1]) : null;
+	}
+
+	/** the sum always keeps its legend entry so it can be switched back on, but it is only drawn while it is not hidden */
+	function withSum(shown, series, sum, off) {
+		if(!sum) {
+			return { shown, series };
+		}
+		return { shown: off.has(sum.name) ? shown : shown.concat(sum), series: series.concat(sum) };
+	}
+
 	root.BenchStats = {
 		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationScales, calibrationFactors, applyFactors,
 		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
-		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
+		logTicks, tickIndices, fitLabels, stateChanges, withSum, possibleOf, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};
 })(typeof globalThis === 'undefined' ? this : globalThis);
 

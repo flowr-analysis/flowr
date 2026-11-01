@@ -1,10 +1,9 @@
-import type { AbsintVisitorConfiguration } from '../abstract-interpretation/absint-visitor';
-import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
-import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { AbstractInterpreter, type AbsintVisitorConfiguration, type DomainSemantics } from '../abstract-interpretation/absint-inference';
+import type { AbstractSemantics } from '../abstract-interpretation/abstract-semantics';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
+import type { StateDomain } from '../abstract-interpretation/domains/state-domain';
 import { resolveFnCallToTaint } from './taint-resolve';
-import type { AnyStateDomain } from '../abstract-interpretation/domains/state-domain-like';
-import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from './builder/taint-analysis';
 import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -44,46 +43,82 @@ export type ArgTaintProjector = (id: NodeId) => AnyAbstractDomain | undefined;
 export type TaintVisitorHook = (info: Omit<FnCallHookInfo, 'name' | 'dfg' | 'ctx'>) => void;
 
 /**
- * Configuration for the taint inference visitor.
+ * Configuration for the taint inference.
  */
 export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
 	/** Callbacks invoked when each function call is visited during taint inference */
-	fnCallHook: TaintVisitorHook;
+	fnCallHook?: TaintVisitorHook;
 };
 
 /**
- * Abstract interpretation visitor for conducting taint analyses (i.e., applying finite taint lattices on the control-flow graph).
+ * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
+ * Each property of the product holds the inferred taint of the respective component analysis.
+ */
+export type TaintProduct = AbstractProduct;
+
+/**
+ * A single component of a taint analysis, i.e. one of the combined taint analyses.
+ * It bundles the analysis name (used as the product key), its (value) abstract domain, and its function mapper.
+ * Note that {@link TaintAnalysisDefinition} structurally conforms to this interface.
+ * @template Domain - The (value) abstract domain of the component analysis
+ */
+export interface TaintComponent<Domain extends AnyAbstractDomain = AnyAbstractDomain> {
+	/** The unique name of the component analysis, used as the key within the {@link TaintProduct}. */
+	readonly name:   string;
+	/** The (value) abstract domain (taint lattice) of the component analysis. */
+	readonly domain: Domain;
+	/** The function mapper relating function names to the tainting behavior of the component analysis. */
+	readonly mapper: TaintMapper<Domain>;
+}
+
+/** The abstract semantics of a taint component: every taintable call gets the taint its mappings resolve to. */
+function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: TaintComponent<Domain>, fnCallHook?: TaintVisitorHook): AbstractSemantics<StateDomain<Domain>> {
+	return {
+		handleFunctionCall(state, call, ctx) {
+			const node = ctx.getAstNode(call.id);
+			if(!isTaintableCallNode(node)) {
+				return;
+			}
+			const mappings = mapper.getMappings(call.name);
+			const projectArg = (id: NodeId): Domain | undefined => ctx.getAbstractValue(id);
+			const { value, role, category } = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
+			state.set(call.id, value);
+			fnCallHook?.({ node, value, wasMapped: mappings.length > 0, projectArg, call, role, category });
+		},
+		handleAssignmentCall(state, _call, ctx, target, source) {
+			const value = ctx.getAbstractValue(source);
+			if(value === undefined) {
+				state.remove(target);
+			} else {
+				state.set(target, value);
+			}
+		}
+	};
+}
+
+/**
+ * Abstract interpreter conducting taint analyses, i.e. applying finite taint lattices on the control-flow graph.
+ * All components are evaluated simultaneously during a single control-flow traversal and their taints are combined into
+ * a product of the lattice values per CFG node, joined (and widened) component-wise. Optional reductions turn the
+ * otherwise direct product into a reduced product, allowing the component analyses to refine each other.
+ * A node reaching Bottom marks a finding, so it does not collapse the state.
+ *
  * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
  */
-export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<AnyStateDomain<Domain>, TaintVisitorConfiguration> {
-	private readonly domain:      Domain;
-	private readonly taintMapper: TaintMapper<Domain>;
-
-	private readonly projectArg = (id: NodeId): Domain | undefined => this.getAbstractValue(id);
-
-	constructor(domain: Domain, fnCallMapper: TaintMapper<Domain>, visitorConfig: TaintVisitorConfiguration, collapseOnBottom = false) {
-		super(visitorConfig, StateAbstractDomain.top(domain.top(), collapseOnBottom));
-		this.domain = domain;
-		this.taintMapper = fnCallMapper;
+export class TaintInterpreter extends AbstractInterpreter<TaintProduct> {
+	constructor(
+		components: readonly TaintComponent[],
+		config: TaintVisitorConfiguration,
+		reductions: readonly ProductReduction<TaintProduct>[] = []
+	) {
+		const domains = Object.fromEntries(components.map(c => [c.name, c.domain])) as Required<TaintProduct>;
+		const semantics = Object.fromEntries(components.map(c => [c.name, taintSemantics(c, config.fnCallHook)])) as DomainSemantics<TaintProduct>;
+		/* a component missing from a state is simply unknown, so the reductions see the product as partial */
+		super(config, { domains, semantics, reductions: reductions as readonly ProductReduction<Partial<TaintProduct>>[], collapseOnBottom: false });
 	}
 
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		super.onFunctionCall({ call });
-
-		const node = this.getNormalizedAst(call.id);
-		if(!isTaintableCallNode(node)) {
-			return;
-		}
-
-		const mappings = this.taintMapper.getMappings(call.name);
-
-		const { value, role, category } = resolveFnCallToTaint(call, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
-		this.currentState.set(call.id, value);
-
-		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role, category });
-	}
-
-	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {
+	/* taint flows through environment-changing calls as well, so they do not discard what is known */
+	protected override isUnsupportedFunctionCall(_nodeId: NodeId): boolean {
 		return false;
 	}
 }

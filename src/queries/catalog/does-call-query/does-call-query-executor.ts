@@ -1,5 +1,6 @@
 import type { CallsConstraint, DoesCallQuery, DoesCallQueryResult, FindAllCallsResult } from './does-call-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import { log } from '../../../util/log';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../dataflow/environments/identifier';
@@ -7,7 +8,6 @@ import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import { transitiveLibraryCallees } from '../call-graph-query/expand-library-internals';
-import { NoEdges } from '../../../dataflow/graph/graph';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -33,9 +33,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 		results[id] = findCallersMatchingConstraints(cg, nodeId, c, query.expandLibraryInternals ? deps : undefined);
 	}
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		results
 	};
 }
@@ -69,6 +67,10 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 		case 'or': {
 			const matchersOr = constraint.calls.map(makeCallMatcher);
 			return (vtx, cg) => matchersOr.some(m => m(vtx, cg));
+		}
+		case 'one-of': {
+			const matchersOneOf = constraint.calls.map(makeCallMatcher);
+			return (vtx, cg) => matchersOneOf.filter(m => m(vtx, cg)).length === 1;
 		}
 		default: {
 			throw new Error(`Unhandled constraint type ${JSON.stringify(constraint)}`);
@@ -104,7 +106,7 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 		if(constraints(vtx, cg)) {
 			return { call: start };
 		}
-		for(const out of cg.outgoingEdges(cur) ?? NoEdges) {
+		for(const out of cg.edgesFrom(cur)) {
 			toVisit.push(out[0]);
 		}
 	}

@@ -31,6 +31,11 @@ export interface StateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomai
 	set(node: NodeId, value: Domain): void;
 
 	/**
+	 * Gets the AST node IDs in the state domain that are mapped to Bottom.
+	 */
+	getBottomNodes(): NodeId[];
+
+	/**
 	 * Returns all node-value pairs of the state domain.
 	 */
 	entries(): readonly [NodeId, Domain][];

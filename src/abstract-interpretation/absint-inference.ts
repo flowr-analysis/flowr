@@ -51,11 +51,13 @@ export type DomainSemantics<Domains extends AbstractProduct> = {
  */
 export interface AbsintAnalysis<Domains extends AbstractProduct> {
 	/** The value abstract domains inferred by the analysis, mapping each domain name to an instance of the respective abstract domain */
-	readonly domains:     Required<Domains>;
+	readonly domains:           Required<Domains>;
 	/** The abstract semantics to apply for each of the abstract domains of the analysis */
-	readonly semantics:   DomainSemantics<Domains>;
+	readonly semantics:         DomainSemantics<Domains>;
 	/** Optional reduction functions of the reduced product domain, refining the inferred abstract values based on the values of the other abstract domains */
-	readonly reductions?: readonly ProductReduction<Partial<Domains>>[];
+	readonly reductions?:       readonly ProductReduction<Partial<Domains>>[];
+	/** Whether a node inferred as Bottom collapses the whole state to Bottom (default), or stays a regular entry, e.g. to mark the findings of a taint analysis */
+	readonly collapseOnBottom?: boolean;
 }
 
 /**
@@ -188,7 +190,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		super({ ...config, defaultVisitingOrder: 'forward' });
 
 		this.analysis = analysis;
-		this.stateDomain = new MultiValueStateDomain(new Map(), analysis.domains, analysis.reductions);
+		this.stateDomain = new MultiValueStateDomain(new Map(), analysis.domains, analysis.reductions, analysis.collapseOnBottom);
 		this.currentState = this.stateDomain.top();
 	}
 
@@ -238,13 +240,14 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 */
 	public getState<Key extends keyof Domains>(type: Key, state = this.currentState): StateDomain<Domains[Key]> {
 		return {
-			domain:   this.analysis.domains[type],
-			get:      id => state.getValue(id, type),
-			has:      id => state.hasValue(id, type),
-			set:      (id, value) => state.setValue(id, type, value),
-			remove:   id => state.removeValue(id, type),
-			entries:  () => state.entries(type) as readonly [NodeId, Domains[Key]][],
-			isBottom: () => state.isBottom()
+			domain:         this.analysis.domains[type],
+			get:            id => state.getValue(id, type),
+			has:            id => state.hasValue(id, type),
+			set:            (id, value) => state.setValue(id, type, value),
+			remove:         id => state.removeValue(id, type),
+			entries:        () => state.entries(type) as readonly [NodeId, Domains[Key]][],
+			isBottom:       () => state.isBottom(),
+			getBottomNodes: () => state.entries(type).filter(([, value]) => value?.isBottom()).map(([id]) => id)
 		};
 	}
 
@@ -529,9 +532,9 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		if(target === undefined || source === undefined) {
 			return;
 		}
-		this.unassigned.delete(target);
-
+		/* the source is read before the target counts as assigned, so `x <- x` reads the `x` from before */
 		this.applySemantics((semantics, state, ctx) => semantics.handleAssignmentCall?.(state, call, ctx, target, source));
+		this.unassigned.delete(target);
 		// the assignment target is visited before the assignment, so we update its state with the assigned values
 		this.trace.set(target, this.currentState);
 	}

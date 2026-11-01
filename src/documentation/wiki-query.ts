@@ -36,7 +36,7 @@ import type { ArgProp, CallProp } from '../dataflow/environments/built-in-props'
 import { SliceDirection } from '../util/slice-direction';
 import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-query-format';
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
-
+import type { AnyPredefinedTaintAnalysisName } from '../taint-analysis/predefined/predefined';
 
 
 registerQueryDocumentation('call-context', {
@@ -466,7 +466,7 @@ registerQueryDocumentation('absint', {
 		const inference: AbsintQueryType = 'df-shape';
 		const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
 		return `
-This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
+This query infers all shapes of dataframes within the code using abstract interpretation. For example, you can use:
 ${
 	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference }], { showCode: true, collapseQuery: true, ctx })
 }
@@ -474,6 +474,28 @@ ${
 The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
 	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference, criteria: criteria }], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+}
+`;
+	}
+});
+
+registerQueryDocumentation('taint', {
+	type:             'active',
+	shortDescription: 'Returns the taint values inferred for every expression.',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const defs: AnyPredefinedTaintAnalysisName[] = ['normalization-constant'];
+		const exampleCode = `
+			x <- c(1 , 2 , 3 , 4 , 5)\n
+			y <- scale(x)\n
+			z <- mean(y)`;
+		return `
+This query infers all taints for one or multiple analysis definitions within the code using taint analysis. 
+For example, you can use the following query to get the results of the normalization analysis:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'taint',
+		defs: defs
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 `;
 	}

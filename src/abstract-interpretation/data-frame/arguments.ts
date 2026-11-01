@@ -4,13 +4,13 @@ import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../dataflow/graph/graph';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNull } from '../../r-bridge/lang-4.x/convert-values';
 import type { RParseRequest } from '../../r-bridge/retriever';
 import { assertUnreachable } from '../../util/assert';
@@ -164,6 +164,21 @@ export function getFunctionArguments(
 	if(!DfgVertex.isFunctionCall(vertex) || idMap === undefined) {
 		return node.arguments;
 	}
+	return getVertexArguments(vertex, idMap);
+}
+
+/**
+ * Reconstruct the AST-level arguments of a function call vertex from the data flow graph. Unlike
+ * {@link getFunctionArguments}, this works directly on the call vertex, so it also serves calls whose AST node is
+ * not a {@link RFunctionCall} (e.g. binary operators).
+ * @param vertex - The function call vertex to get the arguments for
+ * @param idMap  - The id map to resolve the argument node ids against
+ * @returns The arguments of the function call in the data flow graph
+ */
+export function getVertexArguments(
+	vertex: DataflowGraphVertexFunctionCall,
+	idMap: AstIdMap
+): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	return vertex.args
 		.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
 		.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));

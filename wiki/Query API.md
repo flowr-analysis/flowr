@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 19:13:15 UTC (v2.16.6, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-03, 10:21:01 UTC (v2.16.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -82,6 +82,8 @@ We support the following **active** queries (which we refer to as a `query`):
     Inspects the signature database: packages, function signatures, source and documentation links.
 1. [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice) (`static-slice`):\
     Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).
+1. [Taint Analysis Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Taint-Analysis) (`taint`):\
+    Returns the taint values inferred for every expression.
 
 Similarly, we support the following **virtual** queries: 
 
@@ -203,6 +205,10 @@ Valid item types:
                 - **criteria** [optional] _The slicing criteria of the nodes to get the inferred abstract values for._ (array)
                 Valid item types:
                     - (string)
+            - _The taint query conducts taint analyses and returns their results._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'taint'
+                - **defs** _The taint analyses to run._ (array)
             - _The file query finds files in the project based on their roles and path patterns._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'files'
@@ -1871,7 +1877,7 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))
 

@@ -43,15 +43,15 @@ export class SetLiftDomain<
             && [...this.value].every(element => other.value.has(element));
 	}
 
-	protected leqValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
+	protected leqValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): boolean {
 		throw new Error('Method not implemented.');
 	}
 
-	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
+	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): this {
 		throw new Error('Method not implemented.');
 	}
 
-	protected meetValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
+	protected meetValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): this {
 		throw new Error('Method not implemented.');
 	}
 
@@ -78,7 +78,9 @@ export class SetLiftDomain<
 	}
 
 	isValue(): this is this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftValue<Elements[number]>> {
-		return !this.isBottom() && !this.isTop();
+		// return !this.isBottom() && !this.isTop(); //Linter does not like this
+		return !(this.isSingletonEqual(this.base.baseBottom.value) || this.value.size === 0)
+		&& !(this.isSingletonEqual(this.base.baseTop.value) || this.isFullSet(this.value));
 	}
 
 	private isFullSet(value: ReadonlySet<Elements[number]>): boolean {

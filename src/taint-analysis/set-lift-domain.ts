@@ -40,7 +40,7 @@ export class SetLiftDomain<
 
 	protected equalsValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
 		return this.value.size === other.value.size
-            && [...this.value].every(element => other.value.has(element));
+			&& this.value.symmetricDifference(other.value).size === 0;
 	}
 
 	protected leqValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): boolean {
@@ -79,14 +79,18 @@ export class SetLiftDomain<
 
 	isValue(): this is this & AbstractDomain<SetLiftValue<Elements[number]>, SetLiftTop<Elements[number]>, SetLiftBottom<Elements[number]>, SetLiftValue<Elements[number]>> {
 		// return !this.isBottom() && !this.isTop(); //Linter does not like this
-		return !(this.isSingletonEqual(this.base.baseBottom.value) || this.value.size === 0)
-		&& !(this.isSingletonEqual(this.base.baseTop.value) || this.isFullSet(this.value));
+		// return !(this.isSingletonEqual(this.base.baseBottom.value) || this.value.size === 0)
+		// && !(this.isSingletonEqual(this.base.baseTop.value) || this.isFullSet(this.value));
+		return this.value.size > 0 // less readable but will short circuit faster - another option would be to put bot and top checks in seperate helper functions and calling them in isBottom, isTop and (negated) isValue
+			&& !this.isSingletonEqual(this.base.baseBottom.value)
+			&& !this.isSingletonEqual(this.base.baseTop.value)
+			&& !this.isFullSet(this.value);
 	}
 
 	private isFullSet(value: ReadonlySet<Elements[number]>): boolean {
-		const elements = this.base.elements;
+		const elements = this.base.domain;
 		return value.size === elements.size
-            && [...elements].every(element => value.has(element));
+			&& [...elements].every(element => value.has(element));
 	}
 
 	private isSingletonEqual(element: Elements[number]): boolean {

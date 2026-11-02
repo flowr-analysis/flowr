@@ -159,7 +159,7 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 		return this.create(this._value);
 	}
 
-	get elements(): ReadonlySet<Elements[number]> {
+	get domain(): ReadonlySet<Elements[number]> {
 		return this._config.elements;
 	}
 

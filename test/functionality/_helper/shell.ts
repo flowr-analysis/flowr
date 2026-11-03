@@ -823,7 +823,11 @@ export function assertSliceRunsInR(name: string, parser: KnownParser, code: stri
 	test.skipIf(skipTestBecauseConfigNotMet(config, code))(name, async({ skip }) => {
 		await skipWithoutRPackages(code, skip);
 		const slice = await sliceOf(parser, code, criterion);
-		const [program, sliced] = await Promise.all([printedByR(code), printedByR(slice)]);
+		/* the program goes first, as a failing slice must not hide that an old R cannot run the program either */
+		const running = printedByR(slice);
+		running.catch(() => undefined);
+		const program = await printedByProgram(code, skip);
+		const sliced = await running;
 		assert.strictEqual(program.split('\n').at(-1), lastLine, 'the program itself');
 		assert.strictEqual(sliced.split('\n').at(-1), lastLine, `the slice:\n${slice}`);
 	});
@@ -842,6 +846,23 @@ export async function printedByR(code: string): Promise<string> {
 		return (await execFileAsync('Rscript', ['--vanilla', script], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.replace(/\r\n/g, '\n').trimEnd();
 	} finally {
 		await fs.promises.rm(root, { recursive: true, force: true });
+	}
+}
+
+/**
+ * What the program `code` prints, skipping the test when an R older than 4 cannot run the program itself: its base
+ * functions behave differently there (e.g., `untar`), which says nothing about the slice. A newer R still fails.
+ */
+async function printedByProgram(code: string, skip: (condition: boolean, note?: string) => void): Promise<string> {
+	try {
+		return await printedByR(code);
+	} catch(e) {
+		const version = globalThis.rVersion;
+		if(version && semver.lt(version, '4.0.0')) {
+			const reason = /^Error.*$/m.exec((e as { stderr?: string }).stderr ?? '')?.[0] ?? String(e);
+			skip(true, `R ${version.raw} cannot run the program itself: ${reason}`);
+		}
+		throw e;
 	}
 }
 
@@ -879,7 +900,10 @@ export function assertSliceMatchesR(parser: KnownParser, name: string, code: str
 				process.env.FLOWR_DISABLE_DEFAULT_SIGDB = disabled;
 			}
 		});
-		const [all, part] = (await Promise.all([printedByR(code), printedByR(slice)])).map(out => whole ? out : out.split('\n').at(-1));
+		const running = printedByR(slice);
+		running.catch(() => undefined);
+		const program = await printedByProgram(code, skip);
+		const [all, part] = [program, await running].map(out => whole ? out : out.split('\n').at(-1));
 		assert.strictEqual(part, all, `the slice:\n${slice}`);
 		if(dropped !== undefined) {
 			assert.notInclude(slice, dropped, `the slice:\n${slice}`);

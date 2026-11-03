@@ -136,6 +136,69 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ nodeId: '3@g', functionName: 'g', value: 'stdout', via: 10 }
 			]
 		});
+		describe('archives and copies read one file and write another', () => {
+			const caps = ['file-dependencies'] as const;
+			for(const [code, fn, read, write] of [
+				['unzip("a.zip", exdir = "data")', 'unzip', 'a.zip', 'data'],
+				['unzip("a.zip")', 'unzip', 'a.zip', '.'],
+				['untar("a.tar.gz", exdir = "t")', 'untar', 'a.tar.gz', 't'],
+				['untar("a.tar.gz")', 'untar', 'a.tar.gz', '.'],
+				['zip("a.zip", "b.csv")', 'zip', 'b.csv', 'a.zip'],
+				['tar("a.tar", "b.csv")', 'tar', 'b.csv', 'a.tar'],
+				['file.append("a.txt", "b.txt")', 'file.append', 'b.txt', 'a.txt'],
+				['file.copy("a.txt", "b.txt")', 'file.copy', 'a.txt', 'b.txt'],
+				['file.copy(to = "b.txt", from = "a.txt")', 'file.copy', 'a.txt', 'b.txt'],
+				['file.rename("a.txt", "b.txt")', 'file.rename', 'a.txt', 'b.txt'],
+				['file.symlink("a.txt", "b.txt")', 'file.symlink', 'a.txt', 'b.txt'],
+				['file.link("a.txt", "b.txt")', 'file.link', 'a.txt', 'b.txt'],
+				['library(fs)\nfile_copy("a.txt", "b.txt")', 'file_copy', 'a.txt', 'b.txt'],
+				['library(zip)\nzipr("a.zip", "b.csv")', 'zipr', 'b.csv', 'a.zip'],
+				['library(R.utils)\ngunzip("b.csv.gz", "b.csv")', 'gunzip', 'b.csv.gz', 'b.csv'],
+				['library(R.utils)\ngunzip("b.csv.gz")', 'gunzip', 'b.csv.gz', 'unknown'],
+				['library(archive)\narchive_extract("a.zip", "d")', 'archive_extract', 'a.zip', 'd'],
+				['library(archive)\narchive_extract("a.zip")', 'archive_extract', 'a.zip', '.']
+			] as const) {
+				const line = code.split('\n').length;
+				testQuery(`${fn} reads ${read} and writes ${write}`, code, {
+					...code.startsWith('library') ? { library: [{ nodeId: '1@library', functionName: 'library', value: code.slice(8, code.indexOf(')')) }] } : {},
+					read:  [{ nodeId: `${line}@${fn}`, functionName: fn, value: read }],
+					write: [{ nodeId: `${line}@${fn}`, functionName: fn, value: write }]
+				}, {}, caps);
+			}
+		});
+		describe('downloads read their source and write where they save it', () => {
+			const caps = ['file-dependencies'] as const;
+			for(const [code, fn, read, write] of [
+				['download.file("https://x.org/a.csv", "a.csv")', 'download.file', 'https://x.org/a.csv', 'a.csv'],
+				['library(curl)\ncurl_download("https://x.org/a.csv", "a.csv")', 'curl_download', 'https://x.org/a.csv', 'a.csv'],
+				['library(curl)\ncurl_fetch_disk("https://x.org/a.csv", "a.csv")', 'curl_fetch_disk', 'https://x.org/a.csv', 'a.csv'],
+				['library(curl)\nmulti_download("https://x.org/a.csv", "a.csv")', 'multi_download', 'https://x.org/a.csv', 'a.csv'],
+				['library(xfun)\ndownload_file("https://x.org/a.csv", "a.csv")', 'download_file', 'https://x.org/a.csv', 'a.csv'],
+				['library(downloader)\ndownload("https://x.org/a.csv", destfile = "a.csv")', 'download', 'https://x.org/a.csv', 'a.csv'],
+				['library(xml2)\ndownload_html("https://x.org/a.html", "a.html")', 'download_html', 'https://x.org/a.html', 'a.html'],
+				['library(googledrive)\ndrive_download("a-id", path = "a.csv")', 'drive_download', 'a-id', 'a.csv'],
+				['library(aws.s3)\nsave_object("o.csv", bucket = "b", file = "a.csv")', 'save_object', 'o.csv', 'a.csv'],
+				['library(zen4R)\ndownload_zenodo("10.5281/zenodo.1", path = "z")', 'download_zenodo', '10.5281/zenodo.1', 'z'],
+				['library(piggyback)\npb_download("a.csv", dest = "d", repo = "me/r")', 'pb_download', 'me/r', 'd'],
+				['library(osfr)\nosf_download("x", path = "d")', 'osf_download', 'x', 'd']
+			] as const) {
+				const line = code.split('\n').length;
+				testQuery(`${fn} reads ${read} and writes ${write}`, code, {
+					...code.startsWith('library') ? { library: [{ nodeId: '1@library', functionName: 'library', value: code.slice(8, code.indexOf(')')) }] } : {},
+					read:  [{ nodeId: `${line}@${fn}`, functionName: fn, value: read }],
+					write: [{ nodeId: `${line}@${fn}`, functionName: fn, value: write }]
+				}, {}, caps);
+			}
+			testQuery('a request performed into a file writes it, and reads no file', 'library(httr2)\nreq_perform(request("https://x.org/a.csv"), path = "a.csv")', {
+				library: [{ nodeId: '1@library', functionName: 'library', value: 'httr2' }],
+				write:   [{ nodeId: '2@req_perform', functionName: 'req_perform', value: 'a.csv' }]
+			}, {}, caps);
+			testQuery('write_disk names what the request it configures writes', 'library(httr)\nGET("https://x.org/a.csv", write_disk("a.csv"))', {
+				library: [{ nodeId: '1@library', functionName: 'library', value: 'httr' }],
+				write:   [{ nodeId: '2@write_disk', functionName: 'write_disk', value: 'a.csv' }, printed('2@GET', 'GET')]
+			}, {}, caps);
+		});
+
 		testQuery('each call writes only the file it names', 'save_it <- function(p) write.csv(d, p)\nsave_it("a.csv")\nsave_it("b.csv")', {
 			write: [
 				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },

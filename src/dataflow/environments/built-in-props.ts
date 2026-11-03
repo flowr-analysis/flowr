@@ -24,9 +24,15 @@ export enum ArgProp {
 	Shape     = 1 << 4,
 	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
 	Flag      = 1 << 5,
-	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
+	/**
+	 * names the resource the call reads or writes, like `file` in `write.csv(x, file)`. A call that reads some
+	 * files and writes others marks the ones it writes {@link ArgProp.Written} as well, see {@link FnSig.resources}.
+	 */
 	Resource  = 1 << 6,
-	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
+	/**
+	 * what it refers to may be modified, like `envir` in `assign(x, v, envir = e)`, or the file `to` names in
+	 * `file.copy(from, to)`
+	 */
 	Written   = 1 << 7,
 	/** quoted or evaluated in another frame, like `expr` in `quote(expr)` */
 	Nse       = 1 << 8,
@@ -431,25 +437,40 @@ export type FnSig = [name: string, props: ArgProps][];
 const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
 
 /**
+ * The signature with only the {@link ArgProp.Resource} arguments the call reads (`writes` false) or writes. Only
+ * a call that reads and writes marks the ones it writes {@link ArgProp.Written}, like `exdir` in
+ * `unzip(zipfile, exdir = "out")`. One that marks none does whatever it does to every resource argument.
+ */
+function resourcesOf(sig: FnSig, writes: boolean): FnSig {
+	const written = ArgProp.Resource | ArgProp.Written;
+	if(!sig.some(([, p]) => (p & written) === written)) {
+		return sig;
+	}
+	return sig.map(([n, p]) => (p & ArgProp.Resource) === 0 || ((p & ArgProp.Written) !== 0) === writes ? [n, p] : [n, p & ~ArgProp.Resource]);
+}
+
+/**
  * Utility functions for {@link FnSig|function signatures}.
  */
 export const FnSig = {
 	/** The positional view of a signature; see {@link sigLayout}. */
-	layout:  sigLayout,
+	layout:    sigLayout,
 	/** The roles of the argument at a position; see {@link argProp}. */
-	propAt:  argProp,
+	propAt:    argProp,
 	/** The parameter each argument fills, honoring names; see {@link argumentSlots}. */
-	slots:   argumentSlots,
+	slots:     argumentSlots,
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
-	posWith: argsWith,
+	posWith:   argsWith,
 	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
-	forced:  forcedArgs,
+	forced:    forcedArgs,
 	/** How surely a call evaluates each of the first `count` arguments; see {@link argForcing}. */
-	forcing: argForcing,
+	forcing:   argForcing,
 	/** A signature saying only that the call evaluates every argument; see {@link ForcingEvery}. */
-	every:   ForcingEvery,
+	every:     ForcingEvery,
 	/** A signature saying only that the call evaluates one argument; see {@link forcingOnly}. */
-	only:    forcingOnly
+	only:      forcingOnly,
+	/** The signature keeping only the resources the call reads or writes, see {@link resourcesOf}. */
+	resources: resourcesOf
 } as const;
 
 /** the {@link ArgProp} bits as words; integer keys iterate in ascending bit order */

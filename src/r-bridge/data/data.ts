@@ -1462,6 +1462,14 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					example:     codeBlock('r', '.Call("my_c_fn", 1)\n.Fortran("my_f_sub", x = 1)')
 				},
 				{
+					name:        'File Dependencies',
+					id:          'file-dependencies',
+					code:        ['file.copy', 'unzip', 'untar', 'zip', 'archive::archive_extract', 'R.utils::gunzip'],
+					supported:   'partially',
+					description: '_A file read after a call that wrote it, also when the call copies, moves, packs, or unpacks it._ A read of a file links to the earlier writes of a file of the same name, and calls like `file.copy(from, to)` or `unzip(zipfile, exdir)` read the files of some arguments and write those of others, so `read.csv("data/b.csv")` after `unzip("a.zip", exdir = "data")` keeps the `unzip` and whatever wrote `a.zip`. What an archive holds is unknown, so unpacking one counts as writing any file, and a read of a file nothing named before reads every such write. Paths are compared by name, not against the working directory.',
+					example:     codeBlock('r', 'download.file("https://example.org/a.zip", "a.zip")\nunzip("a.zip", exdir = "data")\nd <- read.csv("data/b.csv")')
+				},
+				{
 					name:        'System Calls',
 					id:          'system-calls',
 					code:        ['system', 'system2'],

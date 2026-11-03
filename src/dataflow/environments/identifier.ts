@@ -386,6 +386,7 @@ export const enum PkgName {
 	/* CRAN / third-party */
 	AnnotationHub = 'AnnotationHub',
 	Ape          = 'ape',
+	Archive      = 'archive',
 	Arrow        = 'arrow',
 	AssertThat   = 'assertthat',
 	Audio        = 'audio',
@@ -410,6 +411,7 @@ export const enum PkgName {
 	DoMc         = 'doMC',
 	DoParallel   = 'doParallel',
 	DoSnow       = 'doSNOW',
+	Downloader   = 'downloader',
 	Dplyr        = 'dplyr',
 	EbImage      = 'EBImage',
 	Emmeans      = 'emmeans',
@@ -465,8 +467,10 @@ export const enum PkgName {
 	NorTest      = 'nortest',
 	OpenImageR   = 'OpenImageR',
 	OpenXlsx     = 'openxlsx',
+	Osfr         = 'osfr',
 	Parallelly   = 'parallelly',
 	Patchwork    = 'patchwork',
+	Piggyback    = 'piggyback',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
 	Png          = 'png',
@@ -546,6 +550,8 @@ export const enum PkgName {
 	Xlsx         = 'xlsx',
 	Xml2         = 'xml2',
 	Yaml         = 'yaml',
+	Zen4R        = 'zen4R',
+	Zip          = 'zip',
 }
 
 /**

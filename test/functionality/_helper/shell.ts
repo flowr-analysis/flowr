@@ -850,17 +850,18 @@ export async function printedByR(code: string): Promise<string> {
 }
 
 /**
- * What the program `code` prints, skipping the test when an R older than 4 cannot run the program itself: its base
- * functions behave differently there (e.g., `untar`), which says nothing about the slice. A newer R still fails.
+ * What the program `code` prints, skipping the test when an R other than the one CI mainly tests (`ACTION_R_VERSION`)
+ * cannot run the program itself: base functions differ between versions (e.g., `untar`), which says nothing about the
+ * slice. The main R, and any run without that variable (e.g., locally), still fails.
  */
 async function printedByProgram(code: string, skip: (condition: boolean, note?: string) => void): Promise<string> {
 	try {
 		return await printedByR(code);
 	} catch(e) {
-		const version = globalThis.rVersion;
-		if(version && semver.lt(version, '4.0.0')) {
+		const main = process.env.ACTION_R_VERSION, version = globalThis.rVersion;
+		if(main && version && !semver.eq(version, main)) {
 			const reason = /^Error.*$/m.exec((e as { stderr?: string }).stderr ?? '')?.[0] ?? String(e);
-			skip(true, `R ${version.raw} cannot run the program itself: ${reason}`);
+			skip(true, `R ${version.raw} (CI mainly tests ${main}) cannot run the program itself: ${reason}`);
 		}
 		throw e;
 	}

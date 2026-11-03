@@ -106,6 +106,8 @@ import {
 	type FunctionInfoQuery,
 	FunctionInfoQueryDefinition
 } from './catalog/function-info-query/function-info-query-format';
+import { AliasesQueryDefinition } from './catalog/aliases-query/aliases-query-format';
+import type { AliasesQuery } from './catalog/aliases-query/aliases-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -142,6 +144,7 @@ export type Query = CallContextQuery
 	| DiceQuery
 	| GuessDepVersionsQuery
 	| FunctionInfoQuery
+	| AliasesQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -219,7 +222,8 @@ export const SupportedQueries = {
 	'linter':               LinterQueryDefinition,
 	'dice':                 DiceQueryDefinition,
 	'guess-dep-versions':   GuessDepVersionsQueryDefinition,
-	'function-info':        FunctionInfoQueryDefinition
+	'function-info':        FunctionInfoQueryDefinition,
+	'aliases':              AliasesQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

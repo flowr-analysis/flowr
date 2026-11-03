@@ -168,6 +168,12 @@ importMethodsFrom(BiocGenerics,combine)`));
 			assert.isFalse(info.exportedSymbols.includes('"+"'));
 		});
 
+		test('exportMethods on a primitive generic exports nothing, as in R', () => {
+			const info = simple('exportMethods("[", "+", `$`, rep, as.difftime)\nexport(log)').current;
+			assert.deepEqual(info.exportedFunctions, ['as.difftime']);
+			assert.deepEqual(info.exportedSymbols, ['log']);
+		});
+
 		test('importClassesFrom / importMethodsFrom record the source package like importFrom', () => {
 			const info = simple('importClassesFrom(Matrix, dgCMatrix, dgeMatrix)\nimportMethodsFrom(BiocGenerics, combine)').current;
 			assert.deepEqual(info.importedPackages.get('Matrix'), ['dgCMatrix', 'dgeMatrix']);

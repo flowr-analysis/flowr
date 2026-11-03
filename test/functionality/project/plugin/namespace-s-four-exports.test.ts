@@ -11,9 +11,9 @@ S3method(print, rel)
 `;
 
 /** the context-parsed path needs a real analyzer, which is what tells the S4 directives apart */
-async function contextParsed(): Promise<{ info: NamespaceInfo, fn: (name: string) => FunctionInfo[] }> {
+async function contextParsed(namespace = Namespace): Promise<{ info: NamespaceInfo, fn: (name: string) => FunctionInfo[] }> {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
-	analyzer.addFile(new FlowrInlineTextFile('NAMESPACE', Namespace));
+	analyzer.addFile(new FlowrInlineTextFile('NAMESPACE', namespace));
 	analyzer.addFile(new FlowrInlineTextFile('test.R', 'x <- 1'));
 	analyzer.addRequest({ request: 'file', content: 'test.R' });
 	await analyzer.dataflow();
@@ -49,4 +49,13 @@ test.each([
 	const [found] = fn(name);
 	assert.strictEqual(!!found?.isS4Method, isS4Method, name);
 	assert.strictEqual(!!found?.isS4Class, isS4Class, name);
+});
+
+test('exportMethods on a primitive generic exports nothing, as in R', async() => {
+	const { info } = await contextParsed('exportMethods("+", "[", `$`, "[[<-", rep, Arith, as.difftime)\nexport(log)');
+	assert.deepEqual(info.exportedS4Methods, ['Arith', 'as.difftime']);
+	for(const name of ['+', '[', '$', '[[<-', 'rep']) {
+		assert.isFalse(isExportedInInfo(name, info), `${name} stays with base`);
+	}
+	assert.isTrue(isExportedInInfo('log', info), 'an explicit export of a primitive name is still an export');
 });

@@ -15,6 +15,7 @@ import { Identifier } from '../../../../dataflow/environments/identifier';
 import { isNotUndefined } from '../../../../util/assert';
 import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
+import { RPrimitives } from '../../../../data/r-primitives.generated';
 import {
 	toUnnamedArgument
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
@@ -30,6 +31,8 @@ export interface NamespaceInfo {
 	/**
 	 * Names listed by `exportMethods()`: S4 methods the package registered for one of its classes, which is a
 	 * different claim than an ordinary export (the package answers a generic, it does not define the function).
+	 * As R's `loadNamespace`, this keeps only the non-primitive generics: a method on a primitive such as `+` or `[`
+	 * binds nothing in the namespace, so `pkg::"+"` does not exist and the call stays with base.
 	 * Only the context-parsed path ({@link parseNamespaceComplex}) tells these apart; the regex fallback folds
 	 * them into {@link exportedFunctions}.
 	 */
@@ -384,8 +387,15 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 }
 /** `exportClasses(A, B)` / `exportMethods(show, summary)`: a directive may list several names, and each goes to `into`. */
 function handleS4ExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], into: 'exportedS4Classes' | 'exportedS4Methods'): NamespaceFormat {
-	pushUnquotedLexemes(g.current[into], args, RString.unquote);
+	const names: string[] = [];
+	pushUnquotedLexemes(names, args, RString.unquote);
+	g.current[into].push(...(into === 'exportedS4Methods' ? exportedGenerics(names) : names));
 	return g;
+}
+
+/** The `exportMethods()` names R exports: methods on a primitive generic bind nothing in the namespace. */
+function exportedGenerics(names: readonly string[]): string[] {
+	return names.filter(n => !RPrimitives.has(n));
 }
 const cleanLineCommentRegex = /^#.*$/gm;
 
@@ -493,9 +503,18 @@ function splitNamespaceArgs(args: string): string[] {
 	const names: string[] = [];
 	let depth = 0;
 	let start = 0;
+	let quote: string | undefined;
 	for(let i = 0; i <= args.length; i++) {
 		const c = args[i];
-		if(c === '(' || c === '[') {
+		if(quote !== undefined) {
+			if(c === '\\') {
+				i++;
+			} else if(c === quote) {
+				quote = undefined;
+			}
+		} else if(c === '"' || c === '\'' || c === '`') {
+			quote = c;
+		} else if(c === '(' || c === '[') {
 			depth++;
 		} else if(c === ')' || c === ']') {
 			depth--;
@@ -529,7 +548,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 			case 'exportClasses':
 			case 'exportMethods':
 				// a single directive may list several symbols, e.g. `exportMethods(show, summary)`
-				result.current.exportedFunctions.push(...splitNamespaceArgs(args));
+				result.current.exportedFunctions.push(...exportedGenerics(splitNamespaceArgs(args)));
 				break;
 			case 'S3method':
 			{

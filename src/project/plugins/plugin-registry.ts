@@ -76,6 +76,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsLibraryPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-library-plugin';
+import { FlowrAnalyzerPackageVersionsOnDemandPlugin } from './package-version-plugins/flowr-analyzer-package-versions-on-demand-plugin';
 import {
 	FlowrAnalyzerLoadingOrderIncludedFilesPlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
@@ -88,12 +89,13 @@ export const BuiltInPlugins = [
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:library', FlowrAnalyzerPackageVersionsLibraryPlugin],
+	['versions:on-demand', FlowrAnalyzerPackageVersionsOnDemandPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['versions:uvr', FlowrAnalyzerPackageVersionsUvrPlugin],
+	['versions:rig', FlowrAnalyzerPackageVersionsRigPlugin],
 	['versions:packrat', FlowrAnalyzerPackageVersionsPackratPlugin],
 	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
-	['versions:rig', FlowrAnalyzerPackageVersionsRigPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
 	['loading-order:rprofile', FlowrAnalyzerLoadingOrderRprofilePlugin],
@@ -101,10 +103,10 @@ export const BuiltInPlugins = [
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['meta:uvr', FlowrAnalyzerMetaUvrManifestFilePlugin],
-	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
-	['file-roles:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['meta:rig', FlowrAnalyzerMetaRigProjectFilePlugin],
 	['meta:rig-script', FlowrAnalyzerMetaRigScriptPlugin],
+	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
+	['file-roles:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['file-roles:inst', FlowrAnalyzerMetaInstFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
@@ -128,9 +130,9 @@ export const BuiltInPlugins = [
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
 	['file:uvr', FlowrAnalyzerUvrManifestFilePlugin],
+	['file:rig', FlowrAnalyzerRigProjectFilePlugin],
 	['file:rprofile', FlowrAnalyzerRprofileFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
-	['file:rig', FlowrAnalyzerRigProjectFilePlugin],
 	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
 	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin],
 	['project-discovery:default', FlowrAnalyzerDefaultProjectDiscoveryPlugin],

@@ -112,6 +112,16 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.parse(sourceCode, previousTree);
 	}
 
+	/** Parses code that belongs to no analysis, like the sources of a package, without incremental reparsing. */
+	public parseCode(code: string): Parser.Tree {
+		return this.parser.parse(code);
+	}
+
+	/** Whether {@link initTreeSitter} has loaded the R grammar, which every parser needs. */
+	public static isInitialized(): boolean {
+		return TreeSitterExecutor.language !== undefined;
+	}
+
 	public createQuery(source: string): Query {
 		return this.parser.getLanguage().query(source);
 	}

@@ -485,23 +485,29 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */
 	private toResolvedPackage(name: string, info: LibraryExports): Package {
-		/* what the configuration states for the package is part of its interface, even where the database misses it */
-		const stated = this.analyzerCtx?.env.statedFor(name);
-		const exported = stated === undefined ? info.exported.slice() : uniqueArray([...info.exported, ...[...stated.keys()].map(String)]);
-		const namespaceInfo: NamespaceInfo = {
-			exportedSymbols:      exported,
-			exportedFunctions:    [],
-			exportedS4Methods:    [],
-			/* the database derives these from the very `exportClasses()` directives the field stands for */
-			exportedS4Classes:    info.s4Classes.slice(),
-			exportS3Generics:     reconstructS3Generics(exported),
-			exportedPatterns:     [],
-			importedPackages:     new Map(),
-			loadsWithSideEffects: false,
-			callable:             exported
-		};
-		/* a source may know the exports without knowing which release they are from, and then the package
-		   carries no version rather than a made-up one */
-		return new Package({ name, namespaceInfo, resolvedVersion: info.version || undefined });
+		return packageFromExports(name, info, this.analyzerCtx?.env.statedFor(name)?.keys());
 	}
+}
+
+/**
+ * The resolved {@link Package} (namespace and version) of a source's export view. What the configuration states
+ * for the package (`stated`) is part of its interface, even where the source misses it.
+ */
+export function packageFromExports(name: string, info: Pick<LibraryExports, 'exported' | 's4Classes' | 'version'>, stated?: Iterable<unknown>): Package {
+	const exported = stated === undefined ? info.exported.slice() : uniqueArray([...info.exported, ...[...stated].map(String)]);
+	const namespaceInfo: NamespaceInfo = {
+		exportedSymbols:      exported,
+		exportedFunctions:    [],
+		exportedS4Methods:    [],
+		/* the database derives these from the very `exportClasses()` directives the field stands for */
+		exportedS4Classes:    info.s4Classes.slice(),
+		exportS3Generics:     reconstructS3Generics(exported),
+		exportedPatterns:     [],
+		importedPackages:     new Map(),
+		loadsWithSideEffects: false,
+		callable:             exported
+	};
+	/* a source may know the exports without knowing which release they are from, and then the package
+	   carries no version rather than a made-up one */
+	return new Package({ name, namespaceInfo, resolvedVersion: info.version || undefined });
 }

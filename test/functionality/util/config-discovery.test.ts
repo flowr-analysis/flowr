@@ -110,6 +110,8 @@ describe('Project config trust', () => {
 			// reads files the invoking user can already read (see SECURITY.md)
 			'solver.resolveSource.searchPath.*',
 			'solver.sigdb.assumedRVersion', 'solver.sigdb.installedLibrary.packages.*', 'solver.sigdb.versionOverrides.*',
+			// names among the sources flowR and its plugins offer, package regexes, and a release name the schema restricts
+			'solver.sigdb.onDemand.sources.*', 'solver.sigdb.onDemand.packages.*', 'solver.sigdb.onDemand.bioconductorRelease',
 			'solver.sigdb.versionSelection', 'solver.variables', 'solver.versionManagement.linkedVersionGroups.*.*', 'specializeConfig.*.inherit'
 		]);
 		const sensitive = new Set(FlowrConfig.securitySensitivePaths().map(p => p.join('.')));

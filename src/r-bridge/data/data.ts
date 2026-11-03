@@ -1375,6 +1375,14 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							supported:   'partially',
 							description: '_Read the package library a project installs into (`renv/library`, `packrat/lib`, or the platform library)._ Their code is not read.',
 							url:         [Plugin('src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-library-plugin.ts')]
+						},
+						{
+							name:        'On-Demand Package Sources',
+							id:          'project-on-demand-sources',
+							supported:   'partially',
+							description: '_Fetch the source of a package no signature database knows when the code uses it, from CRAN, Bioconductor, or GitHub (`solver.sigdb.onDemand`)._ The repository comes from an `install_github`-style call, the `Remotes` of the `DESCRIPTION`, or the configuration. The exports come from the `NAMESPACE` (an `exportPattern` matched against the names the code defines) and the formals from the functions the `R/` files define at the top level, cached per package so a later analysis works offline. A fetched package counts as untrusted: its code is parsed, never run, only `https` to public hosts (or the configured mirrors) is used, what it states is cut down to names, formals, and a version, and it cannot take over a function that matters to security (`system`, `eval`, file and network calls), so those keep being found. Only a trusted configuration can switch this on. Function bodies are not analyzed, and a package loaded under a name only known at run time is not fetched.',
+							example:     codeBlock('r', 'remotes::install_github("masurp/ggmirt")\nlibrary(ggmirt)\ntracePlot(fit, theta_range = c(-3, 3))'),
+							url:         [Plugin('src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-on-demand-plugin.ts')]
 						}
 					]
 				},
@@ -1454,20 +1462,20 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					url:         [RLang('Operating system access')]
 				},
 				{
-					name:        'Foreign Function Interface',
-					id:          'foreign-function-interface',
-					code:        ['.C', '.Call', '.External', '.Fortran'],
-					supported:   'partially',
-					description: `_Calling out to compiled code with \`.C\`, \`.Call\`, \`.External\`, \`.Fortran\`, ..._ The call carries an unknown side effect, like a write through a ${LinkTo('environment-sharing', 'shared environment')}, and the foreign code itself is not analyzed.`,
-					example:     codeBlock('r', '.Call("my_c_fn", 1)\n.Fortran("my_f_sub", x = 1)')
-				},
-				{
 					name:        'File Dependencies',
 					id:          'file-dependencies',
 					code:        ['file.copy', 'unzip', 'untar', 'zip', 'archive::archive_extract', 'R.utils::gunzip'],
 					supported:   'partially',
 					description: '_A file read after a call that wrote it, also when the call copies, moves, packs, or unpacks it._ A read of a file links to the earlier writes of a file of the same name, and calls like `file.copy(from, to)` or `unzip(zipfile, exdir)` read the files of some arguments and write those of others, so `read.csv("data/b.csv")` after `unzip("a.zip", exdir = "data")` keeps the `unzip` and whatever wrote `a.zip`. What an archive holds is unknown, so unpacking one counts as writing any file, and a read of a file nothing named before reads every such write. Paths are compared by name, not against the working directory.',
 					example:     codeBlock('r', 'download.file("https://example.org/a.zip", "a.zip")\nunzip("a.zip", exdir = "data")\nd <- read.csv("data/b.csv")')
+				},
+				{
+					name:        'Foreign Function Interface',
+					id:          'foreign-function-interface',
+					code:        ['.C', '.Call', '.External', '.Fortran'],
+					supported:   'partially',
+					description: `_Calling out to compiled code with \`.C\`, \`.Call\`, \`.External\`, \`.Fortran\`, ..._ The call carries an unknown side effect, like a write through a ${LinkTo('environment-sharing', 'shared environment')}, and the foreign code itself is not analyzed.`,
+					example:     codeBlock('r', '.Call("my_c_fn", 1)\n.Fortran("my_f_sub", x = 1)')
 				},
 				{
 					name:        'System Calls',

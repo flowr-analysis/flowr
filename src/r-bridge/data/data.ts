@@ -1363,6 +1363,13 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							url:         [Plugin('src/project/plugins/file-plugins/files/flowr-manifest-files.ts'), { name: 'uvr', href: 'https://github.com/nbafrank/uvr' }]
 						},
 						{
+							name:        'rig',
+							id:          'version-manager-rig',
+							supported:   'fully',
+							description: '_Read the configuration of [rig](https://rig.r-lib.org/proj-guide.html) projects and scripts._ Parses `rproj.toml`, the inline `# /// script` block a script declares its dependencies in, and the resolved `rproj.lock` or `<script>.R.lock`.',
+							url:         [Plugin('src/project/plugins/file-plugins/files/flowr-manifest-files.ts'), { name: 'rig', href: 'https://rig.r-lib.org/scripts.html' }]
+						},
+						{
 							name:        'Installed Library',
 							id:          'project-library',
 							supported:   'partially',

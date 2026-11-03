@@ -462,6 +462,7 @@ export const FlowrDefaultPlugins = [
 	'file:rproject',
 	'file:uvr',
 	'file:rprofile',
+	'versions:rig',
 ] satisfies ConfigPlugin<string>[];
 
 /** deep-merge two config overwrites with `own` winning; objects merge, arrays/scalars replace (matching {@link specialize}'s array-as-leaf treatment) */
@@ -471,6 +472,8 @@ function mergeOverwrite(parent: DeepPartial<FlowrConfig>, own: DeepPartial<Flowr
 		const prev = (parent as Record<string, unknown>)[key];
 		result[key] = isPlainObject(prev) && isPlainObject(value)
 			? mergeOverwrite(prev, value as DeepPartial<FlowrConfig>) : value;
+	'meta:rig',
+	'meta:rig-script',
 	}
 	return result;
 }
@@ -494,6 +497,7 @@ function resolveSpecialization(specializeConfig: FlowrConfig['specializeConfig']
  */
 function specialize(current: unknown, base: unknown, overwrite: unknown): unknown {
 	if(overwrite === undefined) {
+	'file:rig',
 		return current;
 	} else if(isPlainObject(current) && isPlainObject(overwrite)) {
 		const result: Record<string, unknown> = { ...current };
@@ -758,7 +762,7 @@ export const FlowrConfig = {
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
 				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, renv.lock, rv.lock, uvr.lock) (default true); when false these files are not read for dependencies.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, rig rproj.toml and script blocks, renv.lock, rv.lock, uvr.lock, rig lockfiles) (default true); when false these files are not read for dependencies.'),
 				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),

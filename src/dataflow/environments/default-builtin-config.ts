@@ -119,7 +119,8 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly string[]>> =
 		'stat_summary_2d', 'stat_summary_bin', 'stat_summary_hex', 'stat_unique', 'stat_ydensity', 'theme', 'theme_bw',
 		'theme_classic', 'theme_dark', 'theme_get', 'theme_gray', 'theme_grey', 'theme_light', 'theme_linedraw',
 		'theme_minimal', 'theme_replace', 'theme_sub_axis', 'theme_sub_axis_bottom', 'theme_sub_axis_left', 'theme_sub_axis_right', 'theme_sub_axis_top', 'theme_sub_axis_x', 'theme_sub_axis_y', 'theme_sub_legend', 'theme_sub_panel', 'theme_sub_plot', 'theme_sub_strip', 'theme_test', 'theme_update', 'theme_void', 'xlab', 'xlim', 'ylab', 'ylim'],
-	ggpubr:   ['gradient_color'],
+	ggpubr: ['ggballoonplot', 'ggbarplot', 'ggdensity', 'ggdonutchart', 'ggdotchart', 'ggdotplot', 'ggecdf', 'ggerrorplot', 'gghistogram',
+		'ggline', 'ggmaplot', 'ggpaired', 'ggpie', 'ggqqplot', 'ggscatterhist', 'ggstripchart', 'ggviolin', 'gradient_color'],
 	ggthemes: ['scale_color_calc', 'scale_color_canva', 'scale_color_colorblind', 'scale_color_continuous_tableau',
 		'scale_color_economist', 'scale_color_excel', 'scale_color_excel_new', 'scale_color_few',
 		'scale_color_fivethirtyeight', 'scale_color_gdocs', 'scale_color_gradient2_tableau',
@@ -140,7 +141,20 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly string[]>> =
 		'theme_igray', 'theme_map', 'theme_pander', 'theme_par', 'theme_solarized', 'theme_solarized_2', 'theme_solid',
 		'theme_stata', 'theme_tufte', 'theme_wsj'],
 	HoRM:   ['regressogram'],
-	gplots: ['bandplot', 'barplot2', 'boxplot2', 'bubbleplot', 'heatmap.2', 'lmplot2', 'overplot', 'plotCI',
+	ggmirt: ['conRelPlot', 'itemDist', 'itemInfoPlot', 'itemfitPlot', 'itempersonMap', 'personDist', 'personfitPlot',
+		'scaleCharPlot', 'summaryPlot', 'testInfoCompare', 'testInfoPlot', 'tracePlot'],
+	GGally: ['ggbivariate', 'ggcoef', 'ggcoef_compare', 'ggcoef_model', 'ggcorr', 'ggduo', 'ggnet2', 'ggnostic', 'ggpairs',
+		'ggparcoord', 'ggscatmat', 'ggsurv', 'ggtable', 'ggts'],
+	ggstatsplot: ['ggbarstats', 'ggbetweenstats', 'ggcoefstats', 'ggcorrmat', 'ggdotplotstats', 'gghistostats', 'ggpiestats',
+		'ggscatterstats', 'ggwithinstats', 'grouped_ggbarstats', 'grouped_ggbetweenstats', 'grouped_ggcorrmat',
+		'grouped_ggdotplotstats', 'grouped_gghistostats', 'grouped_ggpiestats', 'grouped_ggscatterstats', 'grouped_ggwithinstats'],
+	sjPlot:          ['plot_frq', 'plot_grpfrq', 'plot_likert', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab'],
+	EnhancedVolcano: ['EnhancedVolcano'],
+	qgraph:          ['centralityPlot', 'clusteringPlot', 'qgraph'],
+	semPlot:         ['semPaths'],
+	psych:           ['cor.plot', 'corPlot', 'error.bars', 'fa.diagram', 'pairs.panels', 'scatter.hist'],
+	mirt:            ['itemplot'],
+	gplots:          ['bandplot', 'barplot2', 'boxplot2', 'bubbleplot', 'heatmap.2', 'lmplot2', 'overplot', 'plotCI',
 		'plotmeans', 'residplot', 'sinkplot', 'textplot'],
 	gridExtra: ['grid.arrange'],
 	lattice:   ['bwplot', 'dotplot', 'histogram', 'splom', 'stripplot', 'trellis.device', 'xyplot'],
@@ -194,6 +208,17 @@ export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
 	'fviz_pca_biplot', 'fviz_pca', 'fviz_pca_ind', 'fviz_pca_var', 'fviz_screeplot', 'fviz_mca_biplot', 'fviz_mca', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_cluster', 'fviz_dend',
 	'ggsurvplot',
+	/* ggmirt, plots of mirt models */
+	'conRelPlot', 'itemDist', 'itemInfoPlot', 'itemfitPlot', 'itempersonMap', 'personDist', 'personfitPlot', 'scaleCharPlot', 'summaryPlot',
+	'testInfoCompare', 'testInfoPlot', 'tracePlot',
+	'ggbivariate', 'ggcoef', 'ggcoef_compare', 'ggcoef_model', 'ggcorr', 'ggduo', 'ggnet2', 'ggnostic', 'ggpairs', 'ggparcoord', 'ggscatmat', 'ggsurv', 'ggtable', 'ggts',
+	'ggbarstats', 'ggbetweenstats', 'ggcoefstats', 'ggcorrmat', 'ggdotplotstats', 'gghistostats', 'ggpiestats', 'ggscatterstats', 'ggwithinstats',
+	'grouped_ggbarstats', 'grouped_ggbetweenstats', 'grouped_ggcorrmat', 'grouped_ggdotplotstats', 'grouped_gghistostats', 'grouped_ggpiestats',
+	'grouped_ggscatterstats', 'grouped_ggwithinstats',
+	'ggbarplot', 'ggdensity', 'ggdotchart', 'ggdotplot', 'ggecdf', 'ggerrorplot', 'gghistogram', 'ggline', 'ggmaplot', 'ggpaired', 'ggpie',
+	'ggdonutchart', 'ggqqplot', 'ggscatterhist', 'ggstripchart', 'ggviolin', 'ggballoonplot',
+	'plot_frq', 'plot_grpfrq', 'plot_likert', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab',
+	'EnhancedVolcano', 'centralityPlot', 'clusteringPlot'
 ] as const;
 export const TinyPlotCrate = [
 	'tinyplot', 'plt'
@@ -205,11 +230,12 @@ export const GraphicsPlotCreate = [
 	'spineplot', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'coplot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotSimulatedResiduals', 'plotmeans',
 	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2',
 	'ggarrange', 'ggboxplot', 'ggscatter', 'corrplot', 'plot_grid', 'wrap_plots', 'levelplot', 'image.plot', 'biplot', 'screeplot',
-	'interaction.plot', 'termplot', 'plot_model', 'emmip'
+	'interaction.plot', 'termplot', 'plot_model', 'emmip',
+	'qgraph', 'semPaths', 'pairs.panels', 'fa.diagram', 'corPlot', 'cor.plot', 'error.bars', 'scatter.hist', 'itemplot'
 ];
 export const PlotCreate = GraphicsPlotCreate.concat(TinyPlotCrate, GgPlotCreate);
 /** the creators above that, other than base graphics, return their plot visibly instead of drawing it at once */
-const VisiblePlotCreate: ReadonlySet<string> = new Set(['xyplot', 'stripplot', 'bwplot', 'dotplot', 'histogram', 'splom', 'leaflet', 'plot_ly', 'tm_shape']);
+const VisiblePlotCreate: ReadonlySet<string> = new Set(['xyplot', 'stripplot', 'bwplot', 'dotplot', 'histogram', 'splom', 'leaflet', 'plot_ly', 'tm_shape', 'itemplot']);
 /** the plot creators that return the plot to draw when printed, where base graphics draw at once and return something else */
 export const PlotObjectCreate: ReadonlySet<string> = new Set([...GgPlotCreate.filter(f => f !== 'grid.arrange'), 'last_plot', ...VisiblePlotCreate, 'pheatmap']);
 const GraphicDeviceOpen = [
@@ -286,6 +312,10 @@ const MagrittrPipePackages = [PkgName.Magrittr, PkgName.Dplyr, PkgName.Purrr, Pk
 
 /** The packages re-exporting rlang's tidy-evaluation helpers unchanged. */
 const TidyEvalPackages = [PkgName.Rlang, PkgName.Dplyr, PkgName.GgPlot2] as const;
+/** reads the files some arguments name and writes the ones its {@link ArgProp.Written} arguments name, like `file.copy` or `unzip` */
+const CopiesFiles = [SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
+/** reads what its URL (or remote object) arguments name from the network and writes the file its {@link ArgProp.Written} arguments name, like `download.file` */
+const Downloads = [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
 
 const SigAtomicBinOp: FnSig = [['e1', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic]];
 const SigAtomicX: FnSig     = [['x', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic]];
@@ -312,10 +342,6 @@ const OtherTransforms: Identifier[] = [
 	Identifier.from(['merge', PkgName.Base]), ...Identifier.fromAll(PkgName.Stats, ['aggregate', 'reshape', 'ave']),
 	...Identifier.fromAll(PkgName.Base, ['split', 'unsplit', 'expand.grid']), ...Identifier.fromAll(PkgName.Utils, ['stack', 'unstack']),
 	...Identifier.fromAll(PkgName.Reshape2, ['melt', 'dcast', 'acast']),
-/** reads the files some arguments name and writes the ones its {@link ArgProp.Written} arguments name, like `file.copy` or `unzip` */
-const CopiesFiles = [SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
-/** reads what its URL (or remote object) arguments name from the network and writes the file its {@link ArgProp.Written} arguments name, like `download.file` */
-const Downloads = [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
 	...Identifier.fromAll(PkgName.Plyr, ['ldply', 'llply', 'dlply', 'join', 'rbind.fill'])
 ];
 /* the calls that fit a statistical model to data */

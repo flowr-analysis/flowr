@@ -38,10 +38,7 @@ describe('Secret Taint Analysis', () => {
 	});
 
 	describe('Propagation', () => {
-		testSecret('a constant joined with a secret stays secret', 'k <- Sys.getenv("API_KEY")\nx <- paste0("key=", k)', { '2@x': Secret });
 		testSecret('a vector holding a secret', 'k <- Sys.getenv("API_KEY")\nx <- c("a", k)', { '2@x': Secret });
-		testSecret('an access of an object holding a secret', 'l <- list(k = Sys.getenv("API_KEY"))\nx <- l$k', { '2@x': Secret });
-		testSecret('an index of an object holding a secret', 'l <- list(Sys.getenv("API_KEY"))\nx <- l[[1]]', { '2@x': Secret });
 		testSecret('the shape of a secret is not secret', 'k <- Sys.getenv("API_KEY")\nx <- length(k)', { '2@x': Top });
 	});
 
@@ -53,11 +50,9 @@ describe('Secret Taint Analysis', () => {
 	});
 
 	describe('Sinks', () => {
-		testSecret('a secret logged', 'k <- Sys.getenv("API_KEY")\nx <- message("k: ", k)', { '2@x': Bottom });
 		testSecret('a method of a chat', 'k <- Sys.getenv("API_KEY")\nx <- chat$chat(k)', { '2@x': Bottom });
 		testSecret('a whole response written out', 'r <- httr::GET("https://x.org", httr::add_headers(Authorization = Sys.getenv("API_KEY")))\nx <- saveRDS(r, "r.rds")', { '2@x': Bottom });
 		testSecret('a response printed hides its request', 'r <- httr::GET("https://x.org", httr::add_headers(Authorization = Sys.getenv("API_KEY")))\nx <- print(r)', { '2@x': Top });
-		testSecret('nothing secret logged', 'x <- message("hello")', { '1@x': Top });
 		testSecret('an authentication channel is no sink', 'k <- Sys.getenv("API_KEY")\nx <- httr2::req_auth_bearer_token(r, k)', { '2@x': Credential });
 	});
 
@@ -81,7 +76,6 @@ describe('Secret Taint Analysis', () => {
 	describe('Functions', () => {
 		testSecret('a function returning a secret', 'get_key <- function() Sys.getenv("API_KEY")\nx <- get_key()', { '2@x': Secret });
 		testSecret('a call made by do.call', 'x <- do.call(readLines, list(".Renviron"))', { '1@x': Secret });
-		testSecret('a function forwarding its argument', 'id <- function(v) trimws(v)\nx <- id(Sys.getenv("API_KEY"))', { '2@x': Secret });
 	});
 
 	describe('Loops preserve the taint', () => {

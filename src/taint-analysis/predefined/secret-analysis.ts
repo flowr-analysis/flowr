@@ -27,38 +27,16 @@ export const secretDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, t
 
 /** Environment variable names that hold credentials */
 export const CredentialNamePattern = /key|token|secret|pass(?:word)?|pwd|cred|auth|private/i;
-
 /** Files that hold credentials */
 export const CredentialFilePattern = /(?:^|[\\/])(?:\.Renviron|[._]netrc|\.pgpass|\.git-credentials|credentials(?:\.\w+)?)$/i;
 
-/** How far the content of files is trusted not to hold secrets */
-export enum FileTrust {
-	/** any file may hold secrets, except trusted ones */
-	None = 'none',
-	/** only credential files hold secrets */
-	CredentialFiles = 'credential-files'
-}
-
+/** How far the content of files is trusted not to hold secrets: `none` (any file but trusted ones may hold secrets) or only `credential-files` */
+export enum FileTrust { None = 'none', CredentialFiles = 'credential-files' }
 /** Urls of endpoints that answer with a token */
 export const TokenUrlPattern = /oauth|token|\/auth(?:enticate)?\b|\blogin\b|grant_type/i;
 
-/** Where a secret goes when it reaches a sink */
-export enum SecretSinkClass {
-	/** sent over the network */
-	Network = 'network',
-	/** an authentication channel, the intended use */
-	Auth = 'auth',
-	/** shown in the browser of a Shiny app */
-	Browser = 'browser',
-	/** printed to logs or the console */
-	Logs = 'logs',
-	/** written to a file */
-	Files = 'files',
-	/** passed to another process, visible in its arguments */
-	Process = 'process',
-	/** sent to a large language model */
-	Llm = 'llm'
-}
+/** Where a secret goes when it reaches a sink, `auth` being an authentication channel, the intended use */
+export enum SecretSinkClass { Network = 'network', Auth = 'auth', Browser = 'browser', Logs = 'logs', Files = 'files', Process = 'process', Llm = 'llm' }
 
 /** functions through which a secret leaves the process */
 export interface SecretSink {
@@ -77,67 +55,45 @@ export interface SecretSink {
 }
 
 const index = BuiltInIndex.default();
-const fromPkg = (pkg: string, ...names: string[]): Identifier[] => names.map(n => Identifier.make(n, pkg));
-const methods = (...names: string[]): Identifier[] => names.map(n => Identifier.make(`$${n}`));
-const logLevels = ['trace', 'debug', 'info', 'success', 'warn', 'error', 'fatal'];
+/** functions by package, as `pkg: f g; other: h`, with `$` for methods */
+const fns = (spec: string): Identifier[] => spec.split(';').flatMap(group => {
+	const [pkg, names] = group.split(':').map(p => p.trim());
+	return pkg === '$' ? names.split(' ').map(n => Identifier.make(`$${n}`)) : Identifier.fromAll(pkg, names.split(' '));
+});
+const logLevels = 'trace debug info success warn error fatal'.split(' ');
 
 export const DefaultSecretSinks: readonly SecretSink[] = [
-	{ class: SecretSinkClass.Network, fns: fromPkg('httr', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'), destination: { pos: 0, name: 'url' }, returns: 'response' },
-	{ class: SecretSinkClass.Network, fns: fromPkg('httr', 'VERB'), destination: { pos: 1, name: 'url' }, returns: 'response' },
-	{ class: SecretSinkClass.Network, fns: fromPkg('httr2', 'request'), destination: { pos: 0, name: 'base_url' }, inUrl: true, returns: 'request' },
-	{ class: SecretSinkClass.Network, fns: fromPkg('httr2', 'req_url', 'req_url_query', 'req_url_path', 'req_url_path_append'), destination: { pos: 0, name: 'req' }, inUrl: true, returns: 'request' },
-	{ class: SecretSinkClass.Network, fns: fromPkg('httr2', 'req_body_json', 'req_body_form', 'req_body_raw', 'req_body_multipart', 'req_body_file'), destination: { pos: 0, name: 'req' }, returns: 'request' },
-	{ class: SecretSinkClass.Network, fns: [...fromPkg('curl', 'curl_fetch_memory', 'curl_fetch_disk', 'curl_fetch_stream', 'curl', 'curl_download'), ...fromPkg('RCurl', 'getURL', 'getURLContent', 'postForm', 'getForm')], destination: { pos: 0, name: 'url' }, inUrl: true, returns: 'response' },
-	{ class: SecretSinkClass.Network, fns: [...fromPkg(PkgName.Utils, 'download.file'), ...fromPkg(PkgName.Base, 'url')], destination: { pos: 0 }, inUrl: true },
-	{ class: SecretSinkClass.Network, fns: fromPkg(PkgName.Base, 'socketConnection'), destination: { pos: 0, name: 'host' } },
-	{ class: SecretSinkClass.Auth, fns: fromPkg('httr2', 'req_auth_bearer_token', 'req_auth_basic', 'req_headers', 'req_oauth_client_credentials', 'req_oauth_password', 'req_oauth_refresh', 'req_oauth_bearer_jwt', 'req_oauth_auth_code', 'req_auth_aws_v4'), destination: { pos: 0, name: 'req' } },
-	{ class: SecretSinkClass.Auth, fns: fromPkg('DBI', 'dbConnect'), destination: { pos: -1, name: 'host' } },
-	{ class: SecretSinkClass.Auth, fns: [...fromPkg('httr2', 'oauth_client'), ...fromPkg('httr', 'oauth_app'), ...fromPkg('curl', 'new_handle', 'handle_setheaders', 'handle_setopt')] },
-	{ class: SecretSinkClass.Browser, fns:   [
-		...fromPkg('shiny', 'renderPrint', 'renderText', 'renderUI', 'renderTable', 'renderDataTable', 'HTML', 'showNotification', 'updateTextInput', 'updateTextAreaInput', 'textInput', 'textAreaInput', 'passwordInput'),
-		...fromPkg('htmltools', 'HTML'),
-		...fromPkg('DT', 'renderDT', 'renderDataTable', 'datatable'),
-		...fromPkg('shinyjs', 'runjs', 'html'),
-		...methods('sendCustomMessage', 'sendInputMessage', 'sendBinaryMessage')
-	] },
-	{ class: SecretSinkClass.Logs, fns: fromPkg(PkgName.Base, 'cat'), file: { pos: -1, name: 'file' } },
-	{ class: SecretSinkClass.Logs, fns: fromPkg(PkgName.Base, 'writeLines'), file: { pos: 1, name: 'con' } },
-	{ class: SecretSinkClass.Files, fns: [...fromPkg(PkgName.Base, 'saveRDS', 'save', 'dput', 'dump', 'serialize'), ...fromPkg('readr', 'write_rds')], serializes: true },
-	{ class: SecretSinkClass.Logs, fns: fromPkg(PkgName.Utils, 'str'), serializes: true },
+	{ class: SecretSinkClass.Network, fns: fns('httr: GET POST PUT PATCH DELETE HEAD'), destination: { pos: 0, name: 'url' }, returns: 'response' },
+	{ class: SecretSinkClass.Network, fns: fns('httr: VERB'), destination: { pos: 1, name: 'url' }, returns: 'response' },
+	{ class: SecretSinkClass.Network, fns: fns('httr2: request'), destination: { pos: 0, name: 'base_url' }, inUrl: true, returns: 'request' },
+	{ class: SecretSinkClass.Network, fns: fns('httr2: req_url req_url_query req_url_path req_url_path_append'), destination: { pos: 0, name: 'req' }, inUrl: true, returns: 'request' },
+	{ class: SecretSinkClass.Network, fns: fns('httr2: req_body_json req_body_form req_body_raw req_body_multipart req_body_file'), destination: { pos: 0, name: 'req' }, returns: 'request' },
+	{ class: SecretSinkClass.Network, fns: fns('curl: curl_fetch_memory curl_fetch_disk curl_fetch_stream curl curl_download; RCurl: getURL getURLContent postForm getForm'), destination: { pos: 0, name: 'url' }, inUrl: true, returns: 'response' },
+	{ class: SecretSinkClass.Network, fns: fns('utils: download.file; base: url'), destination: { pos: 0 }, inUrl: true },
+	{ class: SecretSinkClass.Network, fns: fns('base: socketConnection'), destination: { pos: 0, name: 'host' } },
+	{ class: SecretSinkClass.Auth, fns: fns('httr2: req_auth_bearer_token req_auth_basic req_headers req_oauth_client_credentials req_oauth_password req_oauth_refresh req_oauth_bearer_jwt req_oauth_auth_code req_auth_aws_v4'), destination: { pos: 0, name: 'req' } },
+	{ class: SecretSinkClass.Auth, fns: fns('DBI: dbConnect'), destination: { pos: -1, name: 'host' } },
+	{ class: SecretSinkClass.Auth, fns: fns('httr2: oauth_client; httr: oauth_app; curl: new_handle handle_setheaders handle_setopt') },
+	{ class: SecretSinkClass.Browser, fns: fns('shiny: renderPrint renderText renderUI renderTable renderDataTable HTML showNotification updateTextInput updateTextAreaInput textInput textAreaInput passwordInput; htmltools: HTML; DT: renderDT renderDataTable datatable; shinyjs: runjs html; $: sendCustomMessage sendInputMessage sendBinaryMessage') },
+	{ class: SecretSinkClass.Logs, fns: fns('base: cat'), file: { pos: -1, name: 'file' } },
+	{ class: SecretSinkClass.Logs, fns: fns('base: writeLines'), file: { pos: 1, name: 'con' } },
+	{ class: SecretSinkClass.Files, fns: fns('base: saveRDS save dput dump serialize; readr: write_rds'), serializes: true },
+	{ class: SecretSinkClass.Logs, fns: fns('utils: str'), serializes: true },
 	{ class: SecretSinkClass.Logs, fns:   [
 		...index.with(SemanticCallTag.Prints),
-		...fromPkg(PkgName.Base, 'stop', 'packageStartupMessage'),
-		...fromPkg('logger', ...logLevels.map(l => `log_${l}`)),
-		...fromPkg('futile.logger', ...logLevels.map(l => `flog.${l}`)),
-		...fromPkg('rlang', 'inform', 'abort'),
-		...fromPkg('cli', 'cli_alert', 'cli_alert_info', 'cli_alert_success', 'cli_alert_warning', 'cli_alert_danger', 'cli_inform', 'cli_warn', 'cli_abort', 'cli_text'),
-		...fromPkg('clipr', 'write_clip')
+		...Identifier.fromAll('logger', logLevels.map(l => `log_${l}`)),
+		...Identifier.fromAll('futile.logger', logLevels.map(l => `flog.${l}`)),
+		...fns('base: stop packageStartupMessage; rlang: inform abort; cli: cli_alert cli_alert_info cli_alert_success cli_alert_warning cli_alert_danger cli_inform cli_warn cli_abort cli_text; clipr: write_clip')
 	] },
-	{ class: SecretSinkClass.Files, fns:   [
-		...index.withAll([SemanticCallTag.File, SemanticCallTag.Writes]),
-		...fromPkg(PkgName.Utils, 'write.csv', 'write.csv2', 'write.table'),
-		...fromPkg(PkgName.Base, 'writeBin'),
-		...fromPkg('DBI', 'dbWriteTable', 'dbAppendTable'),
-		...fromPkg('pins', 'pin_write'),
-		...fromPkg('googlesheets4', 'sheet_write', 'write_sheet', 'sheet_append'),
-		...fromPkg('aws.s3', 's3saveRDS', 'put_object')
-	] },
-	{ class: SecretSinkClass.Process, fns: [...index.with(SemanticCallTag.Process), ...fromPkg(PkgName.Utils, 'browseURL')] },
-	{ class: SecretSinkClass.Llm, fns:   [
-		...fromPkg('ellmer', 'chat', 'chat_openai', 'chat_anthropic', 'chat_claude', 'chat_gemini', 'chat_google_gemini', 'chat_ollama', 'chat_mistral', 'chat_groq', 'chat_azure_openai', 'chat_bedrock'),
-		...fromPkg('openai', 'create_chat_completion', 'create_completion'),
-		...methods('chat', 'stream', 'chat_async', 'stream_async', 'chat_structured', 'set_system_prompt')
-	] }
+	{ class: SecretSinkClass.Files, fns: [...index.withAll([SemanticCallTag.File, SemanticCallTag.Writes]), ...fns('utils: write.csv write.csv2 write.table; base: writeBin; DBI: dbWriteTable dbAppendTable; pins: pin_write; googlesheets4: sheet_write write_sheet sheet_append; aws.s3: s3saveRDS put_object')] },
+	{ class: SecretSinkClass.Process, fns: [...index.with(SemanticCallTag.Process), ...fns('utils: browseURL')] },
+	{ class: SecretSinkClass.Llm, fns: fns('ellmer: chat chat_openai chat_anthropic chat_claude chat_gemini chat_google_gemini chat_ollama chat_mistral chat_groq chat_azure_openai chat_bedrock; openai: create_chat_completion create_completion; $: chat stream chat_async stream_async chat_structured set_system_prompt') }
 ];
 
 /** functions reading the body of a response */
-const BodyReaders: readonly Identifier[] = [
-	...fromPkg('httr', 'content'),
-	...fromPkg('httr2', 'resp_body_string', 'resp_body_json', 'resp_body_raw', 'resp_body_html', 'resp_body_xml')
-];
-
+const BodyReaders = fns('httr: content; httr2: resp_body_string resp_body_json resp_body_raw resp_body_html resp_body_xml');
 /** functions sending a built request, returning the response */
-const Performers: readonly Identifier[] = fromPkg('httr2', 'req_perform', 'req_perform_sequential', 'req_perform_parallel', 'req_perform_iterative');
+const Performers = fns('httr2: req_perform req_perform_sequential req_perform_parallel req_perform_iterative');
 
 type SecretValue = typeof Secret | typeof Credential | typeof FileContent | typeof Response;
 const has = (taints: readonly TaintConditionDomain<typeof secretDomain>[], ...values: SecretValue[]) => taints.some(t => values.includes(t?.value as SecretValue));
@@ -195,18 +151,9 @@ export function createSecretAnalysis({ credentialNamePattern = CredentialNamePat
 			},
 			{
 				identifier: [
-					...fromPkg('keyring', 'key_get', 'key_get_raw'),
-					...fromPkg('config', 'get'),
-					...fromPkg(PkgName.Base, 'readRenviron'),
-					...fromPkg('httr', 'oauth2.0_token', 'oauth1.0_token', 'oauth_service_token'),
-					...fromPkg('httr2', 'oauth_flow_auth_code', 'oauth_flow_client_credentials', 'oauth_flow_password', 'oauth_flow_refresh', 'oauth_flow_device', 'oauth_flow_bearer_jwt', 'oauth_flow_token_exchange', 'oauth_token_cached'),
-					...fromPkg('gargle', 'token_fetch', 'credentials_service_account', 'credentials_user_oauth2', 'credentials_app_default'),
-					...fromPkg('AzureAuth', 'get_azure_token'),
-					...fromPkg('gh', 'gh_token'),
-					...fromPkg('gitcreds', 'gitcreds_get'),
-					...fromPkg('askpass', 'askpass'),
-					...fromPkg('getPass', 'getPass'),
-					...fromPkg('rstudioapi', 'askForPassword', 'askForSecret'),
+					...fns('keyring: key_get key_get_raw; config: get; base: readRenviron; httr: oauth2.0_token oauth1.0_token oauth_service_token; gargle: token_fetch credentials_service_account credentials_user_oauth2 credentials_app_default'),
+					...fns('httr2: oauth_flow_auth_code oauth_flow_client_credentials oauth_flow_password oauth_flow_refresh oauth_flow_device oauth_flow_bearer_jwt oauth_flow_token_exchange oauth_token_cached'),
+					...fns('AzureAuth: get_azure_token; gh: gh_token; gitcreds: gitcreds_get; askpass: askpass; getPass: getPass; rstudioapi: askForPassword askForSecret'),
 					...sources
 				],
 				taint: Secret
@@ -216,24 +163,21 @@ export function createSecretAnalysis({ credentialNamePattern = CredentialNamePat
 		.through(
 			{
 				identifier: [
-					...fromPkg('digest', 'digest', 'sha1', 'hmac'),
-					...fromPkg('openssl', 'sha1', 'sha256', 'sha512', 'md5', 'sha2'),
-					...fromPkg('sodium', 'password_store', 'hash', 'sha256'),
-					...fromPkg(PkgName.Base, 'nzchar', 'is.na', 'is.null', 'nchar', 'identical', '==', '!=', 'isTRUE', 'isFALSE'),
+					...fns('digest: digest sha1 hmac; openssl: sha1 sha256 sha512 md5 sha2; sodium: password_store hash sha256; base: nzchar is.na is.null nchar identical == != isTRUE isFALSE'),
 					...declassifiers
 				],
 				taint: Top
 			},
 			{
-				identifier: [...fromPkg(PkgName.Base, '$', '[[', '[', '@'), ...BodyReaders],
+				identifier: [...fns('base: $ [[ [ @'), ...BodyReaders],
 				condition:  { argDefinition: [{ pos: 0 }], conditionFn: bodyTaint }
 			},
 			{
-				identifier: [...fromPkg(PkgName.Base, 'enc2utf8', 'trimws', 'unname', 'rawToChar', 'do.call'), ...fromPkg(PkgName.Utils, 'URLencode'), ...fromPkg('jsonlite', 'fromJSON', 'parse_json', 'toJSON'), ...fromPkg('base64enc', 'base64encode'), ...fromPkg('jsonlite', 'base64_enc')],
+				identifier: fns('base: enc2utf8 trimws unname rawToChar do.call; utils: URLencode; jsonlite: fromJSON parse_json toJSON base64_enc; base64enc: base64encode'),
 				condition:  { argDefinition: [{ pos: 0 }], conditionFn: strongestSecret }
 			},
 			{
-				identifier: [...fromPkg('httr', 'authenticate', 'add_headers', 'config'), ...sinksOf(s => s.class === SecretSinkClass.Auth)],
+				identifier: [...fns('httr: authenticate add_headers config'), ...sinksOf(s => s.class === SecretSinkClass.Auth)],
 				condition:  { allArgs: true, conditionFn: (_args, taints) => isSecret(taints) ? Credential : Top }
 			},
 			{

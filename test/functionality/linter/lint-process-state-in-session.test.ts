@@ -70,9 +70,6 @@ describe('flowR linter', withTreeSitter(parser => {
 				[{ line: 4, name: 'f', suggestion: 'arguments to f that include session$user, or a cache per session' }]);
 			lint('a memoized closure over the session with its own cache', server('f <- memoise::memoise(function(id) fetch(id, session$user))\nx <- f(input$id)'), []);
 			lint('the user passed to a memoized closure', server('f <- memoise::memoise(function(id, u) fetch(id, session$user), cache = cache)\nx <- f(input$id, session$user)', cache), []);
-			lint('an argument left out of the key', server('x <- f(input$id, session$user)', 'f <- memoise::memoise(function(id, u) fetch(id, u), omit_args = "u")\n'),
-				[{ line: 3, suggestion: 'arguments to f that include session$user, or a cache per session' }]);
-			lint('memoizedCall', server('current <<- input$who\nx <- R.cache::memoizedCall(function(id) fetch(id, current), input$id)'), [{ line: 2, name: 'current' }, { line: 3, name: 'memoizedCall' }]);
 			lint('a helper reading a global the session writes', server('current <<- session$user\nr <- reactive(load()) |> bindCache(1)', 'load <- function() fetch(current)\n'),
 				[{ line: 3, name: 'current' }, { line: 4, name: 'bindCache' }]);
 			lint('nested helpers', server('current <<- session$user\nr <- reactive(outer()) |> bindCache(1)', 'inner <- function() fetch(current)\nouter <- function() inner()\n'),
@@ -87,6 +84,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			lint('a cache made by a helper per session', server('r <- reactive(input$a) |> bindCache(1, cache = make_cache())', 'make_cache <- function() cachem::cache_mem()\n'), []);
 			lint('a shared cache returned by a helper', server('r <- reactive(input$a) |> bindCache(1, cache = get_cache())', 'shared <- cachem::cache_mem()\nget_cache <- function() shared\n'), [{ line: 4 }]);
 			lint('the cache of the session', server('r <- reactive(input$a) |> bindCache(1, cache = session$cache)'), []);
+			lint('an argument left out of the key', server('x <- f(input$id, session$user)', 'f <- memoise::memoise(function(id, u) fetch(id, u), omit_args = "u")\n'),
+				[{ line: 3, suggestion: 'arguments to f that include session$user, or a cache per session' }]);
+			lint('memoizedCall', server('current <<- input$who\nx <- R.cache::memoizedCall(function(id) fetch(id, current), input$id)'), [{ line: 2, name: 'current' }, { line: 3, name: 'memoizedCall' }]);
 			lint('a configured memoiser', server('x <- f(input$id)\ncurrent <<- input$who', 'f <- my_memo(function(id) fetch(id, current))\n'), [{ line: 3, name: 'f' }, { line: 4, name: 'current' }], { memoisers: ['my_memo'] });
 		});
 

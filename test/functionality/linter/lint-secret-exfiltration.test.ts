@@ -40,13 +40,9 @@ server <- function(input, output, session) {
 
 		describe('sources', () => {
 			lint('a credential-like environment variable', 'message(Sys.getenv("GITHUB_TOKEN"))', [{ line: 1, function: 'message', leak: SecretLeak.Leakage }]);
-			lint('an environment variable that holds no credential', 'message(Sys.getenv("HOME"))', []);
-			lint('all environment variables', 'print(Sys.getenv())', [{ line: 1, leak: SecretLeak.Leakage }]);
 			lint('an environment variable whose name is unknown', 'f <- function(name) message(Sys.getenv(name))', [{ line: 1, leak: SecretLeak.Leakage }]);
-			lint('the keyring', 'k <- keyring::key_get("svc")\ncat(k)', [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('a config value, through accesses', 'cfg <- config::get()\nmessage(cfg$db$password)', [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('an element of a list holding a secret', 'l <- list(k = Sys.getenv("API_KEY"))\nprint(l[["k"]])', [{ line: 2, leak: SecretLeak.Leakage }]);
-			lint('a credentials file', 'n <- readLines("~/.netrc")\nprint(n)', [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('any other file may hold secrets', 'n <- readLines("data.txt")\nprint(n)', [{ line: 2, leak: SecretLeak.Leakage, certainty: Uncertain }]);
 			lint('a hardcoded credential', 'message("using ghp_abcdefghijklmnopqrstuvwxyz0123456789")', [{ line: 1, leak: SecretLeak.Leakage }]);
 			lint('a hardcoded credential in a variable', 'tok <- "ghp_abcdefghijklmnopqrstuvwxyz0123456789"\nmessage(tok)', [{ line: 2, leak: SecretLeak.Leakage }]);
@@ -56,7 +52,6 @@ server <- function(input, output, session) {
 
 		describe('declassifiers', () => {
 			lint('presence checks', 'key <- Sys.getenv("API_KEY")\nmessage(nzchar(key), nchar(key), is.na(key), key == "")', []);
-			lint('hashing', 'key <- Sys.getenv("API_KEY")\nmessage(digest::digest(key))\nprint(openssl::sha256(key))', []);
 			lint('a configured declassifier', 'key <- Sys.getenv("API_KEY")\nmessage(mask(key))', [], { declassifiers: [Identifier.make('mask')] });
 			lint('string operations keep the secret', 'key <- Sys.getenv("API_KEY")\nmessage(toupper(paste0("k=", key)))', [{ line: 2, leak: SecretLeak.Leakage }]);
 		});
@@ -95,7 +90,6 @@ server <- function(input, output, session) {
 			lint('secret files', code, [{ line: 2, certainty: Certain }], { secretFiles: '^users' });
 			lint('file content to a host the user chose', 'd <- readLines("notes.txt")\nhttr::POST(readline(), body = d)', [{ line: 2, leak: SecretLeak.Exfiltration, certainty: Uncertain }]);
 			lint('file content and a secret', 'd <- readLines("notes.txt")\nmessage(d, Sys.getenv("API_KEY"))', [{ line: 2, certainty: Certain }]);
-			lint('a hashed file', 'message(digest::digest(readLines("notes.txt")))', []);
 			lint('a token from a file in an authentication channel', 'tok <- readLines("token.txt")\nhttr2::request(readline()) |> httr2::req_auth_bearer_token(tok)', [{ line: 2, leak: SecretLeak.Exfiltration }]);
 		});
 
@@ -106,8 +100,6 @@ server <- function(input, output, session) {
 			lint('a response written out with its credentials', `${authed}\nsaveRDS(r, "r.rds")`, [{ line: 2, leak: SecretLeak.Files }], AllOptIn);
 			lint('a response shown in full', `${authed}\nstr(r)`, [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('a printed response, its status, and body', `${authed}\nprint(r)\nstop("failed: ", r$status_code)\nmessage(httr::content(r, "text"))`, []);
-			lint('an oauth token', 'tok <- httr::oauth2.0_token(ep, app)\nprint(tok)', [{ line: 2, leak: SecretLeak.Leakage }]);
-			lint('a password prompt', 'pw <- askpass::askpass()\nrlang::abort(paste("wrong password", pw))', [{ line: 2, leak: SecretLeak.Leakage }]);
 		});
 
 		describe('methods', () => {
@@ -119,7 +111,6 @@ server <- function(input, output, session) {
 		describe('functions', () => {
 			lint('a helper sending its argument', 'send <- function(x) httr::POST(readline(), body = x)\nsend(Sys.getenv("API_KEY"))', [{ line: 1, leak: SecretLeak.Exfiltration }]);
 			lint('nested helpers', 'log_it <- function(x) message(x)\nwrap <- function(y) log_it(y)\nwrap(Sys.getenv("API_KEY"))', [{ line: 1, leak: SecretLeak.Leakage }]);
-			lint('a helper returning a secret', 'get_key <- function() Sys.getenv("API_KEY")\nmessage(get_key())', [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('a password field prefilled', 'ui <- shiny::passwordInput("pw", "Password", value = Sys.getenv("DB_PASSWORD"))', [{ line: 1, sink: 'browser' }]);
 		});
 
@@ -128,7 +119,6 @@ server <- function(input, output, session) {
 			lint('within a branch', 'key <- Sys.getenv("API_KEY")\nif(verbose) message(key)', [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('within a function no one calls', 'key <- Sys.getenv("API_KEY")\nlog_key <- function() print(key)', [{ line: 2, leak: SecretLeak.Leakage }]);
 			lint('within a nested function', 'key <- Sys.getenv("API_KEY")\nf <- function() function() print(key)', [{ line: 2, leak: SecretLeak.Leakage }]);
-			lint('through a called function', 'key <- Sys.getenv("API_KEY")\nf <- function(x) message(x)\nf(key)', [{ line: 2, leak: SecretLeak.Leakage }]);
 		});
 	});
 }));

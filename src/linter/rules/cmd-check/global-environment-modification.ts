@@ -94,11 +94,7 @@ function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environmen
 /** the variable an `assign` into the global environment writes (`undefined` if not constant) */
 export function globalAssignment(call: DataflowGraphVertexFunctionCall, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): { variable?: string } | undefined {
 	const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters.assign) as ReadonlyMap<string, readonly NodeId[]>;
-	const arg = (formal: string) => {
-		const ids = args.get(formal);
-		const node = ids?.length === 1 ? idMap.get(ids[0]) : undefined;
-		return RArgument.is(node) ? node.value : node;
-	};
+	const arg = (formal: string) => RArgument.valueOf(args.get(formal)?.length === 1 ? idMap.get(args.get(formal)?.[0] ?? '') : undefined);
 	const env = call.environment ?? df.environment;
 	const target = arg('x');
 	const global = denotesGlobalEnv(arg('envir'), env, df, idMap, ctx) || denotesGlobalPos(arg('pos')) || denotesGlobalEnv(arg('pos'), env, df, idMap, ctx);

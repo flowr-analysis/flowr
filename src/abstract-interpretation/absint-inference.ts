@@ -10,7 +10,7 @@ import { type DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, DfgVertex, VertexType } from '../dataflow/graph/vertex';
 import type { ControlDependency } from '../dataflow/info';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
+import { type NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -28,6 +28,7 @@ import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import type { RNull } from '../r-bridge/lang-4.x/convert-values';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { Bottom } from './domains/lattice';
 import { guard, isNotUndefined } from '../util/assert';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
@@ -89,6 +90,22 @@ interface WideningSearchStep {
 
 function stepFrom(graph: ReadOnlyControlFlowGraph, node: NodeId): WideningSearchStep {
 	return { node, successors: [...graph.successors(node)], at: 0 };
+}
+
+/**
+ * What a function run read: per input the value it had, and whether it was assigned, bottom, and how often visited.
+ * The status is part of the key as it decides which definitions a read sees and when a loop widens.
+ */
+interface SummaryKey {
+	readonly values: readonly (AnyAbstractDomain | undefined)[];
+	readonly status: string;
+}
+
+/** A run of a definition: what it read, what its exits changed in the state it started from, and what it left behind. */
+interface FunctionSummary<Domains extends AbstractProduct> {
+	readonly key:   SummaryKey;
+	readonly exits: readonly (ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>> | typeof Bottom)[];
+	readonly value: MultiValueDomain<Partial<Domains>> | undefined;
 }
 
 /** Whether two rounds of a fixpoint bound the same values, `undefined` standing for nothing known yet. */
@@ -180,6 +197,15 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 	/** The calls that lead back into a definition still being interpreted, and the definition they reach. */
 	private readonly recursiveCalls: Map<NodeId, NodeId> = new Map();
+
+	/**
+	 * The runs of each definition, so a call reading the same as an earlier one reuses it instead of running the body
+	 * again: calls nested in calls would otherwise run every body once per call path. Dropped when a pass is over.
+	 */
+	private readonly summaries: Map<NodeId, FunctionSummary<Domains>[]> = new Map();
+
+	/** Everything a run of a definition may read: its body, the definitions that reads, and the same for what it calls. */
+	private readonly inputsOf: Map<NodeId, readonly NodeId[]> = new Map();
 
 	/**
 	 * Creates an abstract interpretation visitor performing the given analysis.
@@ -387,6 +413,12 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		super.start();
 		this.unassigned.clear();
 		this.lastState.clear();
+		this.dropSummaries();
+	}
+
+	private dropSummaries(): void {
+		this.summaries.clear();
+		this.inputsOf.clear();
 	}
 
 	protected override startVisitor(start: readonly NodeId[]): void {
@@ -765,6 +797,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 				this.enteredFrom.delete(entry);
 			}
 		}
+		this.dropSummaries();
 	}
 
 	/** Where a function definition starts, i.e. the first thing that runs when it is called. */
@@ -869,6 +902,14 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 			}
 			const handed = this.parameterValues(def);
 			this.trace.set(callId, inner);
+
+			const key = round === 0 ? this.summaryKey(def, inner) : undefined;
+			const known = key === undefined ? undefined : this.summaries.get(def)?.find(s => s.key.status === key.status && sameValues(s.key.values, key.values));
+			if(known !== undefined) {
+				return { states: known.exits.map(exit => applyExit(inner, exit)), value: known.value };
+			}
+			const before = key === undefined ? undefined : new Map(inner.value === Bottom ? [] : inner.value);
+			const recursiveCallCount = this.recursiveCalls.size;
 			this.enteredFrom.set(entry, callId);
 
 			/* what a recursive call is worth is no part of the state, so the traversal has to be made to re-read */
@@ -903,6 +944,10 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 			if(!this.recursive.has(def)) {
 				this.restoreVisits(counts);
+				if(key !== undefined && before !== undefined && this.recursiveCalls.size === recursiveCallCount) {
+					const summary = { key, exits: states.map(state => exitDelta(before, state)), value: left };
+					this.summaries.set(def, [...this.summaries.get(def) ?? [], summary]);
+				}
 				return { states, value: left };
 			} else if(left === undefined) {
 				/* one way out of the recursion says nothing, so neither does the recursion */
@@ -922,6 +967,52 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 				return { states, value: settled };
 			}
 		}
+	}
+
+	/** What a run of `def` starting in `state` reads, `undefined` if the run depends on a recursion and must not be reused. */
+	private summaryKey(def: NodeId, state: MultiValueStateDomain<Partial<Domains>>): SummaryKey | undefined {
+		if(state.isBottom()) {
+			return undefined;
+		}
+		const inputs = this.inputs(def);
+		if(inputs.some(id => this.recursiveCalls.has(id))) {
+			return undefined;
+		}
+		const status = inputs.map(id => {
+			const traced = this.trace.get(id);
+			return `${traced === undefined ? 0 : this.unassigned.has(id) ? 2 : traced.isBottom() ? 3 : 1}${this.visited.get(id) ?? ''}`;
+		}).join(',');
+		return { values: inputs.map(id => state.get(id)), status };
+	}
+
+	/** See {@link inputsOf}, collected over the bodies of `def` and of everything it may call. */
+	private inputs(def: NodeId): readonly NodeId[] {
+		let inputs = this.inputsOf.get(def);
+		if(inputs !== undefined) {
+			return inputs;
+		}
+		const ids = new Set<NodeId>();
+		const defs = [def];
+		const seen = new Set(defs);
+		for(let next = defs.pop(); next !== undefined; next = defs.pop()) {
+			for(const id of RNode.collectAllIds(this.getNormalizedAst(next))) {
+				ids.add(id);
+				for(const origin of Dataflow.origin(this.config.dfg, id) ?? []) {
+					if(origin.type === OriginType.ReadVariableOrigin) {
+						ids.add(origin.id);
+					}
+				}
+				for(const target of this.getCallTargets(id)) {
+					if(!seen.has(target)) {
+						seen.add(target);
+						defs.push(target);
+					}
+				}
+			}
+		}
+		inputs = [...ids];
+		this.inputsOf.set(def, inputs);
+		return inputs;
 	}
 
 	/** What the parameters of a definition are worth in the state they were just bound in. */
@@ -1095,4 +1186,30 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	protected shouldWiden(wideningPoint: CfgVertex): boolean {
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
+}
+
+/** What an exit state changed relative to the state the run started in. */
+function exitDelta<Domains extends AbstractProduct>(before: ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>>, exit: MultiValueStateDomain<Partial<Domains>>): ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>> | typeof Bottom {
+	if(exit.value === Bottom) {
+		return Bottom;
+	}
+	const delta = new Map<NodeId, MultiValueDomain<Partial<Domains>>>();
+	for(const [id, value] of exit.value) {
+		if(before.get(id) !== value) {
+			delta.set(id, value);
+		}
+	}
+	return delta;
+}
+
+/** The exit state of a reused run, for a call starting in `state`. */
+function applyExit<Domains extends AbstractProduct>(state: MultiValueStateDomain<Partial<Domains>>, delta: ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>> | typeof Bottom): MultiValueStateDomain<Partial<Domains>> {
+	if(delta === Bottom) {
+		return state.bottom();
+	}
+	const exit = state.create(state.value);
+	for(const [id, value] of delta) {
+		exit.set(id, value);
+	}
+	return exit;
 }

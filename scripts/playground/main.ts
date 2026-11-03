@@ -3182,7 +3182,10 @@ function showExample(project: readonly [string, string][], note: string): void {
 const siteRoot = location.pathname.replace(/v\/[^/]+\/?$/, '');
 const versionTag = document.getElementById('version');
 const release = versionTag?.dataset.release?.replace(/^v/, '');
-void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : [], () => []).then((versions: readonly string[]) => {
+/* a kept playground reads the current release off the page the site serves, which it patches anyway and so is cached */
+const currentRelease = siteRoot === location.pathname ? Promise.resolve(release)
+	: fetch(`${siteRoot}index.html`).then(r => r.ok ? r.text() : '', () => '').then(page => /data-release="v?([^"]+)"/.exec(page)?.[1]);
+void Promise.all([fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : [], () => []), currentRelease]).then(([versions, current]: [readonly string[], string | undefined]) => {
 	const go = (to: string) => () => location.assign(`${to}${location.search}${location.hash}`);
 	/* a link that insists on a release opens it, or the kept one of the same minor release */
 	const asked = shared.release;
@@ -3196,7 +3199,7 @@ void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<strin
 		}
 	}
 	const pick = iconButton('versions', 'open the playground of an earlier release', 'M4 6l4 4 4-4', () => openMenu(pick, [
-		'Playground of', { label: 'the current release', run: go(siteRoot) },
+		'Playground of', { label: current === undefined ? 'the current release' : `the current release (${current})`, run: go(siteRoot) },
 		...versions.length === 0 ? ['no earlier release kept on this site'] : versions.map(v => ({ label: `flowR ${v}`, run: go(`${siteRoot}v/${v}/`) })),
 		...release === undefined ? [] : ['', { label: `Copy a link to flowR ${release}`, title: 'the link opens this release of flowR, also once newer ones are out', run: () => copyLink(release) }]
 	]));

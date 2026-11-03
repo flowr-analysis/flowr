@@ -1,5 +1,5 @@
 import { SigDict } from '../../../../../src/project/sigdb/dict';
-import { afterAll, describe, expect, test } from 'vitest';
+import { afterAll, assert, describe, expect, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { SigDatabase, SigDatabaseSet, readSignatureDb, verifyShardedDatabase } from '../../../../../src/project/sigdb/reader';
@@ -556,6 +556,43 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		// filtering everything away is an error, not a silent empty set
 		await expect(SigDatabaseSet.openManifest(manifestFile, { cacheDir, includeShards: ['nope'] }))
 			.rejects.toThrow(/no shards left/);
+	});
+
+	test('a shard whose file is gone is dropped instead of failing every lookup routed to it', async() => {
+		const dir = sigTmpDir('sigdb-missing-');
+		const cacheDir = sigTmpDir('sigdb-missing-cache-');
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), builder().buildSharded(meta, specs), manifestFile);
+		const all = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		const gone = all.manifest.shards.find(s => s.id === 'current-top');
+		all.close();
+		assert(gone !== undefined);
+		for(const f of fs.readdirSync(dir).filter(f => f.startsWith(gone.path))) {
+			fs.rmSync(path.join(dir, f));
+		}
+
+		const set = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		expect(set.manifest.shards.map(s => s.id)).not.toContain('current-top');
+		expect(set.lookup('mva')).toBeDefined();
+		set.close();
+	});
+
+	test('a truncated decompressed cache file is decompressed again', async() => {
+		const dir = sigTmpDir('sigdb-trunc-');
+		const cacheDir = sigTmpDir('sigdb-trunc-cache-');
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), builder().buildSharded(meta, specs), manifestFile);
+		const first = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		await first.preload();
+		const expected = first.lookup('hot')?.exported;
+		first.close();
+		for(const f of fs.readdirSync(cacheDir).filter(f => f.endsWith('.sigs.ndjson'))) {
+			fs.truncateSync(path.join(cacheDir, f), 3);
+		}
+
+		const again = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		expect(again.lookup('hot')?.exported).toEqual(expected);
+		again.close();
 	});
 
 	test('verification catches a tampered shard hash', async() => {

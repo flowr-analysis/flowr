@@ -17,6 +17,7 @@ import { SigDict } from './dict';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
 import { uniqueArray } from '../../util/collections/arrays';
+import { log } from '../../util/log';
 
 /** the run of names one `d` line (`["d", start, payload]`, newline-blob or legacy `string[]` form) adds */
 function dictLineRun(json: string): { start: number, names: string } {
@@ -535,7 +536,7 @@ export class SigDatabase implements PackageSignatureSource {
 			if(opts.hash === undefined) {
 				throw new Error('openSyncFrom needs a hash to key the cache for a compressed source');
 			}
-			plain = ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index });
+			plain = ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index, bytes: opts.index?.byteCount });
 		}
 		return SigDatabase.openSync(plain, { index: opts.index, strings: opts.strings });
 	}
@@ -908,9 +909,17 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(full.format !== SigDbManifestMagic) {
 			throw new Error(`not a ${SigDbManifestMagic} (got ${String(full.format)})`);
 		}
-		const active = selectShards(full.shards, opts.includeShards, opts.excludeShards);
+		const selected = selectShards(full.shards, opts.includeShards, opts.excludeShards);
+		const present = (rel: string): boolean => fs.existsSync(resolveSource(baseDir, rel));
+		const active = selected.filter(s => {
+			const dict = s.dict === undefined ? undefined : full.dicts?.find(d => d.id === s.dict);
+			return present(s.path) && (dict === undefined || present(dict.path));
+		});
+		if(active.length < selected.length) {
+			log.warn(`sigdb: ${manifestFile} lacks the files of ${selected.length - active.length} shard(s) (${selected.filter(s => !active.includes(s)).map(s => s.path).join(', ')}), ignoring them; download the bundle again to restore them`);
+		}
 		if(active.length === 0) {
-			throw new Error('openManifest: no shards left after include/exclude filtering');
+			throw new Error(`openManifest: no shards left in ${manifestFile} after include/exclude filtering and dropping absent ones`);
 		}
 		return { baseDir, manifest: { ...full, shards: active } };
 	}
@@ -968,7 +977,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(!ref) {
 			throw new Error(`manifest references unknown dictionary '${dictId}'`);
 		}
-		const plain = ensurePlainSync(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true });
+		const plain = ensurePlainSync(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true, bytes: ref.byteCount });
 		let strings: SigDict;
 		const fd = fs.openSync(plain, 'r');
 		try {
@@ -1016,10 +1025,10 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	private async warmShards(need: ReadonlySet<number>): Promise<void> {
 		const dicts = new Set([...need].map(i => this.manifest.shards[i].dict).filter((d): d is string => !!d));
 		const shardJobs = [...need].map(i => ensurePlain(resolveSource(this.baseDir, this.manifest.shards[i].path),
-			{ cacheDir: this.cacheDir, hash: this.manifest.shards[i].hash, index: this.indices[i] }));
+			{ cacheDir: this.cacheDir, hash: this.manifest.shards[i].hash, index: this.indices[i], bytes: this.indices[i]?.byteCount }));
 		const dictJobs = [...dicts].map(id => {
 			const ref = this.manifest.dicts?.find(d => d.id === id);
-			return ref ? ensurePlain(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true }) : Promise.resolve('');
+			return ref ? ensurePlain(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true, bytes: ref.byteCount }) : Promise.resolve('');
 		});
 		await Promise.all([...shardJobs, ...dictJobs]);
 		// open each shard now so later synchronous queries never block

@@ -129,7 +129,7 @@ export function sigDbBundleDirs(watched?: [string, number][]): string[] {
 	}
 }
 
-/** roots to search for a bundled sigdb; extendable via `$FLOWR_SIGDB_DIR` (path-delimiter separated) */
+/** roots to search for a bundled sigdb: this module and `$FLOWR_SIGDB_DIR` (path-delimiter separated) */
 function sigDbSearchRoots(extra?: readonly string[]): string[] {
 	const roots = [...(extra ?? [])];
 	const env = typeof process !== 'undefined' ? process.env?.FLOWR_SIGDB_DIR : undefined;
@@ -139,15 +139,12 @@ function sigDbSearchRoots(extra?: readonly string[]): string[] {
 	if(typeof __dirname !== 'undefined') {
 		roots.push(__dirname);
 	}
-	if(typeof process !== 'undefined' && typeof process.cwd === 'function') {
-		roots.push(process.cwd());
-	}
 	return roots;
 }
 
 /**
  * Location of a bundled sigdb **manifest**, found by walking up from several roots (this module,
- * `$FLOWR_SIGDB_DIR`, the working directory) across the dev (`src`), build (`dist`), and data-mount
+ * `$FLOWR_SIGDB_DIR`) across the dev (`src`), build (`dist`), and data-mount
  * layouts. With no `scope` it returns the richest available (`full` &gt; `current` &gt; `base`), so a
  * container that ships the full set uses it automatically while a plain npm install falls back to the
  * bundled `base`. Node only (needs `fs`); pass `searchRoots` to override where it looks.

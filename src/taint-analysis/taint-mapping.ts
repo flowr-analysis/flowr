@@ -37,10 +37,12 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 	 * Get all mappings belonging to the given identifier
 	 */
 	public getMappings(identifier: Identifier) {
-		const matchesCall = (id: Identifier) => Identifier.matches(id, identifier)
-			|| (Identifier.getNamespace(identifier) === undefined && Identifier.matches(identifier, id));
+		return this.mapper.filter(m => TaintMapper.matches(m.identifier, identifier));
+	}
 
-		return this.mapper.filter(m => matchesCall(m.identifier));
+	/** Whether a mapped identifier applies to a call of `called`, which matches any namespace when it names none */
+	public static matches(this: void, mapped: Identifier, called: Identifier): boolean {
+		return Identifier.matches(mapped, called) || (Identifier.getNamespace(called) === undefined && Identifier.matches(called, mapped));
 	}
 
 	/**
@@ -96,6 +98,8 @@ export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain>
 	argValues?:     FunctionParameterLocation<unknown>[],
 	argDefinition?: TaintParameterLocation[],
 	argSignature?:  { sig: FnSig, props: ArgProps },
+	/** additionally consider the taints of every argument of the call */
+	allArgs?:       boolean,
 	conditionFn:    TaintConditionFunction<Domain>
 };
 

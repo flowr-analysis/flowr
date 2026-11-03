@@ -9,6 +9,7 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
 import { Identifier } from '../environments/identifier';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { Resolve } from '../environments/resolve-helper';
 import { baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
@@ -204,6 +205,12 @@ export const Dataflow = {
 				yield [node, vertex];
 			}
 		}
+	},
+	/** The value a plain assignment binds to the definition `def`, `undefined` for any other kind of definition (`class(x) <- `, `assign`, a parameter, ...). */
+	assignedValueOf(this: void, def: NodeId, graph: DataflowGraph): NodeId | undefined {
+		const vertex = graph.getVertex(def);
+		const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+		return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
 	},
 	/** Every variable definition of the graph by its unquoted name, in a single pass. */
 	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {

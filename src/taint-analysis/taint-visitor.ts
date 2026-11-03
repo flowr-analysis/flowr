@@ -1,28 +1,43 @@
 import { AbstractInterpreter, type AbsintVisitorConfiguration, type DomainSemantics } from '../abstract-interpretation/absint-inference';
-import type { AbstractSemantics } from '../abstract-interpretation/abstract-semantics';
+import type { AbsintContext, AbstractSemantics } from '../abstract-interpretation/abstract-semantics';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
 import type { StateDomain } from '../abstract-interpretation/domains/state-domain';
 import { resolveFnCallToTaint } from './taint-resolve';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { FnCallHookInfo } from './builder/taint-analysis';
-import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { Identifier } from '../dataflow/environments/identifier';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { TaintMapper } from './taint-mapping';
 
 /**
  * Function calls the taint analysis is able to handle:
- * named function calls like `f(x)` and operators, including binary operators (`x + y`) and unary operators (`-x`)
+ * named function calls like `f(x)`, method calls (`obj$f(x)`), operators (`x + y`, `-x`), accesses (`x$a`, `x[[1]]`),
+ * and functions applied by others (`readLines` in `do.call(readLines, args)`)
  */
-export type TaintCallNode = RNamedFunctionCall<ParentInformation> | RBinaryOp<ParentInformation> | RUnaryOp<ParentInformation>;
+export type TaintCallNode = RFunctionCall<ParentInformation> | RBinaryOp<ParentInformation> | RUnaryOp<ParentInformation> | RAccess<ParentInformation> | RSymbol<ParentInformation>;
+
+/** the method `obj$method(...)` calls, as `$method` */
+function methodName(node: RNode<ParentInformation> | undefined): Identifier | undefined {
+	const field = RFunctionCall.isUnnamed(node) && RAccess.isNamed(node.calledFunction) ? node.calledFunction.access[0]?.value : undefined;
+	return RSymbol.is(field) ? Identifier.make(`$${Identifier.getName(field.content)}`) : undefined;
+}
 
 /** Whether the given AST node can be handled by the taint analysis (see {@link TaintCallNode}). */
 export function isTaintableCallNode(node: RNode<ParentInformation> | undefined): node is TaintCallNode {
-	return RFunctionCall.isNamed(node) || RBinaryOp.is(node) || RUnaryOp.is(node);
+	return RFunctionCall.isNamed(node) || RBinaryOp.is(node) || RUnaryOp.is(node) || RAccess.is(node) || RSymbol.is(node) || methodName(node) !== undefined;
+}
+
+/** The name mappings of a call are looked up by: the called function, or `$method` for a method call `obj$method(...)` */
+export function taintCallName(call: DataflowGraphVertexFunctionCall, node: RNode<ParentInformation> | undefined): Identifier {
+	return methodName(node) ?? call.name;
 }
 
 /**
@@ -73,18 +88,22 @@ export interface TaintComponent<Domain extends AnyAbstractDomain = AnyAbstractDo
 
 /** The abstract semantics of a taint component: every taintable call gets the taint its mappings resolve to. */
 function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: TaintComponent<Domain>, fnCallHook?: TaintVisitorHook): AbstractSemantics<StateDomain<Domain>> {
+	const handleCall = (state: StateDomain<Domain>, call: DataflowGraphVertexFunctionCall, ctx: AbsintContext<StateDomain<Domain>>, explicitOnly: boolean): void => {
+		const node = ctx.getAstNode(call.id);
+		const name = taintCallName(call, node);
+		const mappings = mapper.getMappings(name);
+		if(!isTaintableCallNode(node) || ((explicitOnly || name !== call.name || RSymbol.is(node)) && !mappings.some(m => m.category === undefined))) {
+			return;
+		}
+		const projectArg = (id: NodeId): Domain | undefined => ctx.getAbstractValue(id);
+		const { value, role, category } = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
+		state.set(call.id, value);
+		fnCallHook?.({ node, value, wasMapped: mappings.length > 0, projectArg, call, role, category });
+	};
 	return {
-		handleFunctionCall(state, call, ctx) {
-			const node = ctx.getAstNode(call.id);
-			if(!isTaintableCallNode(node)) {
-				return;
-			}
-			const mappings = mapper.getMappings(call.name);
-			const projectArg = (id: NodeId): Domain | undefined => ctx.getAbstractValue(id);
-			const { value, role, category } = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
-			state.set(call.id, value);
-			fnCallHook?.({ node, value, wasMapped: mappings.length > 0, projectArg, call, role, category });
-		},
+		handleFunctionCall: (state, call, ctx) => handleCall(state, call, ctx, false),
+		/* accesses are only tracked with explicit mappings */
+		handleAccessCall:   (state, call, ctx) => handleCall(state, call, ctx, true),
 		handleAssignmentCall(state, _call, ctx, target, source) {
 			const value = ctx.getAbstractValue(source);
 			if(value === undefined) {
@@ -115,6 +134,11 @@ export class TaintInterpreter extends AbstractInterpreter<TaintProduct> {
 		const semantics = Object.fromEntries(components.map(c => [c.name, taintSemantics(c, config.fnCallHook)])) as DomainSemantics<TaintProduct>;
 		/* a component missing from a state is simply unknown, so the reductions see the product as partial */
 		super(config, { domains, semantics, reductions: reductions as readonly ProductReduction<Partial<TaintProduct>>[], collapseOnBottom: false });
+	}
+
+	public override start(): void {
+		super.start();
+		this.interpretUncalledFunctions();
 	}
 
 	/* taint flows through environment-changing calls as well, so they do not discard what is known */

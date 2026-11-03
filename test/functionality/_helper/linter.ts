@@ -137,6 +137,19 @@ export function assertLinterFields<Name extends LintingRuleNames>(
 	assertLinterWithCleanup(`${ruleName}: ${JSON.stringify(code)}`, parser, code, ruleName, expected, undefined, setup as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup, statedFields(expected));
 }
 
+/** Like {@link assertLinterFields}, with a rule config, and `line` standing for the first line of a result's `loc` */
+export function assertLinterLines<Name extends LintingRuleNames>(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	ruleName: Name,
+	expected: Record<string, unknown>[],
+	config?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
+) {
+	const fields = statedFields(expected);
+	assertLinterWithCleanup(name, parser, code, ruleName, expected, undefined, config, r => fields({ ...r, line: (r as { loc?: readonly number[] }).loc?.[0] ?? (r as { line?: number }).line }) as Record<string, unknown>);
+}
+
 /** extra setup of {@link assertLinterPackage}: the package files besides the linted one, and where the linted code lives */
 export type PackageTestSetup = {
 	/** files of the package by their path below the package root; `DESCRIPTION` defaults to a minimal one, `null` drops it */

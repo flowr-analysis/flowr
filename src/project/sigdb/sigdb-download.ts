@@ -4,9 +4,9 @@ import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
 import type { IncomingMessage } from 'http';
-import { sigDbCacheDir } from './decompress';
+import { sigDbCacheDir, uniqueTempPath } from './decompress';
 import { CompressedExtPattern, compressedExtOf, readableExtsPreferred, stripCompressedExt } from './codec';
-import { flowrVersion } from '../../util/version';
+import CommittedRemote from '../../data/sigdb/sigdb.remote.json';
 import { joinUntrustedSegment } from '../../util/files';
 import { SecureMode } from '../../util/secure-mode';
 
@@ -92,7 +92,7 @@ const rate = (bytes: number, ms: number): string => `${(bytes / 1e6 / Math.max(m
 
 /** Download `url` to `dest` via a temporary file, so a partial or corrupt file never lands there (checked against `sha256`, if given). */
 async function downloadTo(url: string, dest: string, name: string, progress: (msg: string) => void, expected?: RemoteShard): Promise<number> {
-	const part = `${dest}.${process.pid}.part`;
+	const part = uniqueTempPath(dest, 'part');
 	const start = Date.now();
 	try {
 		const res = await httpGet(url, 'application/octet-stream');
@@ -153,26 +153,19 @@ export interface SigDbRemote {
 	shards:  Record<string, RemoteShard>
 }
 
-/** locate the committed `sigdb.remote.json` link file in the sigdb data dir (dev `src`, built `dist`), or the one `$FLOWR_SIGDB_REMOTE` names */
-function findRemotePointer(): string | undefined {
+/** the file `$FLOWR_SIGDB_REMOTE` names, else the committed link file (inlined at build time) */
+function remotePointer(): SigDbRemote {
 	const override = process.env.FLOWR_SIGDB_REMOTE;
-	if(override) {
-		return fs.existsSync(override) ? override : undefined;
-	}
-	const candidates = [
-		// src/ and dist/src/ layouts (same depth); never the working directory, which may be the analyzed (untrusted) project
-		path.join(__dirname, '../../data/sigdb', SigDbRemoteFileName),
-	];
-	return candidates.find(p => {
-		try {
-			return fs.existsSync(p);
-		} catch{
-			return false;
-		}
-	});
+	return override ? readPointerChecked(override) : checkedPointer(CommittedRemote, SigDbRemoteFileName);
 }
 
-const readPointer = (p: string): SigDbRemote => JSON.parse(fs.readFileSync(p, 'utf8')) as SigDbRemote;
+function tryRemotePointer(): SigDbRemote | undefined {
+	try {
+		return remotePointer();
+	} catch{
+		return undefined;
+	}
+}
 
 /** the direct release-asset URL, which avoids the REST API rate limit; `$FLOWR_SIGDB_MIRROR` replaces the host */
 const assetUrl = (repo: string, tag: string, name: string): string =>
@@ -220,7 +213,7 @@ const pickManifest = (files: readonly string[]): string | undefined =>
 export interface SigDbDownloadOptions {
 	/** GitHub `owner/repo` (default `flowr-analysis/flowr`) */
 	readonly repo?:       string
-	/** release version, i.e. tag `sigdb-v<version>` (default the running flowR version); ignored when the committed `sigdb.remote.json` is present, whose `tag` then drives the download */
+	/** an explicit release (tag `<v>`, `v<v>`, or `sigdb-v<v>`), else the pointer's tag */
 	readonly version?:    string
 	/** progress callback (one line per step) */
 	readonly onProgress?: (msg: string) => void
@@ -350,16 +343,19 @@ async function syncFiles(tag: string, repo: string, planned: readonly PlannedFil
 	return { tag, dir, manifest: pickManifest(files), files, downloaded, bytes, ms, stale };
 }
 
-/** read the committed link file, naming it in the error when it is broken */
 function readPointerChecked(p: string): SigDbRemote {
 	let remote: SigDbRemote;
 	try {
-		remote = readPointer(p);
+		remote = JSON.parse(fs.readFileSync(p, 'utf8')) as SigDbRemote;
 	} catch(e) {
 		throw new Error(`cannot read the signature database link file ${p}: ${(e as Error).message}`, { cause: e });
 	}
-	if(typeof remote.tag !== 'string' || typeof remote.shards !== 'object' || remote.shards === null) {
-		throw new Error(`the signature database link file ${p} names no tag or shards`);
+	return checkedPointer(remote, p);
+}
+
+function checkedPointer(remote: SigDbRemote, origin: string): SigDbRemote {
+	if(typeof remote?.tag !== 'string' || typeof remote.shards !== 'object' || remote.shards === null) {
+		throw new Error(`the signature database link file ${origin} names no tag or shards`);
 	}
 	return remote;
 }
@@ -370,73 +366,77 @@ function readPointerChecked(p: string): SigDbRemote {
  * Use the returned {@link SigDbDownloadResult.manifest}, or point `solver.sigdb.additionalPaths` at the dir.
  */
 export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promise<SigDbDownloadResult> {
+	if(opts.version !== undefined) {
+		return downloadRelease(opts.version, opts);
+	}
+	const remote = remotePointer();
+	const repo = opts.repo ?? remote.repo ?? DefaultRepo;
+	// one variant per shard, the best codec this runtime supports
+	const planned = selectDownloadVariants(Object.keys(remote.shards)).map(name => ({
+		name, url: assetUrl(repo, remote.tag, name), expected: remote.shards[name]
+	}));
+	return syncFiles(remote.tag, repo, planned, opts);
+}
+
+function releaseTagCandidates(version: string): string[] {
+	const bare = version.replace(/^(sigdb-)?v/, '');
+	return [...new Set([version, `v${bare}`, `sigdb-v${bare}`])];
+}
+
+async function downloadRelease(version: string, opts: SigDbDownloadOptions): Promise<SigDbDownloadResult> {
 	const progress = opts.onProgress ?? (() => {});
-	const pointerPath = findRemotePointer();
-
-	if(pointerPath) {
-		const remote = readPointerChecked(pointerPath);
-		const repo = opts.repo ?? remote.repo ?? DefaultRepo;
-		// one variant per logical shard/dictionary -- the best this runtime can decompress (never both codecs)
-		const planned = selectDownloadVariants(Object.keys(remote.shards)).map(name => ({
-			name, url: assetUrl(repo, remote.tag, name), expected: remote.shards[name]
-		}));
-		return syncFiles(remote.tag, repo, planned, opts);
-	}
-
-	// fallback: no committed link file -> list the release via the API and download by size
 	const repo = opts.repo ?? DefaultRepo;
-	const version = opts.version ?? flowrVersion().toString();
-	const tag = `sigdb-v${version}`;
-	progress(`no sigdb.remote.json found, listing release ${tag} of ${repo}`);
-	const release = await withRetries(`listing ${tag}`, () => readJson(`https://api.github.com/repos/${repo}/releases/tags/${tag}`), progress);
-	const assets = ((release.assets as ReleaseAsset[] | undefined) ?? [])
-		.filter(a => a.name.endsWith('.br') || a.name.endsWith('.zst') || a.name.endsWith('.manifest.json'));
-	if(assets.length === 0) {
-		throw new Error(`release ${tag} in ${repo} has no signature-database assets${typeof release.message === 'string' ? ` (${release.message})` : ''}`);
+	const tried: string[] = [];
+	for(const tag of releaseTagCandidates(version)) {
+		progress(`listing release ${tag} of ${repo}`);
+		let release: Record<string, unknown>;
+		try {
+			release = await withRetries(`listing ${tag}`, () => readJson(`https://api.github.com/repos/${repo}/releases/tags/${tag}`), progress);
+		} catch(e) {
+			if(!(e instanceof HttpError) || e.retryable) {
+				throw e;
+			}
+			tried.push(`${tag}: ${e.message}`);
+			continue;
+		}
+		const assets = ((release.assets as ReleaseAsset[] | undefined) ?? [])
+			.filter(a => a.name.endsWith('.br') || a.name.endsWith('.zst') || a.name.endsWith('.manifest.json'));
+		if(assets.length === 0) {
+			tried.push(`${tag}: no signature-database assets`);
+			continue;
+		}
+		const byName = new Map(assets.map(a => [a.name, a]));
+		const planned = selectDownloadVariants(byName.keys()).map(name => {
+			const a = byName.get(name) as ReleaseAsset;
+			return { name, url: a.browser_download_url, size: a.size };
+		});
+		return syncFiles(tag, repo, planned, opts);
 	}
-	const byName = new Map(assets.map(a => [a.name, a]));
-	const planned = selectDownloadVariants(byName.keys()).map(name => {
-		const a = byName.get(name) as ReleaseAsset;
-		return { name, url: a.browser_download_url, size: a.size };
-	});
-	return syncFiles(tag, repo, planned, opts);
+	throw new Error(`no signature database release for ${version} in ${repo} (${tried.join('; ')})`);
 }
 
-/**
- * The cache dir a {@link downloadFullSigDb} for the committed link file would populate, or `undefined` if no
- * pointer is committed. Lets a caller mount an already-synced bundle via `solver.sigdb.additionalPaths` without
- * hitting the network.
- */
+/** the cache dir {@link downloadFullSigDb} populates, `undefined` if the pointer is broken */
 export function syncedSigDbDir(): string | undefined {
-	const pointerPath = findRemotePointer();
-	if(!pointerPath) {
-		return undefined;
-	}
-	return path.join(sigDbCacheDir(), 'bundles', readPointer(pointerPath).tag);
+	const remote = tryRemotePointer();
+	return remote && path.join(sigDbCacheDir(), 'bundles', remote.tag);
 }
 
-/** the GitHub release (`{repo, tag, url}`) the committed pointer downloads from, or `undefined` when no pointer is committed */
+/** the GitHub release the pointer downloads from, `undefined` if it is broken */
 export function sigDbRemoteRelease(): { repo: string, tag: string, url: string } | undefined {
-	const pointerPath = findRemotePointer();
-	if(!pointerPath) {
+	const remote = tryRemotePointer();
+	if(!remote) {
 		return undefined;
 	}
-	try {
-		const remote = readPointer(pointerPath);
-		const repo = remote.repo ?? DefaultRepo;
-		return { repo, tag: remote.tag, url: `https://github.com/${repo}/releases/tag/${remote.tag}` };
-	} catch{
-		return undefined;
-	}
+	const repo = remote.repo ?? DefaultRepo;
+	return { repo, tag: remote.tag, url: `https://github.com/${repo}/releases/tag/${remote.tag}` };
 }
 
 function withSelectedShards(f: (remote: SigDbRemote, dir: string, names: readonly string[]) => boolean): boolean {
-	const pointerPath = findRemotePointer();
-	if(!pointerPath) {
+	const remote = tryRemotePointer();
+	if(!remote) {
 		return false;
 	}
 	try {
-		const remote = readPointer(pointerPath);
 		return f(remote, path.join(sigDbCacheDir(undefined, false), 'bundles', remote.tag), selectDownloadVariants(Object.keys(remote.shards)));
 	} catch{
 		return false;

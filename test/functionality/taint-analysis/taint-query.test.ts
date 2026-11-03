@@ -108,7 +108,7 @@ describe('Taint Query', () => {
 
 		test('completer suggests not-yet-used definition names', () => {
 			const completions = TaintQueryDefinition.completer(['definitions:normalization-constant,'], false, undefined as never);
-			assert.deepStrictEqual(new Set(completions.completions), new Set(['normalization-reach', 'security', 'randomness', 'determinism']));
+			assert.deepStrictEqual(new Set(completions.completions), new Set(['normalization-reach', 'security', 'randomness', 'determinism', 'secret']));
 		});
 	});
 });

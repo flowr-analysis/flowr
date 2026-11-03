@@ -1,4 +1,7 @@
-import { assert, describe, test } from 'vitest';
+import { assert, describe, test, vi } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { defaultSigDbPath, defaultSigDbPaths } from '../../../src/project/sigdb/manifest';
 import { readableExtsPreferred, compressedExtOf } from '../../../src/project/sigdb/codec';
 
@@ -18,6 +21,23 @@ describe('sigdb discovery', () => {
 			if(ext !== undefined) {
 				assert.include(readableExtsPreferred(), ext, `${p} uses a codec that cannot be read here`);
 			}
+		}
+	});
+
+	test('bundles in the working directory (the analyzed project) are never mounted', () => {
+		const project = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sigdb-cwd-'));
+		const nested = path.join(project, 'R');
+		fs.mkdirSync(path.join(project, 'data', 'sigdb'), { recursive: true });
+		fs.mkdirSync(nested);
+		fs.writeFileSync(path.join(project, 'data', 'sigdb', 'full.manifest.json'), '{}');
+		fs.writeFileSync(path.join(project, 'planted.sigs.ndjson'), '{}');
+		const cwd = vi.spyOn(process, 'cwd').mockReturnValue(nested);
+		try {
+			assert.notInclude(String(defaultSigDbPath('full')), project);
+			assert.isTrue(defaultSigDbPaths().every(p => !p.startsWith(project)));
+		} finally {
+			cwd.mockRestore();
+			fs.rmSync(project, { recursive: true, force: true });
 		}
 	});
 });

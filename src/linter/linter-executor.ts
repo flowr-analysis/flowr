@@ -14,7 +14,8 @@ import { SecureMode } from '../util/secure-mode';
 const RegexRuleOptions: { readonly [N in LintingRuleNames]?: readonly (keyof LintingRuleConfig<N>)[] } = {
 	'absolute-file-paths':   ['absolutePathRegex'],
 	'problematic-inputs':    ['consider', 'pipeCommandFunctions'],
-	'no-leaked-credentials': ['credentialNamePattern', 'credentialValuePattern']
+	'no-leaked-credentials': ['credentialNamePattern', 'credentialValuePattern', 'credentialCallPattern'],
+	'secret-exfiltration':   ['credentialNamePattern', 'credentialValuePattern', 'secretFiles', 'trustedFiles']
 };
 
 /** The given rule config without the {@link RegexRuleOptions} if the secure mode is enabled. */

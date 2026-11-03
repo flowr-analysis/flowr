@@ -100,10 +100,13 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 		? mapping.condition.argValues.map(location => getArgumentValue(allArgs, location, resolveInfo))
 		: [];
 
-	const { argSignature, argDefinition } = mapping.condition;
+	const { argSignature, argDefinition, allArgs: everyArg } = mapping.condition;
 	const taintIds: (NodeId | undefined)[] = argSignature !== undefined
 		? taintIdsFromSignature(dfg, call.id, argSignature)
 		: taintIdsFromDef(allArgs, resolveInfo, call.name, argDefinition);
+	if(everyArg) {
+		taintIds.push(...allArgs.map(arg => arg === EmptyArgument ? undefined : arg.value?.info.id));
+	}
 
 	const incomingTaints = taintIds
 		.map(id => isUndefined(id) ? domain.top() : projectArg(id))

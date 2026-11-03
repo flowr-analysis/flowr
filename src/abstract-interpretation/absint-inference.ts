@@ -747,6 +747,26 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		return targets === undefined ? NoNeighbors : [...targets];
 	}
 
+	/** Interprets function bodies no call reached, from the state at their definition (e.g., a Shiny server). */
+	protected interpretUncalledFunctions(): void {
+		const pending = [...this.config.dfg.verticesOfType(VertexType.FunctionDefinition)].map(([id]) => id);
+		for(let progress = true; progress;) {
+			progress = false;
+			for(const def of pending) {
+				const entry = this.getFunctionEntry(def);
+				if(entry === undefined || this.trace.has(entry) || !this.trace.has(def)) {
+					continue;
+				}
+				progress = true;
+				this.enteredFrom.set(entry, def);
+				const outerStack = this.stack;
+				this.startVisitor([entry]);
+				this.stack = outerStack;
+				this.enteredFrom.delete(entry);
+			}
+		}
+	}
+
 	/** Where a function definition starts, i.e. the first thing that runs when it is called. */
 	protected getFunctionEntry(defId: NodeId): NodeId | undefined {
 		const def = this.getDataflowGraph(defId);

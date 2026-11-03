@@ -18,7 +18,6 @@ import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
 import { DfgVertex, VertexType } from '../graph/vertex';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
-import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { NodeValue } from '../eval/resolve/node-value';
 import { collectStrings } from '../eval/values/string/string-constants';
 import { isValue } from '../eval/values/r-value';
@@ -353,19 +352,12 @@ function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: Datafl
 	return undefined;
 }
 
-/** The value a plain assignment binds to the definition `def`, `undefined` for any other kind of definition (`class(x) <- `, `assign`, a parameter, ...). */
-function assignedValueOf(def: NodeId, graph: DataflowGraph): NodeId | undefined {
-	const vertex = graph.getVertex(def);
-	const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
-	return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
-}
-
 /** The class vectors S3 dispatch may see for the argument at `id`, one per reaching definition, `undefined` unless all are known. */
 export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly (readonly string[])[] | undefined {
 	const { graph } = info;
 	const value = RArgument.valueOf(info.idMap.get(id))?.info.id;
 	const isRead = value !== undefined && DfgVertex.isUse(graph.getVertex(value));
-	const values = isRead ? Dataflow.targetsOf(graph, value, EdgeType.Reads).map(def => assignedValueOf(def, graph)) : [value];
+	const values = isRead ? Dataflow.targetsOf(graph, value, EdgeType.Reads).map(def => Dataflow.assignedValueOf(def, graph)) : [value];
 	const classes = values.map(v => v === undefined ? undefined : s3ClassOfValue(v, info));
 	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
 }

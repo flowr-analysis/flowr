@@ -46,7 +46,7 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (13 ms)
+    Query: linter (29 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
@@ -70,7 +70,9 @@ It offers a wide variety of features, for example:
        ╰ Overwritten File (overwritten-file): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
        ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈13 ms (1ms accuracy, total 13 ms)
+       ╰ Secret Exfiltration (secret-exfiltration): no findings
+       ╰ Process State in Session (process-state-in-session): no findings
+    All queries together required ≈29 ms (1ms accuracy, total 29 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -84,7 +86,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (18 ms)\
+    Query: **linter** (22 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -108,7 +110,9 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Overwritten File** (overwritten-file): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈18 ms (1ms accuracy, total 18 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Secret Exfiltration** (secret-exfiltration): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Process State in Session** (process-state-in-session): _no findings_\
+    _All queries together required ≈23 ms (1ms accuracy, total 23 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -151,7 +155,9 @@ It offers a wide variety of features, for example:
           "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
           "overwritten-file": {"results":[],".meta":{"totalFiles":0}},
           "unescaped-arguments": {"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},
-          "namespace-access": {"results":[],".meta":{"unresolved":0}}
+          "namespace-access": {"results":[],".meta":{"unresolved":0}},
+          "secret-exfiltration": {"results":[],".meta":{"secretSinkCalls":0}},
+          "process-state-in-session": {"results":[],".meta":{"sessionFunctions":0}}
         },
         ".meta": {}
       },
@@ -212,7 +218,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈5 ms (1ms accuracy, total 5 ms)
+    All queries together required ≈6 ms (1ms accuracy, total 6 ms)
     ```
     
     </details>

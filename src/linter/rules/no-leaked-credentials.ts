@@ -22,7 +22,7 @@ const defaultCredentialNamePattern =
 
 const defaultCredentialCallPattern = '(?:auth|login|signin|credential|password|secret|token|key_?set)';
 
-const defaultCredentialValuePattern =
+export const defaultCredentialValuePattern =
 	'(?:(?<![A-Za-z0-9_])|(?<=\\\\[nrt]))(?:' +
 	'(?:AKIA|AIPA|ASIA|AROA)[A-Z0-9]{16}'          + // AWS access key IDs (exact 20-char format)
 	'|gh[psoar]_[A-Za-z0-9_]{10,}'                 + // GitHub Classic/App/OAuth/Actions tokens

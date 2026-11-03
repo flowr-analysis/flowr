@@ -1,3 +1,4 @@
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -90,13 +91,27 @@ function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environmen
 	});
 }
 
+/** the variable an `assign` into the global environment writes (`undefined` if not constant) */
+export function globalAssignment(call: DataflowGraphVertexFunctionCall, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): { variable?: string } | undefined {
+	const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters.assign) as ReadonlyMap<string, readonly NodeId[]>;
+	const arg = (formal: string) => {
+		const ids = args.get(formal);
+		const node = ids?.length === 1 ? idMap.get(ids[0]) : undefined;
+		return RArgument.is(node) ? node.value : node;
+	};
+	const env = call.environment ?? df.environment;
+	const target = arg('x');
+	const global = denotesGlobalEnv(arg('envir'), env, df, idMap, ctx) || denotesGlobalPos(arg('pos')) || denotesGlobalEnv(arg('pos'), env, df, idMap, ctx);
+	return global ? { variable: RString.is(target) ? target.content.str : undefined } : undefined;
+}
+
 /** whether a `pos` argument names the global environment, which is the first entry of the search path */
 function denotesGlobalPos(node: RNode<ParentInformation> | undefined): boolean {
 	return (RNumber.is(node) && node.content.num === 1) || (RString.is(node) && node.content.str === '.GlobalEnv');
 }
 
 /** the variable an assignment target writes, looking through replacement calls and accesses (`names(x)`, `x$a`, `x[[1]]`) */
-function targetVariable(lhs: RNode<ParentInformation>): string | undefined {
+export function targetVariable(lhs: RNode<ParentInformation>): string | undefined {
 	switch(lhs.type) {
 		case RType.Symbol:
 			return Identifier.getName(lhs.content);
@@ -149,7 +164,7 @@ function isLocalCall(node: RNode<ParentInformation>): boolean {
 const BeforeLocking: ReadonlySet<string> = new Set(['.onLoad']);
 
 /** what a `<<-` in a package function writes: a binding of an enclosing scope, the package namespace, or the global environment */
-function superAssignmentTarget(op: RNode<ParentInformation>, name: string, idMap: AstIdMap, topLevel: ReadonlySet<string>, memo: Map<NodeId, ReadonlySet<string>>): 'enclosing' | 'namespace' | 'global' | 'top-level' {
+export function superAssignmentTarget(op: RNode<ParentInformation>, name: string, idMap: AstIdMap, topLevel: ReadonlySet<string>, memo: Map<NodeId, ReadonlySet<string>>): 'enclosing' | 'namespace' | 'global' | 'top-level' {
 	let first = true;
 	let outermost: RFunctionDefinition<ParentInformation> | undefined;
 	for(let cur = op.info.parent === undefined ? undefined : idMap.get(op.info.parent); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
@@ -227,13 +242,9 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 					add(node, 'attach', 'attach() puts an object on the search path, where it masks and is masked by others; access it directly or use with() instead');
 					break;
 				case 'assign': {
-					const target = valueOf(arg('x'));
-					const variable = RString.is(target) ? target.content.str : undefined;
-					if(variable !== undefined && allowed.has(variable)) {
-						break;
-					}
-					if(denotesGlobalEnv(valueOf(arg('envir')), env, df, idMap, ctx) || denotesGlobalPos(valueOf(arg('pos'))) || denotesGlobalEnv(valueOf(arg('pos')), env, df, idMap, ctx)) {
-						add(node, 'assign', `assign() writes ${variable === undefined ? 'a variable' : `'${variable}'`} into the global environment, which belongs to the user`, variable);
+					const global = globalAssignment(call, df, idMap, ctx);
+					if(global !== undefined && (global.variable === undefined || !allowed.has(global.variable))) {
+						add(node, 'assign', `assign() writes ${global.variable === undefined ? 'a variable' : `'${global.variable}'`} into the global environment, which belongs to the user`, global.variable);
 					}
 					break;
 				}

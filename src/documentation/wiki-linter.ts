@@ -264,6 +264,35 @@ function(x) {
 	'package-runtime': {
 		configType: 'PackageRuntimeConfig', ruleType:   'PACKAGE_RUNTIME', testfile:   'cmd-check/lint-package-runtime',
 		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\nexportPattern("^api_")\n' } }
+	},
+	'secret-exfiltration': {
+		configType: 'SecretExfiltrationConfig', ruleType:   'SECRET_EXFILTRATION', testfile:   'lint-secret-exfiltration',
+		example:    `
+key <- Sys.getenv("API_KEY")
+server <- function(input, output, session) {
+  httr2::request("https://api.example.org") |>
+    httr2::req_auth_bearer_token(key)
+  httr::GET(input$url, httr::add_headers(Authorization = key))
+  output$debug <- renderPrint(Sys.getenv())
+  message("calling with ", key)
+  message("key set: ", nzchar(key))
+  httr::GET(paste0("https://api.example.org/?key=", key))
+}
+`,
+		config: { optIn: ['url'] }
+	},
+	'process-state-in-session': {
+		configType: 'ProcessStateInSessionConfig', ruleType:   'PROCESS_STATE_IN_SESSION', testfile:   'lint-process-state-in-session',
+		example:    `
+counter <- reactiveVal(0)
+addResourcePath("data", "/srv/data")
+server <- function(input, output, session) {
+  user <<- input$name
+  options(digits = input$digits)
+  counter(counter() + 1)
+  output$plot <- renderPlot(plot(load_for(session$user, input$n))) |> bindCache(input$n)
+}
+`
 	}
 };
 

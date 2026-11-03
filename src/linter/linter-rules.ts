@@ -41,6 +41,8 @@ import { PACKAGE_METAFILES } from './rules/cmd-check/package-metafiles';
 import { RD_FILES } from './rules/cmd-check/rd-files';
 import { PACKAGE_DATA } from './rules/cmd-check/package-data';
 import { PACKAGE_RUNTIME } from './rules/cmd-check/package-runtime';
+import { SECRET_EXFILTRATION } from './rules/secret-exfiltration';
+import { PROCESS_STATE_IN_SESSION } from './rules/process-state-in-session';
 
 /**
  * The registry of currently supported linting rules.
@@ -88,7 +90,9 @@ export const LintingRules = {
 	'package-metafiles':               PACKAGE_METAFILES,
 	'rd-files':                        RD_FILES,
 	'package-data':                    PACKAGE_DATA,
-	'package-runtime':                 PACKAGE_RUNTIME
+	'package-runtime':                 PACKAGE_RUNTIME,
+	'secret-exfiltration':             SECRET_EXFILTRATION,
+	'process-state-in-session':        PROCESS_STATE_IN_SESSION
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

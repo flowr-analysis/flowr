@@ -50,9 +50,11 @@ body:
         - Package Runtime
         - Package Structure
         - Problematic Inputs
+        - Process State in Session
         - Rd Files
         - Roxygen Arguments
         - S3 Method Consistency
+        - Secret Exfiltration
         - Seeded Randomness
         - Software Has License
         - Software Has Tests

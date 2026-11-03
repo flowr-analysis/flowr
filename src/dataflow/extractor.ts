@@ -1,3 +1,4 @@
+import path from 'path';
 import type { DataflowInformation } from './info';
 import { appliedArguments } from './graph/applied-arguments';
 import { FunctionSemantics } from './fn/function-semantics';
@@ -49,7 +50,7 @@ import { BuiltInProcName } from './environments/built-in-proc-name';
 import { partitionArray, uniqueArray } from '../util/collections/arrays';
 import { DefaultMap, memoize } from '../util/collections/defaultmap';
 import { MatchArgs } from './graph/match-args';
-import { ArgProp, SemanticCallTag } from './environments/built-in-props';
+import { ArgProp, FnSig, SemanticCallTag } from './environments/built-in-props';
 import type { ArgProps, BuiltInFnInfo } from './environments/built-in-props';
 import type { BuiltInIndex } from './environments/query-fn-props';
 import { callFnProps, queryFnProps } from './environments/query-fn-props';
@@ -282,6 +283,35 @@ function argsWithProp(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnIn
 	return info?.sig === undefined ? [] : MatchArgs.findWithProps(vertex.args, info.sig, prop);
 }
 
+/** the path with `/` separators, without `./` steps or a trailing `/` */
+function normalizedPath(p: string): string {
+	return path.posix.normalize(p.replaceAll('\\', '/')).replace(/(?<=.)\/$/, '');
+}
+
+/**
+ * Whether the paths may name one file, as they do when one of them is a directory holding the other:
+ * `unzip(zipfile, exdir = "data")` and `file.copy(from, to = "out")` write into one, `list.files("data")` reads one. The working
+ * directory holds every relative path.
+ */
+function sharesFile(a: string, b: string): boolean {
+	const [x, y] = [normalizedPath(a), normalizedPath(b)];
+	return x === y || holds(x, y) || holds(y, x);
+}
+
+function holds(directory: string, file: string): boolean {
+	return directory === '.' ? !path.posix.isAbsolute(file) && file !== '..' && !file.startsWith('../') : file.startsWith(directory.endsWith('/') ? directory : `${directory}/`);
+}
+
+/** whether the call tells the files it reads from the ones it writes, see {@link FnSig.resources} */
+function splitsResources(info: BuiltInFnInfo | undefined): boolean {
+	return info?.sig !== undefined && FnSig.resources(info.sig, true) !== info.sig;
+}
+
+/** The {@link ArgProp.Resource} arguments naming what the call writes (`writes`) or reads, see {@link FnSig.resources}. */
+function resourceArgs(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnInfo | undefined, writes: boolean): NodeId[] {
+	return info?.sig === undefined ? [] : MatchArgs.findWithProps(vertex.args, FnSig.resources(info.sig, writes), ArgProp.Resource);
+}
+
 function definitionsReachedBy(node: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
 	return Dataflow.reachable(graph, node, {
 		follow: EdgeType.Reads,
@@ -319,10 +349,16 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		if(!reads && !writes) {
 			continue;
 		}
-		const resource = argsWithProp(appliedArguments(graph, vertex), info, ArgProp.Resource)[0];
+		const applied = appliedArguments(graph, vertex);
+		/* a call stating both without saying which files it writes (`file(path, open)`) counts as a reader */
+		const read = reads ? resourceArgs(applied, info, false)[0] : undefined;
+		const written = writes && (!reads || splitsResources(info)) ? resourceArgs(applied, info, true)[0] : undefined;
 		/* writing to the console names no file, and neither does a reader we cannot pin down */
-		if(resource !== undefined) {
-			(reads ? readers : writers).push({ id, resource });
+		if(read !== undefined) {
+			readers.push({ id, resource: read });
+		}
+		if(written !== undefined) {
+			writers.push({ id, resource: written });
 		}
 	}
 	if(readers.length === 0 || writers.length === 0) {
@@ -338,7 +374,7 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		/* a path we cannot resolve may name the other one */
 		const path = pathOf(a);
 		const other = pathOf(b);
-		return path === undefined || other === undefined || path === other;
+		return path === undefined || other === undefined || sharesFile(path, other);
 	};
 	/* each added edge clears the graph's cached call names, but none of these edges changes what a call targets */
 	const prints = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
@@ -361,13 +397,13 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	}
 }
 
-/** The paths the {@link ArgProp.Resource} arguments of the file accessing call `id` name, `undefined` unless every one resolves to strings. */
-function pathsOf(id: NodeId, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, callContext?: CallContext): ReadonlySet<string> | undefined {
+/** The paths the file accessing call `id` writes (`writes`) or reads, `undefined` unless every one resolves to strings. */
+function pathsOf(id: NodeId, writes: boolean, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, callContext?: CallContext): ReadonlySet<string> | undefined {
 	const vertex = graph.getVertex(id);
 	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
-	const resources = argsWithProp(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), ArgProp.Resource);
+	const resources = resourceArgs(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), writes);
 	const paths = new Set<string>();
 	for(const resource of resources) {
 		const strings = NodeValue.stringsOf(RArgument.valueOf(graph.idMap?.get(resource)) ?? resource, Resolve.info(graph, ctx), { callContext });
@@ -434,20 +470,21 @@ function separateFileWritesPerCall(graph: DataflowGraph, environment: REnvironme
 	}
 	const fileAccess = memoize((id: NodeId) => {
 		const info = callFnProps(id, { graph, environment });
-		return FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.File, SemanticCallTag.Writes]) ? 'write'
-			: FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.File, SemanticCallTag.Reads]) ? 'read' : undefined;
+		const writes = FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.File, SemanticCallTag.Writes]);
+		const reads = FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.File, SemanticCallTag.Reads]) && (!writes || splitsResources(info));
+		return { reads, writes };
 	});
-	const readPaths = memoize((id: NodeId) => fileAccess(id) === 'read' ? pathsOf(id, graph, environment, ctx) : undefined);
+	const readPaths = memoize((id: NodeId) => fileAccess(id).reads ? pathsOf(id, false, graph, environment, ctx) : undefined);
 	/* writing to the console (`cat(x)`) names no file, and has no call to tell apart */
 	const namesFile = (id: NodeId) => {
 		const vertex = graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		return argsWithProp(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), ArgProp.Resource).length > 0;
+		return resourceArgs(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), true).length > 0;
 	};
 	const writers = [...graph.verticesOfType(VertexType.FunctionCall)].map(([id]) => id)
-		.filter(id => graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.SideEffectOnCall)) && !graph.unknownSideEffects.has(id) && fileAccess(id) === 'write' && namesFile(id));
+		.filter(id => graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.SideEffectOnCall)) && !graph.unknownSideEffects.has(id) && fileAccess(id).writes && namesFile(id));
 	const separated = new Set<NodeId>();
 	for(const writer of writers) {
-		const levels = fileWriteLevels(writer, graph, idMap, callContext => pathsOf(writer, graph, environment, ctx, callContext));
+		const levels = fileWriteLevels(writer, graph, idMap, callContext => pathsOf(writer, true, graph, environment, ctx, callContext));
 		if(levels !== undefined) {
 			separated.add(writer);
 		}
@@ -459,7 +496,7 @@ function separateFileWritesPerCall(graph: DataflowGraph, environment: REnvironme
 			for(const { call, paths } of calls) {
 				for(const reader of readers) {
 					const read = readPaths(reader);
-					if(read === undefined || paths === undefined || !read.isDisjointFrom(paths)) {
+					if(read === undefined || paths === undefined || read.values().some(r => paths.values().some(w => sharesFile(r, w)))) {
 						graph.addEdge(reader, call, EdgeType.Reads);
 					}
 				}

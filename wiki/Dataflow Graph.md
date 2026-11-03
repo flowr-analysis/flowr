@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-03, 06:39:52 UTC (v2.16.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-03, 08:22:01 UTC (v2.16.8, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -1328,7 +1328,7 @@ The related function argument references are defined like this:
      
       <details><summary>View more (IdentifierReference)</summary>
 
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L622)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L628)**   
        An identifier reference points to a variable like `a` in `b <- a`.
        Without any surrounding code, `a` will produce the identifier reference `a`.
        Similarly, `b` will create a reference (although it will be an
@@ -1347,7 +1347,7 @@ The related function argument references are defined like this:
        or
        <code>unknown (`unknownReferences`)</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L622">src/dataflow/environments/identifier.ts#L622</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L628">src/dataflow/environments/identifier.ts#L628</a></summary>
        
        ```ts
        /**
@@ -1402,7 +1402,7 @@ The related function argument references are defined like this:
     </details>
 
 There is another element of potential interest to you, the `origin` property which records how flowR created the respective function call.
-These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L348"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
+These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L358"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
 The entry `function` signals that flowR used a processor for a user-defined function defined within the source code, `unnamed` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin (see the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of `:=` to that of the `table:assign`. 
 
@@ -1491,7 +1491,7 @@ This is hard to read in this form, as the `type` of these references is a bit-ma
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L563)**   
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L569)**   
    Each reference has exactly one reference type, stored as the respective number.
    However, when checking, we may want to allow for one of several types,
    allowing the combination of the respective bitmasks.
@@ -1501,7 +1501,7 @@ For more information on the types of references, please consult the implementati
    .
    In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
    while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L563">src/dataflow/environments/identifier.ts#L563</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L569">src/dataflow/environments/identifier.ts#L569</a></summary>
    
    ```ts
    /**
@@ -2101,7 +2101,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (768 entries)_
+> _Built-in Environment (774 entries)_
 > 
 > </details>
 > 
@@ -2821,7 +2821,7 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (768 entries)_
+_Built-in Environment (774 entries)_
 
 </details>
 
@@ -5528,7 +5528,7 @@ A summarized version of the produced environment looks like this:
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (768 entries)_
+_Built-in Environment (774 entries)_
 
 </details>
 

@@ -617,3 +617,23 @@ describe('S3 dispatch through a generic only the signature database knows', with
 		expect((Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code).toContain('toString.zz <- function(x, ...) "ZZ"');
 	});
 }));
+
+describe('an S4 method on a primitive does not shadow base', withTreeSitter(ts => {
+	/* as a database built before R's rule was known stores lubridate: `+` flagged both exported and an S4 method */
+	const s4 = (name: string) => ({ ...expFn(name), props: FnProp.Exported | FnProp.S4Method });
+	const db = () => fakeSigDb({
+		base:  [expFn('print')],
+		lubri: [s4('+'), s4('['), s4('$'), s4('show'), expFn('log'), expFn('ymd')]
+	});
+	const code = 'library(lubri)\nx <- 1 + 2\ny <- list(a = 1)[1]\nz <- list(a = 1)$a\nymd(x)\nlog(x)\nshow(x)';
+
+	test.each([
+		['+', 'base::+'], ['[', 'base::['], ['$', 'base::$'],
+		/* a method on a closure generic is the generic R exports, and a closure named like a primitive is an export */
+		['show', 'lubri::show'], ['log', 'lubri::log'], ['ymd', 'lubri::ymd']
+	] as const)(label('%s resolves to %s', ['library-loading', 'search-path', 'oop-s4'], ['dataflow']), async(name, expected) => {
+		const res = await analyze(ts, code, db());
+		expect(qualifiedName(res, name)).toBe(expected);
+		expect(hasBuiltIn(res.df, 'lubri', name)).toBe(expected.startsWith('lubri'));
+	});
+}));

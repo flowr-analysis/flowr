@@ -121,6 +121,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
 		let g: T | undefined;
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
+			await this.prepareDataflow();
 			await this.pipeline.nextStep();
 		}
 
@@ -128,6 +129,18 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 		guard(g !== undefined, 'Could not reach the desired pipeline step, invalid cache state(?)');
 		return g;
+	}
+
+	/** the normalized AST the dependency plugins already {@link FlowrAnalyzerDependenciesContext#prepare|prepared} for */
+	private prepared: unknown;
+
+	/** once the AST is there and the dataflow is not, the dependency plugins may wait for what the dataflow asks of them */
+	private async prepareDataflow(): Promise<void> {
+		const { normalize, dataflow } = this.get();
+		if(normalize !== undefined && dataflow === undefined && this.prepared !== normalize) {
+			this.prepared = normalize;
+			await this.args.context.deps.prepare(normalize);
+		}
 	}
 
 	private storeIncrementalSnapshotIfAvailable(): void {

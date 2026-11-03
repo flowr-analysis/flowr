@@ -36,7 +36,7 @@ describe('Config Query REPL Parser', () => {
 
 	test('a `**` glob inspects matching keys at any depth', () => {
 		assert.deepStrictEqual(inspectsOf('**.enabled'),
-			[['solver', 'sigdb', 'enabled'], ['solver', 'sigdb', 'installedLibrary', 'enabled']]);
+			[['solver', 'sigdb', 'enabled'], ['solver', 'sigdb', 'installedLibrary', 'enabled'], ['solver', 'sigdb', 'onDemand', 'enabled']]);
 	});
 
 	test('a `*` glob stays within one segment, `**` spans them', () => {
@@ -248,7 +248,7 @@ describe('Config Query REPL completion', () => {
 
 	test('a glob completes to the keys it matches, which share no prefix with it', () => {
 		assert.deepStrictEqual(completionsFor(':query @config **.enab'),
-			['solver.sigdb.enabled', 'solver.sigdb.installedLibrary.enabled']);
+			['solver.sigdb.enabled', 'solver.sigdb.installedLibrary.enabled', 'solver.sigdb.onDemand.enabled']);
 	});
 
 	test('a `*` glob completes to direct children only', () => {

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-03, 06:39:52 UTC (v2.16.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-03, 08:22:01 UTC (v2.16.8, R v4.6.1), do not edit directly._
 
 This page lists every important helper object of flowR.
 
@@ -86,10 +86,10 @@ This page lists every important helper object of flowR.
 | :-- | :-- |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> | Helper functions to work with identifiers. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/convert-values.ts#L93"><code><span title="What an RNumberValue is: R's number as it was written, its integer marker (1L) and its complex flag (1i) included.">RNumberValue</span></code></a> | What an RNumberValue is: R's number as it was written, its integer marker (`1L`) and its complex flag (`1i`) included. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/r-version.ts#L184"><code><span title="Helpers for R package version ranges (DESCRIPTION constraints like >= 0.4-9).">RRange</span></code></a> | Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`). |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/r-version.ts#L185"><code><span title="Helpers for R package version ranges (DESCRIPTION constraints like >= 0.4-9).">RRange</span></code></a> | Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`). |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/convert-values.ts#L163"><code><span title="Checks whether the given string is an R string literal (including raw strings).">RStringValue</span></code></a> | Checks whether the given string is an R string literal (including raw strings). |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/values/r-value.ts#L173"><code><span title="Reads the plain TS value a Value stands for, undefined whenever it stands for more than one, for none, or for another kind. Prefer these over reaching into a value's shape by hand. This is the constant-folding view: it answers 'is this one known constant' and nothing else. It runs no fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated abstract in...">RValue</span></code></a> | Reads the plain TS value a Value stands for, `undefined` whenever it stands for more than one, for none, or for another kind. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/r-version.ts#L97"><code><span title="Helpers for R package versions (1.2-3 style), which are freer than SemVer.">RVersion</span></code></a> | Helpers for R package versions (`1.2-3` style), which are freer than SemVer. |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/r-version.ts#L98"><code><span title="Helpers for R package versions (1.2-3 style), which are freer than SemVer.">RVersion</span></code></a> | Helpers for R package versions (`1.2-3` style), which are freer than SemVer. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/logic.ts#L13"><code><span title="Always, never, or maybe, which is what a static answer about a running program usually is. Its operators keep maybe infectious, so a conclusion never claims more than what is known.">TernaryLogic</span></code></a> | Always, never, or maybe, which is what a static answer about a running program usually is. |
 
 <h2 id="Asking_32_flowR">Asking flowR</h2>
@@ -113,7 +113,7 @@ This page lists every important helper object of flowR.
 | helper | what it is |
 | :-- | :-- |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin.ts#L16"><code><span title="Access to the DESCRIPTION file of the analyzed project.">DescriptionFile</span></code></a> | Access to the `DESCRIPTION` file of the analyzed project. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L568"><code><span title="flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included).">FlowrConfig</span></code></a> | flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included). |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L605"><code><span title="flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included).">FlowrConfig</span></code></a> | flowR's configuration: its default, reading one from disk, and getting or setting a single value at a dotted path (an EngineConfigPath included). |
 
 <h2 id="Output">Output</h2>
 

@@ -40,9 +40,9 @@ export enum FileRole {
 	Documentation = 'documentation',
 	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
 	License       = 'license',
-	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock` or `uvr.lock`. */
+	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock`, `uvr.lock` or rig's `rproj.lock`. */
 	VirtualEnv    = 'virtual-env',
-	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project or the `uvr.toml` of a uvr project. */
+	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project, the `uvr.toml` of a uvr project or the `rproj.toml` of a rig project. */
 	Manifest      = 'manifest',
 	/**
 	 * R sources evaluated at startup, before any project code (`.Rprofile`, `Rprofile.site`).

@@ -104,8 +104,18 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 			}
 		}
 	}
+	/* what each imported package exports, read once: asking which packages export a name searches the whole database */
+	const exportsOf = new Map<string, ReadonlySet<string>>();
+	const exports = (pkg: string) => {
+		let found = exportsOf.get(pkg);
+		if(found === undefined) {
+			found = new Set(src.lookup(pkg)?.exported);
+			exportsOf.set(pkg, found);
+		}
+		return found;
+	};
 	for(const { name, callable, imports } of attachments) {
-		const usesPackage = (call: string) => callable.has(call) || src.packagesExporting(call).some(p => imports.has(p));
+		const usesPackage = (call: string) => callable.has(call) || imports.values().some(p => exports(p).has(call));
 		if(pending.has(name) && unbound.values().some(usesPackage)) {
 			pending.delete(name);
 		}

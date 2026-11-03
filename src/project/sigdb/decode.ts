@@ -12,6 +12,7 @@ import {
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
 import { compactRecord } from '../../util/objects';
+import { RPrimitives } from '../../data/r-primitives.generated';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
 export interface CranBlobInfo {
@@ -107,6 +108,7 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: s
 /** decode one of a blob's function records against the global string dictionary */
 export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
+	const name = strings.at(nameIdx);
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
 		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
 		return compactRecord({ name: strings.at(n), props, default: def >= 0 ? strings.at(def) : undefined });
@@ -117,11 +119,11 @@ export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx:
 		callees = blob.cgs[cgIdx].map(d => strings.at(prev += d));
 	}
 	return compactRecord({
-		name:     strings.at(nameIdx),
+		name,
 		topic:    topicIdx !== undefined && topicIdx >= 0 ? strings.at(topicIdx) : undefined,
 		file:     fileIdx >= 0 ? strings.at(fileIdx) : undefined,
 		line,
-		exported: Boolean(bits & FnProp.Exported),
+		exported: isExportedEntry(bits, name),
 		props:    Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
 		signature,
 		callees
@@ -189,6 +191,15 @@ export function versionFnIndices(blob: Readonly<PkgBlob>, ver: string): number[]
 	return out;
 }
 
+/**
+ * Whether a stored entry is an export. A method on a primitive generic (`setMethod("+", ...)`) binds nothing in the
+ * namespace, so R exports it under no directive, and `pkg::"+"` does not exist; a database built before that was
+ * known may still flag it exported, and attaching it would shadow the base primitive for every call.
+ */
+function isExportedEntry(bits: number, name: string): boolean {
+	return (bits & FnProp.Exported) !== 0 && !((bits & FnProp.S4Method) !== 0 && RPrimitives.has(name));
+}
+
 /** derive the {@link LibraryExports} export view of one package version from its blob + metadata */
 export function deriveLibraryExports(
 	strings: SigDict, blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: string, version?: string, cranBase = DefaultCranBase
@@ -208,7 +219,7 @@ export function deriveLibraryExports(
 	for(const i of idxs) {
 		const [nameIdx, , , bits, fileIdx, line] = blob.fns[i];
 		const name = strings.at(nameIdx);
-		(bits & FnProp.Exported ? exported : internal).push(name);
+		(isExportedEntry(bits, name) ? exported : internal).push(name);
 		if(bits & FnProp.Deprecated) {
 			deprecated.push(name);
 		}

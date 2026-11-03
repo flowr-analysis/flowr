@@ -65,7 +65,8 @@ function normalizeVersions(versions: string): string {
 			parts.push(prefix);
 		}
 		const versionPart = match[1];
-		parts.push(normalizeVersion(versionPart));
+		// keep what separated it from the previous part, else `>= 1.0 < 2.0` would run together
+		parts.push(/^\s*/.exec(versionPart)?.[0] + normalizeVersion(versionPart));
 		index = match.index + versionPart.length;
 	}
 	if(index < versions.length) {
@@ -196,7 +197,8 @@ export const RRange = {
 			return makeRange(range, range);
 		} catch{ /* try to normalize R range to SemVer */ }
 		try {
-			return makeRange(normalizeVersions(range), range);
+			// a comma joins requirements as semver's space does (`>= 1.0, < 2.0`, as rig and cargo write them)
+			return makeRange(normalizeVersions(range.replaceAll(/\s*,\s*/g, ' ')), range);
 		} catch{ /* unparseable even after normalization -> report as "no constraint" */ }
 		return undefined;
 	},

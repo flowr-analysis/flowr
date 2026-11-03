@@ -233,6 +233,38 @@ export interface FlowrConfig {
 				readonly maxDepth?:          number
 				readonly packages?:          string[]
 			}
+			/**
+			 * Recovering a package no signature database knows from its source, fetched when the analyzed code uses
+			 * it: from CRAN, Bioconductor, or the GitHub repository the project installs it from. Opt-in, as it
+			 * accesses the network. What it fetched is cached, so a later analysis can work offline.
+			 */
+			readonly onDemand?:                   {
+				readonly enabled:              boolean
+				/** where to look, in order (default `github`, `cran`, `bioconductor`), a plugin may add sources of its own */
+				readonly sources?:             string[]
+				/** GitHub repositories (`owner/repo[/subdir][@ref]`) to fetch packages from, by package name */
+				readonly repositories?:        Record<string, string>
+				/** only recover packages whose name matches one of these regular expressions, empty means any */
+				readonly packages?:            string[]
+				/** the CRAN `src/contrib/` to fetch from (default `https://cloud.r-project.org/src/contrib/`) */
+				readonly cranMirror?:          string
+				/** the Bioconductor host (default `https://bioconductor.org`) */
+				readonly bioconductorMirror?:  string
+				/** the Bioconductor release to fetch from (default `release`) */
+				readonly bioconductorRelease?: string
+				/** whether to use the GitHub mirrors of CRAN and Bioconductor (`cran/<pkg>`, `bioc/<pkg>`, default true) */
+				readonly githubMirrors?:       boolean
+				/** the most packages to fetch for one analysis (default 25) */
+				readonly maxPackages?:         number
+				/** the most MiB a package archive may have (default 32), it may unpack to three times that */
+				readonly maxArchiveMb?:        number
+				/** only use what was fetched before, never the network (default false) */
+				readonly offline?:             boolean
+				/** how many hours to wait before asking again for a package no source had (default 24) */
+				readonly retryAfterHours?:     number
+				/** where to cache what was fetched (default the `on-demand` directory of the signature cache) */
+				readonly cacheDir?:            string
+			}
 		}
 		readonly versionManagement?: {
 			readonly linkedVersionGroups?: string[][]
@@ -425,10 +457,12 @@ export const FlowrDefaultPlugins = [
 	'versions:description',
 	'versions:sigdb',
 	'versions:library',
+	'versions:on-demand',
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
 	'versions:uvr',
+	'versions:rig',
 	'versions:packrat',
 	'versions:session-info',
 	'loading-order:description',
@@ -438,6 +472,8 @@ export const FlowrDefaultPlugins = [
 	'meta:description',
 	'meta:rproject',
 	'meta:uvr',
+	'meta:rig',
+	'meta:rig-script',
 	'file-roles:vignette',
 	'file-roles:test',
 	'file-roles:inst',
@@ -461,6 +497,7 @@ export const FlowrDefaultPlugins = [
 	'file:virtualenv',
 	'file:rproject',
 	'file:uvr',
+	'file:rig',
 	'file:rprofile',
 ] satisfies ConfigPlugin<string>[];
 
@@ -623,7 +660,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, blobCacheBudgetMb: 16, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, blobCacheBudgetMb: 16, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] }, onDemand: { enabled: false } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -758,7 +795,7 @@ export const FlowrConfig = {
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
 				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, renv.lock, rv.lock, uvr.lock) (default true); when false these files are not read for dependencies.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, rig rproj.toml and script blocks, renv.lock, rv.lock, uvr.lock, rig lockfiles) (default true); when false these files are not read for dependencies.'),
 				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
@@ -778,6 +815,21 @@ export const FlowrConfig = {
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
 					packages:          regexOption(Joi.array().items(Joi.string()).optional()).description('Only recover packages whose name matches one of these regular expressions; empty means any.')
 				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
+				onDemand: Joi.object({
+					enabled:             securitySensitive(Joi.boolean().required()).description('Fetch and recover the sources of packages no signature database knows when the analyzed code uses them (default false, accesses the network).'),
+					sources:             Joi.array().items(Joi.string()).optional().description('Where to look, in order: github, cran, bioconductor, or a source a plugin adds (default ["github", "cran", "bioconductor"]).'),
+					repositories:        securitySensitive(Joi.object().pattern(Joi.string(), Joi.string()).optional()).description('GitHub repositories (owner/repo[/subdir][@ref]) to fetch packages from, by package name. The analyzed project may name more (DESCRIPTION Remotes, install_github calls).'),
+					packages:            regexOption(Joi.array().items(Joi.string()).optional()).description('Only recover packages whose name matches one of these regular expressions, empty means any.'),
+					cranMirror:          securitySensitive(Joi.string().optional()).description('The CRAN src/contrib/ to fetch from, over https (default https://cloud.r-project.org/src/contrib/). It may be on the local network.'),
+					bioconductorMirror:  securitySensitive(Joi.string().optional()).description('The Bioconductor host, over https (default https://bioconductor.org). It may be on the local network.'),
+					bioconductorRelease: Joi.string().pattern(/^(release|devel|\d+\.\d+)$/).optional().description('The Bioconductor release to fetch from: release, devel, or a number like 3.20 (default release).'),
+					githubMirrors:       Joi.boolean().optional().description('Use the GitHub mirrors of CRAN (cran/<pkg>) and Bioconductor (bioc/<pkg>) (default true).'),
+					maxPackages:         Joi.number().min(0).optional().description('The most packages to fetch for one analysis (default 25).'),
+					maxArchiveMb:        Joi.number().min(0).optional().description('The most MiB a package archive may have (default 32). It may unpack to three times that, at most 128 MiB.'),
+					offline:             Joi.boolean().optional().description('Only use what was fetched before, never the network (default false).'),
+					retryAfterHours:     Joi.number().min(0).optional().description('How many hours to wait before asking again for a package no source had (default 24).'),
+					cacheDir:            securitySensitive(Joi.string().optional()).description('Where to cache what was fetched (default the on-demand directory of the signature cache).')
+				}).optional().description('Recovering packages no signature database knows from their sources on CRAN, Bioconductor, or GitHub.'),
 				blobCacheBudgetMb: Joi.number().min(0).optional().description('How many MiB of decoded package blobs every open bundle may hold together (default 16).'),
 				versionSelection:  Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
 				versionOverrides:  Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')

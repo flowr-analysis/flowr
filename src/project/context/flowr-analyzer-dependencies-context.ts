@@ -1,3 +1,4 @@
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
@@ -226,6 +227,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		for(const p of this.plugins) {
 			await p.addDatabaseSource(source);
 		}
+	}
+
+	/** Lets every version plugin wait for what the dataflow of `ast` will ask of it, see {@link FlowrAnalyzerPackageVersionsPlugin#prepare}. */
+	public async prepare(ast: NormalizedAst): Promise<void> {
+		await Promise.all(this.plugins.map(p => p.prepare(this.ctx, ast)));
+		/* a package a plugin could not name before may resolve now */
+		this.resolvedMisses.clear();
 	}
 
 	/** Eagerly mount every version plugin's signature database up front (see `solver.sigdb.eagerlyLoad`). */

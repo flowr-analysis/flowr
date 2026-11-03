@@ -12,8 +12,11 @@ import { parseDCFRecords } from '../file-plugins/files/flowr-description-file';
 export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-lockfile-plugin' });
 
 /** The {@link FileRole.VirtualEnv} lockfiles named `name` (e.g. `renv.lock`), matched case-insensitively like the role is assigned. */
-function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string): FlowrFileProvider[] {
-	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => platformBasename(f.path()).toLowerCase() === name);
+function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string | RegExp): FlowrFileProvider[] {
+	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => {
+		const base = platformBasename(f.path());
+		return typeof name === 'string' ? base.toLowerCase() === name : name.test(base);
+	});
 }
 
 /** Declares the dependency `name` pinned to the given `version`. */
@@ -73,7 +76,7 @@ export class FlowrAnalyzerPackageVersionsPackratPlugin extends FlowrAnalyzerPack
  * Reads every TOML lockfile called `fileName`: contributes the R version it states and pins each `name`/`version`
  * pair it lists. `read` says where that lockfile's dialect keeps the two, which is all they differ in.
  */
-function pinFromTomlLock<Lock>(ctx: FlowrAnalyzerContext, fileName: string, read: (lock: Lock) => { rVersion: unknown, packages: unknown }): void {
+function pinFromTomlLock<Lock>(ctx: FlowrAnalyzerContext, fileName: string | RegExp, read: (lock: Lock) => { rVersion: unknown, packages: unknown }): void {
 	for(const file of virtualEnvFiles(ctx, fileName)) {
 		let lock: Lock;
 		try {
@@ -126,5 +129,48 @@ export class FlowrAnalyzerPackageVersionsUvrPlugin extends FlowrAnalyzerPackageV
 
 	public process(ctx: FlowrAnalyzerContext): void {
 		pinFromTomlLock<UvrLock>(ctx, 'uvr.lock', lock => ({ rVersion: lock.r?.version, packages: lock.package }));
+	}
+}
+
+/** The parts of a rig `rproj.lock` (or a script's `<script>.R.lock`) we read, see `src/rproj.rs` of rig */
+interface RigPackage {
+	package?: unknown;
+	version?: unknown;
+}
+
+interface RigTarget {
+	r_version?: unknown;
+	packages?:  readonly RigPackage[];
+}
+
+interface RigLock {
+	targets?: readonly RigTarget[];
+}
+
+/** a rig lockfile: the project's `rproj.lock`, or `analysis.R.lock` beside the script `analysis.R` */
+export const RigLockFilePattern = /^(rproj|.+\.r)\.lock$/i;
+
+/**
+ * Reads package versions from a rig lockfile (TOML). rig solves one target per R version and platform, and the
+ * targets may pin a package (or R) differently, so only what all targets listing it agree on is a pin.
+ */
+export class FlowrAnalyzerPackageVersionsRigPlugin extends FlowrAnalyzerPackageVersionsPlugin {
+	public readonly name        = 'flowr-analyzer-package-versions-rig-plugin';
+	public readonly description = 'Extracts package versions from a rig rproj.lock or script lockfile.';
+	public readonly version     = new SemVer('0.1.0');
+
+	public process(ctx: FlowrAnalyzerContext): void {
+		pinFromTomlLock<RigLock>(ctx, RigLockFilePattern, lock => {
+			const targets: readonly RigTarget[] = Array.isArray(lock.targets) ? lock.targets as readonly RigTarget[] : [];
+			const versions = new Map<unknown, Set<unknown>>();
+			for(const p of targets.flatMap((t): readonly RigPackage[] => Array.isArray(t.packages) ? t.packages as readonly RigPackage[] : [])) {
+				(versions.get(p.package) ?? versions.set(p.package, new Set()).get(p.package))?.add(p.version);
+			}
+			const rVersions = new Set(targets.map(t => t.r_version));
+			return {
+				rVersion: rVersions.size === 1 ? [...rVersions][0] : undefined,
+				packages: [...versions].filter(([, vs]) => vs.size === 1).map(([name, vs]) => ({ name, version: [...vs][0] }))
+			};
+		});
 	}
 }

@@ -74,7 +74,7 @@ import { processWithEnv } from '../internal/process/functions/call/built-in/buil
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
-import { ArgProp, type BuiltInFnInfo, type FnSig, type SigLayout, SemanticCallTag } from './built-in-props';
+import { ArgProp, type BuiltInFnInfo, FnSig, type SigLayout, SemanticCallTag } from './built-in-props';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { AttachedBasePackageSet } from '../../util/r-base-packages';
 import { REnvironment } from './environment';
@@ -333,16 +333,26 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 /**
  * A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well.
  * Closing a device writes the file its opening already wrote, and only a device's file name may number its pages (`plot%03d.png`).
+ * A call reading some files and writing others (`unzip(zipfile, exdir = "out")`) does both, each with its own files.
  */
 function withFileAccess<Config>(config: Config): Config {
 	const { tags, ambient, sig } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[], sig?: FnSig };
-	const type = !tags?.includes(SemanticCallTag.File) ? undefined : tags.includes(SemanticCallTag.Writes) ? AmbientStateAccessType.WriteFiles : tags.includes(SemanticCallTag.Reads) ? AmbientStateAccessType.ReadFiles : undefined;
+	if(!tags?.includes(SemanticCallTag.File)) {
+		return config;
+	}
+	const writes = tags.includes(SemanticCallTag.Writes);
+	const split = writes && tags.includes(SemanticCallTag.Reads) && sig !== undefined && FnSig.resources(sig, true) !== sig;
+	/* reading first, so the files read are the ones written before, not the call's own */
+	const types = [...split || !writes && tags.includes(SemanticCallTag.Reads) ? [AmbientStateAccessType.ReadFiles] : [], ...writes ? [AmbientStateAccessType.WriteFiles] : []];
 	const stated = [ambient ?? []].flat();
-	if(type === undefined || stated.some(a => a.type === type || a.type === AmbientStateAccessType.CloseDevice)) {
+	if(types.length === 0 || stated.some(a => types.includes(a.type) || a.type === AmbientStateAccessType.CloseDevice)) {
 		return config;
 	}
 	const numbered = stated.some(a => a.type === AmbientStateAccessType.OpenDevice);
-	return { ...config, ambient: [...stated, { type, sig: tags?.includes(SemanticCallTag.Glob) ? undefined : sig, numbered }] };
+	const glob = tags.includes(SemanticCallTag.Glob);
+	return { ...config, ambient: [...stated, ...types.map(type => ({
+		type, numbered, sig: glob || sig === undefined ? undefined : split ? FnSig.resources(sig, type === AmbientStateAccessType.WriteFiles) : sig
+	}))] };
 }
 
 export const BuiltInProcessorMapper = {

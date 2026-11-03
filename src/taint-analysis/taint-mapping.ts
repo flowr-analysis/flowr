@@ -4,11 +4,22 @@ import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
 import { Identifier } from '../dataflow/environments/identifier';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
-	public mapper: TaintMappingInternal<Domain>[] = [];
+	public readonly mapper: TaintMappingInternal<Domain>[] = [];
+	/** the mappings by the name they map, in the order they were added; a mapping only ever applies to a call of its name */
+	private readonly byName = new Map<string, TaintMappingInternal<Domain>[]>();
 
-	constructor(mapper?: TaintMappingInternal<Domain>[]) {
-		if(mapper) {
-			this.mapper = mapper;
+	constructor(mapper?: readonly TaintMappingInternal<Domain>[]) {
+		mapper?.forEach(m => this.add(m));
+	}
+
+	private add(mapping: TaintMappingInternal<Domain>): void {
+		this.mapper.push(mapping);
+		const name = Identifier.getName(mapping.identifier);
+		const named = this.byName.get(name);
+		if(named === undefined) {
+			this.byName.set(name, [mapping]);
+		} else {
+			named.push(mapping);
 		}
 	}
 
@@ -16,7 +27,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 	 * Add one or more taint mapping rules to the mapper
 	 */
 	public pushMapping(mappings: TaintMapping<Domain>[]) {
-		this.mapper.push(...this.mapRulesToInternal(mappings));
+		this.mapRulesToInternal(mappings).forEach(m => this.add(m));
 	}
 
 	/**
@@ -29,7 +40,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 			if(this.hasMappingForRole(rule)) {
 				continue;
 			}
-			this.mapper.push(rule);
+			this.add(rule);
 		}
 	}
 
@@ -37,7 +48,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 	 * Get all mappings belonging to the given identifier
 	 */
 	public getMappings(identifier: Identifier) {
-		return this.mapper.filter(m => TaintMapper.matches(m.identifier, identifier));
+		return this.byName.get(Identifier.getName(identifier))?.filter(m => TaintMapper.matches(m.identifier, identifier)) ?? [];
 	}
 
 	/** Whether a mapped identifier applies to a call of `called`, which matches any namespace when it names none */
@@ -49,7 +60,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 	 * Create a new, independent mapper containing the same taint mappings
 	 */
 	public clone(): TaintMapper<Domain> {
-		return new TaintMapper<Domain>([...this.mapper]);
+		return new TaintMapper<Domain>(this.mapper);
 	}
 
 	private hasMappingForRole(rule: TaintMappingInternal<Domain>): boolean {

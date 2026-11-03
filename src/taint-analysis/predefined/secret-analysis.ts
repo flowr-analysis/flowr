@@ -55,6 +55,8 @@ export interface SecretSink {
 }
 
 const index = BuiltInIndex.default();
+/** the calls fetching from the network into a file, like `download.file` */
+const downloads = new Set(index.withAll([SemanticCallTag.Network, SemanticCallTag.Reads, SemanticCallTag.Writes]).map(f => Identifier.toString(f)));
 /** functions by package, as `pkg: f g; other: h`, with `$` for methods */
 const fns = (spec: string): Identifier[] => spec.split(';').flatMap(group => {
 	const [pkg, names] = group.split(':').map(p => p.trim());
@@ -85,7 +87,8 @@ export const DefaultSecretSinks: readonly SecretSink[] = [
 		...Identifier.fromAll('futile.logger', logLevels.map(l => `flog.${l}`)),
 		...fns('base: stop packageStartupMessage; rlang: inform abort; cli: cli_alert cli_alert_info cli_alert_success cli_alert_warning cli_alert_danger cli_inform cli_warn cli_abort cli_text; clipr: write_clip')
 	] },
-	{ class: SecretSinkClass.Files, fns: [...index.withAll([SemanticCallTag.File, SemanticCallTag.Writes]), ...fns('utils: write.csv write.csv2 write.table; base: writeBin; DBI: dbWriteTable dbAppendTable; pins: pin_write; googlesheets4: sheet_write write_sheet sheet_append; aws.s3: s3saveRDS put_object')] },
+	/* a download writes what it fetched rather than its arguments, which reach the network (a sink of their own) */
+	{ class: SecretSinkClass.Files, fns: [...index.withAll([SemanticCallTag.File, SemanticCallTag.Writes]).filter(f => !downloads.has(Identifier.toString(f))), ...fns('utils: write.csv write.csv2 write.table; base: writeBin; DBI: dbWriteTable dbAppendTable; pins: pin_write; googlesheets4: sheet_write write_sheet sheet_append; aws.s3: s3saveRDS put_object')] },
 	{ class: SecretSinkClass.Process, fns: [...index.with(SemanticCallTag.Process), ...fns('utils: browseURL')] },
 	{ class: SecretSinkClass.Llm, fns: fns('ellmer: chat chat_openai chat_anthropic chat_claude chat_gemini chat_google_gemini chat_ollama chat_mistral chat_groq chat_azure_openai chat_bedrock; openai: create_chat_completion create_completion; $: chat stream chat_async stream_async chat_structured set_system_prompt') }
 ];
@@ -158,7 +161,8 @@ export function createSecretAnalysis({ credentialNamePattern = CredentialNamePat
 				],
 				taint: Secret
 			},
-			...argValueMappingFromBuiltInIndex(FileInputProps, ArgProp.Resource, fileTaint)
+			/* a call that also writes (a copy, an unpack, a download) moves the content and returns a status or paths */
+			...argValueMappingFromBuiltInIndex(FileInputProps, ArgProp.Resource, fileTaint, SemanticCallTag.Writes)
 		)
 		.through(
 			{

@@ -1,6 +1,6 @@
 import type { FunctionInfo } from './function-info';
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
-import { functionInfosFromProps } from './derived-functions';
+import { functionInfosFromProps, readingAndWritingApart } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
 import { SourceFunctions } from './source-functions';
 import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
@@ -47,8 +47,10 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 
 /** The read entries the given built-in definitions imply, together with the ones written down here. */
 export function computeReadFunctions(definitions: BuiltInDefinitions): FunctionInfo[] {
+	/* copying reads the file it copies */
+	const apart = readingAndWritingApart(OtherPathFunctions, definitions);
 	return [
-		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Reads], [...ReadFunctionsWithMore, ...OtherPathFunctions, ...SourceFunctions], definitions),
+		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Reads], [...ReadFunctionsWithMore, ...OtherPathFunctions.filter(f => !apart.has(f)), ...SourceFunctions], definitions),
 		...ReadFunctionsWithMore
 	];
 }

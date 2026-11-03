@@ -66,13 +66,19 @@ function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
  */
 export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 	const resources = new Map<string, BuiltInParam[]>();
+	/* the calls with a destination they save to, like the `destfile` of a download, which is a path rather than an address */
+	const saving = new Set<string>();
 	for(const param of index.params(ArgProp.Resource)) {
+		const key = Identifier.toString(param.call);
 		/* R opens a path it writes to as a local file (or a `|` pipe), never as a url, and a command is no address either */
 		const tags = index.get(param.call)?.tags;
+		if((param.props & ArgProp.Written) !== 0) {
+			saving.add(key);
+			continue;
+		}
 		if((tags?.includes(SemanticCallTag.Writes) && !tags.includes(SemanticCallTag.Reads)) || tags?.includes(SemanticCallTag.Process)) {
 			continue;
 		}
-		const key = Identifier.toString(param.call);
 		resources.set(key, [...resources.get(key) ?? [], param]);
 	}
 	const names = new Map(index.with(SemanticCallTag.Network).map(call => [Identifier.toString(call), call]));
@@ -85,10 +91,12 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 		const params = resources.get(key);
 		const address = params === undefined ? undefined : addressParam(params);
 		const tags = index.get(name)?.tags;
+		/* a call touching files only to save what it fetched, like `req_perform(req, path)`, opens no local file in place of the network */
+		const mayOpenLocal = tags?.includes(SemanticCallTag.File) && !(saving.has(key) && address === undefined);
 		return {
 			name,
 			...(address === undefined ? {} : { info: { argIdx: address.index, argName: address.name, resolveValue: true } }),
-			...(tags?.includes(SemanticCallTag.Network) && !tags.includes(SemanticCallTag.File) ? {} : { onlyTriggerWithArgument: UrlPattern })
+			...(tags?.includes(SemanticCallTag.Network) && !mayOpenLocal ? {} : { onlyTriggerWithArgument: UrlPattern })
 		};
 	});
 }

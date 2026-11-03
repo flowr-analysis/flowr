@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-25, 18:02:51 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-03, 08:22:01 UTC (v2.16.8), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -41,10 +41,12 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
         "versions:description",
         "versions:sigdb",
         "versions:library",
+        "versions:on-demand",
         "versions:namespace",
         "versions:renv",
         "versions:rv",
         "versions:uvr",
+        "versions:rig",
         "versions:packrat",
         "versions:session-info",
         "loading-order:description",
@@ -54,6 +56,8 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
         "meta:description",
         "meta:rproject",
         "meta:uvr",
+        "meta:rig",
+        "meta:rig-script",
         "file-roles:vignette",
         "file-roles:test",
         "file-roles:inst",
@@ -75,6 +79,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
         "file:virtualenv",
         "file:rproject",
         "file:uvr",
+        "file:rig",
         "file:rprofile"
       ],
       "repl": {"quickStats":false,"dfProcessorHeat":false,"hints":true,"plugins":["flowr:default"],"autoUseFileProtocol":true,"queryStats":true,"showPlugins":false},
@@ -110,7 +115,8 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
           "autoSync": false,
           "versionSelection": "newest",
           "versionOverrides": {},
-          "installedLibrary": {"enabled":false,"paths":[],"useEnvironment":true,"useProjectLibrary":true,"maxDepth":3,"packages":[]}
+          "installedLibrary": {"enabled":false,"paths":[],"useEnvironment":true,"useProjectLibrary":true,"maxDepth":3,"packages":[]},
+          "onDemand": {"enabled":false}
         },
         "versionManagement": {"linkedVersionGroups":[]},
         "resolveSource": {"dropPaths":"no","ignoreCapitalization":true,"inferWorkingDirectory":"active-script","searchPath":[],"repeatedSourceLimit":2,"assumeFilesExist":false},
@@ -140,7 +146,7 @@ Please note that, in the REPL, a special syntax starting with `+` (which should 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.6, R v4.6.1 (r-shell engine)
+flowR repl v2.16.8, R v4.6.1 (r-shell engine)
 R> :query @config +solver.slicer.threshold=10000
 ```
 
@@ -163,7 +169,7 @@ one path segment, `**` any number. This only reads: setting a value still names 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.16.6, R v4.6.1 (r-shell engine)
+flowR repl v2.16.8, R v4.6.1 (r-shell engine)
 R> :query @config **.enabled
 ```
 
@@ -177,6 +183,8 @@ Query: config (0 ms)
            Resolve library()/use() exports from a signature database (default true); when false no database is consulted.
        - solver.sigdb.installedLibrary.enabled (boolean): false
            Recover packages no signature database knows from their installed copy (default false).
+       - solver.sigdb.onDemand.enabled (boolean): false
+           Fetch and recover the sources of packages no signature database knows when the analyzed code uses them (default false, accesses the network).
    ╰ Specialized for project kind unknown (overrides linter.disabledRules)
 ```
 
@@ -227,7 +235,7 @@ Query: config (0 ms)
            - autoSync:                    false (boolean)
            - versionSelection:            "newest" (string)
            - versionOverrides:            {} (object)
-           ... and 1 more, inspect them with solver.sigdb.<key>
+           ... and 2 more, inspect them with solver.sigdb.<key>
        - solver.slicer (object)
            The configuration for the slicer.
            - threshold:  50 (number)

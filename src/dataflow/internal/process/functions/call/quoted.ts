@@ -33,8 +33,8 @@ import { DefaultMap } from '../../../../../util/collections/defaultmap';
 
 type Reach = NonNullable<ForceSites['reach']>;
 
-/** Calls whose result is a language object although they read their arguments like any other call. */
-const CapturingCalls: ReadonlySet<string> = new Set(['expression']);
+/** Calls capturing every argument as a language object, unlike `quote` marking the one it captures. */
+export const CapturingCalls: ReadonlySet<string> = new Set(['expression']);
 /** Calls capturing an expression as a promise, forced at some later read of the variable they bind. */
 const DelayingCalls: ReadonlySet<string> = new Set(['delayedAssign']);
 const DelayedAssignFormals = ['x', 'value', 'eval.env', 'assign.env'];
@@ -383,11 +383,12 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 		forgetUnknownSideEffect(graph, id);
 	}
 	if(sources.length > 0 && environment !== undefined && !sources.some(({ expr }) => mayConfigure(graph, expr, environment))) {
-		forgetStateWrites(graph, id, new Set(sources.filter(({ at }) => RNode.findEnclosing(at, idMap, n => n.info.id === id) === undefined).map(({ expr }) => expr)));
+		/* without the evaluation, a capture elsewhere or of several expressions (`expression(a, b)`) would not run */
+		forgetStateWrites(graph, id, new Set(sources.filter(({ at }) => RNode.findEnclosing(at, idMap, n => n.info.id === id) === undefined || Quoted.capturedBy(graph, at).length > 1).map(({ expr }) => expr)));
 	}
 }
 
-/** Whether evaluating `expr` may change the options, graphics, or RNG state: a call states {@link CallProp.Configures} or {@link SemanticCallTag.Random}, or is opaque. */
+/** Whether evaluating `expr` may change the options, graphics, RNG state, or search path: a call states {@link CallProp.Configures}, {@link SemanticCallTag.Random} or that it changes the search path, or is opaque. */
 function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation): boolean {
 	const seen = new Set<NodeId>();
 	const todo = [expr];
@@ -400,7 +401,7 @@ function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironm
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionCall(vertex)) {
 			const builtIn = Array.isArray(vertex.origin) && vertex.origin.every(o => String(o).startsWith('builtin:') && o !== BuiltInProcName.Function && o !== BuiltInProcName.Eval);
-			if(!builtIn || CallProps.hasAny(callFnProps(id, { graph, environment }), [CallProp.Configures, SemanticCallTag.Random])) {
+			if(!builtIn || CallProps.hasAny(callFnProps(id, { graph, environment }), [CallProp.Configures, SemanticCallTag.Random, SemanticCallTag.AttachesPackage, SemanticCallTag.DetachesPackage])) {
 				return true;
 			}
 		}

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-03, 16:33:56 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -323,7 +323,7 @@ The following sections present details on the different types of vertices and ed
 > const node = graph.idMap.get(id);
 > ```
 > 
-> In case you just need the name (`lexeme`) of the respective vertex, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L460"><code><span title="The code a given node spans, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a> can help you out:
+> In case you just need the name (`lexeme`) of the respective vertex, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L465"><code><span title="The code a given node spans, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a> can help you out:
 > 
 > ```ts
 > const name = RNode.lexeme(graph.idMap?.get(id));
@@ -381,7 +381,7 @@ and the corresponding helper objects (e.g., <a href="https://github.com/flowr-an
 Also in the first line, next to the [syntactic type](#vtx-synt-type), you can find the lexeme of the vertex (if it has one, e.g., for a variable definition or use).
 This usually represents the textual source string of the respective vertex, and is also linked to the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 For a clearer hierarchy, the lexeme is rendered in **bold** while the [syntactic type](#vtx-synt-type) is de-emphasized in _italics_ (mermaid markdown labels do not support a per-token font color, so a true gray tone would require styling the whole node). Only the token the source actually wrote is bold: when a call is shown with a package-qualified name that flowR *added* (e.g. the code wrote `acf` but it is displayed as `stats::acf`), the added `stats::` prefix stays non-bold, whereas a namespace written verbatim in the source is part of the lexeme and is bold as a whole.
-You can access the lexeme too with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L460"><code><span title="The code a given node spans, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a>.
+You can access the lexeme too with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L465"><code><span title="The code a given node spans, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a>.
 
 <h3 id="vtx-id">Vertex Id</h3>
 
@@ -1328,7 +1328,7 @@ The related function argument references are defined like this:
      
       <details><summary>View more (IdentifierReference)</summary>
 
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L631)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L641)**   
        An identifier reference points to a variable like `a` in `b <- a`.
        Without any surrounding code, `a` will produce the identifier reference `a`.
        Similarly, `b` will create a reference (although it will be an
@@ -1347,7 +1347,7 @@ The related function argument references are defined like this:
        or
        <code>unknown (`unknownReferences`)</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L631">src/dataflow/environments/identifier.ts#L631</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L641">src/dataflow/environments/identifier.ts#L641</a></summary>
        
        ```ts
        /**
@@ -1491,7 +1491,7 @@ This is hard to read in this form, as the `type` of these references is a bit-ma
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L572)**   
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L582)**   
    Each reference has exactly one reference type, stored as the respective number.
    However, when checking, we may want to allow for one of several types,
    allowing the combination of the respective bitmasks.
@@ -1501,7 +1501,7 @@ For more information on the types of references, please consult the implementati
    .
    In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
    while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L572">src/dataflow/environments/identifier.ts#L572</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L582">src/dataflow/environments/identifier.ts#L582</a></summary>
    
    ```ts
    /**
@@ -2101,7 +2101,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (790 entries)_
+> _Built-in Environment (795 entries)_
 > 
 > </details>
 > 
@@ -2821,7 +2821,7 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (790 entries)_
+_Built-in Environment (795 entries)_
 
 </details>
 
@@ -5528,7 +5528,7 @@ A summarized version of the produced environment looks like this:
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (790 entries)_
+_Built-in Environment (795 entries)_
 
 </details>
 
@@ -5890,7 +5890,7 @@ Everything else lives on a helper object named after the thing it works on:
 
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L46"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L63"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L110"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> for edges, e.g. `DfEdge.includesType(edge, EdgeType.Reads)` (see [below](#dfg-resolving-values))
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L277"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L282"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> for identifiers, e.g. `Identifier.toString(vertex.name)`
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L46"><code><span title="Helper functions to work with FunctionArguments . EmptyArgument marks an empty argument.">FunctionArgument</span></code></a> for the arguments of a call, e.g. `FunctionArgument.isNotEmpty(arg)`
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a> for everything that resolves, with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L46"><code><span title="Where to resolve, put together from a finished analysis: its graph, its id map and the configuration the analyzer was built with. Hand what this returns to Resolve.toValue and its kin, or to NodeValue , rather than assembling a ResolveInfo by hand.">Resolve::<b>infoOf</b></span></code></a> stating *where* to resolve, straight from an analyzer. Take the narrowest entry point:

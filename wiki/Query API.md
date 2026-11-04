@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-03, 16:33:56 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -1745,15 +1745,15 @@ points`"]
     48 -->|"arg"| 44
     48 -->|"reads"| 46
     48 -->|"arg"| 47
-    48 -->|"reads"| 11
-    48 -->|"reads"| 7
     48 -->|"reads"| 3
+    48 -->|"reads"| 7
+    48 -->|"reads"| 11
     48 -.->|"flow"| 50
     linkStyle 70 stroke:gray,color:gray;
     50 -->|"reads, arg"| 48
-    50 -->|"reads"| 11
-    50 -->|"reads"| 7
     50 -->|"reads"| 3
+    50 -->|"reads"| 7
+    50 -->|"reads"| 11
     50 -.->|"flow"| 52
     linkStyle 75 stroke:gray,color:gray;
     50 -->|"reads, arg"| 38
@@ -1764,9 +1764,9 @@ points`"]
     linkStyle 80 stroke:gray;
     52 -.->|"flow"| 54
     linkStyle 81 stroke:gray,color:gray;
-    54 -->|"reads"| 11
-    54 -->|"reads"| 7
     54 -->|"reads"| 3
+    54 -->|"reads"| 7
+    54 -->|"reads"| 11
     54 -.->|"flow"| 55
     linkStyle 85 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52

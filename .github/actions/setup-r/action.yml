@@ -68,6 +68,10 @@ runs:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
 
+    # rmarkdown renders through pandoc, which only the linux package install brings along
+    - name: "⬇️ Setup Pandoc"
+      uses: r-lib/actions/setup-pandoc@v2
+
     - name: "📋 List the R packages"
       id: packages
       if: inputs.packages == 'true'

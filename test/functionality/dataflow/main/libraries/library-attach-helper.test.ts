@@ -11,6 +11,7 @@ import { Identifier } from '../../../../../src/dataflow/environments/identifier'
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { metaPackageCore } from '../../../../../src/project/attached-packages';
+import { signaturePackageInfo } from '../../../../../src/queries/catalog/signature-query/signature-query-executor';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
@@ -107,6 +108,12 @@ describe('Dataflow.library answers what library(pkg) does', withTreeSitter(ts =>
 		libraryCase('a diamond attaches and loads every package once', 'diamond', ['diamond', 'chainB', 'chainC'], ['diamond', 'chainB', 'chainC']);
 		libraryCase('Imports of Imports are loaded, only the own Depends are attached', 'deepImporter', ['deepImporter', 'chainC'], ['deepImporter', 'importer', 'chainC', 'leaf']);
 		libraryCase('the newest version is used by default', 'versioned', ['versioned', 'other'], ['versioned', 'other']);
+	});
+
+	test(label('the signature query lists what library(pkg) attaches, transitively', ['library-loading', 'search-path'], ['other']), () => {
+		const src = db();
+		expect(signaturePackageInfo(src, 'chainA')?.attaches).toEqual(['chainB', 'chainC']);
+		expect(signaturePackageInfo(src, 'importer')?.attaches).toBeUndefined();
 	});
 
 	describe('meta-packages', () => {

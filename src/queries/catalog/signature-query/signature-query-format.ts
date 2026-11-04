@@ -161,8 +161,9 @@ export interface SignaturePackageView {
 	readonly coreVersions?: readonly string[];
 	readonly dependencies:  readonly SignatureDependencyView[];
 	/**
-	 * The packages that end up on the search path together with this one, so that {@link exportsTotal} is not
-	 * mistaken for everything `library(<name>)` brings into scope (see `attachedAlongside`).
+	 * The packages that end up on the search path together with this one, its `Depends` and a meta-package's core set,
+	 * and theirs in turn, so that {@link exportsTotal} is not mistaken for everything `library(<name>)` brings into
+	 * scope. Only what the database states; the analysis itself answers with `Dataflow.library.attaches`.
 	 */
 	readonly attaches?:     readonly string[];
 	readonly functions:     readonly SignatureFunctionView[];

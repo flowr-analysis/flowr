@@ -8,7 +8,7 @@ import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
-import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
@@ -40,6 +40,11 @@ export interface FlowrAnalysisOptions {
 	 * ```
 	 */
 	readonly gas?: GasOverrides;
+}
+
+export interface ForkOptions {
+	readonly lazy?:         boolean;
+	readonly forkDataflow?: boolean;
 }
 
 /**
@@ -224,6 +229,25 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.ctx = ctx;
 		ctx.setAnalyzer(this);
 		this.cache = cache;
+	}
+
+	public fork(options?: ForkOptions): FlowrAnalyzer {
+		const lazy = options?.lazy ?? false;
+		const forkDataflow = options?.forkDataflow ?? true;
+
+		const parser = this.parser // engines.engines[this.parser];
+		
+		const ctx = this.context().fork();
+		const cache = FlowrAnalyzerCache.create({
+			parser: parser,
+			context: ctx
+		});
+
+		return new FlowrAnalyzer(
+			parser,
+			ctx,
+			cache
+		);
 	}
 
 	public get flowrConfig(): FlowrConfig {

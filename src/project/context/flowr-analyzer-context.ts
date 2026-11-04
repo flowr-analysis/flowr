@@ -132,6 +132,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
+	private readonly _plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
 	private _detectedR:    string | undefined;
 
@@ -249,6 +250,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 		this.baseConfig = config;
 		this._config = config;
+		this._plugins = byType;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
@@ -259,6 +261,31 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
 		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
+	}
+
+	// creates a new instance of the FlowrAnalyzerContext based on the state of the old one
+	public fork(): FlowrAnalyzerContext {
+		const fork = new FlowrAnalyzerContext(this.baseConfig, this._plugins);
+		if(this.runtimeOverrides) {
+			fork.updateConfig(this.runtimeOverrides);
+		}
+
+		if(this._detectedR !== undefined){
+			fork.setDetectedRVersion(this._detectedR);
+		}
+
+		for(const file of this.files.getAllFiles()) {
+			fork.files.addFile(file);
+		}
+		for(const consideredFile of this.files.consideredFilesList()) {
+			fork.files.addConsideredFile(consideredFile);
+		}
+
+		fork.addRequests(this.files.loadingOrder.getUnorderedRequests());
+		for(const plugin of this.activatedPlugins) {
+			fork.activatedPlugins.add(plugin);
+		}
+		return fork;
 	}
 
 	/**

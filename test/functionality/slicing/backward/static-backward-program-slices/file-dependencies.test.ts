@@ -113,6 +113,9 @@ describe('File Dependencies', withTreeSitter(parser => {
 
 	describe('the slice computes what the program does', () => {
 		for(const [name, code, dropped] of [
+			['a database read sees the writes through the connection', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "d.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1:3))\ndbExecute(con, "INSERT INTO t VALUES (9)")\nprint(nrow(dbReadTable(con, "t")))', undefined],
+			['a database read needs the table appended to', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "d.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1))\ndbWriteTable(con, "u", data.frame(a = 1:5))\ndbAppendTable(con, "t", data.frame(a = 2))\nprint(dbReadTable(con, "t"))', undefined],
+			['a stubbed function is the one called', 'library(mockery)\nf <- function() 1\ng <- function() f()\nstub(g, "f", function() 2)\nprint(g())', undefined],
 			['tar and untar', 'write.csv(iris[1:3, ], "b.csv", row.names = FALSE)\nwrite.csv(cars, "c.csv")\ntar("a.tar", "b.csv")\nunlink("b.csv")\nuntar("a.tar", exdir = "o")\nd <- read.csv("o/b.csv")\nprint(d)', 'cars'],
 			['copy, then read the copy', 'writeLines("one", "x.txt")\nwriteLines("two", "y.txt")\nfile.copy("x.txt", "b.txt")\nprint(readLines("b.txt"))', '"two"'],
 			['copy into a directory', 'writeLines("one", "x.txt")\ndir.create("out")\nfile.copy("x.txt", "out")\nprint(readLines("out/x.txt"))', undefined],

@@ -4,7 +4,7 @@ import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
-import { attachDependencyToEnvironment, attachExportVertex } from './built-in-library';
+import { attachExportVertex, attachLibrary } from './built-in-library';
 import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
@@ -12,11 +12,11 @@ import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
+import { hiddenSideEffects, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
-import type { DataflowInformation } from '../../../../../info';
+import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
@@ -51,14 +51,14 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
  * reading the loading call from the export binding's `definedAt` in the (final, authoritative) environment.
  * Only vertices created on demand (exports actually referenced) get an edge, keeping the graph small.
  */
-export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environment: REnvironmentInformation): void {
+export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
 	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the
-	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or the target of a
-	 * `calls` edge. Both are read off the graph once here instead of per export binding. */
+	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or something points
+	 * to it, called or read as a value (`g <- select`). Both are read off the graph once here instead of per export binding. */
 	const called = new Set<NodeId>(graph.vertices(true).map(([id]) => id).filter(NodeId.isBuiltIn));
 	for(const [, outgoing] of graph.edges()) {
-		for(const [target, edge] of outgoing) {
-			if(NodeId.isBuiltIn(target) && DfEdge.includesType(edge, EdgeType.Calls)) {
+		for(const target of outgoing.keys()) {
+			if(NodeId.isBuiltIn(target)) {
 				called.add(target);
 			}
 		}
@@ -83,6 +83,8 @@ export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environme
 	/* the loader targets are `library()` call ids, never export ids, so the edges added here never make a further
 	 * export qualify -- the lazy checks this replaces could not have observed one either */
 	for(const [id, loadedAt] of loaders) {
+		/* an export only read as a value (`g <- select`) has no vertex yet, which a slice could not pass */
+		attachExportVertex(graph, id, environment, ctx);
 		graph.addEdge(id, loadedAt, EdgeType.Reads | EdgeType.Calls);
 	}
 }
@@ -174,26 +176,25 @@ function propagateTransitiveDefinitions(graph: DataflowGraph, environment: REnvi
  */
 function propagateTransitivePackages(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): { environment: REnvironmentInformation, grew: boolean } {
 	const summary = computeCallGraphSummaries(graph, ownLibraryCalls);
-	const reachable = new Map<string, NodeId>();   // package -> its loading `library()` call
-	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+	/* package to its loading `library()` call and, unless a call reaching it surely runs, the cds of one that may */
+	const reachable = new Map<string, { definedAt: NodeId, cds: readonly ControlDependency[] | undefined }>();
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(!graph.isRoot(id)) {
 			continue;
 		}
+		const cds = happensInEveryBranch(vertex.cds) ? undefined : vertex.cds;
 		for(const target of Dataflow.calleeIdsOf(graph, id)) {
 			for(const { pack, definedAt } of summary.get(target) ?? []) {
-				if(!reachable.has(pack)) {
-					reachable.set(pack, definedAt);
+				const known = reachable.get(pack);
+				if(known === undefined || (known.cds !== undefined && cds === undefined)) {
+					reachable.set(pack, { definedAt, cds });
 				}
 			}
 		}
 	}
 	let grew = false;
-	for(const [pack, definedAt] of reachable) {
-		const dependency = ctx.deps.getDependency(pack);
-		if(dependency === undefined) {
-			continue;
-		}
-		const next = attachDependencyToEnvironment(dependency, environment, ctx, {}, definedAt);
+	for(const [pack, { definedAt, cds }] of reachable) {
+		const next = attachLibrary(pack, ctx.deps.getDependency(pack), environment, ctx, {}, definedAt, cds);
 		if(next !== environment) {
 			environment = next;
 			grew = true;
@@ -226,6 +227,7 @@ function hiddenBuiltInAccess(graph: DataflowGraph, environment: REnvironmentInfo
 		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
 			if(NodeId.isBuiltIn(target) && (own === undefined || NodeId.toBuiltIn(Identifier.getName(own)) !== target)) {
 				const targets = Resolve.byNameAndType(NodeId.fromBuiltIn(target), { current: builtIns, level: 0 }, ReferenceType.Function) ?? [];
+				hiddenSideEffects(graph, environment, id, targets);
 				const defs = targets.flatMap(d => writesOfHiddenBuiltIn(d, id));
 				if(defs.length > 0) {
 					writesOf.get(id).push(...defs);

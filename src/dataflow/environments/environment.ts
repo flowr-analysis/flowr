@@ -18,7 +18,7 @@ import { define as defineInEnvironment } from './define';
 import { overwriteEnvironment } from './overwrite';
 import { cloneEnvironmentInformation } from './clone';
 import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from './scoping';
-import { Frame } from './frame-memory';
+import { Frame, LazyBindings } from './frame-memory';
 import type { MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
@@ -340,7 +340,7 @@ export class Environment implements IEnvironment {
 		if(!other || this === other) {
 			return this;
 		}
-		const shortcut = this.mergeShortcut(other);
+		const shortcut = this.mergeShortcut(other, append, applyCds);
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
@@ -379,17 +379,23 @@ export class Environment implements IEnvironment {
 	 * The environment a merge with `other` settles on without touching either memory, `undefined` if the
 	 * memories have to be merged. Package blocks are always unioned, never overwritten or appended to.
 	 */
-	private mergeShortcut(other: Environment): Environment | undefined {
+	private mergeShortcut(other: Environment, append: boolean, applyCds: readonly ControlDependency[] | undefined): Environment | undefined {
 		if(this.t !== undefined || other.t !== undefined) {
-			return this.mergePackageBlocks(other);
+			return this.mergePackageBlocks(other, append, applyCds);
 		}
 		return this.builtInEnv || this.n !== other.n ? this : undefined;
 	}
 
-	/** Unions two attached-package blocks, keeping every package once (memory merged for a package in both). */
-	private mergePackageBlocks(other: Environment): Environment {
+	/**
+	 * Unions two attached-package blocks, keeping every package once (memory merged for a package in both).
+	 * A package only one block has is only maybe attached if the blocks are alternatives (appended: two branches, a
+	 * loop body that may not run), or under `applyCds` if only `other` has it (a call in a branch attaching it).
+	 */
+	private mergePackageBlocks(other: Environment, append: boolean, applyCds: readonly ControlDependency[] | undefined): Environment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
+		const oneSided = (layer: Environment, fromOther: boolean): Environment | undefined =>
+			append ? maybeLayer(layer) : fromOther && applyCds !== undefined ? maybeLayer(layer, applyCds) : undefined;
 
 		/*
 		 * One block is the other plus the packages attached since (blocks grow at the front), so their union is
@@ -401,10 +407,12 @@ export class Environment implements IEnvironment {
 			: layersEndWith(otherLayers, thisLayers) ? otherLayers : undefined;
 		if(keep !== undefined) {
 			const base = thisBase.append(otherBase);
-			if(keep === thisLayers && base === thisBase) {
+			const onlyInKeep = keep.length - (keep === thisLayers ? otherLayers : thisLayers).length;
+			const front = keep.slice(0, onlyInKeep).map(l => oneSided(l, keep === otherLayers));
+			if(front.every(l => l === undefined) && keep === thisLayers && base === thisBase) {
 				return this;
 			}
-			return relinkLayers(keep.map(l => l.clone(false)), base);
+			return relinkLayers(keep.map((l, i) => front[i] ?? l.clone(false)), base);
 		}
 
 		/*
@@ -414,6 +422,8 @@ export class Environment implements IEnvironment {
 		 * Keyed by type and then by name, rather than by a `t:n` string built for every layer of every merge.
 		 */
 		const order: Environment[] = [];
+		const inBoth = new Set<Environment>();
+		const fromOther = new Set<Environment>();
 		const merged = new DefaultMap<EnvType | undefined, Map<string | undefined, Environment>>(() => new Map());
 		for(const layers of thisLayers.length > otherLayers.length ? [thisLayers, otherLayers] : [otherLayers, thisLayers]) {
 			for(const layer of layers) {
@@ -423,7 +433,10 @@ export class Environment implements IEnvironment {
 					const cloned = layer.clone(false);
 					byName.set(layer.n, cloned);
 					order.push(cloned);
-				} else if(!existing.sameMemoryAs(layer)) {
+					if(layers === otherLayers) {
+						fromOther.add(cloned);
+					}
+				} else if(inBoth.add(existing) && !existing.sameMemoryAs(layer)) {
 					for(const [name, value] of layer.memory) {
 						const old = existing.memory.get(name);
 						if(old !== value) {
@@ -434,7 +447,7 @@ export class Environment implements IEnvironment {
 			}
 		}
 
-		return relinkLayers(order, thisBase.append(otherBase));
+		return relinkLayers(order.map(l => inBoth.has(l) ? l : oneSided(l, fromOther.has(l)) ?? l), thisBase.append(otherBase));
 	}
 
 	public remove(id: Identifier) {
@@ -534,22 +547,66 @@ export const GlobalEnvEntryName = '.GlobalEnv';
  *  ({@link DefaultAttachPosition|2} by default); a position past the end attaches above the built-in env, mirroring R's clamping.
  */
 function attachPackageAt(this: void, current: Environment, blockTop: Environment, blockBottom: Environment, pos: number = DefaultAttachPosition): Environment {
-	const clonedCurrent = current.clone(false);
-	let anchor = clonedCurrent;
-	while(!anchor.globalEnv && !anchor.parent.builtInEnv) {
-		anchor.parent = anchor.parent.clone(false);
-		anchor = anchor.parent;
+	const [clonedCurrent, anchor] = cloneToPosition(current, pos);
+	blockBottom.parent = anchor.parent; // the built-in env, or the packages attached further down
+	anchor.parent = blockTop;
+	return clonedCurrent;
+}
+
+/** Removes the entry at the 1-based `search()` position `pos` (`detach`), with its imports layer; `current` itself if there is none. */
+function detachPackageAt(this: void, current: Environment, pos: number = DefaultAttachPosition): Environment {
+	const [clonedCurrent, anchor] = cloneToPosition(current, pos);
+	const entry = anchor.parent;
+	if(entry.builtInEnv || entry.t === undefined) {
+		return current;
 	}
-	/* walk past the `pos - 2` search entries below the global; an imports layer belongs to the entry above it and is never one itself */
+	anchor.parent = entry.parent.t === EnvType.Imports && entry.parent.n === entry.n ? entry.parent.parent : entry.parent;
+	return clonedCurrent;
+}
+
+/**
+ * A copy of the frames from `current` down to the frame right above the 1-based `search()` position `pos`, walking past
+ * the `pos - 2` entries below the global; an imports layer belongs to the entry above it and is never one itself.
+ */
+function cloneToPosition(this: void, current: Environment, pos: number): [Environment, Environment] {
+	const [cloned, global] = cloneToGlobal(current);
+	let anchor = global;
 	for(let skip = pos - DefaultAttachPosition; skip > 0 && !anchor.parent.builtInEnv; skip--) {
 		do{
 			anchor.parent = anchor.parent.clone(false);
 			anchor = anchor.parent;
 		} while(anchor.parent.t === EnvType.Imports);
 	}
-	blockBottom.parent = anchor.parent; // the built-in env, or the packages attached further down
-	anchor.parent = blockTop;
-	return clonedCurrent;
+	return [cloned, anchor];
+}
+
+/** A copy of the frames from `current` down to the global environment, so the search path below it can be changed; returns the copy and its global frame. */
+function cloneToGlobal(this: void, current: Environment): [Environment, Environment] {
+	const cloned = current.clone(false);
+	let global = cloned;
+	while(!global.globalEnv && !global.parent.builtInEnv) {
+		global.parent = global.parent.clone(false);
+		global = global.parent;
+	}
+	return [cloned, global];
+}
+
+/**
+ * `target` with the packages `source` attached as well: the search path is global, so what code evaluated in
+ * another environment attaches (`local(library(x), envir = e)`) is attached for the caller, too.
+ */
+function adoptSearchPathOf(this: void, target: Environment, source: Environment): Environment {
+	const into = findGlobalEnvironment(target), from = findGlobalEnvironment(source);
+	if(!into.globalEnv || !from.globalEnv || into.parent === from.parent) {
+		return target;
+	}
+	const block = into.parent.overwrite(from.parent);
+	if(block === into.parent) {
+		return target;
+	}
+	const [cloned, global] = cloneToGlobal(target);
+	global.parent = block;
+	return cloned;
 }
 
 /**
@@ -604,6 +661,10 @@ export const REnvironment = {
 	searchPath:       searchPathOf,
 	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
 	attachAt:         attachPackageAt,
+	/** Removes the entry at a `search()` position, the topmost by default; see {@link detachPackageAt}. */
+	detachAt:         detachPackageAt,
+	/** Takes over what another evaluation attached to the (global) search path; see {@link adoptSearchPathOf}. */
+	adoptSearchPath:  adoptSearchPathOf,
 	/** The `search()` position of a named entry; see {@link searchPositionOf}. */
 	searchPosition:   searchPositionOf,
 	/** The packages on the search path; see {@link attachedPackagesOf}. */
@@ -650,6 +711,20 @@ function relinkLayers(this: void, layers: readonly Environment[], base: Environm
 		current = layers[i];
 	}
 	return current;
+}
+
+/** A copy of the package layer whose bindings hold under `cds`, or, without, only maybe (the empty cds, no branch named). */
+function maybeLayer(this: void, layer: Environment, cds?: readonly ControlDependency[]): Environment {
+	const out = layer.clone(false);
+	const memory = layer.memory;
+	const asMaybe = (defs: readonly IdentifierDefinition[]): IdentifierDefinition[] => defs.map(d => cds !== undefined
+		? { ...d, cds: cds.concat(d.cds ?? []) }
+		: happensInEveryBranch(d.cds) ? { ...d, cds: d.cds?.slice() ?? [] } : d);
+	const lazy = memory instanceof Frame ? memory.lazy() : undefined;
+	out.adoptMap(lazy === undefined
+		? new Map([...memory].map(([name, defs]) => [name, asMaybe(defs)]))
+		: new LazyBindings(new Set(lazy.keys()), name => asMaybe(lazy.get(name) ?? []), `maybe|${ControlDependency.key(cds)}|${lazy.origin}`));
+	return out;
 }
 
 /** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */

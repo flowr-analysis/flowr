@@ -62,6 +62,10 @@ export const ControlDependency = {
 	/** The dependencies of `a` that `b` is not subject to as well. */
 	minus(this: void, a: readonly ControlDependency[], b: readonly ControlDependency[]): ControlDependency[] {
 		return a.filter(cd => !b.some(other => sameControlDependency(other, cd)));
+	},
+	/** A string telling the dependencies apart (by condition and branch), empty for none. */
+	key(this: void, cds: readonly ControlDependency[] | undefined): string {
+		return cds?.map(cd => `${String(cd.id)}:${String(cd.when)}`).join(',') ?? '';
 	}
 } as const;
 

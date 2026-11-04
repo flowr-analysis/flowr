@@ -217,8 +217,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Dynamic Search Path',
 							id:          'dynamic-search-path',
 							code:        ['search', 'searchpaths'],
-							supported:   'not',
-							description: '_Programmatically inspecting or mutating the search path with `search()`, `searchpaths()`, or detaching by position._ None of this is modelled, and `search()` reads as an unknown call.',
+							supported:   'partially',
+							description: '_Programmatically inspecting or mutating the search path with `search()`, `searchpaths()`, or detaching by position._ `search()` and `searchpaths()` read every `library`, `attach`, and `detach` before them, and `detach`/`unloadNamespace` remove the entry they name, but `search()` itself is not computed as a value.',
 							example:     codeBlock('r', 'library(stats)\nn <- search()\nprint(n[2])'),
 							url:         [RLang('Search path')]
 						},

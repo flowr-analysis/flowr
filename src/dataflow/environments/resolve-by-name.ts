@@ -151,10 +151,12 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 				}
 			}
 			if(allOk) {
+				/* a definite definition ends the walk, the maybe ones above it still count */
+				const result = definitions ? definitions.concat(definition) : definition;
 				if(flattenAt !== undefined) {
-					tailCacheOf(flattenAt, target).set(name, definition);
+					tailCacheOf(flattenAt, target).set(name, result);
 				}
-				return definition;
+				return result;
 			}
 			const filtered = allWanted ? definition : definition.filter(wantedType);
 			if(filtered.length > 0) {
@@ -213,7 +215,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
 			if(definition.every(inEveryBranch)) {
-				return remember(environment, id, definition);
+				return remember(environment, id, definitions ? definitions.concat(definition) : definition);
 			} else if(definition.length > 0) {
 				definitions = definitions ? definitions.concat(definition) : definition;
 			}

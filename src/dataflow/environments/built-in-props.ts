@@ -181,6 +181,8 @@ export enum SemanticCallTag {
 	AttachesPackage = 'attaches-package',
 	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
 	ChecksPackage   = 'checks-package',
+	/** takes a package off the search path, like `detach` or `unloadNamespace` */
+	DetachesPackage = 'detaches-package',
 	/** registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` */
 	Declares        = 'declares',
 	/** reads which environment it runs in, like `environment()` or `parent.frame()`, so moving the call into another frame changes its result */
@@ -277,7 +279,7 @@ export const PropagatedProps: PropMask = getPropMask([
 	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
 	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
 	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript, SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage,
-	SemanticCallTag.ChecksPackage
+	SemanticCallTag.ChecksPackage, SemanticCallTag.DetachesPackage
 ]);
 
 /** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s */

@@ -6,7 +6,6 @@ import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
 import { ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { REnvironmentInformation } from '../environments/environment';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
@@ -15,6 +14,11 @@ import { baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
+import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { attachLibrary, type AttachSpec } from '../internal/process/functions/call/built-in/built-in-library';
+import { type Environment, EnvType, REnvironment, type REnvironmentInformation } from '../environments/environment';
+import { DepType } from '../../project/sigdb/schema';
+import { metaPackageCore } from '../../project/attached-packages';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -26,6 +30,7 @@ import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
  * - {@link Dataflow.calleesOf}/{@link Dataflow.calleeIdsOf}/{@link Dataflow.callTargetsOf}/{@link Dataflow.callsIn} - for what a call calls and what a definition calls,
  * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
  * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
+ * - {@link Dataflow.library} - for what `library(pkg)` attaches, loads, and puts on the search path, without analyzing any code,
  *
  * What it used to re-expose under a second name is imported directly instead: {@link DfEdge} for the edges,
  * {@link CallGraph} for the call-graph view, {@link Resolve} for name and value resolution, and
@@ -404,6 +409,25 @@ export const Dataflow = {
 	 */
 	provenanceGraph(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>): DataflowGraph {
 		return Dataflow.reduceGraph(graph, Dataflow.provenance(id, graph, consider));
+	},
+	/**
+	 * What `library(pkg)` does, asked without analyzing any code.
+	 * @example
+	 * ```ts
+	 * const ctx = analyzer.context();
+	 * Dataflow.library.attaches(ctx, 'tidyverse'); // the search() entries it adds
+	 * Dataflow.library.loads(ctx, 'tidyverse');    // every namespace it loads
+	 * Dataflow.library.layers(ctx, 'tidyverse');   // the namespace and imports environments themselves
+	 * ```
+	 */
+	library: {
+		name:     'library',
+		/** The `search()` entries `library(pkg)` adds; see {@link libraryAttachesOf}. */
+		attaches: libraryAttachesOf,
+		/** The namespaces `library(pkg)` loads; see {@link libraryLoadsOf}. */
+		loads:    libraryLoadsOf,
+		/** The environment layers `library(pkg)` adds to the search path; see {@link libraryLayersOf}. */
+		layers:   libraryLayersOf
 	}
 } as const;
 
@@ -433,4 +457,45 @@ function aliasedBaseR(graph: DataflowGraph, id: NodeId, origins: readonly Origin
 	const [name] = names;
 	const owner = names.size === 1 ? baseRExportOwner(name) : undefined;
 	return owner === undefined ? undefined : Identifier.make(name, owner);
+}
+
+/**
+ * The layers `library(pkg)` puts on an empty search path, innermost first, built by the {@link attachLibrary} the
+ * analysis uses: per attached package its namespace (exports) and imports layer, or for an unresolved one what flowR
+ * states about it or a bare {@link EnvType.LoadedNamespace}. `layer.n` is the package, `layer.t` the type, `layer.memory` the bindings.
+ */
+function libraryLayersOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, spec?: AttachSpec): readonly Environment[] {
+	return [...REnvironment.searchPath(attachLibrary(pkg, ctx.deps.getDependency(pkg), ctx.env.makeCleanEnv(), ctx, spec).current)];
+}
+
+/** The `search()` entries `library(pkg)` adds, in `search()` order: `pkg`, its `Depends` and a meta-package's core set, recursively. */
+function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, spec?: AttachSpec): readonly string[] {
+	if(spec?.namespaceOnly) {
+		return []; // loading a namespace puts nothing on the search path
+	}
+	return libraryLayersOf(ctx, pkg, spec).filter(l => l.t !== EnvType.Imports && l.n !== undefined).map(l => l.n as string);
+}
+
+/** The packages loading `pkg` loads directly: its `Depends` and `Imports`, its `NAMESPACE` imports, and a meta-package's core set. */
+function directLoadsOf(ctx: FlowrAnalyzerContext, pkg: string): string[] {
+	const db = ctx.deps.signatures();
+	const dependency = ctx.deps.getDependency(pkg);
+	return [
+		...(db.sources().dependencies(pkg, db.versionOf(pkg)) ?? [])
+			.filter(d => (d.type === DepType.Depends || d.type === DepType.Imports) && d.name !== 'R').map(d => d.name),
+		...dependency?.namespaceInfo?.importedPackages.keys() ?? [],
+		...dependency?.dependencies?.map(d => d.name) ?? [],
+		...metaPackageCore(pkg, db.versionOf(pkg))
+	];
+}
+
+/** The namespaces `library(pkg)` loads, `pkg` first: the closure over {@link directLoadsOf} at the versions the analysis assumes. */
+function libraryLoadsOf(this: void, ctx: FlowrAnalyzerContext, pkg: string): readonly string[] {
+	const loaded = new Set([pkg]);
+	for(const p of loaded) {
+		for(const d of directLoadsOf(ctx, p)) {
+			loaded.add(d);
+		}
+	}
+	return [...loaded];
 }

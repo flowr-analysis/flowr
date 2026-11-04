@@ -30,7 +30,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		//namespace:ggplot2 -> imports:ggplot2 -> globalEnv -> ...
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		const imported = createImportedFunctions([['random_placeholder', rPSsymbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
+		/* as in R, only what the NAMESPACE itself imports, not what the imported packages import in turn */
+		const imported = createImportedFunctions([['random_placeholder', rPSsymbols]]);
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
 	});
 
@@ -52,8 +53,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const rP3Symbols = ['a', 'b'];
 		// random_placeholder3 namespace -> random_placeholder3 imports -> random_placeholder2 namespace -> random_placeholder2 imports -> ggplot2 namespace -> ggplot2 imports -> global environment
 		const imp3 = createImportedFunctions([['random_placeholder2', ['test3']]]);
-		const imp2 = createImportedFunctions([['random_placeholder3', ['a']], ['ggplot2', ggplotSymbols], ['random_placeholder', rP1symbols]]);
-		const impggplot = createImportedFunctions([['random_placeholder', rP1symbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
+		const imp2 = createImportedFunctions([['random_placeholder', rP1symbols]]);
+		const impggplot = createImportedFunctions([['random_placeholder', rP1symbols]]);
 		expect(env.n === 'random_placeholder3' && env.t === EnvType.Namespace && compare(new Set(rP3Symbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'random_placeholder3' && env.t === EnvType.Imports && compare(new Set(imp3), new Set(env.memory.keys()))).toBeTruthy();

@@ -442,7 +442,8 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
 		.map(d => compactRecord({ type: DepTypeNames[d.type], name: d.name, constraint: d.constraint }));
 	const release = src.releaseDate(pkg, resolved);
-	const attaches = attachedAlongside(pkg, [src], resolved);
+	const { depends, onAttach } = attachedAlongside(pkg, [src], resolved);
+	const attaches = [...depends, ...onAttach];
 	return compactRecord({
 		name:          pkg,
 		version:       exports.version,

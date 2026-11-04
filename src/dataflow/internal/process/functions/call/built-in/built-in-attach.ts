@@ -7,13 +7,16 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Environment, REnvironment } from '../../../../../environments/environment';
+import { DefaultAttachPosition, Environment, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
-import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { resolveAttachPosition, resolveSymbolToEnvir } from './built-in-envir-utils';
+import { AmbientStateAccessType } from './built-in-ambient-state';
+import { keysOf } from './built-in-ambient-keys';
+import { UnknownKey } from '../../../../../environments/ambient-state-name';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
+import type { AmbientConfig } from '../../../../../environments/built-in';
 
 /** Processes `attach(what, ...)`, injecting the tracked env's known definitions into a new scope layer below `.GlobalEnv`. */
 export function processAttach<OtherInfo>(
@@ -21,17 +24,8 @@ export function processAttach<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[] } = {}
-): DataflowInformation {
-	const result = attachLayer(name, args, rootId, data);
-	return config.ambient === undefined ? result : applyAmbientStateAccess(result, args, rootId, data, config.ambient);
-}
-
-function attachLayer<OtherInfo>(
-	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
+	/* the search path it writes is applied by the registration, see {@link AmbientConfig} */
+	_config: AmbientConfig = {}
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Attach }).information;
 
@@ -64,4 +58,32 @@ function attachLayer<OtherInfo>(
 		current: REnvironment.attachAt(result.environment.current, attachedLayer, attachedLayer),
 		level:   result.environment.level
 	} };
+}
+
+/**
+ * Processes `detach(name)` and `unloadNamespace(ns)`: the search path entry named (`package:x`, `"x"`, a position, the
+ * topmost one if nothing is given) is removed, uncovering what it masked. The entry is read with the keys of the
+ * call's search path {@link AmbientConfig|ambient} write.
+ */
+export function processDetach<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AmbientConfig = {}
+): DataflowInformation {
+	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Detach }).information;
+	const keys = [config.ambient ?? []].flat().flatMap(a => a.type === AmbientStateAccessType.SetKeyed ? keysOf(a.keys, args, data) : []);
+	const first = RArgument.valueOf(args.find(a => a !== EmptyArgument));
+	const positions = first === undefined ? [DefaultAttachPosition]
+		: keys.includes(UnknownKey) ? [resolveAttachPosition(first.info.id, data)]
+			: keys.map(k => REnvironment.searchPosition(info.environment.current, k));
+	/* what a later read no longer finds still depends on the removal, which only an unknown side effect tells it */
+	handleUnknownSideEffect(info.graph, info.environment, rootId);
+	if(!positions.includes(undefined)) {
+		for(const pos of positions) {
+			info.environment = { level: info.environment.level, current: REnvironment.detachAt(info.environment.current, pos) };
+		}
+	}
+	return info;
 }

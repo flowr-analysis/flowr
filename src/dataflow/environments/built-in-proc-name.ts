@@ -98,6 +98,8 @@ export enum BuiltInProcName {
 	Try = 'builtin:try',
 	/** for `attach` calls that inject environment contents into the search path, see {@link processAttach} */
 	Attach = 'builtin:attach',
+	/** for `detach` and `unloadNamespace`, see {@link processDetach} */
+	Detach = 'builtin:detach',
 	EnvContents = 'builtin:env-contents',
 	ListToEnv = 'builtin:list2env',
 	/** for `new.env` and related environment-creation calls, see {@link processNewEnv} */

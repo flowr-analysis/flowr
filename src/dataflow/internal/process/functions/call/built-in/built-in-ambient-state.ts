@@ -29,6 +29,7 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientStateName, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 import { type AmbientKeys, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
@@ -823,11 +824,16 @@ function isQuery<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo &
 function resultIsUsed<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const node = data.completeAst.idMap.get(rootId);
 	const parent = node === undefined ? undefined : RNode.directParent(node, data.completeAst.idMap);
-	if(!RExpressionList.is(parent)) {
-		return parent !== undefined;
+	if(parent === undefined) {
+		return false;
+	} else if(RExpressionList.is(parent)) {
+		/* a block yields its last value, which is used where the block's is */
+		return parent.children.at(-1)?.info.id === rootId && !data.completeAst.ast.files.some(f => f.root.info.id === parent.info.id) && resultIsUsed(parent.info.id, data);
+	} else if(RIfThenElse.is(parent)) {
+		return parent.condition.info.id === rootId || resultIsUsed(parent.info.id, data);
 	}
-	const isLast = parent.children.at(-1)?.info.id === rootId;
-	return isLast && !data.completeAst.ast.files.some(f => f.root.info.id === parent.info.id);
+	/* a loop discards what its body yields */
+	return !(RLoopConstructs.is(parent) && parent.body.info.id === rootId);
 }
 
 /** Links state reads in a loop body to the body's own writes of a later iteration and returns them, as the first iteration reads what is there before the loop. */

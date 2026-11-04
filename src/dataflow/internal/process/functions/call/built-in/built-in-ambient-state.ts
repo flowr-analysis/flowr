@@ -654,7 +654,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 	};
 	/* in a loop, an earlier round may have opened a device this one leaves behind, or a close may leave one open */
 	const repeats = RLoopConstructs.encloses(rootId, data.completeAst.idMap);
-	const earlierRound: IdentifierDefinition[] = repeats ? [{ nodeId: rootId, name: AmbientStateName.device, type: ReferenceType.Variable, definedAt: rootId, cds: cds ?? [] } as IdentifierDefinition] : [];
+	const earlierRound: IdentifierDefinition[] = repeats ? [{ nodeId: rootId, name: AmbientStateName.device, type: ReferenceType.Variable, definedAt: rootId, cds: cds ?? [] }] : [];
 	switch(kind) {
 		case 'open':
 			environment = setAmbient(environment, AmbientStateName.otherDevices, [...others, ...current, ...earlierRound]);
@@ -846,11 +846,11 @@ export function linkAmbientStateWithinLoop(graph: DataflowGraph, reads: readonly
 /** A scoped state change (`withr`, `rlang`): `with_*` undoes it after its code, `local_*` when the calling function returns. */
 export interface AmbientScope {
 	/** the state the scope changes; the keyed ones (`options`, environment variables, locale) take the entries the call names */
-	readonly state:  'options' | 'graphics' | 'device' | 'rng' | 'wd' | KeyedState.Env | KeyedState.Locale
+	readonly state:     'options' | 'graphics' | 'device' | 'rng' | 'wd' | KeyedState.Env | KeyedState.Locale
 	/** the formals in order, used to bind the arguments */
-	readonly params: readonly string[]
+	readonly params:    readonly string[]
 	/** the formal evaluated with the change in effect, absent for the `local_*` variants */
-	readonly code?:  string
+	readonly code?:     string
 	/** the formal holding a list of the new values (`list(digits = 3)`), other named arguments are values too */
 	readonly new?:      string
 	/** the scope changes nothing, it only restores the state afterward (`with_preserve_seed`) */

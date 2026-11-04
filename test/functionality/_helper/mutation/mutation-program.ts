@@ -131,6 +131,13 @@ export class MutationProgram {
 		return this.slice(SourceRange.ownFromNode(node) ?? this.span(node));
 	}
 
+	/** how `call` names what it calls, with the namespace it may give (`stats::filter`) */
+	callee(call: RFunctionCall<ParentInformation> & { named: true }): string {
+		const [sl, sc] = this.span(call);
+		const [, , el, ec] = SourceRange.ownFromNode(call.functionName) ?? this.span(call.functionName);
+		return this.slice([sl, sc, el, ec]);
+	}
+
 	/** every node below `node` (the whole program if there is none) in the order they are written */
 	nodes(node?: RNodeWithParent): RNodeWithParent[] {
 		const all: RNodeWithParent[] = [];
@@ -314,7 +321,7 @@ export class MutationProgram {
 			}
 			const info = RFunctionCall.is(parent) ? this.callInfo(parent) : undefined;
 			if(info !== undefined && (FunctionSemantics.call.props.hasAny(info, CallProp.Lang)
-				|| FunctionSemantics.call.props.hasAny(info, [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage]))) {
+				|| FunctionSemantics.call.props.hasAny(info, [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage, SemanticCallTag.DetachesPackage]))) {
 				return true;
 			}
 		}

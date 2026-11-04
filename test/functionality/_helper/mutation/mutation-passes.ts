@@ -563,7 +563,7 @@ const nestedCallToPipe = new AssignmentPass({
 		|| rest.includes(undefined)) {
 		return undefined;
 	}
-	return `${name} <- ${program.text(piped)} |> ${program.token(call.functionName)}(${rest.map(a => program.text(a as RNodeWithParent)).join(', ')}) |> ${program.token(outer.functionName)}()`;
+	return `${name} <- ${program.text(piped)} |> ${program.callee(call)}(${rest.map(a => program.text(a as RNodeWithParent)).join(', ')}) |> ${program.callee(outer)}()`;
 });
 
 const pipeAsCall = new ConstructPass({
@@ -577,7 +577,7 @@ const pipeAsCall = new ConstructPass({
 	/* the placeholder `_` names where the left side goes, which is no longer the first argument */
 	const placeholder = program.nodes(call).some(n => (RSymbol.is(n) && Identifier.getName(n.content) === '_') || RPipe.is(n));
 	return args === undefined || lhs === undefined || !MutationProgram.isPrimary(lhs) || placeholder || !RFunctionCall.is(call) || !call.named ? undefined
-		: `${program.token(call.functionName)}(${[program.text(lhs), ...args].join(', ')})`;
+		: `${program.callee(call)}(${[program.text(lhs), ...args].join(', ')})`;
 });
 
 const doCall: PassSpec = {
@@ -637,13 +637,13 @@ const doCallPass = new PlainCallPass(doCall, (call, program) => {
 		|| program.nodes(a).some(n => RFunctionDefinition.is(n) || (RSymbol.is(n) && Identifier.getName(n.content) === '...')))) {
 		return undefined;
 	}
-	return `do.call(${program.token(call.functionName)}, list(${args.map(a => program.text(a as RNodeWithParent)).join(', ')}))`;
+	return `do.call(${program.callee(call)}, list(${args.map(a => program.text(a as RNodeWithParent)).join(', ')}))`;
 });
 
 const identityPass = new PlainCallPass(identityArgument, (call, program) => {
 	const args = MutationProgram.argumentsOf(call);
 	const at = args.findIndex(a => isArgument(a) && a.name === undefined && RSymbol.is(a.value) && !Identifier.getName(a.value.content).startsWith('..'));
-	return at < 0 ? undefined : `${program.token(call.functionName)}(${args.map((a, i) => i === at ? `identity(${program.text(a as RNodeWithParent)})` : program.text(a as RNodeWithParent)).join(', ')})`;
+	return at < 0 ? undefined : `${program.callee(call)}(${args.map((a, i) => i === at ? `identity(${program.text(a as RNodeWithParent)})` : program.text(a as RNodeWithParent)).join(', ')})`;
 });
 
 /** how many passes follow each pass in a chain of two the robustness checks try, so chains reach every pass without trying every pair */

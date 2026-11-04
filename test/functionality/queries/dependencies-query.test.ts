@@ -256,7 +256,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 		testQuery('a function ending in a visible call echoes, also when called through another', 'make_it <- function(p) file.create(p)\nvia <- function(p) make_it(p)\nvia("r.txt")', {
 			write: [
-				{ nodeId: '1@file.create', functionName: 'file.create', value: 'r.txt', inputVariables: ['p'] },
+				/* the path is no data the call consumes */
+				{ nodeId: '1@file.create', functionName: 'file.create', value: 'r.txt' },
 				{ nodeId: '3@via', functionName: 'via', value: 'stdout', implicit: true },
 				{ nodeId: '2@make_it', functionName: 'make_it', value: 'r.txt', via: 6 },
 				{ nodeId: '3@via', functionName: 'via', value: 'r.txt', via: 16 }
@@ -626,7 +627,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a', inputVariables: ['obj'] }] });
 		testQuery('export_graph', 'export_graph(file_name = "a")', { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
 
-		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
+		/* dump names the variable it writes, so it reads it */
+		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt', inputVariables: ['My text'] }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
 		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { write: [{ nodeId: '2@cat', functionName: 'cat', value: 'foo', linkedIds: [3] }] });
@@ -653,7 +655,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 
 		testCustomFunctions('write', { writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }] }, 'write.custom.file',
-			'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] },
+			'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt', inputVariables: ['My text'] }] },
 			['library', 'read', 'source']);
 	});
 

@@ -647,6 +647,9 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		assertSliced(label('A seed set after the last draw is not kept', rngCaps), shell, 'set.seed(1)\nv <- runif(1)\nset.seed(2)\nv', ['4@v'], 'set.seed(1)\nv <- runif(1)\nv', { expectedOutput: '[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
 		assertSliced(label('A generator kind with no draw after it is not kept', rngCaps), shell, 'RNGkind("Wichmann-Hill")\nu <- 3\nv <- u\nv', ['4@v'], 'u <- 3\nv <- u\nv');
 		assertSliced(label('A generator kind set after the last draw is not kept', rngCaps), shell, 'set.seed(1)\nv <- runif(1)\nRNGkind("Wichmann-Hill")\nv', ['4@v'], 'set.seed(1)\nv <- runif(1)\nv');
+		/* a new kind reseeds the generator from its state, even the same kind */
+		assertSliced(label('A generator kind set before a draw is kept with the seed before it', rngCaps), shell, 'set.seed(1)\nRNGkind("Mersenne-Twister")\nv <- runif(1)\nv', ['4@v'], 'set.seed(1)\nRNGkind("Mersenne-Twister")\nv <- runif(1)\nv', { expectedOutput: '[1] 0.1886809', expectedSliceOutput: '[1] 0.1886809' });
+		assertSliced(label('RNGversion changes what sample draws', rngCaps), shell, 'set.seed(1)\nsuppressWarnings(RNGversion("3.5.0"))\nv <- sample(10, 1)\nv', ['4@v'], 'set.seed(1)\nRNGversion("3.5.0")\nv <- sample(10, 1)\nv', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		assertSliced(label('A local .Random.seed is not the state of the generator', [...rngCaps, 'normal-definition']), shell, 'f <- function() { .Random.seed <- c(1L, 2L); 1 }\nset.seed(1)\nf()\nv <- runif(1)\nv', ['5@v'], 'set.seed(1)\nv <- runif(1)\nv', { expectedOutput: '[1] 1\n[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
 		assertSliced(label('A local .Random.seed does not cut a draw in the same function from the seed', [...rngCaps, 'normal-definition']), shell, 'set.seed(1)\nf <- function() { .Random.seed <- 3; runif(1) }\nv <- f()\nv', ['4@v'], 'set.seed(1)\nf <- function() runif(1)\nv <- f()\nv', { expectedOutput: '[1] 0.2655087', expectedSliceOutput: '[1] 0.2655087' });
 		assertSliced(label('A data set that is not read is not loaded', rngCaps), shell, 'data("iris")\ndata("mtcars")\nv <- nrow(iris)\nv', ['4@v'], 'data("iris")\nv <- nrow(iris)\nv', { expectedOutput: '[1] 150', expectedSliceOutput: '[1] 150' });
@@ -669,6 +672,60 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")', ['1@v'],
 		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")'
 		);
+		describe('search path', () => {
+			const searchCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines', 'library-loading', 'dynamic-search-path'];
+			function searchCase(name: string, code: string) {
+				assertSliced(label(name, searchCaps), shell, code, [`${code.split('\n').length}@print`], code);
+			}
+			searchCase('search reads a detach', 'library(stats4)\ndetach("package:stats4")\nprint(length(search()))');
+			searchCase('search reads a library loaded by a callback', 'sapply("stats4", library, character.only = TRUE)\nprint("package:stats4" %in% search())');
+			searchCase('search reads an unloaded namespace', 'library(stats4)\nunloadNamespace("stats4")\nprint("package:stats4" %in% search())');
+			searchCase('exists sees a detach', 'attach(list(foo = 1))\ndetach()\nprint(exists("foo"))');
+			searchCase('find reads a library called in a function', 'f <- function() library(stats4)\nf()\nprint(length(find("mle")))');
+			searchCase('exists sees the detach of a package', 'library(stats4)\ndetach("package:stats4")\nprint(exists("mle"))');
+			searchCase('a detach uncovers the variable attached before', 'attach(list(foo = 1))\nattach(list(foo = 2))\ndetach()\nprint(foo)');
+		});
+		describe('devices', () => {
+			const deviceCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'null', 'call-normal', 'unnamed-arguments', 'newlines'];
+			function deviceCase(name: string, code: string) {
+				assertSliced(label(name, deviceCaps), shell, code, [`${code.split('\n').length}@print`], code);
+			}
+			deviceCase('dev.cur reads the devices opened', 'pdf(NULL)\npdf(NULL)\nx <- dev.cur()\nprint(x)');
+			deviceCase('dev.list reads the devices opened', 'pdf(NULL)\ndev.new()\nprint(length(dev.list()))');
+			deviceCase('dev.cur reads the device switched to', 'pdf(NULL)\npdf(NULL)\ndev.set(2)\nx <- dev.cur()\nprint(x)');
+		});
+		describe('environment variables set indirectly', () => {
+			const envCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'named-arguments', 'newlines', 'function-definitions'];
+			function envCase(name: string, code: string) {
+				assertSliced(label(name, envCaps), shell, code, [`${code.split('\n').length}@print`], code);
+			}
+			envCase('do.call sets a variable', 'do.call(Sys.setenv, list(FOO = "a"))\nprint(Sys.getenv("FOO"))');
+			envCase('do.call unsets a variable', 'Sys.setenv(FOO = "a")\ndo.call(Sys.unsetenv, list("FOO"))\nprint(Sys.getenv("FOO"))');
+			envCase('an apply unsets a variable', 'Sys.setenv(FOO = "a")\nsapply("FOO", Sys.unsetenv)\nprint(Sys.getenv("FOO"))');
+			envCase('an alias sets a variable', 'f <- Sys.setenv\nf(FOO = "a")\nprint(Sys.getenv("FOO"))');
+			envCase('a parameter sets a variable', 'g <- function(h, ...) h(...)\ng(Sys.setenv, FOO = "a")\nprint(Sys.getenv("FOO"))');
+		});
+		describe('working directory', () => {
+			const wdCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'];
+			function wdCase(name: string, code: string) {
+				assertSliced(label(name, wdCaps), shell, code, [`${code.split('\n').length}@print`], code);
+			}
+			wdCase('dir.exists resolves against the working directory', 'setwd("/")\nprint(dir.exists("tmp"))');
+			wdCase('file_test resolves against the working directory', 'setwd("/")\nprint(file_test("-d", "tmp"))');
+			wdCase('file.access resolves against the working directory', 'setwd("/")\nprint(file.access("tmp") == 0)');
+			wdCase('normalizePath resolves against the working directory', 'setwd("/")\nprint(normalizePath("tmp"))');
+		});
+		describe('state left by an earlier call of the same function', () => {
+			const repeatCaps: FlowrCapabilityId[] = ['functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'function-definitions', 'implicit-return'];
+			function repeatCase(name: string, body: readonly [string, string]) {
+				const code = `g <- function() { x <- ${body[0]}; ${body[1]}; x }\na <- g()\nb <- g()\nprint(b)`;
+				assertSliced(label(name, repeatCaps), shell, code, ['4@print'], `g <- function() {\n        x <- ${body[0]}\n        ${body[1]}\n        x\n    }\ng()\nb <- g()\nprint(b)`);
+			}
+			repeatCase('A seed set at the end seeds the next call', ['runif(1)', 'set.seed(1)']);
+			repeatCase('A directory set at the end is the one of the next call', ['getwd()', 'setwd("/")']);
+			repeatCase('A graphics parameter set at the end is read by the next call', ['par("mfrow")', 'par(mfrow = c(1, 2))']);
+			repeatCase('A generator kind set at the end is used by the next call', ['runif(1)', 'RNGkind("Wich")']);
+		});
 		mapCase('Points Should Link to Plot', 'plot(f)\npoints(g)', '2@points', 'plot(f)\npoints(g)');
 		mapCase('Custom plot should have no links', 'plot <- function() {}\nplot(f)\npoints(g)', '3@points', 'points(g)');
 		mapCase('A call after the criterion does not define for it', 'f <- function() { x <<- 1 }\nf()\ny <- x\nf()', '3@y', 'f <- function() x <<- 1\nf()\ny <- x');
@@ -732,6 +789,13 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('local_options ends with the function', 'library(withr)\nf <- function() {\n\tlocal_options(list(digits=3))\n\tgetOption("digits")\n}\noptions(digits=5)\nx <- f()\ny <- getOption("digits")', '8@y', 'options(digits=5)\ny <- getOption("digits")');
 			optionCase('local_options within the function', 'library(withr)\nf <- function() {\n\tlocal_options(list(digits=3))\n\tgetOption("digits")\n}\nx <- f()', '6@x', 'library(withr)\nf <- function() {\n        local_options(list(digits=3))\n        getOption("digits")\n    }\nx <- f()');
 			optionCase('local_options at the top level stays', 'library(withr)\nlocal_options(digits=4)\nx <- getOption("digits")', '3@x', 'library(withr)\nlocal_options(digits=4)\nx <- getOption("digits")');
+			/* the working directory, environment variables and the locale are scoped the same way */
+			optionCase('with_dir sets the directory for its code', 'library(withr)\nx <- with_dir("sub", getwd())', '2@x', 'library(withr)\nx <- with_dir("sub", getwd())');
+			optionCase('with_dir restores the directory', 'setwd("a")\nlibrary(withr)\nwith_dir("b", print(1))\nx <- getwd()', '4@x', 'setwd("a")\nx <- getwd()');
+			optionCase('local_dir ends with the function', 'library(withr)\nf <- function() {\n\tlocal_dir("b")\n\tgetwd()\n}\nsetwd("a")\nx <- f()\ny <- getwd()', '8@y', 'setwd("a")\ny <- getwd()');
+			optionCase('with_envvar sets the variable for its code', 'library(withr)\nx <- with_envvar(c(A = "1"), Sys.getenv("A"))', '2@x', 'library(withr)\nx <- with_envvar(c(A = "1"), Sys.getenv("A"))');
+			optionCase('with_envvar restores the variable', 'Sys.setenv(A = "2")\nlibrary(withr)\nwith_envvar(c(A = "1"), print(1))\nx <- Sys.getenv("A")', '4@x', 'Sys.setenv(A = "2")\nx <- Sys.getenv("A")');
+			optionCase('with_envvar leaves other variables alone', 'Sys.setenv(B = "2")\nlibrary(withr)\nx <- with_envvar(c(A = "1"), Sys.getenv("B"))', '3@x', 'Sys.setenv(B = "2")\nlibrary(withr)\nx <- with_envvar(c(A = "1"), Sys.getenv("B"))');
 			optionCase('rlang::with_options', 'library(rlang)\noptions(digits=5)\nx <- with_options(getOption("digits"), digits=2)', '3@x', 'library(rlang)\nx <- with_options(getOption("digits"), digits=2)');
 			/* R prints every visible value at the top level of a script */
 			optionCase('Auto-printing reads the printing options', 'options(digits=2)\nx <- pi\nx', '3@x', 'options(digits=2)\nx <- pi\nx');
@@ -1193,6 +1257,16 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		['factory over writeLines', 'p <- tempfile()\nmk <- function(f) function() f("w", p)\nh <- mk(writeLines)\nh()\nprint(readLines(p))'],
 		['factory over a built-in writing no file', 'p <- tempfile()\nwriteLines("a", p)\nmk <- function(f) function() f("w")\nh <- mk(nchar)\nh()\nprint(readLines(p))', 'h()'],
 		['withr::local_seed in a function', 'f <- function() { withr::local_seed(3); runif(1) }\nset.seed(1)\nf()\nprint(runif(1))'],
+		['devices opened in a loop and closed in another', 'n <- 0\nfor(i in 1:3) { pdf(NULL); n <- n + 1 }\nfor(i in 1:2) dev.off()\nprint(names(dev.cur()))', 'n <- n + 1'],
+		['needs attaches a package', 'invisible(capture.output(needs::needs(tools), type = "message"))\nprint(file_ext("a.txt"))'],
+		['needs attaches a package named with its version', 'invisible(capture.output(needs::needs(tools = "4.0"), type = "message"))\nprint(file_ext("a.txt"))'],
+		['conflicted prefers a package', 'suppressMessages({ library(conflicted); library(dplyr) })\nsuppressMessages(conflict_prefer("filter", "stats"))\nprint(as.vector(filter(1:5, rep(1, 2))))'],
+		['conflicted prefers a qualified name', 'suppressMessages({ library(conflicted); library(dplyr) })\nsuppressMessages(conflicts_prefer(stats::filter))\nprint(as.vector(filter(1:5, rep(1, 2))))'],
+		['a task callback changes an option', 'invisible(addTaskCallback(function(...) { options(digits = 3); FALSE }))\nprint(pi)'],
+		['devices opened in a loop', 'for(i in 1:2) pdf(NULL)\nprint(length(dev.list()))'],
+		['withr::local_preserve_seed keeps the draws in the function', 'g <- function() { withr::local_preserve_seed(); runif(1) }\nset.seed(1)\ny <- g()\nprint(runif(1))', 'y <- g()'],
+		['withr::local_preserve_seed draws from the state before', 'g <- function() { withr::local_preserve_seed(); runif(1) }\nset.seed(1)\nprint(g())'],
+		['withr::with_preserve_seed', 'set.seed(1)\ny <- withr::with_preserve_seed(runif(1))\nprint(runif(1))', 'y <-'],
 		['delayedAssign draw', 'set.seed(1)\ndelayedAssign("dd", runif(1))\ndd\nprint(runif(1))'],
 		['delayedAssign never forced', 'set.seed(1)\ndelayedAssign("dd", runif(1))\nee <- 2\nee\nprint(runif(1))', 'delayedAssign'],
 		['delayedAssign options', 'delayedAssign("dd", options(digits = 3))\ndd\nprint(pi)'],
@@ -1271,6 +1345,11 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		const nested = 'f <- function(g, a, b) {\n  x <- g(a + b) + b\n  return(x)\n}\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)';
 		assertSliceKeeps('a criterion in a body keeps the header and the handed function, not the call site', parser, nested, '2@x', { kept: ['f <- function(g, a, b)', '\\(x)'], dropped: ['k <- f('] });
 		assertSliceKeeps('a criterion in a handed lambda does not keep the call it is handed to', parser, nested, '5@x', { dropped: ['k <- f(', 'print'] });
+		/* groundhog installs the version of the date, so R does not run this one */
+		assertSliceKeeps('groundhog attaches the package it is given', parser, 'groundhog::groundhog.library("tools", "2024-01-01")\nprint(file_ext("a.txt"))', '2@print', { kept: ['groundhog.library'] });
+		assertSliceKeeps('here::i_am fixes the root here() builds from', parser, 'here::i_am("sub/a.R")\nprint(here::here())', '2@print', { kept: ['i_am'] });
+		/* R fails on the locked binding of the attached package */
+		assertSliceKeeps('a super-assignment to an attached export keeps the attach', parser, 'library(tools)\nf <- function() file_ext <<- function(x) "super"\nf()\nprint(file_ext("a.b"))', '4@print', { kept: ['library(tools)'] });
 		assertSliceKeeps('a value read in an argument does not keep the callee', parser, 'classify <- function(n) n %% 3\nfor(i in 1:9) print(classify(i))', '2@i', { dropped: ['classify <- function'] });
 	});
 	/* the last element states whether the shipped signature database is on, as it is outside the tests */

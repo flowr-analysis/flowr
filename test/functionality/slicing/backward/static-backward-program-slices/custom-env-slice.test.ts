@@ -325,7 +325,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			envWithXThenX,
 			['3@x'],
-			`${assignX42}\nx`,
+			envWithXThenX,
 			{ flowrConfig: noTrack }
 		);
 	});

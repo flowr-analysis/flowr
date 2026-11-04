@@ -19,6 +19,11 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DfgVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { ArgProp, FnSig, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { callFnProps } from '../../dataflow/environments/query-fn-props';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
@@ -177,4 +182,49 @@ export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: 
 		}
 	}
 	return true;
+}
+
+/** What a call states of an argument it does not evaluate where and when it stands: quoted, or called as a function. */
+const RunsElsewhere = ArgProp.Nse | ArgProp.Callee;
+
+/** A promise the call does not force may run any number of times, or never, as with `replicate(n, expr)`. */
+function runsElsewhere(prop: number): boolean {
+	return (prop & RunsElsewhere) !== 0 || (prop & (ArgProp.Value | ArgProp.Forced)) === ArgProp.Value;
+}
+
+/** What decides whether a call runs code elsewhere: the role of each argument, and whether it evaluates code (`eval`) at all. */
+interface DeferringInfo {
+	readonly sig?:      FnSig
+	readonly evaluates: boolean
+}
+
+/**
+ * The built-in call that decides when, where or whether the code at `id` runs: the closest call it is an argument
+ * of that quotes it or calls it (`on.exit(expr)`, `do.call("f", args)`, `delayedAssign(x, expr)`), up to the
+ * function it is defined in. Without that call, the code would run in the order of the caller. A call capturing
+ * its argument for another call to evaluate is left to the evaluation of captured code, as that one drops it
+ * where the captured code is run in place.
+ * @param sigs - the signatures of the calls met on the way, filled as they are asked for
+ */
+export function deferringCall(id: NodeId, info: DataflowInformation, idMap: AstIdMap, sigs: Map<NodeId, DeferringInfo>): NodeId | undefined {
+	for(let child = idMap.get(id), parent = child && RNode.directParent(child, idMap); child !== undefined && parent !== undefined && !RFunctionDefinition.is(parent); child = parent, parent = RNode.directParent(parent, idMap)) {
+		if(!RArgument.is(child) || !RFunctionCall.is(parent)) {
+			continue;
+		}
+		const call = parent.info.id;
+		let known = sigs.get(call);
+		if(known === undefined) {
+			const props = callFnProps(call, info);
+			known = { sig: props?.sig, evaluates: props?.tags?.includes(SemanticCallTag.Eval) === true };
+			sigs.set(call, known);
+		}
+		/* quoted code the dataflow evaluates in place needs neither the quote nor the evaluating call */
+		if(DfgVertex.hasOrigin(info.graph.getVertex(call), BuiltInProcName.Quote)) {
+			return undefined;
+		}
+		if(known.evaluates || (known.sig !== undefined && runsElsewhere(FnSig.propAt(FnSig.layout(known.sig), parent.arguments.indexOf(child))))) {
+			return call;
+		}
+	}
+	return undefined;
 }

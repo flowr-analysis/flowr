@@ -392,13 +392,14 @@ function withFileAccess<Config>(config: Config): Config {
 	}))] };
 }
 
-/** A call starting a process hands it every environment variable. */
-function withProcessEnvironment<Config>(config: Config): Config {
+/** A call starting a process hands it every environment variable, a call loading a package looks for it in the library paths. */
+function withImplicitReads<Config>(config: Config): Config {
 	const { tags, ambient } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[] };
-	if(!tags?.includes(SemanticCallTag.Process)) {
-		return config;
-	}
-	return { ...config, ambient: [...[ambient ?? []].flat(), { type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.Env) }] };
+	const reads = [
+		...tags?.includes(SemanticCallTag.Process) ? [AmbientStateName.allOf(KeyedState.Env)] : [],
+		...tags?.includes(SemanticCallTag.LoadsPackage) ? [AmbientStateName.libPaths] : []
+	];
+	return reads.length === 0 ? config : { ...config, ambient: [...[ambient ?? []].flat(), ...reads.map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const)] };
 }
 
 export const BuiltInProcessorMapper = {
@@ -508,7 +509,7 @@ export class BuiltIns {
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		const mappedEval = evalHandler === undefined ? undefined : BuiltInEvalHandlerMapper[evalHandler];
 		guard(evalHandler === undefined || mappedEval !== undefined, () => `Eval handler ${evalHandler} is unknown! Please pass a valid one of ${JSON.stringify(Object.keys(BuiltInEvalHandlerMapper))}!`);
-		config = withProcessEnvironment(withFileAccess(config));
+		config = withImplicitReads(withFileAccess(config));
 		const ambient = PlacesAmbientItself.has(processor) ? undefined : (config as AmbientConfig | undefined)?.ambient;
 		const process: BuiltInIdentifierProcessor = ambient === undefined
 			? (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never)

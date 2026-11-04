@@ -61,6 +61,8 @@ export const AmbientStateName = {
 	sink:                 '#sink',
 	/** the project root `here::here()` builds its paths from, found from the working directory unless `here::i_am` names it */
 	projectRoot:          '#project-root',
+	/** where packages are installed and loaded from, which `.libPaths(new)` changes and every package load reads */
+	libPaths:             '#lib-paths',
 	/** the file creation mask `Sys.umask` sets */
 	umask:                '#umask',
 	/** the state of the random number generator, which `set.seed` sets and every draw advances */

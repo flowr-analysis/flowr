@@ -1276,6 +1276,8 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		['a super-assignment of a nested function stays in its caller', 'f <- function() { v <- 0; g <- function() v <<- 5; g(); v }\nv <- 1\nprint(f())', 'v <- 1'],
 		['detach removes the attached list on top', 'attach(list(zz = 4))\nattach(list(zz = 5))\ndetach()\nprint(zz)'],
 		['detach by name removes that list', 'attach(list(zz = 4), name = "a")\nattach(list(zz = 5), name = "b")\ndetach("b")\nprint(zz)'],
+		['a library path change reaches the library call', '.libPaths(c(tempdir(), .libPaths()))\nlibrary(tools)\nprint(file_ext("a.b"))'],
+		['asking for the library paths changes nothing', 'invisible(.libPaths())\nx <- 1\nprint(x)', 'libPaths'],
 		['a task callback changes an option', 'invisible(addTaskCallback(function(...) { options(digits = 3); FALSE }))\nprint(pi)'],
 		['devices opened in a loop', 'for(i in 1:2) pdf(NULL)\nprint(length(dev.list()))'],
 		['withr::local_preserve_seed keeps the draws in the function', 'g <- function() { withr::local_preserve_seed(); runif(1) }\nset.seed(1)\ny <- g()\nprint(runif(1))', 'y <- g()'],

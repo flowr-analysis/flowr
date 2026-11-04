@@ -619,7 +619,11 @@ const SetsEntry = (state: KeyedState, key: string) => ({ type: AmbientStateAcces
 /** `library(pkg)` and `library("pkg")` name the package, `library(pkg, character.only = TRUE)` looks the variable up */
 const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['package', 'help', 'pos', 'lib.loc', 'character.only'], 'package', { quoted: 'character.only' });
 const LoaderSearchPath = (quoted: boolean) => ({ type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'unnamed', quoted } }) as const;
-const DetachSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' });
+/* which entry a detach removes depends on every earlier attach, so it reads the search path as well */
+const DetachSearchPath = [
+	SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }),
+	{ type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.SearchPath) }
+] as const;
 const ImportSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['.from', '...', '.into', '.library', '.directory', '.all', '.except', '.chdir', '.character_only', '.S3'], '.into', { fallback: 'imports' });
 /** `attach(df)` is named `df`, `attach(df, name = "data")` is named `data` */
 const AttachSearchPath = { type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'parameter', signature: ['what', 'pos', 'name', 'warn.conflicts'], names: ['name', 'what'], quoted: true } } as const;

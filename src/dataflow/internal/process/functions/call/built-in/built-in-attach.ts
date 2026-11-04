@@ -2,12 +2,13 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { DefaultAttachPosition, Environment, REnvironment } from '../../../../../environments/environment';
+import { Identifier, ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
@@ -15,8 +16,10 @@ import { resolveAttachPosition, resolveSymbolToEnvir } from './built-in-envir-ut
 import { AmbientStateAccessType } from './built-in-ambient-state';
 import { keysOf } from './built-in-ambient-keys';
 import { UnknownKey } from '../../../../../environments/ambient-state-name';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AmbientConfig } from '../../../../../environments/built-in';
+
+const AttachableLiterals: ReadonlySet<string> = new Set(['list', 'data.frame']);
 
 /** Processes `attach(what, ...)`, injecting the tracked env's known definitions into a new scope layer below `.GlobalEnv`. */
 export function processAttach<OtherInfo>(
@@ -33,14 +36,22 @@ export function processAttach<OtherInfo>(
 	const whatNode = whatArg && whatArg !== EmptyArgument ? RArgument.valueOf(whatArg) : undefined;
 
 	const envirResolution = RSymbol.is(whatNode) ? resolveSymbolToEnvir(whatNode.content, whatNode.info.id, data) : undefined;
-	if(!envirResolution) {
+	/* a list written out names its bindings, `attach(list(a = 1))` binds `a` to `1` */
+	const listed = envirResolution === undefined && RFunctionCall.isNamed(whatNode, AttachableLiterals)
+		&& whatNode.arguments.every(a => a !== EmptyArgument && a.name !== undefined && a.value !== undefined) ? whatNode.arguments as readonly RArgument<OtherInfo & ParentInformation>[] : undefined;
+	if(!envirResolution && !listed) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
 		return result;
 	}
 
 	/* build the attached layer with the env's known bindings */
 	const injected: NamedInGraphIdentifierDefinition[] = [];
-	for(const [varName, varDefs] of envirResolution.envDef.envState.current.memory) {
+	for(const entry of listed ?? []) {
+		const at = (entry.value as RNodeWithParent).info.id;
+		injected.push({ nodeId: at, name: entry.name?.content as Identifier, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : undefined });
+		result.graph.addEdge(at, rootId, EdgeType.Reads);
+	}
+	for(const [varName, varDefs] of envirResolution?.envDef.envState.current.memory ?? []) {
 		for(const varDef of varDefs) {
 			const inDef = varDef as InGraphIdentifierDefinition;
 			injected.push({
@@ -52,6 +63,10 @@ export function processAttach<OtherInfo>(
 		}
 	}
 	const attachedLayer = new Environment(result.environment.current).defineAll(injected);
+	attachedLayer.t = EnvType.Attached;
+	/* R names the entry by `name`, else by the variable given as `what` */
+	const named = RArgument.valueOf(args.find(a => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === 'name'));
+	attachedLayer.n = RString.is(named) ? named.content.str : RSymbol.is(whatNode) ? Identifier.getName(whatNode.content) : undefined;
 
 	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones */
 	return { ...result, environment: {

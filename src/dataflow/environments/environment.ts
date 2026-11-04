@@ -42,7 +42,9 @@ export enum EnvType {
 	/** `requireNamespace("pkg")`: `pkg::fn` resolves, bare `fn` does not */
 	LoadedNamespace = 'lns',
 	/** A package `solver.assumeAttachedPackages` states as attached; a `library()` in the analyzed code still attaches it in full over this. */
-	AssumedNamespace = 'ans'
+	AssumedNamespace = 'ans',
+	/** Data `attach(what)` put on the search path, a list, data frame, or environment */
+	Attached = 'att'
 }
 
 interface Jsonified {

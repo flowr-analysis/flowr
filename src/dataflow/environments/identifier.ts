@@ -508,6 +508,8 @@ export const enum PkgName {
 	Rlang        = 'rlang',
 	Rmatlab      = 'R.matlab',
 	RmethodsS3   = 'R.methodsS3',
+	Renv         = 'renv',
+	Reticulate   = 'reticulate',
 	Rmarkdown    = 'rmarkdown',
 	Rnetcdf      = 'RNetCDF',
 	Roo          = 'R.oo',

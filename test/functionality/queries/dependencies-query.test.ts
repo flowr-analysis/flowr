@@ -124,6 +124,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('a handle writes what it was opened on', 'con <- file("o.txt", "w")\nwriteLines("a", con)', {
 			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
 		});
+		testQuery('a handle opened in braces writes what it was opened on', 'con <- { file("o.txt", "w") }\nwriteLines("a", con)', {
+			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
+		});
 		testQuery('a default parameter names the file', 'ld <- function(p = "def.csv") read.csv(p)\nld()', {
 			/* the call reads what the function it calls reads */
 			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }, { nodeId: '2@ld', functionName: 'ld', value: 'def.csv', via: 7 }],

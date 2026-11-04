@@ -151,6 +151,8 @@ describe('File Dependencies', withTreeSitter(parser => {
 			['yaml read back', 'yaml::write_yaml(list(a = 1), "c.yml")\nx <- 2\nprint(yaml::read_yaml("c.yml")$a)', 'x <- 2'],
 			['config reads its default file', 'writeLines(c("default:", "  a: 1"), "config.yml")\nx <- 2\nprint(config::get("a"))', 'x <- 2'],
 			['a rollback undoes the deletion', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "tx.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1:3), overwrite = TRUE)\ndbBegin(con)\ndbExecute(con, "DELETE FROM t")\ndbRollback(con)\nprint(nrow(dbReadTable(con, "t")))', undefined],
+			['two temp files are different files', 'f1 <- tempfile()\nf2 <- tempfile()\nwriteLines("a", f1)\nwriteLines("b", f2)\nprint(readLines(f2))', 'f1'],
+			['a path made from a temp file', 'd <- tempfile()\np <- paste0(d, ".txt")\nwriteLines("x", p)\nprint(readLines(p))', undefined],
 			['load restores into an environment', 'x <- 5\nsave(x, file = "a.RData")\ne <- new.env()\nload("a.RData", envir = e)\nr <- e$x\nprint(r)', undefined],
 			['load restores what the program saved', 'x <- 5\ny <- 2\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)', 'y <- 2'],
 			['sys.source into an environment', 'writeLines("y <- 6", "s.R")\ne <- new.env()\nsys.source("s.R", envir = e)\nr <- e$y\nprint(r)', undefined],

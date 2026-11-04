@@ -525,18 +525,25 @@ function readsThroughHandle<OtherInfo>(res: DataflowInformation, rootId: NodeId,
 	if(sig === undefined || !DfgVertex.isFunctionCall(call)) {
 		return false;
 	}
-	return MatchArgs.findWithProps(appliedArguments(res.graph, call, data.completeAst.idMap).args, sig, ArgProp.Resource).some(id => {
-		const arg = data.completeAst.idMap.get(id);
-		const node = RArgument.is(arg) ? RArgument.valueOf(arg) : arg;
-		return RSymbol.is(node) && (Resolve.byName(node.content, data.environment) ?? []).some(d =>
-			(d as { value?: readonly NodeId[] }).value?.some(v => opensConnection(data.completeAst.idMap.get(v), data)) === true);
-	});
+	return MatchArgs.findWithProps(appliedArguments(res.graph, call, data.completeAst.idMap).args, sig, ArgProp.Resource)
+		.some(id => boundValues(id, data, false).some(v => callsTagged(v, data, SemanticCallTag.Opens)));
 }
 
-/** Whether `node` calls a function flowR states {@link SemanticCallTag.Opens} a connection, like `file(f)`. */
-function opensConnection<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+/** What the argument `id` holds: its value, or with `direct` unset only what the variable it names is bound to. */
+function boundValues<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, direct = true): RNodeWithParent<OtherInfo>[] {
+	const arg = data.completeAst.idMap.get(id);
+	const node = RArgument.is(arg) ? RArgument.valueOf(arg) : arg;
+	if(!RSymbol.is(node)) {
+		return direct && node !== undefined ? [node] : [];
+	}
+	return (Resolve.byName(node.content, data.environment) ?? []).flatMap(d => (d as { value?: readonly NodeId[] }).value ?? [])
+		.map(v => data.completeAst.idMap.get(v)).filter(isNotUndefined);
+}
+
+/** Whether `node` calls a function flowR states `tag` of, like {@link SemanticCallTag.Opens} for `file(f)`. */
+function callsTagged<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, tag: SemanticCallTag): boolean {
 	return RFunctionCall.isNamed(node) && (Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [])
-		.some(d => d.type === ReferenceType.BuiltInFunction && d.config?.tags?.includes(SemanticCallTag.Opens) === true);
+		.some(d => d.type === ReferenceType.BuiltInFunction && d.config?.tags?.includes(tag) === true);
 }
 
 /** The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others). */
@@ -551,6 +558,12 @@ function fileStems<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: Da
 	}
 	const stems: string[] = [];
 	for(const id of named) {
+		/* every `tempfile()` names a file no other call names */
+		const fresh = boundValues(id, data);
+		if(fresh.length > 0 && fresh.every(v => callsTagged(v, data, SemanticCallTag.TempFile))) {
+			stems.push(...fresh.map(v => `tmp-${v.info.id}`));
+			continue;
+		}
 		const paths = NodeValue.stringsOf(id, data);
 		for(const path of paths?.length ? paths : ['']) {
 			const [stem, ...extension] = path.split(/[/\\]/).at(-1)?.split('.') ?? [];

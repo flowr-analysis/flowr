@@ -368,8 +368,21 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	const reachedBy = memoize((id: NodeId) => definitionsReachedBy(id, graph));
 	const where = { graph, idMap: graph.idMap, resolve: ctx.config.solver.variables, ctx, environment };
 	const pathOf = memoize((id: NodeId) => Resolve.toSingleString(id, where));
+	/* every `tempfile()` call names a file of its own, so paths made from different ones differ */
+	const tempFiles = memoize((id: NodeId) => new Set([...Dataflow.provenance(RArgument.valueOf(graph.idMap?.get(id))?.info.id ?? id, graph)]
+		.filter(v => {
+			const call = graph.getVertex(v);
+			return DfgVertex.isFunctionCall(call) && call.name !== undefined && Identifier.getName(call.name) === 'tempfile'
+				&& FunctionSemantics.call.props.hasAll(callFnProps(v, { graph, environment }), [SemanticCallTag.TempFile]);
+		})));
 	const sameResource = (a: NodeId, b: NodeId): boolean => {
-		if(a === b || !reachedBy(b).isDisjointFrom(reachedBy(a))) {
+		if(a === b) {
+			return true;
+		}
+		const [ta, tb] = [tempFiles(a), tempFiles(b)];
+		if(ta.size > 0 && tb.size > 0 && ta.isDisjointFrom(tb)) {
+			return false;
+		} else if(!reachedBy(b).isDisjointFrom(reachedBy(a))) {
 			return true;
 		}
 		/* a path we cannot resolve may name the other one */

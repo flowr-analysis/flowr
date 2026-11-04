@@ -55,8 +55,8 @@ describe('Removal slices', { concurrent: false }, withShell(shell => {
 	});
 	describe('Files', () => {
 		/* the names `tempfile()` makes are unknown, so the other read may read either file and both writes stay */
-		assertRemoval('a write to a file we cannot name stays for any other read', [...caps, 'i-o'], 'p <- tempfile()\nq <- tempfile()\nwriteLines("a", p)\nwriteLines("b", q)\nr <- readLines(p)\nprint(r)\nprint(readLines(q))', ['6@print'],
-			'p <- tempfile()\nq <- tempfile()\nwriteLines("a", p)\nwriteLines("b", q)\nprint(readLines(q))', '[1] "b"');
+		assertRemoval('a write to another temp file goes with the removed output', [...caps, 'i-o'], 'p <- tempfile()\nq <- tempfile()\nwriteLines("a", p)\nwriteLines("b", q)\nr <- readLines(p)\nprint(r)\nprint(readLines(q))', ['6@print'],
+			'q <- tempfile()\nwriteLines("b", q)\nprint(readLines(q))', '[1] "b"');
 	});
 	describe('Control flow', () => {
 		assertRemoval('a loop only the removed output needs goes as a whole', [...caps, 'for-loop'], 's <- 0\nfor(i in 1:3) s <- s + i\nprint(s)\nprint(2)', ['3@print'], 'print(2)', '[1] 2');

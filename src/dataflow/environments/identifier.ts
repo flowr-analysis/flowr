@@ -401,6 +401,7 @@ export const enum PkgName {
 	CohortBuilder = 'cohortBuilder',
 	Corrplot     = 'corrplot',
 	Cowplot      = 'cowplot',
+	Config       = 'config',
 	Conflicted   = 'conflicted',
 	Curl         = 'curl',
 	DataTable    = 'data.table',

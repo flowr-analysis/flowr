@@ -119,11 +119,13 @@ class ConstructPass<T extends RNodeWithParent> extends RewritePass {
 /** a pass that renames variables, each binding and every reference to it alike */
 class RenamingPass extends RewritePass {
 	constructor(spec: PassSpec, onlyCriterion: boolean, fresh: (index: number) => string) {
+		const nonSyntactic = fresh(1).startsWith('`');
 		super(spec, async(program, edit) => {
 			const at = program.criterion;
-			const names = onlyCriterion
+			const names = (onlyCriterion
 				? at !== undefined && program.assignments.some(a => a.name === at.name) && !program.spellsOut(at.name) ? [at.name] : []
-				: program.readsNamesAsData ? [] : renameableNames(program);
+				: program.readsNamesAsData ? [] : renameableNames(program))
+				.filter(n => !nonSyntactic || !program.namedByCall(n));
 			const renames: Record<string, string> = {};
 			for(const name of names) {
 				const places = await program.occurrencesOf(name);
@@ -361,8 +363,8 @@ const equalsAssign = new AssignmentPass({
 const superAssign = new AssignmentPass({
 	name:        'top level super assignment',
 	category:    MutationCategory.Assignment,
-	description: '`x <- 1` becomes `x <<- 1`, except for a name an attached base package exports, as a `<<-` would try to change that binding'
-}, ({ name }, rhs) => shadowsAttachedBase(name) ? undefined : `${name} <<- ${rhs}`);
+	description: '`x <- 1` becomes `x <<- 1`, except for a name an attached package exports, as a `<<-` would try to change that locked binding'
+}, ({ name }, rhs, program) => shadowsAttachedBase(name) || program.attachedExports(name) ? undefined : `${name} <<- ${rhs}`);
 
 const irregularWhitespace = new AssignmentPass({
 	name:        'irregular whitespace around assignments',

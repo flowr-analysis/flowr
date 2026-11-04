@@ -24,6 +24,7 @@ import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantic
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { BuiltInEvalName } from '../../../../src/dataflow/environments/built-in-eval-name';
 import { Identifier, ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { EnvType, REnvironment } from '../../../../src/dataflow/environments/environment';
 import { BuiltInEvalHandlerMapper } from '../../../../src/dataflow/environments/built-in';
 import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
@@ -334,6 +335,24 @@ export class MutationProgram {
 	}
 
 	/** whether a string literal spells `name` out, so a renaming would leave it behind */
+	/** whether a package the program attaches exports `name`, whose binding R locks against a `<<-` */
+	attachedExports(name: string): boolean {
+		return [...REnvironment.searchPath(this.dataflow.environment.current)].some(l => l.t === EnvType.Namespace && l.memory.has(name as never));
+	}
+
+	/** whether a call takes `name` as a name it deparses (`save(x)`), which a non-syntactic name breaks */
+	namedByCall(name: string): boolean {
+		return this.nodes().some(n => {
+			if(!RSymbol.is(n) || Identifier.getName(n.content) !== name) {
+				return false;
+			}
+			const arg = RNode.directParent(n, this.ast.idMap);
+			const call = arg === undefined ? undefined : RNode.directParent(arg, this.ast.idMap);
+			const info = RFunctionCall.is(call) ? this.callInfo(call) : undefined;
+			return info !== undefined && 'namesIn' in info;
+		});
+	}
+
 	spellsOut(name: string): boolean {
 		const word = new RegExp(`(?<![\\w.])${escapeRegex(name)}(?![\\w.])`);
 		return this.nodes().some(n => RString.is(n) && word.test(n.content.str));

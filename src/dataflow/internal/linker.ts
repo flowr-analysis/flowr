@@ -94,6 +94,19 @@ function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment
 }
 
 /**
+ * The frames of `environment` a function whose body runs at `bodyLevel` can see: the frame it was defined in and
+ * those around it, never the frames of the functions calling it.
+ */
+function definitionFramesOf(bodyLevel: number, environment: REnvironmentInformation): REnvironmentInformation {
+	const level = Math.max(0, Math.min(bodyLevel - 1, environment.level));
+	let current = environment.current;
+	for(let skip = environment.level - level; skip > 0 && current.parent !== undefined; skip--) {
+		current = current.parent;
+	}
+	return { current, level };
+}
+
+/**
  * Links a function call with a single target function definition.
  */
 export function linkFunctionCallWithSingleTarget(
@@ -106,6 +119,7 @@ export function linkFunctionCallWithSingleTarget(
 	const environment = info.environment;
 	if(environment !== undefined) {
 		let callee: readonly REnvironmentInformation[] | undefined;
+		let lexical: REnvironmentInformation | undefined;
 		/* for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it */
 		for(const ingoing of fnSubflow.in) {
 			const name = ingoing.name;
@@ -114,7 +128,7 @@ export function linkFunctionCallWithSingleTarget(
 			}
 			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
 			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			const defs = inCallee ?? Resolve.byNameAndType(name, environment, ingoing.type) ?? [];
+			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type) ?? [];
 			for(const { nodeId, type, value, definedAt, envState } of defs as readonly InGraphIdentifierDefinition[]) {
 				/* the state an earlier run of the function left behind is what its next run reads */
 				if(fnSubflow.graph.has(nodeId) && !AmbientStateName.is(name) || NodeId.isBuiltIn(nodeId)) {

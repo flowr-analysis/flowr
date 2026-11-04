@@ -1261,6 +1261,7 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		['needs attaches a package', 'invisible(capture.output(needs::needs(tools), type = "message"))\nprint(file_ext("a.txt"))'],
 		['needs attaches a package named with its version', 'invisible(capture.output(needs::needs(tools = "4.0"), type = "message"))\nprint(file_ext("a.txt"))'],
 		['conflicted prefers a package', 'suppressMessages({ library(conflicted); library(dplyr) })\nsuppressMessages(conflict_prefer("filter", "stats"))\nprint(as.vector(filter(1:5, rep(1, 2))))'],
+		['a preference does not need the packages it overrules', 'library(conflicted)\nsuppressMessages(library(dplyr))\nsuppressMessages(conflict_prefer("filter", "stats"))\nx <- 1\nprint(as.vector(filter(1:5, rep(1, 2))))', 'x <- 1'],
 		['conflicted prefers a qualified name', 'suppressMessages({ library(conflicted); library(dplyr) })\nsuppressMessages(conflicts_prefer(stats::filter))\nprint(as.vector(filter(1:5, rep(1, 2))))'],
 		['an option set in a block is overwritten', '{ options(digits = 3) }\n{ options(digits = 5) }\nprint(pi)', 'digits = 3'],
 		['an option set under if(TRUE) is overwritten', 'if(TRUE) options(digits = 3)\nif(TRUE) options(digits = 5)\nprint(pi)', 'digits = 3'],

@@ -298,6 +298,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.With:
 			case BuiltInProcName.Attach:
 			case BuiltInProcName.Detach:
+			case BuiltInProcName.Prefer:
 			case BuiltInProcName.EnvContents:
 			case BuiltInProcName.ListToEnv:
 			case BuiltInProcName.Default:

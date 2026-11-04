@@ -26,7 +26,7 @@ import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
-import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
+import { processLibrary, processPrefer  } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
@@ -442,6 +442,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.ListToEnv]:          processListToEnv,
 	[BuiltInProcName.Attach]:             processAttach,
 	[BuiltInProcName.Detach]:             processDetach,
+	[BuiltInProcName.Prefer]:             processPrefer,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
 	[BuiltInProcName.ClassGenerator]:     processClassGenerator,
 	[BuiltInProcName.ClassRelation]:      processClassRelation,

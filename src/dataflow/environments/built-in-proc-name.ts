@@ -100,6 +100,8 @@ export enum BuiltInProcName {
 	Attach = 'builtin:attach',
 	/** for `detach` and `unloadNamespace`, see {@link processDetach} */
 	Detach = 'builtin:detach',
+	/** for `conflicted::conflict_prefer` and `conflicts_prefer`, see {@link processPrefer} */
+	Prefer = 'builtin:prefer',
 	EnvContents = 'builtin:env-contents',
 	ListToEnv = 'builtin:list2env',
 	/** for `new.env` and related environment-creation calls, see {@link processNewEnv} */

@@ -26,6 +26,7 @@ import type { FlowrAnalyzerContext } from '../../../../../../project/context/flo
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
 import { attachedAlongside } from '../../../../../../project/attached-packages';
@@ -380,6 +381,37 @@ export function loadNodesForNamespace(env: REnvironmentInformation, pack?: strin
 		}
 	}
 	return nodes;
+}
+
+/**
+ * Processes `conflicted::conflict_prefer(name, winner)` and `conflicts_prefer(pkg::fn, ...)`: the preferred function is
+ * put on top of the search path, as conflicted does with its `.conflicts` entry, so the name resolves to it from then on.
+ */
+export function processPrefer<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	/* the search path it writes is applied by the registration, see {@link AmbientConfig} */
+	_config: AmbientConfig = {}
+): DataflowInformation {
+	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Prefer }).information;
+	const values = args.map(a => RArgument.valueOf(a === EmptyArgument ? undefined : a));
+	const preferred: [fn: string, pkg: string][] = values.every(v => RSymbol.is(v) && Identifier.getNamespace(v.content) !== undefined)
+		? values.map(v => [Identifier.getName((v as RSymbol).content), String(Identifier.getNamespace((v as RSymbol).content))])
+		: RString.is(values[0]) && RString.is(values[1]) ? [[values[0].content.str, values[1].content.str]] : [];
+	if(preferred.length === 0) {
+		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		return info;
+	}
+	for(const [fn, pkg] of preferred) {
+		const conflicts = new Environment(info.environment.current);
+		conflicts.adoptMap(lazyExports(pkg, [{ exported: fn, as: fn }], data.ctx, rootId, data.cds));
+		conflicts.t = EnvType.Attached;
+		conflicts.n = '.conflicts';
+		info.environment = { ...info.environment, current: REnvironment.attachAt(info.environment.current, conflicts, conflicts) };
+	}
+	return info;
 }
 
 function linkLibrary<OtherInfo>(pack: string, dependency: Package | undefined, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, spec: AttachSpec = {}) {

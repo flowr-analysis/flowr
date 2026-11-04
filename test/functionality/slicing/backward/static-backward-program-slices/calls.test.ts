@@ -898,13 +898,13 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 			assertSliced(label(name, superCaps), shell, code, [criterion], expected, { expectedOutput: out, expectedSliceOutput: out });
 		}
 		/* `<<-` searches the enclosing frames first, so this writes f's `x`, not the global one */
-		superCase('the enclosing function frame wins over the global one', 'f <- function() { x <- 2; h <- function() x <<- 9; h(); x }\nv <- f()\nv', '3@v', 'f <- function() {\n        x <- 2\n        h <- function() x <<- 9\n        h()\n        x\n    }\nv <- f()\nv', '[1] 9');
+		superCase('the enclosing function frame wins over the global one', 'f <- function() { x <- 2; h <- function() x <<- 9; h(); x }\nv <- f()\nv', '3@v', 'f <- function() {\n        h <- function() x <<- 9\n        h()\n        x\n    }\nv <- f()\nv', '[1] 9');
 		/* the write lands on f's `x`, so the global one is never touched and the call is irrelevant */
 		superCase('a write caught by an enclosing frame leaves the global one alone', 'x <- 1\nf <- function() { x <- 2; h <- function() x <<- 9; h() }\nf()\nv <- x\nv', '5@v', 'x <- 1\nv <- x\nv', '[1] 1');
 		/* control: a closure counter writes the frame it captured, so every call depends on the one before */
 		superCase('a closure counter still chains its calls', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nc1 <- mk()\nc1()\nv <- c1()\nv', '5@v', 'mk <- function() {\n        n <- 0\n        function() {\n            n <<- n + 1\n            n\n        }\n    }\nc1 <- mk()\nc1()\nv <- c1()\nv', '[1] 1\n[1] 2');
 		/* control: with no enclosing frame holding the name, the global one is still the target */
-		superCase('a super-assignment no enclosing frame catches still reaches the global one', 'x <- 1\nf <- function() { g <- function() x <<- 42; g(); x }\nv <- f()\nv', '4@v', 'x <- 1\nf <- function() {\n        g <- function() x <<- 42\n        g()\n        x\n    }\nv <- f()\nv', '[1] 42');
+		superCase('a super-assignment no enclosing frame catches still reaches the global one', 'x <- 1\nf <- function() { g <- function() x <<- 42; g(); x }\nv <- f()\nv', '4@v', 'f <- function() {\n        g <- function() x <<- 42\n        g()\n        x\n    }\nv <- f()\nv', '[1] 42');
 		superCase('a closure calls the function its factory was handed', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n^2\nm <- memo(sq)\nv <- m(4)\nv', '5@v', 'memo <- function(f) function(n) f(n)\nsq <- function(n) n ^ 2\nm <- memo(sq)\nv <- m(4)\nv', '[1] 16');
 		superCase('a closure created by local chains its calls', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '4@v', 'counter <- local({ i <- 0; function() { i <<- i + 1; i } })\ncounter()\nv <- counter()\nv', '[1] 1\n[1] 2');
 		assertSliced(label('a slice of a local block leaves out what it does not need', ['name-normal', 'numbers', 'newlines', 'local-left-assignment', 'call-normal']),
@@ -1273,6 +1273,7 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		['the time zone variable changes formatting', 'Sys.setenv(TZ = "UTC")\nprint(format(as.POSIXct(0, origin = "1970-01-01"), "%H"))'],
 		['a global binding shadows an attached list', 'attach(list(zz = 4))\nzz <- 1\nr <- zz\nprint(r)', 'attach'],
 		['an attached list binds its names', 'attach(list(zz = 4))\nr <- zz\nprint(r)'],
+		['a super-assignment of a nested function stays in its caller', 'f <- function() { v <- 0; g <- function() v <<- 5; g(); v }\nv <- 1\nprint(f())', 'v <- 1'],
 		['detach removes the attached list on top', 'attach(list(zz = 4))\nattach(list(zz = 5))\ndetach()\nprint(zz)'],
 		['detach by name removes that list', 'attach(list(zz = 4), name = "a")\nattach(list(zz = 5), name = "b")\ndetach("b")\nprint(zz)'],
 		['a task callback changes an option', 'invisible(addTaskCallback(function(...) { options(digits = 3); FALSE }))\nprint(pi)'],

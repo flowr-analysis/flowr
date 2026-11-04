@@ -334,7 +334,6 @@ export class MutationProgram {
 		return this.nodes().filter((n): n is RString<ParentInformation> => RString.is(n) && n.content.quotes === '"' && n.content.flag !== 'raw' && !n.lexeme.includes('\\'));
 	}
 
-	/** whether a string literal spells `name` out, so a renaming would leave it behind */
 	/** whether a package the program attaches exports `name`, whose binding R locks against a `<<-` */
 	attachedExports(name: string): boolean {
 		return [...REnvironment.searchPath(this.dataflow.environment.current)].some(l => l.t === EnvType.Namespace && l.memory.has(name as never));
@@ -353,6 +352,7 @@ export class MutationProgram {
 		});
 	}
 
+	/** whether a string literal spells `name` out, so a renaming would leave it behind */
 	spellsOut(name: string): boolean {
 		const word = new RegExp(`(?<![\\w.])${escapeRegex(name)}(?![\\w.])`);
 		return this.nodes().some(n => RString.is(n) && word.test(n.content.str));

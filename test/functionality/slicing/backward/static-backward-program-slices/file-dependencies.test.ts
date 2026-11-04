@@ -150,6 +150,7 @@ describe('File Dependencies', withTreeSitter(parser => {
 			['a read moves the position of an open connection', 'con <- file("in.txt")\nwriteLines(c("l1", "l2"), con)\nopen(con, "r")\nx <- readLines(con, n = 1)\nprint(readLines(con, n = 1))', undefined],
 			['yaml read back', 'yaml::write_yaml(list(a = 1), "c.yml")\nx <- 2\nprint(yaml::read_yaml("c.yml")$a)', 'x <- 2'],
 			['config reads its default file', 'writeLines(c("default:", "  a: 1"), "config.yml")\nx <- 2\nprint(config::get("a"))', 'x <- 2'],
+			['a rollback undoes the deletion', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "tx.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1:3), overwrite = TRUE)\ndbBegin(con)\ndbExecute(con, "DELETE FROM t")\ndbRollback(con)\nprint(nrow(dbReadTable(con, "t")))', undefined],
 			['load restores into an environment', 'x <- 5\nsave(x, file = "a.RData")\ne <- new.env()\nload("a.RData", envir = e)\nr <- e$x\nprint(r)', undefined],
 			['load restores what the program saved', 'x <- 5\ny <- 2\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)', 'y <- 2'],
 			['sys.source into an environment', 'writeLines("y <- 6", "s.R")\ne <- new.env()\nsys.source("s.R", envir = e)\nr <- e$y\nprint(r)', undefined],

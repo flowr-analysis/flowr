@@ -1539,6 +1539,8 @@ export const WrittenBuiltinDefinitions = [
 			...['install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_version',
 				'install_bioc', 'install_cran', 'install_dev', 'update_packages']
 				.flatMap(f => [Identifier.from([f, PkgName.Remotes]), Identifier.from([f, PkgName.Devtools])]),
+			...Identifier.fromAll(PkgName.Pak, ['pak', 'pkg_install', 'local_install', 'lockfile_install', 'pkg_remove']),
+			...Identifier.fromAll(PkgName.BiocManager, ['install'])
 		],
 		processor:       BuiltInProcName.Default,
 		config:          { hasUnknownSideEffects: true, libFn: true, props: CallProp.Invisible, tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes] },
@@ -1589,6 +1591,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAllIn(DbPackages, ['dbGetQuery', 'dbSendQuery', 'dbSendStatement', 'dbExecute']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.NonDet, ambient: DbReadsWrites(DbConnSig), tags: [SemanticCallTag.Database], sig: [['conn', ArgProp.Forced | ArgProp.Handle], ['statement', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAllIn(DbPackages, ['dbReadTable', 'dbReadTableArrow', 'dbListTables', 'dbExistsTable', 'dbListFields', 'dbListObjects']), processor: BuiltInProcName.Default, config: { libFn: true, ambient: DbReads, tags: [SemanticCallTag.Database], sig: [['conn', ArgProp.Forced | ArgProp.Handle], ['name', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAllIn(DbPackages, ['dbWriteTable', 'dbWriteTableArrow', 'dbAppendTable', 'dbAppendTableArrow', 'dbCreateTable', 'dbRemoveTable']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Invisible, ambient: DbReadsWrites(DbConnSig), tags: [SemanticCallTag.Database], sig: [['conn', ArgProp.Forced | ArgProp.Handle], ['name', ArgProp.Forced | ArgProp.Value], ['value', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: false },
+	/* a transaction decides whether earlier changes stay, a rollback undoes them */
+	{ type: 'function', names: Identifier.fromAllIn(DbPackages, ['dbBegin', 'dbCommit', 'dbRollback', 'dbWithTransaction']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Invisible, ambient: DbReadsWrites(DbConnSig), tags: [SemanticCallTag.Database], sig: [['conn', ArgProp.Forced | ArgProp.Handle], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	/* the pipeline runs `_targets.R` and stores every target as a file, which `tar_read` and `tar_load` (defining the target in the caller) get back */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Targets, ['tar_make', 'tar_make_future', 'tar_make_clustermq', 'tar_destroy', 'tar_delete', 'tar_invalidate', 'tar_prune', 'tar_watch']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Invisible, hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Glob] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Targets, ['tar_read', 'tar_read_raw', 'tar_meta', 'tar_progress', 'tar_objects', 'tar_manifest']), processor: BuiltInProcName.Default, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Glob] }, assumePrimitive: false },

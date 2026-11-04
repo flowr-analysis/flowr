@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:37:27 UTC (v2.17.0), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,9 +18,9 @@ file of a `read.csv`:
 | `library` (Libraries) | 22 | `library`, `require`, `loadNamespace`, `requireNamespace` | `unknown` |
 | `remote` (Remote Installs) | 10 | `install_github`, `install_gitlab`, `install_bitbucket`, `install_git` | `unknown` |
 | `source` (Sourced Files) | 4 | `source`, `sys.source`, `source_url`, `source_gist` | `unknown` |
-| `read` (Read Data) | 232 | `i_am`, `scan`, `read.dcf`, `read.fwf` | `unknown` |
+| `read` (Read Data) | 235 | `i_am`, `scan`, `read.dcf`, `read.fwf` | `unknown` |
 | **Outputs** | | | |
-| `write` (Outputs) | 212 | `raster_pdf`, `pdf`, `postscript`, `xfig` | `stdout` |
+| `write` (Outputs) | 213 | `raster_pdf`, `pdf`, `postscript`, `xfig` | `stdout` |
 | `visualize` (Visualizations) | 579 | `ggplot`, `ggplotly`, `ggMarginal`, `ggcorrplot` |  |
 | **What the script does with data** | | | |
 | `transform` (Data Transformations) | 140 | `subset`, `transform`, `filter`, `filter_out` |  |
@@ -49,7 +49,7 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (9 ms)\
+Query: **dependencies** (6 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
@@ -108,7 +108,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (11 ms)\
+Query: **dependencies** (12 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -183,7 +183,7 @@ In the meantime we offer several properties to overwrite the default behavior (e
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (4 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_
 
@@ -237,7 +237,7 @@ Set `assumedPackages` to have those reported as well, as `library` entries marke
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (1 ms)\
+Query: **dependencies** (0 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**base** _always attached by R, used at 8_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_
@@ -353,7 +353,7 @@ criteria go in parentheses, as with <span title="Description (Repl Command): Que
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (8 ms)\
 &nbsp;&nbsp;&nbsp;**Read Data** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**a.csv** _via read.csv (node 10)_\
 &nbsp;&nbsp;&nbsp;**focus** _the lines taking part:_ 1, 3, 5
@@ -548,7 +548,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (6 ms)\
+Query: **dependencies** (5 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\

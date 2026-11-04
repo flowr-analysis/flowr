@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-04, 13:25:28 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-04, 13:52:01 UTC (v2.17.0, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -1214,8 +1214,8 @@ By treating them like R, as function calls, we get support for these overwrites 
 
 But where are all the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr).
-FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1760"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
-by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L404"><code>BuiltInProcessorMapper</code></a> functions.
+FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1761"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
+by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L405"><code>BuiltInProcessorMapper</code></a> functions.
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L51"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L71"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
 
@@ -1313,7 +1313,7 @@ function calls over to the function calling it).
 | `Html` | 5 | produces raw HTML or JavaScript, such as `shiny::HTML` |
 | `JavaScript` | 4 | produces raw JavaScript code, such as `shinyjs::runjs` |
 | `LoadsPackage` | 16 | loads a package's namespace (running its `.onLoad`), like `library` or `loadNamespace` |
-| `AttachesPackage` | 14 | puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` |
+| `AttachesPackage` | 16 | puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` |
 | `ChecksPackage` | 6 | answers whether a package is available, like `require`, `requireNamespace`, or `find.package` |
 | `DetachesPackage` | 2 | takes a package off the search path, like `detach` or `unloadNamespace` |
 | `Declares` | 10 | registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` |
@@ -1340,10 +1340,10 @@ parameter in that role.
 
 | Argument role | Built-ins | Meaning |
 | :-- | --: | :-- |
-| `Forced` | 1644 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
-| `NoDefault` | 65 | declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it |
+| `Forced` | 1642 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
+| `NoDefault` | 67 | declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it |
 | `Alias` | 44 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge. On `...` it is the last argument that is handed back, like in `{`. |
-| `Value` | 843 | the result is computed from the argument's value, like `x` in `sum(x)` |
+| `Value` | 841 | the result is computed from the argument's value, like `x` in `sum(x)` |
 | `Shape` | 30 | only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` |
 | `Flag` | 114 | selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` |
 | `Resource` | 403 | names the resource the call reads or writes, like `file` in `write.csv(x, file)`. A call that reads some files and writes others marks the ones it writes ArgProp.Written as well, see FnSig.resources. |

@@ -885,6 +885,16 @@ the edge names the vertex that decides (e.g. an \`if\`) and whether it is the br
 	return results.join('\n');
 }
 
+/** what `library(tidyverse)` would do, asked without analyzing any code */
+function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
+	const ctx = analyzer.context();
+	return {
+		attaches: Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
+		loads:    Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively
+		layers:   Dataflow.library.layers(ctx, 'tidyverse')    // the namespace and imports environments it attaches
+	};
+}
+
 async function dummyDataflow(): Promise<DataflowInformation> {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
 	analyzer.addRequest('x <- 1\nx + 1');
@@ -1159,7 +1169,17 @@ Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports 
 A global binding shadows a package export of the same name, exactly as in R.
 The most recently attached package is the nearest one, and re-attaching neither moves nor duplicates it.
 The \`pos\` argument attaches further down the search path instead, given either as a position or as the name of an existing entry (an unknown position or name falls back to the default of 2, directly below the global environment).
-Attaching inside a function propagates to the caller (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path).
+Attaching inside a function propagates to the caller (R attaches globally).
+A package attached in only one branch, or in a loop body that may not run, or by a function called in one, is only maybe attached: its exports may be what a name means, but so may whatever it would shadow.
+\`detach\` and \`unloadNamespace\` remove the entry again (named, by position, or the topmost one), uncovering what it masked.
+
+Attaching brings a package's \`Depends\` onto the search path below it (so the package masks them), and for a meta-package like \`tidyverse\` the core set of that version above it, while its \`Imports\` are only loaded: \`pkg::fn\` resolves for them, a bare \`fn\` does not.
+Besides \`library\` and \`require\`, the multi-package loaders \`pacman::p_load\`, \`librarian::shelf\`, \`xfun::pkg_attach\` and \`easypackages::libraries\` attach the same way.
+To ask what a \`library\` call does without analyzing any code, use ${ctx.link('Dataflow::library')}, which builds the very layers the analysis would:
+
+${ctx.code(askWhatLibraryDoes, { dropLinesStart: 1 })}
+
+It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the \`NAMESPACE\` files it read.
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)

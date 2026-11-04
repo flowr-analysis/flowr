@@ -66,7 +66,7 @@ export function hidesBody(definition: IdentifierDefinition): boolean {
 
 /** A call into code flowR cannot see may read any option, draw random numbers (with `draws` advancing the generator), and with `graphics` draw on the device. */
 export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, graphics: boolean, draws = true): DataflowInformation {
-	const reads: string[] = [AmbientStateName.allOptions, AmbientStateName.rng];
+	const reads: string[] = [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.allOf(KeyedState.Env)];
 	if(graphics) {
 		reads.push(AmbientStateName.graphics, AmbientStateName.palette);
 	}
@@ -233,6 +233,14 @@ const GlobalEffectOptions: ReadonlySet<string> = new Set([
 	'defaultPackages', 'topLevelEnvironment', 'java.parameters'
 ]);
 
+/** Environment variables R or a child process reads by itself: the time zone, locale, library paths, temp dir, search path, proxies. */
+const GlobalEffectEnv = /^(TZ|LANG|LANGUAGE|LC_\w+|R_\w+|TMPDIR|TEMP|TMP|HOME|PATH|SHELL|\w*_proxy|\w*_PROXY|no_proxy|NO_PROXY)$/;
+
+/** What reading the given entries of `state` reads: each entry and the writes we cannot name, all of the state if no entry is known. */
+function keyedReads(state: KeyedState, keys: readonly string[]): string[] {
+	return keys.length === 0 || keys.includes(UnknownKey) ? [AmbientStateName.allOf(state)] : [...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.keyed(state, UnknownKey)];
+}
+
 /** Options that affect how values are printed and formatted (read by `print`, `format`, and `cat`). */
 export const PrintingOptions: readonly string[] = ['digits', 'width', 'max.print', 'digits.secs', 'useFancyQuotes'];
 
@@ -278,6 +286,7 @@ export const enum AmbientStateAccessType {
 	RunFinalizers = 'run-finalizers',
 	/** sets entries of a keyed state, like `Sys.setenv(A = "1")` sets the environment variable `A`, see {@link AmbientKeys} */
 	SetKeyed     = 'set-keyed',
+	ReadKeyed    = 'read-keyed',
 	/** sets a state without entries, like `sink(file)` diverts the output */
 	SetState     = 'set-state',
 	/** reads a state without entries, like `search()` reads the search path */
@@ -317,6 +326,11 @@ export type AmbientStateAccess = {
 } | {
 	readonly type:  AmbientStateAccessType.ReadState
 	readonly state: string
+} | {
+	/** reads the entries the call names, like `Sys.getenv("HOME")`, all of them if it names none */
+	readonly type:  AmbientStateAccessType.ReadKeyed
+	readonly state: KeyedState
+	readonly keys:  AmbientKeys
 } | {
 	readonly type:                   AmbientStateAccessType.SetState
 	/** the pseudo variable the call sets, like {@link AmbientStateName.sink} */
@@ -381,8 +395,17 @@ export function applyAmbientStateAccess<OtherInfo>(
 		}
 		case AmbientStateAccessType.SetOptions:
 			return setOptions(res, args, rootId, data);
-		case AmbientStateAccessType.SetKeyed:
-			writes.push(...keyedWrites(access.state, keysOf(access.keys, args, data)));
+		case AmbientStateAccessType.SetKeyed: {
+			const keys = keysOf(access.keys, args, data);
+			/* a variable R or a child process reads by itself is read by calls we cannot name */
+			if(access.state === KeyedState.Env && keys.some(k => k === UnknownKey || GlobalEffectEnv.test(k))) {
+				res.graph.markIdForUnknownSideEffects(rootId);
+			}
+			writes.push(...keyedWrites(access.state, keys));
+			break;
+		}
+		case AmbientStateAccessType.ReadKeyed:
+			reads.push(...keyedReads(access.state, keysOf(access.keys, args, data)));
 			break;
 		case AmbientStateAccessType.SetState:
 			if(!onlyQueries(access, args)) {
@@ -584,7 +607,7 @@ const Devices = { reads: [], writes: [AmbientStateName.graphics, AmbientStateNam
 const Quoted = { reads: [AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette, AmbientStateName.allOf(KeyedState.SearchPath)] };
 
 /** What a call of the given kind may read and write when its arguments are unknown, as when only linking reveals it. */
-const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientStateAccessType.ReadOptions | AmbientStateAccessType.SetKeyed | AmbientStateAccessType.SetState | AmbientStateAccessType.ReadState>, { readonly reads: readonly string[], readonly writes: readonly string[] }> = {
+const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientStateAccessType.ReadKeyed | AmbientStateAccessType.ReadOptions | AmbientStateAccessType.SetKeyed | AmbientStateAccessType.SetState | AmbientStateAccessType.ReadState>, { readonly reads: readonly string[], readonly writes: readonly string[] }> = {
 	[AmbientStateAccessType.SetOptions]:          { reads: [AmbientStateName.allOptions], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.warnsAsErrors] },
 	[AmbientStateAccessType.GetOption]:           { reads: [AmbientStateName.allOptions], writes: [] },
 	[AmbientStateAccessType.SetGraphics]:         { reads: [AmbientStateName.graphics], writes: [AmbientStateName.graphics] },
@@ -611,6 +634,8 @@ function unknownArgumentAccess(access: AmbientStateAccess): { readonly reads: re
 			return { reads: optionReads(access.dispatchOn === undefined ? access.keys : undefined), writes: [] };
 		case AmbientStateAccessType.SetKeyed:
 			return { reads: [], writes: keyedWrites(access.state, [UnknownKey]) };
+		case AmbientStateAccessType.ReadKeyed:
+			return { reads: [AmbientStateName.allOf(access.state)], writes: [] };
 		case AmbientStateAccessType.SetState:
 			return { reads: [], writes: [access.state] };
 		case AmbientStateAccessType.ReadState:

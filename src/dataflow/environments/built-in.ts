@@ -1,3 +1,4 @@
+import { AmbientStateName, KeyedState } from './ambient-state-name';
 import type { DataflowProcessorInformation } from '../processor';
 import { FunctionSemantics } from '../fn/function-semantics';
 import type { DataflowInformation, ExitPoint } from '../info';
@@ -391,6 +392,15 @@ function withFileAccess<Config>(config: Config): Config {
 	}))] };
 }
 
+/** A call starting a process hands it every environment variable. */
+function withProcessEnvironment<Config>(config: Config): Config {
+	const { tags, ambient } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[] };
+	if(!tags?.includes(SemanticCallTag.Process)) {
+		return config;
+	}
+	return { ...config, ambient: [...[ambient ?? []].flat(), { type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.Env) }] };
+}
+
 export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Access]:             processAccess,
 	[BuiltInProcName.Apply]:              processApply,
@@ -498,7 +508,7 @@ export class BuiltIns {
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		const mappedEval = evalHandler === undefined ? undefined : BuiltInEvalHandlerMapper[evalHandler];
 		guard(evalHandler === undefined || mappedEval !== undefined, () => `Eval handler ${evalHandler} is unknown! Please pass a valid one of ${JSON.stringify(Object.keys(BuiltInEvalHandlerMapper))}!`);
-		config = withFileAccess(config);
+		config = withProcessEnvironment(withFileAccess(config));
 		const ambient = PlacesAmbientItself.has(processor) ? undefined : (config as AmbientConfig | undefined)?.ambient;
 		const process: BuiltInIdentifierProcessor = ambient === undefined
 			? (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never)

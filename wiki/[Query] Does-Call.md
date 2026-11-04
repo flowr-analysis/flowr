@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -70,10 +70,11 @@ flowchart LR
     %% Environment of 10 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
-    %%   #option:*: {**#option:*** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #options:  {**#options** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #graphics: {**#graphics** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #palette:  {**#palette** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #option:*:    {**#option:*** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #options:     {**#options** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #graphics:    {**#graphics** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #palette:     {**#palette** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #search-path: {**#search-path** (id: 8, type: Variable, cds: {}, def. @8)}
     10["`*#91;RFunctionDefinition#93;* **function**
       *1.6-28* (**id: 10**)`"]
 
@@ -150,7 +151,7 @@ end
     13 -->|"def-on-call"| 1
     15 -->|"reads, arg"| 13
     15 -->|"reads"| 0
-    15 -->|"returns, def-on-call"| 8
+    15 -->|"returns"| 8
     15 -->|"calls"| 10
 ```
 

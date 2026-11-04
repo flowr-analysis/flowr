@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-01, 18:30:05 UTC (v2.16.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -453,7 +453,7 @@ Valid item types:
                 - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'Declares', 'Frames'
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'DetachesPackage', 'Declares', 'Frames'
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'
@@ -1745,103 +1745,112 @@ points`"]
     48 -->|"arg"| 44
     48 -->|"reads"| 46
     48 -->|"arg"| 47
+    48 -->|"reads"| 3
+    48 -->|"reads"| 7
+    48 -->|"reads"| 11
     48 -.->|"flow"| 50
-    linkStyle 67 stroke:gray,color:gray;
+    linkStyle 70 stroke:gray,color:gray;
     50 -->|"reads, arg"| 48
+    50 -->|"reads"| 3
+    50 -->|"reads"| 7
+    50 -->|"reads"| 11
     50 -.->|"flow"| 52
-    linkStyle 69 stroke:gray,color:gray;
+    linkStyle 75 stroke:gray,color:gray;
     50 -->|"reads, arg"| 38
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
     52 -->|"reads"| 7
     52 -.->|"reads, calls"| built-in:_37__62__37_
-    linkStyle 74 stroke:gray;
+    linkStyle 80 stroke:gray;
     52 -.->|"flow"| 54
-    linkStyle 75 stroke:gray,color:gray;
+    linkStyle 81 stroke:gray,color:gray;
+    54 -->|"reads"| 3
+    54 -->|"reads"| 7
+    54 -->|"reads"| 11
     54 -.->|"flow"| 55
-    linkStyle 76 stroke:gray,color:gray;
+    linkStyle 85 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52
     55 -->|"reads, arg"| 54
     55 -.->|"reads, calls"| built-in:_43_
-    linkStyle 79 stroke:gray;
+    linkStyle 88 stroke:gray;
     55 -.->|"flow"| 57
-    linkStyle 80 stroke:gray,color:gray;
+    linkStyle 89 stroke:gray,color:gray;
     57 -->|"reads"| 18
     57 -.->|"flow"| 58
-    linkStyle 82 stroke:gray,color:gray;
+    linkStyle 91 stroke:gray,color:gray;
     58 -.->|"flow"| 60
-    linkStyle 83 stroke:gray,color:gray;
+    linkStyle 92 stroke:gray,color:gray;
     60 -->|"reads, returns, arg"| 57
     60 -->|"reads, arg"| 58
     60 -.->|"reads, calls"| built-in:_36_
-    linkStyle 86 stroke:gray;
+    linkStyle 95 stroke:gray;
     60 -.->|"flow"| 62
-    linkStyle 87 stroke:gray,color:gray;
+    linkStyle 96 stroke:gray,color:gray;
     62 -->|"reads"| 18
     62 -.->|"flow"| 63
-    linkStyle 89 stroke:gray,color:gray;
+    linkStyle 98 stroke:gray,color:gray;
     63 -.->|"flow"| 65
-    linkStyle 90 stroke:gray,color:gray;
+    linkStyle 99 stroke:gray,color:gray;
     65 -->|"reads, returns, arg"| 62
     65 -->|"reads, arg"| 63
     65 -.->|"reads, calls"| built-in:_36_
-    linkStyle 93 stroke:gray;
+    linkStyle 102 stroke:gray;
     65 -.->|"flow"| 67
-    linkStyle 94 stroke:gray,color:gray;
+    linkStyle 103 stroke:gray,color:gray;
     67 -->|"reads, arg"| 60
     67 -->|"reads, arg"| 65
     67 -.->|"reads, calls"| built-in:plot
-    linkStyle 97 stroke:gray;
+    linkStyle 106 stroke:gray;
     67 -.->|"flow"| 69
-    linkStyle 98 stroke:gray,color:gray;
+    linkStyle 107 stroke:gray,color:gray;
     69 -->|"reads"| 18
     69 -.->|"flow"| 70
-    linkStyle 100 stroke:gray,color:gray;
+    linkStyle 109 stroke:gray,color:gray;
     70 -.->|"flow"| 72
-    linkStyle 101 stroke:gray,color:gray;
+    linkStyle 110 stroke:gray,color:gray;
     72 -->|"reads, returns, arg"| 69
     72 -->|"reads, arg"| 70
     72 -.->|"reads, calls"| built-in:_36_
-    linkStyle 104 stroke:gray;
+    linkStyle 113 stroke:gray;
     72 -.->|"flow"| 74
-    linkStyle 105 stroke:gray,color:gray;
+    linkStyle 114 stroke:gray,color:gray;
     74 -->|"reads"| 18
     74 -.->|"flow"| 75
-    linkStyle 107 stroke:gray,color:gray;
+    linkStyle 116 stroke:gray,color:gray;
     75 -.->|"flow"| 77
-    linkStyle 108 stroke:gray,color:gray;
+    linkStyle 117 stroke:gray,color:gray;
     77 -->|"reads, returns, arg"| 74
     77 -->|"reads, arg"| 75
     77 -.->|"reads, calls"| built-in:_36_
-    linkStyle 111 stroke:gray;
+    linkStyle 120 stroke:gray;
     77 -.->|"flow"| 79
-    linkStyle 112 stroke:gray,color:gray;
+    linkStyle 121 stroke:gray,color:gray;
     79 -->|"reads, arg"| 72
     79 -->|"reads, arg"| 77
     79 -.->|"reads, calls"| built-in:points
-    linkStyle 115 stroke:gray;
+    linkStyle 124 stroke:gray;
     79 -.->|"flow"| 82
-    linkStyle 116 stroke:gray,color:gray;
+    linkStyle 125 stroke:gray,color:gray;
     79 -->|"reads"| 67
     82 -->|"reads"| 18
     82 -.->|"flow"| 83
-    linkStyle 119 stroke:gray,color:gray;
+    linkStyle 128 stroke:gray,color:gray;
     83 -.->|"flow"| 85
-    linkStyle 120 stroke:gray,color:gray;
+    linkStyle 129 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
     85 -.->|"reads, calls"| built-in:_36_
-    linkStyle 123 stroke:gray;
+    linkStyle 132 stroke:gray;
     85 -.->|"flow"| 87
-    linkStyle 124 stroke:gray,color:gray;
+    linkStyle 133 stroke:gray,color:gray;
     87 -->|"reads, arg"| 85
     87 -.->|"reads, calls"| built-in:mean
-    linkStyle 126 stroke:gray;
+    linkStyle 135 stroke:gray;
     87 -.->|"flow"| 89
-    linkStyle 127 stroke:gray,color:gray;
+    linkStyle 136 stroke:gray,color:gray;
     89 -->|"reads, returns, arg"| 87
     89 -.->|"reads, calls"| built-in:print
-    linkStyle 129 stroke:gray;
+    linkStyle 138 stroke:gray;
 ```
 
 (The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)

@@ -3,6 +3,8 @@ import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
+import { VertexType } from '../../../../../src/dataflow/graph/vertex';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -410,10 +412,15 @@ describe('Link libraries', withTreeSitter(ts => {
 }));
 
 describe('Dynamic search path', withTreeSitter(ts => {
-	assertDataflow(label('search() is an ordinary call, not linked to library()', ['dynamic-search-path']), ts, 'library(tools)\nn <- search()',
-		emptyGraph().call('2@search', 'search', []),
-		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
+	test(label('search() reads the library() before it', ['dynamic-search-path'], ['dataflow']), async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest('library(tools)\nn <- search()');
+		const { graph } = await analyzer.dataflow();
+		const calls = (name: string) => graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => Identifier.getName(v.name) === name).map(([id]) => id).toArray();
+		const [library] = calls('library');
+		const [search] = calls('search');
+		expect(Dataflow.sourcesOf(graph, library, EdgeType.Reads)).toContain(search);
+	});
 }));
 
 /** Loads the given `code` (with dummy packages `a`, `b`, `c` registered) and returns its leading library layers as `[name, type]`, nearest first. */

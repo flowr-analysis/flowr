@@ -1,6 +1,7 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
 import type {
 	NormalizedAst,
+	AstIdMap,
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -24,6 +25,13 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
 import { FlowrSearchBuilder } from '../flowr-search-builder';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+
+
+/** The search element of the node `id` belongs to (see {@link NodeId.nodeOf}), `undefined` if there is none. */
+function elementOf(id: NodeId, idMap: AstIdMap<ParentInformation>): FlowrSearchElement<ParentInformation> | undefined {
+	const node = NodeId.nodeOf(id, idMap);
+	return node === undefined ? undefined : { node };
+}
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
@@ -152,6 +160,13 @@ function collectAliveNodes(ast: NormalizedAst, reachable: ReadonlySet<NodeId>): 
 			alive.add(node.info.id);
 		}
 	}
+	/* a node the analysis made up for a call (the variables `load` restores) is no code of its own, it runs with the call */
+	for(const [id, node] of ast.idMap) {
+		const parent = node.info.parent === undefined || !alive.has(node.info.parent) ? undefined : ast.idMap.get(node.info.parent);
+		if(parent !== undefined && !alive.has(id) && !RNode.directChildren(parent).includes(node)) {
+			alive.add(id);
+		}
+	}
 	return alive;
 }
 
@@ -245,7 +260,7 @@ export const Enrichments = {
 							// user-code node, so surface it as a built-in identifier (see `onlyBuiltin` above)
 							return qualifyIdentifier([o], NodeId.recoverName(o.id, n.idMap)) ?? String(o.id);
 						}
-						return { node: n.idMap.get(o.id) as RNodeWithParent };
+						return elementOf(o.id, n.idMap);
 					case OriginType.BuiltInFunctionOrigin: {
 						/* an alias (`s <- system; s()`) calls the built-in it is linked to rather than its own name */
 						const linked = NodeId.isBuiltIn(o.proc) ? NodeId.toPkgFn(o.proc)?.[1] ?? NodeId.fromBuiltIn(o.proc) : undefined;
@@ -291,7 +306,10 @@ export const Enrichments = {
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {
-						content.linkedIds.push({ node: n.idMap.get(lastCall) as RNodeWithParent });
+						const linked = elementOf(lastCall, n.idMap);
+						if(linked !== undefined) {
+							content.linkedIds.push(linked);
+						}
 					}
 				}
 			}

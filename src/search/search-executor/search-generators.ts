@@ -5,7 +5,7 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
 import { SourceRange } from '../../util/range';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
@@ -125,8 +125,11 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		}
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
-		for(const node of (queryDef.flattenInvolvedNodes?.(content as BaseQueryResult, args.from, args.certainty) ?? [])) {
-			nodes.add({ node: idMap.get(node) as RNode<ParentInformation> });
+		for(const id of (queryDef.flattenInvolvedNodes?.(content as BaseQueryResult, args.from, args.certainty) ?? [])) {
+			const node = NodeId.nodeOf(id, idMap);
+			if(node !== undefined) {
+				nodes.add({ node });
+			}
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}

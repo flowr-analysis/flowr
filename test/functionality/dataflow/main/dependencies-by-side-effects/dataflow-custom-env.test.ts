@@ -52,7 +52,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('assign to custom env: e is read, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing']),
+		assertDataflow(label('assign to custom env: e is read, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'environment-parent']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nx',
 			emptyGraph()
@@ -736,20 +736,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 		assertDataflow(label('new.env(parent=NULL): same as emptyenv(), assign does not leak', ['dynamic-environment-resolution', 'environment-parent']),
 			shell,
 			'e <- new.env(parent=NULL)\nassign("x", 42, envir=e)\nx',
-			emptyGraph()
-				.defineVariable('1@e', 'e')
-				.use('2@e').reads('2@e', '1@e')
-				.use('3@x'),
-			{
-				expectIsSubgraph:      true,
-				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['3@x', '2@assign']]
-			}
-		);
-
-		assertDataflow(label('new.env() without parent uses default (parent.frame()), tracked normally', ['dynamic-environment-resolution', 'environment-parent']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nx',
 			emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')

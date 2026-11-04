@@ -343,15 +343,16 @@ function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 	/* the index says what flowR *knows*, not what is in scope, so the packages R does not attach on startup
 	   belong in it as much as the always-on built-ins do -- being gated changes when a name resolves, not
 	   whether flowR can answer for it */
-	for(const memory of [builtIns.builtInMemory, ...builtIns.packageMemory.values()]) {
+	/* an entry of a package R does not attach keeps the package it belongs to, `config::get` is no `get` */
+	for(const [pkg, memory] of [[undefined, builtIns.builtInMemory] as const, ...builtIns.packageMemory.entries()]) {
 		for(const [registered, definitions] of memory) {
 			for(const d of definitions) {
 				if(d.type !== ReferenceType.BuiltInFunction) {
 					continue;
 				}
 				const info = d.config as BuiltInFnInfo | undefined;
-				const name = d.name === undefined || Identifier.getName(d.name) === registered
-					? d.name ?? registered : Identifier.make(registered, Identifier.getNamespace(d.name));
+				const namespace = (d.name === undefined ? undefined : Identifier.getNamespace(d.name)) ?? pkg;
+				const name = namespace === undefined ? d.name ?? registered : Identifier.make(registered, namespace);
 				out.push({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
 			}
 		}

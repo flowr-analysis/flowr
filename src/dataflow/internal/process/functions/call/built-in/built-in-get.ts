@@ -3,7 +3,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -11,13 +11,13 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { DfgVertex } from '../../../../../graph/vertex';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvirPositionFormals, resolveConstantString, resolveFirstEnvirArg, suppliesArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { Resolve } from '../../../../../environments/resolve-helper';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
@@ -27,18 +27,7 @@ function namesDenotedBy<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string[] {
 	const folded = resolveConstantString(node, data);
-	if(folded !== undefined) {
-		return [folded];
-	}
-	if(RFunctionCall.isNamed(node, 'c')
-		&& Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function)) {
-		const parts = node.arguments.map(arg => {
-			const value = RArgument.valueOf(arg);
-			return value === undefined ? undefined : resolveConstantString(value, data);
-		});
-		return parts.every(isNotUndefined) ? parts : [];
-	}
-	return [];
+	return folded === undefined ? NodeValue.stringsOf(node.info.id, data) ?? [] : [folded];
 }
 
 /** One symbol per constant name the first argument of `get` denotes, so the lookup is processed like a plain read of them. */

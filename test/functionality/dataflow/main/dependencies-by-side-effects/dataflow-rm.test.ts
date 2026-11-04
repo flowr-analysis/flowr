@@ -7,7 +7,7 @@ import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processin
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { RPipe } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 
-describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell => {
+describe('Dataflow rm', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Removing breaks link', ['functions-with-global-side-effects']), shell,
 		'x <- 2\nrm(x)\nx',
 		emptyGraph()

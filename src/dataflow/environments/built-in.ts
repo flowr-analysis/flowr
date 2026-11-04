@@ -1,3 +1,4 @@
+import { AmbientStateName, KeyedState } from './ambient-state-name';
 import type { DataflowProcessorInformation } from '../processor';
 import { FunctionSemantics } from '../fn/function-semantics';
 import type { DataflowInformation, ExitPoint } from '../info';
@@ -25,7 +26,7 @@ import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
-import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
+import { processLibrary, processPrefer  } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
@@ -61,6 +62,10 @@ import { processRecall } from '../internal/process/functions/call/built-in/built
 import { processS7NewGeneric, processMakeConstructor } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { convertFnArguments } from '../internal/process/functions/call/common';
+import { NodeValue } from '../eval/resolve/node-value';
+import { Resolve } from './resolve-helper';
+import { linkFieldReads } from '../internal/linker';
 import { BuiltInProcName } from './built-in-proc-name';
 import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
@@ -69,7 +74,7 @@ import { processClassRelation } from '../internal/process/functions/call/built-i
 import { processS4Use } from '../internal/process/functions/call/built-in/built-in-s-four';
 import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
 import { processEnvContents, processListToEnv } from '../internal/process/functions/call/built-in/built-in-env-contents';
-import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
+import { processAttach, processDetach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
@@ -111,7 +116,13 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
+/** The global state a call reads or writes, applied for every processor (see {@link PlacesAmbientItself}). */
+export interface AmbientConfig {
+	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientStateAccess} */
+	readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[]
+}
+
+export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo, AmbientConfig {
 	readonly cfg?:                   ExitPointType,
 	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
 	readonly alternativeArgsFrom?:   number,
@@ -124,8 +135,6 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** without arguments, the result is the frame the call runs in, like `environment()`, so within a function it reads every binding of the frame */
 	readonly readsFrame?:            boolean,
-	/** how the call reads or writes global state like the graphics parameters or the options, see {@link AmbientStateAccess} */
-	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[],
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
 	readonly scope?:                 AmbientScope,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
@@ -137,6 +146,11 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	 * data instead of variables, while everything else in them is evaluated in the caller's frame as usual.
 	 */
 	readonly markArgsAsMasked?:      NseArguments | readonly number[],
+	/**
+	 * The formals whose arguments name variables the call reads by their string value, like `save("x", list = v)`:
+	 * a string literal anywhere, any other value except in `...`, where a symbol is the variable itself.
+	 */
+	readonly namesIn?:               readonly string[],
 	/**
 	 * Name that should be used for the origin (useful when needing to differentiate between
 	 * functions like 'return' that use the default builtin processor)
@@ -319,7 +333,7 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig, ambient }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig' | 'ambient'>
+	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig, namesIn }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig' | 'ambient' | 'namesIn'>
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig), keepArgumentGraphs: nse !== undefined || masked !== undefined });
@@ -327,8 +341,31 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	const first = firstParameterArgument(args, sig === undefined ? undefined : FunctionSemantics.call.signature.layout(sig));
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, nse, { first });
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked, first });
-	return ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, ambient);
+	if(namesIn !== undefined && sig !== undefined) {
+		readNamedVariables(information, args, rootId, data, sig, namesIn);
+	}
+	return information;
 }
+
+/** Links the call to the variables its {@link DefaultBuiltInProcessorConfiguration#namesIn} arguments name, an unknown name being an unknown side effect. */
+function readNamedVariables<OtherInfo>(information: DataflowInformation, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sig: FnSig, namesIn: readonly string[]): void {
+	const bound = FunctionSemantics.call.match.toSpec(convertFnArguments(args), Object.fromEntries(sig.map(([n]) => [n, n])));
+	for(const formal of namesIn) {
+		for(const id of bound.get(formal) ?? []) {
+			const value = RArgument.getValue<OtherInfo & ParentInformation>(args, id);
+			const names = RString.is(value) ? [value.content.str] : formal === '...' || value === undefined ? [] : NodeValue.stringsOf(value.info.id, data);
+			if(names === undefined) {
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+			}
+			for(const name of names ?? []) {
+				linkFieldReads(information.graph, rootId, Resolve.byName(name, data.environment), false);
+			}
+		}
+	}
+}
+
+/** The processors that apply the configured {@link BuiltInFnInfo#ambient} access themselves, where it belongs among their steps; the others have it applied after them. */
+const PlacesAmbientItself: ReadonlySet<BuiltInProcName> = new Set([BuiltInProcName.Default, BuiltInProcName.Source]);
 
 /**
  * A call that reads or writes the files its arguments name accesses the {@link AmbientStateName.files|files on disk} as well.
@@ -353,6 +390,16 @@ function withFileAccess<Config>(config: Config): Config {
 	return { ...config, ambient: [...stated, ...types.map(type => ({
 		type, numbered, sig: glob || sig === undefined ? undefined : split ? FnSig.resources(sig, type === AmbientStateAccessType.WriteFiles) : sig
 	}))] };
+}
+
+/** A call starting a process hands it every environment variable, a call loading a package looks for it in the library paths. */
+function withImplicitReads<Config>(config: Config): Config {
+	const { tags, ambient } = (config ?? {}) as { tags?: readonly SemanticCallTag[], ambient?: AmbientStateAccess | readonly AmbientStateAccess[] };
+	const reads = [
+		...tags?.includes(SemanticCallTag.Process) ? [AmbientStateName.allOf(KeyedState.Env)] : [],
+		...tags?.includes(SemanticCallTag.LoadsPackage) ? [AmbientStateName.libPaths] : []
+	];
+	return reads.length === 0 ? config : { ...config, ambient: [...[ambient ?? []].flat(), ...reads.map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const)] };
 }
 
 export const BuiltInProcessorMapper = {
@@ -394,6 +441,8 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.EnvContents]:        processEnvContents,
 	[BuiltInProcName.ListToEnv]:          processListToEnv,
 	[BuiltInProcName.Attach]:             processAttach,
+	[BuiltInProcName.Detach]:             processDetach,
+	[BuiltInProcName.Prefer]:             processPrefer,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
 	[BuiltInProcName.ClassGenerator]:     processClassGenerator,
 	[BuiltInProcName.ClassRelation]:      processClassRelation,
@@ -461,7 +510,11 @@ export class BuiltIns {
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		const mappedEval = evalHandler === undefined ? undefined : BuiltInEvalHandlerMapper[evalHandler];
 		guard(evalHandler === undefined || mappedEval !== undefined, () => `Eval handler ${evalHandler} is unknown! Please pass a valid one of ${JSON.stringify(Object.keys(BuiltInEvalHandlerMapper))}!`);
-		config = withFileAccess(config);
+		config = withImplicitReads(withFileAccess(config));
+		const ambient = PlacesAmbientItself.has(processor) ? undefined : (config as AmbientConfig | undefined)?.ambient;
+		const process: BuiltInIdentifierProcessor = ambient === undefined
+			? (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never)
+			: (name, args, rootId, data) => applyAmbientStateAccess(mappedProcessor(name, args, rootId, data, config as never), args, rootId, data, ambient);
 		for(const name of names) {
 			const n = Identifier.getName(name);
 			const id = NodeId.toBuiltIn(n);
@@ -469,7 +522,7 @@ export class BuiltIns {
 				type:          ReferenceType.BuiltInFunction,
 				definedAt:     id,
 				cds:           undefined,
-				processor:     (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as never),
+				processor:     process,
 				config,
 				evalHandler:   mappedEval,
 				processorName: processor,

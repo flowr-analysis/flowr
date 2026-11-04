@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 13:25:28 UTC (v2.17.0), do not edit directly._
 <h2 id="Function Info Query">Function Info Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.\
@@ -25,7 +25,7 @@ Given a base-R name such as `sd`:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (23 ms)\
+Query: **function-info** (31 ms)\
 &nbsp;&nbsp;&nbsp;╰ **stats** _(x, na.rm)_ _(R/sd.R:19)_\
 &nbsp;&nbsp;&nbsp;╰ **posterior** _(x, ...)_ _(R/rvar-summaries-over-draws.R:192)_\
 &nbsp;&nbsp;&nbsp;╰ **h2o** _(x, na.rm)_ _(R/frame.R:2998)_\
@@ -129,11 +129,12 @@ flowR states for it:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (13 ms)\
+Query: **function-info** (25 ms)\
 &nbsp;&nbsp;&nbsp;╰ **base** _(x, pos, envir, mode, inherits)_ _(R/get.R:26)_\
 &nbsp;&nbsp;&nbsp;╰ **config** _(value, config, file, use_parent)_ _(R/get.R:43)_\
 &nbsp;&nbsp;&nbsp;╰ **crmPack**\
 &nbsp;&nbsp;&nbsp;╰ **ale** _(obj, ...)_ _(R/000-startup.R:52)_\
+&nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **config::get** [function] _processor builtin:d-ra, file, reads_\
 &nbsp;&nbsp;&nbsp;╰ _flowR built-in_ **base::get** [function] _processor builtin:get, eval eval:get, eval_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -154,6 +155,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
       {"package":"ale","exported":true,"parameters":["obj","..."],"file":"R/000-startup.R","line":52}
     ],
     "builtin": [
+      {"kind":"function","namespace":"config","processor":"builtin:d-ra","assumePrimitive":false,"tags":["file","reads"],"configKeys":["libFn","tags","sig"]},
       {
         "kind": "function",
         "namespace": "base",

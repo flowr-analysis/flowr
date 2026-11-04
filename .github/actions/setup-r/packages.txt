@@ -1,5 +1,14 @@
+config
+conflicted
+DBI
 dplyr
 ggplot2
+knitr
+mockery
+needs
 purrr
 readr
+rmarkdown
+RSQLite
 withr
+yaml

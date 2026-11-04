@@ -5,7 +5,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
@@ -166,7 +166,7 @@ export function processApply<OtherInfo>(
 
 	if(anonymous) {
 		const rootFnId = functionId;
-		functionId = 'anon-' + rootFnId;
+		functionId = NodeId.anonymousCall(rootFnId);
 		information.graph.addVertex({
 			tag:         VertexType.FunctionCall,
 			id:          functionId,

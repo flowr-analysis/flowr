@@ -125,9 +125,9 @@ function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext):
 	return names;
 }
 
-/** calls that load or attach a package (what flowR states, plus `pacman::p_load`); an unresolved one means we cannot enumerate all exports in scope */
+/** calls that load or attach a package; an unresolved one means we cannot enumerate all exports in scope */
 function libraryLoadFunctions(index: BuiltInIndex): ReadonlySet<string> {
-	return new Set([...namesWith(index, SemanticCallTag.LoadsPackage), ...namesWith(index, SemanticCallTag.AttachesPackage), 'p_load']);
+	return new Set([...namesWith(index, SemanticCallTag.LoadsPackage), ...namesWith(index, SemanticCallTag.AttachesPackage)]);
 }
 
 /** test frameworks whose namespace a test file runs under implicitly (e.g. `tests/testthat/test-*.R` sees testthat's exports without a `library()`) */

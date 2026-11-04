@@ -490,10 +490,8 @@ function reconstructFunctionCall(
 	}
 	if(!selected) {
 		const f = args.filter(a => a !== EmptyArgument && a.length !== 0) as Code[];
-		if(f.length === 0) {
-			return [];
-		} else if(f.length === 1) {
-			return f[0];
+		if(f.length <= 1 || (call.infixSpecial !== true && functionName.length === 0)) {
+			return f.flat();
 		}
 	}
 

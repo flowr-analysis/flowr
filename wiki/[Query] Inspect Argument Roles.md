@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-03, 08:22:01 UTC (v2.16.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 13:25:28 UTC (v2.17.0), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
@@ -146,6 +146,7 @@ lapply`"]
     style 21 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
     style 29 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
@@ -358,6 +359,7 @@ lapply`"]
     style 21 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
     style 29 stroke:purple,stroke-width:4px; 
+    style 27 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 
     style 27 stroke:purple,stroke-width:4px; 

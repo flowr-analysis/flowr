@@ -3,7 +3,7 @@ import { log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { deferringCall, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -89,6 +89,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const basePrint = ctx.env.getCleanEnvFingerprint();
 	const queue = new VisitingQueue(options.threshold ?? 75, cache, graph, ctx.gas.scope(options.gas), [emptyEnv, basePrint]);
 	const enclosingHandled = new Set<NodeId | undefined>();
+	const callSigs: Parameters<typeof deferringCall>[3] = new Map();
 	/* the unknown side effects every slice keeps are seeds as well, so what they reach is not cut off as running too late */
 	const effects = [...graph.unknownSideEffects].filter((id): id is NodeId => typeof id !== 'object');
 	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph) : undefined;
@@ -165,6 +166,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			if(!topLevel || (idMap.get(cd.id)?.info.nest ?? 0) >= minNesting) {
 				queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
 			}
+		}
+		/* code a call quotes or calls runs where and when that call says, so the call stays with it */
+		const deferring = deferringCall(id, info, idMap, callSigs);
+		if(deferring !== undefined) {
+			enqueue(deferring, baseEnvironment, baseEnvFingerprint);
 		}
 		/* a call or a definition within a promise runs only when the promise is forced, within captured code only when it is evaluated */
 		if(DfgVertex.isFunctionCall(currentVertex) || DfgVertex.isVariableDefinition(currentVertex)) {

@@ -126,7 +126,7 @@ function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, 
  * already in `opening` is skipped: in `gzfile(d)` with `d` unknown, the provenance of `d` leads back to that very call.
  */
 function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext, opening: ReadonlySet<NodeId>): string[] | undefined {
-	for(const id of Dataflow.provenance(argument, graph, undefined, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
+	for(const id of Dataflow.provenance(argument, graph, undefined, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall | EdgeType.Returns)) {
 		if(opening.has(id)) {
 			continue;
 		}

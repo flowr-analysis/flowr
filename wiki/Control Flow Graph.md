@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-10-27, 20:45:07 UTC (v2.16.7, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-04, 13:52:01 UTC (v2.17.0, R v4.6.1), do not edit directly._
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
 2)&nbsp;a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), and 3)&nbsp;a control flow graph&nbsp;(CFG).
@@ -360,7 +360,7 @@ In mermaid visualizations, we use rectangles for statements and rounded rectangl
 Blocks are visualized as boxes around the contained vertices.
 
 > [!NOTE]
-> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
+> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L36"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 > 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 > 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
 
@@ -661,7 +661,7 @@ f <- function() b; f()
 
 </details>
 
-A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> of the function definitions that
+A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L36"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> of the function definitions that
 are called from this vertex, taken from the `calls` edges the dataflow analysis resolved.
 
 For built-in functions that are provided by flowR's built-in configuration (see the [interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface)) the CFG does not contain
@@ -1228,29 +1228,29 @@ All in all, this visitor offers the following semantic events:
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L87"><code><span title="A helper function to get the normalized AST node for the given id or fail if it does not exist.">SemanticCfgGuidedVisitor::<b>getNormalizedAst</b></span></code></a>\
   A helper function to get the normalized AST node for the given id or fail if it does not exist.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L327"><code><span title="A helper function to request the origins of the given node.">SemanticCfgGuidedVisitor::<b>getOrigins</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L329"><code><span title="A helper function to request the origins of the given node.">SemanticCfgGuidedVisitor::<b>getOrigins</b></span></code></a>\
   A helper function to request the
   <code>origins</code>
   of the given node.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L491"><code>SemanticCfgGuidedVisitor::<b>getSourceAndTarget</b></code></a>
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L493"><code>SemanticCfgGuidedVisitor::<b>getSourceAndTarget</b></code></a>
   
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L393"><code><span title="Fires for every subsetting call: [[, [, or $.">SemanticCfgGuidedVisitor::<b>onAccessCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L395"><code><span title="Fires for every subsetting call: [[, [, or $.">SemanticCfgGuidedVisitor::<b>onAccessCall</b></span></code></a>\
   Fires for every subsetting call: `[[`, `[`, or `$`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L378"><code><span title="Fires for every call to a *apply function, e.g. lapply(1:10, function(x) { x + 1 }).">SemanticCfgGuidedVisitor::<b>onApplyFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L380"><code><span title="Fires for every call to a *apply function, e.g. lapply(1:10, function(x) { x + 1 }).">SemanticCfgGuidedVisitor::<b>onApplyFunctionCall</b></span></code></a>\
   Fires for every call to a `*apply` function, e.g. `lapply(1:10, function(x) { x + 1 })`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L414"><code><span title="Fires for every assignment call, e.g. <- in x <- 42, assign('x', 42), or the data.table assign := in DT[, x := 42]. Replacements with a function call on the target side, like names(x) <- 3, go through onReplacementCall instead.">SemanticCfgGuidedVisitor::<b>onAssignmentCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L416"><code><span title="Fires for every assignment call, e.g. <- in x <- 42, assign('x', 42), or the data.table assign := in DT[, x := 42]. Replacements with a function call on the target side, like names(x) <- 3, go through onReplacementCall instead.">SemanticCfgGuidedVisitor::<b>onAssignmentCall</b></span></code></a>\
   Fires for every assignment call, e.g. `<-` in `x <- 42`, `assign("x", 42)`, or the `data.table` assign `:=` in `DT[, x := 42]`.
   Replacements with a function call on the target side, like `names(x) <- 3`, go through
   <code>onReplacementCall</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L480"><code><span title="Fires for every break call, e.g. repeat { break }.">SemanticCfgGuidedVisitor::<b>onBreakCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L482"><code><span title="Fires for every break call, e.g. repeat { break }.">SemanticCfgGuidedVisitor::<b>onBreakCall</b></span></code></a>\
   Fires for every `break` call, e.g. `repeat { break }`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L372"><code><span title="Fires for every named call not handled by a specific overload, e.g. foo(x) for a user-defined foo. flowR does not care about the dataflow impact of these (currently); use getOrigins to get the call's origins. Anonymous calls, which cannot be resolved via the active environment, go through onUnnamedCall instead.">SemanticCfgGuidedVisitor::<b>onDefaultFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L374"><code><span title="Fires for every named call not handled by a specific overload, e.g. foo(x) for a user-defined foo. flowR does not care about the dataflow impact of these (currently); use getOrigins to get the call's origins. Anonymous calls, which cannot be resolved via the active environment, go through onUnnamedCall instead.">SemanticCfgGuidedVisitor::<b>onDefaultFunctionCall</b></span></code></a>\
   Fires for every named call not handled by a specific overload, e.g. `foo(x)` for a user-defined `foo`. flowR does not care about the dataflow
   impact of these (currently); use
   <code>getOrigins</code>
@@ -1275,124 +1275,124 @@ All in all, this visitor offers the following semantic events:
   If you want to change the behavior in case of multiple potential function definition targets, simply overwrite this function
   with the logic you desire.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L375"><code><span title="Fires for every call to eval, e.g. eval(parse(text = 'x + 1')).">SemanticCfgGuidedVisitor::<b>onEvalFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L377"><code><span title="Fires for every call to eval, e.g. eval(parse(text = 'x + 1')).">SemanticCfgGuidedVisitor::<b>onEvalFunctionCall</b></span></code></a>\
   Fires for every call to `eval`, e.g. `eval(parse(text = "x + 1"))`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L384"><code><span title="Fires for every expression list, implicit or explicit, other than the root program (see onProgram for that) - e.g. the { } block, or the implicit list x <- x + 1 forms in for(x in 1:10) x <- x + 1.">SemanticCfgGuidedVisitor::<b>onExpressionList</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L386"><code><span title="Fires for every expression list, implicit or explicit, other than the root program (see onProgram for that) - e.g. the { } block, or the implicit list x <- x + 1 forms in for(x in 1:10) x <- x + 1.">SemanticCfgGuidedVisitor::<b>onExpressionList</b></span></code></a>\
   Fires for every expression list, implicit or explicit, other than the root program (see
   <code>onProgram</code>
   for that) - e.g. the `{ }` block, or the implicit list `x <- x + 1` forms in `for(x in 1:10) x <- x + 1`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L426"><code><span title="Fires for every for loop, e.g. for(i in 1:10) { print(i) }.">SemanticCfgGuidedVisitor::<b>onForLoopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L428"><code><span title="Fires for every for loop, e.g. for(i in 1:10) { print(i) }.">SemanticCfgGuidedVisitor::<b>onForLoopCall</b></span></code></a>\
   Fires for every `for` loop, e.g. `for(i in 1:10) { print(i) }`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L359"><code><span title="Fires for every anonymous function definition, e.g. function(x) { x + 1 } in lapply(1:10, function(x) { x + 1 }).">SemanticCfgGuidedVisitor::<b>onFunctionDefinition</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L361"><code><span title="Fires for every anonymous function definition, e.g. function(x) { x + 1 } in lapply(1:10, function(x) { x + 1 }).">SemanticCfgGuidedVisitor::<b>onFunctionDefinition</b></span></code></a>\
   Fires for every anonymous function definition, e.g. `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L402"><code><span title="Fires for every call to get, e.g. get('x'), which is used to access variables in the global environment. As flowR resolves get during the dataflow analysis, this may also trigger onVariableUse .">SemanticCfgGuidedVisitor::<b>onGetCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L404"><code><span title="Fires for every call to get, e.g. get('x'), which is used to access variables in the global environment. As flowR resolves get during the dataflow analysis, this may also trigger onVariableUse .">SemanticCfgGuidedVisitor::<b>onGetCall</b></span></code></a>\
   Fires for every call to `get`, e.g. `get("x")`, which is used to access variables in the global environment.
   As flowR resolves `get` during the dataflow analysis, this may also trigger
   <code>onVariableUse</code>
   .
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L396"><code><span title="Fires for every if-then-else call.">SemanticCfgGuidedVisitor::<b>onIfThenElseCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L398"><code><span title="Fires for every if-then-else call.">SemanticCfgGuidedVisitor::<b>onIfThenElseCall</b></span></code></a>\
   Fires for every `if`-`then`-`else` call.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L408"><code><span title="Fires for every call that loads a library, e.g. library(dplyr).">SemanticCfgGuidedVisitor::<b>onLibraryCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L410"><code><span title="Fires for every call that loads a library, e.g. library(dplyr).">SemanticCfgGuidedVisitor::<b>onLibraryCall</b></span></code></a>\
   Fires for every call that loads a library, e.g. `library(dplyr)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L441"><code><span title="Fires for every call that (to flowR's knowledge) constructs a list, e.g. list(1, 2, 3).">SemanticCfgGuidedVisitor::<b>onListCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L443"><code><span title="Fires for every call that (to flowR's knowledge) constructs a list, e.g. list(1, 2, 3).">SemanticCfgGuidedVisitor::<b>onListCall</b></span></code></a>\
   Fires for every call that (to flowR's knowledge) constructs a list, e.g. `list(1, 2, 3)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L502"><code>SemanticCfgGuidedVisitor::<b>onLoadCall</b></code></a>
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L504"><code>SemanticCfgGuidedVisitor::<b>onLoadCall</b></code></a>
   
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L456"><code><span title="Fires for every call that performs a local call, e.g. local({ x <- 1; y <- 2; x + y }).">SemanticCfgGuidedVisitor::<b>onLocalCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L458"><code><span title="Fires for every call that performs a local call, e.g. local({ x <- 1; y <- 2; x + y }).">SemanticCfgGuidedVisitor::<b>onLocalCall</b></span></code></a>\
   Fires for every call that performs a local call, e.g. `local({ x <- 1; y <- 2; x + y })`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L341"><code><span title="Fires for every constant logical, e.g. TRUE in if(TRUE) { ... }.">SemanticCfgGuidedVisitor::<b>onLogicalConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L343"><code><span title="Fires for every constant logical, e.g. TRUE in if(TRUE) { ... }.">SemanticCfgGuidedVisitor::<b>onLogicalConstant</b></span></code></a>\
   Fires for every constant logical, e.g. `TRUE` in `if(TRUE) { ... }`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L332"><code><span title="Fires for every NULL occurrence; other symbols go through onSymbolConstant instead.">SemanticCfgGuidedVisitor::<b>onNullConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L334"><code><span title="Fires for every NULL occurrence; other symbols go through onSymbolConstant instead.">SemanticCfgGuidedVisitor::<b>onNullConstant</b></span></code></a>\
   Fires for every `NULL` occurrence; other symbols go through
   <code>onSymbolConstant</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L338"><code><span title="Fires for every constant number, e.g. 42 in print(42).">SemanticCfgGuidedVisitor::<b>onNumberConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L340"><code><span title="Fires for every constant number, e.g. 42 in print(42).">SemanticCfgGuidedVisitor::<b>onNumberConstant</b></span></code></a>\
   Fires for every constant number, e.g. `42` in `print(42)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L420"><code><span title="Fires for every call to R's pipe operator |>.">SemanticCfgGuidedVisitor::<b>onPipeCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L422"><code><span title="Fires for every call to R's pipe operator |>.">SemanticCfgGuidedVisitor::<b>onPipeCall</b></span></code></a>\
   Fires for every call to R's pipe operator `|>`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L322"><code><span title="Fires for the root program node being analyzed.">SemanticCfgGuidedVisitor::<b>onProgram</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L324"><code><span title="Fires for the root program node being analyzed.">SemanticCfgGuidedVisitor::<b>onProgram</b></span></code></a>\
   Fires for the root program node being analyzed.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L489"><code><span title="Fires for every purrr formula, e.g. map(df, ~ .x + 1).">SemanticCfgGuidedVisitor::<b>onPurrFormulaCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L491"><code><span title="Fires for every purrr formula, e.g. map(df, ~ .x + 1).">SemanticCfgGuidedVisitor::<b>onPurrFormulaCall</b></span></code></a>\
   Fires for every purrr formula, e.g. `map(df, ~ .x + 1)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L423"><code><span title="Fires for every call to quote, e.g. quote(x + 1).">SemanticCfgGuidedVisitor::<b>onQuoteCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L425"><code><span title="Fires for every call to quote, e.g. quote(x + 1).">SemanticCfgGuidedVisitor::<b>onQuoteCall</b></span></code></a>\
   Fires for every call to `quote`, e.g. `quote(x + 1)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L486"><code><span title="Fires for every call to Recall, used to recall the function closure (usually in recursive functions).">SemanticCfgGuidedVisitor::<b>onRecallCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L488"><code><span title="Fires for every call to Recall, used to recall the function closure (usually in recursive functions).">SemanticCfgGuidedVisitor::<b>onRecallCall</b></span></code></a>\
   Fires for every call to `Recall`, used to recall the function closure (usually in recursive functions).
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L477"><code><span title="Fires for every call that registers a hook, e.g. on.exit(print('exiting function')).">SemanticCfgGuidedVisitor::<b>onRegisterHookCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L479"><code><span title="Fires for every call that registers a hook, e.g. on.exit(print('exiting function')).">SemanticCfgGuidedVisitor::<b>onRegisterHookCall</b></span></code></a>\
   Fires for every call that registers a hook, e.g. `on.exit(print("exiting function"))`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L432"><code><span title="Fires for every repeat loop, e.g. repeat { i <- i + 1; if(i >= 10) break }.">SemanticCfgGuidedVisitor::<b>onRepeatLoopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L434"><code><span title="Fires for every repeat loop, e.g. repeat { i <- i + 1; if(i >= 10) break }.">SemanticCfgGuidedVisitor::<b>onRepeatLoopCall</b></span></code></a>\
   Fires for every `repeat` loop, e.g. `repeat { i <- i + 1; if(i >= 10) break }`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L438"><code><span title="Fires for every call that replaces a value in a container, e.g. names in names(x) <- 3 (but not for x <- 3). Unlike onAssignmentCall , this does not assign a value to a variable.">SemanticCfgGuidedVisitor::<b>onReplacementCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L440"><code><span title="Fires for every call that replaces a value in a container, e.g. names in names(x) <- 3 (but not for x <- 3). Unlike onAssignmentCall , this does not assign a value to a variable.">SemanticCfgGuidedVisitor::<b>onReplacementCall</b></span></code></a>\
   Fires for every call that replaces a value in a container, e.g. `names` in `names(x) <- 3` (but not for `x <- 3`).
   Unlike
   <code>onAssignmentCall</code>
   , this does not assign a value to a variable.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L483"><code><span title="Fires for every return call, e.g. f <- function() { return(42) }.">SemanticCfgGuidedVisitor::<b>onReturnCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L485"><code><span title="Fires for every return call, e.g. f <- function() { return(42) }.">SemanticCfgGuidedVisitor::<b>onReturnCall</b></span></code></a>\
   Fires for every `return` call, e.g. `f <- function() { return(42) }`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L405"><code><span title="Fires for every call to rm, e.g. rm(x), which removes variables from the environment.">SemanticCfgGuidedVisitor::<b>onRmCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L407"><code><span title="Fires for every call to rm, e.g. rm(x), which removes variables from the environment.">SemanticCfgGuidedVisitor::<b>onRmCall</b></span></code></a>\
   Fires for every call to `rm`, e.g. `rm(x)`, which removes variables from the environment.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L462"><code><span title="Fires for every call that performs an S3-like dispatch, e.g. UseMethod('print').">SemanticCfgGuidedVisitor::<b>onS3DispatchCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L464"><code><span title="Fires for every call that performs an S3-like dispatch, e.g. UseMethod('print').">SemanticCfgGuidedVisitor::<b>onS3DispatchCall</b></span></code></a>\
   Fires for every call that performs an S3-like dispatch, e.g. `UseMethod("print")`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L468"><code><span title="Fires for every call that performs an S3-like *next* dispatch, e.g. NextMethod().">SemanticCfgGuidedVisitor::<b>onS3DispatchNextCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L470"><code><span title="Fires for every call that performs an S3-like *next* dispatch, e.g. NextMethod().">SemanticCfgGuidedVisitor::<b>onS3DispatchNextCall</b></span></code></a>\
   Fires for every call that performs an S3-like *next* dispatch, e.g. `NextMethod()`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L474"><code><span title="Fires for every call that performs an S7 dispatch, e.g. S7_dispatch.">SemanticCfgGuidedVisitor::<b>onS7DispatchCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L476"><code><span title="Fires for every call that performs an S7 dispatch, e.g. S7_dispatch.">SemanticCfgGuidedVisitor::<b>onS7DispatchCall</b></span></code></a>\
   Fires for every call that performs an S7 dispatch, e.g. `S7_dispatch`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L471"><code><span title="Fires for every call that creates a new S7 generic, e.g. new_generic.">SemanticCfgGuidedVisitor::<b>onS7NewGenericCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L473"><code><span title="Fires for every call that creates a new S7 generic, e.g. new_generic.">SemanticCfgGuidedVisitor::<b>onS7NewGenericCall</b></span></code></a>\
   Fires for every call that creates a new S7 generic, e.g. `new_generic`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L390"><code><span title="Fires for every call to source, e.g. source('script.R'). Does not provide the resolved source file by default; use the DataflowGraph to ask for sourced files.">SemanticCfgGuidedVisitor::<b>onSourceCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L392"><code><span title="Fires for every call to source, e.g. source('script.R'). Does not provide the resolved source file by default; use the DataflowGraph to ask for sourced files.">SemanticCfgGuidedVisitor::<b>onSourceCall</b></span></code></a>\
   Fires for every call to `source`, e.g. `source("script.R")`. Does not provide the resolved source file by default;
   use the
   <code>DataflowGraph</code>
   to ask for sourced files.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L417"><code><span title="Fires for every special binary operator call, i.e. a binary call whose name starts and ends with %, e.g. x %in% y.">SemanticCfgGuidedVisitor::<b>onSpecialBinaryOpCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L419"><code><span title="Fires for every special binary operator call, i.e. a binary call whose name starts and ends with %, e.g. x %in% y.">SemanticCfgGuidedVisitor::<b>onSpecialBinaryOpCall</b></span></code></a>\
   Fires for every special binary operator call, i.e. a binary call whose name starts and ends with `%`, e.g. `x %in% y`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L447"><code><span title="Fires for every call to stop, e.g. stop().">SemanticCfgGuidedVisitor::<b>onStopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L449"><code><span title="Fires for every call to stop, e.g. stop().">SemanticCfgGuidedVisitor::<b>onStopCall</b></span></code></a>\
   Fires for every call to `stop`, e.g. `stop()`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L450"><code><span title="Fires for every call to stopifnot, e.g. stopifnot(x > 0).">SemanticCfgGuidedVisitor::<b>onStopIfNotCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L452"><code><span title="Fires for every call to stopifnot, e.g. stopifnot(x > 0).">SemanticCfgGuidedVisitor::<b>onStopIfNotCall</b></span></code></a>\
   Fires for every call to `stopifnot`, e.g. `stopifnot(x > 0)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L335"><code><span title="Fires for every constant string, e.g. 'Hello World' in print('Hello World').">SemanticCfgGuidedVisitor::<b>onStringConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L337"><code><span title="Fires for every constant string, e.g. 'Hello World' in print('Hello World').">SemanticCfgGuidedVisitor::<b>onStringConstant</b></span></code></a>\
   Fires for every constant string, e.g. `"Hello World"` in `print("Hello World")`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L347"><code><span title="Fires for every constant symbol used as itself (non-standard evaluation, not resolved to a value), e.g. foo in library(foo) or a in l$a. NULL goes through onNullConstant instead.">SemanticCfgGuidedVisitor::<b>onSymbolConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L349"><code><span title="Fires for every constant symbol used as itself (non-standard evaluation, not resolved to a value), e.g. foo in library(foo) or a in l$a. NULL goes through onNullConstant instead.">SemanticCfgGuidedVisitor::<b>onSymbolConstant</b></span></code></a>\
   Fires for every constant symbol used as itself (non-standard evaluation, not resolved to a value), e.g. `foo` in `library(foo)` or `a` in `l$a`.
   `NULL` goes through
   <code>onNullConstant</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L453"><code><span title="Fires for every call to try, e.g. try(stop('error')), which catches possible errors.">SemanticCfgGuidedVisitor::<b>onTryCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L455"><code><span title="Fires for every call to try, e.g. try(stop('error')), which catches possible errors.">SemanticCfgGuidedVisitor::<b>onTryCall</b></span></code></a>\
   Fires for every call to `try`, e.g. `try(stop("error"))`, which catches possible errors.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L365"><code><span title="Fires for every anonymous call, e.g. (function(x) { x + 1 })(42) or the second call in a()(), whose target cannot be inferred from a name (use getOrigins ). Named calls go through onDefaultFunctionCall instead.">SemanticCfgGuidedVisitor::<b>onUnnamedCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L367"><code><span title="Fires for every anonymous call, e.g. (function(x) { x + 1 })(42) or the second call in a()(), whose target cannot be inferred from a name (use getOrigins ). Named calls go through onDefaultFunctionCall instead.">SemanticCfgGuidedVisitor::<b>onUnnamedCall</b></span></code></a>\
   Fires for every anonymous call, e.g. `(function(x) { x + 1 })(42)` or the second call in `a()()`, whose target cannot be inferred from a name
   (use
   <code>getOrigins</code>
@@ -1400,7 +1400,7 @@ All in all, this visitor offers the following semantic events:
   <code>onDefaultFunctionCall</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L356"><code><span title="Fires for every variable write, e.g. x in x <- 42 or assign('x', 42). Use getOrigins for its origins. See onAssignmentCall for the assignment call itself, which also carries the source.">SemanticCfgGuidedVisitor::<b>onVariableDefinition</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L358"><code><span title="Fires for every variable write, e.g. x in x <- 42 or assign('x', 42). Use getOrigins for its origins. See onAssignmentCall for the assignment call itself, which also carries the source.">SemanticCfgGuidedVisitor::<b>onVariableDefinition</b></span></code></a>\
   Fires for every variable write, e.g. `x` in `x <- 42` or `assign("x", 42)`. Use
   <code>getOrigins</code>
   for its origins.
@@ -1408,15 +1408,15 @@ All in all, this visitor offers the following semantic events:
   <code>onAssignmentCall</code>
   for the assignment call itself, which also carries the source.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L350"><code><span title="Fires for every variable read, e.g. x in print(x). Use getOrigins for its origins.">SemanticCfgGuidedVisitor::<b>onVariableUse</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L352"><code><span title="Fires for every variable read, e.g. x in print(x). Use getOrigins for its origins.">SemanticCfgGuidedVisitor::<b>onVariableUse</b></span></code></a>\
   Fires for every variable read, e.g. `x` in `print(x)`. Use
   <code>getOrigins</code>
   for its origins.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L444"><code><span title="Fires for every call that (to flowR's knowledge) constructs a vector, e.g. c(1, 2, 3).">SemanticCfgGuidedVisitor::<b>onVectorCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L446"><code><span title="Fires for every call that (to flowR's knowledge) constructs a vector, e.g. c(1, 2, 3).">SemanticCfgGuidedVisitor::<b>onVectorCall</b></span></code></a>\
   Fires for every call that (to flowR's knowledge) constructs a vector, e.g. `c(1, 2, 3)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L429"><code><span title="Fires for every while loop, e.g. while(i < 10) { i <- i + 1 }.">SemanticCfgGuidedVisitor::<b>onWhileLoopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L431"><code><span title="Fires for every while loop, e.g. while(i < 10) { i <- i + 1 }.">SemanticCfgGuidedVisitor::<b>onWhileLoopCall</b></span></code></a>\
   Fires for every `while` loop, e.g. `while(i < 10) { i <- i + 1 }`.
 
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L159"><code><span title="Dispatches onUnnamedCall for anonymous calls, or onDispatchFunctionCallOrigins for named ones; overwrite those instead of this base-dispatch override.">SemanticCfgGuidedVisitor::<b>visitFunctionCall</b></span></code></a>\

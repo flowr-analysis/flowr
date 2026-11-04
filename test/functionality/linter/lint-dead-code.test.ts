@@ -14,6 +14,8 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		describe('simple', () => {
 			assertLinter('none', parser, 'x <- 1', 'dead-code', []);
+			/* the variables a load restores are made up for the call, they are no code of their own */
+			assertLinter('a load restoring what the program saved', parser, 'x <- 5\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)', 'dead-code', []);
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 17], quickFix: [emptied([1, 17, 1, 17])] }
 			]);

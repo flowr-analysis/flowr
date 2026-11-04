@@ -178,7 +178,12 @@ export const RLoopConstructs = {
 	/**
 	 * A set of all types of loop constructs in the normalized AST, i.e. for, repeat and while loops.
 	 */
-	loopConstructTypes: new Set([RType.ForLoop, RType.RepeatLoop, RType.WhileLoop]) as ReadonlySet<RType>
+	loopConstructTypes: new Set([RType.ForLoop, RType.RepeatLoop, RType.WhileLoop]) as ReadonlySet<RType>,
+	/** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
+	encloses<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>): boolean {
+		const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.is(n));
+		return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
+	}
 } as const;
 /**
  * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes

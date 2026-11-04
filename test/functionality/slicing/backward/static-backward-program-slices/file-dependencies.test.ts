@@ -113,6 +113,9 @@ describe('File Dependencies', withTreeSitter(parser => {
 
 	describe('the slice computes what the program does', () => {
 		for(const [name, code, dropped] of [
+			['a database read sees the writes through the connection', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "d.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1:3))\ndbExecute(con, "INSERT INTO t VALUES (9)")\nprint(nrow(dbReadTable(con, "t")))', undefined],
+			['a database read needs the table appended to', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "d.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1))\ndbWriteTable(con, "u", data.frame(a = 1:5))\ndbAppendTable(con, "t", data.frame(a = 2))\nprint(dbReadTable(con, "t"))', undefined],
+			['a stubbed function is the one called', 'library(mockery)\nf <- function() 1\ng <- function() f()\nstub(g, "f", function() 2)\nprint(g())', undefined],
 			['tar and untar', 'write.csv(iris[1:3, ], "b.csv", row.names = FALSE)\nwrite.csv(cars, "c.csv")\ntar("a.tar", "b.csv")\nunlink("b.csv")\nuntar("a.tar", exdir = "o")\nd <- read.csv("o/b.csv")\nprint(d)', 'cars'],
 			['copy, then read the copy', 'writeLines("one", "x.txt")\nwriteLines("two", "y.txt")\nfile.copy("x.txt", "b.txt")\nprint(readLines("b.txt"))', '"two"'],
 			['copy into a directory', 'writeLines("one", "x.txt")\ndir.create("out")\nfile.copy("x.txt", "out")\nprint(readLines("out/x.txt"))', undefined],
@@ -124,7 +127,38 @@ describe('File Dependencies', withTreeSitter(parser => {
 			['unzip after setwd', 'writeLines("one", "b.txt")\nzip("a.zip", "b.txt", flags = "-q")\ndir.create("w")\nsetwd("w")\nunzip("../a.zip")\nprint(readLines("b.txt"))', undefined],
 			['a conditional copy', 'writeLines("one", "x.txt")\nwriteLines("old", "b.txt")\nif(file.exists("x.txt")) file.copy("x.txt", "b.txt", overwrite = TRUE)\nprint(readLines("b.txt"))', undefined],
 			['a copy in a loop', 'for(f in c("x", "y")) writeLines(f, paste0(f, ".txt"))\nfor(f in c("x", "y")) file.copy(paste0(f, ".txt"), paste0(f, "2.txt"))\nprint(readLines("y2.txt"))', undefined],
-			['a copy whose result is printed', 'writeLines("one", "x.txt")\nok <- file.copy("x.txt", "b.txt")\nprint(ok)', undefined]
+			['a copy whose result is printed', 'writeLines("one", "x.txt")\nok <- file.copy("x.txt", "b.txt")\nprint(ok)', undefined],
+			['file.create makes the file read', 'file.create("x.txt")\nfile.create("y.txt")\nprint(file.size("x.txt"))', 'y.txt'],
+			['file.create empties the file written before', 'writeLines("one", "x.txt")\nfile.create("x.txt")\nprint(readLines("x.txt"))', undefined],
+			['load of a file saved within a function', 'x <- 1\nf <- function() save(x, file = "s.RData")\nf()\nx <- 2\nload("s.RData")\nprint(x)', undefined],
+			['load within a function', 'x <- 1\nsave(x, file = "s.RData")\nf <- function() {\n  load("s.RData")\n  x\n}\nrm(x)\nprint(f())', undefined],
+			['load of the file saved last', 'x <- 1\ny <- 2\nsave(x, file = "s.RData")\nsave(y, file = "t.RData")\nrm(x, y)\nload("t.RData")\nprint(y)', 's.RData'],
+			['save.image saves every variable', 'x <- 1\nz <- 3\nsave.image("s.RData")\nx <- 2\nrm(x)\nload("s.RData")\nprint(x)', undefined],
+			['dump writes the variable named', 'a <- 1\nb <- 2\ndump("a", "x.txt")\nrm(a)\nsource("x.txt")\nprint(a)', 'b <- 2'],
+			['save of the variables ls lists', 'x <- 1\nsave(list = ls(), file = "s.RData")\nrm(x)\nload("s.RData")\nprint(x)', undefined],
+			['ls lists what is defined', 'x <- 1\ny <- 2\nprint(ls())', undefined],
+			['save names a variable as a string', 'x <- 1\ny <- 2\nsave("x", file = "s.RData")\nrm(x)\nload("s.RData")\nprint(x)', 'y <- 2'],
+			['save names variables in list', 'x <- 1\ny <- 2\nz <- 3\nsave(list = c("x", "y"), file = "s.RData")\nrm(x, y)\nload("s.RData")\nprint(x + y)', 'z <- 3'],
+			['source into an environment', 'writeLines("y <- 6", "s.R")\ne <- new.env()\nsource("s.R", local = e)\nr <- e$y\nprint(r)', undefined],
+			['a read in a function called after the caller changed the directory', 'dir.create("sub")\nwriteLines("S", "sub/f.txt")\nrd <- function() readLines("f.txt")\ng <- function() { setwd("sub"); rd() }\nprint(g())', undefined],
+			['a write in one function read relatively from another directory', 'dir.create("sub")\nwr <- function() writeLines("w", "f.txt")\ncdr <- function() { setwd("sub"); readLines("../f.txt") }\nwr()\nprint(cdr())', undefined],
+			['a function reading the working directory its caller set', 'dir.create("sub")\nwd <- function() basename(getwd())\ng <- function() { setwd("sub"); wd() }\nprint(g())', undefined],
+			['a rendered document is read back', 'library(rmarkdown)\nwriteLines("x", "r.Rmd")\nrender("r.Rmd", output_file = "out.html", quiet = TRUE)\nprint(file.size("out.html") > 0)', undefined],
+			['purl writes the code of a document', 'library(knitr)\nwriteLines("x", "r.Rmd")\npurl("r.Rmd", output = "r.R")\nprint(readLines("r.R"))', undefined],
+			['an environment file sets variables', 'writeLines("FOO=bar", "e.env")\nx <- 1\nreadRenviron("e.env")\nprint(Sys.getenv("FOO"))', 'x <- 1'],
+			['opening a connection to append', 'writeLines("x", "f.txt")\ncon <- file("f.txt")\nopen(con, "a")\nwriteLines("b", con)\nclose(con)\nprint(readLines("f.txt"))', undefined],
+			['a read moves the position of an open connection', 'con <- file("in.txt")\nwriteLines(c("l1", "l2"), con)\nopen(con, "r")\nx <- readLines(con, n = 1)\nprint(readLines(con, n = 1))', undefined],
+			['yaml read back', 'yaml::write_yaml(list(a = 1), "c.yml")\nx <- 2\nprint(yaml::read_yaml("c.yml")$a)', 'x <- 2'],
+			['config reads its default file', 'writeLines(c("default:", "  a: 1"), "config.yml")\nx <- 2\nprint(config::get("a"))', 'x <- 2'],
+			['a rollback undoes the deletion', 'library(DBI)\ncon <- dbConnect(RSQLite::SQLite(), "tx.sqlite")\ndbWriteTable(con, "t", data.frame(a = 1:3), overwrite = TRUE)\ndbBegin(con)\ndbExecute(con, "DELETE FROM t")\ndbRollback(con)\nprint(nrow(dbReadTable(con, "t")))', undefined],
+			['two temp files are different files', 'f1 <- tempfile()\nf2 <- tempfile()\nwriteLines("a", f1)\nwriteLines("b", f2)\nprint(readLines(f2))', 'f1'],
+			['a path made from a temp file', 'd <- tempfile()\np <- paste0(d, ".txt")\nwriteLines("x", p)\nprint(readLines(p))', undefined],
+			['knitr chunk options shape the rendered file', 'writeLines(c("```{r}", "1 + 1", "```"), "k.Rmd")\nknitr::opts_chunk$set(echo = FALSE)\ninvisible(knitr::knit("k.Rmd", quiet = TRUE))\nprint(readLines("k.md"))', undefined],
+			['load restores into an environment', 'x <- 5\nsave(x, file = "a.RData")\ne <- new.env()\nload("a.RData", envir = e)\nr <- e$x\nprint(r)', undefined],
+			['load restores what the program saved', 'x <- 5\ny <- 2\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)', 'y <- 2'],
+			['sys.source into an environment', 'writeLines("y <- 6", "s.R")\ne <- new.env()\nsys.source("s.R", envir = e)\nr <- e$y\nprint(r)', undefined],
+			['source with further arguments', 'writeLines("y <- 6", "s.R")\ny <- 1\nsource("s.R", echo = FALSE)\nprint(y)', undefined],
+			['save names variables held by a variable', 'x <- 1\nv <- "x"\nsave(list = v, file = "s.RData")\nrm(x)\nload("s.RData")\nprint(x)', undefined]
 		] as const) {
 			assertSliceMatchesR(parser, label(name, ['file-dependencies'], ['slice']), code, { dropped });
 		}

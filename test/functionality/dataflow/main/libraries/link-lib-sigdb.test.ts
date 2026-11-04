@@ -132,10 +132,10 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		expect(namespaceEnv(df, 'stats')?.memory.has('arima')).toBe(true);
 	});
 
-	test(label('detach does not undo the attach, so a later call still resolves through the package', ['library-unloading', 'search-path'], ['dataflow']), async() => {
+	test(label('detach undoes the attach, so a later call no longer resolves through the package', ['library-unloading', 'search-path'], ['dataflow']), async() => {
 		const { df } = await analyze(ts, 'library(stats)\ndetach("package:stats")\narima()', buildDb());
-		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);
-		expect(namespaceEnv(df, 'stats')?.memory.has('arima')).toBe(true);
+		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(false);
+		expect(namespaceEnv(df, 'stats')).toBeUndefined();
 	});
 
 	test(label('a bare base call not in the built-in config resolves to the base package export', ['library-loading', 'search-path'], ['dataflow']), async() => {

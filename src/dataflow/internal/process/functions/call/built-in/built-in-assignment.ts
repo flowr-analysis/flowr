@@ -17,7 +17,7 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
@@ -595,6 +595,15 @@ export function markAsAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
+	if(assignmentConfig?.superAssignment) {
+		/* `<<-` reaching the binding of an attached package fails on it, so it depends on the attach */
+		for(const def of Resolve.byName(nodeToDefine.name, information.environment) ?? []) {
+			const definedAt = (def as Partial<InGraphIdentifierDefinition>).definedAt;
+			if(NodeId.isBuiltIn(def.nodeId) && definedAt !== undefined && !NodeId.isBuiltIn(definedAt)) {
+				information.graph.addEdge(rootIdOfAssignment, definedAt, EdgeType.Reads);
+			}
+		}
+	}
 	information.environment = REnvironment.define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
 	information.environment = ambientWritesOfAssignment(information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
 	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);

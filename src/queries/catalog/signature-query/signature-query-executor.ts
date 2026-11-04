@@ -429,6 +429,21 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 	return Mermaid.codeToUrl(['flowchart LR', ...subgraphs, ...ungrouped, ...edges].join('\n'));
 }
 
+/** what `library(pkg)` puts on the search path besides `pkg`: its `Depends` and a meta-package's core set, and theirs in turn */
+function attachedClosure(src: PackageSignatureSource, pkg: string, version: string | undefined): string[] {
+	const attached = new Set([pkg]);
+	const visit = (p: string, at: string | undefined) => {
+		const { depends, onAttach } = attachedAlongside(p, [src], at);
+		for(const next of [...depends, ...onAttach].filter(n => !attached.has(n))) {
+			attached.add(next);
+			visit(next, undefined);
+		}
+	};
+	visit(pkg, version);
+	attached.delete(pkg);
+	return [...attached];
+}
+
 /** the full view of a package: version, kind, export breakdown, dependencies, and every function's view */
 export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, resolved?: string): SignaturePackageView | undefined {
 	const exports = src.lookup(pkg, resolved) ?? src.lookup(pkg);
@@ -442,7 +457,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
 		.map(d => compactRecord({ type: DepTypeNames[d.type], name: d.name, constraint: d.constraint }));
 	const release = src.releaseDate(pkg, resolved);
-	const attaches = attachedAlongside(pkg, [src], resolved);
+	const attaches = attachedClosure(src, pkg, resolved);
 	return compactRecord({
 		name:          pkg,
 		version:       exports.version,

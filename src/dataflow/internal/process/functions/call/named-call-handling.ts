@@ -24,6 +24,7 @@ import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-l
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex } from '../../../../graph/vertex';
 import { Resolve } from '../../../../environments/resolve-helper';
+import { AmbientStateName, KeyedState } from '../../../../environments/ambient-state-name';
 import { isNotUndefined } from '../../../../../util/assert';
 import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/built-in-props';
 import { queryFnProps } from '../../../../environments/query-fn-props';
@@ -253,10 +254,13 @@ export function processNamedCall<OtherInfo>(
 		const owners = ns !== undefined ? [ns] : resolved
 			.map(r => r.type === ReferenceType.BuiltInFunction && r.name !== undefined ? Identifier.getNamespace(r.name) : undefined)
 			.filter(isNotUndefined);
-		for(const owner of owners) {
-			for(const loadNode of loadNodesForNamespace(data.environment, String(owner))) {
-				information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
-			}
+		/* a call nothing resolves may call into whatever was attached in ways we cannot see (a package we could not
+		   resolve, code that is evaluated), so it reads the search path */
+		const loads = resolved.length === 0 && ns === undefined
+			? (Resolve.byName(AmbientStateName.allOf(KeyedState.SearchPath), data.environment) ?? []).map(d => d.nodeId)
+			: owners.flatMap(owner => loadNodesForNamespace(data.environment, String(owner)));
+		for(const loadNode of loads) {
+			information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
 		}
 		/* opt-in: link a bare base-R call to its sigdb function vertex (base-R qualification is edge-free otherwise);
 		   same guards as Identifier.toQualified: not namespaced, not resolving to a user definition */

@@ -31,9 +31,12 @@ import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ControlFlow } from '../../../../control-flow';
 import { REnvironment } from '../../../../../environments/environment';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
+import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import type { FnSig } from '../../../../../environments/built-in-props';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -145,7 +148,8 @@ export function findSource(
 }
 
 /**
- * Processes a named function call (i.e., not an anonymous function)
+ * Processes a call to `source` or `sys.source`, analyzing the file it names in the caller's frame or the environment
+ * its {@link envIn} formal names.
  */
 export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -158,18 +162,27 @@ export function processSourceCall<OtherInfo>(
 		/** should this function call be followed, even when the configuration disables it? */
 		forceFollow?:         boolean
 		ambient?:             AmbientStateAccess | readonly AmbientStateAccess[]
+		/** the formals, to find the file and the environment however they are passed */
+		sig?:                 FnSig
+		/** the formal naming the environment to evaluate in, `local` for `source` (`TRUE`/`FALSE` there name the caller's frame or the global one) */
+		envIn?:               string
 	}
 ): DataflowInformation {
-	if(args.length !== 1) {
-		dataflowLogger.warn(`Expected exactly one argument for source currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+	const bound = FunctionSemantics.call.match.toNames(args, config.sig?.map(([formal]) => formal) ?? ['file']);
+	const sourceFileArgument = bound.get('file');
+	if(sourceFileArgument === undefined) {
+		dataflowLogger.warn('Expected a file argument for source, skipping');
+		const unknown = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		handleUnknownSideEffect(unknown.graph, unknown.environment, rootId);
+		return unknown;
 	}
+	const localArg = bound.get(config.envIn ?? 'local');
+	const routing = localArg === undefined || RLogical.is(localArg.value) ? undefined : resolveArgToEnvirOrAmbiguous(localArg, data);
+	const resolution = envirOf(routing);
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: DataflowInformation.initialize(rootId, data);
 	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, config.ambient);
-
-	const sourceFileArgument = args[0];
 
 	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
@@ -178,15 +191,19 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	let sourceFile: string[] | undefined;
-	if(sourceFileArgument !== EmptyArgument && RString.is(sourceFileArgument?.value)) {
+	if(RString.is(sourceFileArgument.value)) {
 		sourceFile = [RString.unquote(sourceFileArgument.lexeme)];
-	} else if(sourceFileArgument !== EmptyArgument) {
+	} else {
 		sourceFile = NodeValue.knownStringsOf(sourceFileArgument.info.id, data);
 	}
 	const path = sourceFile?.length === 1 ? RString.unquote(sourceFile[0]) : undefined;
 	const filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : undefined;
+	if(localArg !== undefined && !RLogical.is(localArg.value) && resolution === undefined) {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		return withAmbient();
+	}
 	if(filepath !== undefined && filepath.length > 0) {
-		let result = information;
+		let result = resolution ? { ...information, environment: resolution.envirData.environment } : information;
 		const origCds = data.cds?.slice() ?? [];
 		const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 		const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
@@ -205,7 +222,12 @@ export function processSourceCall<OtherInfo>(
 			const getId = sourcedDeterministicCountingIdGenerator(idPrefix, name.location);
 			result = sourceRequest(rootId, { request: 'file', content: f }, data, result, maybe, getId);
 		}
-		return result;
+		if(resolution === undefined) {
+			return result;
+		}
+		const routed = routeWrittenToEnvir({ ...result, environment: { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, result.environment.current) } }, resolution, rootId, data.environment);
+		unknownIfAmbiguous(routing, routed, rootId);
+		return routed;
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);

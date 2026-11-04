@@ -235,7 +235,7 @@ function packageLayersOf(env: REnvironmentInformation): Set<MemoryView> {
 	return layers;
 }
 
-function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap) {
+function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap, listEnvironments: Set<NodeId>) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
 		for(const { fn: calledFn, direct, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
@@ -272,6 +272,8 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 						if(!NodeId.isBuiltIn(def.definedAt)) {
 							hasUpdate = true;
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
+							/* what a call of the list writes is written by the list, a later read of it looks no further */
+							listEnvironments.add(def.nodeId);
 						}
 					}
 				}
@@ -386,7 +388,7 @@ export function processExpressionList<OtherInfo>(
 		addNonDefaultExitPoints(exitPoints, invertExitCds, data.cds, processed.exitPoints);
 		environment = exitPoints.length > 0 ? REnvironment.overwrite(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap, listEnvironments);
 
 		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
 		if(killed && processed.out.length > 0) {

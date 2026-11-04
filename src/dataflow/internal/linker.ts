@@ -28,6 +28,7 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 import { Dataflow } from '../graph/df-helper';
+import { AmbientStateName } from '../environments/ambient-state-name';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -93,6 +94,19 @@ function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment
 }
 
 /**
+ * The frames of `environment` a function whose body runs at `bodyLevel` can see: the frame it was defined in and
+ * those around it, never the frames of the functions calling it.
+ */
+function definitionFramesOf(bodyLevel: number, environment: REnvironmentInformation): REnvironmentInformation {
+	const level = Math.max(0, Math.min(bodyLevel - 1, environment.level));
+	let current = environment.current;
+	for(let skip = environment.level - level; skip > 0 && current.parent !== undefined; skip--) {
+		current = current.parent;
+	}
+	return { current, level };
+}
+
+/**
  * Links a function call with a single target function definition.
  */
 export function linkFunctionCallWithSingleTarget(
@@ -105,17 +119,19 @@ export function linkFunctionCallWithSingleTarget(
 	const environment = info.environment;
 	if(environment !== undefined) {
 		let callee: readonly REnvironmentInformation[] | undefined;
+		let lexical: REnvironmentInformation | undefined;
 		/* for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it */
 		for(const ingoing of fnSubflow.in) {
 			const name = ingoing.name;
 			if(name === undefined) {
 				continue;
 			}
-			callee ??= environmentsOfCallee(info, environment);
-			const inCallee = callee.values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			const defs = inCallee ?? Resolve.byNameAndType(name, environment, ingoing.type) ?? [];
+			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
+			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
+			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type) ?? [];
 			for(const { nodeId, type, value, definedAt, envState } of defs as readonly InGraphIdentifierDefinition[]) {
-				if(fnSubflow.graph.has(nodeId) || NodeId.isBuiltIn(nodeId)) {
+				/* the state an earlier run of the function left behind is what its next run reads */
+				if(fnSubflow.graph.has(nodeId) && !AmbientStateName.is(name) || NodeId.isBuiltIn(nodeId)) {
 					continue;
 				}
 				graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
@@ -436,7 +452,8 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 				graph.addEdge(alsoFrom, target.nodeId, EdgeType.Reads);
 			}
 		}
-		if(probableTarget.every(t => isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction))) {
+		/* the state of the session (options, files, the working directory) may change before the next time the code runs, so it stays open */
+		if(probableTarget.every(t => isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) || AmbientStateName.is(bodyInput.name)) {
 			givenInputs.push(bodyInput);
 		}
 	}

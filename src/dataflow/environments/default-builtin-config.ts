@@ -1193,8 +1193,9 @@ export const WrittenBuiltinDefinitions = [
 	/* Python code may do anything, and `source_python` binds what it defines in R */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Reticulate, ['source_python', 'py_run_file']), processor: BuiltInProcName.Default, config: { libFn: true, readAllArguments: true, hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Forced | ArgProp.Resource], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['py_run_string', PkgName.Reticulate])], processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: true, sig: [['code', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['get', PkgName.Config])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['value', ArgProp.Forced | ArgProp.Value], ['config', ArgProp.Forced | ArgProp.Value], ['file', ArgProp.Forced | ArgProp.Resource], ['use_parent', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: false },
 	/* restoring or loading a project changes the library and the search path, a snapshot writes the lockfile */
-	{ type: 'function', names: Identifier.fromAll(PkgName.Renv, ['restore', 'init', 'activate', 'rebuild']), processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: true, props: CallProp.Configures, sig: [['project', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Renv, ['restore', 'init', 'activate', 'rebuild', 'load', 'install', 'update']), processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: true, props: CallProp.Configures, sig: [['project', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['snapshot', PkgName.Renv])], processor: BuiltInProcName.DefaultReadAllArgs, config: { libFn: true, props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['project', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value], ['library', ArgProp.Forced | ArgProp.Value], ['lockfile', ArgProp.Forced | ArgProp.Resource]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['.libPaths', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Configures, sig: [['new', ArgProp.Forced | ArgProp.Value], ['include.site', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['addTaskCallback', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Configures, sig: [['f', ArgProp.Forced | ArgProp.Callee], ['data', ArgProp.Forced | ArgProp.Value], ['name', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
@@ -1754,10 +1755,12 @@ export function getDefaultProcessor(name: string): BuiltInProcName | undefined {
 	if(name.startsWith(UnnamedFunctionCallPrefix)) {
 		return BuiltInProcName.Unnamed;
 	}
-	const fn = DefaultBuiltinConfig.find(def =>
-		((def.names as readonly Identifier[]).some(n => Identifier.getName(n) === name) && def.type !== 'constant')
-		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${Identifier.getName(n)}${d}`)).includes(name))
-	) as BuiltInFunctionDefinition<BuiltInProcName.Default | BuiltInProcName.DefaultReadAllArgs> | BuiltInReplacementDefinition | undefined;
+	/* a bare name is what R finds on the default search path, a package's function of that name only once attached */
+	const named = (n: Identifier, base: boolean) => Identifier.getName(n) === name && (!base || AttachedBasePackageSet.has(Identifier.getNamespace(n) ?? PkgName.Base));
+	const matches = (base: boolean) => (def: typeof DefaultBuiltinConfig[number]) =>
+		((def.names as readonly Identifier[]).some(n => named(n, base)) && def.type !== 'constant')
+		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${Identifier.getName(n)}${d}`)).includes(name));
+	const fn = (DefaultBuiltinConfig.find(matches(true)) ?? DefaultBuiltinConfig.find(matches(false))) as BuiltInFunctionDefinition<BuiltInProcName.Default | BuiltInProcName.DefaultReadAllArgs> | BuiltInReplacementDefinition | undefined;
 	if(fn?.type === 'replacement') {
 		return BuiltInProcName.Replacement;
 	}

@@ -13,7 +13,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, suppliesArg, unknownIfAmbiguous } from './built-in-envir-utils';
 import { linkFieldReads } from '../../../../linker';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -28,15 +28,16 @@ export function processEnvContents<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { sig?: FnSig } = {}
+	{ sig }: { sig?: FnSig } = {}
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.EnvContents }).information;
 
-	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', 'name']);
-	if(!resolution) {
+	const formals = ['envir', 'name'];
+	const resolution = resolveFirstEnvirArg(args, data, sig, formals);
+	if(!resolution && suppliesArg(args, sig, formals)) {
 		return result;
 	}
-	for(const defs of resolution.envDef.envState.current.memory.values()) {
+	for(const defs of (resolution?.envDef.envState ?? data.environment).current.memory.values()) {
 		linkFieldReads(result.graph, rootId, defs, false);
 	}
 	return result;

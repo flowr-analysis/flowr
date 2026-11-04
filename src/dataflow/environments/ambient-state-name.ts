@@ -59,6 +59,8 @@ export const AmbientStateName = {
 	workingDirectory:     '#wd',
 	/** whether console output is diverted into a file or connection, as `sink(file)` does and `sink()` undoes */
 	sink:                 '#sink',
+	/** the project root `here::here()` builds its paths from, found from the working directory unless `here::i_am` names it */
+	projectRoot:          '#project-root',
 	/** the file creation mask `Sys.umask` sets */
 	umask:                '#umask',
 	/** the state of the random number generator, which `set.seed` sets and every draw advances */

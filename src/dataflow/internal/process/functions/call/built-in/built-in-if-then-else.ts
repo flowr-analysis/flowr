@@ -52,12 +52,6 @@ function conditionalArgsOf<OtherInfo>(
 	return (['cond', 'yes', 'no'] as const).map(k => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }
 
-/** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
-function withinLoop(id: NodeId, idMap: AstIdMap<ParentInformation>): boolean {
-	const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.is(n));
-	return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
-}
-
 /**
  * Processes an if-then-else built-in function call.
  * For example, `if(cond) thenExpr else elseExpr` and `if(cond) thenExpr`.
@@ -91,7 +85,7 @@ export function processIfThenElse<OtherInfo>(
 	data = { ...data, environment: cond.environment };
 
 	/* within a loop, what the condition reads may change after it, for the next iteration */
-	const mayChange = !onlyLiterals(condArg) && withinLoop(rootId, data.completeAst.idMap);
+	const mayChange = !onlyLiterals(condArg) && RLoopConstructs.encloses(rootId, data.completeAst.idMap);
 	const values = mayChange ? undefined : NodeValue.setOf(condArg.info.id, data);
 	/*
 	 * `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition

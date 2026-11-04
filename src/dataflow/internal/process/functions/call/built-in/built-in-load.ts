@@ -1,12 +1,16 @@
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
+import { happensInEveryBranch } from '../../../../../info';
+import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { InGraphReferenceType } from '../../../../../environments/identifier';
+import type { InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
@@ -28,7 +32,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type {
 	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { envirOf, resolveArgToEnvirOrAmbiguous, signatureParamNames } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, type EnvirResolution } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
@@ -104,23 +108,100 @@ export function processLoadCall<OtherInfo>(
 				return fn.information;
 			}
 
-			let envir = envirResolution ? envirResolution.envirData.environment : fn.information.environment;
-
-			const loadLocation = name.location ?? name.fullRange ?? SourceRange.invalid();
-			const loadCds = [...(data.cds ?? []), { id: rootId, when: true, file: filepath }];
-
-			for(const variable of variables) {
-				if(variable.name) {
-					envir = defineLoadedVariable({ ...variable, name: variable.name }, rootId, fn, envir, loadLocation, loadCds, data);
-				}
+			const named = variables.filter((v): v is RObjectData & { name: string } => v.name !== undefined);
+			return withLoaded(named, rootId, fn, [...(data.cds ?? []), { id: rootId, when: true, file: filepath }], data, envirResolution);
+		}
+		/* a file the program saves itself holds the variables it saved */
+		const saved = savedInto(sourceFile, data);
+		if(saved !== undefined) {
+			const loaded = withLoaded(saved.names.map(n => ({ name: n })), rootId, fn, [...(data.cds ?? []), { id: rootId, when: true }], data, envirResolution);
+			if(!saved.complete) {
+				handleUnknownSideEffect(loaded.graph, loaded.environment, rootId);
 			}
-
-			return { ...fn.information, environment: envir };
+			return loaded;
 		}
 	}
 
 	handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
 	return fn.information;
+}
+
+/**
+ * The variables the `save()` calls that wrote the files at `paths` stored, and whether that is all the files may hold
+ * (every writer surely ran, so no older content remains); `undefined` if another call may have written them or a
+ * name is unknown.
+ */
+function savedInto<OtherInfo>(paths: readonly string[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): { names: string[], complete: boolean } | undefined {
+	const names = new Set<string>();
+	let complete = true;
+	for(const path of paths) {
+		const stem = RString.unquote(path).split(/[/\\]/).at(-1)?.split('.')[0];
+		const writers = stem ? Resolve.byName(AmbientStateName.file(stem), data.environment) : undefined;
+		if(writers === undefined || writers.length === 0) {
+			return undefined;
+		}
+		for(const writer of writers) {
+			const call = data.completeAst.idMap.get(writer.nodeId);
+			const stored = RFunctionCall.isNamed(call, 'save') ? namesSavedBy(call.arguments, data) : undefined;
+			if(stored === undefined) {
+				return undefined;
+			}
+			stored.forEach(n => names.add(n));
+			complete &&= happensInEveryBranch(writer.cds);
+		}
+	}
+	return { names: [...names], complete };
+}
+
+/** The variables `save(...)` names: its unnamed symbols and strings, and the strings `list` holds; `undefined` if one is unknown. */
+function namesSavedBy<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+	const names: string[] = [];
+	for(const arg of args) {
+		if(arg === EmptyArgument || arg.value === undefined) {
+			continue;
+		}
+		const named = arg.name === undefined ? undefined : Identifier.getName(arg.name.content);
+		if(named === 'list') {
+			const listed = NodeValue.stringsOf(arg.value.info.id, data);
+			if(listed === undefined) {
+				return undefined;
+			}
+			names.push(...listed);
+		} else if(named === undefined) {
+			if(RSymbol.is(arg.value)) {
+				names.push(Identifier.getName(arg.value.content));
+			} else if(RString.is(arg.value)) {
+				names.push(arg.value.content.str);
+			} else {
+				return undefined;
+			}
+		}
+	}
+	return names;
+}
+
+/**
+ * The load call `rootId` with the `variables` it restores defined, in the caller's frame or, given `envir`, in the
+ * environment it names (routed there like any other write into it, so the caller keeps its own bindings).
+ */
+function withLoaded<OtherInfo>(
+	variables: readonly (RObjectData & { name: string })[],
+	rootId: NodeId,
+	fn: { information: DataflowInformation },
+	loadCds: ControlDependency[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	envir: EnvirResolution<OtherInfo> | undefined
+): DataflowInformation {
+	const location = data.completeAst.idMap.get(rootId)?.location ?? SourceRange.invalid();
+	let environment = fn.information.environment;
+	const out = [...fn.information.out];
+	for(const variable of variables) {
+		const [next, defined] = defineLoadedVariable(variable, rootId, fn, environment, location, loadCds, data);
+		environment = next;
+		out.push(defined);
+	}
+	const result = { ...fn.information, environment, out };
+	return envir === undefined ? result : routeWrittenToEnvir(result, envir, rootId, data.environment, rootId);
 }
 
 function defineLoadedVariable<OtherInfo>(
@@ -131,7 +212,7 @@ function defineLoadedVariable<OtherInfo>(
 	loadLocation: SourceRange,
 	loadCds: ControlDependency[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): REnvironmentInformation {
+): [REnvironmentInformation, InGraphIdentifierDefinition & { name: string }] {
 	const syntheticId = `${rootId}:loaded:${variable.name}`;
 	const isClosure = variable.type === SexpType.CloSxp;
 	const rootInfo = data.completeAst.idMap.get(rootId)?.info;
@@ -167,8 +248,7 @@ function defineLoadedVariable<OtherInfo>(
 		definedAt: rootId,
 		cds:       loadCds,
 	};
-	const newCurrent = envir.current.define(nodeToDefine);
-	return { ...envir, current: newCurrent };
+	return [{ ...envir, current: envir.current.define(nodeToDefine) }, nodeToDefine];
 }
 
 function defineLoadedClosure<OtherInfo>(

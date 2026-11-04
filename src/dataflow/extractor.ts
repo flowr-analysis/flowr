@@ -295,7 +295,8 @@ function normalizedPath(p: string): string {
  */
 function sharesFile(a: string, b: string): boolean {
 	const [x, y] = [normalizedPath(a), normalizedPath(b)];
-	return x === y || holds(x, y) || holds(y, x);
+	/* a `setwd` in between makes two paths with the same file name the same file (`f.txt`, then `../f.txt` from `sub`) */
+	return x === y || holds(x, y) || holds(y, x) || path.posix.basename(x) === path.posix.basename(y);
 }
 
 function holds(directory: string, file: string): boolean {
@@ -492,7 +493,8 @@ function separateFileWritesPerCall(graph: DataflowGraph, environment: REnvironme
 			const body = (graph.getVertex(definition) as DataflowGraphVertexFunctionDefinition).subflow.graph;
 			/* what holds the definition (`(function(p) ...)`) is no reader of what its body writes */
 			const holders = new Set([...RNode.iterateParents(idMap.get(at), idMap)].map(n => n.info.id));
-			const readers = Dataflow.sourcesOf(graph, at, EdgeType.Reads).filter(r => !body.has(r) && !holders.has(r) && !calls.some(c => c.call === r));
+			/* a function reading the file reads it where it is called */
+			const readers = Dataflow.sourcesOf(graph, at, EdgeType.Reads | EdgeType.DefinedByOnCall).filter(r => !body.has(r) && !holders.has(r) && !calls.some(c => c.call === r));
 			for(const { call, paths } of calls) {
 				for(const reader of readers) {
 					const read = readPaths(reader);
@@ -659,7 +661,7 @@ function extractDataFlowGraph<OtherInfo>(
 		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
-	linkMaterializedExportsToLoaders(df.graph, df.environment);
+	linkMaterializedExportsToLoaders(df.graph, df.environment, ctx);
 	const cleanEnvironment = ctx.env.makeCleanEnv();
 	separateClosureInstances(df.graph, name => queryFnProps(name, { environment: cleanEnvironment }));
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));

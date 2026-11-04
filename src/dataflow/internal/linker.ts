@@ -28,6 +28,7 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 import { Dataflow } from '../graph/df-helper';
+import { AmbientStateName } from '../environments/ambient-state-name';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -111,11 +112,12 @@ export function linkFunctionCallWithSingleTarget(
 			if(name === undefined) {
 				continue;
 			}
-			callee ??= environmentsOfCallee(info, environment);
-			const inCallee = callee.values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
+			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
+			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
 			const defs = inCallee ?? Resolve.byNameAndType(name, environment, ingoing.type) ?? [];
 			for(const { nodeId, type, value, definedAt, envState } of defs as readonly InGraphIdentifierDefinition[]) {
-				if(fnSubflow.graph.has(nodeId) || NodeId.isBuiltIn(nodeId)) {
+				/* the state an earlier run of the function left behind is what its next run reads */
+				if(fnSubflow.graph.has(nodeId) && !AmbientStateName.is(name) || NodeId.isBuiltIn(nodeId)) {
 					continue;
 				}
 				graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
@@ -436,7 +438,8 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 				graph.addEdge(alsoFrom, target.nodeId, EdgeType.Reads);
 			}
 		}
-		if(probableTarget.every(t => isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction))) {
+		/* the state of the session (options, files, the working directory) may change before the next time the code runs, so it stays open */
+		if(probableTarget.every(t => isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) || AmbientStateName.is(bodyInput.name)) {
 			givenInputs.push(bodyInput);
 		}
 	}

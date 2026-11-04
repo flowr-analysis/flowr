@@ -20,7 +20,7 @@ import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../
 import { s3DispatchClassesOf } from '../../../../../fn/class-declaration';
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
-import { REnvironment } from '../../../../../environments/environment';
+import { EnvType, REnvironment } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
@@ -372,7 +372,8 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 			if(allBuiltIn && resolved.length > 0 && !allClosureWrites) {
 				settled.add(ingoing.nodeId);
 			}
-			return allBuiltIn || allClosureWrites;
+			/* the state of the session (options, files, the working directory) is what it is where the function is called, so it stays open for its calls */
+			return allBuiltIn || allClosureWrites || AmbientStateName.is(ingoing.name);
 		});
 		for(const ref of subflow.in) {
 			if(ref.name !== undefined && !settled.has(ref.nodeId) && !open.has(ref.nodeId)) {
@@ -420,6 +421,14 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfIn
 	const shadowing = new Set<string>();
 	const generics = new Set<string>();
 	for(const env of REnvironment.frames(environment.current)) {
+		/* an attached package may shadow a built-in a function body bound to before it was attached; its keys
+		 * suffice, building the definitions of every export would be costly */
+		if(env.t === EnvType.Namespace) {
+			for(const identifier of env.memory.keys()) {
+				shadowing.add(Identifier.getName(identifier));
+			}
+			continue;
+		}
 		for(const [identifier, definitions] of env.memory) {
 			if(definitions.every(d => NodeId.isBuiltIn(d.nodeId))) {
 				continue;
@@ -612,6 +621,19 @@ export function updateNestedFunctionCalls(
 			}
 			const global = enclosingOf(target) === undefined;
 			targetVertex.subflow.in = resolveIngoingRefs(targetVertex.subflow.in, effectiveEnvironment, (ingoing, resolved) => {
+				/* the state of the session (options, files, the working directory) is what it is at this very call, and what it was before the calls of the enclosing function */
+				if(AmbientStateName.is(ingoing.name)) {
+					for(const { nodeId } of (vertex.environment && Resolve.byNameAndType(ingoing.name, vertex.environment, ingoing.type)) ?? []) {
+						if(!NodeId.isBuiltIn(nodeId)) {
+							graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
+							graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
+						}
+					}
+					if(enclosing !== undefined) {
+						lifted.push([enclosing, ingoing, target]);
+					}
+					return false;
+				}
 				if(enclosing !== undefined && resolved.some(d => !NodeId.isBuiltIn(d.nodeId)) && (global || resolved.every(d => NodeId.isBuiltIn(d.nodeId) || graph.isRoot(d.nodeId)))) {
 					lifted.push([enclosing, ingoing, target]);
 					return false;
@@ -675,14 +697,16 @@ function linkLiftedReads(
 	environmentAt: (call: NodeId) => REnvironmentInformation,
 	runsOnceAt: (call: NodeId) => RNode<ParentInformation> | undefined
 ): void {
-	const seen = new DefaultMap<NodeId, Set<NodeId>>(() => new Set());
+	/* a call reads several states under its own id (`#wd`, `#file:f`), so a read is told apart by its name as well */
+	const seen = new DefaultMap<NodeId, Set<string>>(() => new Set());
 	while(lifted.length > 0) {
 		const [definition, read, holder] = lifted.pop() as [NodeId, IdentifierReference, NodeId];
 		const known = seen.get(definition);
-		if(known.has(read.nodeId) || read.name === undefined) {
+		const key = `${String(read.nodeId)}|${read.name === undefined ? '' : Identifier.toString(read.name)}`;
+		if(known.has(key) || read.name === undefined) {
 			continue;
 		}
-		known.add(read.nodeId);
+		known.add(key);
 		for(const call of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
 			if(!DfgVertex.isFunctionCall(graph.getVertex(call))) {
 				continue;

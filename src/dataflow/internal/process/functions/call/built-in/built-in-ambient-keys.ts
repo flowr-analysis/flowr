@@ -22,6 +22,10 @@ export type AmbientKeys = {
 	/** arguments to leave out, like `par(no.readonly = TRUE)` */
 	readonly ignore?: readonly string[]
 } | {
+	/** every unnamed argument names an entry, like `pacman::p_load(a, b)`; quoted ones are names themselves, others are looked up */
+	readonly from:   'unnamed'
+	readonly quoted: boolean
+} | {
 	/** the call always sets this entry, like `Sys.setLanguage` sets `LANGUAGE` */
 	readonly from: 'constant'
 	readonly key:  string
@@ -107,6 +111,9 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 			});
 		case 'parameter':
 			return parameterKeys(keys, args, data);
+		case 'unnamed':
+			return args.flatMap(a => a === EmptyArgument || a.name !== undefined || a.value === undefined ? []
+				: (keys.quoted ? quotedName(a.value) : undefined) ?? stringValuesOf(a.value, data) ?? [UnknownKey]);
 	}
 }
 

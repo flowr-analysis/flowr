@@ -334,7 +334,7 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 	}
 	const functionId = val.info.id;
 	info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
-	const syntheticCall = 'anon-' + functionId;
+	const syntheticCall = NodeId.anonymousCall(functionId);
 	info.graph.addVertex({
 		tag:         VertexType.FunctionCall,
 		id:          syntheticCall,

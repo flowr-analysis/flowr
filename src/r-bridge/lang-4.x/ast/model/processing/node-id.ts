@@ -1,5 +1,5 @@
 import { RString } from '../nodes/r-string';
-import type { AstIdMap } from './decorate';
+import type { AstIdMap, ParentInformation } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { DfgVertex } from '../../../../../dataflow/graph/vertex';
 import { RNode } from '../model';
@@ -24,6 +24,9 @@ function startsNumeric(id: string): boolean {
 	const c = id.charCodeAt(0);
 	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
+
+/** see {@link NodeId.anonymousCall} */
+const AnonymousCallPrefix = 'anon-';
 
 /**
  * What a {@link NodeId} is: the identity of a node within one analysis, plus the built-in and `pkg::fn`
@@ -133,7 +136,16 @@ export const NodeId = {
 	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
 	 */
 	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
-		return idMap?.get(id)?.lexeme;
+		return NodeId.nodeOf(id, idMap)?.lexeme;
+	},
+	/** The id of the call the dataflow graph makes up for an anonymous function a call runs (`lapply(x, function(v) v)`, a `tryCatch` handler). */
+	anonymousCall(this: void, functionId: NodeId): NodeId {
+		return AnonymousCallPrefix + String(functionId);
+	},
+	/** The node `id` belongs to; for a made-up {@link NodeId.anonymousCall} the anonymous function it calls. */
+	nodeOf<Info>(this: void, id: NodeId, idMap: AstIdMap<Info> | undefined): RNode<Info & ParentInformation> | undefined {
+		const node = idMap?.get(id);
+		return node !== undefined || typeof id !== 'string' || !id.startsWith(AnonymousCallPrefix) ? node : idMap?.get(NodeId.normalize(id.slice(AnonymousCallPrefix.length)));
 	},
 	/**
 	 * The name the {@link RNode|node} the id belongs to binds or reads, without the backticks or quotes R lets it be

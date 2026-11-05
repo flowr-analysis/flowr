@@ -44,4 +44,82 @@ describe('SetLift Domain', () => {
 		const create = (value: AbstractValue<SetLiftDomain<Top, Bottom, [symbol]>>) => customTopAndBottom.create(new Set(value));
 		topAndBottomCases(create, new Set([T]), new Set([B]));
 	});
+
+	describe('More complex Lattice', () => {
+		const A = Symbol('A');
+		const B = Symbol('B');
+		const C = Symbol('C');
+		const D = Symbol('D');
+		const E = Symbol('E');
+		const F = Symbol('F');
+
+		const lattice = new FiniteDomainBuilder() //           Top
+			.addLeqOrder(Bottom, [A, B, C, D])    //          /   \
+			.addLeqOrder(A, E)                    //         E     F
+			.addLeqOrder(B, E)                    //       /  \   /  \
+			.addLeqOrder(C, F)                    //      A    B C    D
+			.addLeqOrder(D, F)                    //      \    | |    /
+			.addLeqOrder(E, Top)                  //       \   | |   /
+			.addLeqOrder(F, Top)                  //        \  | |  /
+			.build()                              //           Bot
+			.setLift();
+
+		const create = (value: AbstractValue<SetLiftDomain<Top, Bottom, [symbol]>>) => lattice.create(new Set(value));
+		topAndBottomCases(create);
+
+		assertAbstractDomain(create, new Set([Bottom]), new Set([A]), {
+			equal:  false,
+			leq:    true,
+			join:   new Set([A]),
+			meet:   new Set([Bottom]),
+			widen:  new Set([A]),
+			narrow: new Set([Bottom])
+		});
+
+		assertAbstractDomain(create, new Set([A]), new Set([E]), {
+			equal:  false,
+			leq:    true,
+			join:   new Set([E]),
+			meet:   new Set([A]),
+			widen:  new Set([E]),
+			narrow: new Set([A])
+		});
+
+		assertAbstractDomain(create, new Set([A]), new Set([B]), {
+			equal:  false,
+			leq:    false,
+			join:   new Set([E]),
+			meet:   new Set([Bottom]),
+			widen:  new Set([E]),
+			narrow: new Set([Bottom])
+		});
+
+		assertAbstractDomain(create, new Set([E]), new Set([F]), {
+			equal:  false,
+			leq:    false,
+			join:   new Set([E, F]),
+			meet:   new Set([Bottom]),
+			widen:  new Set([E, F]),
+			narrow: new Set([Bottom])
+		});
+
+		assertAbstractDomain(create, new Set([A, B]), new Set([F]), {
+			equal:  false,
+			leq:    true,
+			join:   new Set([A, B, F]), // or [E, F]
+			meet:   new Set([Bottom]),
+			widen:  new Set([A, B, F]),
+			narrow: new Set([Bottom])
+		});
+
+		assertAbstractDomain(create, new Set([B]), new Set([C]), {
+			equal:  false,
+			leq:    false,
+			join:   new Set([B, C]),
+			meet:   new Set([Bottom]),
+			widen:  new Set([B, C]),
+			narrow: new Set([Bottom])
+		});
+
+	});
 });

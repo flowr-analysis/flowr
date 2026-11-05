@@ -35,7 +35,7 @@ import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-e
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
-import type { FlowrAnalyzer } from '../flowr-analyzer';
+import type { FlowrAnalyzer, ForkOptions } from '../flowr-analyzer';
 import type {
 	ReadOnlyFlowrAnalyzerIncrementalAnalysisContext
 } from './flowr-analyzer-incremental-analysis-context';
@@ -132,7 +132,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
-	private readonly _plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
 	private _detectedR:    string | undefined;
 
@@ -250,7 +249,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 		this.baseConfig = config;
 		this._config = config;
-		this._plugins = byType;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
@@ -263,29 +261,28 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
-	// creates a new instance of the FlowrAnalyzerContext based on the state of the old one
-	public fork(): FlowrAnalyzerContext {
-		const fork = new FlowrAnalyzerContext(this.baseConfig, this._plugins);
-		if(this.runtimeOverrides) {
-			fork.updateConfig(this.runtimeOverrides);
+	/** Clone state into the context of a forked analyzer */
+	public fork(target: FlowrAnalyzerContext, options?: ForkOptions): void {
+		if(this._detectedR !== undefined) {
+			target.setDetectedRVersion(this._detectedR);
 		}
 
-		if(this._detectedR !== undefined){
-			fork.setDetectedRVersion(this._detectedR);
-		}
-
+		const decoupleFiles = options?.decoupleFiles ?? false;
 		for(const file of this.files.getAllFiles()) {
-			fork.files.addFile(file);
+			if(decoupleFiles && file instanceof FlowrInlineTextFile) {
+				target.files.addFile(new FlowrInlineTextFile(file.path(), file.content().toString()), file.roles);
+			} else {
+				target.addFile(file);
+			}
 		}
 		for(const consideredFile of this.files.consideredFilesList()) {
-			fork.files.addConsideredFile(consideredFile);
+			target.files.addConsideredFile(consideredFile);
 		}
 
-		fork.addRequests(this.files.loadingOrder.getUnorderedRequests());
+		target.addRequests(this.files.loadingOrder.getUnorderedRequests());
 		for(const plugin of this.activatedPlugins) {
-			fork.activatedPlugins.add(plugin);
+			target.activatedPlugins.add(plugin);
 		}
-		return fork;
 	}
 
 	/**

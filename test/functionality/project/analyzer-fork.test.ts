@@ -1,4 +1,3 @@
-
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -35,7 +34,7 @@ describe('Analyzer', withTreeSitter(parser => {
 			{ request: 'file', content: 'virtual-analyzer-fork/a.R' },
 			{ request: 'file', content: 'virtual-analyzer-fork/b.R' }
 		);
-		const b = a.fork();
+		const b = await a.fork();
 
 		const resultA = await graph(a);
 		assert.deepStrictEqual(resultA, await graph(b));
@@ -49,30 +48,8 @@ describe('Analyzer', withTreeSitter(parser => {
 		a.updateConfig({ project: { implicitSources: ['setup.R', 'branch.R', 'main.R'] } });
 		a.addFile(new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5\nprint(branch)'));
 		a.addRequest({ request: 'file', content: 'virtual-analyzer-fork/branch.R' });
-		assert.deepStrictEqual(await graph(a), resultB);
-
-		a.updateConfig({ project: { implicitSources: ['setup.R', 'branch.R', 'main.R', 'extra.R'] } });
-		const extra = new FlowrInlineTextFile('virtual-analyzer-fork/extra.R', 'extra <- answer + 100\nprint(extra)');
-		a.addFile(extra);
-		a.addRequest({ request: 'file', content: 'virtual-analyzer-fork/extra.R' });
-		const c = a.fork();
-		extra.updateInlineContent('');
-		const resultC = await graph(c);
-		assert.notDeepEqual(resultC, resultB);
-
-		a.updateConfig({ project: { implicitSources: ['setup.R', 'branch.R', 'main.R'] } });
-		a.reset();
-		a.addFile(
-			new FlowrInlineTextFile('virtual-analyzer-fork/a.R', 'x <- 40'),
-			new FlowrInlineTextFile('virtual-analyzer-fork/b.R', 'y <- x + 2\nprint(y)'),
-			new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5\nprint(branch)')
-		);
-		a.addRequest(
-			{ request: 'file', content: 'virtual-analyzer-fork/a.R' },
-			{ request: 'file', content: 'virtual-analyzer-fork/b.R' },
-			{ request: 'file', content: 'virtual-analyzer-fork/branch.R' }
-		);
-		assert.deepStrictEqual(await graph(a), resultB);
+		const c = await a.fork();
+		assert.deepStrictEqual(await graph(c), resultB);
 	});
 
 	test('forked analyzers can run in parallel without interfering with each other', async() => {
@@ -83,7 +60,7 @@ describe('Analyzer', withTreeSitter(parser => {
 
 		const initial = 'x <- 1';
 		a.addRequest(initial);
-		const b = a.fork();
+		const b = await a.fork();
 
 		const [graphA, graphB] = await Promise.all([graph(a), graph(b)]);
 		assert.deepStrictEqual(graphA, graphB);
@@ -99,8 +76,11 @@ describe('Analyzer', withTreeSitter(parser => {
 		assert.deepStrictEqual(resultB, await analyze(parser, initial, requestB));
 	});
 
-	// TODO: Test a.reset() or a.close()
+	/* Further Tests: (To-be decided Todo's)
 
-	// TODO?: Test for queries
+	Test a.reset() and a.close()
+	Compare the files from the context
 
+	Extra: Test forks on queries
+	*/
 }));

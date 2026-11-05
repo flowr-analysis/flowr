@@ -1,4 +1,4 @@
-import type { FlowrConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
@@ -8,7 +8,7 @@ import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
-import { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
@@ -28,6 +28,7 @@ import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
 import type { FnInfo } from '../dataflow/environments/query-fn-props';
 import type { Identifier } from '../dataflow/environments/identifier';
+import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -42,9 +43,12 @@ export interface FlowrAnalysisOptions {
 	readonly gas?: GasOverrides;
 }
 
+/** Options for forking an analyzer */
 export interface ForkOptions {
-	readonly lazy?:         boolean;
-	readonly forkDataflow?: boolean;
+	readonly lazy?:          boolean;
+	readonly forkDataflow?:  boolean;
+	// Decouples inline files instead of using their references
+	readonly decoupleFiles?: boolean;
 }
 
 /**
@@ -231,23 +235,18 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache = cache;
 	}
 
-	public fork(options?: ForkOptions): FlowrAnalyzer {
-		const lazy = options?.lazy ?? false;
-		const forkDataflow = options?.forkDataflow ?? true;
+	public async fork(options?: ForkOptions): Promise<FlowrAnalyzer> {
+		// TODO: add functionality to the options
+		// const lazy = options?.lazy ?? false;
+		// const forkDataflow = options?.forkDataflow ?? true;
 
-		const parser = this.parser // engines.engines[this.parser];
-		
-		const ctx = this.context().fork();
-		const cache = FlowrAnalyzerCache.create({
-			parser: parser,
-			context: ctx
-		});
+		const fork = await  new FlowrAnalyzerBuilder()
+			.setConfig(FlowrConfig.clone(this.flowrConfig))
+			.setEngine(this.parser.name)
+			.build();
 
-		return new FlowrAnalyzer(
-			parser,
-			ctx,
-			cache
-		);
+		this.ctx.fork(fork.ctx, options);
+		return fork;
 	}
 
 	public get flowrConfig(): FlowrConfig {

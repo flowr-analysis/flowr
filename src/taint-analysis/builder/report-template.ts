@@ -4,6 +4,8 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { SourceLocation } from '../../util/range';
 import { SourceLocation as SourceLocationOps } from '../../util/range';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { TaintOrigin } from '../provenance/taint-provenance-tracker';
+
 
 /** Per-finding context handed to a {@link ReportTemplate}. */
 export interface FindingContext {
@@ -27,6 +29,8 @@ export interface FindingContext {
 	readonly lexeme?:       string;
 	/** The called function's name, if the node resolves to a named call */
 	readonly functionName?: string;
+	/** The recorded calls that changed the taint reaching this finding. Empty if provenance is disabled */
+	readonly taintOrigins:  readonly TaintOrigin[];
 }
 
 /**
@@ -48,7 +52,8 @@ export function buildFindingContext(
 	name: string,
 	nodeId: NodeId,
 	node: RNode<ParentInformation> | undefined,
-	loc: SourceLocation | undefined
+	loc: SourceLocation | undefined,
+	taintOrigins: readonly TaintOrigin[]
 ): FindingContext {
 	return {
 		name,
@@ -61,6 +66,7 @@ export function buildFindingContext(
 		file:         loc !== undefined ? SourceLocationOps.getFile(loc) : undefined,
 		lexeme:       node?.lexeme,
 		functionName: RFunctionCall.isNamed(node) ? node.functionName.lexeme : undefined,
+		taintOrigins
 	};
 }
 
@@ -80,3 +86,16 @@ export function defaultReportTemplate(s: string){
 	return (f: FindingContext) => `${s} [${findingToken(f)} at ${f.locString}]`;
 }
 
+/** Default pattern for provenance reporting */
+export function withTaintOrigins(message: string, finding: FindingContext): string {
+	const reasons = finding.taintOrigins.map((origin, index) => {
+		const inputs = (origin.inputs ?? []).flatMap(({ taint }) => {
+			const text = taint?.toString();
+			return taint === undefined || taint.isTop() ? [] : [text];
+		});
+		const withInputs = inputs.length > 0 ? ` with input ${inputs.join(', ')}` : '';
+		const suffix = origin.notes.length > 0 ? ` (${origin.notes.join(', ')})` : '';
+		return `${'  '.repeat(index)}╰ ${origin.value.toString()} because: call to ${origin.code}${withInputs}${suffix} in line ${origin.loc?.[0]}`;
+	});
+	return [message, ...reasons].join('\n');
+}

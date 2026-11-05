@@ -14,7 +14,7 @@ import { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { TaintMapper } from './taint-mapping';
-import { FunctionArgument } from '../dataflow/graph/graph';
+import type { TaintProvenanceTracker } from './provenance/taint-provenance-tracker';
 
 /**
  * Function calls the taint analysis is able to handle:
@@ -49,7 +49,8 @@ export type TaintVisitorHook = (info: Omit<FnCallHookInfo, 'name' | 'dfg' | 'ctx
  */
 export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
 	/** Callbacks invoked when each function call is visited during taint inference */
-	fnCallHook: TaintVisitorHook;
+	fnCallHook:  TaintVisitorHook;
+	provenance?: TaintProvenanceTracker;
 };
 
 /**
@@ -78,18 +79,11 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 
 		const mappings = this.taintMapper.getMappings(call.name);
 
-		const { value, role, category, inputs } = resolveFnCallToTaint(call, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
-		this.currentState.set(call.id, value);
+		const resolved = resolveFnCallToTaint(call, mappings, this.domain, this.projectArg, this.config.dfg, this.config.ctx);
+		this.currentState.set(call.id, resolved.value);
+		this.config.provenance?.record(call, resolved, this.projectArg);
 
-		this.config.provenance?.record({
-			node:   call.id,
-			kind:   'call',
-			value,
-			inputs: call.args.filter(FunctionArgument.isNotEmpty).map(arg => ({ node: arg.nodeId, value: this.projectArg(arg.nodeId) })),
-			detail: { name: call.name, role, category, wasMapped: mappings.length > 0, inputs }
-		});
-
-		this.config.fnCallHook({ node, value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role, category });
+		this.config.fnCallHook({ node, value: resolved.value, wasMapped: mappings.length > 0, projectArg: this.projectArg, call, role: resolved.role, category: resolved.category });
 	}
 
 	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {

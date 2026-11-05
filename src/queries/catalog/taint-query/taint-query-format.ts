@@ -14,22 +14,19 @@ import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
-import { DataflowGraphTaintAnalysisProvenance, TaintProvenanceMode } from '../../../taint-analysis/provenance/dataflow-graph-taint-analysis-provenance';
-import { taintExplanationToLines } from '../../../taint-analysis/provenance/taint-provenance-explanation';
 import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
 
 
 
 
 export interface TaintQuery extends BaseQueryFormat {
-	readonly type:        'taint';
-	readonly defs:        AnyPredefinedTaintAnalysisName[]
-	readonly provenance?: TaintProvenanceMode
+	readonly type:              'taint';
+	readonly defs:              AnyPredefinedTaintAnalysisName[]
+	readonly recordProvenance?: boolean
 }
 
 export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
-	readonly results:     Map<Analyses[number], TaintInferenceResult>,
-	readonly provenance?: { readonly mode: TaintProvenanceMode, readonly graph: DataflowGraphTaintAnalysisProvenance }
+	readonly results: Map<Analyses[number], TaintInferenceResult>,
 }
 
 const prefix = 'definitions:';
@@ -81,7 +78,7 @@ function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAn
 
 function taintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'taint'> {
 	let defs: AnyPredefinedTaintAnalysisName[] = [];
-	let provenance: TaintProvenanceMode | undefined = undefined;
+	let recordProvenance: boolean | undefined = undefined;
 	let at = 0;
 	for(; at < line.length; at++) {
 		if(line[at].startsWith(prefix)) {
@@ -94,17 +91,16 @@ function taintQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 			defs = parseResult.valid;
 		} else if(line[at].startsWith(provenancePrefix)) {
 			const mode = line[at].slice(provenancePrefix.length);
-			const modes = Object.values(TaintProvenanceMode) as string[];
-			if(modes.includes(mode)) {
-				provenance = mode as TaintProvenanceMode;
+			if(mode === 'on' || mode === 'off') {
+				recordProvenance = mode === 'on';
 			} else {
-				output.stderr(`Unknown provenance mode: ${bold(mode, output.formatter)}\nKnown provenance modes are: ${modes.map(m => bold(m, output.formatter)).join(', ')}`);
+				output.stderr(`Unknown provenance setting: ${bold(mode, output.formatter)}, use ${bold('on', output.formatter)} or ${bold('off', output.formatter)}`);
 			}
 		} else {
 			break;
 		}
 	}
-	return { query: [{ type: 'taint', defs, ...(provenance === undefined ? {} : { provenance }) }], rCode: queryLineCode(line, at) };
+	return { query: [{ type: 'taint', defs, ...(recordProvenance === undefined ? {} : { recordProvenance }) }], rCode: queryLineCode(line, at) };
 }
 
 export const TaintQueryDefinition = {
@@ -114,9 +110,6 @@ export const TaintQueryDefinition = {
 		const out = queryResults as QueryResults<'taint'>['taint'];
 		const state = out.results.entries().toArray();
 		resultStrings.push(`Query: ${bold('taint', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		if(out.provenance?.mode === TaintProvenanceMode.Graph) {
-			resultStrings.push(`   ╰ [Taint Provenance](${DataflowGraphTaintAnalysisProvenance.visualize.mermaid.url(out.provenance.graph)})`);
-		}
 
 		for(const [name, result] of state) {
 			resultStrings.push(`   ╰ **${name}**:`);
@@ -127,11 +120,8 @@ export const TaintQueryDefinition = {
 					resultStrings.push(`      ╰ ${result.msg}:`);
 				}
 				for(const finding of result.findings) {
-					resultStrings.push(`          ╰ ${finding.msg !== undefined ? `${finding.msg} ` : ''}`);
-					if(out.provenance !== undefined && out.provenance.mode !== TaintProvenanceMode.None) {
-						const explanation = DataflowGraphTaintAnalysisProvenance.explain(out.provenance.graph, finding.nodeId, name);
-						resultStrings.push(...taintExplanationToLines(out.provenance.graph, explanation).map(line => `              ${line}`));
-					}
+					const [first, ...reasons] = (finding.msg ?? '').split('\n');
+					resultStrings.push(`          ╰ ${first} `, ...reasons.map(reason => `              ${reason}`));
 				}
 			}
 
@@ -151,7 +141,7 @@ export const TaintQueryDefinition = {
 		return true;
 	},
 	jsonFormatter: (queryResults: BaseQueryResult) => {
-		const { results, provenance: _provenance, ...out } = queryResults as QueryResults<'taint'>['taint'];
+		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
 		const json = new Map(
 			Array.from(results, ([name, { domains, msg, findings }]) => [name, {
 				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
@@ -165,9 +155,9 @@ export const TaintQueryDefinition = {
 	completer: taintQueryCompleter,
 	fromLine:  taintQueryLineParser,
 	schema:    Joi.object({
-		type:       Joi.string().valid('taint').required().description('The type of the query.'),
-		defs:       Joi.array().description('The taint analyses to run.'),
-		provenance: Joi.string().valid(...Object.values(TaintProvenanceMode)).optional().description('Whether to explain the findings (explain) and additionally provide the provenance graph (graph).')
+		type:             Joi.string().valid('taint').required().description('The type of the query.'),
+		defs:             Joi.array().description('The taint analyses to run.'),
+		recordProvenance: Joi.boolean().optional().description('Whether to record where the taints of the findings originate from.')
 	}).description('The taint query conducts taint analyses and returns their results.'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'taint'>;

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createHash } from 'crypto';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { ChainedWith, MutationPasses, mutate, type MutationPass, type MutationTarget } from '../functionality/_helper/r-mutations';
 import { Counterexamples, type Counterexample } from './counterexample-corpus';
@@ -90,7 +91,22 @@ export async function setup(): Promise<void> {
 	if(idle.length > 0) {
 		throw new Error(`these passes never made a mutant no other pass made, so they check nothing: ${idle.join(', ')}`);
 	}
-	fs.writeFileSync(MutantsFile(), JSON.stringify({ once, chained, originals } satisfies Mutants));
+	fs.writeFileSync(MutantsFile(), JSON.stringify({ once: sampled(once), chained: sampled(chained), originals } satisfies Mutants));
+}
+
+/**
+ * Keeps the share `FLOWR_MUTATION_SAMPLE` (in (0, 1], all if unset) of the mutants, picked by a hash with the seed
+ * `FLOWR_MUTATION_SEED` (the commit by default), so each push checks other ones. A failing pass is always kept.
+ */
+function sampled(made: readonly Mutant[]): readonly Mutant[] {
+	const share = Number(process.env.FLOWR_MUTATION_SAMPLE ?? 1);
+	if(!(share > 0 && share < 1)) {
+		return made;
+	}
+	const seed = process.env.FLOWR_MUTATION_SEED ?? process.env.GITHUB_SHA ?? '';
+	const picked = ({ group, target, passes }: Mutant) =>
+		createHash('sha1').update(`${seed}\0${group}\0${target.name}\0${passes.join('\0')}`).digest().readUInt32BE(0) / 0x1_0000_0000 < share;
+	return made.filter(m => m.error !== undefined || picked(m));
 }
 
 /** The mutants {@link setup} made for this run. */

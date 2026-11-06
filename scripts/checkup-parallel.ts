@@ -13,6 +13,8 @@ interface Job {
 	argv:     string[]
 	summary?: boolean
 	needs?:   string[]
+	/** the share of the vitest workers a vitest job gets, by how much work it has */
+	weight?:  number
 }
 interface JobResult {
 	job:      Job
@@ -34,10 +36,10 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 /** every job: a stable id, a label, and the argv to run (all forced into no-watch / one-shot mode) */
 const allJobs: Job[] = [
 	{ id: 'lint',      label: 'lint',                 argv: [npm, 'run', 'lint'] },
-	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'], summary: true },
-	{ id: 'system',    label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'] },
+	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'], summary: true, weight: 2 },
+	{ id: 'system',    label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'], weight: 1 },
 	{ id: 'yields',    label: 'yield snippets',       argv: [npm, 'run', 'test:yields', '--', '--run'] },
-	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true },
+	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true, weight: 4 },
 	{ id: 'wiki',      label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
 	{ id: 'labels',    label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },
 	{ id: 'load',      label: 'standalone loading',   argv: [npm, 'run', 'check:standalone-load'] },
@@ -83,12 +85,14 @@ const cores = Math.max(1, os.availableParallelism?.() ?? os.cpus().length);
 /* what the machine has to offer now: the cores the current load leaves idle and the memory still available */
 const idleCores = cores - Math.ceil(os.loadavg()[0]);
 const availableMemory = os.freemem();
-const runningVitest = Math.max(1, jobs.filter(j => vitestIds.has(j.id)).length);
+const vitestJobs = jobs.filter(j => vitestIds.has(j.id));
+const totalWeight = vitestJobs.reduce((sum, j) => sum + (j.weight ?? 1), 0);
 const totalWorkers = Math.min(idleCores - reservedCores, Math.floor((availableMemory - reservedMemory) / perWorkerMemory));
 const override = Number(process.env.FLOWR_CHECKUP_WORKERS);
-const perVitest = Number.isInteger(override) && override > 0 ? override : Math.max(1, Math.floor(totalWorkers / runningVitest));
-console.log(`checkup budget: ${idleCores} of ${cores} cores idle, ${(availableMemory / GiB).toFixed(1)} GiB available, ${perVitest} workers per vitest job (${runningVitest} jobs)`);
-jobs = jobs.map(j => vitestIds.has(j.id) ? { ...j, argv: [...j.argv, `--maxWorkers=${perVitest}`, ...(j.summary ? ['--', '--make-summary'] : [])] } : j);
+/* split by weight, as an even split leaves the longest job (the mutations) running on few workers long after the others are done */
+const workersOf = (j: Job) => Number.isInteger(override) && override > 0 ? override : Math.max(1, Math.round(totalWorkers * (j.weight ?? 1) / totalWeight));
+console.log(`checkup budget: ${idleCores} of ${cores} cores idle, ${(availableMemory / GiB).toFixed(1)} GiB available, workers per vitest job: ${vitestJobs.map(j => `${j.id} ${workersOf(j)}`).join(', ')}`);
+jobs = jobs.map(j => vitestIds.has(j.id) ? { ...j, argv: [...j.argv, `--maxWorkers=${workersOf(j)}`, ...(j.summary ? ['--', '--make-summary'] : [])] } : j);
 
 /** run the jobs below the priority of the desktop, so a full checkup keeps the machine usable */
 function lowerPriority(pid: number | undefined): void {

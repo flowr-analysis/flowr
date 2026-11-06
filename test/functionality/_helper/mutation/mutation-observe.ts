@@ -125,21 +125,21 @@ function linterFindings(lines: readonly string[]): string[] {
 	return findings.sort();
 }
 
-/** asks the REPL about `target` the way a reader would, with the program inlined into the command */
+/** asks the REPL about `target` the way a reader would, with the program inlined into the first command, which the others then ask about */
 export async function observeRepl(parser: KnownParser, target: MutationTarget): Promise<ReplObservation> {
 	const code = JSON.stringify(target.code);
 	const slice = await replLines(parser, `:query @static-slice (${target.criterion}) ${code}`);
 	const graphs = [];
 	for(const command of [`:query @resolve-value (${target.criterion})`, ':dataflow', ':normalize', ':cfg']) {
 		/* the excerpt titling a function body may span lines and is cut at a fixed length, which a renaming moves */
-		const printed = (await replLines(parser, `${command} ${code}`)).join('\n').replace(/(?<=-body \[")body of [\s\S]*?(?="\])/g, '');
+		const printed = (await replLines(parser, command)).join('\n').replace(/(?<=-body \[")body of [\s\S]*?(?="\])/g, '');
 		graphs.push(command.split(' ')[0], ...printed.split('\n'));
 	}
 	return {
 		slice:        slice.join('\n'),
 		/* which dependency is listed first follows which call the values were found through first, which is no part of the answer */
-		dependencies: neutralized(await replLines(parser, `:query @dependencies ${code}`), target.renames).sort(),
-		linter:       linterFindings(neutralized(await replLines(parser, `:query @linter ${code}`), target.renames)),
+		dependencies: neutralized(await replLines(parser, ':query @dependencies'), target.renames).sort(),
+		linter:       linterFindings(neutralized(await replLines(parser, ':query @linter'), target.renames)),
 		graphs:       neutralized(graphs, target.renames).map(l => l.replace(/\s+/g, ''))
 	};
 }

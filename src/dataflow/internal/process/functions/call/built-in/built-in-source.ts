@@ -38,6 +38,12 @@ import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 
+let parserForSource: RShellExecutor | undefined;
+/** parses what is sourced while an asynchronous shell analyzes: a fresh R per call, without the default packages, which parsing does not need, so it starts in a third of the time */
+function sourceParser(): RShellExecutor {
+	return parserForSource ??= new RShellExecutor({ env: { R_DEFAULT_PACKAGES: 'NULL' } });
+}
+
 /**
  * Infers working directories based on the given option and reference chain
  */
@@ -262,7 +268,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		if(requested) {
 			fst = requested;
 		} else {
-			const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
+			const parsed = (!data.parser.async ? data.parser : sourceParser()).parse(textRequest.r, data.ctx);
 			const normalized = (typeof parsed !== 'string' ?
 				normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 				: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;

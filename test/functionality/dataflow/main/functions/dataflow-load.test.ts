@@ -6,7 +6,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import fs from 'fs';
 import path from 'path';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
-import { getVarsAndTypesFromShell, MissingRealWorldRda, realWorldRdaFiles, SexpToRType } from '../../../project/plugin/load-pipeline/load-pipeline.test';
+import { getVarsAndTypesFromShell, MissingRealWorldRda, realWorldRdaFiles, SexpToRType } from '../../../_helper/rda';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';

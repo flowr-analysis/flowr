@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { FlowrAnalyzerCache } from '../../../../src/project/cache/flowr-analyzer-cache';
 import { withTreeSitter } from '../../_helper/shell';
-import { extractCfg } from '../../../../src/control-flow/control-flow-graph';
+import { type ControlFlowInformation, extractCfg } from '../../../../src/control-flow/control-flow-graph';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { FlowrConfig } from '../../../../src/config';
@@ -45,12 +45,13 @@ describe('Analyzer Cache', withTreeSitter((shell) => {
 				expect(original).toBe(cached);
 			});
 
-			test('Re-use base CFG', async() => {
-				const data = createCache('x <- 1');
+			test('A pass changing the graph leaves the cached ones be', async() => {
+				const data = createCache('i <- 0\nwhile(TRUE) { i <- i + 1; if(i >= 3) break }\nprint(i)');
 				const cache = FlowrAnalyzerCache.create(data);
-				const original = await cache.controlflow(false, []);
-				const cached = await cache.controlflow(false, ['unique-cf-sets']);
-				expect(original.graph).toBe(cached.graph);
+				const edges = (cfg: ControlFlowInformation) => [...cfg.graph.edges()].reduce((sum, [, to]) => sum + to.size, 0);
+				const before = edges(await cache.controlflow(false, ['unique-cf-sets']));
+				expect(edges(await cache.controlflow(false, ['unique-cf-sets', 'analyze-dead-code']))).toBeLessThan(before);
+				expect(edges(await cache.controlflow(false, ['unique-cf-sets']))).toBe(before);
 			});
 
 			test('Keep cache unmodified', async() => {

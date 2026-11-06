@@ -889,9 +889,10 @@ the edge names the vertex that decides (e.g. an \`if\`) and whether it is the br
 function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.context();
 	return {
-		attaches: Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
-		loads:    Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively
-		layers:   Dataflow.library.layers(ctx, 'tidyverse')    // the namespace and imports environments it attaches
+		attaches:  Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
+		loads:     Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively, magrittr included
+		layers:    Dataflow.library.layers(ctx, 'tidyverse'),   // the namespace and imports environments it attaches
+		reexports: Dataflow.library.reexports(ctx, 'dplyr')     // what dplyr re-exports, `%>%` from magrittr included
 	};
 }
 
@@ -1180,6 +1181,9 @@ To ask what a \`library\` call does without analyzing any code, use ${ctx.link('
 ${ctx.code(askWhatLibraryDoes, { dropLinesStart: 1 })}
 
 It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the \`NAMESPACE\` files it read.
+A package R attaches on startup (\`methods\`, \`stats\`, ...) is on the search path already, so a \`Depends\` on it adds no entry.
+Packages R only loads, such as the \`magrittr\` of \`library(tidyverse)\`, are not attached: their functions are reachable through the re-exports of the attached ones (\`dplyr::%>%\` is \`magrittr::%>%\`).
+The analysis keeps such a re-export as an export of the re-exporting package, so the two stay apart, and gives it what flowR states about the origin; \`reexports\` names the origin of each.
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)

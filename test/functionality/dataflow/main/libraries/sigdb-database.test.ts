@@ -189,6 +189,34 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		}
 	});
 
+	test('the origin of a re-export round-trips (surviving the frequency reorder), with and without a topic', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		const shared = ['common', 'common', 'common'];
+		b.addVersion('p', '1.0', ver([
+			{ name: '%>%', props: FnProp.Exported, params: [], callees: [], reexportOf: 'magrittr' },
+			{ name: 'tibble', props: FnProp.Exported, params: [], callees: shared, topic: 'reexports', reexportOf: 'tibble' },
+			{ name: 'own', props: FnProp.Exported, params: [], callees: shared, topic: 'own-topic' },
+			{ name: 'plain', props: FnProp.Exported, params: [], callees: shared }
+		]));
+		const dir = sigTmpDir('sigdb-reexport-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		const variants = [`db${SigDbExt}`, `db${SigDbExt}.br`, ...(zstdSupported() ? [`db${SigDbExt}.zst`] : [])];
+		for(const variant of variants) {
+			const rd = await SigDatabase.open(path.join(dir, variant), { cacheDir: sigTmpDir('sigdb-reexport-cache-') });
+			const byName = new Map(rd.functions('p', '1.0')?.map(f => [f.name, f]));
+			expect(byName.get('%>%')?.reexportOf, variant).toBe('magrittr');
+			expect(byName.get('%>%')?.topic, variant).toBeUndefined();
+			expect(byName.get('tibble')?.reexportOf, variant).toBe('tibble');
+			expect(byName.get('tibble')?.topic, variant).toBe('reexports');
+			expect(byName.get('own')?.reexportOf, variant).toBeUndefined();
+			expect(byName.get('own')?.topic, variant).toBe('own-topic');
+			expect(byName.get('plain')?.reexportOf, variant).toBeUndefined();
+			expect(rd.lookup('p', '1.0')?.reexports, variant).toEqual(new Map([['%>%', 'magrittr'], ['tibble', 'tibble']]));
+			rd.close();
+		}
+	});
+
 	test('the no-doc property round-trips so the query can suppress a guessed doc link', async() => {
 		const b = new SigDbBuilder();
 		b.addPackage('p', { latest: '1.0' });

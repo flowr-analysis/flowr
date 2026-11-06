@@ -72,15 +72,17 @@ export interface SigParameter {
 
 /** the decoded view of one function at one package version */
 export interface DecodedFunction {
-	readonly name:      string;
-	readonly file?:     string;
-	readonly line:      number;
-	readonly exported:  boolean;
-	readonly props:     readonly string[];
-	readonly signature: readonly SigParameter[];
-	readonly callees:   readonly string[];
+	readonly name:        string;
+	readonly file?:       string;
+	readonly line:        number;
+	readonly exported:    boolean;
+	readonly props:       readonly string[];
+	readonly signature:   readonly SigParameter[];
+	readonly callees:     readonly string[];
 	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
-	readonly topic?:    string;
+	readonly topic?:      string;
+	/** the package this name is re-exported from, see {@link SigFunctionInfo.reexportOf} */
+	readonly reexportOf?: string;
 }
 
 /**
@@ -107,7 +109,7 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: s
 
 /** decode one of a blob's function records against the global string dictionary */
 export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
-	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
+	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx, reexportIdx] = blob.fns[fnIdx];
 	const name = strings.at(nameIdx);
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
 		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
@@ -120,11 +122,12 @@ export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx:
 	}
 	return compactRecord({
 		name,
-		topic:    topicIdx !== undefined && topicIdx >= 0 ? strings.at(topicIdx) : undefined,
-		file:     fileIdx >= 0 ? strings.at(fileIdx) : undefined,
+		topic:      topicIdx !== undefined && topicIdx >= 0 ? strings.at(topicIdx) : undefined,
+		reexportOf: reexportIdx !== undefined ? strings.at(reexportIdx) : undefined,
+		file:       fileIdx >= 0 ? strings.at(fileIdx) : undefined,
 		line,
-		exported: isExportedEntry(bits, name),
-		props:    Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
+		exported:   isExportedEntry(bits, name),
+		props:      Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
 		signature,
 		callees
 	});
@@ -216,8 +219,9 @@ export function deriveLibraryExports(
 	const s3Classes: string[] = [];
 	const s4Classes: string[] = [];
 	const locations = new Map<string, SigDefinitionLocation>();
+	const reexports = new Map<string, string>();
 	for(const i of idxs) {
-		const [nameIdx, , , bits, fileIdx, line] = blob.fns[i];
+		const [nameIdx, , , bits, fileIdx, line, , reexportIdx] = blob.fns[i];
 		const name = strings.at(nameIdx);
 		(isExportedEntry(bits, name) ? exported : internal).push(name);
 		if(bits & FnProp.Deprecated) {
@@ -232,11 +236,15 @@ export function deriveLibraryExports(
 		if(fileIdx >= 0) {
 			locations.set(name, { file: strings.at(fileIdx), line });
 		}
+		if(reexportIdx !== undefined) {
+			reexports.set(name, strings.at(reexportIdx));
+		}
 	}
 	const cran = !blob.noncran?.includes(ver);
 	return {
 		version: ver, exported, internal, deprecated, s3Classes, s4Classes, cran,
 		cranUrl: cranBlobUrl(cranBase, pkg, ver, { latest, archived: archived === 1, cran }),
-		...(locations.size > 0 ? { locations } : {})
+		...(locations.size > 0 ? { locations } : {}),
+		...(reexports.size > 0 ? { reexports } : {})
 	};
 }

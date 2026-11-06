@@ -50,6 +50,8 @@ function db(): SigDatabase {
 	add('masker', [depends('leaf')], ['leaffn']);
 	add('dplyr');
 	add('methodsUser', [depends('methods')]);
+	b.addPackage('reexporter', { latest: '1.0.0' });
+	b.addVersion('reexporter', '1.0.0', { ...ver([expFn('own'), { ...expFn('leaffn'), reexportOf: 'leaf' }, { ...expFn('%>%'), reexportOf: 'magrittr' }]), dependencies: [imports('leaf'), imports('magrittr')] });
 	add('ggplot2');
 	b.addPackage('tidyverse', { latest: '2.0.0' });
 	b.addVersion('tidyverse', '1.1.1', { ...ver([expFn('tidyverse_update')]), dependencies: [imports('dplyr')] });
@@ -110,6 +112,29 @@ describe('Dataflow.library answers what library(pkg) does', withTreeSitter(ts =>
 		libraryCase('Imports of Imports are loaded, only the own Depends are attached', 'deepImporter', ['deepImporter', 'chainC'], ['deepImporter', 'importer', 'chainC', 'leaf']);
 		libraryCase('the newest version is used by default', 'versioned', ['versioned', 'other'], ['versioned', 'other']);
 		libraryCase('a Depends R attaches on startup adds no search() entry, it is there already', 'methodsUser', ['methodsUser'], ['methodsUser', 'methods']);
+	});
+
+	describe('re-exports', () => {
+		test(label('a re-export stays the export of the re-exporting package, with what its origin states', ['library-loading', 'search-path'], ['dataflow']), async() => {
+			const df = await analyze(ts, 'library(reexporter)\nleaffn()\nx %>% f');
+			expect(callTargets(df, 'leaffn')).toEqual(['built-in:reexporter:leaffn']);
+			const pipe = df.graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === '%>%');
+			expect(Dataflow.origin(df.graph, pipe?.[0] as NodeId)?.map(o => 'proc' in o ? o.proc : undefined)).toContain('builtin:pipe');
+		});
+
+		test.each([
+			['a subset attach', 'library(reexporter, include.only = "%>%")\nx %>% f'],
+			['a qualified call', 'x %>% f\nreexporter::own()'],
+		])(label('a re-export keeps what its origin states in %s', ['library-loading'], ['dataflow']), async(_, code) => {
+			const df = await analyze(ts, code.startsWith('library') ? code : `library(reexporter)\n${code}`);
+			const pipe = df.graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === '%>%');
+			expect(Dataflow.origin(df.graph, pipe?.[0] as NodeId)?.map(o => 'proc' in o ? o.proc : undefined)).toContain('builtin:pipe');
+		});
+
+		test(label('an export of the package itself has no origin elsewhere', ['library-loading'], ['dataflow']), async() => {
+			const df = await analyze(ts, 'library(reexporter)\nown()');
+			expect(callTargets(df, 'own')).toEqual(['built-in:reexporter:own']);
+		});
 	});
 
 	test(label('the signature query lists what library(pkg) attaches, transitively', ['library-loading', 'search-path'], ['other']), () => {

@@ -8,7 +8,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import { FlowrNamespaceFile, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, importOrigin, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrConfig } from '../../../../src/config';
 
 
@@ -95,6 +95,17 @@ importMethodsFrom(BiocGenerics,combine)`));
 			assert.isTrue(isExportedInInfo('ggplot', deps?.namespaceInfo));
 			assert.isTrue(isExportedInInfo('q..', deps?.namespaceInfo), 'the pattern is read as R reads its string, "\\\\." is a literal dot');
 			assert.isFalse(isExportedInInfo('q\\x', deps?.namespaceInfo), 'no backslash is left in the pattern');
+		});
+	});
+
+	describe('re-exports', function() {
+		test(label('an importFrom names where the name comes from, an import of a whole package does not', ['project-namespace'], ['other']), () => {
+			const ns = ctx.deps.getDependency('current')?.namespaceInfo;
+			assert.isDefined(ns);
+			assert.strictEqual(importOrigin('alpha', ns), 'scales');
+			assert.strictEqual(importOrigin('setNames', ns), 'stats');
+			assert.isUndefined(importOrigin('ggplot', ns), 'a name the package defines itself');
+			assert.isUndefined(importOrigin('enquo', ns), 'import(rlang) does not tell which names rlang exports');
 		});
 	});
 

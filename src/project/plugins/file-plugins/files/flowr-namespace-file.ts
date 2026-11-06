@@ -122,6 +122,19 @@ export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, na
 	return nsInfo ? isExportedInInfo(name, nsInfo) : false;
 }
 
+/**
+ * The package an explicit `importFrom(pkg, name)` takes `name` from. A package exporting such a name defines nothing
+ * of it but re-exports that package's function (`dplyr::%>%` is `magrittr::%>%`), which stays its own export all the same.
+ */
+export function importOrigin(this: void, name: string, nsInfo: NamespaceInfo): string | undefined {
+	for(const [pkg, names] of nsInfo.importedPackages) {
+		if(names !== 'all' && names.includes(name)) {
+			return pkg;
+		}
+	}
+	return undefined;
+}
+
 /** As {@link isExportedInNamespaceFormat}, but for one already picked {@link NamespaceInfo}. */
 export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
 	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)

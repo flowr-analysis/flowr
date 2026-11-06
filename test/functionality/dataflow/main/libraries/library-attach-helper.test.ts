@@ -50,6 +50,8 @@ function db(): SigDatabase {
 	add('masker', [depends('leaf')], ['leaffn']);
 	add('dplyr');
 	add('methodsUser', [depends('methods')]);
+	b.addPackage('tidyr', { latest: '1.0.0' });
+	b.addVersion('tidyr', '1.0.0', { ...ver([expFn('pivot_longer'), { ...expFn('%>%'), reexportOf: 'magrittr' }]), dependencies: [imports('magrittr')] });
 	b.addPackage('reexporter', { latest: '1.0.0' });
 	b.addVersion('reexporter', '1.0.0', { ...ver([expFn('own'), { ...expFn('leaffn'), reexportOf: 'leaf' }, { ...expFn('%>%'), reexportOf: 'magrittr' }]), dependencies: [imports('leaf'), imports('magrittr')] });
 	add('ggplot2');
@@ -135,6 +137,21 @@ describe('Dataflow.library answers what library(pkg) does', withTreeSitter(ts =>
 			const df = await analyze(ts, code.startsWith('library') ? code : `library(reexporter)\n${code}`);
 			const pipe = df.graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === '%>%');
 			expect(Dataflow.origin(df.graph, pipe?.[0] as NodeId)?.map(o => 'proc' in o ? o.proc : undefined)).toContain('builtin:pipe');
+		});
+
+		test(label('a database without re-exports falls back to what R reports for the package', ['library-loading', 'search-path'], ['dataflow']), async() => {
+			const ctx = await ctxOf();
+			const reexports = Dataflow.library.reexports(ctx, 'dplyr');
+			expect(reexports.get('glimpse')).toBe('pillar');
+			expect(reexports.get('all_of')).toBe('tidyselect');
+			expect(reexports.get('%>%')).toBe('magrittr');
+			const df = await analyze(ts, 'library(dplyr)\nglimpse(x)');
+			expect(callTargets(df, 'glimpse')).toEqual(['built-in:dplyr:glimpse']);
+		});
+
+		test(label('a database recording re-exports needs no fallback', ['library-loading'], ['dataflow']), async() => {
+			const ctx = await ctxOf();
+			expect(Dataflow.library.reexports(ctx, 'tidyr')).toEqual(new Map([['%>%', 'magrittr']]));
 		});
 
 		test(label('an export of the package itself has no origin elsewhere', ['library-loading'], ['dataflow']), async() => {

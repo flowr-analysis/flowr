@@ -12,8 +12,7 @@ import type {
 } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import { Identifier } from '../../../../dataflow/environments/identifier';
-import { isNotUndefined } from '../../../../util/assert';
-import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { RPrimitives } from '../../../../data/r-primitives.generated';
 import {
@@ -23,18 +22,14 @@ import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
 import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArray } from '../../../../util/collections/arrays';
-import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
-	exportedFunctions:    string[];
 	/**
 	 * Names listed by `exportMethods()`: S4 methods the package registered for one of its classes, which is a
 	 * different claim than an ordinary export (the package answers a generic, it does not define the function).
 	 * As R's `loadNamespace`, this keeps only the non-primitive generics: a method on a primitive such as `+` or `[`
 	 * binds nothing in the namespace, so `pkg::"+"` does not exist and the call stays with base.
-	 * Only the context-parsed path ({@link parseNamespaceComplex}) tells these apart; the regex fallback folds
-	 * them into {@link exportedFunctions}.
 	 */
 	exportedS4Methods:    string[];
 	/** Classes listed by `exportClasses()`: the S4 classes the package owns. Separated like {@link exportedS4Methods}. */
@@ -137,8 +132,7 @@ export function importOrigin(this: void, name: string, nsInfo: NamespaceInfo): s
 
 /** As {@link isExportedInNamespaceFormat}, but for one already picked {@link NamespaceInfo}. */
 export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
-	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)
-		|| nsInfo.exportedS4Methods.includes(name) || nsInfo.exportedS4Classes.includes(name)) {
+	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedS4Methods.includes(name) || nsInfo.exportedS4Classes.includes(name)) {
 		return true;
 	}
 	if(name.includes('.')) {
@@ -222,27 +216,7 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 				}
 				const name = Identifier.getName(call.functionName.content);
 				const g = expr ?? getEmptyNamespaceFormat();
-				switch(name) {
-					case 'export':
-						return handleExportCall(g, call.arguments);
-					case 'exportPattern':
-						return handleExportPatternCall(g, call.arguments);
-					case 'S3method':
-						return handleS3MethodCall(g, call.arguments);
-					case 'import':
-						return handleImportCall(g, call.arguments);
-					case 'importFrom':
-					case 'importClassesFrom':
-					case 'importMethodsFrom':
-						return handleImportFromCall(g, call.arguments);
-					case 'useDynLib':
-						return handleUseDynLibCall(g, call.arguments);
-					case 'exportClasses':
-						return handleS4ExportCall(g, call.arguments, 'exportedS4Classes');
-					case 'exportMethods':
-						return handleS4ExportCall(g, call.arguments, 'exportedS4Methods');
-				}
-				return g;
+				return applyDirective(g, name, call.arguments.flatMap(a => RArgument.isEmpty(a) || a.name !== undefined || !a.lexeme ? [] : [a.lexeme]));
 			}
 		}
 	});
@@ -256,7 +230,7 @@ export function getExportedNames(info: NamespaceInfo): string[] {
 			s3.push(`${g}.${m}`);
 		}
 	}
-	return uniqueArray([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedS4Methods,
+	return uniqueArray([...info.exportedSymbols, ...info.exportedS4Methods,
 		...info.exportedS4Classes, ...info.exportedPatterns, ...s3]);
 }
 
@@ -304,11 +278,6 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 		arguments: [toUnnamedArgument(node, idMap)]
 	};
 }
-/** Unquotes every lexeme of `args` (dropping empty/nameless arguments) and pushes the result onto `target`. */
-function pushUnquotedLexemes(target: string[], args: readonly PotentiallyEmptyRArgument<ParentInformation>[], unquote: (s: string) => string): void {
-	target.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquote(a.lexeme) : undefined).filter(isNotUndefined));
-}
-
 /** The array stored for `key` in a `string[]`-valued map, creating and registering an empty one if there is none yet. */
 function arrayAt<K>(map: Map<K, string[]>, key: K): string[] {
 	const arr = map.get(key) ?? [];
@@ -332,91 +301,60 @@ function markSideEffectLoader(fmt: NamespaceFormat, pkg: string): void {
 	(fmt[pkg] ??= emptyNamespaceInfo()).loadsWithSideEffects = true;
 }
 
-function handleExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	pushUnquotedLexemes(g.current.exportedSymbols, args, RString.unquote);
-	return g;
+/** The positional arguments of a NAMESPACE directive as written, quotes included; a named one (`except = c(x)`) names nothing. */
+type DirectiveArguments = readonly string[];
+
+function importFrom(g: NamespaceFormat, [pkg, ...symbols]: DirectiveArguments): void {
+	if(pkg !== undefined && symbols.length > 0) {
+		importArrayAt(g.current.importedPackages, RString.unquote(pkg)).push(...symbols.map(RString.unquote));
+	}
 }
-function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	pushUnquotedLexemes(g.current.exportedPatterns, args, unquoteArgument);
-	return g;
-}
-function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
+
+/** What each NAMESPACE directive adds, shared by the AST-based and the plain-text parser so that both read a NAMESPACE alike. */
+const NamespaceDirectives: Readonly<Record<string, (g: NamespaceFormat, args: DirectiveArguments) => void>> = {
+	export:        (g, args) => g.current.exportedSymbols.push(...args.map(RString.unquote)),
+	exportPattern: (g, args) => g.current.exportedPatterns.push(...args.map(a => unquoteArgument(a))),
+	exportClasses: (g, args) => g.current.exportedS4Classes.push(...args.map(RString.unquote)),
+	/* as for R, a method on a primitive generic binds nothing in the namespace */
+	exportMethods: (g, args) => g.current.exportedS4Methods.push(...args.map(RString.unquote).filter(n => !RPrimitives.has(n))),
 	/* `S3method(generic, class)` and `S3method(generic, class, method)` both register the class */
-	if(args.length !== 2 && args.length !== 3) {
-		return g;
-	}
-	const pkgArg = args[0];
-	const funcArg = args[1];
-	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
-		return g;
-	}
-	const generic = RString.unquote(pkgArg.lexeme);
-	const cls = RString.unquote(funcArg.lexeme);
-	arrayAt(g.current.exportS3Generics, generic).push(cls);
-	const fun = args[2];
-	if(fun !== undefined && !RArgument.isEmpty(fun) && fun.lexeme) {
-		(g.current.s3MethodFunctions ??= new Map()).set(`${generic}.${cls}`, RString.unquote(fun.lexeme));
-	}
-	return g;
-}
-function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	/* `import(a, b)` imports both; a named argument like `except =` names no package */
-	for(const arg of args) {
-		if(arg !== EmptyArgument && arg.name === undefined && arg.lexeme) {
-			g.current.importedPackages?.set(RString.unquote(arg.lexeme), 'all');
+	S3method:      (g, args) => {
+		if(args.length !== 2 && args.length !== 3) {
+			return;
+		}
+		const [generic, cls, fun] = args.map(RString.unquote);
+		arrayAt(g.current.exportS3Generics, generic).push(cls);
+		if(fun !== undefined) {
+			(g.current.s3MethodFunctions ??= new Map()).set(`${generic}.${cls}`, fun);
+		}
+	},
+	import: (g, args) => {
+		for(const pkg of args) {
+			g.current.importedPackages.set(RString.unquote(pkg), 'all');
+		}
+	},
+	importFrom,
+	importClassesFrom: importFrom,
+	importMethodsFrom: importFrom,
+	useDynLib:         (g, [pkg]) => {
+		if(pkg !== undefined) {
+			markSideEffectLoader(g, RString.unquote(pkg));
 		}
 	}
+};
+
+/** Applies the directive `name` (if it is one) with its positional `args` to `g`. */
+function applyDirective(g: NamespaceFormat, name: string, args: DirectiveArguments): NamespaceFormat {
+	NamespaceDirectives[name]?.(g, args);
 	return g;
 }
 
-function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	if(args.length < 2) {
-		return g;
-	}
-	const pkgArg = args[0];
-	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
-		return g;
-	}
-	const arr = importArrayAt(g.current.importedPackages, RString.unquote(pkgArg.lexeme));
-	for(let i = 1; i < args.length; i++) {
-		const symArg = args[i];
-		if(RArgument.isEmpty(symArg) || !symArg.lexeme) {
-			continue;
-		}
-		arr.push(RString.unquote(symArg.lexeme));
-	}
-	return g;
-}
-function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	if(args.length < 1) {
-		return g;
-	}
-	const pkgArg = args[0];
-	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
-		return g;
-	}
-	markSideEffectLoader(g, RString.unquote(pkgArg.lexeme));
-	return g;
-}
-/** `exportClasses(A, B)` / `exportMethods(show, summary)`: a directive may list several names, and each goes to `into`. */
-function handleS4ExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], into: 'exportedS4Classes' | 'exportedS4Methods'): NamespaceFormat {
-	const names: string[] = [];
-	pushUnquotedLexemes(names, args, RString.unquote);
-	g.current[into].push(...(into === 'exportedS4Methods' ? exportedGenerics(names) : names));
-	return g;
-}
-
-/** The `exportMethods()` names R exports: methods on a primitive generic bind nothing in the namespace. */
-function exportedGenerics(names: readonly string[]): string[] {
-	return names.filter(n => !RPrimitives.has(n));
-}
 const cleanLineCommentRegex = /^#.*$/gm;
 
 /** A namespace that neither exports nor imports anything yet. */
 function emptyNamespaceInfo(): NamespaceInfo {
 	return {
 		exportedSymbols:      [] as string[],
-		exportedFunctions:    [] as string[],
 		exportedS4Methods:    [] as string[],
 		exportedS4Classes:    [] as string[],
 		exportS3Generics:     new Map<string, string[]>(),
@@ -492,16 +430,15 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		? new Map([...target.s3MethodFunctions ?? [], ...source.s3MethodFunctions ?? []]) : undefined;
 	return {
 		...(s3MethodFunctions ? { s3MethodFunctions } : {}),
+		...(mergedConditional.size > 0 ? { conditional: mergedConditional } : {}),
 		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
-		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
 		exportedS4Methods:    [...target.exportedS4Methods, ...source.exportedS4Methods],
 		exportedS4Classes:    [...target.exportedS4Classes, ...source.exportedS4Classes],
 		exportS3Generics:     mergedS3Generics,
 		exportedPatterns:     [...target.exportedPatterns, ...source.exportedPatterns],
 		importedPackages:     mergedImportedPackages,
-		loadsWithSideEffects: target.loadsWithSideEffects || source.loadsWithSideEffects,
-		conditional:          mergedConditional.size > 0 ? mergedConditional : undefined,
+		loadsWithSideEffects: target.loadsWithSideEffects || source.loadsWithSideEffects
 	};
 }
 
@@ -509,8 +446,8 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 const namedArgument = /^[\w.]+\s*=[^=]/;
 
 /**
- * Split a NAMESPACE directive's argument list (`a, "b", except = c(x)`) into its positional, quote-stripped
- * names. Only top-level commas separate, so an argument that is itself a call stays in one piece.
+ * Split a NAMESPACE directive's argument list (`a, "b", except = c(x)`) into its positional
+ * arguments as written. Only top-level commas separate, so an argument that is itself a call stays in one piece.
  */
 function splitNamespaceArgs(args: string): string[] {
 	const names: string[] = [];
@@ -535,7 +472,7 @@ function splitNamespaceArgs(args: string): string[] {
 			const part = args.slice(start, i).trim();
 			start = i + 1;
 			if(part.length > 0 && !namedArgument.test(part)) {
-				names.push(RString.unquote(part));
+				names.push(part);
 			}
 		}
 	}
@@ -556,61 +493,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 			continue;
 		}
 		const [, type, args] = match;
-
-		switch(type) {
-			case 'exportClasses':
-			case 'exportMethods':
-				// a single directive may list several symbols, e.g. `exportMethods(show, summary)`
-				result.current.exportedFunctions.push(...exportedGenerics(splitNamespaceArgs(args)));
-				break;
-			case 'S3method':
-			{
-				const parts = splitNamespaceArgs(args);
-				if(parts.length !== 2 && parts.length !== 3) {
-					continue;
-				}
-				const [pkg, func, fun] = parts;
-				arrayAt(result.current.exportS3Generics, pkg).push(func);
-				if(fun !== undefined) {
-					(result.current.s3MethodFunctions ??= new Map()).set(`${pkg}.${func}`, fun);
-				}
-				break;
-			}
-			case 'export':
-				// `export(a, b)` exports both `a` and `b`, so split rather than storing the literal `"a, b"`
-				result.current.exportedSymbols.push(...splitNamespaceArgs(args));
-				break;
-			case 'useDynLib':
-			{
-				const parts = args.split(',').map(s => s.trim());
-				if(parts.length !== 2) {
-					continue;
-				}
-				markSideEffectLoader(result, parts[0]);
-				break;
-			}
-			case 'import': {
-				for(const pkg of splitNamespaceArgs(args)) {
-					result.current.importedPackages?.set(pkg, 'all');
-				}
-				break;
-			}
-			case 'importFrom':
-			case 'importClassesFrom':
-			case 'importMethodsFrom': {
-				const parts = splitNamespaceArgs(args);
-				if(parts.length < 2) {
-					continue;
-				}
-				const [pkg, ...symbols] = parts;
-				importArrayAt(result.current.importedPackages, pkg).push(...symbols);
-				break;
-			}
-			case 'exportPattern': {
-				result.current.exportedPatterns?.push(unquoteArgument(args.trim()));
-				break;
-			}
-		}
+		applyDirective(result, type, splitNamespaceArgs(args));
 	}
 
 	return result;

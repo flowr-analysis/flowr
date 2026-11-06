@@ -145,7 +145,7 @@ const NamespaceInternals = ['.packageName', '.__NAMESPACE__.', '.__S3MethodsTabl
 
 /** whether a namespace exports anything: an export, a registered S3 method, or a pattern that `matches` a name */
 function exportsAnything(ns: NamespaceInfo, matches: (pattern: string) => boolean): boolean {
-	return ns.exportedSymbols.length + ns.exportedFunctions.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length + ns.exportS3Generics.size > 0
+	return ns.exportedSymbols.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length + ns.exportS3Generics.size > 0
 		|| ns.exportedPatterns.some(matches)
 		|| [...ns.conditional?.values() ?? []].some(c => exportsAnything(c, matches));
 }
@@ -231,7 +231,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	/* a package may export what it imports (`importFrom(magrittr, "%>%")` and `export("%>%")`) */
 	const imported = new Set([...ns.importedPackages.values()].flatMap(v => v === 'all' ? [] : v));
 	const importsWhole = [...ns.importedPackages.values()].includes('all');
-	for(const name of config.checkExports ? [...ns.exportedSymbols, ...ns.exportedFunctions] : []) {
+	for(const name of config.checkExports ? ns.exportedSymbols : []) {
 		if(!defs.names.has(name) && !imported.has(name) && !importsWhole) {
 			add({ certainty, loc: files.locate(relative, lineOf(text, name)), kind: 'undefined-export', message: `undefined export: '${name}', installing the package fails` });
 		}

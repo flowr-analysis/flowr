@@ -33,8 +33,8 @@ test('exportMethods/exportClasses are reported apart from ordinary exports, yet 
 	assert.deepEqual(info.exportedSymbols, ['plainFunction']);
 	assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
 	assert.deepEqual(info.exportedS4Classes, ['Account', 'Ledger']);
-	assert.notInclude(info.exportedFunctions, 'show', 'an S4 method is no longer an ordinary export');
-	assert.notInclude(info.exportedFunctions, 'Account');
+	assert.notInclude(info.exportedSymbols, 'show', 'an S4 method is no ordinary export');
+	assert.notInclude(info.exportedSymbols, 'Account');
 	for(const name of ['plainFunction', 'show', 'summary', 'Account', 'Ledger']) {
 		assert.isTrue(isExportedInInfo(name, info), `${name} is exported`);
 		assert.include(getExportedNames(info), name);

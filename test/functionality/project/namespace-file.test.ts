@@ -3,6 +3,7 @@ import { FlowrNamespaceFile } from '../../../src/project/plugins/file-plugins/fi
 import type { NamespaceInfo } from '../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import { label } from '../_helper/label';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
 function parse(content: string): NamespaceInfo {
 	return FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', content)).content().current;
@@ -29,4 +30,16 @@ describe('NAMESPACE files', () => {
 
 	testDirective('a method by class', 'S3method(print, foo)', { s3: [['print', ['foo']]] });
 	testDirective('a method naming its function', 'S3method(print, bar, print_bar_impl)', { s3: [['print', ['bar']]] });
+
+	test.each([
+		'export(a, "b")\nexportPattern("^api_")',
+		'exportMethods(sin, Math, "+", "[")\nexportClasses(float32, "float64")',
+		'S3method(print, foo)\nS3method(format, bar, fmt_bar)',
+		'import(dplyr, except = c(filter))\nimportFrom(magrittr, "%>%", "%<>%")\nimportClassesFrom(methods, ANY)',
+		'useDynLib(pkg)\nuseDynLib(other, .registration = TRUE)'
+	])('the AST and the plain-text parser agree on %j', async content => {
+		const analyzer = await new FlowrAnalyzerBuilder().build();
+		const ast = new FlowrNamespaceFile(new FlowrInlineTextFile('NAMESPACE', content), analyzer.context()).content();
+		assert.deepStrictEqual(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', content)).content(), ast);
+	});
 });

@@ -500,7 +500,6 @@ export function packageFromExports(name: string, info: Pick<LibraryExports, 'exp
 	const exported = uniqueArray([...info.exported, ...reexports?.keys() ?? [], ...[...stated ?? []].map(String)]);
 	const namespaceInfo: NamespaceInfo = {
 		exportedSymbols:      exported,
-		exportedFunctions:    [],
 		exportedS4Methods:    [],
 		/* the database derives these from the very `exportClasses()` directives the field stands for */
 		exportedS4Classes:    info.s4Classes.slice(),

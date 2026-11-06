@@ -425,12 +425,19 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
+	 * A file already known under the same path (e.g., reached by both a request and implicit-source discovery) is kept, it only gains the new roles.
 	 */
 	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile | undefined, roles?: readonly FileRole[]) {
 		if(file === undefined) {
 			return;
 		}
-		const f = this.fileLoadPlugins(wrapFile(file, roles));
+		const wrapped = wrapFile(file, roles);
+		const known = wrapped.path() === FlowrFile.INLINE_PATH ? undefined : this.files.get(RPath.of(wrapped.path()));
+		if(known !== undefined) {
+			this.addRoles(known, [...wrapped.roles ?? [], ...roles ?? []]);
+			return known;
+		}
+		const f = this.fileLoadPlugins(wrapped);
 
 		f.addOnInvalidate(c => {
 			this.context.analyzer?.receive(c);
@@ -439,8 +446,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
 		} else {
-			const exist = this.files.get(RPath.of(f.path()));
-			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
 			this.files.set(RPath.of(f.path()), f);
 			this.caseIndex = undefined;
 		}
@@ -453,6 +458,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 		this.projectKindCache = undefined;
 		return f;
+	}
+
+	private addRoles(file: FlowrFileProvider, roles: readonly FileRole[]): void {
+		for(const r of roles) {
+			if(!file.roles?.includes(r)) {
+				file.assignRole(r);
+				this.byRole[r].push(file as never);
+				this.projectKindCache = undefined;
+			}
+		}
 	}
 
 	public hasCached(path: string): boolean {

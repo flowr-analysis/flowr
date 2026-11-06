@@ -157,6 +157,25 @@ describe('Implicit sources', () => {
 		);
 	});
 
+	test.each([['before', true], ['after', false]])('a file added %s implicit-source discovery reaches it again is kept once', (_, first) => {
+		const root = project({ 't.R': 'print(x)\n', 's.R': 'x <- 21\n' });
+		const ctx = new FlowrAnalyzerContext(withImplicit('s.R'), new Map());
+		const sibling = path.join(root, 's.R');
+		const request = () => ctx.addRequests([{ request: 'file', content: path.join(root, 't.R') }]);
+		if(first) {
+			ctx.addFile(sibling, [FileRole.Data]);
+			request();
+		} else {
+			request();
+			ctx.addFile(sibling, [FileRole.Data]);
+		}
+		ctx.addFile(sibling);
+		const known = ctx.files.getAllFiles().filter(f => f.path() === sibling);
+		assert.strictEqual(known.length, 1);
+		assert.include(known[0].roles ?? [], FileRole.Data);
+		assert.strictEqual(ctx.files.getFilesByRole(FileRole.Data).length, 1);
+	});
+
 	test('an explicit Collate order wins, as implicit sources are only a guess', () => {
 		const ctx = new FlowrAnalyzerContext(withImplicit('global.R'), new Map([
 			[PluginType.LoadingOrder, [

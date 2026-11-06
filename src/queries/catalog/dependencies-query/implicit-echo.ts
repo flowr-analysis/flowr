@@ -4,6 +4,7 @@ import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { DependencyInfo } from './dependencies-query-format';
+import { StdOut } from './dependency-values';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -173,7 +174,7 @@ export function collectImplicitEchoes(ast: NormalizedAst, dataflow: DataflowInfo
 				continue;
 			}
 			const inputs = inputVariablesAt(dataflow, ast, echoed.info.id);
-			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: 'stdout', implicit: true, inputVariables: inputs.length > 0 ? inputs : undefined });
+			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: StdOut, implicit: true, inputVariables: inputs.length > 0 ? inputs : undefined });
 		}
 	}
 }

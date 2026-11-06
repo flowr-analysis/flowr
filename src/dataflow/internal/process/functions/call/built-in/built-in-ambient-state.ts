@@ -573,14 +573,11 @@ function callsTagged<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, da
 		.some(d => d.type === ReferenceType.BuiltInFunction && d.config?.tags?.includes(tag) === true);
 }
 
-/** The console connections, which name no file. */
-const ConsoleConnections: ReadonlySet<string> = new Set(['stdout', 'stderr', 'stdin']);
-
 /** Whether the resource argument `id` names no file: `""` (the console for `cat`), `NULL`, or a console connection like `stdout()`. */
 function namesNoFile<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const values = boundValues(id, data);
 	return values.length > 0 && values.every(v => (RString.is(v) && v.content.str === '') || (RSymbol.is(v) && v.content === RNull)
-		|| RFunctionCall.isNamed(v, ConsoleConnections));
+		|| callsTagged(v, data, SemanticCallTag.Console));
 }
 
 /**

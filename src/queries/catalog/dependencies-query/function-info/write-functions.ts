@@ -1,4 +1,5 @@
 import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInfo } from './function-info';
+import { StdErr } from '../dependency-values';
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps, readingAndWritingApart } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
@@ -26,7 +27,7 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 		argIdx:         2,
 		argName:        'outFile',
 		resolveValue:   true,
-		defaultValue:   'stderr',
+		defaultValue:   StdErr,
 		ignoreIf:       'arg-true',
 		additionalArgs: {
 			val: { argIdx: 1, argName: 'silent' }
@@ -38,12 +39,12 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'graphics', name: 'stem',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
 	/* conditions and messages go to the message stream, which is stderr */
-	{ package: 'base',  name: 'message',    linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
+	{ package: 'base',  name: 'message',    linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
 	/* `output = "default"` shows the table where R prints */
 	{ package: 'modelsummary', name: 'modelsummary', argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
 	{ package: 'modelsummary', name: 'msummary',     argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },

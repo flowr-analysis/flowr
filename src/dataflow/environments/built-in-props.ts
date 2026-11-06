@@ -147,6 +147,8 @@ export enum SemanticCallTag {
 	Glob        = 'glob',
 	/** draws on a graphics device */
 	Graphics    = 'draws-graphics',
+	/** hands back a console connection (`stdout()`, `stderr()`, `stdin()`), which names no file */
+	Console     = 'console',
 	/** talks to a database */
 	Database    = 'database',
 	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */

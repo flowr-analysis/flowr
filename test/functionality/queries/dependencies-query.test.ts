@@ -633,6 +633,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt', inputVariables: ['My text'] }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
+		testQuery('cat to a console stream', 'cat("Hello!", file = stderr())', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stderr' }] });
 		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { write: [{ nodeId: '2@cat', functionName: 'cat', value: 'foo', linkedIds: [3] }] });
 		testQuery('multiple sinks', 'sink("x")\nk <- "k.txt"\nsink(k)\nprint("hey")', { write: [
 			{ nodeId: '4@print', functionName: 'print', value: 'k.txt', linkedIds: [10] }

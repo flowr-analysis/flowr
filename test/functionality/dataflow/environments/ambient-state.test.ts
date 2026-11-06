@@ -74,7 +74,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 	describe('output, files, and devices', () => {
 		check('sink diverts the output', 'a01 <- function() sink("out.txt")', { a01: ['#sink', '#file:out', '#files'] });
-		check('sink() ends the diversion, writing no file', 'a01 <- function() sink()', { a01: ['#sink'] });
+		check('sink() ends the diversion, which finishes the file it wrote', 'a01 <- function() sink()', { a01: ['#sink', '#file:*', '#files'] });
 		check('Sys.umask sets the mask', 'a01 <- function() Sys.umask("022")', { a01: ['#umask'] });
 		check('Sys.umask() only queries', 'a01 <- function() Sys.umask()', { a01: [] });
 		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#file:a', '#files', '#graphics'] });

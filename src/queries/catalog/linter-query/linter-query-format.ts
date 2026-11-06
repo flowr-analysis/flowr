@@ -140,6 +140,8 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 	] };
 }
 
+let linterQuerySchema: Joi.ObjectSchema | undefined;
+
 export const LinterQueryDefinition = {
 	title:           'Linter Query',
 	executor:        executeLinterQuery,
@@ -183,8 +185,9 @@ export const LinterQueryDefinition = {
 	completer: linterQueryCompleter,
 	fromLine:  linterQueryLineParser,
 	syntax:    '@linter [rules:<r1>,<r2>,...] [tags:<t1>,...] [format:<fmt>] <code | file://path>',
+	/* built on first use, as the rules are not yet known while this module loads */
 	get schema(): Joi.ObjectSchema {
-		return Joi.object({
+		return linterQuerySchema ??= Joi.object({
 			type:   Joi.string().valid('linter').required().description('The type of the query.'),
 			format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),
 			rules:  Joi.array().items(

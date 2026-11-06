@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-06, 07:52:59 UTC (v2.17.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-06, 11:26:10 UTC (v2.17.2, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -2101,7 +2101,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (796 entries)_
+> _Built-in Environment (799 entries)_
 > 
 > </details>
 > 
@@ -2821,7 +2821,7 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (796 entries)_
+_Built-in Environment (799 entries)_
 
 </details>
 
@@ -4113,7 +4113,7 @@ foo()
 
 Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
 		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
-		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L371"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
+		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L350"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
 		
 <a id='returns'></a>
 <a id='returns-edge'> </a>
@@ -5528,7 +5528,7 @@ A summarized version of the produced environment looks like this:
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (796 entries)_
+_Built-in Environment (799 entries)_
 
 </details>
 
@@ -5726,7 +5726,7 @@ call graph will no longer contain information on variables, for example.
 <h3 id="perspectives-cg">Call Graphs</h3>
 
 These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L265"><code><span title="Helper object for call-graphs, you can compute new call graphs based on CallGraph.compute .">CallGraph</span></code></a> type.
-It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L371"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
+It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L350"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
 

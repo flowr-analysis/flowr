@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-11-06, 07:52:59 UTC (v2.17.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-11-06, 11:26:10 UTC (v2.17.2, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_32_of_32_the_32_Analyzer)  
@@ -55,7 +55,7 @@ All loaded [plugins](#Plugins) will be applied fully automatically during the an
 Please note that adding new files _after_ you already requested analysis results may cause bigger invalidations and cause re-analysis of previously analyzed files.
 With the [files context](#Files_Context), you can also add virtual files to the analysis to consider, or *overwrite* existing files with modified content.
 For this, have a look at the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L307"><code>FlowrAnalyzer::<b>addFile</b></code></a> method.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L303"><code>FlowrAnalyzer::<b>addFile</b></code></a> method.
 
 > [!NOTE]
 > If you want to quickly try out the analyzer, you can use the following code snippet that analyzes a simple R expression:
@@ -78,27 +78,27 @@ For this, have a look at the
 > 
 
 To reset the analysis (e.g., to provide new requests) you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L255"><code>FlowrAnalyzer::<b>reset</b></code></a>.
-If you need to pre-compute analysis results (e.g., to speed up future queries), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L358"><code>FlowrAnalyzer::<b>runFull</b></code></a>.
+If you need to pre-compute analysis results (e.g., to speed up future queries), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L337"><code>FlowrAnalyzer::<b>runFull</b></code></a>.
 
 <h3 id="Conducting_32_Analyses">Conducting Analyses</h3>
 
 Please make sure to add all of the files, folder, and projects you want to analyze using the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L291"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method (or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L307"><code>FlowrAnalyzer::<b>addFile</b></code></a> for virtual files).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L291"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method (or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L303"><code>FlowrAnalyzer::<b>addFile</b></code></a> for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L329"><code>FlowrAnalyzer::<b>parse</b></code></a> to get the parsed information by the respective [engine](https://github.com/flowr-analysis/flowr/wiki/Engines)\
-You can also use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L333"><code>FlowrAnalyzer::<i>peekParse</i></code></a> to inspect the parse information if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L308"><code>FlowrAnalyzer::<b>parse</b></code></a> to get the parsed information by the respective [engine](https://github.com/flowr-analysis/flowr/wiki/Engines)\
+You can also use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L312"><code>FlowrAnalyzer::<i>peekParse</i></code></a> to inspect the parse information if it was already computed (but without triggering a computation).
 With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L242"><code>FlowrAnalyzer::<i>parserInformation</i></code></a>, you get additional information on the parser used for the analysis.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L337"><code>FlowrAnalyzer::<b>normalize</b></code></a> to compute the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)\
-Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L341"><code>FlowrAnalyzer::<i>peekNormalize</i></code></a> returns the normalized AST if it was already computed but without triggering a computation.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L345"><code>FlowrAnalyzer::<b>dataflow</b></code></a> to compute the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)\
-Again, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L354"><code>FlowrAnalyzer::<i>peekDataflow</i></code></a> allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L363"><code>FlowrAnalyzer::<b>controlflow</b></code></a> to compute the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)\
-Also, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L367"><code>FlowrAnalyzer::<i>peekControlflow</i></code></a> returns the control flow graph if it was already computed but without triggering a computation.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L371"><code>FlowrAnalyzer::<b>callGraph</b></code></a> to compute the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) of the analyzed code\
-Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L375"><code>FlowrAnalyzer::<i>peekCallGraph</i></code></a> allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L379"><code>FlowrAnalyzer::<b>query</b></code></a> to run [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) on the analyzed code.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L385"><code>FlowrAnalyzer::<b>runSearch</b></code></a> to run a search query on the analyzed code using the [search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L316"><code>FlowrAnalyzer::<b>normalize</b></code></a> to compute the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)\
+Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L320"><code>FlowrAnalyzer::<i>peekNormalize</i></code></a> returns the normalized AST if it was already computed but without triggering a computation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L324"><code>FlowrAnalyzer::<b>dataflow</b></code></a> to compute the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)\
+Again, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L333"><code>FlowrAnalyzer::<i>peekDataflow</i></code></a> allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L342"><code>FlowrAnalyzer::<b>controlflow</b></code></a> to compute the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)\
+Also, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L346"><code>FlowrAnalyzer::<i>peekControlflow</i></code></a> returns the control flow graph if it was already computed but without triggering a computation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L350"><code>FlowrAnalyzer::<b>callGraph</b></code></a> to compute the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) of the analyzed code\
+Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L354"><code>FlowrAnalyzer::<i>peekCallGraph</i></code></a> allows you to inspect the call graph if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L358"><code>FlowrAnalyzer::<b>query</b></code></a> to run [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) on the analyzed code.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L364"><code>FlowrAnalyzer::<b>runSearch</b></code></a> to run a search query on the analyzed code using the [search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -460,10 +460,10 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
 
 Using the available [plugins](#Plugins),
 the files context categorizes files by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-file.ts#L18"><code><span title="Some files have a special meaning in R projects, e.g., the DESCRIPTION file in R packages. This list may be extended in the future and reflects files that the FlowrAnalyzer can do something interesting with. If you add an interesting file that is only part of your plugin infrastructure, please use the other role.">FileRole</span></code></a> (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L658"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
-It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L484"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L526"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
-and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L606"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
+and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L677"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
+It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L503"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L545"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
+and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L625"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L301"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.

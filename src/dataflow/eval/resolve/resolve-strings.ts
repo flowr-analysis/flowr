@@ -226,7 +226,7 @@ function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation
  * number or logical the way `as.character` would), and a transformation like `basename(p)` when its argument
  * does. Anything that does not resolve stays `Top`.
  */
-function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
+export function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
 	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;
@@ -240,19 +240,3 @@ function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	return folded.length === 1 ? asValue(folded[0]) : setOf(folded.map(asValue));
 }
 
-/**
- * Folding the string built-ins, from `paste` to `basename`.
- *
- * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
- * {@link NodeValue} or {@link Resolve}.
- */
-export const StringFold = {
-	/** every string built-in that is folded, see {@link StringFns} */
-	fns:       StringFns,
-	/** the calls pasting their arguments together, see {@link PasteLikeCalls} */
-	pasteLike: PasteLikeCalls,
-	/** What a string call amounts to; see {@link resolveAsStringFn}. */
-	call:      resolveAsStringFn,
-	/** The string a call in the AST folds to; see {@link foldStringCall}. */
-	fold:      foldStringCall
-} as const;

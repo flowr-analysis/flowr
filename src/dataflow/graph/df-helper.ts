@@ -272,7 +272,8 @@ export const Dataflow = {
 		callGraphSummaries:  computeCallGraphSummaries,
 		/**
 		 * The global state each function may leave changed when called, as pseudo variable names ({@link AmbientStateName}),
-		 * including what the functions it calls change. Writes only to the function's own frame are left out.
+		 * including what the functions it calls change, with what is only assumed of a body flowR cannot see (`f()` for a parameter `f`)
+		 * and the global variables it binds apart. Writes only to the function's own frame are left out.
 		 */
 		ambientWrites:       ambientWritesOfFunctions,
 	},

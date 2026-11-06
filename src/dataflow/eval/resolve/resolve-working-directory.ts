@@ -6,7 +6,7 @@ import { happensBefore } from '../../../control-flow/happens-before';
 import { Ternary } from '../../../util/logic';
 import { Identifier } from '../../environments/identifier';
 import { getArgumentStringValue } from './resolve-argument';
-import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import { isAbsolutePath } from '../../../util/text/strings';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { ControlDependency, negateControlDependency } from '../../info';
@@ -14,7 +14,6 @@ import { EdgeType } from '../../graph/edge';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { RPath } from '../../../util/files';
-import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { Dataflow } from '../../graph/df-helper';
 
@@ -181,7 +180,7 @@ export const WorkingDirectory = {
 	rootsResolver(graph: DataflowGraph, cfg: ControlFlowGraph, ctx: ReadOnlyFlowrAnalyzerContext): (id: NodeId, file?: string) => { roots: readonly string[], pinned: boolean } {
 		const changes = collect(graph, ctx);
 		return (id, file) => {
-			const base = file ? platformDirname(file) : '.';
+			const base = file ? RPath.dirname(file) : '.';
 			const roots = resolveAt(id, graph.getVertex(id)?.cds ?? [], base, changes, cfg).candidates;
 			return { roots, pinned: roots.length > 0 && (roots.length > 1 || roots[0] !== base) };
 		};

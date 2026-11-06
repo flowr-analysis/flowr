@@ -44,33 +44,18 @@ import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAm
 export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly (string | undefined)[]): string[] {
 	switch(option) {
 		case InferWorkingDirectory.MainScript:
-			return referenceChain[0] ? [platformDirname(referenceChain[0])] : [];
+			return referenceChain[0] ? [RPath.dirname(referenceChain[0])] : [];
 		case InferWorkingDirectory.ActiveScript: {
 			const active = referenceChain.at(-1);
-			return active ? [platformDirname(active)] : [];
+			return active ? [RPath.dirname(active)] : [];
 		} case InferWorkingDirectory.AnyScript:
-			return referenceChain.filter(isNotUndefined).map(platformDirname);
+			return referenceChain.filter(isNotUndefined).map(RPath.dirname);
 		default:
 			return [];
 	}
 }
 
 const AnyPathSeparator = /[/\\]/g;
-
-/**
- * Return the basename of a path in a platform-agnostic way
- * @see {@link platformDirname} - for the dirname counterpart
- */
-export function platformBasename(p: string): string {
-	return RPath.basename(p);
-}
-
-/**
- * Return the dirname of a path in a platform-agnostic way
- */
-export function platformDirname(p: string): string {
-	return RPath.dirname(p);
-}
 
 function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
@@ -95,10 +80,10 @@ function candidatePaths(seed: string, dropPaths: DropPathsOption | undefined): s
 	if(dropPaths !== DropPathsOption.Once && dropPaths !== DropPathsOption.All) {
 		return [seed];
 	}
-	const basename = platformBasename(seed);
+	const basename = RPath.basename(seed);
 	const tryPaths = [seed, basename];
 	if(dropPaths === DropPathsOption.All) {
-		const dirs = platformDirname(seed).split(AnyPathSeparator);
+		const dirs = RPath.dirname(seed).split(AnyPathSeparator);
 		if(dirs.length !== 1 || dirs[0] !== '.') {
 			for(let i = 0; i < dirs.length; i++) {
 				tryPaths.push(path.join(...dirs.slice(i), basename));

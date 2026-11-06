@@ -12,7 +12,7 @@ import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argu
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Ternary } from '../../util/logic';

@@ -44,11 +44,9 @@ import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/c
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
 import { memoize } from '../../../util/collections/defaultmap';
 import { SourceRange } from '../../../util/range';
+import { Constant, StdOut, Unknown } from './dependency-values';
+export { Constant, Unknown } from './dependency-values';
 
-/** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
-export const Unknown = 'unknown';
-/** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
-export const Constant = 'constant';
 /** {@link DependencyInfo#functionName} for an assumed base package: nothing in the code names it, so there is no call to report as `functionName`. */
 export const Attached = '<attached>';
 
@@ -216,7 +214,7 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 	'write': {
 		queryDisplayName:   'Outputs',
 		functions:          env.derive(writeFunctionsOf),
-		defaultValue:       'stdout',
+		defaultValue:       StdOut,
 		/* what the top level prints on its own is an output like any other, marked {@link DependencyInfo#implicit} */
 		additionalAnalysis: async(data, ignoreDefault, _functions, queryResults, result) => {
 			/* without implicit echo (e.g. in a package, whose top-level code runs at install time) nothing is auto-printed */

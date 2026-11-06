@@ -11,8 +11,7 @@ import { DfgVertex } from '../../../../../graph/vertex';
 import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/default-builtin-config';
-import type { Identifier } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
@@ -59,7 +58,7 @@ function fixedStackEnv(kind: StackEnvKind | undefined, data: StackEnvContext): R
 export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<StackEnvContext, 'environment'>): StackEnvKind | undefined {
 	const symbol = RSymbol.is(node) ? node.content
 		: RFunctionCall.calledName(node);
-	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;
+	const kind = symbol !== undefined ? stackEnvKind(Identifier.getName(symbol)) : undefined;
 	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
 		return undefined;
 	}
@@ -119,7 +118,7 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
 	if(!DfgVertex.isFunctionCall(vertex) || vertex.name === undefined) {
 		return undefined;
 	}
-	const kind = stackEnvKind(String(vertex.name));
+	const kind = stackEnvKind(Identifier.getName(vertex.name));
 	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.StackEnv)) {
 		return fixedStackEnv(kind, data);
 	}
@@ -134,5 +133,5 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
  * Only the rlang pronoun `.env` does: it names the surrounding scope, while `$` on a real environment stays in its frame.
  */
 export function stackEnvInheritsFields<Info>(node: RNode<Info> | undefined): boolean {
-	return RSymbol.is(node) && String(node.content) === EnvPronoun;
+	return RSymbol.is(node) && Identifier.getName(node.content) === EnvPronoun;
 }

@@ -11,7 +11,8 @@ import { Dataflow } from '../../graph/df-helper';
 import { callFnProps } from '../../environments/query-fn-props';
 import { ArgProp, SemanticCallTag } from '../../environments/built-in-props';
 import { FunctionSemantics } from '../../fn/function-semantics';
-import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Identifier } from '../../environments/identifier';
+import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { valueSetGuard } from '../values/general';
 import { isValue, type Value } from '../values/r-value';
@@ -122,7 +123,7 @@ function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, 
 }
 
 /**
- * The resource a call that `argument` reads from opens, like the file of `gzfile(f)` in `read.csv(gzfile(f))`. A call
+ * The resource a call that `argument` reads from opens, like the file of `gzfile(f)` in `read.csv(gzfile(f))`, or the console stream it names, like `stderr` for `stderr()`. A call
  * already in `opening` is skipped: in `gzfile(d)` with `d` unknown, the provenance of `d` leads back to that very call.
  */
 function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph, argument: NodeId, ctx: ReadOnlyFlowrAnalyzerContext, opening: ReadonlySet<NodeId>): string[] | undefined {
@@ -132,6 +133,10 @@ function openedResourceOf(variableResolve: VariableResolve, graph: DataflowGraph
 		}
 		const vertex = graph.getVertex(id);
 		const info = DfgVertex.isFunctionCall(vertex) ? callFnProps(id, { graph, environment: ctx.env.cleanEnv() }) : undefined;
+		if(info !== undefined && FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Console])) {
+			/* a console stream, named as the dependencies name it */
+			return [Identifier.getName(info.name)];
+		}
 		const resource = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
 		if(vertex === undefined || !FunctionSemantics.call.props.hasAll(info, [SemanticCallTag.Opens]) || (resource < 0 && info?.sig === undefined)) {
 			continue;

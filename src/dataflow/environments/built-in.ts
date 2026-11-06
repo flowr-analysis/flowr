@@ -3,7 +3,8 @@ import type { DataflowProcessorInformation } from '../processor';
 import { FunctionSemantics } from '../fn/function-semantics';
 import type { DataflowInformation, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
-import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, nseArgumentPositions, type NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, nseArgumentPositions } from '../internal/process/functions/call/known-call-handling';
+import { type NseArguments, NseKind } from '../internal/process/functions/call/nse-kind';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
 import { processAssignment, processAssignmentLike, processDefineArgument } from '../internal/process/functions/call/built-in/built-in-assignment';
@@ -41,10 +42,10 @@ import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
 import { resolveAsElement, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
-import { StringFold } from '../eval/resolve/resolve-strings';
+import { resolveAsStringFn } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
 import { resolveAsGet } from '../eval/resolve/resolve-get';
-import { NumericFold } from '../eval/resolve/resolve-numbers';
+import { resolveAsNumeric } from '../eval/resolve/resolve-numbers';
 import { BuiltInEvalName } from './built-in-eval-name';
 import type { VariableResolve } from '../../config';
 import type {
@@ -460,10 +461,10 @@ export const BuiltInProcessorMapper = {
 export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Vector]:     resolveAsVector,
 	[BuiltInEvalName.Seq]:        resolveAsSeq,
-	[BuiltInEvalName.Numeric]:    NumericFold.call,
+	[BuiltInEvalName.Numeric]:    resolveAsNumeric,
 	[BuiltInEvalName.Comparison]: resolveAsComparison,
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
-	[BuiltInEvalName.StringFn]:   StringFold.call,
+	[BuiltInEvalName.StringFn]:   resolveAsStringFn,
 	[BuiltInEvalName.Group]:      resolveAsGroup,
 	[BuiltInEvalName.Get]:        resolveAsGet,
 	[BuiltInEvalName.Element]:    resolveAsElement

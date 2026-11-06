@@ -185,7 +185,7 @@ function apply(fold: NumericFn['fold'], operands: readonly Operand[]): number | 
  * number, a logical (counting as its `0`/`1`), or a vector of numbers, which folds elementwise. Anything that
  * does not resolve, a result that is not finite, and a vector length mismatch all stay `Top`.
  */
-function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
+export function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const name = calledName(args.node);
 	const fn = name === undefined ? undefined : NumericFns[name as keyof typeof NumericFns] as NumericFn | undefined;
 	if(fn === undefined) {
@@ -214,15 +214,3 @@ function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
 	return folded === undefined ? Top : vectorFrom(folded.map(n => intervalFrom(n, n)));
 }
 
-/**
- * Folding the numeric and bitwise built-ins, from an operator to `sqrt`.
- *
- * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
- * {@link NodeValue} or {@link Resolve}.
- */
-export const NumericFold = {
-	/** every numeric built-in that is folded, see {@link NumericFns} */
-	fns:  NumericFns,
-	/** What a numeric call amounts to; see {@link resolveAsNumeric}. */
-	call: resolveAsNumeric
-} as const;

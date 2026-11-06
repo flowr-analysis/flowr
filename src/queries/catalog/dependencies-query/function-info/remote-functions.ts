@@ -1,5 +1,5 @@
 import type { FunctionInfo } from './function-info';
-import { Constant, Unknown } from '../dependencies-query-format';
+import { Constant, Unknown } from '../dependency-values';
 
 /**
  * The installers that fetch a package from somewhere other than a configured CRAN-like repository, with the

@@ -289,40 +289,19 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
-		for(const r of request) {
-			if(typeof r === 'string') {
-				const trimmed = r.slice(fileProtocol.length);
-				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
-					this.addAnalysisRequest({ request: 'project', content: trimmed });
-				} else {
-					this.addRequestFromInput(r);
-				}
-			} else {
-				this.addAnalysisRequest(r);
+		/* added at once, so that every request knows the folders of the others when its files are added */
+		this.ctx.addRequests(request.flatMap((r): RAnalysisRequest | readonly RAnalysisRequest[] => {
+			if(typeof r !== 'string') {
+				return r;
 			}
-		}
+			const trimmed = r.slice(fileProtocol.length);
+			return r.startsWith(fileProtocol) && !isFilePath(trimmed) ? { request: 'project', content: trimmed } : requestFromInput(r);
+		}));
 		return this;
 	}
 
 	public addFile(...f: (string | FlowrFileProvider | RParseRequestFromFile)[]): this {
 		this.ctx.addFiles(f);
-		return this;
-	}
-
-	/**
-	 * Add a request created from the given input.
-	 * This is a convenience method that uses {@link requestFromInput} internally.
-	 */
-	private addRequestFromInput(input: Parameters<typeof requestFromInput>[0]): this {
-		this.addAnalysisRequest(requestFromInput(input));
-		return this;
-	}
-
-	/**
-	 * Add one or multiple requests to analyze the builder.
-	 */
-	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
-		this.ctx.addRequests((Array.isArray(request) ? request : [request]) as RAnalysisRequest[]);
 		return this;
 	}
 

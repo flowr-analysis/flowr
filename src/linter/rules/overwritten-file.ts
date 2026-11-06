@@ -2,7 +2,8 @@ import { type LintingResult, type LintingRule, prettyPrint, LintingResultCertain
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
-import { Unknown, type DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { ConsoleStreams, Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
@@ -34,9 +35,6 @@ export interface OverwrittenFileMetadata extends MergeableRecord {
 	/** the number of distinct files written to */
 	readonly totalFiles: number
 }
-
-/** what goes to the console is printed, not written over */
-const ConsoleStreams: ReadonlySet<string> = new Set(['stdout', 'stderr']);
 
 /** `append = TRUE`, or a connection opened in an append mode like `file(p, "a")` */
 function appends(id: NodeId, idMap: AstIdMap, opens: (id: NodeId) => boolean): boolean {

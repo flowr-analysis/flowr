@@ -8,10 +8,9 @@ import {
 	type DependenciesQueryResult,
 	defaultDependencyCategories,
 	type DependencyInfo,
-	Attached,
-	Constant,
-	Unknown
+	Attached
 } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../../src/queries/catalog/dependencies-query/dependency-values';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
@@ -634,6 +633,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt', inputVariables: ['My text'] }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
+		testQuery('cat to a console stream', 'cat("Hello!", file = stderr())', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stderr' }] });
 		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { write: [{ nodeId: '2@cat', functionName: 'cat', value: 'foo', linkedIds: [3] }] });
 		testQuery('multiple sinks', 'sink("x")\nk <- "k.txt"\nsink(k)\nprint("hey")', { write: [
 			{ nodeId: '4@print', functionName: 'print', value: 'k.txt', linkedIds: [10] }

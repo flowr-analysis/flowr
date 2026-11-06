@@ -9,7 +9,7 @@ import { downloadFullSigDb, SigDbDownloadError } from '../../../project/sigdb/si
 import { persistSigDbPathToGlobalConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { signatureQueryCompleter } from '../../../queries/catalog/signature-query/signature-query-executor';
-import type { CommandCompletions } from '../core';
+import type { CommandCompletions } from '../completion';
 
 /** treat the whole line as arguments, no R code to separate */
 function parseSignatureArgs(line: string) {

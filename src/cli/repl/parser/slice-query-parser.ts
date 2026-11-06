@@ -1,6 +1,6 @@
 import type { SlicingCriterion, SlicingCriteria } from '../../../slicing/criterion/parse';
 import { SliceDirection } from '../../../util/slice-direction';
-import { type CommandCompletions, describeCompletion } from '../core';
+import { type CommandCompletions, describeCompletion } from '../completion';
 import type { FlowrConfig } from '../../../config';
 import type { SliceQueryOptions } from '../../../queries/catalog/slice-query-options';
 import type { ReplOutput } from '../commands/repl-main';

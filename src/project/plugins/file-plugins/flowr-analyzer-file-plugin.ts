@@ -4,8 +4,7 @@ import type { FlowrFileProvider } from '../../context/flowr-file';
 import { FileRole } from '../../context/flowr-file';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { rPackageSourceRegex } from '../../../util/files';
-import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { RPath, rPackageSourceRegex } from '../../../util/files';
 
 /**
  * This is the base class for all plugins that load and possibly transform files when they are loaded.
@@ -54,9 +53,9 @@ class DefaultFlowrAnalyzerFilePlugin extends FlowrAnalyzerFilePlugin {
 /** Which part of a path a {@link FlowrAnalyzerPatternFilePlugin} matches its pattern against. */
 export const PathPart = {
 	/** The file name including its extension. */
-	Basename: platformBasename,
+	Basename: RPath.basename,
 	/** The directory portion of the path. */
-	Dirname:  platformDirname,
+	Dirname:  RPath.dirname,
 	/** The whole path, for patterns that need both the folder and the file name. */
 	Full:     (p: string) => p
 } as const;

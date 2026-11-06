@@ -11,12 +11,15 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '.
 import { DfgVertex } from '../../dataflow/graph/vertex';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import { callFnProps } from '../../dataflow/environments/query-fn-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation, AstIdMap  } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { getFunctionArgument, getVertexArguments } from '../../abstract-interpretation/data-frame/arguments';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { InputType } from '../../queries/catalog/input-sources-query/input-types';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
@@ -80,7 +83,6 @@ const Leaks: Readonly<Record<SecretLeak, { readonly severity: SecretLeakSeverity
 
 /** request builders passing their destination on */
 const RequestBuilder = /^(?:request|req_\w+)$/;
-const StandardStreams: ReadonlySet<string> = new Set(['stdout', 'stderr']);
 const MaxDestinationHops = 5;
 
 type Info = ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap };
@@ -126,11 +128,16 @@ async function classifyDestination(data: ReadonlyFlowrAnalysisProvider, id: Node
 	return types.has(InputType.Parameter) && controlled.includes(InputType.Parameter) ? 'parameter' : 'trusted';
 }
 
+/** whether the destination `file` is the console, `""` or a call flowR states {@link SemanticCallTag.Console} of */
+function namesConsole(file: RNode<ParentInformation>, info: Info): boolean {
+	return file.lexeme === '""' || FunctionSemantics.call.props.hasAll(callFnProps(file.info.id, { graph: info.graph, environment: info.environment ?? info.ctx.env.cleanEnv() }), [SemanticCallTag.Console]);
+}
+
 async function leakOf(data: ReadonlyFlowrAnalysisProvider, call: SecretSinkCall, untrusted: boolean, info: Info, config: SecretExfiltrationConfig): Promise<{ leak: SecretLeak, certain: boolean } | undefined> {
 	const fixed = call.sink.class === SecretSinkClass.Browser ? SecretLeak.Leakage : [SecretLeak.Files, SecretLeak.Process, SecretLeak.Llm].find(l => l === call.sink.class as string);
 	const file = info.idMap.get(argumentAt(call.call, call.sink.file, info) ?? '');
 	if(fixed !== undefined || call.sink.class === SecretSinkClass.Logs) {
-		return { leak: fixed ?? (file !== undefined && !RFunctionCall.isNamed(file, StandardStreams) && file.lexeme !== '""' ? SecretLeak.Files : SecretLeak.Leakage), certain: true };
+		return { leak: fixed ?? (file !== undefined && !namesConsole(file, info) ? SecretLeak.Files : SecretLeak.Leakage), certain: true };
 	}
 	const destination = destinationOf(call.call, call.sink, info);
 	const trust = untrusted ? 'controlled' : destination === undefined ? 'trusted' : await classifyDestination(data, destination, config.controlledInputs);

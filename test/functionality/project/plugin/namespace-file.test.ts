@@ -169,8 +169,9 @@ importMethodsFrom(BiocGenerics,combine)`));
 
 		test('exportMethods / exportClasses split their arguments too', () => {
 			const info = simple('exportMethods(show, summary)\nexportClasses("A", "B")').current;
-			assert.includeMembers(info.exportedFunctions, ['show', 'summary', 'A', 'B']);
-			assert.strictEqual(info.exportedFunctions.length, 4);
+			assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
+			assert.deepEqual(info.exportedS4Classes, ['A', 'B']);
+			assert.deepEqual(info.exportedSymbols, [], 'S4 exports are no ordinary exports');
 		});
 
 		test('single-symbol and quoted exports still parse (no regression)', () => {
@@ -181,7 +182,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 
 		test('exportMethods on a primitive generic exports nothing, as in R', () => {
 			const info = simple('exportMethods("[", "+", `$`, rep, as.difftime)\nexport(log)').current;
-			assert.deepEqual(info.exportedFunctions, ['as.difftime']);
+			assert.deepEqual(info.exportedS4Methods, ['as.difftime']);
 			assert.deepEqual(info.exportedSymbols, ['log']);
 		});
 

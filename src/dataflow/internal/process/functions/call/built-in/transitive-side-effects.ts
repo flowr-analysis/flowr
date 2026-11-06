@@ -12,7 +12,7 @@ import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { hiddenSideEffects, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
+import { hiddenSideEffects, isAssumedWrite, reachesBuiltInLate, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
@@ -220,7 +220,7 @@ function hiddenBuiltInAccess(graph: DataflowGraph, environment: REnvironmentInfo
 	const writesOf = new DefaultMap<NodeId, NamedDefinition[]>(() => [], writes);
 	const readsOf = new DefaultMap<NodeId, string[]>(() => [], reads);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(graph.isRoot(id)) {
+		if(graph.isRoot(id) || !reachesBuiltInLate(vertex)) {
 			continue;
 		}
 		const own = DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) ? undefined : vertex.name;
@@ -351,7 +351,7 @@ function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition
 /** Re-resolves still-open reads whose name is one of the transitively escaped `<<-` definitions in `escapedNames`, adding {@link EdgeType.Reads} edges. */
 export function reResolveOpenReferences(this: void, graph: DataflowGraph, environment: REnvironmentInformation, references: readonly IdentifierReference[], escapedNames: ReadonlySet<string>): void {
 	for(const ref of references) {
-		if(ref.name === undefined || !escapedNames.has(String(ref.name))) {
+		if(ref.name === undefined || !escapedNames.has(Identifier.toString(ref.name))) {
 			continue;
 		}
 		for(const { nodeId } of Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {
@@ -362,20 +362,41 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
 	}
 }
 
+/** What calling a function may leave changed, see {@link ambientWritesOfFunctions}. */
+export interface FunctionAmbientWrites {
+	/** the pseudo variables of the state it may change (see {@link AmbientStateName}), like `#option:digits` */
+	readonly state:     ReadonlySet<string>
+	/** the state only assumed changed by a body flowR cannot see and changed by nothing else, like `#rng` for `function(f) f()` */
+	readonly assumed:   ReadonlySet<string>
+	/** the global variables it may bind, by `x <<- 1` reaching the global frame or `assign("x", 1, envir = .GlobalEnv)` */
+	readonly variables: ReadonlySet<string>
+}
+
 /**
  * The global state each function may leave changed when it is called, as the names of the pseudo variables it changes
- * (see {@link AmbientStateName}): `#option:digits` for `options(digits = 3)`, `#env:PATH` for `Sys.setenv(PATH = "")`, or `#sink`.
+ * (see {@link AmbientStateName}): `#option:digits` for `options(digits = 3)`, `#env:PATH` for `Sys.setenv(PATH = "")`, or `#sink`,
+ * and the global variables it binds.
  * A function reports what its callees report as well, so with `a01 <- function() options(digits = 3)` and `a22 <- function() a01()`,
  * both set `#option:digits`. What a function only changes within its own frame (`withr::local_options`) is left out.
  * @param info - the dataflow information of the whole program
- * @returns      per function-definition vertex the state it may change, which is empty for a function changing none
+ * @returns      per function-definition vertex what it may change, which is empty for a function changing nothing
  * @useInstead {@link Dataflow.sideEffects.ambientWrites}
  */
-export function ambientWritesOfFunctions(this: void, info: Pick<DataflowInformation, 'graph' | 'environment'>): Map<NodeId, ReadonlySet<string>> {
+export function ambientWritesOfFunctions(this: void, info: Pick<DataflowInformation, 'graph' | 'environment'>): Map<NodeId, FunctionAmbientWrites> {
 	const hidden = hiddenBuiltInAccess(info.graph, info.environment).writes;
 	const names = escapedDefinitionMap(info.graph, hidden);
 	const summary = computeCallGraphSummaries(info.graph, escapedDefinitions(hidden));
-	return new Map(summary.entries().map(([id, definitions]) => [id, new Set(definitions.values().flatMap(d => names.get(d) ?? []).map(d => d.name).filter(AmbientStateName.is))]));
+	return new Map(summary.entries().map(([id, definitions]) => [id, writesOf(definitions.values().flatMap(d => names.get(d) ?? []))]));
+}
+
+function writesOf(definitions: Iterable<NamedDefinition>): FunctionAmbientWrites {
+	const state = new Set<string>();
+	const assumed = new Set<string>();
+	const variables = new Set<string>();
+	for(const d of definitions) {
+		(!AmbientStateName.is(d.name) ? variables : isAssumedWrite(d) ? assumed : state).add(d.name);
+	}
+	return { state, assumed: assumed.difference(state), variables };
 }
 
 /**

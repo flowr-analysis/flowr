@@ -340,7 +340,8 @@ export function getAllLinkedFunctionDefinitions(
 	while(potential.length !== 0) {
 		const [cid, viaAccess, call] = potential.pop() as [NodeId, boolean, NodeId | undefined];
 		const done = viaAccess ? expandedViaAccess : expanded;
-		if(done.has(at(cid, call))) {
+		/* without a call nothing restricts the walk, so that visit covers those under any call */
+		if(done.has(at(cid, call)) || done.has(at(cid, undefined))) {
 			continue;
 		}
 		done.add(at(cid, call));

@@ -21,7 +21,7 @@ import { type LintingResultsError,
 import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
 import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/core';
+import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
 import { type LintResultsByRule, LinterOutputFormat } from '../../../linter/linter-output';
@@ -140,6 +140,8 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 	] };
 }
 
+let linterQuerySchema: Joi.ObjectSchema | undefined;
+
 export const LinterQueryDefinition = {
 	title:           'Linter Query',
 	executor:        executeLinterQuery,
@@ -183,18 +185,21 @@ export const LinterQueryDefinition = {
 	completer: linterQueryCompleter,
 	fromLine:  linterQueryLineParser,
 	syntax:    '@linter [rules:<r1>,<r2>,...] [tags:<t1>,...] [format:<fmt>] <code | file://path>',
-	schema:    Joi.object({
-		type:   Joi.string().valid('linter').required().description('The type of the query.'),
-		format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),
-		rules:  Joi.array().items(
-			Joi.string().valid(...Object.keys(LintingRules)),
-			Joi.object({
-				name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
-				config: Joi.object()
-			})
-		).description('The rules to lint for. If unset, all rules will be included.'),
-		tags: Joi.array().items(Joi.string().valid(...Object.values(LintingRuleTag))).optional().description('Lint for every rule carrying one of these tags, e.g. cmd-check for the R CMD check rules.')
-	}).description('The linter query lints for the given set of rules and returns the result.'),
+	/* built on first use, as the rules are not yet known while this module loads */
+	get schema(): Joi.ObjectSchema {
+		return linterQuerySchema ??= Joi.object({
+			type:   Joi.string().valid('linter').required().description('The type of the query.'),
+			format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),
+			rules:  Joi.array().items(
+				Joi.string().valid(...Object.keys(LintingRules)),
+				Joi.object({
+					name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
+					config: Joi.object()
+				})
+			).description('The rules to lint for. If unset, all rules will be included.'),
+			tags: Joi.array().items(Joi.string().valid(...Object.values(LintingRuleTag))).optional().description('Lint for every rule carrying one of these tags, e.g. cmd-check for the R CMD check rules.')
+		}).description('The linter query lints for the given set of rules and returns the result.');
+	},
 	flattenInvolvedNodes: (queryResults, _queries, certainty) => {
 		const out = queryResults as LinterQueryResult;
 		return Object.values(out.results).flatMap(v => {

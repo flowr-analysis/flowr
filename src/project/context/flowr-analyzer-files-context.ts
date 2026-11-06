@@ -262,6 +262,11 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.readdirCache.clear();
 	}
 
+	private addRoot(root: string): void {
+		this.requestedRoots.push(root);
+		this.rootResolved = false;
+	}
+
 	/** The directory the analysis was asked about: a `project`'s folder, or the one holding the requested file(s). */
 	public root(): string | undefined {
 		if(!this.rootResolved) {
@@ -346,6 +351,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request.
 	 */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
+		/* every folder first, so that the files of one request are seen from the same root as those of the others */
+		for(const request of requests) {
+			if(request.request !== 'text') {
+				this.addRoot(request.request === 'file' ? path.dirname(request.content) : request.content);
+			}
+		}
 		for(const request of requests) {
 			this.addRequest(request);
 		}
@@ -358,14 +369,14 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			if(request.request === 'file') {
-				this.requestedRoots.push(path.dirname(request.content));
 				this.discoverImplicitSources(request.content);
+				/* registers the file with its roles now, so they do not depend on whether it was parsed yet */
+				this.resolveFile(request.content);
 			}
 			this.loadingOrder.addRequest(request);
 			this.projectKindCache = undefined;
 			return;
 		}
-		this.requestedRoots.push(request.content);
 		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
 			this.addDiscovered(req);
 		}
@@ -425,12 +436,24 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
+	 * A file already known under the same path (e.g., reached by both a request and implicit-source discovery) is kept, it only gains the new roles.
 	 */
 	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile | undefined, roles?: readonly FileRole[]) {
 		if(file === undefined) {
 			return;
 		}
-		const f = this.fileLoadPlugins(wrapFile(file, roles));
+		const wrapped = wrapFile(file, roles);
+		const known = wrapped.path() === FlowrFile.INLINE_PATH ? undefined : this.files.get(RPath.of(wrapped.path()));
+		if(known !== undefined) {
+			/* the same file on disk again only adds its roles, a provider of its own replaces the known one */
+			if(known === file || wrapped instanceof FlowrTextFile) {
+				this.addRoles(known, [...wrapped.roles ?? [], ...roles ?? []]);
+				return known;
+			}
+			this.forget(known);
+			known.roles?.forEach(r => wrapped.assignRole(r));
+		}
+		const f = this.fileLoadPlugins(wrapped);
 
 		f.addOnInvalidate(c => {
 			this.context.analyzer?.receive(c);
@@ -439,8 +462,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
 		} else {
-			const exist = this.files.get(RPath.of(f.path()));
-			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
 			this.files.set(RPath.of(f.path()), f);
 			this.caseIndex = undefined;
 		}
@@ -453,6 +474,26 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 		this.projectKindCache = undefined;
 		return f;
+	}
+
+	private forget(file: FlowrFileProvider): void {
+		for(const r of file.roles ?? []) {
+			const files = this.byRole[r] as FlowrFileProvider[];
+			const at = files.indexOf(file);
+			if(at >= 0) {
+				files.splice(at, 1);
+			}
+		}
+	}
+
+	private addRoles(file: FlowrFileProvider, roles: readonly FileRole[]): void {
+		for(const r of roles) {
+			if(!file.roles?.includes(r)) {
+				file.assignRole(r);
+				this.byRole[r].push(file as never);
+				this.projectKindCache = undefined;
+			}
+		}
 	}
 
 	public hasCached(path: string): boolean {
@@ -539,10 +580,17 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
+	/**
+	 * Runs the file loaders on `f`. They match the path below the folder `f` shares with the {@link root}, so the folders
+	 * holding the project (say, a package checked out below a `test` folder) assign no role.
+	 */
 	private fileLoadPlugins(f: FlowrFileProvider) {
 		let fFinal: FlowrFileProvider = f;
+		const root = this.root();
+		const shared = root === undefined || f.path() === FlowrFile.INLINE_PATH ? undefined : commonDirectory([root, path.dirname(f.path())]);
+		const relative = shared === undefined ? f.path() : relativeTo(shared, f.path());
 		for(const loader of this.fileLoaders) {
-			if(loader.applies(f.path())) {
+			if(loader.applies(relative)) {
 				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
 				const res = loader.processor(this.ctx, fFinal);
 				if(Array.isArray(res)) {

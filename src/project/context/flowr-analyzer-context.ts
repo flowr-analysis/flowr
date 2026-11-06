@@ -29,7 +29,7 @@ import { FlowrConfig, resolveAssumedRVersion } from '../../config';
 import { deepMergeObject } from '../../util/objects';
 import { setLogLevel, type LogLevelName } from '../../util/log';
 import type { DeepPartial } from 'ts-essentials';
-import type { FlowrFileProvider } from './flowr-file';
+import type { FileRole, FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
@@ -318,8 +318,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.gas.reset();
 	}
 
-	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile): void {
-		this.files.addFile(f);
+	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): void {
+		this.files.addFile(f, roles);
 		this.gas.reset();
 	}
 

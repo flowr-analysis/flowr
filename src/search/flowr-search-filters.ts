@@ -11,7 +11,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
-import { searchLogger } from './search-executor/search-generators';
+import { searchLogger } from './search-logger';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';

@@ -10,10 +10,13 @@ import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
+import type { FunctionAmbientWrites } from '../../../../src/dataflow/internal/process/functions/call/built-in/transitive-side-effects';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
-	/** the state each function, named by what it is assigned to, may leave changed (sorted) */
-	async function summaries(code: string): Promise<Record<string, string[]>> {
+	type Kind = keyof FunctionAmbientWrites;
+
+	/** what each function, named by what it is assigned to, may leave changed (sorted) */
+	async function summaries(code: string, kind: Kind): Promise<Record<string, string[]>> {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 		analyzer.addRequest(requestFromInput(code));
 		const dfi = await analyzer.dataflow();
@@ -22,15 +25,15 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		for(const [id, writes] of Dataflow.sideEffects.ambientWrites(dfi)) {
 			const parent = RNode.directParent(idMap.get(id) as RNodeWithParent, idMap);
 			if(RBinaryOp.is(parent)) {
-				result[Identifier.getName((parent.lhs as { content: Identifier }).content)] = [...writes].sort();
+				result[Identifier.getName((parent.lhs as { content: Identifier }).content)] = [...writes[kind]].sort();
 			}
 		}
 		return result;
 	}
 
-	function check(name: string, code: string, expected: Record<string, string[]>): void {
+	function check(name: string, code: string, expected: Record<string, string[]>, kind: Kind = 'state'): void {
 		test(label(name, [], ['dataflow']), async() => {
-			assert.deepStrictEqual(await summaries(code), Object.fromEntries(Object.entries(expected).map(([fn, w]) => [fn, [...w].sort()])));
+			assert.deepStrictEqual(await summaries(code, kind), Object.fromEntries(Object.entries(expected).map(([fn, w]) => [fn, [...w].sort()])));
 		});
 	}
 
@@ -71,7 +74,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 	describe('output, files, and devices', () => {
 		check('sink diverts the output', 'a01 <- function() sink("out.txt")', { a01: ['#sink', '#file:out', '#files'] });
-		check('sink() ends the diversion', 'a01 <- function() sink()', { a01: ['#sink', '#file:*', '#files'] });
+		check('sink() ends the diversion, which finishes the file it wrote', 'a01 <- function() sink()', { a01: ['#sink', '#file:*', '#files'] });
 		check('Sys.umask sets the mask', 'a01 <- function() Sys.umask("022")', { a01: ['#umask'] });
 		check('Sys.umask() only queries', 'a01 <- function() Sys.umask()', { a01: [] });
 		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#file:a', '#files', '#graphics'] });
@@ -93,6 +96,47 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		check('detach', 'a01 <- function() detach(package:dplyr)\na22 <- function() detach("package:ggplot2", character.only = TRUE)', {
 			a01: ['#search-path', '#search-path:dplyr'], a22: ['#search-path', '#search-path:ggplot2']
 		});
+	});
+
+	describe('writes only assumed of a body we cannot see', () => {
+		const code = 'hof <- function(f) f()\nhof2 <- function(x, FUN) vapply(x, FUN, 1)\nseeded <- function() set.seed(1)\nboth <- function(f) { set.seed(1); f() }\nup <- function() hof(function() 1)';
+		check('a hidden body is no real write', code, { hof: [], hof2: [], seeded: ['#rng'], both: ['#rng'], up: [] });
+		check('but an assumed one', code, { hof: ['#rng'], hof2: ['#rng'], seeded: [], both: [], up: ['#rng'] }, 'assumed');
+	});
+
+	describe('printing to the console writes no file', () => {
+		check('cat and writeLines without a target', 'a01 <- function() cat("x")\na22 <- function() writeLines("x")\na03 <- function() dput(1)\na04 <- function() write.csv(1)\na05 <- function() capture.output(print(1))', {
+			a01: [], a22: [], a03: [], a04: [], a05: []
+		});
+		check('the console named as the target', 'a01 <- function() cat("x", file = stderr())\na22 <- function() cat("x", file = "")\na03 <- function() writeLines("x", con = stdout())\na04 <- function() capture.output(print(1), file = NULL)', {
+			a01: [], a22: [], a03: [], a04: []
+		});
+		check('a named file is still written', 'a01 <- function() cat("x", file = "out.txt")\na22 <- function() capture.output(print(1), file = "c.txt")\na03 <- function(p) writeLines("x", p)', {
+			a01: ['#file:out', '#files'], a22: ['#file:c', '#files'], a03: ['#file:*', '#files']
+		});
+		check('write defaults to the file data', 'a01 <- function() write("x")', { a01: ['#file:*', '#files'] });
+		check('package functions printing by default', 'a01 <- function(d) data.table::fwrite(d)\na22 <- function(t) ape::write.tree(t)\na03 <- function(m) texreg::texreg(m)', {
+			a01: [], a22: [], a03: []
+		});
+		check('reading the console reads no file', 'a01 <- function() readLines()\na22 <- function() scan(file = "")', { a01: [], a22: [] });
+	});
+
+	describe('aliases', () => {
+		check('an alias keeps the names of its arguments', 'a01 <- function() { set <- Sys.setenv; set(TZ = "UTC") }\na22 <- function() { o <- options; o(digits = 4) }\na03 <- function() { o <- options; o("digits") }', {
+			a01: ['#env', '#env:TZ'], a22: ['#option:digits', '#options'], a03: []
+		});
+		check('a parameter bound to a built-in names nothing', 'g <- function(f, ...) f(...)\na01 <- function() g(options, digits = 3)', {
+			g: ['#option:*', '#options', '#warn-error'], a01: ['#option:*', '#options', '#warn-error']
+		});
+	});
+
+	describe('global variables', () => {
+		check('assign into the global environment and <<-', 'a01 <- function() assign("x", 1, envir = .GlobalEnv)\na22 <- function() y <<- 3\na03 <- function() a22()', {
+			a01: ['x'], a22: ['y'], a03: ['y']
+		}, 'variables');
+		check('a closure keeps its own variable', 'a01 <- local({ n <- 0; inc <- function() n <<- 1; inc })\na22 <- function() { k <- 0; h <- function() k <<- 1; h() }\na03 <- function() { z <- 1; z }', {
+			inc: [], h: [], a22: [], a03: []
+		}, 'variables');
 	});
 
 	describe('names', () => {

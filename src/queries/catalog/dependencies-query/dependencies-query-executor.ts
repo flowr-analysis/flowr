@@ -1,7 +1,8 @@
 import { executeQueriesOfSameType } from '../../query';
 import { SliceDirection } from '../../../util/slice-direction';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
-import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
+import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories } from './dependencies-query-format';
+import { ConsoleStreams, Constant, Unknown } from './dependency-values';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
@@ -148,7 +149,7 @@ function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast
 	/* the calls a chain runs through to the entry it ends in, the root, whose values are asked for again */
 	interface Chain { readonly nodeId: NodeId, readonly entries: readonly DependencyInfo[], readonly root: NodeId, readonly context: CallContext }
 	/* a call already found doing this needs no entry for it, but two writes of one file in one body both pass on to the call */
-	const named = (value: string | undefined) => value !== undefined && value !== Unknown && value !== Constant && value !== 'stdout' && value !== 'stderr';
+	const named = (value: string | undefined) => value !== undefined && value !== Unknown && value !== Constant && !ConsoleStreams.has(value);
 	const key = (id: NodeId | undefined, value: string | undefined, root?: NodeId) => `${String(id)}\0${value ?? ''}\0${named(value) ? String(root) : ''}`;
 	const known = new Set(found.map(f => key(f.nodeId, f.value)));
 	const byNode = Map.groupBy(found.filter(f => f.nodeId !== undefined), f => f.nodeId as NodeId);

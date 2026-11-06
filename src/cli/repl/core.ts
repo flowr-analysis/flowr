@@ -11,7 +11,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -19,6 +19,7 @@ import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
+import type { CommandCompletions } from './completion';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
@@ -40,33 +41,6 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 function isReplStatsLine(line: string): boolean {
 	const text = line.trimStart();
 	return (text.startsWith(rawPrompt) ? text.slice(rawPrompt.length).trimStart() : text).startsWith('[REPL Stats]');
-}
-
-/**
- * Completion suggestions for a specific REPL command
- */
-export interface CommandCompletions {
-	/** The possible completions for the current argument */
-	readonly completions:   string[];
-	/**
-	 * The current argument fragment being completed, if any.
-	 * This is relevant if an argument is composed of multiple parts (e.g. comma-separated lists).
-	 */
-	readonly argumentPart?: string;
-	/** What Tab displays per completion, only used while several remain: readline inserts what it displays. */
-	readonly labels?:       ReadonlyMap<string, string>;
-	/** Display-only suggestions (e.g. a `<string>` type placeholder): previewed as a ghost hint but never inserted on Tab. */
-	readonly hints?:        readonly string[];
-	/**
-	 * The completer already selected these, so they must not be filtered against the typed fragment again.
-	 * Needed when a completion legitimately shares no prefix with what was typed, e.g. a glob expanding to the keys it matches.
-	 */
-	readonly preFiltered?:  boolean;
-}
-
-/** Labels a completion with what it does, see {@link CommandCompletions#labels|labels}. */
-export function describeCompletion(insert: string, describe: string): string {
-	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
 }
 
 /**

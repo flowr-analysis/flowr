@@ -12,6 +12,7 @@ import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { REnvironment } from '../../../../../environments/environment';
+import { Identifier } from '../../../../../environments/identifier';
 
 const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
 
@@ -73,7 +74,7 @@ function resolveNewEnvParentArg<OtherInfo>(
 			return resolveSymbolToEnvir(node.content, node.info.id, data)?.envDef.envState;
 		}
 		if(RFunctionCall.isNamed(node) && RSymbol.is(node.functionName)
-				&& EmptyParentEnvFunctions.has(node.functionName.content as string)) {
+				&& EmptyParentEnvFunctions.has(Identifier.getName(node.functionName.content))) {
 			return createIsolatedEnvState(data);
 		}
 		return undefined;

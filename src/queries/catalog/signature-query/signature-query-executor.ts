@@ -22,7 +22,7 @@ import { globOf, matchArgs, norm, parseSpec } from '../../../project/sigdb/spec-
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
-import type { CommandCompletions } from '../../../cli/repl/core';
+import type { CommandCompletions } from '../../../cli/repl/completion';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { groupGenericMembers, groupGenericOf, isGroupGeneric } from '../../../dataflow/environments/group-generics';
 import { uniqueArray } from '../../../util/collections/arrays';

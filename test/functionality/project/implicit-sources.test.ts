@@ -11,6 +11,7 @@ import {
 import { FlowrAnalyzerLoadingOrderDescriptionFilePlugin } from '../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrDescriptionFile } from '../../../src/project/plugins/file-plugins/files/flowr-description-file';
 import { FileRole, FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { FlowrAnalyzerMetaTestFilesPlugin } from '../../../src/project/plugins/file-plugins/flowr-analyzer-test-file-plugin';
 
 /** the loading order of a context holding `files`, analyzed with the given `config` */
 function orderOf(config: FlowrConfig, ...files: string[]): string[] {
@@ -128,6 +129,7 @@ describe('Implicit sources', () => {
 		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-implicit-'));
 		roots.push(root);
 		for(const [file, content] of Object.entries(files)) {
+			fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
 			fs.writeFileSync(path.join(root, file), content);
 		}
 		return root;
@@ -181,6 +183,24 @@ describe('Implicit sources', () => {
 		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
 		ctx.addRequests([{ request: 'file', content: path.join(root, 't.R') }]);
 		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Source).map(f => path.basename(f.path())), ['t.R']);
+	});
+
+	test.each([['tests first', true], ['code first', false]])('requests added together see one root (%s)', (_, testsFirst) => {
+		const root = project({ 'R/a.R': 'x <- 1\n', 'tests/t.R': 'x\n' });
+		const files = ['tests/t.R', 'R/a.R'].map(f => ({ request: 'file' as const, content: path.join(root, f) }));
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map([[PluginType.FileLoad, [new FlowrAnalyzerMetaTestFilesPlugin()]]]));
+		ctx.addRequests(testsFirst ? files : files.toReversed());
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Test).map(f => path.relative(root, f.path())), ['tests/t.R']);
+	});
+
+	test('a provider of its own replaces the known file, keeping its roles', () => {
+		const root = project({ 'a.R': 'x <- 1\n' });
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+		const file = path.join(root, 'a.R');
+		ctx.addFile(file, [FileRole.Data]);
+		ctx.addFile(new FlowrInlineTextFile(file, 'x <- 2\n'));
+		assert.strictEqual(ctx.files.getFileByPath(file)?.content(), 'x <- 2\n');
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Data).map(f => f.content()), ['x <- 2\n']);
 	});
 
 	test('an explicit Collate order wins, as implicit sources are only a guess', () => {

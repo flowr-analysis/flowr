@@ -351,6 +351,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request.
 	 */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
+		/* every folder first, so that the files of one request are seen from the same root as those of the others */
+		for(const request of requests) {
+			if(request.request !== 'text') {
+				this.addRoot(request.request === 'file' ? path.dirname(request.content) : request.content);
+			}
+		}
 		for(const request of requests) {
 			this.addRequest(request);
 		}
@@ -363,7 +369,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			if(request.request === 'file') {
-				this.addRoot(path.dirname(request.content));
 				this.discoverImplicitSources(request.content);
 				/* registers the file with its roles now, so they do not depend on whether it was parsed yet */
 				this.resolveFile(request.content);
@@ -372,7 +377,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			this.projectKindCache = undefined;
 			return;
 		}
-		this.addRoot(request.content);
 		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
 			this.addDiscovered(req);
 		}
@@ -441,8 +445,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		const wrapped = wrapFile(file, roles);
 		const known = wrapped.path() === FlowrFile.INLINE_PATH ? undefined : this.files.get(RPath.of(wrapped.path()));
 		if(known !== undefined) {
-			this.addRoles(known, [...wrapped.roles ?? [], ...roles ?? []]);
-			return known;
+			/* the same file on disk again only adds its roles, a provider of its own replaces the known one */
+			if(known === file || wrapped instanceof FlowrTextFile) {
+				this.addRoles(known, [...wrapped.roles ?? [], ...roles ?? []]);
+				return known;
+			}
+			this.forget(known);
+			known.roles?.forEach(r => wrapped.assignRole(r));
 		}
 		const f = this.fileLoadPlugins(wrapped);
 
@@ -465,6 +474,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 		this.projectKindCache = undefined;
 		return f;
+	}
+
+	private forget(file: FlowrFileProvider): void {
+		for(const r of file.roles ?? []) {
+			const files = this.byRole[r] as FlowrFileProvider[];
+			const at = files.indexOf(file);
+			if(at >= 0) {
+				files.splice(at, 1);
+			}
+		}
 	}
 
 	private addRoles(file: FlowrFileProvider, roles: readonly FileRole[]): void {

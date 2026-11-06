@@ -1344,6 +1344,7 @@ describe('Calls checked against R', withTreeSitter(parser => {
 		['assignment to another name than the active binding', 'v <- 0\nmakeActiveBinding("ab", function(val) v <<- val, environment())\ncd <- 4\nprint(v)', 'cd <- 4'],
 		['assign into sys.frame(-1)', 'f <- function() { v <- 1; g <- function() assign("v", 2, envir = sys.frame(-1)); g(); v }\nprint(f())'],
 		['assign into the own frame leaves the global one', 'v <- 1\nf <- function() { v <- 5; assign("v", 2, envir = environment()); v }\nx <- f()\nprint(v)', 'x <-'],
+		['a namespaced environment() is the own frame as well', 'v <- 1\nf <- function() { v <- 5; assign("v", 2, envir = base::environment()); v }\nx <- f()\nprint(v)', 'x <-'],
 		['delayedAssign writes a variable when forced', 'delayedAssign("p", {x <<- 2})\nx <- 1\np\nprint(x)'],
 		['delayedAssign forces a closure writing a variable', 'f <- function() { x <<- 2; 0 }\ndelayedAssign("p", f())\nx <- 1\np\nprint(x)'],
 		['delayedAssign forces a closure writing another variable', 'f <- function() { y <<- 2; 0 }\ndelayedAssign("p", f())\nx <- 1\np\nprint(x)', 'delayedAssign'],

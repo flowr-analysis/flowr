@@ -351,7 +351,7 @@ function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition
 /** Re-resolves still-open reads whose name is one of the transitively escaped `<<-` definitions in `escapedNames`, adding {@link EdgeType.Reads} edges. */
 export function reResolveOpenReferences(this: void, graph: DataflowGraph, environment: REnvironmentInformation, references: readonly IdentifierReference[], escapedNames: ReadonlySet<string>): void {
 	for(const ref of references) {
-		if(ref.name === undefined || !escapedNames.has(String(ref.name))) {
+		if(ref.name === undefined || !escapedNames.has(Identifier.toString(ref.name))) {
 			continue;
 		}
 		for(const { nodeId } of Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {

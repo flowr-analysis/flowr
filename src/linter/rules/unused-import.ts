@@ -69,15 +69,30 @@ function isUnbound(graph: DataflowGraph, id: NodeId): boolean {
 	return origins === undefined || origins.every(o => o.type === OriginType.BuiltInFunctionOrigin);
 }
 
-/** whether removing the call would empty a slot the syntax requires, as in an unbraced `if(c) library(x)` */
+/**
+ * Whether removing the call would empty a slot the syntax requires: the attach is an operand or argument, as in
+ * `ok <- require(x)` or `suppressMessages(library(x))`, the lone statement of an unbraced `if(c) library(x)`, or in `(library(x))`.
+ */
 function removalWouldBreakSyntax(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
 	const parent = RNode.directParent(node, idMap);
-	return RExpressionList.isImplicit(parent) && parent.children.length === 1 && parent.info.role !== RoleInParent.Root;
+	if(!RExpressionList.is(parent)) {
+		return true;
+	}
+	if(RExpressionList.isImplicit(parent)) {
+		return parent.children.length === 1 && parent.info.role !== RoleInParent.Root;
+	}
+	return RExpressionList.groupStart(parent)?.lexeme !== '{';
+}
+
+/** a bare call nothing binds reads the whole search path; whether it is a use is up to the package exports */
+function isUnboundCall(graph: DataflowGraph, id: NodeId): boolean {
+	const vertex = graph.getVertex(id);
+	return DfgVertex.isFunctionCall(vertex) && Identifier.getNamespace(vertex.name) === undefined && isUnbound(graph, id);
 }
 
 /** whether anything reads out of the attach itself */
 function isReadFrom(graph: DataflowGraph, id: NodeId): boolean {
-	return graph.edgesTo(id).values().some(edge => DfEdge.includesType(edge, EdgeType.Reads));
+	return graph.edgesTo(id).entries().some(([from, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !isUnboundCall(graph, from));
 }
 
 /**
@@ -95,7 +110,7 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 	/* a call or a read of a name the code binds nowhere, like `percent` in `scale_y_continuous(labels = percent)` */
 	const unbound = new Set<BrandedIdentifier>();
 	for(const [id, vertex] of graph.vertices(true)) {
-		if(DfgVertex.isFunctionCall(vertex) && Identifier.getNamespace(vertex.name) === undefined && isUnbound(graph, id)) {
+		if(DfgVertex.isFunctionCall(vertex) && isUnboundCall(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
 		} else if(DfgVertex.isUse(vertex) && isUnbound(graph, id)) {
 			const name = NodeId.recoverName(id, graph.idMap);

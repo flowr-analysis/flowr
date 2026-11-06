@@ -25,7 +25,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState  } from '../../dataflow/environments/deprecation-info';
 
 /**

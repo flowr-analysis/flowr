@@ -11,7 +11,7 @@ import { Dataflow } from '../../graph/df-helper';
 import { callFnProps } from '../../environments/query-fn-props';
 import { ArgProp, SemanticCallTag } from '../../environments/built-in-props';
 import { FunctionSemantics } from '../../fn/function-semantics';
-import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { valueSetGuard } from '../values/general';
 import { isValue, type Value } from '../values/r-value';

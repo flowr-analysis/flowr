@@ -11,7 +11,7 @@ import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/pred
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
-import type { CommandCompletions } from '../../../cli/repl/core';
+import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
 

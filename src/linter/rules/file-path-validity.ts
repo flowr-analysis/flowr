@@ -4,7 +4,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
-import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
 import { happensBefore } from '../../control-flow/happens-before';

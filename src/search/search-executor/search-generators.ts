@@ -15,11 +15,9 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
-import { log } from '../../util/log';
+import { searchLogger } from '../search-logger';
 import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
-
-export const searchLogger = log.getSubLogger({ name: 'search' });
 
 /**
  * This is a union of all possible generator node types

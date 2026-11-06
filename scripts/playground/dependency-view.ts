@@ -3,7 +3,7 @@ import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DependencyInfo } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import { Unknown } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../src/queries/catalog/dependencies-query/dependency-values';
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { EmptyArgument, RFunctionCall } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';

@@ -1,6 +1,7 @@
 import type { RShell } from '../r-bridge/shell';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
-import { Constant, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependencyCategorySettings, Unknown } from '../queries/catalog/dependencies-query/dependencies-query-format';
+import { defaultDependencyCategories, type DefaultDependencyCategoryName, type DependencyCategorySettings } from '../queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../queries/catalog/dependencies-query/dependency-values';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { executeQueries, QueriesSchema } from '../queries/query';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';

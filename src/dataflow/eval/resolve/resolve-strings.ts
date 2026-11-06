@@ -226,7 +226,7 @@ function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation
  * number or logical the way `as.character` would), and a transformation like `basename(p)` when its argument
  * does. Anything that does not resolve stays `Top`.
  */
-function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
+export function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
 	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;

@@ -12,7 +12,7 @@ import { KnownHooks } from '../hooks';
 import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
 import { BuiltInEvalName } from './built-in-eval-name';
-import { NseArguments } from '../internal/process/functions/call/known-call-handling';
+import { NseArguments } from '../internal/process/functions/call/nse-kind';
 import { Unquote } from '../internal/process/functions/call/nse';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 import { ArgProp, CallProp, type FnSig, SemanticCallTag, type SemanticCallTags, type StatedProps } from './built-in-props';

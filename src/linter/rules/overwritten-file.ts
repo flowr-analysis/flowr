@@ -2,7 +2,8 @@ import { type LintingResult, type LintingRule, prettyPrint, LintingResultCertain
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
-import { Unknown, type DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';

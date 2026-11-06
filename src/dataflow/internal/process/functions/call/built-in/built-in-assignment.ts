@@ -1,7 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
-import { markArgumentsAsNonStandardEvaluation, NseArguments, NseKind, processKnownFunctionCall } from '../known-call-handling';
+import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
+import { NseArguments, NseKind } from '../nse-kind';
 import { Unquote } from '../nse';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';

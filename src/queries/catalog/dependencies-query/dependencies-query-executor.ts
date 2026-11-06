@@ -1,7 +1,8 @@
 import { executeQueriesOfSameType } from '../../query';
 import { SliceDirection } from '../../../util/slice-direction';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
-import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
+import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyCategorySettings, type DependencyInfo, getAllCategories } from './dependencies-query-format';
+import { Constant, Unknown } from './dependency-values';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';

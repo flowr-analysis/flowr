@@ -8,7 +8,7 @@ import { FileRole } from '../../../project/context/flowr-file';
 import { jsonReplacer } from '../../../util/json';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import type { CommandCompletions } from '../../../cli/repl/core';
+import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 
 /**

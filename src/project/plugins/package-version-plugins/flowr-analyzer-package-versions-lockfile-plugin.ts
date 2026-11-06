@@ -3,7 +3,7 @@ import { SemVer } from 'semver';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
-import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { RPath } from '../../../util/files';
 import { log } from '../../../util/log';
 import { parse as parseToml } from 'smol-toml';
 import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
@@ -14,7 +14,7 @@ export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-vers
 /** The {@link FileRole.VirtualEnv} lockfiles named `name` (e.g. `renv.lock`), matched case-insensitively like the role is assigned. */
 function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string | RegExp): FlowrFileProvider[] {
 	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => {
-		const base = platformBasename(f.path());
+		const base = RPath.basename(f.path());
 		return typeof name === 'string' ? base.toLowerCase() === name : name.test(base);
 	});
 }

@@ -40,6 +40,7 @@ const allJobs: Job[] = [
 	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true },
 	{ id: 'wiki',      label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
 	{ id: 'labels',    label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },
+	{ id: 'load',      label: 'standalone loading',   argv: [npm, 'run', 'check:standalone-load'] },
 	{ id: 'pages',     label: 'landing pages',        argv: [npm, 'run', 'gen:landing'], needs: ['tests', 'mutations'] },
 	{ id: 'docker',    label: 'docker build + smoke', argv: [npm, 'run', 'test:docker'] }
 ];

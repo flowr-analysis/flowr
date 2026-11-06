@@ -12,7 +12,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';

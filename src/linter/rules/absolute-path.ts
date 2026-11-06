@@ -14,7 +14,7 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { QueryResults } from '../../queries/query';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';

@@ -8,10 +8,9 @@ import {
 	type DependenciesQueryResult,
 	defaultDependencyCategories,
 	type DependencyInfo,
-	Attached,
-	Constant,
-	Unknown
+	Attached
 } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../../src/queries/catalog/dependencies-query/dependency-values';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';

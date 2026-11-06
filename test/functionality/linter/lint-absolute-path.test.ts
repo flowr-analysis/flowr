@@ -3,7 +3,7 @@ import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { isAbsolutePath, isUrl, fileUrlToPath } from '../../../src/util/text/strings';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
-import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependency-values';
 import { getPlatform } from '../../../src/util/os';
 
 /** a path as R reads it back, so that a backslash in the source is one in the value and no escape */

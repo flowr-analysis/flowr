@@ -44,11 +44,8 @@ import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/c
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
 import { memoize } from '../../../util/collections/defaultmap';
 import { SourceRange } from '../../../util/range';
+import { Constant, Unknown } from './dependency-values';
 
-/** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
-export const Unknown = 'unknown';
-/** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
-export const Constant = 'constant';
 /** {@link DependencyInfo#functionName} for an assumed base package: nothing in the code names it, so there is no call to report as `functionName`. */
 export const Attached = '<attached>';
 

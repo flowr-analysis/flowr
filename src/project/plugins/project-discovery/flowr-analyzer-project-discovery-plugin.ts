@@ -4,8 +4,7 @@ import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
-import { getAllFilesSync, rPackageSourceRegex } from '../../../util/files';
-import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { getAllFilesSync, RPath, rPackageSourceRegex } from '../../../util/files';
 import fs from 'fs';
 import path from 'path';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from '../../context/classify-project-kind';
@@ -56,9 +55,9 @@ export function collectRequests(files: Iterable<string>, root: string, opts: Col
 	const requests: (RParseRequest | FlowrFile<string>)[] = [];
 	for(const file of files) {
 		const relativePath = path.relative(root, file);
-		if(supportedExtensions.test(relativePath) && (!onlyTraversePaths || onlyTraversePaths.test(relativePath)) && !excludePathsRegex.test(platformDirname(relativePath))) {
+		if(supportedExtensions.test(relativePath) && (!onlyTraversePaths || onlyTraversePaths.test(relativePath)) && !excludePathsRegex.test(RPath.dirname(relativePath))) {
 			requests.push({ content: file, request: 'file' });
-			if(RprofileFilePattern.test(platformBasename(relativePath))) {
+			if(RprofileFilePattern.test(RPath.basename(relativePath))) {
 				// parse requests skip the file plugins, so emit a file too to have the profile tagged
 				requests.push(new FlowrTextFile(file));
 			}

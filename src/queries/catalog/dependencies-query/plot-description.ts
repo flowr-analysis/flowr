@@ -1,4 +1,5 @@
-import { type DependencyInfo, Constant, Unknown } from './dependencies-query-format';
+import type { DependencyInfo } from './dependencies-query-format';
+import { Constant, Unknown } from './dependency-values';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';

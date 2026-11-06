@@ -13,7 +13,7 @@ import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { attachesPackage } from '../../../queries/catalog/dependencies-query/function-info/library-functions';
-import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AttachedBasePackageSet, isBaseRPackage } from '../../../util/r-base-packages';
 import { at, printer, type CmdCheckResult, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';

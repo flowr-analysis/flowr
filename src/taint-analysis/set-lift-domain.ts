@@ -38,7 +38,7 @@ export class SetLiftDomain<
 		return this.create(new Set([this.base.baseBottom.value]));
 	}
 
-	protected equalsValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
+	public equalsValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): boolean {
 		return this.value.size === other.value.size
 			&& this.value.symmetricDifference(other.value).size === 0;
 	}
@@ -103,5 +103,20 @@ export class SetLiftDomain<
 
 	widen(other: this): this {
 		return this.join(other); //same behaviour as FiniteDomain
+	}
+
+	public reduce(value: ReadonlySet<Elements[number]>): ReadonlySet<Elements[number]> {
+		return new Set(
+			[...value].flatMap(element =>
+				this.isLowestRow(element)
+					? [element]
+					: [...this.reduce(this.base.predecessors(element))]
+			)
+		);
+	}
+
+	private isLowestRow(element: Elements[number]): boolean {
+		return this.base.baseBottom.value !== element
+			&& (this.base.successors(this.base.baseBottom.value)?.has(element) ?? false);
 	}
 }

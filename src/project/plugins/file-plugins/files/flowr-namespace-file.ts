@@ -216,7 +216,10 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 				}
 				const name = Identifier.getName(call.functionName.content);
 				const g = expr ?? getEmptyNamespaceFormat();
-				return applyDirective(g, name, call.arguments.flatMap(a => RArgument.isEmpty(a) || a.name !== undefined || !a.lexeme ? [] : [a.lexeme]));
+				return applyDirective(g, name, call.arguments.flatMap(a => {
+					const value = RArgument.isEmpty(a) ? undefined : a.name === undefined ? a.lexeme : a.value?.lexeme;
+					return value === undefined || RArgument.isEmpty(a) ? [] : [{ name: a.name === undefined ? undefined : Identifier.getName(a.name.content), value }];
+				}));
 			}
 		}
 	});
@@ -301,8 +304,14 @@ function markSideEffectLoader(fmt: NamespaceFormat, pkg: string): void {
 	(fmt[pkg] ??= emptyNamespaceInfo()).loadsWithSideEffects = true;
 }
 
-/** The positional arguments of a NAMESPACE directive as written, quotes included; a named one (`except = c(x)`) names nothing. */
+/** The positional arguments of a NAMESPACE directive as written, quotes included. */
 type DirectiveArguments = readonly string[];
+
+/** an argument of a NAMESPACE directive as written, quotes included, and its name if it is given by one */
+interface DirectiveArgument {
+	readonly name?: string
+	readonly value: string
+}
 
 function importFrom(g: NamespaceFormat, [pkg, ...symbols]: DirectiveArguments): void {
 	if(pkg !== undefined && symbols.length > 0) {
@@ -311,7 +320,7 @@ function importFrom(g: NamespaceFormat, [pkg, ...symbols]: DirectiveArguments): 
 }
 
 /** What each NAMESPACE directive adds, shared by the AST-based and the plain-text parser so that both read a NAMESPACE alike. */
-const NamespaceDirectives: Readonly<Record<string, (g: NamespaceFormat, args: DirectiveArguments) => void>> = {
+const NamespaceDirectives = new Map<string, (g: NamespaceFormat, args: DirectiveArguments) => void>(Object.entries({
 	export:        (g, args) => g.current.exportedSymbols.push(...args.map(RString.unquote)),
 	exportPattern: (g, args) => g.current.exportedPatterns.push(...args.map(a => unquoteArgument(a))),
 	exportClasses: (g, args) => g.current.exportedS4Classes.push(...args.map(RString.unquote)),
@@ -341,11 +350,18 @@ const NamespaceDirectives: Readonly<Record<string, (g: NamespaceFormat, args: Di
 			markSideEffectLoader(g, RString.unquote(pkg));
 		}
 	}
-};
+}));
 
-/** Applies the directive `name` (if it is one) with its positional `args` to `g`. */
-function applyDirective(g: NamespaceFormat, name: string, args: DirectiveArguments): NamespaceFormat {
-	NamespaceDirectives[name]?.(g, args);
+/** As R's `parseNamespaceFile`, these options are read by name, every other argument by its position. */
+const DirectiveOptions: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+	['import', new Set(['except'])],
+	['useDynLib', new Set(['.registration', '.fixes'])]
+]);
+
+/** Applies the directive `name` (if it is one) with its `args` to `g`. */
+function applyDirective(g: NamespaceFormat, name: string, args: readonly DirectiveArgument[]): NamespaceFormat {
+	const options = DirectiveOptions.get(name);
+	NamespaceDirectives.get(name)?.(g, args.filter(a => a.name === undefined || !options?.has(a.name)).map(a => a.value));
 	return g;
 }
 
@@ -442,15 +458,15 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 	};
 }
 
-/** an argument given by name (`except = c(x)`), which names no symbol of its own */
-const namedArgument = /^[\w.]+\s*=[^=]/;
+/** an argument given by name (`except = c(x)`) */
+const namedArgument = /^([\w.]+)\s*=(?!=)\s*(.*)$/s;
 
 /**
- * Split a NAMESPACE directive's argument list (`a, "b", except = c(x)`) into its positional
+ * Split a NAMESPACE directive's argument list (`a, "b", except = c(x)`) into its
  * arguments as written. Only top-level commas separate, so an argument that is itself a call stays in one piece.
  */
-function splitNamespaceArgs(args: string): string[] {
-	const names: string[] = [];
+function splitNamespaceArgs(args: string): DirectiveArgument[] {
+	const names: DirectiveArgument[] = [];
 	let depth = 0;
 	let start = 0;
 	let quote: string | undefined;
@@ -471,8 +487,9 @@ function splitNamespaceArgs(args: string): string[] {
 		} else if(i === args.length || (c === ',' && depth === 0)) {
 			const part = args.slice(start, i).trim();
 			start = i + 1;
-			if(part.length > 0 && !namedArgument.test(part)) {
-				names.push(part);
+			const named = namedArgument.exec(part);
+			if(part.length > 0) {
+				names.push(named === null ? { value: part } : { name: named[1], value: named[2] });
 			}
 		}
 	}

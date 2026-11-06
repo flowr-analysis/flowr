@@ -34,12 +34,16 @@ describe('NAMESPACE files', () => {
 	test.each([
 		'export(a, "b")\nexportPattern("^api_")',
 		'exportMethods(sin, Math, "+", "[")\nexportClasses(float32, "float64")',
-		'S3method(print, foo)\nS3method(format, bar, fmt_bar)',
+		'S3method(print, foo)\nS3method(format, bar, fmt_bar)\nS3method(summary, baz, method = sum_baz)',
+		'constructor(x)\nexport(a)',
 		'import(dplyr, except = c(filter))\nimportFrom(magrittr, "%>%", "%<>%")\nimportClassesFrom(methods, ANY)',
 		'useDynLib(pkg)\nuseDynLib(other, .registration = TRUE)'
 	])('the AST and the plain-text parser agree on %j', async content => {
 		const analyzer = await new FlowrAnalyzerBuilder().build();
 		const ast = new FlowrNamespaceFile(new FlowrInlineTextFile('NAMESPACE', content), analyzer.context()).content();
 		assert.deepStrictEqual(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', content)).content(), ast);
+	});
+	test('an argument given by name binds by position, as R reads it', () => {
+		assert.deepStrictEqual([...parse('S3method(summary, baz, method = sum_baz)').s3MethodFunctions ?? []], [['summary.baz', 'sum_baz']]);
 	});
 });

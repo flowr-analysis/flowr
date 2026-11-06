@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import type { AbstractValue, AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import { assertAbstractDomain } from '../abstract-interpretation/domains/domain';
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
@@ -98,14 +98,14 @@ describe('SetLift Domain', () => {
 			equal:  false,
 			leq:    false,
 			join:   new Set([E, F]),
-			meet:   new Set([Bottom]),
+			meet:   new Set([Bottom]), // or [B, C]?
 			widen:  new Set([E, F]),
 			narrow: new Set([Bottom])
 		});
 
 		assertAbstractDomain(create, new Set([A, B]), new Set([F]), {
 			equal:  false,
-			leq:    true,
+			leq:    false,
 			join:   new Set([A, B, F]), // or [E, F]
 			meet:   new Set([Bottom]),
 			widen:  new Set([A, B, F]),
@@ -120,6 +120,23 @@ describe('SetLift Domain', () => {
 			widen:  new Set([B, C]),
 			narrow: new Set([Bottom])
 		});
+		test('reduces Top to all base elements', () => {
+			const reduced = lattice.reduce(new Set([Top]));
+			const expected = lattice.create(new Set([A, B, C, D]));
 
+			expect(lattice.create(reduced).equalsValue(expected)).toBe(true);
+		});
+		test('reduces [E, F] to all base elements', () => {
+			const reduced = lattice.reduce(new Set([E, F]));
+			const expected = lattice.create(new Set([A, B, C, D]));
+
+			expect(lattice.create(reduced).equalsValue(expected)).toBe(true);
+		});
+		test('reduces E to all [A, B]', () => {
+			const reduced = lattice.reduce(new Set([E]));
+			const expected = lattice.create(new Set([A, B]));
+
+			expect(lattice.create(reduced).equalsValue(expected)).toBe(true);
+		});
 	});
 });

@@ -174,4 +174,20 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 	public setLift(): SetLiftDomain<Top, Bot, Elements> {
 		return new SetLiftDomain(this);
 	}
+
+	// return all elements of the domain directly above this element
+	public successors(element: Elements[number]): ReadonlySet<Elements[number]> {
+		return this._config.leq.get(element) ?? new Set<Elements[number]>();
+	}
+
+	// return all elements of the domain directly below this element
+	public predecessors(element: Elements[number]): ReadonlySet<Elements[number]> {
+		const predecessors = new Set<Elements[number]>();
+		for(const candidate of this._config.elements) {
+			if(candidate !== element && this._config.leq.get(candidate)?.has(element)) {
+				predecessors.add(candidate);
+			}
+		}
+		return predecessors;
+	}
 }

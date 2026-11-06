@@ -33,6 +33,8 @@ export interface LibraryExports {
 	readonly cranUrl?:   string;
 	/** definition location per identifier, if the database carries them */
 	readonly locations?: ReadonlyMap<string, SigDefinitionLocation>;
+	/** the package each re-exported name comes from (`importFrom(magrittr, "%>%")` plus `export("%>%")`), if the database carries it */
+	readonly reexports?: ReadonlyMap<string, string>;
 }
 
 export const SigDbMagic = 'flowr-sigdb';
@@ -115,11 +117,13 @@ export type SigParam = number | [nameIdx: number, props: number] | [nameIdx: num
 export type Sig = SigParam[];
 /**
  * One function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when
- * absent), with an optional trailing `topicIdx` (the Rd help topic, present only when it differs from the name).
- * The trailing element is additive: readers that stop at `line` ignore it, so older bundles stay readable.
+ * absent), with an optional trailing `topicIdx` (the Rd help topic, -1 when it equals the name) and, after it, an
+ * optional `reexportIdx` (the package a re-export comes from).
+ * The trailing elements are additive: readers that stop at `line` ignore them, so older bundles stay readable.
  */
 export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
-	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number]
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number, reexportIdx: number];
 
 /** the object system a class record belongs to, mirroring {@link ClassSystem} in a single on-disk byte */
 export const enum SigClassSystem { S4 = 0, RefClass = 1, S7 = 2, R6 = 3 }
@@ -253,16 +257,18 @@ export interface SigParamInfo {
 	readonly default?: string;
 }
 export interface SigFunctionInfo {
-	readonly name:    string;
+	readonly name:        string;
 	/** bitfield of {@link FnProp} (must set {@link FnProp.Exported} for exported functions) */
-	readonly props:   number;
-	readonly params:  readonly SigParamInfo[];
+	readonly props:       number;
+	readonly params:      readonly SigParamInfo[];
 	/** named callees (order/duplication irrelevant; deduped + sorted internally) */
-	readonly callees: readonly string[];
-	readonly file?:   string;
-	readonly line?:   number;
+	readonly callees:     readonly string[];
+	readonly file?:       string;
+	readonly line?:       number;
 	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
-	readonly topic?:  string;
+	readonly topic?:      string;
+	/** the package this name is re-exported from: the package defines nothing of the name, it imports and exports it */
+	readonly reexportOf?: string;
 }
 /** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
 export interface SigDependencyInfo {

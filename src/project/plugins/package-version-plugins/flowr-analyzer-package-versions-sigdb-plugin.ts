@@ -17,6 +17,7 @@ import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { RReexports } from '../../../data/r-reexports.generated';
 import { SecureMode } from '../../../util/secure-mode';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
@@ -493,8 +494,10 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
  * The resolved {@link Package} (namespace and version) of a source's export view. What the configuration states
  * for the package (`stated`) is part of its interface, even where the source misses it.
  */
-export function packageFromExports(name: string, info: Pick<LibraryExports, 'exported' | 's4Classes' | 'version'>, stated?: Iterable<unknown>): Package {
-	const exported = stated === undefined ? info.exported.slice() : uniqueArray([...info.exported, ...[...stated].map(String)]);
+export function packageFromExports(name: string, info: Pick<LibraryExports, 'exported' | 's4Classes' | 'version' | 'reexports'>, stated?: Iterable<unknown>): Package {
+	/* a source that records no re-exports lacks them altogether, so R's own answer for the package stands in */
+	const reexports = info.reexports ?? knownReexports(name);
+	const exported = uniqueArray([...info.exported, ...reexports?.keys() ?? [], ...[...stated ?? []].map(String)]);
 	const namespaceInfo: NamespaceInfo = {
 		exportedSymbols:      exported,
 		exportedFunctions:    [],
@@ -503,11 +506,32 @@ export function packageFromExports(name: string, info: Pick<LibraryExports, 'exp
 		exportedS4Classes:    info.s4Classes.slice(),
 		exportS3Generics:     reconstructS3Generics(exported),
 		exportedPatterns:     [],
-		importedPackages:     new Map(),
+		/* a re-export is an `importFrom()` of the name the package exports */
+		importedPackages:     reexportImports(reexports),
 		loadsWithSideEffects: false,
 		callable:             exported
 	};
 	/* a source may know the exports without knowing which release they are from, and then the package
 	   carries no version rather than a made-up one */
 	return new Package({ name, namespaceInfo, resolvedVersion: info.version || undefined });
+}
+
+/** the re-exports R reports for `pkg`, see {@link RReexports} */
+function knownReexports(pkg: string): ReadonlyMap<string, string> | undefined {
+	const known = Object.hasOwn(RReexports, pkg) ? RReexports[pkg] : undefined;
+	return known === undefined ? undefined : new Map(Object.entries(known.reexports));
+}
+
+/** the `importFrom(origin, names)` directives behind a source's re-exports, grouped by origin */
+function reexportImports(reexports: ReadonlyMap<string, string> | undefined): Map<string, string[]> {
+	const imports = new Map<string, string[]>();
+	for(const [fn, origin] of reexports ?? []) {
+		const names = imports.get(origin);
+		if(names === undefined) {
+			imports.set(origin, [fn]);
+		} else {
+			names.push(fn);
+		}
+	}
+	return imports;
 }

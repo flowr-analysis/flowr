@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-04, 13:52:01 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-06, 06:57:11 UTC (v2.17.2, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -1151,7 +1151,7 @@ print(x)
 > 
 > 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 > 	as there are some edge-cases that require special attention.
-> 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L63"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
+> 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L64"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
 > 	
 
 <a id='function-call-vertex'> </a>
@@ -1184,8 +1184,8 @@ Describes any kind of function call, including unnamed calls and those that happ
 In general the vertex provides you with information about
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
 
-Whenever flowR can determine which package a call resolves to &mdash; via a loaded `library()`/`::`, or via the always-available base-R packages taken from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. `acf` is shown as `stats::acf`). To obtain this qualified identifier programmatically, prefer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L77"><code><span title="The qualified identifier of the call with the given id, or undefined if it does not resolve to a package export and is not itself already namespaced (with purrr loaded, a map() call yields Identifier.make('map', 'purrr'); an explicit pkg::fn() call yields pkg::fn unchanged). This is the compact form of Identifier.toQualified , reconstructing both the origins and the call's name from the graph.">Dataflow::<b>qualify</b></span></code></a> which, given only a call's id and its graph, reconstructs the `pkg::fn` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of `Identifier.toQualified` (see the `origin` property below and the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) for where the base-R knowledge comes from).
-The graph caches what it resolved, with and without the base-R step, and drops the cache whenever it changes, so asking twice costs a map lookup. If you want the qualified name of every call, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L86"><code><span title="The qualified name of every call of the graph, undefined for the calls that do not qualify. Prefer this over asking call by call: it resolves each call once for both qualifyBaseR variants.">Dataflow::<b>qualifyAll</b></span></code></a>: it walks the call vertices once and pays the (expensive) origin resolution once per call instead of once per ask.
+Whenever flowR can determine which package a call resolves to &mdash; via a loaded `library()`/`::`, or via the always-available base-R packages taken from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. `acf` is shown as `stats::acf`). To obtain this qualified identifier programmatically, prefer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L78"><code><span title="The qualified identifier of the call with the given id, or undefined if it does not resolve to a package export and is not itself already namespaced (with purrr loaded, a map() call yields Identifier.make('map', 'purrr'); an explicit pkg::fn() call yields pkg::fn unchanged). This is the compact form of Identifier.toQualified , reconstructing both the origins and the call's name from the graph.">Dataflow::<b>qualify</b></span></code></a> which, given only a call's id and its graph, reconstructs the `pkg::fn` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of `Identifier.toQualified` (see the `origin` property below and the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) for where the base-R knowledge comes from).
+The graph caches what it resolved, with and without the base-R step, and drops the cache whenever it changes, so asking twice costs a map lookup. If you want the qualified name of every call, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L87"><code><span title="The qualified name of every call of the graph, undefined for the calls that do not qualify. Prefer this over asking call by call: it resolves each call once for both qualifyBaseR variants.">Dataflow::<b>qualifyAll</b></span></code></a>: it walks the call vertices once and pays the (expensive) origin resolution once per call instead of once per ask.
 
 However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
@@ -2106,7 +2106,7 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > Great, you should see a definition of `<-` which is constraint by the [control dependency](#branches) to the `if`.
-> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L189"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
+> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L190"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
 > the following target ids: { `built-in:*`, `built-in:<-`, `4` }.
 > This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 > Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L78"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
@@ -2119,7 +2119,7 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > 
-> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L189"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a> function to find all possible definitions of a function call,
+> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L190"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a> function to find all possible definitions of a function call,
 > as explained in the [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) section.
 
 Function calls are the most complicated mechanism in R as essentially everything is a function call.
@@ -3514,7 +3514,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > A [`reads`](#reads) edge is not a transitive closure and only links the "directly read" definition(s).
 > Our abstract domains resolving transitive [`reads`](#reads) edges (and for that matter, following [`returns`](#returns) as well)
-> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L189"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a>,
+> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L190"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a>,
 > as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L259"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
 > Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 > 
@@ -5346,7 +5346,7 @@ const result = await analyzer.dataflow();
 analyzer.close();
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L898">src/documentation/wiki-dataflow-graph.ts#L898</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L899">src/documentation/wiki-dataflow-graph.ts#L899</a></i>
 
 The call returns the dataflow _information_, with the graph in `result.graph`, which looks like this:
 
@@ -5549,15 +5549,16 @@ A package attached in only one branch, or in a loop body that may not run, or by
 
 Attaching brings a package's `Depends` onto the search path below it (so the package masks them), and for a meta-package like `tidyverse` the core set of that version above it, while its `Imports` are only loaded: `pkg::fn` resolves for them, a bare `fn` does not.
 Besides `library` and `require`, the multi-package loaders `pacman::p_load`, `librarian::shelf`, `xfun::pkg_attach` and `easypackages::libraries` attach the same way.
-To ask what a `library` call does without analyzing any code, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L423"><code><span title="What library(pkg) does, asked without analyzing any code.">Dataflow::<b>library</b></span></code></a>, which builds the very layers the analysis would:
+To ask what a `library` call does without analyzing any code, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L425"><code><span title="What library(pkg) does, asked without analyzing any code.">Dataflow::<b>library</b></span></code></a>, which builds the very layers the analysis would:
 
 ```ts
 function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.context();
 	return {
-		attaches: Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
-		loads:    Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively
-		layers:   Dataflow.library.layers(ctx, 'tidyverse')    // the namespace and imports environments it attaches
+		attaches:  Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
+		loads:     Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively, magrittr included
+		layers:    Dataflow.library.layers(ctx, 'tidyverse'),   // the namespace and imports environments it attaches
+		reexports: Dataflow.library.reexports(ctx, 'dplyr')     // what dplyr re-exports, `%>%` from magrittr included
 	};
 }
 ```
@@ -5565,6 +5566,10 @@ function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
 <i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L889">src/documentation/wiki-dataflow-graph.ts#L889</a></i>
 
 It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the `NAMESPACE` files it read.
+A package R attaches on startup (`methods`, `stats`, ...) is on the search path already, so a `Depends` on it adds no entry.
+Packages R only loads, such as the `magrittr` of `library(tidyverse)`, are not attached: their functions are reachable through the re-exports of the attached ones (`dplyr::%>%` is `magrittr::%>%`).
+The analysis keeps such a re-export as an export of the re-exporting package, so the two stay apart, and gives it what flowR states about the origin; `reexports` names the origin of each.
+A signature database that records no re-exports falls back to what R reports for the package (`scripts/gen-r-reexports.R`, covering the tidyverse and other popular packages).
 
 Last but not least, the information contains the single **entry point** (2) and a set of **exit points** ([5]). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
@@ -5880,7 +5885,7 @@ alias()
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L273"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
-Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L46"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> helper object!
+Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L47"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> helper object!
 
 * The **[Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **[Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
@@ -5888,7 +5893,7 @@ Generally, we recommend you check out the <a href="https://github.com/flowr-anal
 
 Everything else lives on a helper object named after the thing it works on:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L46"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L63"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L47"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L64"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L110"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> for edges, e.g. `DfEdge.includesType(edge, EdgeType.Reads)` (see [below](#dfg-resolving-values))
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L282"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> for identifiers, e.g. `Identifier.toString(vertex.name)`
@@ -5980,7 +5985,7 @@ You can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataf
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (this is also accessible with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L63"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function provides you with a collection of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73"><code>Origin</code></a> objects:
+For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (this is also accessible with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L64"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function provides you with a collection of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73"><code>Origin</code></a> objects:
 
  * [Origin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73)   
  

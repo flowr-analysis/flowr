@@ -30,7 +30,7 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
 import { attachedAlongside } from '../../../../../../project/attached-packages';
-import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { getCallables, importOrigin, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
@@ -449,17 +449,17 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
  * What a package's attached layer binds, built per name on the first lookup. An attach names thousands of exports
  * and a script mentions a few dozen, so the definitions are only made for the ones something asks about.
  */
-function lazyExports(pack: string, exports: readonly AttachedExport[], ctx: FlowrAnalyzerContext, definedAt: NodeId | undefined, cds?: readonly ControlDependency[]): LazyBindings {
+function lazyExports(pack: string, exports: readonly AttachedExport[], ctx: FlowrAnalyzerContext, definedAt: NodeId | undefined, cds?: readonly ControlDependency[], ns?: NamespaceInfo): LazyBindings {
 	const byName = new Map(exports.map(exp => [Identifier.getName(Identifier.make(exp.as, pack)), exp] as const));
 	const aliases = exports.filter(exp => exp.as !== exp.exported).map(exp => `${exp.as}=${exp.exported}`);
-	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt, cds)], `${pack}|${String(definedAt)}|${aliases.join(',')}|${ControlDependency.key(cds)}`);
+	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt, cds, ns)], `${pack}|${String(definedAt)}|${aliases.join(',')}|${ControlDependency.key(cds)}`);
 }
 
 /**
  * The identifier definition binding a package export (or its alias) to its built-in function-definition.
  * The identity stays the plain export (so a call still materializes its `built-in:pkg:fn` vertex); whatever the configuration states about that name (processor, config, eval handler) rides along on top.
  */
-function exportDefinition(pack: string, exp: AttachedExport, ctx: FlowrAnalyzerContext, definedAt: NodeId = NodeId.toBuiltIn(pack), cds?: readonly ControlDependency[]): IdentifierDefinition & { name: Identifier } {
+function exportDefinition(pack: string, exp: AttachedExport, ctx: FlowrAnalyzerContext, definedAt: NodeId = NodeId.toBuiltIn(pack), cds?: readonly ControlDependency[], ns?: NamespaceInfo): IdentifierDefinition & { name: Identifier } {
 	const identity = {
 		name:   Identifier.make(exp.as, pack),
 		type:   ReferenceType.Function,
@@ -469,7 +469,10 @@ function exportDefinition(pack: string, exp: AttachedExport, ctx: FlowrAnalyzerC
 	} as const;
 	/* an export named like a primitive is a method registered for it (lubridate's `$`), the primitive still evaluates the call */
 	const exported = Identifier.make(exp.exported) as unknown as BrandedIdentifier;
-	const stated = ctx.env.statedFor(pack)?.get(exported)?.[0] ?? ctx.env.emptyBuiltInEnvironment.memory.get(exported)?.[0];
+	/* a re-export stays the export of `pack`, but means what its origin states about it */
+	const origin = ns === undefined ? undefined : importOrigin(exp.exported, ns);
+	const stated = ctx.env.statedFor(pack)?.get(exported)?.[0] ?? (origin === undefined ? undefined : ctx.env.statedFor(origin)?.get(exported)?.[0])
+		?? ctx.env.emptyBuiltInEnvironment.memory.get(exported)?.[0];
 	if(stated === undefined) {
 		return identity;
 	}
@@ -502,7 +505,7 @@ function attachResolved(dependency: Package, envInfo: REnvironmentInformation, c
 		spec = withStartupPosition(pack, envInfo, spec);
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
 		const layer = new Environment(envInfo.current).asLibrary(pack, layerType);
-		layer.adoptMap(lazyExports(pack, exports, ctx, definedAt, cds));
+		layer.adoptMap(lazyExports(pack, exports, ctx, definedAt, cds, dependency.namespaceInfo));
 		return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 	}
 	/* as R does: the Depends first (at the default position, whatever `pos` says), then `pack`, then what its `.onAttach` attaches */
@@ -514,7 +517,7 @@ function attachResolved(dependency: Package, envInfo: REnvironmentInformation, c
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	const importsEnv = imports(new Environment(below.current).asLibrary(pack, EnvType.Imports), dependency.namespaceInfo, ctx);
 	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
-	namespaceEnv.adoptMap(lazyExports(pack, exports, ctx, definedAt, cds));
+	namespaceEnv.adoptMap(lazyExports(pack, exports, ctx, definedAt, cds, dependency.namespaceInfo));
 	const attached = { level: below.level, current: REnvironment.attachAt(below.current, namespaceEnv, importsEnv, withStartupPosition(pack, below, spec).pos) };
 	return alongside(attached, onAttach);
 }

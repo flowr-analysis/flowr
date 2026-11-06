@@ -104,23 +104,24 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 	if(!tracksAnyEnvironment(environment)) {
 		return;
 	}
+	const ownerOf = new Map<NodeId, DataflowGraphVertexFunctionDefinition>();
 	for(const [, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		const parameters = new Set(Dataflow.parametersOf(definition));
-		if(parameters.size === 0) {
-			continue;
+		for(const parameter of Dataflow.parametersOf(definition)) {
+			ownerOf.set(parameter, definition);
 		}
-		const writesByParameter = new DefaultMap<NodeId, NodeId[]>(() => []);
-		writesOfParameters(graph, definition, parameters, writesByParameter, environment);
-		for(const [parameter, writes] of writesByParameter.entries()) {
-			for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
-				if(!holdsEnvironment(graph, argument, environment)) {
-					continue;
-				}
-				for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)))) {
-					handleUnknownSideEffect(graph, environment, call);
-					for(const write of writes) {
-						graph.addEdge(call, write, EdgeType.Reads);
-					}
+	}
+	if(ownerOf.size === 0) {
+		return;
+	}
+	for(const [parameter, writes] of writesOfParameters(graph, ownerOf, environment).entries()) {
+		for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
+			if(!holdsEnvironment(graph, argument, environment)) {
+				continue;
+			}
+			for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)))) {
+				handleUnknownSideEffect(graph, environment, call);
+				for(const write of writes) {
+					graph.addEdge(call, write, EdgeType.Reads);
 				}
 			}
 		}
@@ -136,25 +137,42 @@ function tracksAnyEnvironment(environment: REnvironmentInformation): boolean {
 	return false;
 }
 
-/** Collects, per parameter of `definition`, the replacements (`x$f <- v`) and the side-effecting calls in its body that write into it. */
-function writesOfParameters(graph: DataflowGraph, definition: DataflowGraphVertexFunctionDefinition, parameters: ReadonlySet<NodeId>, written: DefaultMap<NodeId, NodeId[]>, environment: REnvironmentInformation): void {
-	for(const node of definition.subflow.graph) {
-		const vertex = graph.getVertex(node);
+/**
+ * Collects, per parameter, the replacements (`x$f <- v`) and the side-effecting calls in the body of its function that write into it.
+ * Every vertex is visited once, as nested functions would otherwise revisit the body of each enclosing one.
+ */
+function writesOfParameters(graph: DataflowGraph, ownerOf: ReadonlyMap<NodeId, DataflowGraphVertexFunctionDefinition>, environment: REnvironmentInformation): DefaultMap<NodeId, NodeId[]> {
+	const written = new DefaultMap<NodeId, NodeId[]>(() => []);
+	const inBodyOf = (parameter: NodeId, node: NodeId) => ownerOf.get(parameter)?.subflow.graph.has(node) === true;
+	for(const [node, vertex] of graph.vertices(true)) {
 		if(DfgVertex.isVariableDefinition(vertex) && vertex.par) {
-			const replacements = Dataflow.targetsOf(graph, node, EdgeType.DefinedBy).filter(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Replacement));
-			for(const parameter of Dataflow.targetsOf(graph, node, EdgeType.Reads).filter(t => parameters.has(t))) {
-				written.get(parameter).push(...replacements);
+			const parameters = Dataflow.targetsOf(graph, node, EdgeType.Reads).filter(t => inBodyOf(t, node));
+			if(parameters.length > 0) {
+				const replacements = Dataflow.targetsOf(graph, node, EdgeType.DefinedBy).filter(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Replacement));
+				for(const parameter of parameters) {
+					written.get(parameter).push(...replacements);
+				}
 			}
 		} else if(DfgVertex.isFunctionCall(vertex) && graph.unknownSideEffects.has(NodeId.normalize(node))) {
+			/* which arguments the callee writes is costly to ask, so only ask if an argument holds a parameter at all */
+			const parameters = new Map<NodeId, NodeId[]>();
+			for(const target of vertex.args.map(FunctionArgument.getReference)) {
+				const reached = target === undefined ? [] : [...definitionsReachedBy(target, graph)].filter(r => inBodyOf(r, node));
+				if(target !== undefined && reached.length > 0) {
+					parameters.set(target, reached);
+				}
+			}
+			if(parameters.size === 0) {
+				continue;
+			}
 			for(const target of argsWithProp(vertex, callFnProps(node, { graph, environment }), ArgProp.Written)) {
-				for(const reached of definitionsReachedBy(target, graph)) {
-					if(parameters.has(reached)) {
-						written.get(reached).push(node);
-					}
+				for(const reached of parameters.get(target) ?? []) {
+					written.get(reached).push(node);
 				}
 			}
 		}
 	}
+	return written;
 }
 
 function holdsEnvironment(graph: DataflowGraph, argument: NodeId, environment: REnvironmentInformation): boolean {

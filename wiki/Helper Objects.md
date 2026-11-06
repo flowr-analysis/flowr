@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-06, 06:26:10 UTC (v2.17.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-06, 07:52:59 UTC (v2.17.2, R v4.6.1), do not edit directly._
 
 This page lists every important helper object of flowR.
 
@@ -96,7 +96,7 @@ This page lists every important helper object of flowR.
 
 | helper | what it is |
 | :-- | :-- |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L536"><code><span title="The open references a function definition still carries into its closure.">ClosureRefs</span></code></a> | The open references a function definition still carries into its closure. |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L537"><code><span title="The open references a function definition still carries into its closure.">ClosureRefs</span></code></a> | The open references a function definition still carries into its closure. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-builder.ts#L43"><code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code></a> | This object holds all the methods to generate search queries. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/fn/function-semantics.ts#L34"><code><span title="The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class. It replaces the seven single-purpose helper objects that used to sit one per file under src/dataflow/fn/.">FunctionSemantics</span></code></a> | The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/happens-before-query/happens-before-query-format.ts#L25"><code><span title="How an answer of the HappensBeforeQuery is keyed: the two criteria it was asked about, so that both the executor writing an answer and anyone reading one spell the key the same way.">HappensBeforeKey</span></code></a> | How an answer of the HappensBeforeQuery is keyed: the two criteria it was asked about, so that both the executor writing an answer and anyone reading one spell the key the same way. |

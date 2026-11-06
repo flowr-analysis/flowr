@@ -66,12 +66,40 @@ if(jobs.length === 0) {
 	process.exit(2);
 }
 
-// split cores across concurrent vitest jobs via --maxWorkers so they don't oversubscribe the machine.
+/*
+ * Split what the machine has to offer now across the concurrent vitest jobs via --maxWorkers so they do not
+ * oversubscribe it: bounded by the idle cores and by the available memory, after keeping some of both for the other
+ * jobs (lint, wiki, docker) and the desktop. `FLOWR_CHECKUP_WORKERS` overrides the workers per vitest job.
+ */
 const vitestIds = new Set(['tests', 'system', 'mutations']);
+const GiB = 1024 ** 3;
+/** what one vitest worker may hold at its peak, the R shell it spawns included */
+const perWorkerMemory = 2 * GiB;
+const otherJobs = jobs.filter(j => !vitestIds.has(j.id)).length;
+const reservedCores = 2 + otherJobs;
+const reservedMemory = 4 * GiB + otherJobs * GiB;
 const cores = Math.max(1, os.availableParallelism?.() ?? os.cpus().length);
+/* what the machine has to offer now: the cores the current load leaves idle and the memory still available */
+const idleCores = cores - Math.ceil(os.loadavg()[0]);
+const availableMemory = os.freemem();
 const runningVitest = Math.max(1, jobs.filter(j => vitestIds.has(j.id)).length);
-const perVitest = Math.max(1, Math.floor((cores - 1) / runningVitest));
+const totalWorkers = Math.min(idleCores - reservedCores, Math.floor((availableMemory - reservedMemory) / perWorkerMemory));
+const override = Number(process.env.FLOWR_CHECKUP_WORKERS);
+const perVitest = Number.isInteger(override) && override > 0 ? override : Math.max(1, Math.floor(totalWorkers / runningVitest));
+console.log(`checkup budget: ${idleCores} of ${cores} cores idle, ${(availableMemory / GiB).toFixed(1)} GiB available, ${perVitest} workers per vitest job (${runningVitest} jobs)`);
 jobs = jobs.map(j => vitestIds.has(j.id) ? { ...j, argv: [...j.argv, `--maxWorkers=${perVitest}`, ...(j.summary ? ['--', '--make-summary'] : [])] } : j);
+
+/** run the jobs below the priority of the desktop, so a full checkup keeps the machine usable */
+function lowerPriority(pid: number | undefined): void {
+	if(pid === undefined) {
+		return;
+	}
+	try {
+		os.setPriority(pid, 10);
+	} catch{
+		// not permitted here, run at the normal priority
+	}
+}
 
 const logPrefix = 'flowr-checkup-';
 
@@ -136,6 +164,7 @@ function run(job: Job): Promise<JobResult> {
 	};
 	return new Promise<JobResult>(resolve => {
 		const child = spawn(job.argv[0], job.argv.slice(1), { shell: false });
+		lowerPriority(child.pid);
 		child.stdout.on('data', note);
 		child.stderr.on('data', note);
 		const finish = (code: number) => {

@@ -11,6 +11,7 @@ import { Identifier } from '../environments/identifier';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { Resolve } from '../environments/resolve-helper';
 import { AttachedBasePackageSet, baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
+import { getCallables, importOrigin } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
@@ -418,16 +419,19 @@ export const Dataflow = {
 	 * Dataflow.library.attaches(ctx, 'tidyverse'); // the search() entries it adds
 	 * Dataflow.library.loads(ctx, 'tidyverse');    // every namespace it loads
 	 * Dataflow.library.layers(ctx, 'tidyverse');   // the namespace and imports environments themselves
+	 * Dataflow.library.reexports(ctx, 'dplyr');     // the exports it takes from others, `%>%` from magrittr included
 	 * ```
 	 */
 	library: {
-		name:     'library',
+		name:      'library',
 		/** The `search()` entries `library(pkg)` adds; see {@link libraryAttachesOf}. */
-		attaches: libraryAttachesOf,
+		attaches:  libraryAttachesOf,
 		/** The namespaces `library(pkg)` loads; see {@link libraryLoadsOf}. */
-		loads:    libraryLoadsOf,
+		loads:     libraryLoadsOf,
 		/** The environment layers `library(pkg)` adds to the search path; see {@link libraryLayersOf}. */
-		layers:   libraryLayersOf
+		layers:    libraryLayersOf,
+		/** The exports of `pkg` that re-export another package's function, with that package; see {@link libraryReexportsOf}. */
+		reexports: libraryReexportsOf
 	}
 } as const;
 
@@ -475,6 +479,25 @@ function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, s
 	}
 	/* a package R attaches on startup is on the search path already, so a `Depends: methods` adds no entry */
 	return libraryLayersOf(ctx, pkg, spec).filter(l => l.t !== EnvType.Imports && l.n !== undefined && !AttachedBasePackageSet.has(l.n)).map(l => l.n as string);
+}
+
+/**
+ * The exports of `pkg` it re-exports from another package, mapped to that package (`%>%` of dplyr to `magrittr`).
+ * The analysis keeps such an export as one of `pkg` (`dplyr::%>%`), so both stay apart; this tells where it comes from.
+ */
+function libraryReexportsOf(this: void, ctx: FlowrAnalyzerContext, pkg: string): ReadonlyMap<string, string> {
+	const ns = ctx.deps.getDependency(pkg)?.namespaceInfo;
+	const reexports = new Map<string, string>();
+	if(ns === undefined) {
+		return reexports;
+	}
+	for(const fn of getCallables(ns)) {
+		const origin = importOrigin(fn, ns);
+		if(origin !== undefined) {
+			reexports.set(fn, origin);
+		}
+	}
+	return reexports;
 }
 
 /** The packages loading `pkg` loads directly: its `Depends` and `Imports`, its `NAMESPACE` imports, and a meta-package's core set. */

@@ -115,6 +115,12 @@ describe('Dataflow.library answers what library(pkg) does', withTreeSitter(ts =>
 	});
 
 	describe('re-exports', () => {
+		test(label('a re-export names the package it comes from', ['library-loading'], ['dataflow']), async() => {
+			const ctx = await ctxOf();
+			expect(Dataflow.library.reexports(ctx, 'reexporter')).toEqual(new Map([['leaffn', 'leaf'], ['%>%', 'magrittr']]));
+			expect(Dataflow.library.reexports(ctx, 'leaf').size).toBe(0);
+		});
+
 		test(label('a re-export stays the export of the re-exporting package, with what its origin states', ['library-loading', 'search-path'], ['dataflow']), async() => {
 			const df = await analyze(ts, 'library(reexporter)\nleaffn()\nx %>% f');
 			expect(callTargets(df, 'leaffn')).toEqual(['built-in:reexporter:leaffn']);

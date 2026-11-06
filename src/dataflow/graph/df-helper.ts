@@ -10,7 +10,7 @@ import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type Dataf
 import { Identifier } from '../environments/identifier';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { Resolve } from '../environments/resolve-helper';
-import { baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
@@ -473,7 +473,8 @@ function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, s
 	if(spec?.namespaceOnly) {
 		return []; // loading a namespace puts nothing on the search path
 	}
-	return libraryLayersOf(ctx, pkg, spec).filter(l => l.t !== EnvType.Imports && l.n !== undefined).map(l => l.n as string);
+	/* a package R attaches on startup is on the search path already, so a `Depends: methods` adds no entry */
+	return libraryLayersOf(ctx, pkg, spec).filter(l => l.t !== EnvType.Imports && l.n !== undefined && !AttachedBasePackageSet.has(l.n)).map(l => l.n as string);
 }
 
 /** The packages loading `pkg` loads directly: its `Depends` and `Imports`, its `NAMESPACE` imports, and a meta-package's core set. */

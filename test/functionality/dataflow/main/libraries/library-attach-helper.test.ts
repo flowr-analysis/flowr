@@ -49,6 +49,7 @@ function db(): SigDatabase {
 	add('deepImporter', [imports('importer'), depends('chainC')]);
 	add('masker', [depends('leaf')], ['leaffn']);
 	add('dplyr');
+	add('methodsUser', [depends('methods')]);
 	add('ggplot2');
 	b.addPackage('tidyverse', { latest: '2.0.0' });
 	b.addVersion('tidyverse', '1.1.1', { ...ver([expFn('tidyverse_update')]), dependencies: [imports('dplyr')] });
@@ -108,6 +109,7 @@ describe('Dataflow.library answers what library(pkg) does', withTreeSitter(ts =>
 		libraryCase('a diamond attaches and loads every package once', 'diamond', ['diamond', 'chainB', 'chainC'], ['diamond', 'chainB', 'chainC']);
 		libraryCase('Imports of Imports are loaded, only the own Depends are attached', 'deepImporter', ['deepImporter', 'chainC'], ['deepImporter', 'importer', 'chainC', 'leaf']);
 		libraryCase('the newest version is used by default', 'versioned', ['versioned', 'other'], ['versioned', 'other']);
+		libraryCase('a Depends R attaches on startup adds no search() entry, it is there already', 'methodsUser', ['methodsUser'], ['methodsUser', 'methods']);
 	});
 
 	test(label('the signature query lists what library(pkg) attaches, transitively', ['library-loading', 'search-path'], ['other']), () => {

@@ -3,7 +3,7 @@ import { type ControlDependency, DataflowInformation, type ExitPoint, ExitPointT
 import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { DfgVertex } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../../../graph/vertex';
 import { ArgProp, CallProp, CallProps, type FnSig, SemanticCallTag } from '../../../../../environments/built-in-props';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -29,6 +29,7 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientStateName, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
@@ -43,10 +44,19 @@ const Accumulating: ReadonlySet<string> = new Set([
 	AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers, ...KeyedAccumulators
 ]);
 
-/** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` may not happen. */
+/**
+ * A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` may not happen.
+ * An `assumed` write is one only assumed of a body flowR cannot see, see {@link isAssumedWrite}.
+ */
 interface AmbientWrite {
-	readonly name: string
-	readonly mode: 'local' | 'reset' | 'maybe'
+	readonly name:     string
+	readonly mode:     'local' | 'reset' | 'maybe'
+	readonly assumed?: true
+}
+
+/** Whether `definition` is a write only assumed of a body flowR cannot see, like `#rng` for `function(f) f()`, other than the one of `set.seed(1)`. */
+export function isAssumedWrite(definition: IdentifierDefinition): boolean {
+	return (definition as { assumed?: true }).assumed === true;
 }
 
 /** a write that may not happen: it reads what was there, so it can still replace the state and keep everything before reachable */
@@ -64,13 +74,22 @@ export function hidesBody(definition: IdentifierDefinition): boolean {
 	return NodeId.isBuiltIn(definition.nodeId) || isReferenceType(definition.type, ReferenceType.Parameter | ReferenceType.Argument);
 }
 
+/**
+ * Whether the call `call` of a function body reaches a built-in only once linked where the function is called, through a parameter
+ * or a name the body cannot resolve. Through a variable (`p <- par; p(...)`) the body applied the built-in already, see {@link applyAmbientStateOfCalledBuiltIns}.
+ */
+export function reachesBuiltInLate(call: DataflowGraphVertexFunctionCall): boolean {
+	const definitions = call.environment === undefined ? [] : Resolve.byNameAndType(call.name, call.environment, ReferenceType.Function) ?? [];
+	return definitions.length === 0 || definitions.some(hidesBody);
+}
+
 /** A call into code flowR cannot see may read any option, draw random numbers (with `draws` advancing the generator), and with `graphics` draw on the device. */
 export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, graphics: boolean, draws = true): DataflowInformation {
 	const reads: string[] = [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.allOf(KeyedState.Env)];
 	if(graphics) {
 		reads.push(AmbientStateName.graphics, AmbientStateName.palette);
 	}
-	return withAccess(res, rootId, data, reads, draws ? [maybe(AmbientStateName.rng)] : []);
+	return withAccess(res, rootId, data, reads, draws ? [{ ...maybe(AmbientStateName.rng), assumed: true }] : []);
 }
 
 /** Adds the reads and writes of the ambient state to what a call does, see {@link AmbientStateName}. */
@@ -98,17 +117,19 @@ function withAccess<OtherInfo>(
 /** Applies the writes of the call `rootId` to the environment, see {@link withAccess}. */
 function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds: readonly ControlDependency[] | undefined, writes: readonly (string | AmbientWrite)[]): REnvironmentInformation {
 	for(const write of writes) {
-		const { name, mode } = typeof write === 'string' ? { name: write, mode: undefined } : write;
+		const { name, mode, assumed } = typeof write === 'string' ? { name: write, mode: undefined, assumed: undefined } : write;
 		const accumulates = Accumulating.has(name) || name.startsWith(AmbientStateName.file(''));
-		const keep = accumulates && (mode === undefined || mode === 'maybe');
+		/* an assumed write keeps what the body wrote before, which, other than it, surely happened */
+		const keep = (accumulates && (mode === undefined || mode === 'maybe')) || assumed === true;
 		/* an accumulating state only ever grows, its definitions are maybe so merging environments keeps them all; a reset is definite */
 		const isMaybe = keep || (accumulates && mode !== 'reset');
-		const def: InGraphIdentifierDefinition & { name: string } = {
+		const def: InGraphIdentifierDefinition & { name: string, assumed?: true } = {
 			nodeId:    rootId,
 			name,
 			type:      ReferenceType.Variable,
 			definedAt: rootId,
-			cds:       isMaybe ? cds ?? [] : cds
+			cds:       isMaybe ? cds ?? [] : cds,
+			...assumed ? { assumed } : {}
 		};
 		/* the state is global, wherever the call happens, unless the call or an earlier one (`local_seed`) scopes it to the current frame */
 		const local = mode === 'local' || (environment.level > 0 && environment.current.memory.has(name as never));
@@ -443,6 +464,9 @@ export function applyAmbientStateAccess<OtherInfo>(
 			break;
 		case AmbientStateAccessType.ReadFiles: {
 			const stems = fileStems(res, rootId, data, access);
+			if(stems?.length === 0) {
+				break;
+			}
 			reads.push(AmbientStateName.workingDirectory, ...stems === undefined ? [AmbientStateName.files] : [...stems.map(AmbientStateName.file), AmbientStateName.anyFile]);
 			/* a read through a connection the program holds moves its position, so the next read depends on this one */
 			if(readsThroughHandle(res, rootId, data, access.sig)) {
@@ -452,6 +476,9 @@ export function applyAmbientStateAccess<OtherInfo>(
 		}
 		case AmbientStateAccessType.WriteFiles: {
 			const stems = fileStems(res, rootId, data, access);
+			if(stems?.length === 0) {
+				break;
+			}
 			reads.push(AmbientStateName.workingDirectory);
 			writes.push(...stems === undefined ? [AmbientStateName.anyFile] : stems.map(AmbientStateName.file), AmbientStateName.files);
 			break;
@@ -533,7 +560,7 @@ function readsThroughHandle<OtherInfo>(res: DataflowInformation, rootId: NodeId,
 function boundValues<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, direct = true): RNodeWithParent<OtherInfo>[] {
 	const arg = data.completeAst.idMap.get(id);
 	const node = RArgument.is(arg) ? RArgument.valueOf(arg) : arg;
-	if(!RSymbol.is(node)) {
+	if(!RSymbol.is(node) || node.content === RNull) {
 		return direct && node !== undefined ? [node] : [];
 	}
 	return (Resolve.byName(node.content, data.environment) ?? []).flatMap(d => (d as { value?: readonly NodeId[] }).value ?? [])
@@ -546,18 +573,36 @@ function callsTagged<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, da
 		.some(d => d.type === ReferenceType.BuiltInFunction && d.config?.tags?.includes(tag) === true);
 }
 
-/** The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others). */
+/** The console connections, which name no file. */
+const ConsoleConnections: ReadonlySet<string> = new Set(['stdout', 'stderr', 'stdin']);
+
+/** Whether the resource argument `id` names no file: `""` (the console for `cat`), `NULL`, or a console connection like `stdout()`. */
+function namesNoFile<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	const values = boundValues(id, data);
+	return values.length > 0 && values.every(v => (RString.is(v) && v.content.str === '') || (RSymbol.is(v) && v.content === RNull)
+		|| RFunctionCall.isNamed(v, ConsoleConnections));
+}
+
+/**
+ * The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others).
+ * Empty if the call names no file, as `cat(x)` and `writeLines(x, stdout())`, which print, do.
+ */
 function fileStems<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, { sig, numbered }: { readonly sig?: FnSig, readonly numbered?: boolean }): string[] | undefined {
 	const call = res.graph.getVertex(rootId);
 	if(sig === undefined || !DfgVertex.isFunctionCall(call)) {
 		return undefined;
 	}
 	const named = MatchArgs.findWithProps(appliedArguments(res.graph, call, data.completeAst.idMap).args, sig, ArgProp.Resource);
-	if(named.length === 0 || named.length < sig.filter(([n, p]) => n !== '...' && (p & ArgProp.Resource) !== 0 && (p & ArgProp.Forced) !== 0).length) {
+	const resources = sig.filter(([, p]) => (p & ArgProp.Resource) !== 0);
+	if(named.length === 0 ? resources.length === 0 || resources.some(([, p]) => (p & ArgProp.Optional) === 0)
+		: named.length < resources.filter(([n, p]) => n !== '...' && (p & (ArgProp.Forced | ArgProp.Optional)) === ArgProp.Forced).length) {
 		return undefined;
 	}
 	const stems: string[] = [];
 	for(const id of named) {
+		if(namesNoFile(id, data)) {
+			continue;
+		}
 		/* every `tempfile()` names a file no other call names */
 		const fresh = boundValues(id, data);
 		if(fresh.length > 0 && fresh.every(v => callsTagged(v, data, SemanticCallTag.TempFile))) {

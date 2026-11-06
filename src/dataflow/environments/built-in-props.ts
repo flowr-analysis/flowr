@@ -63,7 +63,12 @@ export enum ArgProp {
 	 * besides its value, the expression as written names a part of the result, like `a` in `data.frame(a)`,
 	 * which becomes the column `a`; passing `identity(a)` instead changes the name
 	 */
-	Deparsed   = 1 << 16
+	Deparsed   = 1 << 16,
+	/**
+	 * a {@link ArgProp.Resource} whose default names none, like `file` in `cat(..., file = "")`, which prints to the console,
+	 * or in `capture.output(..., file = NULL)`; left out, the call accesses no file through it
+	 */
+	Optional   = 1 << 17
 }
 
 /**
@@ -493,7 +498,8 @@ const ArgPropWords: Readonly<Record<ArgProp, PropWord>> = {
 	[ArgProp.Handle]:     { word: 'handle', about: 'an open connection' },
 	[ArgProp.Lazy]:       { word: 'lazy', short: 'L', about: 'never evaluated' },
 	[ArgProp.Injectable]: { word: 'injectable', about: 'open to injection' },
-	[ArgProp.Deparsed]:   { word: 'deparsed', about: 'its expression names part of the result' }
+	[ArgProp.Deparsed]:   { word: 'deparsed', about: 'its expression names part of the result' },
+	[ArgProp.Optional]:   { word: 'optional', about: 'a resource whose default names none' }
 };
 
 /** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */

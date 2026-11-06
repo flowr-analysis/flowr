@@ -190,7 +190,7 @@ describe('Implicit sources', () => {
 		const files = ['tests/t.R', 'R/a.R'].map(f => ({ request: 'file' as const, content: path.join(root, f) }));
 		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map([[PluginType.FileLoad, [new FlowrAnalyzerMetaTestFilesPlugin()]]]));
 		ctx.addRequests(testsFirst ? files : files.toReversed());
-		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Test).map(f => path.relative(root, f.path())), ['tests/t.R']);
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Test).map(f => path.relative(root, f.path())), [path.join('tests', 't.R')]);
 	});
 
 	test('a provider of its own replaces the known file, keeping its roles', () => {

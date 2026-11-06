@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-06, 06:26:10 UTC (v2.17.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-06, 06:57:11 UTC (v2.17.2, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -5569,6 +5569,7 @@ It answers from the signature database at the versions the analysis assumes, and
 A package R attaches on startup (`methods`, `stats`, ...) is on the search path already, so a `Depends` on it adds no entry.
 Packages R only loads, such as the `magrittr` of `library(tidyverse)`, are not attached: their functions are reachable through the re-exports of the attached ones (`dplyr::%>%` is `magrittr::%>%`).
 The analysis keeps such a re-export as an export of the re-exporting package, so the two stay apart, and gives it what flowR states about the origin; `reexports` names the origin of each.
+A signature database that records no re-exports falls back to what R reports for the package (`scripts/gen-r-reexports.R`, covering the tidyverse and other popular packages).
 
 Last but not least, the information contains the single **entry point** (2) and a set of **exit points** ([5]). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.

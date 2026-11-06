@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-06, 06:57:11 UTC (v2.17.2), do not edit directly._
 <h2 id="Guess Dependency Versions Query">Guess Dependency Versions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Guesses the version range each dependency must have, from declared constraints and actual code usage.\
@@ -41,19 +41,20 @@ that produced the bound:
 
 _Results (prettified and summarized):_
 
-Query: **guess-dep-versions** (104 ms)\
+Query: **guess-dep-versions** (56 ms)\
 &nbsp;&nbsp;&nbsp;╰ R _4.5.3_ _(config)_\
 &nbsp;&nbsp;&nbsp;_evidence_: d declared  t transitive  s signature  D date  b base-r  # available  i indirect\
-&nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, dplyr@1.2.1, tidyselect@1.2.1 (works with all newest versions)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_runnable combinations_: **66** _(11%)_\
+&nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, tidyselect@1.2.1 (works with all newest versions)\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_runnable combinations_: **0** _(0.0%)_\
 &nbsp;&nbsp;&nbsp;**━ base** _[base]_  **>=0.62.1 <=4.5.3**  _(136/136 versions, db 0.62.1 - 4.5.3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b <=4.5.3 bounded by R 4.5.3\
-&nbsp;&nbsp;&nbsp;**━ dplyr** _[coupled: tidyselect]_  **>=1.0.0 <=1.2.1**  _(18/47 versions, db 0.1 - 1.2.1)_\
+&nbsp;&nbsp;&nbsp;**━ dplyr**  *****  _(0/47 versions, db 0.1 - 1.2.1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;s >=1.0.0 [across](https://rdrr.io/cran/dplyr/man/across.html) (new, at 2:16)\
-&nbsp;&nbsp;&nbsp;**━ tidyselect** _[coupled: dplyr]_ [orphan: attach library(tidyselect) for everything]  **>=1.1.0 <=1.2.1**  _(5/13 versions, db 0.1.1 - 1.2.1)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;s >=0.5.0 <=0.7.4 [everything](https://rdrr.io/cran/dplyr/man/everything.html) (new, at 2:23)\
+&nbsp;&nbsp;&nbsp;**━ tidyselect** [orphan: attach library(tidyselect) for everything]  **>=1.2.0 <=1.2.1**  _(2/13 versions, db 0.1.1 - 1.2.1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;! everything() at 2:23 resolves to no definition _(most downloaded of 3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_or instead_: poorman >=0.1.10 <=0.2.7, rfoaas >=0.0.4 <=2.3.3\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;t >=1.1.0 required by dplyr
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;t >=1.2.0 required by dplyr 1.2.1
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -89,16 +90,30 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
         "package": "dplyr",
         "base": false,
         "declaredConstraints": [],
-        "range": ">=1.0.0 <=1.2.1",
-        "minVersion": "1.0.0",
-        "maxVersion": "1.2.1",
-        "candidateCount": 18,
+        "range": "*",
+        "candidateCount": 0,
         "totalVersions": 47,
-        "candidates": ["1.0.0","1.0.1","1.0.2","1.0.3","1.0.4","1.0.5","1.0.6","1.0.7","1.0.8","1.0.9","1.0.10","1.1.0","1.1.1","1.1.2","1.1.3","1.1.4"],
-        "truncated": true,
         "evidence": [
           {"source":"available","origin":"signature database","detail":"data available from 0.1","bound":">=0.1"},
           {"source":"available","origin":"signature database","detail":"data available up to 1.2.1","bound":"<=1.2.1"},
+          {
+            "source": "signature",
+            "origin": "dplyr::everything",
+            "detail": "dplyr::everything exists only from 0.5.0",
+            "bound": ">=0.5.0",
+            "function": "dplyr::everything",
+            "at": 9,
+            "location": "2:23"
+          },
+          {
+            "source": "signature",
+            "origin": "dplyr::everything",
+            "detail": "dplyr::everything removed after 0.7.4",
+            "bound": "<=0.7.4",
+            "function": "dplyr::everything",
+            "at": 9,
+            "location": "2:23"
+          },
           {
             "source": "signature",
             "origin": "dplyr::across",
@@ -109,25 +124,23 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
             "location": "2:16"
           }
         ],
-        "coupledWith": ["tidyselect"],
         "used": true
       },
       {
         "package": "tidyselect",
         "base": false,
         "declaredConstraints": [],
-        "range": ">=1.1.0 <=1.2.1",
-        "minVersion": "1.1.0",
+        "range": ">=1.2.0 <=1.2.1",
+        "minVersion": "1.2.0",
         "maxVersion": "1.2.1",
-        "candidateCount": 5,
+        "candidateCount": 2,
         "totalVersions": 13,
-        "candidates": ["1.1.0","1.1.1","1.1.2","1.2.0","1.2.1"],
+        "candidates": ["1.2.0","1.2.1"],
         "evidence": [
           {"source":"available","origin":"signature database","detail":"data available from 0.1.1","bound":">=0.1.1"},
           {"source":"available","origin":"signature database","detail":"data available up to 1.2.1","bound":"<=1.2.1"},
-          {"source":"transitive","origin":"dplyr","detail":"dplyr requires tidyselect >= 1.1.0","bound":">= 1.1.0"}
+          {"source":"transitive","origin":"dplyr 1.2.1","detail":"dplyr 1.2.1 requires tidyselect >= 1.2.0","bound":">= 1.2.0"}
         ],
-        "coupledWith": ["dplyr"],
         "orphan": true,
         "orphanFunctions": ["everything"],
         "orphanEvidence": [{"function":"everything","location":"2:23","reason":"most downloaded","exporters":3}],
@@ -141,7 +154,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
     "rVersion": "4.5.3",
     "rVersionOrigin": "config",
     "versionSelection": "newest",
-    "runnableCombinations": 66,
+    "runnableCombinations": 0,
     "possibleCombinations": 611
   },
   ".meta": {}

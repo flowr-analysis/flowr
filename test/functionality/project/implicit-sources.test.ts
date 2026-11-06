@@ -176,6 +176,13 @@ describe('Implicit sources', () => {
 		assert.strictEqual(ctx.files.getFilesByRole(FileRole.Data).length, 1);
 	});
 
+	test('a requested file is known with its roles before it is parsed', () => {
+		const root = project({ 't.R': 'x <- 1\n' });
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+		ctx.addRequests([{ request: 'file', content: path.join(root, 't.R') }]);
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Source).map(f => path.basename(f.path())), ['t.R']);
+	});
+
 	test('an explicit Collate order wins, as implicit sources are only a guess', () => {
 		const ctx = new FlowrAnalyzerContext(withImplicit('global.R'), new Map([
 			[PluginType.LoadingOrder, [

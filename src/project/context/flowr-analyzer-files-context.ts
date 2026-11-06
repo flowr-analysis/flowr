@@ -262,6 +262,11 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.readdirCache.clear();
 	}
 
+	private addRoot(root: string): void {
+		this.requestedRoots.push(root);
+		this.rootResolved = false;
+	}
+
 	/** The directory the analysis was asked about: a `project`'s folder, or the one holding the requested file(s). */
 	public root(): string | undefined {
 		if(!this.rootResolved) {
@@ -358,14 +363,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			if(request.request === 'file') {
-				this.requestedRoots.push(path.dirname(request.content));
+				this.addRoot(path.dirname(request.content));
 				this.discoverImplicitSources(request.content);
+				/* registers the file with its roles now, so they do not depend on whether it was parsed yet */
+				this.resolveFile(request.content);
 			}
 			this.loadingOrder.addRequest(request);
 			this.projectKindCache = undefined;
 			return;
 		}
-		this.requestedRoots.push(request.content);
+		this.addRoot(request.content);
 		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
 			this.addDiscovered(req);
 		}
@@ -554,10 +561,17 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
+	/**
+	 * Runs the file loaders on `f`. They match the path below the folder `f` shares with the {@link root}, so the folders
+	 * holding the project (say, a package checked out below a `test` folder) assign no role.
+	 */
 	private fileLoadPlugins(f: FlowrFileProvider) {
 		let fFinal: FlowrFileProvider = f;
+		const root = this.root();
+		const shared = root === undefined || f.path() === FlowrFile.INLINE_PATH ? undefined : commonDirectory([root, path.dirname(f.path())]);
+		const relative = shared === undefined ? f.path() : relativeTo(shared, f.path());
 		for(const loader of this.fileLoaders) {
-			if(loader.applies(f.path())) {
+			if(loader.applies(relative)) {
 				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
 				const res = loader.processor(this.ctx, fFinal);
 				if(Array.isArray(res)) {

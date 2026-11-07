@@ -23,13 +23,13 @@ const Kinds = ['reads', 'writes', 'assumed', 'local'] as const;
  * Helper functions for the {@link AmbientAccessRecord}, which the dataflow graph keeps for each call touching global state
  * (see {@link DataflowGraph#ambientAccessOf}). Records are immutable, so combine them with {@link AmbientAccessRecord.merge}
  * instead of changing one.
+ * @helper dataflow
  * @example
  * ```ts
  * const a = AmbientAccessRecord.merge(undefined, { reads: ['#option:digits'] });
  * const b = AmbientAccessRecord.merge(a, { writes: ['#option:digits'] });
  * AmbientAccessRecord.equals(a, b); // false
  * ```
- * @helper dataflow
  */
 export const AmbientAccessRecord = {
 	name: 'AmbientAccessRecord',

@@ -33,6 +33,7 @@ import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
 import { isNotUndefined } from '../../util/assert';
 import { memoize } from '../../util/collections/defaultmap';
 import { Dataflow } from '../graph/df-helper';
+import { DemandSolver } from '../../util/fixpoint';
 
 /**
  * How a function treats its parameters: R hands arguments over as promises, so a parameter is strict when
@@ -93,27 +94,20 @@ interface DispatchInformation {
  * function forces the parameter it binds to, so answering one definition regularly asks about others.
  */
 interface StrictnessState {
-	readonly graph:       DataflowGraph
-	readonly idMap:       AstIdMap | undefined
+	readonly graph:      DataflowGraph
+	readonly idMap:      AstIdMap | undefined
 	/** the definition each parameter belongs to, to follow an argument into its callee */
-	readonly owner:       Map<NodeId, NodeId>
+	readonly owner:      Map<NodeId, NodeId>
 	/** the definitions whose body dispatches */
-	readonly dispatch:    Map<NodeId, DispatchInformation>
+	readonly dispatch:   Map<NodeId, DispatchInformation>
 	/** what flowR states about a built-in, see {@link BuiltInFnInfo} */
-	readonly fnInfo:      BuiltInLookup
+	readonly fnInfo:     BuiltInLookup
 	/** the value the condition of an `if` holds wherever it is reached, `undefined` if it may differ */
-	readonly branches:    (ifCall: NodeId) => boolean | undefined
+	readonly branches:   (ifCall: NodeId) => boolean | undefined
 	/** the definitions a call without a linked target leads back to, see {@link boundParameters} */
-	readonly untargeted:  Map<NodeId, readonly NodeId[]>
-	readonly known:       Map<NodeId, FunctionStrictness>
-	/** the definitions the current question rests on, so a cycle answers rather than loops */
-	readonly asking:      Set<NodeId>
-	/** whether a cycle was answered by assumption, which makes the result unfit to keep */
-	assumed:              boolean
-	/** results reached under an assumption, kept until the outermost question of their cycle is answered */
-	readonly provisional: Map<NodeId, FunctionStrictness>
-	/** what a cycle assumes of the definitions within it, the outcome of the round before */
-	assumptions:          ReadonlyMap<NodeId, FunctionStrictness>
+	readonly untargeted: Map<NodeId, readonly NodeId[]>
+	/** the strictness of each definition asked for, a cycle of definitions settled together */
+	readonly solver:     DemandSolver<NodeId, FunctionStrictness>
 }
 
 /** The definition a node sits in. */
@@ -176,20 +170,24 @@ function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerConte
 			owner.set(NodeId.normalize(param), id);
 		}
 	}
-	return {
+	const state: StrictnessState = {
 		graph,
-		idMap:       graph.idMap,
+		idMap:      graph.idMap,
 		owner,
-		dispatch:    dispatchingDefinitions(graph),
-		fnInfo:      builtInLookup(ctx),
-		branches:    branchOutcomes(graph, ctx),
-		untargeted:  new Map(),
-		known:       new Map(),
-		provisional: new Map(),
-		assumptions: new Map(),
-		asking:      new Set(),
-		assumed:     false
+		dispatch:   dispatchingDefinitions(graph),
+		fnInfo:     builtInLookup(ctx),
+		branches:   branchOutcomes(graph, ctx),
+		untargeted: new Map(),
+		solver:     new DemandSolver({
+			transfer:  id => computeStrictness(id, state),
+			equals:    sameStrictness,
+			/* a cycle starts out assuming every parameter is forced: a run that keeps recursing never returns, so that claims nothing */
+			initial:   id => uniform(parametersOf(id, graph), Ternary.Always),
+			rounds:    MaxCycleRounds,
+			exhausted: id => uniform(parametersOf(id, graph), Ternary.Maybe)
+		})
 	};
+	return state;
 }
 
 /** What is certain becomes a possibility once something may intervene. */
@@ -408,63 +406,28 @@ function parameterIds(definition: NodeId, idMap: AstIdMap | undefined): readonly
 const MaxCycleRounds = 8;
 
 function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
-	const known = state.known.get(id) ?? state.provisional.get(id);
-	if(known !== undefined) {
-		return known;
-	}
-	const vertex = state.graph.getVertex(id);
-	if(!DfgVertex.isFunctionDefinition(vertex)) {
-		return { strict: Ternary.Never, parameters: {} };
-	}
-	const params = Object.keys(vertex.params);
-	if(state.asking.has(id)) {
-		/* a cycle starts out assuming every parameter is forced: a run that keeps recursing never returns, so that claims nothing */
-		state.assumed = true;
-		return state.assumptions.get(id) ?? uniform(params, Ternary.Always);
-	}
-	let result = computeStrictness(id, vertex, params, state);
-	if(!state.assumed) {
-		state.known.set(id, result);
-	} else if(state.asking.size === 0) {
-		/* the outermost question of a cycle: recompute it until a round is stable */
-		state.provisional.set(id, result);
-		let settled = false;
-		for(let round = 0; round < MaxCycleRounds && !settled; round++) {
-			state.assumptions = new Map(state.provisional);
-			state.provisional.clear();
-			state.assumed = false;
-			result = computeStrictness(id, vertex, params, state);
-			state.provisional.set(id, result);
-			settled = [...state.provisional].every(([other, r]) => sameStrictness(r, state.assumptions.get(other)));
-		}
-		if(settled) {
-			/* the fixpoint holds for the whole cycle, so none of it has to be worked out again */
-			for(const [other, r] of state.provisional) {
-				state.known.set(other, r);
-			}
-		} else {
-			result = uniform(params, Ternary.Maybe);
-		}
-		state.known.set(id, result);
-		state.assumptions = new Map();
-		state.assumed = false;
-		state.provisional.clear();
-	} else {
-		state.provisional.set(id, result);
-	}
-	return result;
+	return state.solver.of(id);
+}
+
+function parametersOf(id: NodeId, graph: DataflowGraph): readonly string[] {
+	const vertex = graph.getVertex(id);
+	return DfgVertex.isFunctionDefinition(vertex) ? Object.keys(vertex.params) : [];
 }
 
 function uniform(params: readonly string[], value: Ternary): FunctionStrictness {
 	return { strict: value, parameters: Object.fromEntries(params.map(param => [param, value])) };
 }
 
-function sameStrictness(a: FunctionStrictness, b: FunctionStrictness | undefined): boolean {
-	return b !== undefined && a.strict === b.strict && Object.entries(a.parameters).every(([param, value]) => b.parameters[param as NodeId] === value);
+function sameStrictness(a: FunctionStrictness, b: FunctionStrictness): boolean {
+	return a.strict === b.strict && Object.entries(a.parameters).every(([param, value]) => b.parameters[param as NodeId] === value);
 }
 
-function computeStrictness(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition, params: readonly string[], state: StrictnessState): FunctionStrictness {
-	state.asking.add(id);
+function computeStrictness(id: NodeId, state: StrictnessState): FunctionStrictness {
+	const vertex = state.graph.getVertex(id);
+	if(!DfgVertex.isFunctionDefinition(vertex)) {
+		return { strict: Ternary.Never, parameters: {} };
+	}
+	const params = Object.keys(vertex.params);
 	const dispatch = state.dispatch.get(id);
 	/* a dispatch, or reflection flowR could not follow, may read a parameter without any read of it showing in the code */
 	const reflective = (reflectiveRolesOf(vertex, state.graph, { known: state.fnInfo }) & MayEvaluate) !== 0;
@@ -479,7 +442,6 @@ function computeStrictness(id: NodeId, vertex: DataflowGraphVertexFunctionDefini
 	if(object !== undefined && parameters[object] !== undefined) {
 		parameters[object] = Ternary.Always;
 	}
-	state.asking.delete(id);
 	return { strict: TernaryLogic.and(...Object.values(parameters)), parameters };
 }
 

@@ -179,6 +179,8 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 * Set by `processFunctionDefinition` when exit points include NewEnv calls or symbols resolving to tracked envs.
 	 */
 	returnEnvState?: REnvironmentInformation
+	/** Whether a call of the closure reads writes into the frame it holds, see {@link InGraphIdentifierDefinition#closureFrame}. */
+	framed?:         true
 }
 
 /**

@@ -29,6 +29,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { Resolve } from '../../environments/resolve-helper';
 import { NodeValue } from './node-value';
 import { Dataflow } from '../../graph/df-helper';
+import { ClosureFrames } from '../../graph/closure-frames';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -509,9 +510,26 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 		let foundRetuns = false;
 		const inCall = isFn ? undefined : contextCallOf(id, idMap, callContext);
+		/* a closure reads the frame it holds, which the call it runs in pins down */
+		const framed = isFn ? ClosureFrames.contextOf(graph, id, callContext) : undefined;
+		const inFrame = isFn || callContext === undefined ? undefined : ClosureFrames.readsInCall(id, graph, idMap, callContext);
+		for(const frame of inFrame?.frames ?? []) {
+			queue.add(frame, baseEnvironment, cleanFingerprint, false);
+		}
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
 			if(inCall !== undefined && !followsInCall(outgoingEdges, targetId, edge, inCall, idMap)) {
+				continue;
+			} else if(inFrame !== undefined && !inFrame.keeps(targetId)) {
+				continue;
+			}
+			if(framed !== undefined && DfEdge.includesType(edge, EdgeType.Returns)) {
+				foundRetuns = true;
+				const values = valueSetGuard(resolveIdToValue(targetId, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked, callContext: framed }));
+				if(values === undefined || values.elements.some(isTop)) {
+					return Top;
+				}
+				folded.push(...values.elements);
 				continue;
 			}
 			if(isFn) {

@@ -30,6 +30,7 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 import { Dataflow } from '../graph/df-helper';
+import { ClosureFrames } from '../graph/closure-frames';
 import { AmbientStateName } from '../environments/ambient-state-name';
 import { instanceBindingsOfMethod } from '../fn/class-declaration';
 import { ReachSummaries, unionOfSets } from '../../util/fixpoint';
@@ -836,28 +837,15 @@ function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: Datafl
 }
 
 /** The factory calls whose closure `call` may run, `undefined` if it may run one created any other way. */
-function instancesOf(call: NodeId, closure: NodeId, factory: NodeId, graph: DataflowGraph): NodeId[] | undefined {
+function instancesOf(call: NodeId, closure: NodeId, factory: NodeId, graph: DataflowGraph): readonly NodeId[] | undefined {
 	if(!Dataflow.hasEdge(graph, call, closure, EdgeType.Calls)) {
 		return undefined;
 	}
-	const instances: NodeId[] = [];
-	for(const [binding, edge] of graph.edgesFrom(call)) {
-		if(!DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Argument) || NodeId.isBuiltIn(binding)) {
-			continue;
-		}
-		/* the binding the call reads holds what one call of the factory created, and nothing else */
-		const isCallOfAFunction = (target: NodeId) => {
-			const vertex = graph.getVertex(target);
-			return DfgVertex.isFunctionCall(vertex) && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Assignment);
-		};
-		const created = DfgVertex.isVariableDefinition(graph.getVertex(binding)) ? Dataflow.targetsOf(graph, binding, EdgeType.DefinedBy).filter(isCallOfAFunction) : [];
-		const callees = created.length === 1 ? Dataflow.targetsOf(graph, created[0], EdgeType.Calls) : [];
-		if(callees.length !== 1 || callees[0] !== factory) {
-			return undefined;
-		}
-		instances.push(created[0]);
-	}
-	return instances.length > 0 ? instances : undefined;
+	const instances = ClosureFrames.instancesOf(graph, call);
+	return instances?.every(created => {
+		const callees = Dataflow.targetsOf(graph, created, EdgeType.Calls);
+		return callees.length === 1 && callees[0] === factory;
+	}) ? instances : undefined;
 }
 
 /** A closure's `<<-` into its factory frame is seen only by calls of closures from the same factory call, so such calls depend on each other instead. */
@@ -882,7 +870,7 @@ export function separateClosureInstances(graph: DataflowGraph, known: BuiltInLoo
 		if(writes.length === 0 || writes.some(seenOutside)) {
 			continue;
 		}
-		const calls = new Map<NodeId, NodeId[] | undefined>();
+		const calls = new Map<NodeId, readonly NodeId[] | undefined>();
 		for(const call of writes.flatMap(w => Dataflow.targetsOf(graph, w, EdgeType.SideEffectOnCall))) {
 			calls.set(call, instancesOf(call, closure, found.factory, graph));
 		}

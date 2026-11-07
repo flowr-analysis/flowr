@@ -22,6 +22,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { Dataflow } from '../../../../../graph/df-helper';
+import { ClosureFrames } from '../../../../../graph/closure-frames';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -217,10 +218,10 @@ function closureFrameHolder<OtherInfo>(
 export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation, graph: DataflowGraph): void {
 	const vertex = graph.getVertex(call);
 	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
-	const frames = name === undefined ? [] : Resolve.byName(name, environment)?.filter(hasEnvState).filter(d => d.closureFrame === true) ?? [];
-	if(frames.length === 0) {
+	if(name === undefined || !Resolve.byName(name, environment)?.some(d => (d as InGraphIdentifierDefinition).closureFrame === true)) {
 		return;
 	}
+	called.framed = true;
 	const body = new Set(called.subflow.graph);
 	for(const id of body) {
 		const nested = graph.getVertex(id);
@@ -234,13 +235,10 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t))) {
 			continue;
 		}
-		for(const frame of frames) {
-			for(const def of frame.envState.current.lookup(Identifier.getName(read.content)) ?? []) {
-				/* the write as well, `environment(g)$v <- 5` defines `v` at the value it writes */
-				for(const target of [def.nodeId, def.definedAt]) {
-					graph.addEdge(id, target, EdgeType.Reads);
-				}
-			}
+		const written = ClosureFrames.writesOf(name, environment, Identifier.getName(read.content));
+		/* the write as well, `environment(g)$v <- 5` defines `v` at the value it writes */
+		for(const target of [...written.ids, ...written.writers]) {
+			graph.addEdge(id, target, EdgeType.Reads);
 		}
 	}
 }
@@ -483,7 +481,7 @@ export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, hold
 export function rebindHolders(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
 	for(const holder of holdersOf(environment, envDef)) {
 		/* a holder bound in an enclosing frame is updated there, so the write escapes the function like a `<<-` */
-		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
+		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState, ...envDef.closureFrame ? { closureFrame: true } as const : {} }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
 	}
 	return environment;
 }

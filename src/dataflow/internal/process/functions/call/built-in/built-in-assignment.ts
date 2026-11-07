@@ -666,8 +666,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			const defs = Resolve.byNameAndType(source.content, data.environment, ReferenceType.Variable);
 			copied = defs?.find(hasEnvState);
 			envState = copied?.envState ?? findReturnsEnvState(defs);
-			/* only a copied environment needs an identity, its holders are rebound on every field write */
-			envId = copied === undefined ? undefined : copied.envId ?? copied.nodeId;
+			/* only a copy needs an identity, its holders are rebound on every field write, of a closure on writes to its frame */
+			const held = copied ?? (defs?.length === 1 && !NodeId.isBuiltIn(defs[0].nodeId) ? defs[0] as InGraphIdentifierDefinition : undefined);
+			envId = held === undefined ? undefined : held.envId ?? held.nodeId;
 		} else {
 			/* `(list(...))` and `{ mk() }` hand on the value of what they hold */
 			const entry = valueEntry ?? sourceArg.entryPoint;
@@ -690,7 +691,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	if(forces.length > 0) {
 		markForcing(data.environment);
 	}
-	const tracked = envState ? { envState, envId } : returnsEnvState ? { returnsEnvState } : {};
+	const tracked = envState ? { envState, envId, ...copied?.closureFrame ? { closureFrame: true } as const : {} } : returnsEnvState ? { returnsEnvState } : envId === undefined ? {} : { envId };
 	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {} }));
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {

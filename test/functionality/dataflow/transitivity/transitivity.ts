@@ -1,4 +1,6 @@
 import { assert, test } from 'vitest';
+import { label } from '../../_helper/label';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -44,8 +46,30 @@ export interface TransitivityCase extends Verdict {
 
 const execFileAsync = promisify(execFile);
 
+let tested: readonly FlowrCapabilityId[] = [];
+
+/**
+ * Registers the cases `define` defines as tests of the given capabilities, so the capability catalog lists them.
+ * @example
+ * ```ts
+ * testing(['higher-order-functions'], () => {
+ *     resolvesLikeR(parser, 'Reduce folds', 'Reduce(function(a, b) a + b, 1:3)', '1@Reduce');
+ * });
+ * ```
+ */
+export function testing(capabilities: readonly FlowrCapabilityId[], define: () => void): void {
+	const outer = tested;
+	tested = [...outer, ...capabilities];
+	try {
+		define();
+	} finally {
+		tested = outer;
+	}
+}
+
 function caseTest(verdict: Verdict) {
-	return verdict.red === undefined ? test : test.fails;
+	const run = verdict.red === undefined ? test : test.fails;
+	return (name: string, fn: () => Promise<void>) => run(label(name, tested, ['dataflow']), fn);
 }
 
 async function analyzerFor(parser: KnownParser, code: string, files?: Readonly<Record<string, string>>) {

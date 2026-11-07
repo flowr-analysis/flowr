@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { callsLikeR, resolvesLikeR, sliceMatchesR, type TransitivityCase } from './transitivity';
+import { callsLikeR, resolvesLikeR, sliceMatchesR, type TransitivityCase, testing } from './transitivity';
 
 describe('Transitivity through recursion and higher-order calls, checked against R', withTreeSitter(parser => {
-	describe('recursion', () => {
+	describe('recursion', () => testing(['recursion'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a recursive factorial', code: 'fact <- function(n) if(n <= 1) b else n * fact(n - 1)\nb <- 1\nprint(fact(5))' },
 			{ name: 'mutual recursion', code: 'ev <- function(n) if(n == 0) yes else od(n - 1)\nod <- function(n) if(n == 0) !yes else ev(n - 1)\nyes <- TRUE\nprint(ev(4))' },
@@ -16,9 +16,9 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
-	describe('higher-order calls', () => {
+	describe('higher-order calls', () => testing(['higher-order-functions'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a super assignment in an lapply callback', code: 's <- 0\ninvisible(lapply(1:3, function(i) s <<- s + i))\nprint(s)' },
 			{ name: 'a global read by a Map callback', code: 'k <- 10\nf <- function(a, b) a + b + k\nprint(Map(f, 1:2, 3:4)[[2]])' },
@@ -40,7 +40,7 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
 	describe('values', () => {
 		resolvesLikeR(parser, 'a recursive accumulator', 'acc <- 0\nr <- function(n) { if(n > 0) { acc <<- 6; r(n - 1) } }\nr(3)\ncat(acc)', '4@acc', { imprecise: 'resolves 0 and 6, R runs the call that sets 6' });
@@ -48,11 +48,11 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		resolvesLikeR(parser, 'a super assignment in an lapply callback', 's <- 0\ninvisible(lapply(1, function(i) s <<- 4))\ncat(s)', '3@s');
 	});
 
-	describe('call targets', () => {
+	describe('call targets', () => testing(['higher-order-functions'], () => {
 		callsLikeR(parser, 'a function passed as an argument', 'h <- function() 1\ng <- h\nf <- function(k) k()\nf(g)\ncat("ok")', '3:18', ['1@function']);
 		callsLikeR(parser, 'a returned function', 'mk <- function()\n  function() 1\nr <- mk()\nr()\ncat("ok")', '4@r', ['2@function']);
 		callsLikeR(parser, 'a function passed through two calls', 'h <- function() 1\nap <- function(k) k()\nwr <- function(k) ap(k)\nwr(h)\ncat("ok")', '2:19', ['1@function']);
 		callsLikeR(parser, 'an lapply callback calling a global function', 'h <- function(i) i\ninvisible(lapply(1, function(i) h(i)))\ncat("ok")', '2@h', ['1@function']);
 		callsLikeR(parser, 'Recall calls its function', 'f <- function(n) if(n > 0) Recall(n - 1) else 0\nf(1)\ncat("ok")', '1@Recall', ['1@function']);
-	});
+	}));
 }));

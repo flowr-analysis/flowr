@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { resolvesLikeR, sliceMatchesR, type TransitivityCase } from './transitivity';
+import { resolvesLikeR, sliceMatchesR, type TransitivityCase, testing } from './transitivity';
 
 describe('Transitivity through arguments and promises, checked against R', withTreeSitter(parser => {
 	describe('arguments and defaults', () => {
@@ -22,7 +22,7 @@ describe('Transitivity through arguments and promises, checked against R', withT
 		}
 	});
 
-	describe('promises', () => {
+	describe('promises', () => testing(['formals-promises'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'an argument never forced', code: 'x <- 1\nf <- function(a) 2\nf(x <- 5)\nprint(x)' },
 			{ name: 'an argument forced', code: 'x <- 1\nf <- function(a) a\nf(x <- 5)\nprint(x)' },
@@ -37,7 +37,7 @@ describe('Transitivity through arguments and promises, checked against R', withT
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
 	describe('values', () => {
 		resolvesLikeR(parser, 'a default referring to another parameter', 'f <- function(a, b = a * 2) b\ny <- f(4)\ncat(y)', '3@y');

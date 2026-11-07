@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { resolvesLikeR, sliceMatchesR, writesLikeR, type TransitivityCase } from './transitivity';
+import { resolvesLikeR, sliceMatchesR, writesLikeR, type TransitivityCase, testing } from './transitivity';
 
 describe('Transitivity through dispatch, sourcing and control flow, checked against R', withTreeSitter(parser => {
-	describe('S3, S4 and R6 dispatch', () => {
+	describe('S3, S4 and R6 dispatch', () => testing(['oop-s3-dispatch', 'oop-s4-dispatch', 'oop-r6'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'an S3 method reading a global', code: 'area <- function(s) UseMethod("area")\narea.sq <- function(s) s$w^2 * k\nk <- 2\nsq <- structure(list(w = 3), class = "sq")\nprint(area(sq))' },
 			{ name: 'NextMethod reaching the default', code: 'f <- function(x) UseMethod("f")\nf.a <- function(x) NextMethod() + 1\nf.default <- function(x) base\nbase <- 10\nprint(f(structure(1, class = "a")))' },
@@ -24,9 +24,9 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
-	describe('source', () => {
+	describe('source', () => testing(['sourcing-external-files'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a function from a sourced file reading a main global', code: 'k <- 4\nsource("lib.R")\nprint(f())', files: { 'lib.R': 'f <- function() g()\ng <- function() k * 2' } },
 			{ name: 'a sourced file sourcing another', code: 'source("a.R")\nprint(f())', files: { 'a.R': 'source("b.R")\nf <- function() g() + 1', 'b.R': 'g <- function() 5' } },
@@ -37,9 +37,9 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
-	describe('exit hooks and conditions', () => {
+	describe('exit hooks and conditions', () => testing(['hooks', 'exceptions-and-errors'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'an exit hook overriding a super assignment', code: 'x <- 1\nf <- function() { on.exit(x <<- 3); x <<- 2 }\nf()\nprint(x)' },
 			{ name: 'an exit hook setting an option two calls deep', code: 'g <- function() { on.exit(options(digits = 3)); 1 }\nf <- function() g()\nf()\nprint(pi)' },
@@ -53,9 +53,9 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
-	describe('handlers given by value', () => {
+	describe('handlers given by value', () => testing(['exceptions-and-errors', 'higher-order-functions'], () => {
 		const muffling = 'function(w) { n <<- 1; invokeRestart("muffleWarning") }';
 		const warns = 'f <- function() { warning("w"); 2 }';
 		const cases: readonly TransitivityCase[] = [
@@ -77,9 +77,9 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
-	describe('switch and loops', () => {
+	describe('switch and loops', () => testing(['switch'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'switch selecting a global', code: 'f <- function(t) switch(t, a = x, b = y)\nx <- 1\ny <- 2\nprint(f("b"))' },
 			{ name: 'switch fall through', code: 'z <- 3\nprint(switch("a", a = , b = z))' },
@@ -95,7 +95,7 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
 	describe('values', () => {
 		resolvesLikeR(parser, 'switch selecting a global', 'f <- function(t) switch(t, a = x, b = y)\nx <- 1\ny <- 2\nz <- f("b")\ncat(z)', '5@z', { imprecise: 'both branches' });
@@ -104,7 +104,7 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		resolvesLikeR(parser, 'an exit hook overriding a super assignment', 'x <- 1\nf <- function() { on.exit(x <<- 3); x <<- 2 }\nf()\ncat(x)', '4@x');
 	});
 
-	describe('global state writes', () => {
+	describe('global state writes', () => testing(['functions-with-global-side-effects'], () => {
 		writesLikeR(parser, 'an option set three calls deep', 'f <- function() g()\ng <- function() h()\nh <- function() options(digits = 3)\nf()\nif(getOption("digits") == 3) cat("ok")', 4, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a returned closure', 'mk <- function() function() options(digits = 3)\ns <- mk()\ns()\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits']);
 		writesLikeR(parser, 'an option set in an lapply callback', 'invisible(lapply(3, function(d) options(digits = d)))\nif(getOption("digits") == 3) cat("ok")', 1, ['#option:digits']);
@@ -115,5 +115,5 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		writesLikeR(parser, 'a global bound by a super assignment three calls deep', 'f <- function() g()\ng <- function() h()\nh <- function() zz <<- 1\nf()\nif(exists("zz")) cat("ok")', 4, ['zz']);
 		writesLikeR(parser, 'a global bound by assign in a callback', 'invisible(sapply(1, function(i) assign("zz", i, envir = .GlobalEnv)))\nif(exists("zz")) cat("ok")', 1, ['zz']);
 		writesLikeR(parser, 'an option set in a recursive function', 'a <- function(n) if(n > 0) a(n - 1) else options(digits = 3)\na(2)\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
-	});
+	}));
 }));

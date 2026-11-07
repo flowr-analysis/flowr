@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { resolvesLikeR, sliceMatchesR, type TransitivityCase } from './transitivity';
+import { resolvesLikeR, sliceMatchesR, type TransitivityCase, testing } from './transitivity';
 
 describe('Transitivity through environments and super assignments, checked against R', withTreeSitter(parser => {
 	describe('super assignments and assign', () => {
@@ -20,7 +20,7 @@ describe('Transitivity through environments and super assignments, checked again
 		}
 	});
 
-	describe('environments', () => {
+	describe('environments', () => testing(['environment-sharing'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'local keeps its definitions', code: 'x <- 1\ny <- local({ x <- 2; x + 1 })\nprint(x)' },
 			{ name: 'local returns its last value', code: 'k <- 5\ny <- local({ x <- k; x + 1 })\nprint(y)' },
@@ -38,7 +38,7 @@ describe('Transitivity through environments and super assignments, checked again
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
 	describe('values', () => {
 		resolvesLikeR(parser, 'a super assignment through a returned function', 'n <- 1\nmk <- function() function() n <<- 3\ninc <- mk()\ninc()\ncat(n)', '5@n');

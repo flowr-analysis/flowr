@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { callsLikeR, sliceMatchesR, writesLikeR, type TransitivityCase } from './transitivity';
+import { callsLikeR, sliceMatchesR, writesLikeR, type TransitivityCase, testing } from './transitivity';
 
 describe('Transitivity of call targets, global state writes and sourcing, checked against R', withTreeSitter(parser => {
-	describe('call targets', () => {
+	describe('call targets', () => testing(['higher-order-functions'], () => {
 		callsLikeR(parser, 'UseMethod reaches the method', 'g <- function(o) UseMethod("g")\ng.a <- function(o)\n  1\ng(structure(1, class = "a"))\ncat("ok")', '1@UseMethod', ['2@function']);
 		callsLikeR(parser, 'do.call reaches the function', 'h <- function()\n  1\ndo.call(h, list())\ncat("ok")', '3@do.call', ['1@function']);
 		callsLikeR(parser, 'lapply reaches a named callback', 'h <- function(i)\n  i\ninvisible(lapply(1, h))\ncat("ok")', '3@lapply', ['1@function']);
@@ -20,9 +20,9 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 		callsLikeR(parser, 'an R6 method', 'library(R6)\nC <- R6Class("C", public = list(go = function()\n  1))\no <- C$new()\ninvisible(o$go())\ncat("ok")', '$31', ['2@function']);
 		callsLikeR(parser, 'a function returned by Reduce', 'h <- function(x)\n  x\ncomp <- Reduce(function(f, g) function(x) g(f(x)), list(h, h))\ninvisible(comp(1))\ncat("ok")', '3:43', ['1@function']);
 		callsLikeR(parser, 'eval of a constructed call', 'f <- function()\n  1\ninvisible(eval(call("f")))\ncat("ok")', '3@eval', ['1@function']);
-	});
+	}));
 
-	describe('global state writes', () => {
+	describe('global state writes', () => testing(['functions-with-global-side-effects'], () => {
 		writesLikeR(parser, 'an option set through match.fun', 'h <- function() options(digits = 3)\nap <- function(f) { f <- match.fun(f); f() }\nap("h")\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a function chosen by switch', 'h <- switch("b", a = function() 1, b = function() options(digits = 3))\nh()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a function returned by Reduce', 'comp <- Reduce(function(f, g) function() { f(); g() }, list(function() 1, function() options(digits = 3)))\ncomp()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
@@ -35,9 +35,9 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 		writesLikeR(parser, 'an option set by a callback in an environment', 'reg <- new.env()\nassign("cb", function() options(digits = 3), envir = reg)\nreg$cb()\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a promise forced deep', 'f <- function(a) g(a)\ng <- function(b) h(b)\nh <- function(cc) cc\nf(options(digits = 3))\nif(getOption("digits") == 3) cat("ok")', 4, ['#option:digits']);
 		writesLikeR(parser, 'an option set by an R6 method chain', 'library(R6)\nhelp1 <- function() options(digits = 3)\nC <- R6Class("C", public = list(go = function() help1()))\nC$new()$go()\nif(getOption("digits") == 3) cat("ok")', 4, ['#option:digits']);
-	});
+	}));
 
-	describe('source', () => {
+	describe('source', () => testing(['sourcing-external-files'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a function defined before source uses sourced definitions', code: 'f <- function() g()\nsource("lib.R")\nprint(f())', files: { 'lib.R': 'g <- function() k\nk <- 3' } },
 			{ name: 'source in a loop', code: 'for(i in 1:2) source("lib.R")\nprint(n)', files: { 'lib.R': 'n <- if(exists("n")) n + 1 else 1' } },
@@ -56,5 +56,5 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 }));

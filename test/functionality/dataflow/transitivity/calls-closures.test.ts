@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { resolvesLikeR, sliceMatchesR, type TransitivityCase } from './transitivity';
+import { resolvesLikeR, sliceMatchesR, type TransitivityCase, testing } from './transitivity';
 
 describe('Transitivity through calls and closures, checked against R', withTreeSitter(parser => {
 	describe('nested calls', () => {
@@ -19,7 +19,7 @@ describe('Transitivity through calls and closures, checked against R', withTreeS
 		}
 	});
 
-	describe('closures', () => {
+	describe('closures', () => testing(['closures'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a local captured by a returned function', code: 'f <- function() { x <- 5; function() x }\ng <- f()\nprint(g())' },
 			{ name: 'a parameter captured by a returned function', code: 'mk <- function(v) function() v\nk <- mk(7)\nprint(k())' },
@@ -36,7 +36,7 @@ describe('Transitivity through calls and closures, checked against R', withTreeS
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
 		}
-	});
+	}));
 
 	describe('values', () => {
 		resolvesLikeR(parser, 'a global read three calls deep', 'x <- 1\nf <- function() g()\ng <- function() h()\nh <- function() x\nx <- 2\ny <- f()\ncat(y)', '7@y', { imprecise: 'resolves the value and unknown, a call in a function body adds unknown' });

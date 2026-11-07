@@ -27,7 +27,7 @@ import { recordFound } from '../../../../linker';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config/shared';
 import { stackEnvKindOf } from './built-in-stack-env';
-import { EnvironmentProducers, holdsValueOf, rebindHolders } from './built-in-envir-utils';
+import { EnvironmentProducers, holdsValueOf, rebindAliases, rebindHolders } from './built-in-envir-utils';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 
@@ -50,7 +50,13 @@ export function deferredEnvOps<OtherInfo>(roots: Iterable<NodeId>, graph: Datafl
 	for(const id of roots) {
 		const vertex = graph.getVertex(id);
 		const node = data.completeAst.idMap.get(id);
-		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.TableAssignment)) {
+			/* `t[, a := v]` changes the table the parameter `t` holds, which is the caller's */
+			for(const target of Dataflow.sourcesOf(graph, id, EdgeType.DefinedBy).filter(t => heldByParameter(t, graph, data.completeAst.idMap))) {
+				(ops ??= []).push({ id: target, kind: EnvOpKind.ChangeInPlace, names: [], literals: [], envir: target, returns: false });
+			}
+			continue;
+		} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
 			const op = replacementOf(id, node, graph, data.completeAst.idMap, data.environment);
 			if(op !== undefined) {
 				(ops ??= []).push(op);
@@ -314,6 +320,10 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 	const run: Run = { fn, via: chain.at(-1) ?? call, direct: chain.length === 0, graph, idMap, context: contextOfChain(calls, fn.id, idMap) };
 	const callCds = graph.getVertex(call)?.cds;
 	for(const op of fn.envOps) {
+		if(op.kind === EnvOpKind.ChangeInPlace) {
+			environment = changeInPlaceAt(op, run, call, environment);
+			continue;
+		}
 		const names = op.names.map(n => namesAt(n, run, ctx));
 		const at = envAtCall(op.envir, environment, run);
 		if(at === undefined || names.some(n => n === undefined || n.length === 0) || (op.kind === EnvOpKind.Replace && at !== StackEnvKind.CallerFrame && !writesEnvironment(at, graph))) {
@@ -332,6 +342,20 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 		environment = applyOp(op, value, all, at, environment, cds, call, graph);
 	}
 	return environment;
+}
+
+/** Binds the variable the call hands to the parameter of the {@link EnvOpKind.ChangeInPlace} `op`, and what else holds its object, to the change. */
+function changeInPlaceAt(op: DeferredEnvOp, run: Run, call: NodeId, environment: REnvironmentInformation): REnvironmentInformation {
+	const parameter = run.direct ? readBindings(op.envir, run.graph).find(b => Object.hasOwn(run.fn.params, b)) : undefined;
+	const args = parameter === undefined ? [] : handedTo(parameter, run);
+	const handed = args.length === 1 ? run.idMap.get(args[0]) : undefined;
+	if(!RSymbol.is(handed)) {
+		return environment;
+	}
+	run.graph.addEdge(op.id, call, EdgeType.SideEffectOnCall);
+	const [rebound] = rebindAliases(environment, handed.content, op.id, call);
+	/* the caller's variable may still hold the table as it was, the change joins its binding */
+	return REnvironment.define({ name: handed.content, nodeId: op.id, definedAt: call, type: ReferenceType.Variable, cds: [] }, false, rebound);
 }
 
 function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly string[], at: EnvAtCall, environment: REnvironmentInformation, cds: IdentifierDefinition['cds'], call: NodeId, graph: DataflowGraph): REnvironmentInformation {
@@ -362,6 +386,9 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 				recordFound(graph, op.id, found, call);
 				return state;
 			}
+			case EnvOpKind.ChangeInPlace:
+				/* replayed by `changeInPlaceAt`, it names no environment */
+				return state;
 		}
 	};
 	if(at === StackEnvKind.Global || at === StackEnvKind.CallerFrame) {

@@ -238,7 +238,9 @@ export enum EnvOpKind {
 	/** `rm(list = x, envir)` */
 	Remove = 'remove',
 	/** `env$x <- value` and `env[["x"]] <- value`, which define in what `env` holds only if that is an environment, a list they copy */
-	Replace = 'replace'
+	Replace = 'replace',
+	/** `x[, a := v]` on a parameter `x`, which changes the table the caller hands over in place */
+	ChangeInPlace = 'change-in-place'
 }
 
 /**

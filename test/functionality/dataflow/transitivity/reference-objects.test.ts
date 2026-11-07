@@ -28,7 +28,12 @@ describe('Objects with reference semantics, checked against R', withTreeSitter(p
 		{ name: 'data.table alias by ref', code: 'library(data.table)\nd <- data.table(a = 1:2)\ne <- d\ne[, a := 9L]\nprint(d$a)', sigdb: true },
 		{ name: 'data.table alias reverse', code: 'library(data.table)\nd <- data.table(a = 1:2)\ne <- d\nd[, a := 9L]\nprint(e$a)', sigdb: true },
 		{ name: 'data.table alias chain', code: 'library(data.table)\nd <- data.table(a = 1:2)\ne <- d\nf <- e\nf[, a := 9L]\nprint(d$a)', sigdb: true },
-		{ name: 'data.table copy is independent', code: 'library(data.table)\nd <- data.table(a = 1:2)\ne <- copy(d)\ne[, a := 9L]\nprint(d$a)', sigdb: true }
+		{ name: 'data.table copy is independent', code: 'library(data.table)\nd <- data.table(a = 1:2)\ne <- copy(d)\ne[, a := 9L]\nprint(d$a)', sigdb: true },
+		{ name: 'data.table changed in function', code: 'library(data.table)\nd <- data.table(a = 1:2)\nupd <- function(t) t[, a := 9L]\nupd(d)\nprint(d$a)', sigdb: true },
+		{ name: 'data.table changed in function, alias read', code: 'library(data.table)\nd <- data.table(a = 1:2)\ne <- d\nupd <- function(t) t[, a := 9L]\nupd(d)\nprint(e$a)', sigdb: true },
+		{ name: 'data.table changed in function, named arg', code: 'library(data.table)\nd <- data.table(a = 1:2)\nupd <- function(x, t) t[, a := x]\nupd(t = d, x = 9L)\nprint(d$a)', sigdb: true },
+		{ name: 'data.table changed in function defined later', code: 'library(data.table)\nupd <- function(t) { t[, a := 9L]; invisible(NULL) }\nd <- data.table(a = 1:2)\nupd(d)\nprint(d$a)', sigdb: true },
+		{ name: 'data.table copy passed', code: 'library(data.table)\nd <- data.table(a = 1:2)\nupd <- function(t) t[, a := 9L]\nupd(copy(d))\nprint(d$a)', sigdb: true }
 	];
 	for(const c of cases) {
 		sliceMatchesR(parser, c);

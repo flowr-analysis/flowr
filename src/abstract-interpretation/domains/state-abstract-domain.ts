@@ -127,19 +127,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 
 	/** Merges every entry of `other` into a copy of `this`, applying `op` pointwise where both sides have a value for a key (used by join and widen). */
 	private unionCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
-		/* the order of a copy of `this` that `other` was written into: the keys of `this` first, then the new ones of `other` */
-		const result = new Map<NodeId, Domain>();
-
-		for(const [key, currValue] of this.value.entries()) {
-			const otherValue = other.value.get(key);
-			result.set(key, otherValue === undefined ? currValue : op(currValue, otherValue));
-		}
-		for(const [key, otherValue] of other.value.entries()) {
-			if(!result.has(key)) {
-				result.set(key, otherValue);
-			}
-		}
-		return this.create(StateMap.adopt(result));
+		return this.create((this.value as StateMap<Domain>).union(other.value as StateMap<Domain>, op));
 	}
 
 	protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {

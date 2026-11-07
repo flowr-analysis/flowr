@@ -77,6 +77,24 @@ export class StateMap<V extends MaybeBottom> implements ReadonlyMap<NodeId, V> {
 		yield* this.added?.keys() ?? [];
 	}
 
+	/**
+	 * This map with the entries of `other` written into it, `op` combining the values of a key both have, in the order
+	 * of a `Map` copied from this one. A value combined with itself must stay as it is, so `op` is not asked then, and
+	 * where both share their map (and this one removed nothing), only the keys either changed are looked at.
+	 */
+	public union(other: StateMap<V>, op: (a: V, b: V) => V): StateMap<V> {
+		const keys = this.sharesWith(other) && this.removed === undefined ? new Set([...this.changedKeys(), ...other.changedKeys()]) : other.keys();
+		const result = this.fork();
+		for(const key of keys) {
+			const mine = this.get(key);
+			const theirs = other.get(key);
+			if(theirs !== undefined && mine !== theirs) {
+				result.set(key, mine === undefined ? theirs : op(mine, theirs));
+			}
+		}
+		return result;
+	}
+
 	private changes(): number {
 		return (this.changed?.size ?? 0) + (this.removed?.size ?? 0) + (this.added?.size ?? 0);
 	}

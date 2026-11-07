@@ -35,7 +35,7 @@ describe('State Map', () => {
 			const at = next() % maps.length;
 			const [map, reference] = maps[at];
 			const key = next() % 40;
-			switch(next() % 4) {
+			switch(next() % 5) {
 				case 0:
 				case 1: {
 					const value = values[next() % values.length];
@@ -46,11 +46,19 @@ describe('State Map', () => {
 				case 2:
 					assert.strictEqual(map.delete(key), reference.delete(key));
 					break;
+				case 3: {
+					const [other, otherReference] = maps[next() % maps.length];
+					/* keeps one of the values, as the plain map must hold the same objects */
+					const join = (a: Value, b: Value) => a.leq(b) ? b : a;
+					const union = new Map([...reference].map(([k, v]) => [k, otherReference.has(k) ? join(v, otherReference.get(k) as Value) : v]));
+					maps.push([map.union(other, join), new Map([...union, ...[...otherReference].filter(([k]) => !union.has(k))])]);
+					break;
+				}
 				default:
 					maps.push([map.fork(), new Map(reference)]);
-					if(maps.length > 8) {
-						maps.splice(next() % maps.length, 1);
-					}
+			}
+			if(maps.length > 8) {
+				maps.splice(next() % maps.length, 1);
 			}
 			for(const [m, r] of maps) {
 				same(m, r);

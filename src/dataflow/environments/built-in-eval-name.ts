@@ -20,5 +20,7 @@ export enum BuiltInEvalName {
 	/** the by-name lookups, from `get` to `match.fun`, see {@link resolveAsGet} */
 	Get = 'eval:get',
 	/** the element and field accesses `x[[i]]` and `x$f`, see {@link resolveAsElement} */
-	Element = 'eval:element'
+	Element = 'eval:element',
+	/** `list(...)`, see {@link resolveAsList} */
+	List = 'eval:list'
 }

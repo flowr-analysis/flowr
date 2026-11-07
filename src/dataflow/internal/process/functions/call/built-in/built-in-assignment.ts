@@ -135,7 +135,6 @@ function tryReplacement<OtherInfo>(
 
 	const replacementConfig = builtIn ? builtIn.config : {
 		readIndices:        true,
-		makeMaybe:          true,
 		assignmentOperator: superAssignment ? '<<-' : '<-'
 	};
 	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](

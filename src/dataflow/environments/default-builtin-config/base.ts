@@ -978,7 +978,7 @@ export const BaseDefinitions = [
 	fn(base('.Primitive', '.Internal'), BuiltInProcName.Apply,
 		{ indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, Primitive
 	),
-	fn(base('list'), BuiltInProcName.List, { props: CallProp.Pure, sig: sig({ '...': ArgProp.Value }) }, Primitive),
+	fn(base('list'), BuiltInProcName.List, { props: CallProp.Pure, sig: sig({ '...': ArgProp.Value }) }, { assumePrimitive: true, evalHandler: BuiltInEvalName.List }),
 	fn(base('Recall'), BuiltInProcName.Recall, { libFn: true, sig: sig({ '...': 0 }) }),
 	fn(base('sys.function'), BuiltInProcName.Recall,
 		{ libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse, tags: [SemanticCallTag.Frames], sig: sig({ which: 0 }) }

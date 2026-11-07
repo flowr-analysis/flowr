@@ -456,7 +456,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'double-bracket-access',
 							code:        ['[['],
 							supported:   'fully',
-							description: `_The \`[[\` call, as in \`x[[i]]\` or \`x[[i, b]]\`._ Read like ${LinkTo('single-bracket-access', 'single-bracket access')}, without modelling the difference in what R returns.`,
+							description: `_The \`[[\` call, as in \`x[[i]]\` or \`x[[i, b]]\`._ Read like ${LinkTo('single-bracket-access', 'single-bracket access')} by the dataflow. The value solver picks the element a constant name (matched exactly) or position names out of a list it knows, and \`NULL\` for a name the list does not have.`,
 							example:     codeBlock('r', 'l <- list(a = 1, b = 2)\nl[["a"]]\nl[[2]]'),
 							url:         [RLang('Indexing'), AdvancedR('Selecting a single element', 'subsetting.html#subset-single')]
 						},
@@ -465,7 +465,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'dollar-access',
 							code:        ['$'],
 							supported:   'fully',
-							description: '_The `$` call, as in `x$y`, `x$"y"`, or `x$y$z`, whose right side is a name rather than a value._ On a list `$` matches that name partially, so `l$al` reaches an element named `alpha`.',
+							description: '_The `$` call, as in `x$y`, `x$"y"`, or `x$y$z`, whose right side is a name rather than a value._ On a list `$` matches that name partially, so `l$al` reaches an element named `alpha`. The value solver knows the lists `list(...)` builds and the replacements change, with the same matching, while a field of an environment stays unknown to it.',
 							example:     codeBlock('r', 'l <- list(alpha = 1)\nl$alpha\nl$al'),
 							url:         [RLang('Operators')]
 						},
@@ -614,7 +614,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 											name:        'Replacement Functions',
 											id:          'replacement-functions',
 											supported:   'partially',
-											description: `_Read a write to a call, like \`x[i] <- 3\` or \`x$y <- 3\`, as the \`\` \`[<-\`(x, 3) \`\` R runs for it._ The name in front is both read and rebound. A ${LinkTo('named-arguments', 'named argument')} in such a call (\`g(v, k = 2) <- 3\`) leaves its argument edge dangling.`,
+											description: `_Read a write to a call, like \`x[i] <- 3\` or \`x$y <- 3\`, as the \`\` \`[<-\`(x, 3) \`\` R runs for it._ The name in front is both read and rebound, under the conditions the write stands under, so a later read reaches the old binding only through the replacement. The value solver applies \`$<-\` and \`[[<-\` with a constant name or position to a list it knows (\`l$a$b <- 1\` included, \`NULL\` removing an element), any other replacement leaves the value unknown. A ${LinkTo('named-arguments', 'named argument')} in such a call (\`g(v, k = 2) <- 3\`) leaves its argument edge dangling.`,
 											example:     codeBlock('r', '`second<-` <- function(x, value) {\n  x[2] <- value\n  x\n}\nv <- 1:3\nsecond(v) <- 9\nv'),
 											url:         [AdvancedR('Replacement functions', 'functions.html#replacement-functions'), RLang('Subset assignment')]
 										},
@@ -885,7 +885,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'modify-function-structure',
 									code:        ['body<-', 'formals<-', 'environment<-'],
 									supported:   'partially',
-									description: `_Rewrite a part of a function with \`body<-\`, \`formals<-\`, or \`environment<-\`._ Like every ${LinkTo('replacement-functions', 'replacement function')} it rebinds the name, so a later ${LinkTo('call-normal', 'call')} reaches the new part as well as the original one.`,
+									description: `_Rewrite a part of a function with \`body<-\`, \`formals<-\`, or \`environment<-\`._ Like every ${LinkTo('replacement-functions', 'replacement function')} it rebinds the name, and a later ${LinkTo('call-normal', 'call')} reaches the original function through that rebinding.`,
 									example:     codeBlock('r', 'f <- function(x) x + 1\nbody(f) <- quote(x * 2)\nf(3)'),
 									url:         [RLang('Manipulation of functions')]
 								},

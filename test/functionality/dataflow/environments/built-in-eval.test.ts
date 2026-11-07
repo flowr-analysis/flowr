@@ -26,7 +26,8 @@ const FoldedBy: Record<BuiltInEvalName, readonly string[]> = {
 	[BuiltInEvalName.Vector]:     ['c'],
 	[BuiltInEvalName.Group]:      ['(', '{'],
 	[BuiltInEvalName.Get]:        Object.keys(GetFns),
-	[BuiltInEvalName.Element]:    [...FieldOperators]
+	[BuiltInEvalName.Element]:    [...FieldOperators],
+	[BuiltInEvalName.List]:       ['list']
 };
 
 const handlerOf = new Map(Object.entries(BuiltInEvalHandlerMapper).map(([name, handler]) => [handler, name as BuiltInEvalName]));

@@ -140,6 +140,8 @@ function plainValues(value: Lift<Value>): string[] {
 			return isValue(value.elements) && value.elements.length === 1 ? plainValues(value.elements[0]) : ['?'];
 		case 'logical':
 			return isValue(value.value) && value.value !== 'maybe' ? [value.value ? 'TRUE' : 'FALSE'] : ['?'];
+		case 'null':
+			return ['NULL'];
 		default: {
 			const plain = RValue.numberOf(value) ?? RValue.stringOf(value);
 			return plain === undefined ? ['?'] : [String(plain)];

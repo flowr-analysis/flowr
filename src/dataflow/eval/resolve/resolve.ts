@@ -2,6 +2,7 @@ import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/mo
 import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { setOf } from '../values/sets/set-constants';
 import { valueSetGuard, valueFromRNumber  } from '../values/general';
+import { NodeValue } from './node-value';
 import { RValue } from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -14,7 +15,10 @@ import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { OriginType } from '../../origin/dfg-get-origin';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import { isValue, type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
+import { isValue, type Lift, Top, type Value, type ValueList, type ValueListElement, type ValueNumber, type ValueVector } from '../values/r-value';
+import { listElementAt, listField, listFrom } from '../values/lists/list-constants';
+import type { ResolveInfo, ResolveResult } from './alias-tracking';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier, ReferenceType } from '../../environments/identifier';
@@ -131,13 +135,60 @@ export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typ
 	if(!RFunctionCall.is(node)) {
 		return Top;
 	}
-	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top)));
+	const elements = flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top));
+	/* combined with a list, `c` makes a list */
+	return isValue(elements) && elements.some(e => e.type === 'list' || (e.type === 'set' && isValue(e.elements) && e.elements.some(s => s.type === 'list'))) ? Top : vectorFrom(elements);
+}
+
+/** The one value a resolution stands for, a set if it may be several. */
+export function asOneValue(result: ResolveResult): Value {
+	return isValue(result) && result.elements.length === 1 ? result.elements[0] : result;
+}
+
+/**
+ * Resolves `list(...)` to a {@link ValueList} of what each argument holds, an argument flowR does not know keeps its
+ * place and name; helper of {@link resolveNode}.
+ */
+export function resolveAsList(args: BuiltInEvalHandlerArgs): ValueList | typeof Top {
+	const node = args.node;
+	if(!RFunctionCall.is(node)) {
+		return Top;
+	}
+	const elements: ValueListElement[] = [];
+	for(const arg of node.arguments) {
+		/* `...` stands for any number of elements */
+		if(arg === EmptyArgument || arg.value === undefined || arg.value.lexeme === '...') {
+			return Top;
+		}
+		elements.push({ name: arg.name === undefined ? undefined : Identifier.getName(arg.name.content), value: asOneValue(Resolve.toValue(arg.value, args)) });
+	}
+	return listFrom(elements);
+}
+
+/**
+ * The name or position `key` names an element of a list by, `undefined` if it may be several or none of them; `$`
+ * takes its field as a name.
+ */
+export function accessKeyOf(access: RAccess<ParentInformation>, key: RNode<ParentInformation>, info: ResolveInfo): string | number | undefined {
+	if(access.operator === '$') {
+		return RString.is(key) ? key.content.str : RSymbol.is(key) ? Identifier.getName(key.content) : undefined;
+	}
+	const value = NodeValue.sole(valueSetGuard(Resolve.toValue(key, info)));
+	const str = value === undefined ? undefined : RValue.stringOf(value);
+	const num = value === undefined ? undefined : RValue.numberOf(value);
+	return str ?? (num !== undefined && num >= 1 ? num : undefined);
+}
+
+/** The element `l$name` or `l[[key]]` reads from a list, `undefined` where flowR cannot tell it. */
+export function listElementOf(list: ValueList, key: string | number, operator: string): Value | undefined {
+	return typeof key === 'number' ? listElementAt(list, key) : listField(list, key, operator !== '$');
 }
 
 /**
  * Resolves `x[[i]]` to the element of `x` at position `i`, so `c("a", "b")[[2]]` is `"b"`. Where `i` is not known,
  * as a loop counter often is not, it is any of the elements. A field of an environment (`e$f`, `e[["f"]]`) is what
- * the environment binds it to, see {@link resolveAsField}; helper of {@link resolveNode}.
+ * the environment binds it to, see {@link resolveAsField}; of a list, `x$name` and `x[["name"]]` are the element the
+ * name matches; helper of {@link resolveNode}.
  */
 export function resolveAsElement(args: BuiltInEvalHandlerArgs): Value {
 	const field = resolveAsField(args);
@@ -145,12 +196,22 @@ export function resolveAsElement(args: BuiltInEvalHandlerArgs): Value {
 		return field;
 	}
 	const node = args.node;
-	const index = RAccess.is(node) && node.operator === '[[' && node.access.length === 1 && node.access[0] !== EmptyArgument ? node.access[0].value : undefined;
+	const index = RAccess.is(node) && (node.operator === '[[' || node.operator === '$') && node.access.length === 1
+		&& node.access[0] !== EmptyArgument && node.access[0].name === undefined ? node.access[0].value : undefined;
 	if(!RAccess.is(node) || index === undefined) {
 		return Top;
 	}
-	const vectors = valueSetGuard(Resolve.toValue(node.accessed, args))?.elements;
-	if(vectors === undefined || vectors.length === 0 || !vectors.every(v => v.type === 'vector' && isValue(v.elements) && v.elements.length > 0)) {
+	/* what else reads the same container (`l$a + l$b`) has to see it as well, only what is walked to get here stays blocked */
+	const containers = valueSetGuard(Resolve.toValue(node.accessed, { ...args, blocked: new Set(args.blocked) }))?.elements;
+	if(containers === undefined || containers.length === 0) {
+		return Top;
+	} else if(containers.every(c => c.type === 'list' || c.type === 'null')) {
+		const key = accessKeyOf(node, index, args);
+		const elements = key === undefined ? undefined : containers.map(c => c.type === 'null' ? c : listElementOf(c, key, node.operator));
+		return elements === undefined || elements.includes(undefined) ? Top : setOf(elements as Value[]);
+	}
+	const vectors = node.operator === '[[' ? containers : [];
+	if(vectors.length === 0 || !vectors.every(v => v.type === 'vector' && isValue(v.elements) && v.elements.length > 0)) {
 		return Top;
 	}
 	const positions = valueSetGuard(Resolve.toValue(index, args))?.elements.map(p => RValue.numberOf(p)) ?? [];

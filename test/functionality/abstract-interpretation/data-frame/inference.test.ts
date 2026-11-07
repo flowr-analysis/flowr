@@ -232,7 +232,7 @@ for (i in 1:5) {
 df[10, ] <- c(6, 11)
 print(df)
 			`,
-			{ '6@df': { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] } }
+			{ '6@df': { colnames: [['id'], Top], cols: [2, 2], rows: [10, 10] } }
 		);
 
 		testShape(
@@ -346,7 +346,7 @@ while (TRUE) {
 df[10, ] <- c(6, 11)
 print(df)
 			`,
-			{ '7@df': { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] } }
+			{ '7@df': { colnames: [['id'], Top], cols: [2, 2], rows: [10, 10] } }
 		);
 
 		testShape(

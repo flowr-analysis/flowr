@@ -52,17 +52,19 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 		}
 	}
 	const nonLocalReads: IdentifierReference[] = [];
-	/* the tag already says what the reference is, so no vertex has to be fetched to decide */
-	for(const [tag, type] of [[VertexType.Use, ReferenceType.Variable], [VertexType.FunctionCall, ReferenceType.Function]] as const) {
-		for(const [nodeId] of graph.verticesOfType(tag)) {
-			if(ignores.has(nodeId)) {
+	/* the tag already says what the reference is, so no vertex has to be fetched to decide; the target of a replacement
+	 * (`x$a <- v`) reads the binding it replaces as well */
+	for(const [tag, type] of [[VertexType.Use, ReferenceType.Variable], [VertexType.FunctionCall, ReferenceType.Function], [VertexType.VariableDefinition, ReferenceType.Unknown]] as const) {
+		for(const [nodeId, vertex] of graph.verticesOfType(tag)) {
+			if(ignores.has(nodeId) || (DfgVertex.isVariableDefinition(vertex) && !vertex.par)) {
 				continue;
 			}
 			/* control flow edges say nothing about what a name resolves to, so they do not count as a link */
 			let linked = false;
 			let nonLocal = false;
 			for(const [target, e] of graph.edgesFrom(nodeId)) {
-				if(DfEdge.isOnlyControlFlow(e)) {
+				/* a replacement target is defined by its call, it reads only the binding it replaces */
+				if(DfEdge.isOnlyControlFlow(e) || (tag === VertexType.VariableDefinition && DfEdge.includesType(e, EdgeType.DefinedBy))) {
 					continue;
 				}
 				linked = true;
@@ -583,7 +585,10 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		}
 	}
 	const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
-	const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess);
+	const isSkipType = DfgVertex.isFunctionCall(vertex);
+	/* a replacement keeps its target what it was (`environment(f) <- e` leaves `f` the same function), unless the call
+	 * is to what it put into a part of it, so the walk goes on to the binding it replaces only */
+	const replaces = DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess;
 	let hasReturnEdge = false;
 	let followTargets: [NodeId, boolean][] | undefined;
 	/* a list handed on as a whole (a loop, an apply) yields its entries, an access the entry it names */
@@ -594,7 +599,7 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		if(DfEdge.includesType(e, handedBack)) {
 			hasReturnEdge = true;
 			next(target, nextViaAccess, returnedTo === call ? scopedTo(graph, scopes, call, target) : returnedTo);
-		} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && DfEdge.doesNotIncludeType(e, EdgeType.SideEffectOnCall)) {
+		} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && DfEdge.doesNotIncludeType(e, replaces ? EdgeType.SideEffectOnCall | EdgeType.DefinedBy : EdgeType.SideEffectOnCall)) {
 			(followTargets ??= []).push([target, DfEdge.includesType(e, EdgeType.DefinedByOnCall)]);
 		}
 	}
@@ -1036,7 +1041,7 @@ function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: Datafl
 		if(node === closure.id || closure.subflow.graph.has(node)) {
 			continue;
 		} else if(DfgVertex.isFunctionDefinition(vertex) || (DfgVertex.isFunctionCall(vertex) && (!vertex.onlyBuiltin || graph.unknownSideEffects.has(NodeId.normalize(node))))
-			|| DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
+			|| Dataflow.superAssigns(graph, node)) {
 			return undefined;
 		} else if(DfgVertex.isVariableDefinition(vertex)) {
 			locals.add(NodeId.recoverBareName(node, idMap) ?? '');
@@ -1068,7 +1073,7 @@ export function separateClosureInstances(graph: DataflowGraph, known: BuiltInLoo
 	}
 	for(const [closure, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		/* only a closure writing with `<<-` can share state */
-		const superAssignments = vertex.subflow.graph.values().filter(id => DfgVertex.hasOrigin(graph.getVertex(id), BuiltInProcName.SuperAssignment)).toArray();
+		const superAssignments = vertex.subflow.graph.values().filter(id => Dataflow.superAssigns(graph, id)).toArray();
 		const found = superAssignments.length === 0 ? undefined : factoryOf(vertex, graph, known, idMap);
 		if(found === undefined) {
 			continue;

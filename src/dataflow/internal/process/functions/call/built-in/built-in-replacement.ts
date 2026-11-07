@@ -167,9 +167,10 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	if(RSymbol.is(firstArg)) {
+		/* the target may hold anything, `environment(f) <- e` changes a function */
 		res = {
 			...res,
-			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
+			in: [...res.in, { name: firstArg.content, type: ReferenceType.Unknown, nodeId: firstArg.info.id, cds: data.cds }]
 		};
 	} else if(firstArg !== undefined && RAccess.is(firstArg)) {
 		/* a nested target (e.g. `a$b$c <- 5`) is no variable read, it is read through its own accessor */

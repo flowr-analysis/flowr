@@ -83,7 +83,7 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 	resolvesLikeR(parser, 'value of a function in an option set twice', 'options(cb = function() 1)\noptions(cb = function() 2)\ny <- getOption("cb")()\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of a function in an option set in a branch', 'options(cb = function() 1)\nif(length(commandArgs()) > 100) options(cb = function() 2)\ny <- getOption("cb")()\ncat(y)', '4@y', { imprecise: 'resolves 1 and 2, the condition is not known' });
 	resolvesLikeR(parser, 'value of an option restored', 'op <- options(cb = 1)\noptions(op)\ny <- is.null(getOption("cb"))\ncat(y)', '4@y', { imprecise: 'unknown, the restored options are not named' });
-	resolvesLikeR(parser, 'value of super assignment to a list element', 'l <- list(a = 1)\nf <- function() l$a <<- 5\nf()\ny <- l$a\ncat(y)', '5@y', { imprecise: 'unknown, the list element changed by a super assignment is not resolved' });
+	resolvesLikeR(parser, 'value of super assignment to a list element', 'l <- list(a = 1)\nf <- function() l$a <<- 5\nf()\ny <- l$a\ncat(y)', '5@y');
 	resolvesLikeR(parser, 'value of closure over promise to a global changed later', 'mk <- function(v) function() v\nx <- 1\ng <- mk(x)\nx <- 2\ny <- g()\ncat(y)', '6@y');
 	resolvesLikeR(parser, 'value of env of a function set later', 'e <- new.env()\nf <- function() v\nenvironment(f) <- e\nassign("v", 6, envir = e)\ny <- f()\ncat(y)', '6@y');
 }));

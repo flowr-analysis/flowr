@@ -41,7 +41,7 @@ import { type AmbientScope, type AmbientStateAccess, AmbientStateAccessType, app
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
-import { resolveAsElement, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsElement, resolveAsList, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import { resolveAsStringFn } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
 import { resolveAsGet } from '../eval/resolve/resolve-get';
@@ -481,7 +481,8 @@ export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.StringFn]:   resolveAsStringFn,
 	[BuiltInEvalName.Group]:      resolveAsGroup,
 	[BuiltInEvalName.Get]:        resolveAsGet,
-	[BuiltInEvalName.Element]:    resolveAsElement
+	[BuiltInEvalName.Element]:    resolveAsElement,
+	[BuiltInEvalName.List]:       resolveAsList
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
@@ -562,10 +563,10 @@ export class BuiltIns {
 					type:      ReferenceType.BuiltInFunction,
 					definedAt: id,
 					processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+					/* `f(x) <- v` rebinds `x`, the plain call `` `f<-`(x, v) `` above only hands back a modified copy */
 					config:    {
 						...config,
-						assignmentOperator: suffix,
-						makeMaybe:          true
+						assignmentOperator: suffix
 					},
 					name:   assignment,
 					cds:    undefined,

@@ -235,7 +235,7 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t))) {
 			continue;
 		}
-		const written = ClosureFrames.writesOf(name, environment, Identifier.getName(read.content));
+		const written = ClosureFrames.writesOf(name, environment, Identifier.getName(read.content), called.id, graph);
 		/* the write as well, `environment(g)$v <- 5` defines `v` at the value it writes */
 		for(const target of [...written.ids, ...written.writers]) {
 			graph.addEdge(id, target, EdgeType.Reads);
@@ -415,8 +415,8 @@ function holdersOf(
 	while(env !== undefined && !env.builtInEnv) {
 		for(const defs of env.memory.values()) {
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
-				/* a copy (`g <- e`) holds the same environment object, even once one of them saw a write */
-				if((def.envState === envDef.envState || (def.envId !== undefined && def.envId === envDef.envId)) && def.name !== undefined && def.nodeId !== envDef.nodeId) {
+				/* a copy (`g <- e`) holds the same environment object, even once one of them saw a write, as does the variable it was copied from */
+				if((def.envState === envDef.envState || (def.envId !== undefined && def.envId === envDef.envId) || def.nodeId === envDef.envId) && def.name !== undefined && def.nodeId !== envDef.nodeId) {
 					holders.push(def as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation });
 				}
 			}
@@ -430,10 +430,11 @@ function holdersOf(
 }
 
 function routeWrittenToCustomEnv(
-	result:    DataflowInformation,
-	envDef:    NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },
-	newDefAt:  NodeId,
-	definedAt?: NodeId
+	result:            DataflowInformation,
+	envDef:            NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },
+	newDefAt:          NodeId,
+	callerEnvironment: REnvironmentInformation,
+	definedAt?:        NodeId
 ): DataflowInformation {
 	const written = writtenDefinitionsOf(result, definedAt);
 
@@ -444,7 +445,15 @@ function routeWrittenToCustomEnv(
 		newEnvState = REnvironment.define(w, false, newEnvState);
 	}
 
-	const stripped = { current: result.environment.current.removeAll(namesToRemove), level: result.environment.level };
+	const current = result.environment.current.removeAll(namesToRemove);
+	/* what the caller bound before stays bound, `v <- 3; assign("v", 4, envir = e)` keeps `v` at 3 */
+	for(const { name } of namesToRemove) {
+		const before = callerEnvironment.current.lookup(Identifier.getName(name));
+		if(before !== undefined) {
+			current.writableMemory.set(Identifier.getName(name), before);
+		}
+	}
+	const stripped = { current, level: result.environment.level };
 	return { ...result, environment: rebindHolders(stripped, envDef, newEnvState, newDefAt) };
 }
 
@@ -592,7 +601,7 @@ export function routeWrittenToEnvir<OtherInfo>(
 	if(resolution.stack !== undefined) {
 		routed = resolution.stack === 'global' ? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt) : result;
 	} else {
-		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, definedAt);
+		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, callerEnvironment, definedAt);
 	}
 	routed.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	return routed;

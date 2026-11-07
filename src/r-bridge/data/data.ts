@@ -183,7 +183,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'dynamic-variable-removal',
 									code:        ['rm', 'sys.frame'],
 									supported:   'partially',
-									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame._ Negative and zero offsets are handled from within depth-1 functions. A removal from the global environment inside a function, with `envir = .GlobalEnv`, `envir = globalenv()`, or `pos = 1`, is seen by the callers, like a `<<-` would be.'
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame._ Negative and zero offsets are handled from within depth-1 functions. A removal from the global environment inside a function, with `envir = .GlobalEnv`, `envir = globalenv()`, or `pos = 1`, is seen by the callers, like a `<<-` would be. A removal from the environment of a closure, `rm("v", envir = environment(g))`, is seen by the calls of that closure, which then read what the environments around it bind.'
 								}
 							],
 							url: [RLang('Environment objects')]

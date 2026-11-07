@@ -2,8 +2,9 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { REnvironmentInformation } from '../environments/environment';
-import { type BrandedIdentifier, hasEnvState, Identifier, type InGraphIdentifierDefinition } from '../environments/identifier';
+import { REnvironment, type REnvironmentInformation } from '../environments/environment';
+import { anyRemovalMarker, removalMarkerOf } from '../environments/removal-marker';
+import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from './edge';
@@ -49,28 +50,41 @@ const NoWrites: FrameWrites = { ids: new Set(), writers: new Set(), definite: fa
  * calls of that very closure: they are tracked on the variables holding it (see {@link InGraphIdentifierDefinition#closureFrame}).
  */
 export const ClosureFrames = {
-	/** What the frames of the closures `holder` holds in `environment` bind to `name`. */
-	writesOf(this: void, holder: Identifier, environment: REnvironmentInformation, name: BrandedIdentifier): FrameWrites {
+	/**
+	 * What the frames of the closures `holder` holds in `environment` bind to `name`. A frame of the closure `closure`
+	 * that `name` was removed from (`rm("v", envir = environment(g))`) binds what the frames around it bind, see {@link boundAround}.
+	 */
+	writesOf(this: void, holder: Identifier, environment: REnvironmentInformation, name: BrandedIdentifier, closure: NodeId, graph: DataflowGraph): FrameWrites {
 		const holders = Resolve.byName(holder, environment) ?? [];
 		const ids = new Set<NodeId>();
 		const writers = new Set<NodeId>();
 		const entries: FrameWrite[] = [];
 		let definite = holders.length > 0;
 		for(const def of holders as readonly InGraphIdentifierDefinition[]) {
-			const written = def.closureFrame === true && hasEnvState(def) ? def.envState.current.lookup(name) ?? [] : [];
+			const frame = def.closureFrame === true && hasEnvState(def) ? def.envState : undefined;
+			const written = frame?.current.lookup(name) ?? [];
+			const removals = frame === undefined || !anyRemovalMarker(name) ? [] : frame.current.memory.get(removalMarkerOf(name)) ?? [];
 			for(const w of written) {
 				ids.add(w.nodeId);
 				writers.add(w.definedAt);
 				entries.push({ id: w.nodeId, by: w.definedAt, definite: w.cds === undefined && holders.length === 1 });
 			}
-			definite &&= written.some(w => w.cds === undefined);
+			if(removals.length > 0) {
+				removals.forEach(r => writers.add(r.nodeId));
+				for(const outer of boundAround(closure, graph, environment, name) ?? []) {
+					if(!NodeId.isBuiltIn(outer.nodeId)) {
+						ids.add(outer.nodeId);
+					}
+				}
+			}
+			definite &&= written.some(w => w.cds === undefined) || removals.some(r => r.cds === undefined);
 		}
-		return ids.size === 0 ? NoWrites : { ids, writers, definite, entries };
+		return writers.size === 0 ? NoWrites : { ids, writers, definite, entries };
 	},
-	/** What the frame of the closure the call `call` runs binds to `name`, where it is called. */
-	writesAt(this: void, graph: DataflowGraph, call: NodeId, name: BrandedIdentifier): FrameWrites {
+	/** What the frame of the closure `closure` the call `call` runs binds to `name`, where it is called. */
+	writesAt(this: void, graph: DataflowGraph, call: NodeId, name: BrandedIdentifier, closure: NodeId): FrameWrites {
 		const vertex = graph.getVertex(call);
-		return DfgVertex.isFunctionCall(vertex) && vertex.environment !== undefined ? ClosureFrames.writesOf(vertex.name, vertex.environment, name) : NoWrites;
+		return DfgVertex.isFunctionCall(vertex) && vertex.environment !== undefined ? ClosureFrames.writesOf(vertex.name, vertex.environment, name, closure, graph) : NoWrites;
 	},
 	/** The call context `context` extended by the closures `call` runs whose frames some of their calls see written. */
 	contextOf(this: void, graph: DataflowGraph, call: NodeId, context: ReadonlyMap<NodeId, NodeId> | undefined): ReadonlyMap<NodeId, NodeId> | undefined {
@@ -125,7 +139,7 @@ export const ClosureFrames = {
 			return undefined;
 		}
 		const name = Identifier.getName(node.content);
-		const own = ClosureFrames.writesAt(graph, call, name);
+		const own = ClosureFrames.writesAt(graph, call, name, closure);
 		const instances = ClosureFrames.instancesOf(graph, call);
 		const elsewhere = new Set<NodeId>();
 		const writers = new Set(own.writers);
@@ -134,7 +148,7 @@ export const ClosureFrames = {
 			if(other === call || !DfEdge.includesType(edge, EdgeType.Calls)) {
 				continue;
 			}
-			const theirs = ClosureFrames.writesAt(graph, other, name);
+			const theirs = ClosureFrames.writesAt(graph, other, name, closure);
 			if(theirs.ids.size === 0) {
 				continue;
 			}
@@ -257,6 +271,26 @@ function overwrittenBefore(read: NodeId, call: NodeId, closure: NodeId, own: Fra
 /** Whether the definition `id` is made by a super assignment (`v <<- 5`). */
 function superAssigned(id: NodeId, graph: DataflowGraph): boolean {
 	return Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.SuperAssignment));
+}
+
+/**
+ * What the frames around the frame of `closure` bind to `name` once `environment` calls it: those of the functions around
+ * the one that made the frame as it left them, and the global frame as it is at the call.
+ */
+function boundAround(closure: NodeId, graph: DataflowGraph, environment: REnvironmentInformation, name: BrandedIdentifier): readonly IdentifierDefinition[] | undefined {
+	const maker = graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(closure, graph.idMap);
+	const made = maker === undefined ? undefined : graph.getVertex(maker);
+	if(DfgVertex.isFunctionDefinition(made)) {
+		let frame = made.subflow.environment.current.parent;
+		for(let level = made.subflow.environment.level - 1; level > 0 && frame !== undefined; level--, frame = frame.parent) {
+			/* the body of a function sees the frames around it emptied, standing in for what they bound */
+			const bound = frame.lookup(name) ?? frame.superMemory?.get(name);
+			if(bound !== undefined) {
+				return bound;
+			}
+		}
+	}
+	return Resolve.byName(name, REnvironment.visibleTo(1, environment));
 }
 
 function isFramed(graph: DataflowGraph, id: NodeId): boolean {

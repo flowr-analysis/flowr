@@ -499,7 +499,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('attach() search path injection', () => {
-		assertDataflow(label('attach(e) injects env contents into scope', ['dynamic-environment-resolution', 'environment-sharing']),
+		assertDataflow(label('attach(e) injects env contents below a masking global', ['dynamic-environment-resolution', 'environment-sharing']),
 			shell,
 			[
 				'x <- 0',
@@ -512,12 +512,13 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				.defineVariable('2@e', 'e')
 				.use('3@e').reads('3@e', '2@e')
 				.use('4@e').reads('4@e', '2@e')
-				.reads('5@x', '3@"x"')
+				.reads('5@x', '1@x')
 				.use('5@x'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['5@x', '3@assign'], ['5@x', '1@x']]
+				/* the global `x` masks the attached one, R prints 0 */
+				mustNotHaveEdges:      [['5@x', '3@assign'], ['5@x', '3@"x"']]
 			}
 		);
 

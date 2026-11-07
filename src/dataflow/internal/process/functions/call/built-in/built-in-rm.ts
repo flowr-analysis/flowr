@@ -17,7 +17,7 @@ import { isValue } from '../../../../../eval/values/r-value';
 import { applyGlobalKills, applyKills } from '../../../../../environments/apply-kill';
 import { EdgeType } from '../../../../../graph/edge';
 import type { EnvirResolution } from './built-in-envir-utils';
-import { resolveEnvirOrPosition } from './built-in-envir-utils';
+import { rebindHolders, resolveEnvirOrPosition } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -187,9 +187,18 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly Cont
 	return kills;
 }
 
-/** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
+/**
+ * Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. The frame of a
+ * closure (`environment(g)`) records the removal, as it binds more than what was written into it, and every variable
+ * holding the closure sees it.
+ */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
-	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId));
+	const closureFrame = envir.envDef.closureFrame === true;
+	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId), closureFrame);
+	if(closureFrame) {
+		res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
+		return { ...res, environment: rebindHolders(res.environment, envir.envDef, newEnvState, rootId) };
+	}
 	const environment = REnvironment.define({ ...envir.envDef, definedAt: rootId, envState: newEnvState }, false, res.environment);
 	return { ...res, environment };
 }

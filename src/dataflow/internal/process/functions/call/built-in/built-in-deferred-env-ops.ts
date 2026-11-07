@@ -289,7 +289,7 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 }
 
 function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly string[], at: EnvAtCall, environment: REnvironmentInformation, cds: IdentifierDefinition['cds'], call: NodeId, graph: DataflowGraph): REnvironmentInformation {
-	const update = (state: REnvironmentInformation, global: boolean): REnvironmentInformation => {
+	const update = (state: REnvironmentInformation, global: boolean, closureFrame = false): REnvironmentInformation => {
 		switch(op.kind) {
 			case EnvOpKind.Define:
 			case EnvOpKind.Replace: {
@@ -302,7 +302,8 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 			}
 			case EnvOpKind.Remove: {
 				const kills: KillReference[] = names.map(name => ({ kind: 'named', reference: { nodeId: op.id, name, cds, type: ReferenceType.Variable }, killedBy: op.id }));
-				return global ? applyGlobalKills(state, kills) : applyKills(state, kills);
+				/* the frame of a closure records the removal, see `removeFromCustomEnv` */
+				return global ? applyGlobalKills(state, kills) : applyKills(state, kills, closureFrame);
 			}
 			case EnvOpKind.Read:
 				for(const def of names.flatMap(name => Resolve.byName(name, state) ?? [])) {
@@ -317,7 +318,7 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 		return update(environment, at === StackEnvKind.Global);
 	}
 	for(const holder of at.holders) {
-		environment = rebindHolders(environment, holder, update(holder.envState, false), call);
+		environment = rebindHolders(environment, holder, update(holder.envState, false, holder.closureFrame === true), call);
 	}
 	return environment;
 }

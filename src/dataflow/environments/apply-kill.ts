@@ -188,22 +188,31 @@ function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
 	return refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
 }
 
+/** Records the calls `killedBy` as removals of `name` in the frame, which replace the earlier ones unless `cds` makes them maybe. */
+function markRemoval(env: Environment, name: Identifier, killedBy: readonly NodeId[], cds: readonly ControlDependency[] | undefined): void {
+	const plain = Identifier.getName(name);
+	const marker = removalMarkerOf(plain);
+	noteRemovalMarker(plain);
+	const earlier = cds === undefined ? [] : env.memory.get(marker) ?? [];
+	env.writableMemory.set(marker, earlier.concat(killedBy.map(by => (
+		{ name: marker, type: ReferenceType.Variable, nodeId: by, definedAt: by, cds }
+	))));
+}
+
 function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[], killedBy: readonly NodeId[] | undefined, mark: boolean): void {
 	if(isCertainRemoval(refs)) {
 		const removed = env.lookup(Identifier.getName(name)) !== undefined;
 		env.remove(name);
 		if((removed || mark) && killedBy !== undefined) {
-			const plain = Identifier.getName(name);
-			const marker = removalMarkerOf(plain);
-			noteRemovalMarker(plain);
-			env.writableMemory.set(marker, killedBy.map(by => (
-				{ name: marker, type: ReferenceType.Variable, nodeId: by, definedAt: by, cds: undefined }
-			)));
+			markRemoval(env, name, killedBy, undefined);
 		}
 	} else {
 		// the definition survives unless the killing branch executed
 		for(const ref of refs) {
 			weakenName(env, name, (ref.cds ?? []).map(negateControlDependency));
+		}
+		if(mark && killedBy !== undefined) {
+			markRemoval(env, name, killedBy, refs.flatMap(r => r.cds ?? []));
 		}
 	}
 }
@@ -212,13 +221,15 @@ function applyNamedKill(env: Environment, name: Identifier, refs: readonly Ident
  * Applies the given {@link KillReference|kills} to a copy of `env`. `named` kills remove (or, when conditional,
  * weaken to maybe) a single definition; `all` kills clear the current frame; `unknown` kills weaken every
  * in-scope definition to maybe. Returns `env` unchanged when there is nothing to apply.
+ * With `mark`, a named removal is recorded even if the frame does not bind the name (see {@link removalsOf}), for a
+ * frame flowR knows only the writes into, like that of a closure (`rm("v", envir = environment(g))`).
  */
-export function applyKills(env: REnvironmentInformation, kills: readonly KillReference[] | undefined): REnvironmentInformation {
+export function applyKills(env: REnvironmentInformation, kills: readonly KillReference[] | undefined, mark = false): REnvironmentInformation {
 	if(!kills || kills.length === 0) {
 		return env;
 	}
 	const current = env.current.clone(true);
-	applyKillsToFrame(current, kills, false);
+	applyKillsToFrame(current, kills, mark);
 	return { current, level: env.level };
 }
 

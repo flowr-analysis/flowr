@@ -844,6 +844,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	enqueue(id, frames, iterations);
 
 	const resultIds: NodeId[] = [];
+	/* what a read in a closure frame knows is replaced stays so for the writes it leads to */
+	const replaced = new Set<NodeId>();
 	/* what a call the walk ended in folds to, see below */
 	const folded: Value[] = [];
 	while(queue.nonEmpty()) {
@@ -934,9 +936,10 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			for(const frame of inFrame?.frames ?? []) {
 				enqueue(frame, [], []);
 			}
+			inFrame?.replaced.forEach(r => replaced.add(r));
 			for(const [targetId, edge] of outgoingEdges) {
 				if((inCall !== undefined && !followsInCall(outgoingEdges, targetId, edge, inCall, idMap))
-					|| (inFrame !== undefined && !inFrame.keeps(targetId))
+					|| (inFrame !== undefined && !inFrame.keeps(targetId)) || replaced.has(targetId)
 					|| (bound !== undefined && DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) && !bound.has(targetId))) {
 					continue;
 				}

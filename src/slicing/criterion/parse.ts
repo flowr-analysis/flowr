@@ -195,7 +195,8 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
 	let bestRange: SourceRange | undefined;
 	for(const node of SourceRange.nodesContaining(potentials, line)) {
 		const statement = RNode.topLevelStatement(node, idMap);
-		const range = SourceRange.fromNode(statement);
+		/* a block has no range of its own, only its braces and children do */
+		const range = SourceRange.fromNode(statement) ?? RNode.span(statement);
 		/* several statements may cover the line (`a <- 1; b <- 2`), the one starting first wins */
 		if(range !== undefined && (bestRange === undefined || SourceRange.compare(range, bestRange) < 0)) {
 			best = statement;

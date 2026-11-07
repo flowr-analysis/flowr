@@ -350,11 +350,10 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			childInfo.index = i++;
 			childInfo.role = RoleInParent.ExpressionListChild;
 		}
-		// assign role for grouping
-		if(grouping) {
-			const [open, close] = grouping;
-			open.info.role = RoleInParent.ExpressionListGrouping;
-			close.info.role = RoleInParent.ExpressionListGrouping;
+		/* the braces belong to their block, so walking up from one reaches the block and its statement */
+		for(const brace of grouping ?? []) {
+			brace.info.parent = id;
+			brace.info.role = RoleInParent.ExpressionListGrouping;
 		}
 		decorated.info.file = info.file;
 		return decorated;

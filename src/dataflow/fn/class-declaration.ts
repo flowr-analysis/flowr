@@ -3,7 +3,7 @@
  * which argument means what is configured per built-in in {@link ClassDeclarationConfig}, not guessed.
  */
 
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -55,23 +55,25 @@ export interface ClassMember {
 
 /** What one class-declaring call states. Everything but {@link system} is best-effort: an argument that does not resolve statically is left out rather than guessed. */
 export interface ClassDeclaration {
-	readonly system:     ClassSystem;
+	readonly system:            ClassSystem;
 	/** the declared class name, absent when the naming argument does not resolve to a literal */
-	readonly name?:      string;
+	readonly name?:             string;
 	/** the direct superclasses, in the order the declaration lists them (S7/R6 have at most one) */
-	readonly contains:   readonly string[];
+	readonly contains:          readonly string[];
 	/** the slots/properties/fields the declaration states, in order */
-	readonly members:    readonly ClassMember[];
+	readonly members:           readonly ClassMember[];
 	/** the class cannot be instantiated: `representation("VIRTUAL")`, `contains = "VIRTUAL"`, S7 `abstract = TRUE`, or a class union */
-	readonly virtual?:   boolean;
+	readonly virtual?:          boolean;
 	/** the members of a `setClassUnion`, which are subclasses of it rather than superclasses */
-	readonly union?:     readonly string[];
+	readonly union?:            readonly string[];
 	/** the members the `prototype` gives a default for; the defaults themselves are values, which no declaration model carries */
-	readonly prototype?: readonly string[];
+	readonly prototype?:        readonly string[];
 	/** the declaration only *relates* two existing classes (`setIs`) or attaches a validator (`setValidity`), it declares no class of its own */
-	readonly relation?:  'is' | 'validity';
+	readonly relation?:         'is' | 'validity';
 	/** names the declaration references rather than states as literals, e.g. an R6 `inherit = Generator` */
-	readonly byVariable: readonly string[];
+	readonly byVariable:        readonly string[];
+	/** the names the methods of the class see the instance they are called on by, see {@link ClassDeclarationConfig.instanceBindings} */
+	readonly instanceBindings?: readonly string[];
 }
 
 /** Which argument of a class-declaring built-in says what; `idx` is the position when the call names no argument. */
@@ -92,21 +94,23 @@ export interface ClassMemberArgRef extends ClassArgRef {
 
 /** How one built-in declares a class, so no processor has to guess an argument's meaning from its position. */
 export interface ClassDeclarationConfig {
-	readonly system:        ClassSystem;
+	readonly system:            ClassSystem;
 	/** the argument naming the class */
-	readonly nameArg?:      ClassArgRef;
+	readonly nameArg?:          ClassArgRef;
 	/** the argument carrying the direct superclass(es): S4 `contains`, S7 `parent`, R6 `inherit`, RC `contains` */
-	readonly containsArg?:  ClassArgRef;
+	readonly containsArg?:      ClassArgRef;
 	/** the arguments carrying members, in the order they are to be read */
-	readonly memberArgs?:   readonly ClassMemberArgRef[];
+	readonly memberArgs?:       readonly ClassMemberArgRef[];
 	/** the argument saying the class cannot be instantiated (S7 `abstract`) */
-	readonly virtualArg?:   ClassArgRef;
+	readonly virtualArg?:       ClassArgRef;
 	/** the argument listing the members of a class union (`setClassUnion`) */
-	readonly unionArg?:     ClassArgRef;
+	readonly unionArg?:         ClassArgRef;
 	/** the argument carrying the member defaults (S4 `prototype`) */
-	readonly prototypeArg?: ClassArgRef;
+	readonly prototypeArg?:     ClassArgRef;
 	/** the declaration relates existing classes rather than declaring one */
-	readonly relation?:     'is' | 'validity';
+	readonly relation?:         'is' | 'validity';
+	/** the names the methods of the class see the instance they are called on by (R6 `self` and `private`, RC `.self`), so writing through them changes that instance */
+	readonly instanceBindings?: readonly string[];
 }
 
 /** the class name R uses to mark a class as non-instantiable */
@@ -211,15 +215,16 @@ export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, arg
 	/* a class union is virtual by construction: it exists to be extended, never to be instantiated */
 	const isUnion = union.length > 0;
 	return compactRecord({
-		system:    config.system,
+		system:           config.system,
 		name,
-		contains:  parents.values.filter(c => c !== VirtualClass),
+		contains:         parents.values.filter(c => c !== VirtualClass),
 		members,
-		virtual:   virtual || isUnion ? true : undefined,
-		union:     isUnion ? union : undefined,
-		prototype: prototype.length > 0 ? prototype : undefined,
-		relation:  config.relation,
-		byVariable
+		virtual:          virtual || isUnion ? true : undefined,
+		union:            isUnion ? union : undefined,
+		prototype:        prototype.length > 0 ? prototype : undefined,
+		relation:         config.relation,
+		byVariable,
+		instanceBindings: config.instanceBindings
 	});
 }
 
@@ -360,4 +365,15 @@ export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly g
 	const values = isRead ? Dataflow.targetsOf(graph, value, EdgeType.Reads).map(def => Dataflow.assignedValueOf(def, graph)) : [value];
 	const classes = values.map(v => v === undefined ? undefined : s3ClassOfValue(v, info));
 	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
+}
+
+/** The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them. */
+export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly string[] | undefined {
+	for(let node = idMap.get(fn); node !== undefined; node = RNode.directParent(node, idMap)) {
+		const vertex = RFunctionCall.is(node) ? graph.getVertex(node.info.id) : undefined;
+		if(DfgVertex.isFunctionCall(vertex) && vertex.classDecl?.instanceBindings !== undefined) {
+			return vertex.classDecl.instanceBindings;
+		}
+	}
+	return undefined;
 }

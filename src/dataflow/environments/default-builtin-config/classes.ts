@@ -66,11 +66,12 @@ export const ClassesDefinitions = [
 	fn(pkg(PkgName.R6, 'R6Class'), BuiltInProcName.ClassGenerator,
 		{
 			classDecl: {
-				system:      ClassSystem.R6,
-				nameArg:     { idx: 0, name: 'classname' },
+				system:           ClassSystem.R6,
+				nameArg:          { idx: 0, name: 'classname' },
 				/* R6 inherits from the *generator object*, so the superclass arrives as a variable, not a string */
-				containsArg: { name: 'inherit' },
-				memberArgs:  [
+				containsArg:      { name: 'inherit' },
+				instanceBindings: ['self', 'private'],
+				memberArgs:       [
 					{ idx: 1, name: 'public', visibility: MemberVisibility.Public },
 					{ name: 'private', visibility: MemberVisibility.Private },
 					{ name: 'active', visibility: MemberVisibility.Active }
@@ -82,7 +83,7 @@ export const ClassesDefinitions = [
 		{
 			props:     CallProp.Invisible,
 			tags:      [SemanticCallTag.Declares],
-			classDecl: { system: ClassSystem.RefClass, nameArg: { idx: 0, name: 'Class' }, containsArg: { idx: 2, name: 'contains' }, memberArgs: [{ idx: 1, name: 'fields', typed: true }, { idx: 3, name: 'methods', methods: true }] },
+			classDecl: { system: ClassSystem.RefClass, nameArg: { idx: 0, name: 'Class' }, containsArg: { idx: 2, name: 'contains' }, instanceBindings: ['.self'], memberArgs: [{ idx: 1, name: 'fields', typed: true }, { idx: 3, name: 'methods', methods: true }] },
 			sig:       sig({ Class: ArgProp.NoDefault, fields: 0, contains: 0, methods: 0, where: 0, inheritPackage: 0, '...': 0 })
 		}
 	),

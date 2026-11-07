@@ -10,8 +10,14 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 			{ name: 'an S3 method with a super assignment', code: 'n <- 0\nbump <- function(o) UseMethod("bump")\nbump.cnt <- function(o) n <<- n + o$by\nbump(structure(list(by = 4), class = "cnt"))\nprint(n)' },
 			{ name: 'an S3 method called through a generic two calls deep', code: 'k <- 3\nsz <- function(o) UseMethod("sz")\nsz.box <- function(o) o$n * k\nmeasure <- function(o) sz(o)\nreport <- function(o) measure(o)\nprint(report(structure(list(n = 2), class = "box")))' },
 			{ name: 'an S4 method reading a global', code: 'setGeneric("ar", function(o) standardGeneric("ar"))\nsetClass("Sq", representation(w = "numeric"))\nk <- 2\nsetMethod("ar", "Sq", function(o) o@w * k)\nprint(ar(new("Sq", w = 3)))' },
-			{ name: 'an R6 method reading a global', code: 'library(R6)\nk <- 2\nC <- R6Class("C", public = list(v = 1, inc = function() { self$v <- self$v + k; invisible(self) }))\no <- C$new()\no$inc()\nprint(o$v)', red: 'R prints 3, the slice drops o$inc() and k <- 2 and prints 1' },
-			{ name: 'an R6 method changing a field', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\no <- C$new()\no$inc()\nprint(o$v)', red: 'R prints 3, the slice drops o$inc() which changes the field of self' },
+			{ name: 'an R6 method reading a global', code: 'library(R6)\nk <- 2\nC <- R6Class("C", public = list(v = 1, inc = function() { self$v <- self$v + k; invisible(self) }))\no <- C$new()\no$inc()\nprint(o$v)' },
+			{ name: 'an R6 method changing a field', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\no <- C$new()\no$inc()\nprint(o$v)' },
+			{ name: 'an R6 method taken out of its instance', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\no <- C$new()\nf <- o$inc\nf()\nprint(o$v)' },
+			{ name: 'an R6 method changing a field through another method', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, set = function(x) self$v <- x, inc = function() self$set(3)))\no <- C$new()\no$inc()\nprint(o$v)' },
+			{ name: 'an R6 method changing a private field', code: 'library(R6)\nC <- R6Class("C", public = list(set = function() private$v <- 3, get = function() private$v), private = list(v = 1))\no <- C$new()\no$set()\nprint(o$get())' },
+			{ name: 'R6 methods chained on an instance', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() { self$v <- self$v + 1; invisible(self) }))\no <- C$new()\no$inc()$inc()\nprint(o$v)' },
+			{ name: 'an R6 method called on a fresh instance', code: 'library(R6)\nn <- 0\nC <- R6Class("C", public = list(go = function() n <<- 2))\nC$new()$go()\nprint(n)' },
+			{ name: 'a Reference Class method changing a field of .self', code: 'C <- setRefClass("C", fields = list(v = "numeric"), methods = list(inc = function() .self$v <- 3))\no <- C$new(v = 1)\no$inc()\nprint(o$v)' },
 			{ name: 'an R6 method reading a global only', code: 'library(R6)\nk <- 2\nC <- R6Class("C", public = list(get = function() k))\no <- C$new()\nprint(o$get())' },
 			{ name: 'an R6 method with a super assignment', code: 'library(R6)\nn <- 0\nC <- R6Class("C", public = list(go = function() n <<- 6))\no <- C$new()\no$go()\nprint(n)' }
 		];

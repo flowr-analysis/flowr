@@ -29,6 +29,7 @@ import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 import { Dataflow } from '../graph/df-helper';
 import { AmbientStateName } from '../environments/ambient-state-name';
+import { instanceBindingsOfMethod } from '../fn/class-declaration';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -93,6 +94,17 @@ function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment
 	return (Resolve.byName(info.name, environment) ?? []).filter(hasEnvState).map(d => d.envState);
 }
 
+/** The definitions holding the instance a method call `obj$m(...)` runs `fn` on, with the names `fn` sees that instance by. */
+function instanceOfMethodCall(graph: DataflowGraph, fn: NodeId, info: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, idMap: AstIdMap): { readonly bindings: readonly string[], readonly holders: readonly IdentifierDefinition[] } | undefined {
+	const call = idMap.get(info.id);
+	/* a method taken out of its instance first, `f <- o$m; f()`, still runs on that instance */
+	const accesses = RFunctionCall.isUnnamed(call) ? [call.calledFunction] : Dataflow.targetsOf(graph, info.id, EdgeType.Reads).map(d => idMap.get(Dataflow.assignedValueOf(d, graph) ?? d));
+	const instances = accesses.map(a => RAccess.is(a) && RSymbol.is(a.accessed) ? a.accessed.content : undefined).filter(isNotUndefined);
+	const bindings = instances.length > 0 ? instanceBindingsOfMethod(fn, graph, idMap) : undefined;
+	const holders = bindings && instances.flatMap(i => Resolve.byNameAndType(i, environment, ReferenceType.Variable)?.filter(hasEnvState) ?? []);
+	return holders?.length ? { bindings: bindings as readonly string[], holders } : undefined;
+}
+
 /**
  * The frames of `environment` a function whose body runs at `bodyLevel` can see: the frame it was defined in and
  * those around it, never the frames of the functions calling it.
@@ -120,6 +132,7 @@ export function linkFunctionCallWithSingleTarget(
 	if(environment !== undefined) {
 		let callee: readonly REnvironmentInformation[] | undefined;
 		let lexical: REnvironmentInformation | undefined;
+		let instance: ReturnType<typeof instanceOfMethodCall> | null = null;
 		/* for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it */
 		for(const ingoing of fnSubflow.in) {
 			const name = ingoing.name;
@@ -128,7 +141,8 @@ export function linkFunctionCallWithSingleTarget(
 			}
 			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
 			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type) ?? [];
+			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type)
+				?? ((instance ??= instanceOfMethodCall(graph, fnId, info, environment, idMap))?.bindings.includes(Identifier.getName(name)) ? instance.holders : []);
 			for(const { nodeId, type, value, definedAt, envState } of defs as readonly InGraphIdentifierDefinition[]) {
 				/* the state an earlier run of the function left behind is what its next run reads */
 				if(fnSubflow.graph.has(nodeId) && !AmbientStateName.is(name) || NodeId.isBuiltIn(nodeId)) {

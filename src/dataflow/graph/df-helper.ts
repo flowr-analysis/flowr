@@ -187,9 +187,10 @@ export const Dataflow = {
 	/**
 	 * All known targets of a call, as well as the name sources which define them (empty if there are none).
 	 * Prefer this over {@link Dataflow.calleeIdsOf} if the call may go through a read, an alias, or a built-in.
-	 * Keep in mind that, when you ask for the targets of many calls, you should create one {@link LinkedFunctionResolver} and
-	 * pass it to every call (the call graph does this), and that a resolver must not outlive a change to the graph,
-	 * as it remembers what it found. The targets may include built-in ids ({@link NodeId.isBuiltIn}).
+	 * Keep in mind that, when you ask for the targets of many calls, you should share the walks between them: within
+	 * {@link DataflowGraph#sharingTargetWalks} (queries and linter rules run within one) every call shares them, and
+	 * a {@link LinkedFunctionResolver} passed to every call does the same (the call graph does this). A resolver must
+	 * not outlive a change to the graph, as it remembers what it found. The targets may include built-in ids ({@link NodeId.isBuiltIn}).
 	 * @param call        - The id of the call
 	 * @param graph       - The graph the call is part of
 	 * @param environment - The environment to resolve the call name in, if the call does not carry one itself

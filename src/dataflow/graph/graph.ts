@@ -16,6 +16,7 @@ import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
 import { REnvironment } from '../environments/environment';
 import { AmbientAccessRecord } from './ambient-access';
+import type { LinkedFunctionResolver } from '../internal/linker';
 
 /**
  * Describes the information we store per function body.
@@ -392,11 +393,13 @@ export class DataflowGraph<
 		if(cache.complete) {
 			return wanted;
 		}
-		for(const id of this.types.get(VertexType.FunctionCall) ?? []) {
-			if(!wanted.has(id)) {
-				this.resolveInto(cache, id, this.vertexInformation.get(id), resolve);
+		this.sharingTargetWalks(() => {
+			for(const id of this.types.get(VertexType.FunctionCall) ?? []) {
+				if(!wanted.has(id)) {
+					this.resolveInto(cache, id, this.vertexInformation.get(id), resolve);
+				}
 			}
-		}
+		});
 		cache.complete = true;
 		return wanted;
 	}
@@ -415,10 +418,51 @@ export class DataflowGraph<
 	/** set by a `consume` merge, see {@link DataflowGraph#mergeWith|mergeWith()}; the graph must not change after that */
 	private consumed = false;
 
+	/** how many {@link DataflowGraph#sharingTargetWalks} are running, the shared walks are dropped once none is */
+	private walkSharers = 0;
+	private targetWalks?: LinkedFunctionResolver;
+
+	/**
+	 * Runs `fn`, sharing the walks for call targets ({@link Dataflow.callTargetsOf}) between all the calls it asks about,
+	 * as long as the graph does not change. They are dropped on every change and once `fn` is done, which for a
+	 * promise is once it settles.
+	 * @example
+	 * ```ts
+	 * graph.sharingTargetWalks(() => calls.map(id => Dataflow.callTargetsOf(id, graph)));
+	 * ```
+	 */
+	public sharingTargetWalks<T>(fn: () => T): T {
+		this.walkSharers++;
+		let result: T;
+		try {
+			result = fn();
+		} catch(e) {
+			this.stopSharingTargetWalks();
+			throw e;
+		}
+		if(result instanceof Promise) {
+			return result.finally(() => this.stopSharingTargetWalks()) as T;
+		}
+		this.stopSharingTargetWalks();
+		return result;
+	}
+
+	private stopSharingTargetWalks(): void {
+		if(--this.walkSharers === 0) {
+			this.targetWalks = undefined;
+		}
+	}
+
+	/** The walks shared while {@link DataflowGraph#sharingTargetWalks} runs, made by `create` on demand, else `undefined`. */
+	public sharedTargetWalks(create: (graph: this) => LinkedFunctionResolver): LinkedFunctionResolver | undefined {
+		return this.walkSharers === 0 ? undefined : this.targetWalks ??= create(this);
+	}
+
 	/** Drops the cached qualifications, as the graph may no longer imply them. Every mutator runs through here, so the guard covers them all. */
 	private dropQualifications(): void {
 		guard(!this.consumed, 'this graph was consumed by a merge and must not be changed any more');
 		this.qualifiedNames = undefined;
+		this.targetWalks = undefined;
 	}
 
 	/** For a node of the normalized AST: `nodeId` if it is a DFG vertex itself, else the DFG vertices linked to it, else `undefined`. */

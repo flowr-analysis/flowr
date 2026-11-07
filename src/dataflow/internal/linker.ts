@@ -510,7 +510,8 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		return [];
 	}
 	const reads = new Set(functionCallDefs);
-	const [targets, builtIns] = resolver?.resolve(reads) ?? getAllLinkedFunctionDefinitions(reads, graph);
+	const shared = resolver ?? graph.sharedTargetWalks(g => new LinkedFunctionResolver(g));
+	const [targets, builtIns] = shared?.resolve(reads) ?? getAllLinkedFunctionDefinitions(reads, graph);
 	const all = new Set([...targets.values().map(t => t.id), ...builtIns, ...functionCallDefs]);
 	/* the methods its dispatch rules out are still found by the name */
 	info.ruledOut?.forEach(e => all.delete(e));

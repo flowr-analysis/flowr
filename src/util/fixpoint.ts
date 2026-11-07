@@ -1,5 +1,8 @@
 import { ArrayQueue } from './collections/queue';
 
+/** the number of a node whose component is complete, see {@link StronglyConnected} */
+const Complete = -1;
+
 /**
  * The strongly connected components of a graph whose successors are asked for only once a node is reached (Tarjan's
  * algorithm, iterative). Each component is completed once everything it leads to is, so callees come before callers.
@@ -8,11 +11,12 @@ import { ArrayQueue } from './collections/queue';
 export class StronglyConnected<K> {
 	private readonly next:       (node: K) => Iterable<K>;
 	private readonly onComplete: (members: readonly K[], successorsOf: (member: K) => readonly K[]) => void;
+	/** the number each node was entered with, {@link Complete} once its component is */
 	private readonly index =      new Map<K, number>();
-	private readonly low =        new Map<K, number>();
-	private readonly successors = new Map<K, readonly K[]>();
+	/* by the number of a node whose component is not complete yet */
+	private readonly low:        number[] = [];
+	private readonly successors: (readonly K[] | undefined)[] = [];
 	private readonly open:       K[] = [];
-	private readonly done =       new Set<K>();
 	private entered = 0;
 
 	/**
@@ -25,66 +29,63 @@ export class StronglyConnected<K> {
 	}
 
 	public isComplete(node: K): boolean {
-		return this.done.has(node);
+		return this.index.get(node) === Complete;
 	}
 
 	/** Completes the component of `start` and every component it leads to. */
 	public visit(start: K): void {
-		if(this.done.has(start)) {
+		if(this.index.has(start)) {
 			return;
 		}
-		const path = [start];
+		const path = [this.enter(start)];
 		const positions = [0];
-		this.enter(start);
 		while(path.length > 0) {
 			const top = path.length - 1;
-			const node = path[top];
-			const successors = this.successors.get(node) as readonly K[];
+			const at = path[top];
+			const successors = this.successors[at] as readonly K[];
 			if(positions[top] < successors.length) {
-				const next = successors[positions[top]++];
-				if(this.done.has(next)) {
-					continue;
-				}
-				const at = this.index.get(next);
-				if(at === undefined) {
-					this.enter(next);
-					path.push(next);
+				const next = this.index.get(successors[positions[top]++]);
+				if(next === undefined) {
+					path.push(this.enter(successors[positions[top] - 1]));
 					positions.push(0);
-				} else if(at < (this.low.get(node) as number)) {
-					this.low.set(node, at);
+				} else if(next !== Complete && next < this.low[at]) {
+					this.low[at] = next;
 				}
 				continue;
 			}
 			path.pop();
 			positions.pop();
-			const low = this.low.get(node) as number;
-			if(path.length > 0) {
-				const parent = path[path.length - 1];
-				if(low < (this.low.get(parent) as number)) {
-					this.low.set(parent, low);
-				}
+			const low = this.low[at];
+			if(path.length > 0 && low < this.low[path[path.length - 1]]) {
+				this.low[path[path.length - 1]] = low;
 			}
-			if(low === this.index.get(node)) {
-				this.complete(node);
+			if(low === at) {
+				this.complete(at);
 			}
 		}
 	}
 
-	private enter(node: K): void {
-		this.index.set(node, this.entered);
-		this.low.set(node, this.entered++);
+	private enter(node: K): number {
+		const at = this.entered++;
+		this.index.set(node, at);
+		this.low[at] = at;
 		this.open.push(node);
-		this.successors.set(node, [...this.next(node)]);
+		const next = this.next(node);
+		this.successors[at] = Array.isArray(next) ? next as readonly K[] : [...next];
+		return at;
 	}
 
-	private complete(root: K): void {
-		const members = this.open.splice(this.open.lastIndexOf(root));
-		this.onComplete(members, m => this.successors.get(m) as readonly K[]);
+	private complete(root: number): void {
+		let start = this.open.length - 1;
+		while(this.index.get(this.open[start]) !== root) {
+			start--;
+		}
+		const members = this.open.splice(start);
+		this.onComplete(members, m => this.successors[this.index.get(m) as number] as readonly K[]);
 		for(const m of members) {
-			this.done.add(m);
-			this.index.delete(m);
-			this.low.delete(m);
-			this.successors.delete(m);
+			const at = this.index.get(m) as number;
+			this.successors[at] = undefined;
+			this.index.set(m, Complete);
 		}
 	}
 }

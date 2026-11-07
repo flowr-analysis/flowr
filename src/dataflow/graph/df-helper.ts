@@ -184,10 +184,19 @@ export const Dataflow = {
 	/**
 	 * All known targets of a call, as well as the name sources which define them (empty if there are none).
 	 * Prefer this over {@link Dataflow.calleeIdsOf} if the call may go through a read, an alias, or a built-in.
+	 * Keep in mind that, when you ask for the targets of many calls, you should create one {@link LinkedFunctionResolver} and
+	 * pass it to every call (the call graph does this), and that a resolver must not outlive a change to the graph,
+	 * as it remembers what it found. The targets may include built-in ids ({@link NodeId.isBuiltIn}).
 	 * @param call        - The id of the call
 	 * @param graph       - The graph the call is part of
 	 * @param environment - The environment to resolve the call name in, if the call does not carry one itself
 	 * @param resolver    - Shares the work with the targets of other calls it found, as long as the graph does not change
+	 * @example
+	 * ```ts
+	 * const { graph } = await analyzer.dataflow();
+	 * const resolver = new LinkedFunctionResolver(graph);
+	 * const targets = [...graph.verticesOfType(VertexType.FunctionCall)].map(([id]) => Dataflow.callTargetsOf(id, graph, undefined, resolver));
+	 * ```
 	 */
 	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
 		return getAllFunctionCallTargets(call, graph, environment, resolver);
@@ -248,15 +257,37 @@ export const Dataflow = {
 		 * What running the given code reads and writes of the global state (pseudo variables like `#option:digits`, see {@link AmbientStateName}),
 		 * the global variables the functions it calls bind, and its drawing calls (`SemanticCallTag.Graphics`), including what the functions it calls access.
 		 * The scope is one id or the ids of a file, a block, or a statement (see `RNode.collectAllIds`). Writes confined to a function's own frame are left out.
+		 * Keep in mind that a function defined in the scope only counts if the scope calls it, that the result over-approximates
+		 * (a write in a branch counts as a write), and that `includeCallees: false` only looks at the calls in the scope.
+		 * Pass the dataflow information instead of the bare graph, so that the configured built-ins of the analysis are honored.
+		 * @example
+		 * ```ts
+		 * const df = await analyzer.dataflow();
+		 * const ids = RNode.collectAllIds((await analyzer.normalize()).ast.files[0].root);
+		 * const { reads, writes, draws } = Dataflow.sideEffects.ambientAccess(df, ids);
+		 * writes.has('#option:digits'); // true if the code may change `digits`, as `options(digits = 3)` does
+		 * ```
 		 */
 		ambientAccess:            ambientAccessOf,
-		/** {@link Dataflow.sideEffects.ambientAccess} for every function definition when it is called, including what the functions it calls access. */
+		/**
+		 * {@link Dataflow.sideEffects.ambientAccess} for every function definition when it is called, including what the functions it calls access.
+		 * Prefer this over asking for each function with {@link Dataflow.sideEffects.ambientAccess}, as it computes all of them in one pass over the call graph.
+		 * @example
+		 * ```ts
+		 * const byFunction = Dataflow.sideEffects.ambientAccessOfFunctions(await analyzer.dataflow());
+		 * const pure = [...byFunction].filter(([, a]) => a.writes.size === 0 && a.variables.size === 0).map(([id]) => id);
+		 * ```
+		 */
 		ambientAccessOfFunctions: ambientAccessOfFunctions,
 		/**
 		 * The global state each function may leave changed when called, as pseudo variable names ({@link AmbientStateName}),
 		 * including what the functions it calls change, with what is only assumed of a body flowR cannot see (`f()` for a parameter `f`)
 		 * and the global variables it binds apart. Writes only to the function's own frame are left out.
 		 * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
+		 * @example
+		 * ```ts
+		 * const writes = Dataflow.sideEffects.ambientWrites(await analyzer.dataflow());
+		 * ```
 		 */
 		ambientWrites:            ambientWritesOfFunctions,
 	},

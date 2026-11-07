@@ -60,9 +60,22 @@ export const RAccess = {
 	/**
 	 * The operators that access by name (`x$name`, `x@name`) rather than by index (`x[i]`, `x[[i]]`).
 	 * This is the one place that distinguishes them; use {@link RAccess.isNamedOperator} or {@link RAccess.isNamed}.
+	 * Spread it where you need a mutable list, as it is read-only.
+	 * @example
+	 * ```ts
+	 * const replacementNames: string[] = [...RAccess.namedOperators]; // ['$', '@']
+	 * ```
 	 */
 	namedOperators: ['$', '@'] as const,
-	/** Whether `operator` accesses by name, see {@link RAccess.namedOperators}. */
+	/**
+	 * Whether `operator` accesses by name, see {@link RAccess.namedOperators}. Use it for the operator string, and
+	 * {@link RAccess.isNamed} if you hold a node, since the latter narrows the node.
+	 * @example
+	 * ```ts
+	 * RAccess.isNamedOperator('$');  // true
+	 * RAccess.isNamedOperator('[['); // false
+	 * ```
+	 */
 	isNamedOperator(this: void, operator: string): operator is RNamedAccess['operator'] {
 		return (RAccess.namedOperators as readonly string[]).includes(operator);
 	}

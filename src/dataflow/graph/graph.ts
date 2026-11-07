@@ -445,24 +445,43 @@ export class DataflowGraph<
 		return this._unknownSideEffects;
 	}
 
-	/** What the call `id` reads and writes of the global state, if it touches any, see {@link AmbientAccessRecord}. */
+	/**
+	 * What the call `id` reads and writes of the global state, if it touches any, see {@link AmbientAccessRecord}.
+	 * This is what the call touches itself, not what the functions it calls touch. Use {@link Dataflow.sideEffects.ambientAccess}
+	 * to include them, and expect `undefined` for the majority of calls, as only the ones touching options, devices, files, and the like have a record.
+	 * @example
+	 * ```ts
+	 * const record = graph.ambientAccessOf(callId);
+	 * record?.writes.includes('#option:digits'); // true for `options(digits = 3)`
+	 * ```
+	 */
 	public ambientAccessOf(id: NodeId): AmbientAccessRecord | undefined {
 		return this._ambientAccess.get(id);
 	}
 
-	/** The ids of all calls recorded as touching the global state. */
+	/** The ids of all calls recorded as touching the global state. The iterator is live, so do not record or forget while you iterate. */
 	public ambientAccessIds(): IterableIterator<NodeId> {
 		return this._ambientAccess.keys();
 	}
 
-	/** Records that the call `id` touches the global state like given, adding to what it is known to touch already. */
+	/**
+	 * Records that the call `id` touches the global state like given, adding to what it is known to touch already.
+	 * Records only ever grow with this, so use {@link DataflowGraph#forgetAmbientAccess} if the call turns out to never run.
+	 * @example
+	 * ```ts
+	 * graph.recordAmbientAccess(callId, { reads: ['#option:digits'] }).recordAmbientAccess(callId, { writes: ['#rng'] });
+	 * ```
+	 */
 	public recordAmbientAccess(id: NodeId, access: Partial<AmbientAccessRecord>): this {
 		id = NodeId.normalize(id);
 		this._ambientAccess.set(id, AmbientAccessRecord.merge(this._ambientAccess.get(id), access));
 		return this;
 	}
 
-	/** Forgets what the call `id` was recorded to touch, for code that never runs. */
+	/**
+	 * Forgets what the call `id` was recorded to touch, for code that never runs, like the calls of an expression that is only quoted.
+	 * It forgets all of the record, so the access of a call that runs conditionally must stay recorded.
+	 */
 	public forgetAmbientAccess(id: NodeId): this {
 		this._ambientAccess.delete(NodeId.normalize(id));
 		return this;

@@ -19,9 +19,23 @@ export interface AmbientAccessRecord {
 const None: readonly string[] = [];
 const Kinds = ['reads', 'writes', 'assumed', 'local'] as const;
 
+/**
+ * Helper functions for the {@link AmbientAccessRecord}, which the dataflow graph keeps for each call touching global state
+ * (see {@link DataflowGraph#ambientAccessOf}). Records are immutable, so combine them with {@link AmbientAccessRecord.merge}
+ * instead of changing one.
+ * @example
+ * ```ts
+ * const a = AmbientAccessRecord.merge(undefined, { reads: ['#option:digits'] });
+ * const b = AmbientAccessRecord.merge(a, { writes: ['#option:digits'] });
+ * AmbientAccessRecord.equals(a, b); // false
+ * ```
+ */
 export const AmbientAccessRecord = {
 	name: 'AmbientAccessRecord',
-	/** Unions the records, leaving the first one itself if nothing is new. */
+	/**
+	 * Unions the records, keeping the lists of the first one themselves where nothing is new (to spare allocations, so do not rely
+	 * on a new list meaning a change, use {@link AmbientAccessRecord.equals}). The first record may be missing, which starts a new one.
+	 */
 	merge(this: void, a: AmbientAccessRecord | undefined, b: Partial<AmbientAccessRecord>): AmbientAccessRecord {
 		const union = (x: readonly string[] | undefined, y: readonly string[] | undefined): readonly string[] =>
 			y === undefined || y.length === 0 ? x ?? None : x === undefined || x.length === 0 ? y : y.every(n => x.includes(n)) ? x : uniqueArrayMerge(x, y);
@@ -32,7 +46,10 @@ export const AmbientAccessRecord = {
 			local:   union(a?.local, b.local)
 		};
 	},
-	/** Whether both records state the same access, in any order. */
+	/**
+	 * Whether both records state the same access, in any order. Mind that the order of names is not stable, so do not
+	 * compare the lists or their JSON with `===`.
+	 */
 	equals(this: void, a: AmbientAccessRecord, b: AmbientAccessRecord): boolean {
 		return Kinds.every(kind => setEquals(new Set(a[kind]), new Set(b[kind])));
 	}

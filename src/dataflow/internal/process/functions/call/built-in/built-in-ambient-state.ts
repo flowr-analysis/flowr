@@ -397,7 +397,14 @@ export type AmbientStateAccess = {
 	readonly queryLinksTo?:          LinkTo<RegExp | string>
 };
 
-/** Whether a call drawing on a device writes its canvas, see `semantics.ambient.drawingWritesDevice`. */
+/**
+ * Whether a call drawing on a device writes its canvas, see `semantics.ambient.drawingWritesDevice`.
+ * Ask this with the config of the analysis you process, not the default one, as the answer is the user's choice.
+ * @example
+ * ```ts
+ * drawingWritesDevice(analyzer.flowrConfig) // false, unless configured
+ * ```
+ */
 export function drawingWritesDevice(config: FlowrConfig): boolean {
 	return config.semantics.ambient?.drawingWritesDevice === true;
 }

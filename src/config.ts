@@ -128,7 +128,16 @@ export interface FlowrConfig {
 			}
 		}
 		readonly ambient?: {
-			/** Whether a call drawing on a graphics device (`plot`, `lines`, ...) writes what is drawn, the pseudo variable `#canvas`, defaults to false */
+			/**
+			 * Whether a call drawing on a graphics device (`plot`, `lines`, ...) writes what is drawn, the pseudo variable `#canvas`, defaults to false.
+			 * Turn it on if the drawn plot is the output you slice for or compare, and keep it off if you only care about the
+			 * graphics parameters (`par`), as every plot then depends on all earlier plots on the same device.
+			 * It has to be set before the analysis runs, as the setting is applied when the calls are processed.
+			 * @example
+			 * ```ts
+			 * const analyzer = await new FlowrAnalyzerBuilder().configure('semantics.ambient.drawingWritesDevice', true).build();
+			 * ```
+			 */
 			readonly drawingWritesDevice?: boolean
 		}
 	},

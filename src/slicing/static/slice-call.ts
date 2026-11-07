@@ -3,7 +3,7 @@ import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
 import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
+import type { CallRuledOut, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { type DataflowGraph, FunctionArgument, type ReadonlyOutgoingEdges } from '../../dataflow/graph/graph';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
@@ -45,7 +45,7 @@ function linkedFunctionsOf(defs: readonly NodeId[], graph: DataflowGraph): Reado
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, ruledOut?: ReadonlySet<NodeId>): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	guard(dataflowGraph.hasVertex(callerInfo.id), () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 	// bind with call-local environments during slicing
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
@@ -55,7 +55,7 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 	const linked = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
 	/* a lookup by name still finds the methods the dispatch of the call rules out */
 	const excludes = callerInfo.ruledOut;
-	const functionCallTargets = excludes === undefined ? linked : new Set(linked.values().filter(t => !excludes.includes(t.id)));
+	const functionCallTargets = excludes === undefined && ruledOut === undefined ? linked : new Set(linked.values().filter(t => !excludes?.includes(t.id) && !ruledOut?.has(t.id)));
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -79,9 +79,12 @@ function linkCallTargets(
 	}
 }
 
-/** Links the call `callerInfo` to the definitions it resolves to, or to the closures of its arguments if it resolves to none. */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, ctx);
+/**
+ * Links the call `callerInfo` to the definitions it resolves to, or to the closures of its arguments if it resolves to none.
+ * @param ruledOut - the methods the dispatch of the call does not run in this slice, beyond those it never runs
+ */
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext, ruledOut?: ReadonlySet<NodeId>): void {
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, ctx, ruledOut);
 	/* hashing the environment is expensive, so only a call that links something pays for it */
 	let fingerprint: Fingerprint | undefined;
 	const activeEnvironmentFingerprint = () => fingerprint ??= activeEnvironment === current.baseEnvironment ? current.envFingerprint : envFingerprint(activeEnvironment);
@@ -104,6 +107,33 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 			linkCallTargets(false, linkedFunctionsOf([reference], graph), activeEnvironment, activeEnvironmentFingerprint, queue);
 		}
 	}
+}
+
+/**
+ * The methods a dispatch decided per call of the function `enclosing` holding it does not run in a slice: those it rules
+ * out at every call of `enclosing` the slice holds. A slice starting in `enclosing`, or holding none of its calls, keeps all.
+ * @example
+ * ```ts
+ * // f <- function(x) UseMethod("f"), sliced for f(structure(1, class = "a")) alone
+ * ruledOutInSlice(dispatch.ruledOutAt, idOfF, graph, queue, opened); // the method f.b
+ * ```
+ */
+export function ruledOutInSlice(perCall: readonly CallRuledOut[], enclosing: NodeId | undefined, graph: DataflowGraph, queue: VisitingQueue, opened: ReadonlySet<NodeId>): ReadonlySet<NodeId> | undefined {
+	if(enclosing === undefined || opened.has(enclosing)) {
+		return undefined;
+	}
+	let common: ReadonlySet<NodeId> | undefined;
+	for(const caller of Dataflow.sourcesOf(graph, enclosing, EdgeType.Calls)) {
+		if(queue.hasId(caller)) {
+			const methods = perCall.find(p => p.call === caller)?.methods ?? [];
+			const before = common;
+			common = new Set(before === undefined ? methods : methods.filter(m => before.has(m)));
+			if(common.size === 0) {
+				return undefined;
+			}
+		}
+	}
+	return common;
 }
 
 /**

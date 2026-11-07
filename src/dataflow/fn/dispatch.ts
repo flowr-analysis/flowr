@@ -16,7 +16,7 @@ import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, type S4SignatureEntry, VertexType } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
-import type { ResolveInfo } from '../eval/resolve/alias-tracking';
+import { callOfArgument, type ResolveInfo } from '../eval/resolve/alias-tracking';
 import { NodeValue } from '../eval/resolve/node-value';
 import { collectStrings } from '../eval/values/string/string-constants';
 import { isValue } from '../eval/values/r-value';
@@ -159,8 +159,14 @@ function definitionStep(id: NodeId, node: RNode<ParentInformation> | undefined, 
 	if(node?.info.role === RoleInParent.ParameterName) {
 		/* R dispatches on the promise the call binds, so every call of the function has to bind one */
 		const fn = node.info.parent === undefined ? undefined : info.idMap.get(node.info.parent)?.info.parent;
-		const calls = fn === undefined ? 0 : Dataflow.sourcesOf(graph, fn, EdgeType.Calls).length;
 		const bound = Dataflow.targetsOf(graph, id, EdgeType.DefinedByOnCall);
+		/* in the context of one call, the parameter holds what that call binds */
+		const inCall = fn === undefined ? undefined : info.callContext?.get(fn);
+		if(inCall !== undefined) {
+			const handed = bound.filter(b => callOfArgument(b, info.idMap) === inCall);
+			return handed.length === 0 ? undefined : { from: handed };
+		}
+		const calls = fn === undefined ? 0 : Dataflow.sourcesOf(graph, fn, EdgeType.Calls).length;
 		return calls === 0 || bound.length < calls ? undefined : { from: bound };
 	}
 	const replacement = replacementOf(id, graph);
@@ -228,15 +234,18 @@ export function s3DispatchClassesOf(id: NodeId, info: ClassFlowInfo): readonly (
 	return classes?.every(c => c.source !== ClassSource.Instance) ? classes.map(c => c.classes) : undefined;
 }
 
-/** The class S4 dispatch sees for a value: the class of an instance, or of a constant; `undefined` for an S3 class. */
-function s4ClassOf({ source, classes }: ValueClass): string | undefined {
+/**
+ * The class S4 dispatch sees for a value: the class of an instance, or of a constant; for an S3 class vector, what
+ * `s3Class` makes of it, `undefined` by default.
+ */
+function s4ClassOf({ source, classes }: ValueClass, s3Class: (vector: readonly string[]) => string | undefined): string | undefined {
 	switch(source) {
 		case ClassSource.Instance:
 			return classes[0];
 		case ClassSource.Implicit:
 			return classes[0] === 'double' ? 'numeric' : classes[0];
 		default:
-			return undefined;
+			return s3Class(classes);
 	}
 }
 
@@ -282,22 +291,49 @@ const AnyDistance = 1_000_000;
 
 /** The class hierarchy S4 dispatch walks, with the classes whose superclasses are not all known (they come from packages). */
 export interface S4Hierarchy {
-	readonly supers:   ReadonlyMap<string, readonly string[]>
+	readonly supers:     ReadonlyMap<string, readonly string[]>
 	/** classes the program does not declare, whose superclasses (from base R or a package) are open */
-	readonly declared: ReadonlySet<string>
+	readonly declared:   ReadonlySet<string>
+	/** per S3 class `setOldClass` registers, the calls registering it; `undefined` if one registers classes not known */
+	readonly oldClasses: ReadonlyMap<string, readonly NodeId[]> | undefined
 }
 
-/** The S4 class hierarchy the graph declares, with the superclasses `setClassUnion` and `setIs` give classes it does not declare. */
+/** the virtual class every S3 class `setOldClass` registers extends last */
+const OldClass = 'oldClass';
+
+/**
+ * The S4 class hierarchy the graph declares, with the superclasses `setClassUnion` and `setIs` give classes it does not
+ * declare, and the S3 classes `setOldClass` registers, each extending the next of its vector.
+ * @example
+ * ```ts
+ * // setClass("A"); setClass("B", contains = "A"); setOldClass(c("a", "b"))
+ * s4HierarchyOf(graph).supers; // B -> [A], a -> [b], b -> [oldClass]
+ * ```
+ */
 export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 	const classes = declaredClassesImpl(graph);
 	const supers = new Map<string, string[]>([...classes].map(([name, decl]) => [name, [...decl.contains]]));
+	const declared = new Set(classes.keys());
+	let oldClasses: Map<string, NodeId[]> | undefined = new Map();
 	const add = (sub: string, sup: string | undefined) => {
 		const list = supers.get(sub) ?? [];
 		if(sup !== undefined && sup !== sub && !list.includes(sup)) {
 			supers.set(sub, [...list, sup]);
 		}
 	};
-	for(const [, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
+	for(const [id, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const registered = classDecl?.oldClasses;
+		if(registered !== undefined) {
+			if(registered.length === 0) {
+				oldClasses = undefined;
+			}
+			registered.forEach((cls, i) => {
+				add(cls, registered[i + 1] ?? OldClass);
+				declared.add(cls);
+				oldClasses?.set(cls, [...oldClasses.get(cls) ?? [], id]);
+			});
+			declared.add(OldClass);
+		}
 		if(classDecl?.name === undefined) {
 			continue;
 		}
@@ -308,7 +344,9 @@ export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 			add(classDecl.name, classDecl.contains[0]);
 		}
 	}
-	return { supers, declared: new Set(classes.keys()) };
+	/* a class declared by `setClass` as well is no plain S3 class */
+	classes.keys().forEach(c => oldClasses?.delete(c));
+	return { supers, declared, oldClasses };
 }
 
 /** Per class, the fewest steps from `cls` up to it, and the fewest to a class whose superclasses are open. */
@@ -388,7 +426,7 @@ export function selectS4Methods(methods: readonly S4Method[], formals: readonly 
 }
 
 /** The class a method's signature wants per dispatched formal, `ANY` where it states none; `undefined` if it names a formal not dispatched on. */
-export function signatureFor(method: S4Method, formals: readonly string[]): string[] | undefined {
+export function signatureFor(method: Pick<S4Method, 'signature'>, formals: readonly string[]): string[] | undefined {
 	const wanted = formals.map(() => 'ANY');
 	let position = 0;
 	for(const { cls, name } of method.signature ?? []) {
@@ -448,12 +486,18 @@ export function s4CandidatesFor(name: string, methods: ReadonlyMap<string, reado
 
 /**
  * The classes an S4 call dispatches on, one tuple per combination the arguments may have, `undefined` unless all are known.
- * @param bound - per dispatched formal, the argument the call binds to it, `undefined` for none
+ * @param bound   - per dispatched formal, the argument the call binds to it, `undefined` for none
+ * @param s3Class - the S4 class dispatch sees for an S3 class vector, `undefined` if not known
+ * @example
+ * ```ts
+ * // p(new("A"), if(u) 1 else "x")
+ * s4ActualClasses([idOfA, idOfIf], info, () => undefined); // [['A', 'numeric'], ['A', 'character']]
+ * ```
  */
-export function s4ActualClasses(bound: readonly (NodeId | undefined)[], info: ClassFlowInfo): string[][] | undefined {
+export function s4ActualClasses(bound: readonly (NodeId | undefined)[], info: ClassFlowInfo, s3Class: (vector: readonly string[]) => string | undefined): string[][] | undefined {
 	let tuples: string[][] = [[]];
 	for(const arg of bound) {
-		const classes = arg === undefined ? ['missing'] : classesOfValue(arg, info)?.map(s4ClassOf);
+		const classes = arg === undefined ? ['missing'] : classesOfValue(arg, info)?.map(c => s4ClassOf(c, s3Class));
 		if(classes === undefined || classes.includes(undefined)) {
 			return undefined;
 		}

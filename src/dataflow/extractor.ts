@@ -25,7 +25,7 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders, linkPromisesToWritesOfCall, settleConditionalWritesOfCalls } from './internal/process/functions/call/built-in/transitive-side-effects';
 import { linkHandlersToSignalSites, linkLateWarningsAsErrors, orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
-import { linkInstantiations } from './internal/process/functions/call/built-in/built-in-s-four';
+import { linkInstantiations, separateMethodRegistrations } from './internal/process/functions/call/built-in/built-in-s-four';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
 import type { REnvironmentInformation } from './environments/environment';
 import { REnvironment } from './environments/environment';
@@ -727,6 +727,7 @@ function extractDataFlowGraph<OtherInfo>(
 		}
 		updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	}
+	separateMethodRegistrations(df.graph);
 	markCallsOfUnknownValues(df.graph, df.environment);
 	(df as { in: DataflowInformation['in'] }).in = open.concat(openReadsOfCalledFunctions(df.graph));
 	// resolve top-level reads that now see the escaped `<<-` definitions folded in above

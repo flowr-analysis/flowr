@@ -71,6 +71,8 @@ export interface ClassDeclaration {
 	readonly validity?:         NodeId;
 	/** the names the methods of the class see the instance they are called on by, see {@link ClassDeclarationConfig.instanceBindings} */
 	readonly instanceBindings?: readonly string[];
+	/** the S3 class vector `setOldClass` registers as S4 classes, each extending the next, empty if it does not resolve */
+	readonly oldClasses?:       readonly string[];
 }
 
 /** Which argument of a class-declaring built-in says what; `idx` is the position when the call names no argument. */
@@ -110,6 +112,8 @@ export interface ClassDeclarationConfig {
 	readonly validityArg?:      ClassArgRef;
 	/** the names the methods of the class see the instance they are called on by (R6 `self` and `private`, RC `.self`), so writing through them changes that instance */
 	readonly instanceBindings?: readonly string[];
+	/** the S3 class vector to register as S4 classes (`setOldClass`), and the arguments that make the classes of an object decide instead */
+	readonly oldClass?:         { readonly classesArg: ClassArgRef, readonly openArgs: readonly ClassArgRef[] };
 }
 
 /** the class name R uses to mark a class as non-instantiable */
@@ -213,6 +217,8 @@ export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, arg
 	const prototype = membersOf(argForImpl(args, config.prototypeArg), config.prototypeArg ?? {}).members.map(m => m.name);
 	/* a class union is virtual by construction: it exists to be extended, never to be instantiated */
 	const isUnion = union.length > 0;
+	const old = config.oldClass && literalVector(argForImpl(args, config.oldClass.classesArg));
+	const oldOpen = old !== undefined && (old.byVariable.length > 0 || config.oldClass?.openArgs.some(ref => argForImpl(args, ref) !== undefined));
 	return compactRecord({
 		system:           config.system,
 		name,
@@ -224,7 +230,8 @@ export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, arg
 		relation:         config.relation,
 		byVariable,
 		validity:         argForImpl(args, config.validityArg)?.info.id,
-		instanceBindings: config.instanceBindings
+		instanceBindings: config.instanceBindings,
+		oldClasses:       old === undefined ? undefined : oldOpen ? [] : old.values
 	});
 }
 

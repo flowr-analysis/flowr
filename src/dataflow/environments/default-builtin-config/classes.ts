@@ -20,6 +20,16 @@ export const ClassesDefinitions = [
 		},
 		Primitive
 	),
+	/* registers an S3 class vector as S4 classes, each extending the next, which S4 dispatch on an object of the first then walks */
+	fn(methods('setOldClass'), BuiltInProcName.ClassRelation,
+		{
+			tags:      [SemanticCallTag.Declares],
+			classDecl: { system: ClassSystem.S4, oldClass: { classesArg: { idx: 0, name: 'Classes' }, openArgs: [{ idx: 3, name: 'test' }, { idx: 4, name: 'S4Class' }] } },
+			props:     CallProp.Scope | CallProp.Invisible,
+			sig:       sig({ Classes: ArgProp.NoDefault, prototype: 0, where: 0, test: 0, S4Class: 0 })
+		},
+		Primitive
+	),
 	fn(methods('setIs'), BuiltInProcName.ClassRelation,
 		{
 			tags:      [SemanticCallTag.Declares],

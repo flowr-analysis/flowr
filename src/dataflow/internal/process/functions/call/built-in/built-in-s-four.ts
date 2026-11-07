@@ -1,6 +1,8 @@
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { signatureFor } from '../../../../../fn/dispatch';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -11,7 +13,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem, declaredClassesImpl, superClassesOfImpl } from '../../../../../fn/class-declaration';
 import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { DfgVertex, type S4SignatureEntry, VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, type S4SignatureEntry, VertexType } from '../../../../../graph/vertex';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
@@ -104,6 +106,7 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	const vertex = config.instantiates ? info.graph.getVertex(rootId) : undefined;
 	if(config.instantiates && DfgVertex.isFunctionCall(vertex)) {
 		vertex.instantiates = classes;
+		vertex.initializer = config.instantiates.initializer;
 		for(const { nodeId } of Resolve.byNameAndType(config.instantiates.initializer, data.environment, ReferenceType.Function) ?? []) {
 			if(!NodeId.isBuiltIn(nodeId)) {
 				info.graph.addEdge(rootId, nodeId, EdgeType.Calls);
@@ -140,8 +143,8 @@ export function linkS4Declaration<O>(info: DataflowInformation, rootId: NodeId, 
 		used.push(decl.name);
 	}
 	readNames(info, rootId, used.map(s4ClassName), ReferenceType.Variable, data);
-	if(decl.name !== undefined) {
-		defineOut(info, rootId, s4ClassName(decl.name), ReferenceType.Variable, data);
+	for(const registered of decl.name === undefined ? decl.oldClasses ?? [] : [decl.name]) {
+		defineOut(info, rootId, s4ClassName(registered), ReferenceType.Variable, data);
 	}
 }
 
@@ -159,10 +162,48 @@ export function processS4Use<O>(name: RSymbol<O & ParentInformation>, args: Args
 	return info;
 }
 
+/** The class per formal of its method the registration `call` states, `ANY` where it states none, `undefined` if not known. */
+function registeredClasses(call: DataflowGraphVertexFunctionCall, graph: DataflowGraph): string | undefined {
+	if(call.s4Method?.signature === undefined) {
+		return undefined;
+	}
+	const definition = call.args.map(a => a === EmptyArgument ? undefined : graph.idMap?.get(a.nodeId)).map(RArgument.valueOf).find(RFunctionDefinition.is);
+	const formals = definition?.parameters.filter(p => !p.special).map(p => p.name.content);
+	return formals === undefined ? undefined : signatureFor(call.s4Method, formals)?.join(',');
+}
+
+/**
+ * Drops what a `setMethod` reads of the methods registered before it for other signatures: it reads the generic by
+ * name, which finds them as well, yet R keeps them apart. A registration it replaces (the same signature) or that
+ * replaces the generic (`setGeneric`) stays a dependency.
+ * @example
+ * ```r
+ * setGeneric("f", function(o) standardGeneric("f"))
+ * setMethod("f", "A", function(o) 1)
+ * setMethod("f", "B", function(o) 2) # depends on setGeneric, not on the method for "A"
+ * ```
+ */
+export function separateMethodRegistrations(graph: DataflowGraph): void {
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const classes = registeredClasses(vertex, graph);
+		if(classes === undefined) {
+			continue;
+		}
+		for(const read of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
+			const earlier = Dataflow.targetsOf(graph, read, EdgeType.DefinedBy).map(d => graph.getVertex(d)).find(v => DfgVertex.isFunctionCall(v) && v.s4Method !== undefined) as DataflowGraphVertexFunctionCall | undefined;
+			const other = earlier === undefined ? undefined : registeredClasses(earlier, graph);
+			if(other !== undefined && earlier?.s4Method?.generic === vertex.s4Method?.generic && other !== classes) {
+				graph.removeEdgeType(id, read, EdgeType.Reads);
+			}
+		}
+	}
+}
+
 /**
  * Links every instantiation to the validity functions of the class it creates and of the superclasses of that,
  * all of which R runs on the new object, to those of every class if the class is unknown; done once the graph
- * knows every class declaration.
+ * knows every class declaration. An instantiation within a function, which runs whenever that is called, may
+ * run every method of its initializer the program registers.
  */
 export function linkInstantiations(graph: DataflowGraph): void {
 	const instantiations = graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => v.instantiates !== undefined).toArray();
@@ -176,7 +217,13 @@ export function linkInstantiations(graph: DataflowGraph): void {
 		}
 	}
 	const classes = validators.size === 0 ? undefined : declaredClassesImpl(graph);
+	let byName: ReturnType<typeof Dataflow.definitionsByName> | undefined;
 	for(const [id, vertex] of instantiations) {
+		if(vertex.initializer !== undefined && !graph.isRoot(id)) {
+			for(const definition of (byName ??= Dataflow.definitionsByName(graph)).get(vertex.initializer)) {
+				graph.addEdge(id, definition, EdgeType.Calls);
+			}
+		}
 		const created = vertex.instantiates ?? [];
 		const checked = classes === undefined ? [] : created.length === 0 ? [...validators.keys()] : created.flatMap(cls => [cls, ...superClassesOfImpl(cls, classes)]);
 		for(const validity of checked.flatMap(cls => validators.get(cls) ?? [])) {

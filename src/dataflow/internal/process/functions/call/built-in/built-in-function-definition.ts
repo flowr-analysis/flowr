@@ -18,9 +18,9 @@ import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
-import { s3DispatchClassesOf } from '../../../../../fn/dispatch';
+import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
-import { DispatchNarrower, linkedFunctionIds, type NarrowedDispatch, unlinkExcludedMethods } from '../../../../dispatch-linking';
+import { callsNextMethod, DispatchNarrower, linkedFunctionIds, type NarrowedDispatch, unlinkExcludedMethods } from '../../../../dispatch-linking';
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { EnvType, REnvironment } from '../../../../../environments/environment';
@@ -516,21 +516,22 @@ function dispatchesOnClass(name: Identifier, environment: REnvironmentInformatio
 
 /**
  * Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, returning their definition vertices and the
- * class vectors of the dispatched object. Unless {@link dispatchedS3Methods} knows the class, every such method counts,
+ * dispatched objects. Unless {@link dispatchedS3Methods} knows the class, every such method counts,
  * same as the {@link BuiltInProcName.S3Dispatch} path.
  */
-function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): { readonly methods: readonly NodeId[], readonly classes?: readonly (readonly string[])[] } {
+function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): { readonly methods: readonly NodeId[], readonly objects?: readonly NodeId[] } {
 	const defs = s3MethodPrefixesOf(name).flatMap(prefix => Resolve.byNameAndType(prefix, environment, ReferenceType.S3MethodPrefix) ?? [])
 		.filter(d => !NodeId.isBuiltIn(d.nodeId) && !ProgramOrder.definedLater(d.nodeId, statement, graph));
 	if(defs.length === 0) {
 		return { methods: [] };
 	}
 	const dispatched = dispatchedS3Methods(call, name, defs, graph, environment, statement, ctx, infoOf);
-	for(const def of dispatched?.methods ?? defs) {
+	const chosen = dispatched?.methods ?? defs;
+	for(const def of chosen) {
 		/* the dispatch looks the method up by name, just like a call written out would */
 		graph.addEdge(call.id, def.nodeId, EdgeType.Reads);
 	}
-	return { methods: linkedFunctionIds(new Set((dispatched?.methods ?? defs).map(d => d.nodeId)), graph), classes: dispatched?.classes };
+	return { methods: linkedFunctionIds(new Set(chosen.map(d => d.nodeId)), graph), objects: dispatched?.objects };
 }
 
 /** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
@@ -564,18 +565,21 @@ function dispatchedArgumentsOf(call: DataflowGraphVertexFunctionCall, node: RNod
 
 /**
  * The `methods` a call dispatches to per known class of its dispatch object (then `default`), stopping for a top-level call at one surely bound before it
- * unless a method may `NextMethod()`, with the class vectors of the object; `undefined` if the class is unknown.
+ * unless a method may `NextMethod()`, with the objects dispatched on; without methods if a class is unknown, `undefined` if the objects are.
  */
-function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, methods: readonly IdentifierDefinition[], graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): { readonly methods: IdentifierDefinition[], readonly classes: readonly (readonly string[])[] } | undefined {
+function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, methods: readonly IdentifierDefinition[], graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): { readonly methods?: IdentifierDefinition[], readonly objects: readonly NodeId[] } | undefined {
 	const node = graph.idMap?.get(call.id);
 	const first = call.args[0];
 	if(graph.idMap === undefined || first === EmptyArgument || first === undefined) {
 		return undefined;
 	}
 	const dispatched = dispatchedArgumentsOf(call, node, name, graph, environment, ctx, infoOf);
-	const perArgument = dispatched?.map(a => s3DispatchClassesOf(a, { graph, idMap: graph.idMap as AstIdMap, ctx })) ?? [undefined];
-	if(!perArgument.every(isNotUndefined)) {
+	if(dispatched === undefined) {
 		return undefined;
+	}
+	const perArgument = dispatched.map(a => s3DispatchClassesOf(a, { graph, idMap: graph.idMap as AstIdMap, ctx }));
+	if(!perArgument.every(isNotUndefined)) {
+		return { objects: dispatched };
 	}
 	const classes = perArgument.flat();
 	const prefixes = s3MethodPrefixesOf(name);
@@ -593,12 +597,9 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 		return picked;
 	};
 	const picked = pick(statement);
-	const callsNext = linkedFunctionIds(new Set([...picked].map(d => d.nodeId)), graph).some(d => {
-		const v = graph.getVertex(d);
-		return DfgVertex.isFunctionDefinition(v) && Dataflow.callsIn(v, graph).some(([, c]) => DfgVertex.hasOrigin(c, BuiltInProcName.S3DispatchNext));
-	});
+	const callsNext = linkedFunctionIds(new Set([...picked].map(d => d.nodeId)), graph).some(d => callsNextMethod(d, graph));
 	/* a next method continues along the class vector past where the dispatch stops */
-	return { methods: [...callsNext ? pick(undefined) : picked], classes };
+	return { methods: [...callsNext ? pick(undefined) : picked], objects: dispatched };
 }
 
 /** The definitions `ingoing` resolves to, without those binding only methods the dispatch reading them rules out. */
@@ -619,15 +620,18 @@ function dispatchedObjectOf(vertex: DataflowGraphVertexFunctionCall, graph: Data
 	return first !== undefined && first !== EmptyArgument && Dataflow.hasEdge(graph, vertex.id, first.nodeId, EdgeType.Reads) ? first.nodeId : undefined;
 }
 
-/** What the dispatch of `vertex` among `targets` rules out, S3 on `s3Object` (its id or its class vectors) and S4 on the classes of its arguments. */
-function narrowedDispatchOf(narrower: DispatchNarrower, vertex: DataflowGraphVertexFunctionCall, s3Object: NodeId | readonly (readonly string[])[] | undefined, targets: ReadonlySet<NodeId>, definedLater: (definition: NodeId) => boolean): NarrowedDispatch | undefined {
+/**
+ * What the dispatch of `vertex` among `targets` rules out, S3 on the objects `s3Objects` and S4 on the classes of its arguments.
+ * @param info - how the classes are found, by default for any call of the function holding `vertex`
+ */
+function narrowedDispatchOf(narrower: DispatchNarrower, vertex: DataflowGraphVertexFunctionCall, s3Objects: readonly NodeId[] | undefined, targets: ReadonlySet<NodeId>, definedLater: (definition: NodeId) => boolean, info?: ClassFlowInfo): NarrowedDispatch | undefined {
 	const name = Identifier.getName(vertex.name);
-	const s3 = s3Object === undefined ? undefined : narrower.s3(s3Object, s3MethodPrefixesOf(vertex.name), targets);
-	const s4 = narrower.reachesS4Method(targets) ? narrower.s4(vertex, name, targets, definedLater) : undefined;
+	const s3 = s3Objects === undefined ? undefined : narrower.s3(s3Objects, s3MethodPrefixesOf(vertex.name), targets, info);
+	const s4 = narrower.reachesS4Method(targets) ? narrower.s4(vertex, name, targets, definedLater, info) : undefined;
 	if(s3 === undefined || s4 === undefined) {
 		return s3 ?? s4;
 	}
-	return { excluded: new Set([...s3.excluded, ...s4.excluded]), next: new Map([...s3.next, ...s4.next]) };
+	return { excluded: new Set([...s3.excluded, ...s4.excluded]), next: new Map([...s3.next, ...s4.next]), reads: s4.reads };
 }
 
 /**
@@ -737,7 +741,8 @@ export function updateNestedFunctionCalls(
 		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
 
 		/* the dispatch is decided anew, from every method the name may reach */
-		delete (vertex as { ruledOut?: readonly NodeId[] }).ruledOut;
+		delete (vertex as { ruledOut?: unknown }).ruledOut;
+		delete (vertex as { ruledOutAt?: unknown }).ruledOutAt;
 		const targets = new Set(boundCallTargets(id, graph) ?? Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a dispatch depends on the classes of its arguments, so it waits for the value flow to be linked */
 		const dispatches = origin.includes(BuiltInProcName.S3Dispatch) || narrower.reachesS4Method(targets) || mayDispatch && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf);
@@ -771,14 +776,25 @@ export function updateNestedFunctionCalls(
 			}
 			linkedFunctionIds(new Set(methods.map(m => m.nodeId)), graph).forEach(t => targets.add(t));
 		}
-		let s3Object: NodeId | readonly (readonly string[])[] | undefined = treatAsS3 ? dispatchedObjectOf(vertex, graph) : undefined;
+		const object = treatAsS3 ? dispatchedObjectOf(vertex, graph) : undefined;
+		let s3Objects: readonly NodeId[] | undefined = object === undefined ? undefined : [object];
 		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
 			const own = linkOwnS3Methods(vertex, name, graph, effectiveEnvironment, runsOnceAt(id), ctx, databaseInfoOf);
 			own.methods.forEach(m => targets.add(m));
-			s3Object = own.classes;
+			s3Objects = own.objects;
 			treatAsS3 = true;
 		}
-		const narrowed = narrowedDispatchOf(narrower, vertex, s3Object, targets, definedLater);
+		const decide = (info?: ClassFlowInfo) => {
+			const decided = narrowedDispatchOf(narrower, vertex, s3Objects, targets, definedLater, info);
+			/* the call depends on the registrations a decision relies on */
+			for(const registration of decided?.reads ?? []) {
+				graph.addEdge(id, registration, EdgeType.Reads);
+			}
+			return decided;
+		};
+		const narrowed = decide();
+		/* a dispatch on what the calls of its function hand it is decided per call as well */
+		const perCall = narrower.perCall(id, targets, narrowed, decide);
 		narrowed?.excluded.forEach(e => targets.delete(e));
 		const enclosing = graph.isRoot(id) ? undefined : enclosingOf(id);
 		for(const target of targets) {
@@ -866,6 +882,9 @@ export function updateNestedFunctionCalls(
 		if(narrowed !== undefined && narrowed.excluded.size > 0) {
 			unlinkExcludedMethods(graph, vertex, narrowed.excluded);
 			vertex.ruledOut = [...narrowed.excluded];
+		}
+		if(perCall !== undefined) {
+			vertex.ruledOutAt = perCall;
 		}
 		linkNextMethods(graph, collectedNextMethods, targets, narrowed?.next);
 	}

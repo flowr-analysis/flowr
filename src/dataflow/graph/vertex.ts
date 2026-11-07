@@ -128,10 +128,24 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	classDecl?:    ClassDeclaration
 	/** For an S4 instantiation (`new("P")`): the classes it creates an instance of, whose validity functions it runs */
 	instantiates?: readonly string[]
+	/** For an S4 instantiation: the generic whose methods initialize the new object (`initialize`) */
+	initializer?:  string
 	/** For a `setMethod`: the generic it adds a method to and the signature the method is registered for */
 	s4Method?:     S4MethodRegistration
 	/** The method definitions the dispatch of the call rules out for the classes its arguments have, which a lookup by name still finds */
 	ruledOut?:     readonly NodeId[]
+	/**
+	 * For a dispatch within a function on what the calls of that function hand it: per such call, the method
+	 * definitions the dispatch further rules out when that call runs it. The edges of the call still reach every
+	 * method any call may run, as it is the one vertex for all of them.
+	 */
+	ruledOutAt?:   readonly CallRuledOut[]
+}
+
+/** The method definitions a dispatch rules out when the call `call` of the function holding it runs it. */
+export interface CallRuledOut {
+	readonly call:    NodeId
+	readonly methods: readonly NodeId[]
 }
 
 /** One entry of an S4 method signature: the class, and the formal it is for when the signature names it. */

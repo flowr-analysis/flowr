@@ -1,13 +1,14 @@
 import { assertUnreachable, guard } from '../../util/assert';
 import { log } from '../../util/log';
-import type { SliceResult } from './slicer-types';
+import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { deferringCall, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { methodOnlyEdges } from '../../dataflow/internal/dispatch-linking';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -95,6 +96,9 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph) : undefined;
 	const separatedWrite = (id: NodeId): boolean => info.graph.fileWritesPerCall?.has(id) === true
 		&& !openedBodies.has(RNode.findEnclosing(id, idMap, RFunctionDefinition.is) as NodeId);
+	/* the dispatches within functions decided per call, as visited, and per call of such a function the dispatches it decides */
+	const dispatchVisits = new Map<NodeId, NodeToSlice>();
+	const dispatchesOfCall = new Map<NodeId, NodeId[]>();
 	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
@@ -133,8 +137,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		resolveCalleeBoundaries();
 	} while(queue.nonEmpty());
 
-	function processNode(): void {
-		const current = queue.next();
+	function processNode(current: NodeToSlice = queue.next()): void {
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
@@ -145,8 +148,19 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
 		/* code in a function links to what it meets at all its calls, so also to what cannot meet the seeds; forward,
 		   a function links to all its calls, and none running before the seeds can */
-		const currentEdges = missesSeeds !== undefined && (strictlyEnclosing !== undefined || direction === SliceDirection.Forward)
+		const reachable = missesSeeds !== undefined && (strictlyEnclosing !== undefined || direction === SliceDirection.Forward)
 			? withoutMissed(allEdges, missesSeeds) : allEdges;
+		/* a dispatch decided per call of its function runs only what the calls of it in the slice may run */
+		const perCall = direction === SliceDirection.Backward && sliceGraph === undefined && DfgVertex.isFunctionCall(currentVertex) ? currentVertex.ruledOutAt : undefined;
+		let ruledOut: ReadonlySet<NodeId> | undefined;
+		if(perCall !== undefined) {
+			if(!dispatchVisits.has(id)) {
+				perCall.forEach(({ call }) => dispatchesOfCall.set(call, [...dispatchesOfCall.get(call) ?? [], id]));
+			}
+			dispatchVisits.set(id, current);
+			ruledOut = ruledOutInSlice(perCall, strictlyEnclosing, info.graph, queue, openedBodies);
+		}
+		const currentEdges = ruledOut === undefined ? reachable : withoutTypes(reachable, methodOnlyEdges(info.graph, id, ruledOut));
 		if(!enclosingHandled.has(strictlyEnclosing)) {
 			enclosingHandled.add(strictlyEnclosing);
 			definitionWithHolders(strictlyEnclosing, idMap, graph, trackCallees ? undefined : openedBodies).forEach(outer => enqueue(outer, emptyEnv, basePrint));
@@ -183,7 +197,14 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			}
 		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
-			sliceForCall(current, currentVertex, info, queue, ctx);
+			sliceForCall(current, currentVertex, info, queue, ctx, ruledOut);
+			/* a call of a function joining the slice late lets the dispatches within run what it may run */
+			for(const dispatch of dispatchesOfCall.get(id) ?? []) {
+				const visit = dispatchVisits.get(dispatch);
+				if(visit !== undefined) {
+					processNode(visit);
+				}
+			}
 		}
 		/* forward, a definition a call hands to a read in its body has both edges itself */
 		if(direction === SliceDirection.Forward) {
@@ -243,6 +264,23 @@ function withoutMissed(edges: ReadonlyOutgoingEdges, misses: (id: NodeId) => boo
 		}
 	}
 	return edges;
+}
+
+
+/** The `edges` without the types `drop` names for their targets. */
+function withoutTypes(edges: ReadonlyOutgoingEdges, drop: ReadonlyMap<NodeId, EdgeType>): ReadonlyOutgoingEdges {
+	if(drop.size === 0) {
+		return edges;
+	}
+	const kept = new Map<NodeId, DfEdge>();
+	for(const [target, edge] of edges) {
+		const types = drop.get(target);
+		const rest = types === undefined ? edge : DfEdge.without(edge, types);
+		if(DfEdge.hasAnyType(rest)) {
+			kept.set(target, rest);
+		}
+	}
+	return kept;
 }
 
 /** The calls handing a definition over and the reads it is handed to, if its edges have both. */
@@ -316,13 +354,26 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 	}
 	const found: NodeId[] = [];
 	const seen = new Set<NodeId>();
-	const calls = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id)));
-	while(calls.length > 0) {
-		for(const target of Dataflow.calleeIdsOf(graph, calls.pop() as NodeId).filter(t => !seen.has(t))) {
-			seen.add(target);
+	/* each call with the call that ran the function holding it, which a dispatch decided per call depends on */
+	const calls: [NodeId, NodeId | undefined][] = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id))).map(id => [id, undefined]);
+	const decided = new Set<string>();
+	for(let next = calls.pop(); next !== undefined; next = calls.pop()) {
+		const [call, via] = next;
+		const ruledOut = via === undefined ? undefined : (graph.getVertex(call) as DataflowGraphVertexFunctionCall).ruledOutAt?.find(r => r.call === via)?.methods;
+		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut?.includes(t))) {
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
-			found.push(...[...callee.subflow.graph].filter(inner => writers.has(inner)));
-			calls.push(...[...Dataflow.callsIn(callee, graph)].map(([inner]) => inner));
+			const first = !seen.has(target);
+			seen.add(target);
+			if(first) {
+				found.push(...[...callee.subflow.graph].filter(inner => writers.has(inner)));
+			}
+			for(const [inner, vertex] of Dataflow.callsIn(callee, graph)) {
+				/* a function run again by another call decides its dispatches anew */
+				if(first || (vertex.ruledOutAt !== undefined && !decided.has(`${inner}:${call}`))) {
+					decided.add(`${inner}:${call}`);
+					calls.push([inner, call]);
+				}
+			}
 		}
 	}
 	return found;

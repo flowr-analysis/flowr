@@ -111,8 +111,16 @@ function contextCallOf(id: NodeId, idMap: AstIdMap, callContext: CallContext | u
 	return parameter?.info.parent === undefined ? undefined : callContext.get(parameter.info.parent);
 }
 
-/** the call an argument value is handed to: the closest call around it, or the call a pipe feeds it into */
-function callOfArgument(value: NodeId, idMap: AstIdMap): NodeId | undefined {
+/**
+ * The call an argument value is handed to: the closest call around it, or the call a pipe feeds it into.
+ * @example
+ * ```ts
+ * // f(g(1)) |> h()
+ * callOfArgument(idOfGCall, idMap); // the id of `f(...)`
+ * callOfArgument(idOfFCall, idMap); // the id of `h()`
+ * ```
+ */
+export function callOfArgument(value: NodeId, idMap: AstIdMap): NodeId | undefined {
 	for(const parent of RNode.iterateParents(idMap.get(value), idMap)) {
 		if(RFunctionCall.is(parent)) {
 			return parent.info.id;

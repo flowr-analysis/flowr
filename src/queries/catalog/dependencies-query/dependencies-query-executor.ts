@@ -15,7 +15,7 @@ import { metaSince } from '../../query-meta';
 import { compactRecord } from '../../../util/objects';
 import { type DependencyInfoLinkAttachedInfo, DependencyInfoLinkConstraint, type FunctionInfo } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
-import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
+import { getArgumentStringValue, type OpenedResources } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { FlowrConfig } from '../../../config';
 import { guard, isNotUndefined } from '../../../util/assert';
@@ -84,7 +84,7 @@ export async function executeDependenciesQuery({
 	const g = getAllCategories(queries, ctx);
 	const enabled = query.enabledCategories;
 
-	const run: QueryRun = { dataflow, config, normalize, memo: makeFlowMemo(), formals: formalsLookup(dataflow.graph, ctx), revalue: new Map() };
+	const run: QueryRun = { dataflow, config, normalize, memo: makeFlowMemo(), formals: formalsLookup(dataflow.graph, ctx), revalue: new Map(), opened: new Map() };
 	/* the packages the code attaches decide which package a bare call further down belongs to */
 	const library = getResults(g, run, queryResults, 'library', functions.get('library') ?? [], data);
 	const attaching = library.filter(attachesPackage);
@@ -202,6 +202,8 @@ export interface QueryRun {
 	readonly formals:   (vertex: DataflowGraphVertexFunctionCall, qualified?: Identifier) => readonly string[] | undefined
 	/** how the values of the entries of a call come about, so a call of the function around it can ask again for its own */
 	readonly revalue:   Map<NodeId, Revalue>
+	/** what the arguments read from, asked for again with every call context */
+	readonly opened:    OpenedResources
 }
 
 /** the values the entries of a call get when the functions around it are resolved for the calls the context names */
@@ -362,9 +364,9 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				continue;
 			}
 			const formals = run.formals(vertex, functionName);
-			const argsIn = (callContext?: CallContext) => getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals, callContext);
+			const argsIn = (callContext?: CallContext) => getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals, callContext, run.opened);
 			const linkedIn = (args: ReturnType<typeof argsIn>, callContext?: CallContext) =>
-				collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext);
+				collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals, opened: run.opened }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext);
 			const args = argsIn();
 			const linkedArgs = linkedIn(args);
 			const linked = linkedIds?.map(linkedId => typeof linkedId === 'object' ? linkedId.id : linkedId);
@@ -447,7 +449,7 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext, formals: QueryRun['formals'] }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext?: CallContext): Map<NodeId, Set<string | undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: Pick<QueryRun, 'dataflow' | 'config' | 'formals' | 'opened'> & { ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext?: CallContext): Map<NodeId, Set<string | undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
@@ -465,7 +467,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx, data.formals(vertex), callContext);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx, data.formals(vertex), callContext, data.opened);
 		for(const [arg, values] of args?.entries() ?? []) {
 			map.set(arg, (map.get(arg) ?? new Set()).union(values));
 		}

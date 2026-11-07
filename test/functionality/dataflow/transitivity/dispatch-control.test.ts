@@ -26,6 +26,59 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		}
 	}));
 
+	describe('S3 dispatch narrowed by the class of the object', () => testing(['oop-s3-dispatch', 'oop-s3-inheritance'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'an S3 method of another class is not run', code: 'dsc <- function(o) UseMethod("dsc")\ndsc.a <- function(o) k\ndsc.b <- function(o) j\nk <- 6\nj <- 7\nprint(dsc(structure(1, class = "a")))', dropped: 'j <- 7' },
+			{ name: 'NextMethod skips a class the vector does not hold', code: 'f <- function(x) UseMethod("f")\nf.c <- function(x) NextMethod()\nf.b <- function(x) j\nf.a <- function(x) k\nk <- 6\nj <- 7\nprint(f(structure(1, class = c("c", "a"))))', dropped: 'j <- 7' },
+			{ name: 'an S3 class set by class<- replaces the implicit one', code: 'dsc <- function(o) UseMethod("dsc")\ndsc.a <- function(o) k\ndsc.double <- function(o) j\nk <- 6\nj <- 7\nx <- 1\nclass(x) <- "a"\nprint(dsc(x))', dropped: 'j <- 7' },
+			{ name: 'an S3 object from a constructor handed down two calls', code: 'dsc <- function(o) UseMethod("dsc")\ndsc.a <- function(o) k\ndsc.b <- function(o) j\nk <- 6\nj <- 7\nmk <- function() structure(list(), class = "a")\nwrap <- function(v) dsc(v)\nouter <- function(w) wrap(w)\nprint(outer(mk()))', dropped: 'j <- 7' },
+			{ name: 'a conditional class<- keeps both methods', code: 'dsc <- function(o) UseMethod("dsc")\ndsc.a <- function(o) k\ndsc.b <- function(o) j\nk <- 6\nj <- 7\nx <- structure(1, class = "a")\nif(runif(1) > 2) class(x) <- "b"\nprint(dsc(x))' },
+			{ name: 'an S3 group method of the class of an operand', code: 'Ops.money <- function(e1, e2) k\nOps.other <- function(e1, e2) j\nk <- 6\nj <- 7\na <- structure(1, class = "money")\nprint(a + a)', dropped: 'j <- 7' },
+			{ name: 'a print method handing on with NextMethod', code: 'print.zz <- function(x, ...) { cat("zz", k, "\\n"); NextMethod() }\nprint.yy <- function(x, ...) cat("yy", j, "\\n")\nprint.ww <- function(x, ...) cat("ww", m, "\\n")\nk <- 1\nj <- 2\nm <- 3\nprint(structure(1, class = c("zz", "yy")))', dropped: 'm <- 3' },
+			{ name: 'NextMethod of objects of two class vectors', code: 'f <- function(x) UseMethod("f")\nf.c <- function(x) NextMethod()\nf.b <- function(x) j\nf.a <- function(x) k\nf.default <- function(x) m\nk <- 6\nj <- 7\nm <- 8\nr <- f(structure(1, class = c("c", "a")))\nprint(r + f(structure(1, class = "c")))', dropped: 'j <- 7' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
+	describe('S4 dispatch narrowed by the classes of the arguments', () => testing(['oop-s4-dispatch', 'oop-s4-inheritance'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'an S4 method of another class is not run', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("val", function(o) standardGeneric("val"))\nk <- 10\nj <- 3\nsetMethod("val", "A", function(o) o@x + k)\nsetMethod("val", "B", function(o) j)\nprint(val(new("A", x = 1)))', dropped: 'j <- 3' },
+			{ name: 'callNextMethod reaches the nearest superclass method', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetClass("C", contains = "B")\nsetGeneric("val", function(o) standardGeneric("val"))\nk <- 10\nj <- 3\nsetMethod("val", "A", function(o) o@x + k)\nsetMethod("val", "B", function(o) j)\nsetMethod("val", "C", function(o) callNextMethod() + 1)\nprint(val(new("C", x = 1)))', dropped: 'k <- 10' },
+			{ name: 'a callNextMethod chain does not reach ANY', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetClass("C", contains = "B")\nsetGeneric("val", function(o, ...) standardGeneric("val"))\nk <- 10\nj <- 4\nsetMethod("val", "A", function(o, ...) o@x + k)\nsetMethod("val", "B", function(o, ...) callNextMethod() * 2)\nsetMethod("val", "C", function(o, ...) callNextMethod() + 1)\nsetMethod("val", "ANY", function(o, ...) j)\nprint(val(new("C", x = 1)))', dropped: 'j <- 4' },
+			{ name: 'an S4 class union beats ANY for a constant', code: 'setClass("A", representation(x = "numeric"))\nsetGeneric("h", function(o) standardGeneric("h"))\nk <- 1\nj <- 2\nm <- 3\nsetClassUnion("NC", c("numeric", "character"))\nsetMethod("h", "NC", function(o) k)\nsetMethod("h", "ANY", function(o) j)\nsetMethod("h", "A", function(o) m)\nprint(h(1L))', dropped: 'j <- 2' },
+			{ name: 'S4 multiple dispatch picks the closest signature', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("p", function(a, b) standardGeneric("p"))\nk <- 1\nj <- 2\nm <- 3\nsetMethod("p", c("A", "ANY"), function(a, b) k)\nsetMethod("p", c("ANY", "B"), function(a, b) j)\nsetMethod("p", c("B", "missing"), function(a, b) m)\nprint(suppressMessages(p(new("B"), new("B"))))', dropped: 'k <- 1' },
+			{ name: 'an S4 method for a missing argument', code: 'setClass("A", representation(x = "numeric"))\nsetGeneric("p", function(a, b) standardGeneric("p"))\nk <- 6\nj <- 7\nsetMethod("p", c("A", "missing"), function(a, b) k)\nsetMethod("p", c("A", "A"), function(a, b) j)\nprint(p(new("A")))', dropped: 'j <- 7' },
+			{ name: 'an S4 method per class a value may have', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", representation(y = "numeric"))\nsetClass("C", representation(z = "numeric"))\nsetGeneric("p", function(a) standardGeneric("p"))\nk <- 6\nj <- 7\nm <- 8\nsetMethod("p", "A", function(a) k)\nsetMethod("p", "B", function(a) j)\nsetMethod("p", "C", function(a) m)\nx <- if(runif(1) < 2) new("A") else new("B")\nprint(p(x))', dropped: 'm <- 8' },
+			{ name: 'an S4 method registered after the call', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("val", function(o) standardGeneric("val"))\nk <- 10\nj <- 3\nsetMethod("val", "A", function(o) k)\nr <- val(new("B"))\nsetMethod("val", "B", function(o) j)\nprint(r)', dropped: 'j <- 3' },
+			{ name: 'an S4 method of a generic called from a function for two classes', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("val", function(o) standardGeneric("val"))\nk <- 10\nj <- 3\nsetMethod("val", "A", function(o) k)\nsetMethod("val", "B", function(o) j)\nf <- function(o) val(o)\nr <- f(new("A"))\nprint(r + f(new("B")))' },
+			{ name: 'an S4 group method beats ANY of the operator', code: 'setClass("A", representation(x = "numeric"))\nk <- 5\nj <- 6\nsetMethod("Arith", signature("A", "A"), function(e1, e2) k)\nsetMethod("+", signature("ANY", "A"), function(e1, e2) j)\na <- new("A", x = 1)\nprint(a + a)', dropped: 'j <- 6' },
+			{ name: 'an S4 method of a generic of base R', code: 'setClass("A", representation(x = "numeric"))\nsetClass("B", representation(y = "numeric"))\nk <- 6\nj <- 7\nsetMethod("length", "A", function(x) k)\nsetMethod("length", "B", function(x) j)\nprint(length(new("A", x = 1)))', dropped: 'j <- 7' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
+	describe('R6 and Reference Class instances found through value flow', () => testing(['oop-r6', 'oop-rc'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'an R6 method beside a global named self', code: 'library(R6)\nself <- list(v = 7)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\no <- C$new()\no$inc()\nprint(o$v)', dropped: 'self <- list' },
+			{ name: 'an R6 method reading self beside a global named self', code: 'library(R6)\nself <- list(v = 9)\nC <- R6Class("C", public = list(v = 1, get = function() self$v))\no <- C$new()\nprint(o$get())', dropped: 'self <- list' },
+			{ name: 'an R6 method beside a global named private', code: 'library(R6)\nprivate <- list(v = 9)\nC <- R6Class("C", public = list(set = function() private$v <- 3, get = function() private$v), private = list(v = 1))\no <- C$new()\np <- o\np$set()\nprint(o$get())', dropped: 'private <- list' },
+			{ name: 'an R6 method on an instance two aliases away', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\no <- C$new()\np <- o\nq <- p\nq$inc()\nprint(o$v)' },
+			{ name: 'an R6 method on an instance a function returns', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\nget_o <- function() o\no <- C$new()\nget_o()$inc()\nprint(o$v)' },
+			{ name: 'an R6 method on an instance in a list', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\nl <- list(a = C$new())\nl$a$inc()\nprint(l$a$v)' },
+			{ name: 'an R6 method on an instance in a field of another', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\nD <- R6Class("D", public = list(child = NULL, initialize = function() self$child <- C$new()))\nd <- D$new()\nd$child$inc()\nprint(d$child$v)' },
+			{ name: 'an R6 method on the instance an earlier method returned', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() { self$v <- self$v + 1; invisible(self) }))\no <- C$new()\np <- o$inc()\np$inc()\nprint(o$v)' },
+			{ name: 'an R6 method on an instance handed to a function', code: 'library(R6)\nC <- R6Class("C", public = list(v = 1, inc = function() self$v <- 3))\nbump <- function(x) x$inc()\no <- C$new()\nbump(o)\nprint(o$v)' },
+			{ name: 'a Reference Class method through an alias beside a global named .self', code: '.self <- list(v = 7)\nC <- setRefClass("C", fields = list(v = "numeric"), methods = list(inc = function() .self$v <- 3))\no <- C$new(v = 1)\np <- o\np$inc()\nprint(o$v)', dropped: '.self <- list' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
 	describe('source', () => testing(['sourcing-external-files'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a function from a sourced file reading a main global', code: 'k <- 4\nsource("lib.R")\nprint(f())', files: { 'lib.R': 'f <- function() g()\ng <- function() k * 2' } },

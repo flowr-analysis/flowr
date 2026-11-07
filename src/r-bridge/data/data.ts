@@ -1099,7 +1099,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-dispatch',
 							code:        ['UseMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to every ${LinkTo('function-definitions', 'definition')} named \`generic.class\` in scope, so the ${LinkTo('oop-s3-construction', 'class')} an object carries narrows the target only where it is known (heavily over-approximating). A group generic like \`Ops.foo\`, \`Math.foo\`, or \`Summary.foo\` is reached from the operators and functions of its group, so \`a == b\` dispatches to \`Ops.foo\` for an object of class \`foo\`.`,
+							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to the ${LinkTo('function-definitions', 'definitions')} named \`generic.class\` in scope for the ${LinkTo('oop-s3-construction', 'class')} the dispatched object may have, then \`generic.default\`. The class is followed through the value flow to where it is set: a \`structure(..., class =)\`, a \`class<-\` or \`oldClass<-\`, a constructor function returning such an object, the implicit class of a constant, and the arguments bound to the generic at every call. Where any of them is not known, every \`generic.class\` method stays a target. A group generic like \`Ops.foo\`, \`Math.foo\`, or \`Summary.foo\` is reached from the operators and functions of its group, so \`a == b\` dispatches to \`Ops.foo\` for an object of class \`foo\`, narrowed by the classes of both operands.`,
 							url:         [RLang('UseMethod'), RLang('Method dispatching')]
 						},
 						{
@@ -1107,7 +1107,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-inheritance',
 							code:        ['NextMethod'],
 							supported:   'partially',
-							description: `_Walk the class vector with \`NextMethod\`._ It reaches the generic's ${LinkTo('oop-s3-dispatch', 'methods')}, the one it stands in included, rather than only the next class in the vector, and hands on the current values of the formals.`,
+							description: `_Walk the class vector with \`NextMethod\`._ Where the class of the dispatched object is known, it reaches the ${LinkTo('oop-s3-dispatch', 'methods')} of the classes after that of its own method in the class vector, then the default, and otherwise every method of the generic. It hands on the current values of the formals.`,
 							url:         [RLang('NextMethod'), RLang('Inheritance')]
 						}
 					]
@@ -1132,7 +1132,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s4-dispatch',
 							code:        ['standardGeneric', 'setGeneric', 'setMethod', 'setReplaceMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method \`setMethod\` (or \`setReplaceMethod\`, for the \`<-\` generic) registered._ The generic reaches its methods through the chain they register in, but the signature does not narrow which of them runs, as ${LinkTo('types-inference', 'no type is inferred')} for the argument.`,
+							description: `_Route a generic call to the method \`setMethod\` (or \`setReplaceMethod\`, for the \`<-\` generic) registered._ \`standardGeneric\` evaluates the arguments it dispatches on, and the call reaches the methods R may select for their classes: the class \`new\` creates or the implicit class of a constant, followed through the value flow like in ${LinkTo('oop-s3-dispatch', 'S3 dispatch')}. Selection follows R's distance through \`contains\`, class unions and \`setIs\`, with \`ANY\` farthest and \`missing\` for an argument not given, over every argument of the signature, and keeps the methods tied for the closest. A method registered after a top-level call is not reached by it. Where a class is not known (an S3 object, a computed signature), every method stays a target, as ${LinkTo('types-inference', 'no type is inferred')} beyond that.`,
 							url:         [RLang('Method dispatching')]
 						},
 						{
@@ -1140,7 +1140,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s4-inheritance',
 							code:        ['callNextMethod'],
 							supported:   'partially',
-							description: `_Reach a parent method with \`callNextMethod\`, and inherit through \`contains\`._ Like \`NextMethod\` in ${LinkTo('oop-s3-inheritance', 'S3 inheritance')}, \`callNextMethod\` reaches every ${LinkTo('oop-s4-dispatch', 'method')} of the generic, as the signature does not narrow which of them is next.`,
+							description: `_Reach a parent method with \`callNextMethod\`, and inherit through \`contains\`._ \`callNextMethod\` reaches the ${LinkTo('oop-s4-dispatch', 'method')} R would select for the signature the calling method is defined for if that method did not exist, which follows the superclasses in \`contains\` nearest first. A chain of \`callNextMethod\` calls is followed method by method, whatever the class of the object, and only a computed signature falls back to every method of the generic.`,
 							url:         [RLang('Inheritance')]
 						}
 					]
@@ -1151,7 +1151,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					code:        ['setRefClass'],
 					url:         [AdvancedR('R5 / Reference classes', 'r6.html#why-r6')],
 					supported:   'partially',
-					description: `_Reference classes made with \`setRefClass\`, whose objects are mutable and thus behave like the ${LinkTo('environment-sharing', 'shared environments')} they are built on._ A method call on an instance is linked to the method it runs, and \`.self\` is bound to that instance, so a method changing a field changes the object it was called on. Typing is not supported.`,
+					description: `_Reference classes made with \`setRefClass\`, whose objects are mutable and thus behave like the ${LinkTo('environment-sharing', 'shared environments')} they are built on._ A method call on an instance is linked to the method it runs, and \`.self\` is bound to that instance, so a method changing a field changes the object it was called on. The instance is found like for ${LinkTo('oop-r6', 'R6')}, and \`.self\` never resolves to a variable of that name outside the object. Typing is not supported.`,
 					example:     codeBlock('r', 'Acc <- setRefClass("Acc",\n  fields = list(bal = "numeric"),\n  methods = list(dep = function(v) bal <<- bal + v))\na <- Acc$new(bal = 0)\na$dep(5)')
 				},
 				{
@@ -1160,7 +1160,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					code:        ['R6Class'],
 					url:         [AdvancedR('R6', 'r6.html')],
 					supported:   'partially',
-					description: `_Classes made with \`R6::R6Class\`, read as one unit rather than as the environment behind them._ Like ${LinkTo('oop-rc', 'RC')} an R6 object is mutable. A method call is linked to the method it runs, also on a fresh \`$new()\` and through method chains, and \`self\` and \`private\` are bound to the instance the method runs on, so a method changing \`self$v\` changes that object. The instance is tracked when the receiver is a variable, written directly or one assignment away. Typing, inheritance, active bindings, and handling objects fully "as units" are not supported.`,
+					description: `_Classes made with \`R6::R6Class\`, read as one unit rather than as the environment behind them._ Like ${LinkTo('oop-rc', 'RC')} an R6 object is mutable. A method call is linked to the method it runs, also on a fresh \`$new()\` and through method chains, and \`self\` and \`private\` are bound to the instance the method runs on, so a method changing \`self$v\` changes that object. The instance is found through the value flow of the receiver: a variable and every alias of it, a parameter bound to the instance at each call, what a called function returns, and a list element or field of another object holding it. As R encloses the methods by the object, \`self\` and \`private\` never resolve to variables of those names outside it. Typing, inheritance, active bindings, and handling objects fully "as units" are not supported.`,
 					example:     codeBlock('r', 'Counter <- R6::R6Class("Counter", public = list(\n  i = 0,\n  add = function() {\n    self$i <- self$i + 1\n    invisible(self)\n  }\n))\nCounter$new()$add()$i')
 				},
 				{

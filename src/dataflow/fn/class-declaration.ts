@@ -13,14 +13,9 @@ import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
-import { isNotUndefined } from '../../util/assert';
 import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
 import { DfgVertex, VertexType } from '../graph/vertex';
-import type { ResolveInfo } from '../eval/resolve/alias-tracking';
-import { NodeValue } from '../eval/resolve/node-value';
-import { collectStrings } from '../eval/values/string/string-constants';
-import { isValue } from '../eval/values/r-value';
 import { Dataflow } from '../graph/df-helper';
 
 /** The object system a declaration belongs to. */
@@ -341,35 +336,6 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 		}
 	}
 	return records;
-}
-
-/** The class vector S3 dispatch sees for the value at `id`: a `structure(..., class = )` or a constant, `undefined` if not statically known. */
-function s3ClassOfValue(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly string[] | undefined {
-	const node = info.idMap.get(id);
-	if(RFunctionCall.is(node) && Dataflow.hasEdge(info.graph, id, NodeId.toBuiltIn('structure'), EdgeType.Calls)) {
-		const cls = NodeValue.soleOf(argForImpl(node.arguments, { name: 'class' }), info);
-		const strings = cls?.type === 'string' ? collectStrings([cls]) : cls?.type === 'vector' && isValue(cls.elements) ? collectStrings(cls.elements) : undefined;
-		return strings?.length ? strings : undefined;
-	}
-	const value = NodeValue.soleOf(id, info);
-	if(value?.type === 'string') {
-		return ['character'];
-	} else if(value?.type === 'logical') {
-		return ['logical'];
-	} else if(value?.type === 'number' && isValue(value.value)) {
-		return value.value.complexNumber ? ['complex'] : value.value.markedAsInt ? ['integer', 'numeric'] : ['double', 'numeric'];
-	}
-	return undefined;
-}
-
-/** The class vectors S3 dispatch may see for the argument at `id`, one per reaching definition, `undefined` unless all are known. */
-export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): readonly (readonly string[])[] | undefined {
-	const { graph } = info;
-	const value = RArgument.valueOf(info.idMap.get(id))?.info.id;
-	const isRead = value !== undefined && DfgVertex.isUse(graph.getVertex(value));
-	const values = isRead ? Dataflow.targetsOf(graph, value, EdgeType.Reads).map(def => Dataflow.assignedValueOf(def, graph)) : [value];
-	const classes = values.map(v => v === undefined ? undefined : s3ClassOfValue(v, info));
-	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
 }
 
 /**

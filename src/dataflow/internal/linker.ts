@@ -98,14 +98,54 @@ function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment
 	return (Resolve.byName(info.name, environment) ?? []).filter(hasEnvState).map(d => d.envState);
 }
 
+/** how many vertices the walk for the holders of an instance visits before it settles for what it found */
+const MaxInstanceFlow = 64;
+
+/**
+ * The definitions holding the instance a method call `receiver$m(...)` runs a method on: every variable the value of
+ * the receiver flows through (aliases, the parameters it is bound to, what called functions return) and the
+ * containers it is a field of, as the environment of the call knows them, with the tracked state they carry.
+ */
+function instanceHolders(receiver: NodeId, graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap): IdentifierDefinition[] {
+	const holders: IdentifierDefinition[] = [];
+	const seen = new Set<NodeId>();
+	const todo = [receiver];
+	for(let id = todo.pop(); id !== undefined && seen.size < MaxInstanceFlow; id = todo.pop()) {
+		if(seen.has(id)) {
+			continue;
+		}
+		seen.add(id);
+		const node = idMap.get(id);
+		if(RArgument.is(node)) {
+			todo.push(...node.value ? [node.value.info.id] : []);
+			continue;
+		}
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.isUse(vertex)) {
+			/* a `self` a method hands back is bound on the call to the instance */
+			todo.push(...Dataflow.targetsOf(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall).filter(t => !NodeId.isBuiltIn(t)));
+		} else if(DfgVertex.isFunctionCall(vertex)) {
+			/* an access hands back a field of what it accesses, a function what it returns */
+			todo.push(...Dataflow.targetsOf(graph, id, EdgeType.Returns));
+		} else if(DfgVertex.isVariableDefinition(vertex)) {
+			const name = NodeId.recoverName(id, idMap);
+			const known = name === undefined ? undefined : Resolve.byNameAndType(name, environment, ReferenceType.Variable)?.find(d => d.nodeId === id);
+			holders.push(known ?? { nodeId: id, name, type: ReferenceType.Variable, definedAt: id, cds: undefined });
+			const value = Dataflow.assignedValueOf(id, graph);
+			todo.push(...value === undefined ? Dataflow.targetsOf(graph, id, EdgeType.DefinedByOnCall) : [value]);
+		}
+	}
+	return holders;
+}
+
 /** The definitions holding the instance a method call `obj$m(...)` runs `fn` on, with the names `fn` sees that instance by. */
 function instanceOfMethodCall(graph: DataflowGraph, fn: NodeId, info: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, idMap: AstIdMap): { readonly bindings: readonly string[], readonly holders: readonly IdentifierDefinition[] } | undefined {
 	const call = idMap.get(info.id);
 	/* a method taken out of its instance first, `f <- o$m; f()`, still runs on that instance */
 	const accesses = RFunctionCall.isUnnamed(call) ? [call.calledFunction] : Dataflow.targetsOf(graph, info.id, EdgeType.Reads).map(d => idMap.get(Dataflow.assignedValueOf(d, graph) ?? d));
-	const instances = accesses.map(a => RAccess.is(a) && RSymbol.is(a.accessed) ? a.accessed.content : undefined).filter(isNotUndefined);
-	const bindings = instances.length > 0 ? instanceBindingsOfMethod(fn, graph, idMap) : undefined;
-	const holders = bindings && instances.flatMap(i => Resolve.byNameAndType(i, environment, ReferenceType.Variable)?.filter(hasEnvState) ?? []);
+	const receivers = accesses.map(a => RAccess.is(a) ? a.accessed.info.id : undefined).filter(isNotUndefined);
+	const bindings = receivers.length > 0 ? instanceBindingsOfMethod(fn, graph, idMap) : undefined;
+	const holders = bindings && receivers.flatMap(r => instanceHolders(r, graph, environment, idMap));
 	return holders?.length ? { bindings: bindings as readonly string[], holders } : undefined;
 }
 
@@ -123,6 +163,31 @@ function definitionFramesOf(bodyLevel: number, environment: REnvironmentInformat
 }
 
 /**
+ * Links the reads of the names a method sees its instance by (`self`, `private`, `.self`) to the definitions holding
+ * the instance the call runs the method on. R encloses the methods by the object, so these names never reach the
+ * frames the method is defined in.
+ */
+export function linkInstanceReads(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, fn: Pick<DataflowGraphVertexFunctionDefinition, 'id' | 'subflow'>, environment: REnvironmentInformation, idMap: AstIdMap): void {
+	const bindings = fn.subflow.in.length === 0 ? undefined : instanceBindingsOfMethod(fn.id, graph, idMap);
+	const reads = bindings === undefined ? [] : fn.subflow.in.filter(r => r.name !== undefined && bindings.includes(Identifier.getName(r.name)));
+	if(reads.length === 0) {
+		return;
+	}
+	const holders = instanceOfMethodCall(graph, fn.id, info, environment, idMap)?.holders ?? [];
+	for(const read of reads) {
+		for(const holder of holders as readonly InGraphIdentifierDefinition[]) {
+			if(fn.subflow.graph.has(holder.nodeId) || NodeId.isBuiltIn(holder.nodeId)) {
+				continue;
+			}
+			graph.addEdge(read.nodeId, holder.nodeId, EdgeType.DefinedByOnCall);
+			graph.addEdge(info.id, holder.nodeId, EdgeType.DefinesOnCall);
+			linkFieldWritesOnCall(graph, info.id, fn.id, read.nodeId, holder.nodeId, holder.envState, idMap);
+			readEnvironmentContents(graph, info.id, holder);
+		}
+	}
+}
+
+/**
  * Links a function call with a single target function definition.
  */
 export function linkFunctionCallWithSingleTarget(
@@ -136,17 +201,19 @@ export function linkFunctionCallWithSingleTarget(
 	if(environment !== undefined) {
 		let callee: readonly REnvironmentInformation[] | undefined;
 		let lexical: REnvironmentInformation | undefined;
-		let instance: ReturnType<typeof instanceOfMethodCall> | null = null;
+		const instance = fnSubflow.in.length === 0 ? undefined : instanceBindingsOfMethod(fnId, graph, idMap);
 		/* for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it */
 		for(const ingoing of fnSubflow.in) {
 			const name = ingoing.name;
 			if(name === undefined) {
 				continue;
 			}
+			if(instance?.includes(Identifier.getName(name))) {
+				continue;
+			}
 			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
 			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type)
-				?? ((instance ??= instanceOfMethodCall(graph, fnId, info, environment, idMap))?.bindings.includes(Identifier.getName(name)) ? instance.holders : []);
+			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type) ?? [];
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				const { nodeId, type, value, definedAt, envState } = def;
 				/* the state an earlier run of the function left behind is what its next run reads */
@@ -175,6 +242,10 @@ export function linkFunctionCallWithSingleTarget(
 				}
 			}
 		}
+	}
+
+	if(environment !== undefined) {
+		linkInstanceReads(graph, info, { subflow: fnSubflow, id: fnId }, environment, idMap);
 	}
 
 	for(const node of fnSubflow.graph) {
@@ -218,7 +289,7 @@ function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Re
 }
 
 /** The call `id` of `fnId` writes the fields of the environment `binding` holds through every alias of `start`. */
-function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, start: NodeId, binding: NodeId, envState: REnvironmentInformation, idMap: AstIdMap): void {
+function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, start: NodeId, binding: NodeId, envState: REnvironmentInformation | undefined, idMap: AstIdMap): void {
 	const aliases = new Set<NodeId>([start]);
 	for(const alias of aliases) {
 		for(const from of Dataflow.sourcesOf(graph, alias, ValueFlowBits)) {
@@ -226,7 +297,9 @@ function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, s
 		}
 	}
 	for(const read of aliases) {
-		bindAccessedField(graph, read, envState, idMap);
+		if(envState !== undefined) {
+			bindAccessedField(graph, read, envState, idMap);
+		}
 		const write = fieldAssignmentOf(read, idMap);
 		if(write !== undefined) {
 			graph.addEdge(id, write, EdgeType.Reads);
@@ -369,7 +442,10 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	}
 	const reads = new Set(functionCallDefs);
 	const [targets, builtIns] = resolver?.resolve(reads) ?? getAllLinkedFunctionDefinitions(reads, graph);
-	return [...new Set([...targets.values().map(t => t.id), ...builtIns, ...functionCallDefs])];
+	const all = new Set([...targets.values().map(t => t.id), ...builtIns, ...functionCallDefs]);
+	/* the methods its dispatch rules out are still found by the name */
+	info.ruledOut?.forEach(e => all.delete(e));
+	return [...all];
 }
 
 /**

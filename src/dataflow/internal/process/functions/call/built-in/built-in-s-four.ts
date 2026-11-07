@@ -1,6 +1,6 @@
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -11,7 +11,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem, declaredClassesImpl, superClassesOfImpl } from '../../../../../fn/class-declaration';
 import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { DfgVertex, type S4SignatureEntry, VertexType } from '../../../../../graph/vertex';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
@@ -34,17 +34,19 @@ export function s4ClassName(cls: string): Identifier {
 /** Which arguments of a call name S4 registrations it depends on rather than declares. */
 export interface S4UseConfig {
 	/** the argument naming the S4 generic the call answers or asks about (`f` in `setMethod`) */
-	readonly genericArg?:    ClassArgRef;
+	readonly genericArg?:      ClassArgRef;
 	/** appended to the generic named by {@link genericArg} (`setReplaceMethod("f", ...)` answers `f<-`) */
-	readonly genericSuffix?: string;
+	readonly genericSuffix?:   string;
 	/** the arguments naming S4 classes the call uses (`Class` in `new`, `signature` in `setMethod`) */
-	readonly classArgs?:     readonly ClassArgRef[];
+	readonly classArgs?:       readonly ClassArgRef[];
 	/** the argument naming an S4 class the call adds to without declaring it (`to` in `setAs`): read and registered anew, so a later use depends on this call as well as on the declaration */
-	readonly registersArg?:  ClassArgRef;
+	readonly registersArg?:    ClassArgRef;
 	/** the call hands back a method of the generic its {@link genericArg} names (`getMethod`, `selectMethod`) */
-	readonly returnsMethod?: boolean;
+	readonly returnsMethod?:   boolean;
 	/** the call creates an instance of the classes its {@link classArgs} name, running the methods of the `initializer` generic and their validity functions */
-	readonly instantiates?:  { readonly initializer: string };
+	readonly instantiates?:    { readonly initializer: string };
+	/** the call registers its definition as a method of the generic, for the signature the first of its {@link classArgs} states (`setMethod`) */
+	readonly registersMethod?: boolean;
 }
 
 
@@ -55,6 +57,31 @@ function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: D
 		return known;
 	}
 	return node.arguments.flatMap(arg => classNamesOf(RArgument.valueOf(arg), data));
+}
+
+/**
+ * The signature an argument of `setMethod` states, with the formal each class is for where it names one:
+ * `"A"`, `c("A", "B")`, `signature(e1 = "A")`, or a variable holding such strings; `undefined` if any part does not resolve.
+ */
+function signatureOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): S4SignatureEntry[] | undefined {
+	if(node === undefined) {
+		return [];
+	}
+	if(!RFunctionCall.isNamed(node)) {
+		return NodeValue.stringsOf(node.info.id, data)?.map(cls => ({ cls }));
+	}
+	const entries: S4SignatureEntry[] = [];
+	for(const arg of node.arguments) {
+		if(arg === EmptyArgument || arg.value === undefined) {
+			return undefined;
+		}
+		const cls = NodeValue.singleStringOf(arg.value.info.id, data);
+		if(cls === undefined) {
+			return undefined;
+		}
+		entries.push(arg.name === undefined ? { cls } : { cls, name: arg.name.content });
+	}
+	return entries;
 }
 
 /** Adds a read of every given name to the call, so the call depends on whatever registered them. */
@@ -85,6 +112,10 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	}
 	const generics = classNamesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? ''));
 	readNames(info, rootId, generics, ReferenceType.Function, data);
+	const registering = config.registersMethod && generics.length === 1 ? info.graph.getVertex(rootId) : undefined;
+	if(DfgVertex.isFunctionCall(registering)) {
+		registering.s4Method = { generic: generics[0], signature: signatureOf(argForImpl(args, config.classArgs?.[0]), data) };
+	}
 	for(const { nodeId } of config.returnsMethod ? generics.flatMap(g => Resolve.byNameAndType(g, data.environment, ReferenceType.Function) ?? []) : []) {
 		if(!NodeId.isBuiltIn(nodeId)) {
 			info.graph.addEdge(rootId, nodeId, EdgeType.Returns);

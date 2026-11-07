@@ -128,6 +128,22 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	classDecl?:    ClassDeclaration
 	/** For an S4 instantiation (`new("P")`): the classes it creates an instance of, whose validity functions it runs */
 	instantiates?: readonly string[]
+	/** For a `setMethod`: the generic it adds a method to and the signature the method is registered for */
+	s4Method?:     S4MethodRegistration
+	/** The method definitions the dispatch of the call rules out for the classes its arguments have, which a lookup by name still finds */
+	ruledOut?:     readonly NodeId[]
+}
+
+/** One entry of an S4 method signature: the class, and the formal it is for when the signature names it. */
+export interface S4SignatureEntry {
+	readonly cls:   string
+	readonly name?: string
+}
+
+/** What a `setMethod` registers: the method of `generic` for `signature`, absent when the signature does not resolve. */
+export interface S4MethodRegistration {
+	readonly generic:    string
+	readonly signature?: readonly S4SignatureEntry[]
 }
 
 /** Describes the processor responsible for a function call */

@@ -42,13 +42,14 @@ export const ClassesDefinitions = [
 	),
 	fn(methods('setMethod'), BuiltInProcName.ClassRelation,
 		{
-			props:          CallProp.Invisible,
-			tags:           [SemanticCallTag.Declares],
+			props:           CallProp.Invisible,
+			tags:            [SemanticCallTag.Declares],
 			/* a method joins the methods of its generic rather than replacing them */
-			assignmentLike: { targetVariable: true, makeMaybe: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
-			genericArg:     { idx: 0, name: 'f' },
-			classArgs:      [{ idx: 1, name: 'signature' }],
-			sig:            sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 })
+			assignmentLike:  { targetVariable: true, makeMaybe: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			genericArg:      { idx: 0, name: 'f' },
+			classArgs:       [{ idx: 1, name: 'signature' }],
+			registersMethod: true,
+			sig:             sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 })
 		},
 		Primitive
 	),
@@ -56,13 +57,14 @@ export const ClassesDefinitions = [
 	fn(methods('callNextMethod'), BuiltInProcName.S3Dispatch, { props: CallProp.Generic, sig: sig({ '...': 0 }) }),
 	fn(methods('setReplaceMethod'), BuiltInProcName.ClassRelation,
 		{
-			props:          CallProp.Invisible,
-			tags:           [SemanticCallTag.Declares],
-			assignmentLike: { targetVariable: true, makeMaybe: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
-			genericArg:     { idx: 0, name: 'f' },
-			genericSuffix:  '<-',
-			classArgs:      [{ idx: 1, name: 'signature' }],
-			sig:            sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 })
+			props:           CallProp.Invisible,
+			tags:            [SemanticCallTag.Declares],
+			assignmentLike:  { targetVariable: true, makeMaybe: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			genericArg:      { idx: 0, name: 'f' },
+			genericSuffix:   '<-',
+			classArgs:       [{ idx: 1, name: 'signature' }],
+			registersMethod: true,
+			sig:             sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 })
 		},
 		Primitive
 	),

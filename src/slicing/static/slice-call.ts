@@ -51,7 +51,10 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
 	const resolved = (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
 	const functionCallDefs = [...resolved.map(d => d.nodeId), ...Dataflow.targetsOf(dataflowGraph, callerInfo.id, EdgeType.Calls)];
-	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
+	const linked = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
+	/* a lookup by name still finds the methods the dispatch of the call rules out */
+	const excludes = callerInfo.ruledOut;
+	const functionCallTargets = excludes === undefined ? linked : new Set(linked.values().filter(t => !excludes.includes(t.id)));
 	return [functionCallTargets, activeEnvironment];
 }
 

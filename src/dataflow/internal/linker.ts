@@ -13,7 +13,7 @@ import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/mo
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../graph/vertex';
-import type { REnvironmentInformation } from '../environments/environment';
+import { REnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -150,19 +150,6 @@ function instanceOfMethodCall(graph: DataflowGraph, fn: NodeId, info: DataflowGr
 }
 
 /**
- * The frames of `environment` a function whose body runs at `bodyLevel` can see: the frame it was defined in and
- * those around it, never the frames of the functions calling it.
- */
-function definitionFramesOf(bodyLevel: number, environment: REnvironmentInformation): REnvironmentInformation {
-	const level = Math.max(0, Math.min(bodyLevel - 1, environment.level));
-	let current = environment.current;
-	for(let skip = environment.level - level; skip > 0 && current.parent !== undefined; skip--) {
-		current = current.parent;
-	}
-	return { current, level };
-}
-
-/**
  * Links the reads of the names a method sees its instance by (`self`, `private`, `.self`) to the definitions holding
  * the instance the call runs the method on. R encloses the methods by the object, so these names never reach the
  * frames the method is defined in.
@@ -231,14 +218,10 @@ export function readsOfUncalledClosures(fn: NodeId, subflow: DataflowFunctionFlo
 }
 
 /**
- * Links a function call with a single target function definition.
+ * Links the free variables of the function `fnId` the call `info` runs to their definitions where the function was
+ * defined, as the environment of the call sees them.
  */
-export function linkFunctionCallWithSingleTarget(
-	graph: DataflowGraph,
-	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
-	info: DataflowGraphVertexFunctionCall,
-	idMap: AstIdMap
-): ExitPoint[] {
+function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunctionDefinition['subflow'], fnId: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap): void {
 	const id = info.id;
 	const environment = info.environment;
 	if(environment !== undefined) {
@@ -260,7 +243,7 @@ export function linkFunctionCallWithSingleTarget(
 			}
 			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
 			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type) ?? [];
+			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= REnvironment.visibleTo(fnSubflow.environment.level, environment), ingoing.type) ?? [];
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				const { nodeId, type, value, definedAt, envState } = def;
 				/* the state an earlier run of the function left behind is what its next run reads */
@@ -290,6 +273,20 @@ export function linkFunctionCallWithSingleTarget(
 			}
 		}
 	}
+}
+
+/**
+ * Links a function call with a single target function definition.
+ */
+export function linkFunctionCallWithSingleTarget(
+	graph: DataflowGraph,
+	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
+	info: DataflowGraphVertexFunctionCall,
+	idMap: AstIdMap
+): ExitPoint[] {
+	const id = info.id;
+	const environment = info.environment;
+	linkFreeReads(graph, fnSubflow, fnId, info, idMap);
 
 	if(environment !== undefined) {
 		linkInstanceReads(graph, info, { subflow: fnSubflow, id: fnId }, environment, idMap);
@@ -787,7 +784,8 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 
 /**
  * A loop variable read before its within-loop redefinition gets a maybe marker to that def (e.g. `x_2` may read the
- * prior iteration's `x_1` in `for(...) { x_1 <- x_2 + 1 }`); with `environment`, this uses all defs live at loop exit.
+ * prior iteration's `x_1` in `for(...) { x_1 <- x_2 + 1 }`); with `environment`, this uses all defs live at loop exit,
+ * which the calls in the loop see as well (see {@link linkLoopCarriedCalls}).
  */
 export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[], environment?: REnvironmentInformation): void {
 	if(environment !== undefined) {
@@ -802,6 +800,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 				}
 			}
 		}
+		linkLoopCarriedCalls(graph, environment);
 		return;
 	}
 	/* fallback: keep only the last definition per identifier (used when no environment is available) */
@@ -817,6 +816,27 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 				for(const target of targets) {
 					graph.addEdge(target.nodeId, nodeId, EdgeType.Reads);
 				}
+			}
+		}
+	}
+}
+
+/**
+ * A call in a loop runs again after the rest of the body ran, so it sees what the body leaves behind as well (`environment`),
+ * and so do the free variables of the closures it calls: in `f <- function() x; for(i in 1:2) { y <- f(); x <- 2 }` the
+ * second call of `f` reads `x <- 2`. Calls within the functions the loop defines run in frames of their own and are left alone.
+ */
+function linkLoopCarriedCalls(graph: DataflowGraph, environment: REnvironmentInformation): void {
+	const idMap = graph.idMap;
+	for(const [id, info] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(info.onlyBuiltin || info.environment?.level !== environment.level) {
+			continue;
+		}
+		info.environment = REnvironment.append(info.environment, environment);
+		for(const target of idMap === undefined ? [] : Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
+			const fn = graph.getVertex(target);
+			if(DfgVertex.isFunctionDefinition(fn)) {
+				linkFreeReads(graph, fn.subflow, target, info, idMap as AstIdMap);
 			}
 		}
 	}

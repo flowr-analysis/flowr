@@ -27,6 +27,25 @@ export function popLocalEnvironment({ current, level }: REnvironmentInformation)
 }
 
 /**
+ * The frames of `environment` a function whose body runs at `bodyLevel` can see: the frame it was defined in and
+ * those around it, never the frames of the functions calling it.
+ * @useInstead {@link REnvironment.visibleTo}
+ * @example
+ * ```ts
+ * // a global function called within another function sees only the global frame of the call
+ * framesVisibleTo(1, environmentOfTheCall).level; // 0
+ * ```
+ */
+export function framesVisibleTo(bodyLevel: number, environment: REnvironmentInformation): REnvironmentInformation {
+	const level = Math.max(0, Math.min(bodyLevel - 1, environment.level));
+	let current = environment.current;
+	for(let skip = environment.level - level; skip > 0 && current.parent !== undefined; skip--) {
+		current = current.parent;
+	}
+	return { current, level };
+}
+
+/**
  * Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same lexical {@link REnvironmentInformation#level|level}.
  */
 export function padToCommonScope(base: REnvironmentInformation, next: REnvironmentInformation): { base: REnvironmentInformation, next: REnvironmentInformation } {

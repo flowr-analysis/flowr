@@ -45,6 +45,29 @@ describe('Transitivity through calls and closures, checked against R', withTreeS
 		}
 	}));
 
+	describe('closures called in loops', () => testing(['closures', 'for-loop', 'while-loop', 'repeat-loop'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'a for loop redefining the global before the call', code: 'x <- 1\nf <- function() x\nfor(i in 1:3) {\n  x <- x + 1\n  y <- f()\n}\nprint(y)' },
+			{ name: 'a while loop redefining the global after the call', code: 'x <- 1\nf <- function() x\ni <- 0\nwhile(i < 2) {\n  i <- i + 1\n  y <- f()\n  x <- 7\n}\nprint(y)' },
+			{ name: 'a repeat loop redefining the global after the call', code: 'x <- 1\nf <- function() x\nrepeat {\n  y <- f()\n  if(x > 2) break\n  x <- x + 2\n}\nprint(y)' },
+			{ name: 'a closure defined in nested loops', code: 'x <- 1\nfor(j in 1:2) for(i in 1:2) {\n  f <- function() x\n  y <- f()\n  x <- 10\n}\nprint(y)' },
+			{ name: 'a closure called through a variable in a loop', code: 'x <- 1\nf <- function() x\ng <- f\nfor(i in 1:2) {\n  y <- g()\n  x <- 5\n}\nprint(y)' },
+			{ name: 'a closure in an inner loop and a global set by the outer one', code: 'x <- 1\nf <- function() x\nfor(j in 1:2) {\n  for(i in 1:2) {\n    y <- f()\n  }\n  x <- 4\n}\nprint(y)' },
+			{ name: 'a closure called by a closure in a loop', code: 'x <- 1\ng <- function() x\nf <- function() g()\nfor(i in 1:2) {\n  y <- f()\n  x <- 9\n}\nprint(y)' },
+			{ name: 'a closure in a while condition', code: 'x <- 1\nf <- function() x\ny <- 0\nwhile(f() < 3) {\n  y <- y + 1\n  x <- x + 1\n}\nprint(y)' },
+			{ name: 'a loop in a function with a closure of its frame', code: 'h <- function() {\n  x <- 1\n  f <- function() x\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\nprint(h())' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+		resolvesLikeR(parser, 'a for loop redefining the global before the call', 'x <- 1\nf <- function() x\nfor(i in 1:3) {\n  x <- x + 1\n  y <- f()\n}\ncat(y)', '7@y');
+		resolvesLikeR(parser, 'a closure defined in nested loops', 'x <- 1\nfor(j in 1:2) for(i in 1:2) {\n  f <- function() x\n  y <- f()\n  x <- 10\n}\ncat(y)', '7@y');
+		resolvesLikeR(parser, 'a closure called through a variable in a loop', 'x <- 1\nf <- function() x\ng <- f\nfor(i in 1:2) {\n  y <- g()\n  x <- 5\n}\ncat(y)', '8@y');
+		resolvesLikeR(parser, 'a loop in a function with a closure of its frame', 'h <- function() {\n  x <- 1\n  f <- function() x\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\ny <- h()\ncat(y)', '11@y');
+		resolvesLikeR(parser, 'a loop in a function with a global closure', 'x <- 1\nf <- function() x\nh <- function() {\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\ny <- h()\ncat(y)', '11@y');
+		resolvesLikeR(parser, 'a while loop redefining the global after the call', 'x <- 1\nf <- function() x\ni <- 0\nwhile(i < 2) {\n  i <- i + 1\n  y <- f()\n  x <- 7\n}\ncat(y)', '9@y', { imprecise: 'resolves 1 and 7, the runs of a while loop are not counted' });
+	}));
+
 	describe('values', () => {
 		resolvesLikeR(parser, 'a global read three calls deep', 'x <- 1\nf <- function() g()\ng <- function() h()\nh <- function() x\nx <- 2\ny <- f()\ncat(y)', '7@y');
 		resolvesLikeR(parser, 'a value through three parameters', 'a <- function(p) b(p + 1)\nb <- function(q) cc(q * 2)\ncc <- function(r) r - 1\ny <- a(3)\ncat(y)', '5@y');

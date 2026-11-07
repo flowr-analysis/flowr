@@ -17,7 +17,7 @@ import { appendEnvironment, uniqueMergeValuesInDefinitions } from './append';
 import { define as defineInEnvironment } from './define';
 import { overwriteEnvironment } from './overwrite';
 import { cloneEnvironmentInformation } from './clone';
-import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from './scoping';
+import { cleanEnvOf, framesVisibleTo, popLocalEnvironment, pushLocalEnvironment } from './scoping';
 import { Frame, LazyBindings } from './frame-memory';
 import type { MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -680,6 +680,8 @@ export const REnvironment = {
 	pushLocal:        pushLocalEnvironment,
 	/** Removes the top local scope, see {@link REnvironment.pushLocal} for the counterpart; see {@link popLocalEnvironment}. */
 	popLocal:         popLocalEnvironment,
+	/** The frames a function body at a level sees of an environment, those it was defined in; see {@link framesVisibleTo}. */
+	visibleTo:        framesVisibleTo,
 	/** The search path of the environment with an empty global frame: attached packages stay visible, global binds do not; see {@link cleanEnvOf}. */
 	cleanOf:          cleanEnvOf,
 } as const;

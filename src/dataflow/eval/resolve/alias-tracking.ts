@@ -86,11 +86,13 @@ export interface LoopIteration {
 /**
  * A frame a run of the function `fn` makes when `call` calls it: a parameter of `fn` read in that frame holds what
  * `call` hands it. The value walk enters one when it follows a call into the function it returns from, and leaves
- * it again when it follows a parameter to its argument.
+ * it again when it follows a parameter to its argument, or a free variable to what the scope of `fn` binds where
+ * `call` runs, which is in the `runs` of the loops around `call`.
  */
 export interface CallFrame {
-	readonly fn:   NodeId
-	readonly call: NodeId
+	readonly fn:    NodeId
+	readonly call:  NodeId
+	readonly runs?: readonly LoopIteration[]
 }
 
 /**
@@ -672,7 +674,7 @@ class LoopRuns {
 			}
 			return [];
 		}
-		const redefined = top.k > 1 && fromInRun && [...edges].some(([t, e]) => DfEdge.includesType(e, EdgeType.Reads)
+		const redefined = top.k > 1 && fromInRun && [...edges].some(([t, e]) => DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall)
 			&& this.loopsAround(t).includes(top.loop) && this.order(t, from, top.loop) === RunOrder.After && this.surelyIn(t, top.loop));
 		return redefined ? undefined : iterations.filter(i => around.includes(i.loop));
 	}
@@ -726,14 +728,14 @@ function inSameFrame(target: NodeId, fn: NodeId, graph: DataflowGraph, idMap: As
  * called, the same frame for what the call hands back of its own arguments, and none it knows otherwise.
  * A function already in a frame is called recursively, and its frames are no longer told apart.
  */
-function framesIntoReturn(call: NodeId, target: NodeId, edges: ReadonlyMap<NodeId, DfEdge>, frames: readonly CallFrame[], idMap: AstIdMap): readonly CallFrame[] {
+function framesIntoReturn(call: NodeId, target: NodeId, edges: ReadonlyMap<NodeId, DfEdge>, frames: readonly CallFrame[], runs: readonly LoopIteration[], idMap: AstIdMap): readonly CallFrame[] {
 	if(!edges.entries().some(([t, e]) => !NodeId.isBuiltIn(t) && DfEdge.includesType(e, EdgeType.Calls))) {
 		/* a built-in hands back what it was given in the frame it was called in */
 		return frames;
 	}
 	const fn = RNode.strictlyEnclosingFunction(target, idMap);
 	if(fn !== undefined && edges.get(fn) !== undefined && DfEdge.includesType(edges.get(fn) as DfEdge, EdgeType.Calls)) {
-		return frames.length >= MaxFrames || frames.some(f => f.fn === fn) ? [] : [...frames, { fn, call }];
+		return frames.length >= MaxFrames || frames.some(f => f.fn === fn) ? [] : [...frames, { fn, call, runs }];
 	}
 	return fn === RNode.strictlyEnclosingFunction(call, idMap) ? frames : [];
 }
@@ -855,7 +857,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			queue.add(target, clean, cleanFingerprint, false);
 			return;
 		}
-		const key = `${cleanFingerprint}|${at.map(f => `${f.fn}@${f.call}`).join('/')}|${runs.map(i => `${i.loop}:${i.k}`).join('/')}`;
+		const key = `${cleanFingerprint}|${at.map(f => `${f.fn}@${f.call}${f.runs?.map(i => `:${i.loop}:${i.k}`).join('') ?? ''}`).join('/')}|${runs.map(i => `${i.loop}:${i.k}`).join('/')}`;
 		contextOf.set(key, [at, runs]);
 		queue.add(target, clean, key, false);
 	};
@@ -938,7 +940,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 				if(DfEdge.includesType(edge, EdgeType.Returns)) {
 					foundRetuns = true;
 					if(chosen === undefined || chosen.has(targetId) || RNode.iterateParents(idMap.get(targetId), idMap).some(p => chosen.has(p.info.id))) {
-						const into = framesIntoReturn(id, targetId, outgoingEdges, frames, idMap);
+						const into = framesIntoReturn(id, targetId, outgoingEdges, frames, iterations, idMap);
 						enqueue(targetId, into, into === frames ? iterations : []);
 					}
 				}
@@ -968,7 +970,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 							: inSameFrame(targetId, top.fn, graph, idMap) ? frames : [];
 					/* a function reads what its scope binds when it is called, so leaving its frame that way, the read is where the call is */
 					const runs = next === frames ? loops.along(id, targetId, outgoingEdges, iterations)
-						: top !== undefined && !ownParameter ? loops.along(top.call, targetId, outgoingEdges, []) : [];
+						: top !== undefined && !ownParameter ? loops.along(top.call, targetId, outgoingEdges, top.runs ?? []) : [];
 					if(runs !== undefined) {
 						enqueue(targetId, next, runs);
 					}

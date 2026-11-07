@@ -23,6 +23,7 @@ import { getDefaultProcessor } from '../environments/default-builtin-config';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { HookInformation } from '../hooks';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { autoPrintReads } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 
 function normalizeCds(cds: readonly ControlDependency[] | undefined): ControlDependency[] | undefined {
 	return cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }));
@@ -166,6 +167,17 @@ export class DataflowGraphBuilder<
 				this.argument(id, arg.nodeId);
 			}
 		}
+	}
+
+	/**
+	 * States that R prints the top-level values `ids` by an implicit `print`, which reads the printing options, or every
+	 * option for a value a method may print (`dispatched`), see {@link autoPrintReads}.
+	 */
+	public autoPrints(ids: readonly NodeId[], dispatched = false): this {
+		for(const id of ids) {
+			this.recordAmbientAccess(id, { reads: autoPrintReads(dispatched) });
+		}
+		return this;
 	}
 
 	/**

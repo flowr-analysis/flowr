@@ -24,7 +24,7 @@ describe('source', withTreeSitter(parser => {
 
 	const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.resolveSource.repeatedSourceLimit', 0);
 
-	assertDataflow(label('simple source', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, 'source("simple")\ncat(N)', emptyGraph()
+	assertDataflow(label('simple source', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, 'source("simple")\ncat(N)', emptyGraph().autoPrints([7])
 		.use('5', 'N')
 		.reads('5', 'simple:1:1-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
@@ -43,7 +43,7 @@ describe('source', withTreeSitter(parser => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), parser, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
+	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), parser, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph().autoPrints([14])
 		.use('12', 'N')
 		.reads('12', 'simple:3:1-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
@@ -75,7 +75,7 @@ describe('source', withTreeSitter(parser => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), parser, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
+	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), parser, 'if (x) { source("simple") }\ncat(N)',  emptyGraph().autoPrints([12]).autoPrints([8], true)
 		.use('0', 'x')
 		.use('10', 'N')
 		.reads('10', 'simple:1:10-0')
@@ -102,7 +102,7 @@ describe('source', withTreeSitter(parser => {
 	);
 
 	// missing sources should just be ignored
-	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph()
+	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph().recordAmbientAccess(3, { reads: ['#wd', '#files'] })
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
 		.calls('3', NodeId.toBuiltIn('source'))
 		.constant('1')
@@ -113,7 +113,7 @@ describe('source', withTreeSitter(parser => {
 	assertDataflow(label('recursive source', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, {
 		request: 'file',
 		content: 'recursive1'
-	}, emptyGraph()
+	}, emptyGraph().autoPrints(['recursive2:2:1-3'])
 		.use('recursive2:2:1-1', 'x')
 		.reads('recursive2:2:1-1', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -189,7 +189,7 @@ describe('source', withTreeSitter(parser => {
 	);
 
 	assertDataflow(label('sourcing a closure', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
-		parser, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph()
+		parser, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph().autoPrints([12], true)
 			.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
 			.calls('3', NodeId.toBuiltIn('source'))
 			.argument('3', '1')
@@ -269,7 +269,7 @@ describe('source', withTreeSitter(parser => {
 	);
 
 	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...BuiltInOperators.byName['<<-'].capabilities]),
-		parser, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
+		parser, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph().autoPrints([12]).autoPrints([8], true)
 			.use('10', 'x')
 			.reads('10', 'closure2:2:1-3')
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })

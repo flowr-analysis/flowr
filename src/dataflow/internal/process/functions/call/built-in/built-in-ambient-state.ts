@@ -1111,6 +1111,11 @@ export function evaluatesCapturedCode<OtherInfo>(res: DataflowInformation, rootI
 	return withAccess(res, rootId, data, Quoted.reads, Quoted.writes);
 }
 
+/** What the implicit `print` of a top-level value reads (see {@link readsOfAutoPrint}): every option if a method may print it (`dispatched`). */
+export function autoPrintReads(dispatched: boolean): string[] {
+	return optionReads(dispatched ? undefined : PrintingOptions);
+}
+
 /** R prints every visible top-level value (see {@link autoPrints}) by an implicit `print`, which reads the options the configured `print` reads for that value. */
 export function readsOfAutoPrint<OtherInfo>(processed: DataflowInformation, expression: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const print = Resolve.byNameAndType('print', { current: REnvironment.findBuiltIn(data.environment.current), level: 0 }, ReferenceType.Function)?.slice(0, 1) ?? [];

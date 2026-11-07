@@ -13,7 +13,7 @@ describe('Redefining builtins', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('if (print)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', ...BuiltInOperators.byName['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 
-   print(3)`,  emptyGraph()
+   print(3)`,  emptyGraph().autoPrints([11]).autoPrints([13], true)
 			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
 			.calls('6', NodeId.toBuiltIn('<-'))
 			.argument('6', ['5', '0'])
@@ -44,7 +44,7 @@ if(1)
 		shell, `\`if\` <- function(...) 2
 if(1) 
    x <- 3
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([16]).autoPrints([12], true)
 			.use('14', 'x')
 			.reads('14', '8')
 			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
@@ -84,7 +84,7 @@ print(x)`, emptyGraph()
 		shell, `x <- 2
 \`<-\` <- \`*\`
 x <- 3
-print(y = x)`, emptyGraph()
+print(y = x)`, emptyGraph().autoPrints([13]).autoPrints([8], true)
 			.use('4', '`*`')
 			.reads('4', NodeId.toBuiltIn('*'))
 			.use('6', 'x', { cds: [{ id: '8', when: true, byPromise: true }] })
@@ -120,7 +120,7 @@ print(y = x)`, emptyGraph()
    x <- 3
 }
 y <- f()
-print(y)`, emptyGraph()
+print(y)`, emptyGraph().autoPrints([22], true)
 			.use('7', '`*`', undefined, false)
 			.reads('7', NodeId.toBuiltIn('*'))
 			.use('9', 'x', { cds: [{ id: '11', when: true, byPromise: true }] }, false)

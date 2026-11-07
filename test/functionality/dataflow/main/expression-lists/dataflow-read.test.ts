@@ -11,13 +11,13 @@ import { BuiltInOperators } from '../../../../../src/dataflow/environments/defau
 describe('Lists with variable references', { concurrent: false }, withShell(shell => {
 	describe('read-read same variable', () => {
 		assertDataflow(label('directly together', ['name-normal', 'newlines']), shell,
-			'x\nx', emptyGraph()
+			'x\nx', emptyGraph().autoPrints([0, 1], true)
 				.use('0', 'x')
 				.use('1', 'x')
 		);
 
 		assertDataflow(label('multiple occurrences of same variable', ['name-normal', 'newlines']), shell,
-			'x\nx\nx', emptyGraph()
+			'x\nx\nx', emptyGraph().autoPrints([0, 1, 2], true)
 				.use('0', 'x')
 				.use('1', 'x')
 				.use('2', 'x')
@@ -37,7 +37,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 		);
 
 		assertDataflow(label('multiple occurrences of same variable', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell,
-			'x <- 1\nx <- 3\n3\nx <- 9', emptyGraph()
+			'x <- 1\nx <- 3\n3\nx <- 9', emptyGraph().autoPrints([6])
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
 				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
@@ -55,7 +55,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 	});
 	describe('def followed by read', () => {
 		assertDataflow(label('directly together', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell,
-			'x <- 1\nx',  emptyGraph()
+			'x <- 1\nx',  emptyGraph().autoPrints([3])
 				.use('3', 'x')
 				.reads('3', '0')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -65,7 +65,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 		);
 		assertDataflow(label('redefinition links correctly', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), shell,
 			'x <- 2; x <- 3; x',
-			emptyGraph()
+			emptyGraph().autoPrints([6])
 				.use('6', 'x')
 				.reads('6', '3')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -79,7 +79,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 		);
 		assertDataflow(label('multiple redefinition with circular definition', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), shell,
 			'x <- 2; x <- x; x',
-			emptyGraph()
+			emptyGraph().autoPrints([6])
 				.use('4', 'x')
 				.reads('4', '0')
 				.use('6', 'x')
@@ -115,7 +115,7 @@ x <- 4
    x <- 2
    print(x)
 }
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([18, 23]).autoPrints([19], true)
 				.use('16', 'x', { cds: [{ id: '19', when: true, byPromise: true }] })
 				.reads('16', ['7', '12'])
 				.use('21', 'x')

@@ -58,13 +58,10 @@ function diffRootVertices(ctx: GraphDiffContext): void {
 		{ ...ctx, position: `${ctx.position}Unknown side effects differ in graphs. ` });
 }
 
-/** Compares what the calls are recorded to access of the global state; a graph recording nothing, like most built by hand, states nothing. */
+/** Compares what the calls are recorded to access of the global state, so an expected graph states every record (see `DataflowGraphBuilder.autoPrints`). */
 function diffAmbientAccess(ctx: GraphDiffContext): void {
 	const left = new Set(ctx.left.ambientAccessIds());
 	const right = new Set(ctx.right.ambientAccessIds());
-	if(left.size === 0 || right.size === 0) {
-		return;
-	}
 	setDifference(left, right, { ...ctx, position: `${ctx.position}Calls accessing the ambient state differ in graphs. ` });
 	for(const id of left.intersection(right)) {
 		const a = ctx.left.ambientAccessOf(id) as AmbientAccessRecord;

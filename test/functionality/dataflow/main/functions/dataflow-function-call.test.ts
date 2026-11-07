@@ -23,7 +23,7 @@ import { BuiltInOperators } from '../../../../../src/dataflow/environments/defau
 describe('Function Call', withTreeSitter(ts => {
 	describe('Calling previously defined functions', () => {
 		assertDataflow(label('Calling function a', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']),
-			ts, 'i <- 4; a <- function(x) { x }\na(i)', emptyGraph()
+			ts, 'i <- 4; a <- function(x) { x }\na(i)', emptyGraph().autoPrints([15], true)
 				.use('8', 'x', undefined, false)
 				.reads('8', '4')
 				.use('13', 'i', { cds: [{ id: '15', when: true, byPromise: true }] })
@@ -67,7 +67,7 @@ describe('Function Call', withTreeSitter(ts => {
 		);
 
 		assertDataflow(label('Calling function a with an indirection', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments']), ts, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
-			emptyGraph()
+			emptyGraph().autoPrints([18], true)
 				.use('8', 'x', undefined, false)
 				.reads('8', '4')
 				.use('13', 'a', undefined)
@@ -122,7 +122,7 @@ describe('Function Call', withTreeSitter(ts => {
 
 		assertDataflow(label('Calling with a constant function', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'formals-named', 'implicit-return', 'unnamed-arguments']), ts, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
-a(i)`, emptyGraph()
+a(i)`, emptyGraph().autoPrints([21], true)
 			.use('9', 'x', undefined, false)
 			.reads('9', '4')
 			.use('19', 'i', { cds: [{ id: '21', when: true, byPromise: true }] })
@@ -185,7 +185,7 @@ a(i)`, emptyGraph()
 	});
 
 	describe('Directly calling a function', () => {
-		const outGraph = emptyGraph()
+		const outGraph = emptyGraph().autoPrints([14], true)
 			.use('6', 'x', undefined, false)
 			.reads('6', '2')
 			.call('8', '+', [argumentInCall('6'), argumentInCall('7')], {
@@ -230,7 +230,7 @@ a(i)`, emptyGraph()
 		);
 
 		assertDataflow(label('Calling a function which returns another', ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', 'numbers', 'closures']), ts, `a <- function() { function() { 42 } }
-a()()`, emptyGraph()
+a()()`, emptyGraph().autoPrints([13], true)
 			.call('6', '{', [argumentInCall('5')], {
 				returns:     ['5'],
 				reads:       [NodeId.toBuiltIn('{')],
@@ -275,7 +275,7 @@ a()()`, emptyGraph()
 	});
 
 	describe('Argument which is expression', () => {
-		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph()
+		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph().recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
 			.use('2', 'x', { cds: [{ id: '5', when: true, byPromise: true }] })
 			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [NodeId.toBuiltIn('+')], cds: [{ id: '5', when: true, byPromise: true }] })
 			.calls('3', NodeId.toBuiltIn('+'))
@@ -287,7 +287,7 @@ a()()`, emptyGraph()
 	});
 
 	describe('Argument which is anonymous function call', () => {
-		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), ts, 'f(function() { 3 })', emptyGraph()
+		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), ts, 'f(function() { 3 })', emptyGraph().recordAmbientAccess(7, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'], assumed: ['#rng'] })
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
 				reads:       [NodeId.toBuiltIn('{')],
@@ -310,7 +310,7 @@ a()()`, emptyGraph()
 
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow(label('Calling \'seq\'', ['function-calls', 'numbers', 'unnamed-arguments', 'named-arguments']), ts, 'seq(1, length(pkgnames), by = stepsize)',
-			emptyGraph()
+			emptyGraph().autoPrints([11], true)
 				.use('4', 'pkgnames')
 				.use('9', 'stepsize')
 				.use('10', 'by')
@@ -331,7 +331,7 @@ a()()`, emptyGraph()
 	});
 
 	describe('Late function bindings', () => {
-		assertDataflow(label('Late binding of y', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']), ts, 'a <- function() { y }\ny <- 12\na()', emptyGraph()
+		assertDataflow(label('Late binding of y', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']), ts, 'a <- function() { y }\ny <- 12\na()', emptyGraph().autoPrints([11], true)
 			.use('3', 'y', undefined, false)
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
@@ -372,7 +372,7 @@ a()()`, emptyGraph()
 
 	describe('Deal with empty calls', () => {
 		assertDataflow(label('Not giving first parameter', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'formals-named', 'formals-default', 'implicit-return', 'newlines', 'empty-arguments', 'unnamed-arguments']), ts, `a <- function(x=3,y) { y }
-a(,3)`, emptyGraph()
+a(,3)`, emptyGraph().autoPrints([15], true)
 			.use('8', 'y', undefined, false)
 			.reads('8', '4')
 			.call('9', '{', [argumentInCall('8')], {
@@ -408,7 +408,7 @@ a(,3)`, emptyGraph()
 		);
 	});
 	describe('Reuse parameters in call', () => {
-		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph()
+		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph().recordAmbientAccess(6, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
 			.use('3', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
 			.reads('3', '2')
 			.use('4', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
@@ -419,7 +419,7 @@ a(,3)`, emptyGraph()
 		);
 	});
 	describe('Define in parameters', () => {
-		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph()
+		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph().autoPrints([6]).recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
 			.use('6', 'x')
 			.reads('6', '1')
 			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [NodeId.toBuiltIn('<-'), 2], onlyBuiltIn: true, cds: [{ id: '5', when: true, byPromise: true }] })

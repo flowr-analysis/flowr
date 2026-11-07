@@ -34,7 +34,7 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 		writesLikeR(parser, 'an option set by a function stored by evalq', 'e <- new.env()\nevalq(f <- function() options(digits = 3), e)\ne$f()\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits'], { red: 'R sets digits, flowR finds no write' });
 		writesLikeR(parser, 'an option set by a callback in an environment', 'reg <- new.env()\nassign("cb", function() options(digits = 3), envir = reg)\nreg$cb()\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a promise forced deep', 'f <- function(a) g(a)\ng <- function(b) h(b)\nh <- function(cc) cc\nf(options(digits = 3))\nif(getOption("digits") == 3) cat("ok")', 4, ['#option:digits']);
-		writesLikeR(parser, 'an option set by an R6 method chain', 'library(R6)\nhelp1 <- function() options(digits = 3)\nC <- R6Class("C", public = list(go = function() help1()))\nC$new()$go()\nif(getOption("digits") == 3) cat("ok")', 4, ['#option:digits'], { red: 'R sets digits, flowR finds no write through the R6 method' });
+		writesLikeR(parser, 'an option set by an R6 method chain', 'library(R6)\nhelp1 <- function() options(digits = 3)\nC <- R6Class("C", public = list(go = function() help1()))\nC$new()$go()\nif(getOption("digits") == 3) cat("ok")', 4, ['#option:digits']);
 	});
 
 	describe('source', () => {

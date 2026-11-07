@@ -21,6 +21,7 @@ import { accessedFieldName, linkFieldReads } from '../../../../linker';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { resolveConstructorInstanceEnvState } from './built-in-class-generator';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -92,7 +93,7 @@ export function processAccess<OtherInfo>(
 			&& args.length >= 2 && args[1] !== EmptyArgument) {
 		const stackEnvState = resolveNodeToStackEnv(head.value, data);
 		const envState = stackEnvState
-			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
+			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : resolveConstructorInstanceEnvState(head.value, data));
 		if(envState) {
 			const fieldName = accessedFieldName(RArgument.valueOf(args[1]), config.treatIndicesAsString);
 			const fieldDefs = fieldName

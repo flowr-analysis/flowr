@@ -74,13 +74,14 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 	if(inDefs.some(d => stackKindOf(d.envState) !== stack)) {
 		return 'ambiguous';
 	}
+	/* the variable may hold any of them, so each binding of each joins the others */
 	let mergedEnvState = inDefs[0].envState;
 	for(let i = 1; i < inDefs.length; i++) {
-		for(const [, varDefs] of (inDefs[i].envState).current.memory) {
+		for(const [name, varDefs] of (inDefs[i].envState).current.memory) {
 			for(const varDef of varDefs) {
 				const named = varDef as InGraphIdentifierDefinition & { name: Identifier };
-				if(named.name !== undefined) {
-					mergedEnvState = REnvironment.define(named, false, mergedEnvState);
+				if(named.name !== undefined && !mergedEnvState.current.memory.get(name)?.some(d => d.nodeId === named.nodeId)) {
+					mergedEnvState = REnvironment.define({ ...named, cds: named.cds ?? [] }, false, mergedEnvState);
 				}
 			}
 		}
@@ -491,7 +492,7 @@ export const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName
 
 /**
  * Whether the variable definition `holder` surely holds a value one of `origins` created, following plain copies
- * (`e2 <- e`). With {@link EnvironmentProducers} it holds an environment, which a replacement (`e$f <- v`) changes
+ * (`e2 <- e`) and replacements (`e$f <- v` keeps what `e` held). With {@link EnvironmentProducers} it holds an environment, which a replacement (`e$f <- v`) changes
  * for every holder, with `[BuiltInProcName.List]` it holds a list, which the replacement copies.
  * @example
  * ```ts
@@ -501,7 +502,7 @@ export const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName
  * }
  * ```
  */
-export function holdsValueOf(holder: IdentifierDefinition, graph: DataflowGraph, origins: readonly BuiltInProcName[]): boolean {
+export function holdsValueOf(holder: Pick<IdentifierDefinition, 'nodeId'>, graph: DataflowGraph, origins: readonly BuiltInProcName[]): boolean {
 	const sources = Dataflow.valueSources(holder.nodeId, graph);
 	return sources !== undefined && sources.length > 0 && sources.every(v => origins.some(o => DfgVertex.hasOrigin(graph.getVertex(v), o)));
 }

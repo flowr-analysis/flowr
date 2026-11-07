@@ -140,6 +140,10 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * method any call may run, as it is the one vertex for all of them.
 	 */
 	ruledOutAt?:   readonly CallRuledOut[]
+	/** For a lookup in an environment (`e$x`, `mget`): the definitions the contents tracked where it is written bind it to */
+	found?:        readonly NodeId[]
+	/** For a lookup of a function body whose name or environment only a call knows (`get(n, envir = e)`, `e$x` with a free `e`): what it finds for each call */
+	foundOnCall?:  readonly FoundOnCall[]
 }
 
 /**
@@ -150,6 +154,12 @@ export interface CallRuledOut {
 	readonly call:    NodeId
 	readonly methods: readonly NodeId[]
 	readonly within?: readonly CallRuledOut[]
+}
+
+/** The definitions a lookup in a function body (`get(n, envir = e)`) finds when `call` runs the body, see {@link DataflowGraphVertexFunctionCall#foundOnCall}. */
+export interface FoundOnCall {
+	readonly call:  NodeId
+	readonly found: readonly NodeId[]
 }
 
 /** One entry of an S4 method signature: the class, and the formal it is for when the signature names it. */

@@ -26,6 +26,8 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
+import { Dataflow } from '../../../../../graph/df-helper';
+import { recordFound } from '../../../../linker';
 
 function namesDenotedBy<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
@@ -79,18 +81,26 @@ export function isComputedLookup(vertex: DataflowGraphVertexFunctionCall, graph:
  */
 export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, runsOnceAt: RNode<ParentInformation> | undefined): boolean {
 	const name = vertex.args[0] as Exclude<FunctionArgument, typeof EmptyArgument>;
-	const names = NodeValue.stringsOf(name.nodeId, Resolve.info(graph, ctx));
+	const info = Resolve.info(graph, ctx);
+	const names = NodeValue.stringsOf(name.nodeId, info);
 	if(names === undefined) {
 		return false;
 	}
-	for(const n of names) {
+	const found = (ns: readonly string[]) => ns.flatMap(n => {
 		/* the frames of the body and the closures around it hold what they bound before, the global names are those at the call */
 		const local = lexicalDefinitions(n, vertex, graph);
 		const defs = local.definite ? local.definitions : [...local.definitions, ...Resolve.byName(n, environment) ?? []];
-		for(const { nodeId } of defs) {
-			if(!NodeId.isBuiltIn(nodeId) && !ProgramOrder.definedLater(nodeId, runsOnceAt, graph)) {
-				graph.addEdge(vertex.id, nodeId, EdgeType.Returns | EdgeType.Reads);
-			}
+		return defs.map(d => d.nodeId).filter(id => !NodeId.isBuiltIn(id) && !ProgramOrder.definedLater(id, runsOnceAt, graph));
+	});
+	for(const nodeId of found(names)) {
+		graph.addEdge(vertex.id, nodeId, EdgeType.Returns | EdgeType.Reads);
+	}
+	/* each call of the function around it may hand down other names */
+	const fn = graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(vertex.id, graph.idMap);
+	if(fn !== undefined && names.length > 1) {
+		for(const call of Dataflow.sourcesOf(graph, fn, EdgeType.Calls)) {
+			const inCall = NodeValue.stringsOf(name.nodeId, { ...info, callContext: new Map([[fn, call]]) });
+			recordFound(graph, vertex.id, inCall === undefined ? [] : found(inCall), call);
 		}
 	}
 	graph.unknownSideEffects.delete(NodeId.normalize(vertex.id));

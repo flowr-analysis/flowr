@@ -28,6 +28,7 @@ import { Resolve } from '../../environments/resolve-helper';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { resolveAsField } from './resolve-field';
 
 /**
  * The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the
@@ -135,9 +136,14 @@ export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typ
 
 /**
  * Resolves `x[[i]]` to the element of `x` at position `i`, so `c("a", "b")[[2]]` is `"b"`. Where `i` is not known,
- * as a loop counter often is not, it is any of the elements; helper of {@link resolveNode}.
+ * as a loop counter often is not, it is any of the elements. A field of an environment (`e$f`, `e[["f"]]`) is what
+ * the environment binds it to, see {@link resolveAsField}; helper of {@link resolveNode}.
  */
 export function resolveAsElement(args: BuiltInEvalHandlerArgs): Value {
+	const field = resolveAsField(args);
+	if(field !== undefined) {
+		return field;
+	}
 	const node = args.node;
 	const index = RAccess.is(node) && node.operator === '[[' && node.access.length === 1 && node.access[0] !== EmptyArgument ? node.access[0].value : undefined;
 	if(!RAccess.is(node) || index === undefined) {

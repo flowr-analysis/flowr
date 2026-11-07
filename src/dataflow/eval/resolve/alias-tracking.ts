@@ -763,6 +763,26 @@ function boundByCall(id: NodeId, call: NodeId, edges: ReadonlyMap<NodeId, DfEdge
 	return id === call ? undefined : bound;
 }
 
+/**
+ * Which of the definitions the lookup `vertex` finds it may hand back in the frames the walk is in: those the calls
+ * of these frames find, and those no call states, see {@link DataflowGraphVertexFunctionCall#foundOnCall}.
+ * `undefined` if no call of a frame states what it finds.
+ */
+function foundInFrames(vertex: DataflowGraphVertexFunctionCall, frames: readonly CallFrame[], callContext: CallContext | undefined): ((target: NodeId) => boolean) | undefined {
+	if(vertex.foundOnCall === undefined) {
+		return undefined;
+	}
+	let found: Set<NodeId> | undefined;
+	const stated = new Set<NodeId>();
+	for(const { call, found: defs } of vertex.foundOnCall) {
+		defs.forEach(d => stated.add(d));
+		if(frames.some(f => f.call === call) || callContext?.values().some(c => c === call)) {
+			found = found === undefined ? new Set(defs) : found.intersection(new Set(defs));
+		}
+	}
+	return found === undefined ? undefined : target => found.has(target) || !stated.has(target);
+}
+
 /** The argument `switch` picks for a selector value, `null` if it picks none (and hands back `NULL`) or fails. */
 function switchPick(args: readonly (RArgument<ParentInformation> | typeof EmptyArgument)[], value: Value): NodeId | null | undefined {
 	if(value.type === 'vector') {
@@ -944,10 +964,13 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			if(chosen === null) {
 				return Top;
 			}
+			const found = foundInFrames(vertex, frames, callContext);
 			for(const [targetId, edge] of outgoingEdges) {
 				if(DfEdge.includesType(edge, EdgeType.Returns)) {
 					foundRetuns = true;
-					if(chosen === undefined || chosen.has(targetId) || RNode.iterateParents(idMap.get(targetId), idMap).some(p => chosen.has(p.info.id))) {
+					if(found?.(targetId) === false) {
+						continue;
+					} else if(chosen === undefined || chosen.has(targetId) || RNode.iterateParents(idMap.get(targetId), idMap).some(p => chosen.has(p.info.id))) {
 						const into = framesIntoReturn(id, targetId, outgoingEdges, frames, iterations, idMap);
 						enqueue(targetId, into, into === frames ? iterations : []);
 					}

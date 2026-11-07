@@ -11,6 +11,9 @@ import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
 import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, ReadGraphicsState, PlotCreateConfig } from './shared';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
+/** What `$` and `@` share: they access a field by its name. */
+const NamedAccess = { treatIndicesAsString: true, resolveField: true, props: CallProp.Pure, sig: sig({ x: Forced.Value, name: ArgProp.Nse }) } as const;
+
 /** The built-in definitions of the language itself: control flow, functions, environments, quoting, and evaluation. */
 export const LanguageDefinitions = [
 	/* data-masking: the non-data arguments name columns of the (first) data object, not variables */
@@ -91,10 +94,9 @@ export const LanguageDefinitions = [
 		{ treatIndicesAsString: false, resolveField: true, props: CallProp.Pure, sig: sig({ x: Forced.Value, '...': ArgProp.Value }) },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.Element }
 	),
-	/* the field is a name rather than a value, so it is never evaluated */
-	fn([...RAccess.namedOperators], BuiltInProcName.Access,
-		{ treatIndicesAsString: true, resolveField: true, props: CallProp.Pure, sig: sig({ x: Forced.Value, name: ArgProp.Nse }) }, Primitive
-	),
+	/* the field is a name rather than a value, so it is never evaluated; a field of an environment folds to what it holds */
+	fn(['$'], BuiltInProcName.Access, NamedAccess, { assumePrimitive: true, evalHandler: BuiltInEvalName.Element }),
+	fn(['@'], BuiltInProcName.Access, NamedAccess, Primitive),
 	fn(['::'], BuiltInProcName.NamespaceAccess, { internal: false, sig: sig({ pkg: ArgProp.NoDefault, name: ArgProp.NoDefault }) }, Primitive),
 	fn([':::'], BuiltInProcName.NamespaceAccess, { internal: true, sig: sig({ pkg: ArgProp.NoDefault, name: ArgProp.NoDefault }) }, Primitive),
 	fn(['if'], BuiltInProcName.IfThenElse,

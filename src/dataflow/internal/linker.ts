@@ -1,4 +1,5 @@
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../fn/function-semantics';
@@ -342,7 +343,7 @@ function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, s
 	}
 	for(const read of aliases) {
 		if(envState !== undefined) {
-			bindAccessedField(graph, read, envState, idMap);
+			bindAccessedField(graph, read, envState, idMap, id);
 		}
 		const write = fieldAssignmentOf(read, idMap);
 		if(write !== undefined) {
@@ -904,10 +905,33 @@ export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefine
 }
 
 /**
+ * Adds the definitions `found` to what the lookup `lookup` finds where it is written, or when `call` runs it, see
+ * {@link DataflowGraphVertexFunctionCall#found} and {@link DataflowGraphVertexFunctionCall#foundOnCall}.
+ * @example
+ * ```ts
+ * // reg$h within a body, bound to what reg holds at the call `call` of that body
+ * recordFound(graph, access, fieldDefs.map(d => d.nodeId), call);
+ * ```
+ */
+export function recordFound(graph: DataflowGraph, lookup: NodeId, found: readonly NodeId[], call?: NodeId): void {
+	const vertex = graph.getVertex(lookup);
+	if(found.length === 0 || !DfgVertex.isFunctionCall(vertex)) {
+		return;
+	} else if(call === undefined) {
+		vertex.found = vertex.found === undefined ? found : uniqueArrayMerge(vertex.found, found);
+		return;
+	}
+	const known = vertex.foundOnCall?.find(f => f.call === call);
+	const entry = { call, found: known === undefined ? found : uniqueArrayMerge(known.found, found) };
+	vertex.foundOnCall = [...vertex.foundOnCall?.filter(f => f !== known) ?? [], entry];
+}
+
+/**
  * Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns,
  * and so may be a field of unknown kind, like the `read.csv` of `assign("f", read.csv, envir = e)`.
  */
-export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean): void {
+export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean, call?: NodeId): void {
+	recordFound(graph, accessId, fieldDefs?.map(d => d.nodeId).filter(d => !NodeId.isBuiltIn(d)) ?? [], call);
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
 		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
@@ -946,14 +970,14 @@ function fieldAssignmentOf(readId: NodeId, idMap: AstIdMap): NodeId | undefined 
  * An access `x$f` written where `x` was still open reads the field of whatever `x` is bound to once that binding is
  * known, so binding the read at `readId` to a definition holding `envState` links the access to that field.
  */
-export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState: REnvironmentInformation, idMap: AstIdMap): void {
+export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState: REnvironmentInformation, idMap: AstIdMap, call?: NodeId): void {
 	const read = idMap.get(readId);
 	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
 	if(!RAccess.is(access) || access.accessed.info.id !== readId) {
 		return;
 	}
 	const fieldName = accessedFieldName(RArgument.valueOf(access.access[0]), RAccess.isNamed(access));
-	linkFieldReads(graph, access.info.id, fieldName ? envState.current.memory.get(fieldName) : undefined, true);
+	linkFieldReads(graph, access.info.id, fieldName ? envState.current.memory.get(fieldName) : undefined, true, call);
 }
 
 /** The factory that creates and returns only `closure`, calling only known built-ins and not reflecting on its frame, with the names its frame binds. */

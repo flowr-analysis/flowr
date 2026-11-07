@@ -328,7 +328,7 @@ function processAssignmentTarget<OtherInfo>(
 	} else if(config.canBeReplacement && type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
-		const envRouted = tryRouteDollarEnvAssign(rootId, data, config, target as RAccess<OtherInfo & ParentInformation>, source, replacement);
+		const envRouted = tryRouteFieldEnvAssign(rootId, data, config, target as RAccess<OtherInfo & ParentInformation>, source, replacement);
 		if(envRouted !== undefined) {
 			return envRouted;
 		}
@@ -429,10 +429,10 @@ function isEnvCreatorSource(sourceInfo: DataflowInformation, entryPoint: NodeId 
 }
 
 /**
- * When `e$x <- val` and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that
+ * When `e$x <- val` (or `e[["x"]] <- val`) and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that
  * envState instead of redefining `e`; returns `undefined` when routing is not applicable.
  */
-function tryRouteDollarEnvAssign<OtherInfo>(
+function tryRouteFieldEnvAssign<OtherInfo>(
 	rootId:      NodeId,
 	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config:      AssignmentConfiguration,
@@ -440,15 +440,12 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	source:      RNode<OtherInfo & ParentInformation>,
 	replacement: RSymbol<OtherInfo & ParentInformation>
 ): DataflowInformation | undefined {
-	if(target.operator !== '$') {
+	const fieldNode = target.access.length === 1 ? RArgument.valueOf(target.access[0]) : undefined;
+	if(!fieldNode || (target.operator !== '$' && (target.operator !== '[[' || !RString.is(fieldNode)))) {
 		return undefined;
 	}
 	const envirResolution = RSymbol.is(target.accessed) ? resolveSymbolToEnvir(target.accessed.content, target.accessed.info.id, data) : closureFrameResolution(target.accessed, data);
 	if(!envirResolution) {
-		return undefined;
-	}
-	const fieldNode = RArgument.valueOf(target.access[0]);
-	if(!fieldNode) {
 		return undefined;
 	}
 	const fieldName = (RString.is(fieldNode) ? fieldNode.content.str : fieldNode.lexeme) as Identifier;

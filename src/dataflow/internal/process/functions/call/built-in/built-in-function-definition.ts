@@ -901,7 +901,7 @@ export function updateNestedFunctionCalls(
 						graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 						if(envState !== undefined && graph.idMap !== undefined) {
-							bindAccessedField(graph, ingoing.nodeId, envState, graph.idMap);
+							bindAccessedField(graph, ingoing.nodeId, envState, graph.idMap, id);
 						}
 					}
 				}

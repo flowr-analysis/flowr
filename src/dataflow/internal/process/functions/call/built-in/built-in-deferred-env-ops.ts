@@ -21,6 +21,8 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import { applyGlobalKills, applyKills } from '../../../../../environments/apply-kill';
 import type { KillReference } from '../../../../../info';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
+import type { CallContext } from '../../../../../eval/resolve/alias-tracking';
+import { recordFound } from '../../../../linker';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config/shared';
 import { stackEnvKindOf } from './built-in-stack-env';
@@ -166,11 +168,13 @@ type EnvAtCall = { readonly holders: readonly (NamedInGraphIdentifierDefinition 
 
 /** How the call `via` of the function `fn` runs it, `direct` if `via` is the call being linked rather than one in a function it calls. */
 interface Run {
-	readonly fn:     DataflowGraphVertexFunctionDefinition
-	readonly via:    NodeId
-	readonly direct: boolean
-	readonly graph:  DataflowGraph
-	readonly idMap:  AstIdMap
+	readonly fn:       DataflowGraphVertexFunctionDefinition
+	readonly via:      NodeId
+	readonly direct:   boolean
+	readonly graph:    DataflowGraph
+	readonly idMap:    AstIdMap
+	/** each function on the way to `fn` with the call running it */
+	readonly context?: CallContext
 }
 
 /** The parameter of the function run that `id` reads, if it reads just that. */
@@ -212,11 +216,15 @@ function envAtCall(envir: NodeId, environment: REnvironmentInformation, run: Run
 	}
 	const closure = frameOf(node);
 	const symbol = closure ?? node;
-	if(!RSymbol.is(symbol) || !run.direct) {
+	if(!RSymbol.is(symbol)) {
 		return undefined;
 	}
 	/* a parameter holds what the call hands over, any other binding of the body is its own */
 	const bound = readBindings(symbol.info.id, run.graph).some(b => run.fn.subflow.graph.has(b));
+	/* a free variable of a function defined at the top is a global one, which a call at the top sees as the function does */
+	if(!run.direct && (bound || environment.level > 0 || RNode.strictlyEnclosingFunction(run.fn.id, run.idMap) !== undefined)) {
+		return undefined;
+	}
 	const handed = bound ? run.idMap.get(valueAt(symbol.info.id, run)) : symbol;
 	/* the call may hand over the frame of a closure itself, `put(environment(g))` */
 	const handedFrame = handed === symbol ? undefined : frameOf(handed);
@@ -236,6 +244,18 @@ function envAtCall(envir: NodeId, environment: REnvironmentInformation, run: Run
 	return { holders: holders as (NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation })[] };
 }
 
+/** Each function the calls `calls` run on the way to `fn`, the last one calling `fn`, with the call running it. */
+function contextOfChain(calls: readonly NodeId[], fn: NodeId, idMap: AstIdMap): CallContext {
+	const context = new Map<NodeId, NodeId>([[fn, calls[calls.length - 1]]]);
+	for(let i = 0; i < calls.length - 1; i++) {
+		const runs = RNode.strictlyEnclosingFunction(calls[i + 1], idMap);
+		if(runs !== undefined) {
+			context.set(runs, calls[i]);
+		}
+	}
+	return context;
+}
+
 /** The names `name` computes in the run: a parameter takes what the call hands over, anything else is resolved for the call it runs in. */
 function namesAt(name: NodeId, run: Run, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	const node = run.idMap.get(name);
@@ -246,10 +266,10 @@ function namesAt(name: NodeId, run: Run, ctx: ReadOnlyFlowrAnalyzerContext): str
 	const parameter = parameterReadBy(name, run);
 	if(parameter !== undefined) {
 		const handed = handedTo(parameter, run);
-		const names = handed.map(a => NodeValue.stringsOf(a, info));
+		const names = handed.map(a => NodeValue.stringsOf(a, { ...info, callContext: run.context }));
 		return handed.length === 0 || names.includes(undefined) ? undefined : names.flat() as string[];
 	}
-	return run.direct ? NodeValue.stringsOf(name, { ...info, callContext: new Map([[run.fn.id, run.via]]) }) : undefined;
+	return NodeValue.stringsOf(name, { ...info, callContext: run.context });
 }
 
 /**
@@ -264,8 +284,8 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 	if(fn.envOps === undefined || idMap === undefined) {
 		return environment;
 	}
-	const run: Run = { fn, via: chain.at(-1) ?? call, direct: chain.length === 0, graph, idMap };
 	const calls = [call, ...chain];
+	const run: Run = { fn, via: chain.at(-1) ?? call, direct: chain.length === 0, graph, idMap, context: contextOfChain(calls, fn.id, idMap) };
 	const callCds = graph.getVertex(call)?.cds;
 	for(const op of fn.envOps) {
 		const names = op.names.map(n => namesAt(n, run, ctx));
@@ -305,13 +325,17 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 				/* the frame of a closure records the removal, see `removeFromCustomEnv` */
 				return global ? applyGlobalKills(state, kills) : applyKills(state, kills, closureFrame);
 			}
-			case EnvOpKind.Read:
+			case EnvOpKind.Read: {
+				const found: NodeId[] = [];
 				for(const def of names.flatMap(name => Resolve.byName(name, state) ?? [])) {
 					if(!NodeId.isBuiltIn(def.nodeId)) {
 						graph.addEdge(op.id, def.nodeId, op.returns ? EdgeType.Reads | EdgeType.Returns : EdgeType.Reads);
+						found.push(def.nodeId);
 					}
 				}
+				recordFound(graph, op.id, found, call);
 				return state;
+			}
 		}
 	};
 	if(at === StackEnvKind.Global || at === StackEnvKind.CallerFrame) {

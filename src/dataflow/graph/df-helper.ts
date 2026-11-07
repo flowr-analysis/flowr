@@ -21,6 +21,7 @@ import { attachLibrary, type AttachSpec } from '../internal/process/functions/ca
 import { type Environment, EnvType, REnvironment, type REnvironmentInformation } from '../environments/environment';
 import { DepType } from '../../project/sigdb/schema';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { metaPackageCore } from '../../project/attached-packages';
 
@@ -233,7 +234,8 @@ export const Dataflow = {
 	},
 	/**
 	 * The vertices the value at `id` originates from: an argument is followed to its value, a read to the definitions it
-	 * reads, a definition to what it is defined by (other than the assignment making it), and with `throughAccess` an
+	 * reads, a definition to what it is defined by (other than the assignment making it) or, for a replacement (`e$f <- v`),
+	 * to what the variable held before, and with `throughAccess` an
 	 * access to what it accesses. A vertex none of these apply to is an origin, a read of nothing among them.
 	 * @returns the origins, `undefined` once more than `budget` vertices are visited
 	 * @example
@@ -263,6 +265,9 @@ export const Dataflow = {
 				next = node.value === undefined ? [] : [node.value.info.id];
 			} else if(DfgVertex.isUse(vertex)) {
 				next = Dataflow.targetsOf(graph, at, EdgeType.Reads);
+			} else if(DfgVertex.isVariableDefinition(vertex) && node?.info.role === RoleInParent.Accessed) {
+				/* a replacement (`e$f <- v`) rebinds `e` to what it held, changed in part */
+				next = Dataflow.targetsOf(graph, at, EdgeType.Reads).filter(t => DfgVertex.isVariableDefinition(graph.getVertex(t)));
 			} else if(DfgVertex.isVariableDefinition(vertex)) {
 				next = Dataflow.targetsOf(graph, at, EdgeType.DefinedBy).filter(t => !DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
 			} else if(opts?.throughAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.Access) && DfgVertex.isFunctionCall(vertex)) {

@@ -52,6 +52,7 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'a dollar assignment into an environment at two calls', code: 'reg <- new.env()\nregister <- function(env, f) env$h <- f\nk <- 3\nj <- 4\nregister(reg, function() k)\nregister(reg, function() j)\nprint(reg$h())', dropped: 'k <- 3', imprecise: 'keeps k <- 3, the read reaches the replacement in the body, which reads what every call hands over' },
 			{ name: 'a double bracket assignment into an environment a parameter holds', code: 'reg <- new.env()\nregister <- function(env, f) env[["h"]] <- f\nk <- 3\nregister(reg, function() k)\nprint(reg$h())' },
 			{ name: 'a dollar assignment into a list a parameter holds', code: 'l <- list(h = function() 1)\nset <- function(x, f) { x$h <- f; x }\nk <- 3\nl2 <- set(l, function() k)\nprint(l$h())', dropped: 'k <- 3' },
+			{ name: 'get of names parameters hold at two calls', code: 'reg <- new.env()\nassign("a", 1, envir = reg)\nk <- 2\nassign("b", k, envir = reg)\nfetch <- function(n) get(n, envir = reg)\nx <- fetch("a")\ny <- fetch("b")\nprint(y)' },
 			{ name: 'assign two calls deep under a name a parameter holds', code: 'reg <- new.env()\nregister <- function(name, f) assign(name, f, envir = reg)\nk <- 3\nsetup <- function() register("h", function() k)\nsetup()\nprint(reg$h())' }
 		];
 		for(const c of cases) {
@@ -74,5 +75,31 @@ describe('Transitivity through environments and super assignments, checked again
 		resolvesLikeR(parser, 'get without an environment sees a local written after the definition', 'mk <- function() { f <- function(n) get(n); k <- 5; f }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
 		resolvesLikeR(parser, 'get without an environment sees a global written after the definition', 'k <- 1\nf <- function(n) { get(n) }\nk <- 9\ny <- f("k")\ncat(y)', '4@y');
 		resolvesLikeR(parser, 'a super assignment the callee never runs', 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\ncat(n)', '4@n');
+		resolvesLikeR(parser, 'get of a name a parameter holds after assign of names parameters hold', 'reg <- new.env()\nset <- function(n, v) assign(n, v, envir = reg)\nset("a", 1)\nset("b", 2)\nfetch <- function(n) get(n, envir = reg)\ny <- fetch("b")\ncat(y)', '6@y');
+		resolvesLikeR(parser, 'get of a name a parameter holds at two calls', 'reg <- new.env()\nassign("a", 1, envir = reg)\nassign("b", 2, envir = reg)\nfetch <- function(n) get(n, envir = reg)\nx <- fetch("a")\ny <- fetch("b")\ncat(y)', '6@y');
+		resolvesLikeR(parser, 'get of a name a parameter holds from an environment a parameter holds', 'e1 <- new.env()\ne2 <- new.env()\nassign("a", 1, envir = e1)\nassign("a", 2, envir = e2)\nfetch <- function(env, n) get(n, envir = env)\nx <- fetch(e1, "a")\ny <- fetch(e2, "a")\ncat(y)', '8@y');
+		resolvesLikeR(parser, 'get of a name a parameter holds two calls deep', 'reg <- new.env()\nassign("a", 1, envir = reg)\nassign("b", 2, envir = reg)\nfetch <- function(n) get(n, envir = reg)\nlookup <- function(m) fetch(m)\nx <- lookup("a")\ny <- lookup("b")\ncat(y)', '8@y');
+		resolvesLikeR(parser, 'a dollar read of a top-level dollar write', 'e <- new.env()\ne$x <- 1\ny <- e$x\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'a double bracket read of a top-level double bracket write', 'e <- new.env()\ne[["x"]] <- 1\ny <- e[["x"]]\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'a dollar read of an assign', 'e <- new.env()\nassign("x", 2, envir = e)\ny <- e$x\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'a dollar read of an overwritten dollar write', 'e <- new.env()\ne$x <- 1\ne$x <- 3\ny <- e$x\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read of a write through an alias', 'e <- new.env()\nd <- e\nd$x <- 6\ny <- e$x\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read of a write by a function', 'e <- new.env()\nset <- function(env, v) env$x <- v\nset(e, 1)\nset(e, 2)\ny <- e$x\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read inside a function of a write into a free environment', 'e <- new.env()\ne$x <- 7\nf <- function() e$x\ny <- f()\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read after an unknown write', 'e <- new.env()\ne$x <- 1\nassign(Sys.getenv("FLOWR_UNSET_NAME", "x"), 2, envir = e)\ny <- e$x\ncat(y)', '5@y', { imprecise: 'the name assign writes is unknown' });
+		resolvesLikeR(parser, 'a dollar read after the environment goes to list2env', 'e <- new.env()\ne$x <- 1\nlist2env(list(x = 5), envir = e)\ny <- e$x\ncat(y)', '5@y', { imprecise: 'list2env writes names flowR does not track' });
+		resolvesLikeR(parser, 'a dollar read of a list', 'e <- list(x = 1)\ne$x <- 2\ny <- e$x\ncat(y)', '4@y', { imprecise: 'the fields of a list, which a write copies, are not tracked' });
+		resolvesLikeR(parser, 'get without an environment of a name a parameter holds at two calls', 'k <- 1\nj <- 2\nf <- function(n) get(n)\nx <- f("k")\ny <- f("j")\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read after a conditional dollar write', 'e <- new.env()\ne$x <- 1\nif(nchar(Sys.getenv("HOME")) > 0) e$x <- 2\ny <- e$x\ncat(y)', '4@y', { imprecise: 'either write may hold' });
+		resolvesLikeR(parser, 'a dollar read after a write into part of the field', 'e <- new.env()\ne$x <- 1\ne$x[2] <- 5\ny <- e$x[2]\ncat(y)', '4@y', { imprecise: 'a write into part of a field is not its value' });
+		resolvesLikeR(parser, 'a dollar read in a loop writing the field', 'e <- new.env()\ne$x <- 0\nfor(i in 1:3) {\n  y <- e$x\n  e$x <- i\n}\ncat(y)', '4@y', { imprecise: 'a later run sees what an earlier one writes' });
+		resolvesLikeR(parser, 'a dollar read after a function replaces the field of a free environment', 'e <- new.env()\ne$x <- 1\nf <- function() e$x <- 9\nf()\ny <- e$x\ncat(y)', '5@y', { imprecise: 'the replacement in the body is not replayed' });
+		resolvesLikeR(parser, 'a dollar read after the environment goes to a function writing it', 'e <- new.env()\ne$x <- 1\nf <- function(env) { env$x <- 5; NULL }\nl <- lapply(list(e), f)\ny <- e$x\ncat(y)', '5@y', { imprecise: 'the environment escapes into a list' });
+		resolvesLikeR(parser, 'a dollar read inside a function of a write after its definition', 'e <- new.env()\ne$x <- 1\nf <- function() e$x\ne$x <- 2\ny <- f()\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read inside a function at two calls', 'e <- new.env()\nf <- function() e$x\ne$x <- 1\na <- f()\ne$x <- 2\ny <- f()\ncat(y)', '6@y');
+		resolvesLikeR(parser, 'a dollar read of a local environment', 'f <- function() {\n  e <- new.env()\n  e$x <- 3\n  e$x\n}\ny <- f()\ncat(y)', '6@y');
+		resolvesLikeR(parser, 'a dollar read after local and evalq write', 'e <- new.env()\ne$x <- 1\nlocal(x <- 4, envir = e)\nevalq(z <- 7, e)\ny <- e$x + e$z\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a double bracket read of a write through a copy', 'e <- new.env()\ne$x <- 1\nd <- e\nd[["x"]] <- 6\ny <- e[["x"]]\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar read of a write by a function at two calls', 'reg <- new.env()\nregister <- function(env, v) env$h <- v\nregister(reg, 3)\nregister(reg, 4)\ny <- reg$h\ncat(y)', '5@y');
 	});
 }));

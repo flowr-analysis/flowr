@@ -27,6 +27,7 @@ body:
         - Bogus Return
         - Call Arguments
         - Class String Comparison
+        - Code Clones
         - Compiled Code
         - Dataframe Access Validation
         - Dead Code

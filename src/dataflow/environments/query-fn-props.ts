@@ -140,8 +140,14 @@ export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identi
 	};
 }
 
-/** What flowR states about the call `id` makes, together with the name the call resolved to. */
-export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): (BuiltInFnInfo & { name: Identifier }) | undefined {
+/**
+ * What flowR states about the call `id` makes, together with the name the call resolved to.
+ * Only the graph is needed; the `fallback` environment decides for a call that kept none (and the default built-ins if there is none).
+ */
+export function callFnProps(id: NodeId, graph: DataflowGraph, fallback?: REnvironmentInformation): (BuiltInFnInfo & { name: Identifier }) | undefined;
+export function callFnProps(id: NodeId, info: Pick<DataflowInformation, 'graph' | 'environment'>): (BuiltInFnInfo & { name: Identifier }) | undefined;
+export function callFnProps(id: NodeId, from: DataflowGraph | Pick<DataflowInformation, 'graph' | 'environment'>, fallback?: REnvironmentInformation): (BuiltInFnInfo & { name: Identifier }) | undefined {
+	const [graph, environment] = 'graph' in from ? [from.graph, from.environment] : [from, fallback];
 	const vertex = graph.getVertex(id);
 	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
@@ -150,6 +156,9 @@ export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInf
 	 * flowR settled on the built-ins keeps no environment, and a later redefinition must not speak for it */
 	const known = vertex.environment ?? environment;
 	const name = Dataflow.qualify(id, graph, false) ?? vertex.name;
+	if(known === undefined) {
+		return { name, ...BuiltInIndex.default().get(name) };
+	}
 	return {
 		name,
 		...queryFnProps(name, {

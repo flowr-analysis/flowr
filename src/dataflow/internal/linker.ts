@@ -13,7 +13,7 @@ import type { DataflowFunctionFlowInformation, DataflowGraph } from '../graph/gr
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType } from '../graph/vertex';
 import { REnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
@@ -281,7 +281,7 @@ function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunct
  */
 export function linkFunctionCallWithSingleTarget(
 	graph: DataflowGraph,
-	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
+	{ subflow: fnSubflow, exitPoints, id: fnId, params, envOps }: DataflowGraphVertexFunctionDefinition,
 	info: DataflowGraphVertexFunctionCall,
 	idMap: AstIdMap
 ): ExitPoint[] {
@@ -315,9 +315,31 @@ export function linkFunctionCallWithSingleTarget(
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	const fn = idMap.get(fnId);
 	if(RFunctionDefinition.is(fn)) {
-		applyForForcedArgs(graph, id, params, FunctionSemantics.call.match.onCallAndLink(info.args, fn.parameters, graph));
+		const argToParam = FunctionSemantics.call.match.onCallAndLink(info.args, fn.parameters, graph);
+		applyForForcedArgs(graph, id, params, argToParam);
+		if(environment !== undefined) {
+			readArgumentContents(graph, info.id, environment, argToParam, envOps, idMap);
+		}
 	}
 	return exitPoints.filter(e => doesExitPointPropagateCalls(e.type));
+}
+
+/**
+ * A call reads everything written into an environment it hands to a parameter (see {@link readEnvironmentContents}),
+ * unless the body only writes into what the parameter holds, by writes each call replays (see {@link DeferredEnvOp}):
+ * `register <- function(env, f) env$h <- f` reads nothing of `env`, so one call does not read what another stored.
+ */
+function readArgumentContents(graph: DataflowGraph, call: NodeId, environment: REnvironmentInformation, argToParam: ReadonlyMap<NodeId, NodeId>, envOps: readonly DeferredEnvOp[] | undefined, idMap: AstIdMap): void {
+	const written = new Set(envOps?.filter(o => o.kind === EnvOpKind.Define || o.kind === EnvOpKind.Replace).map(o => o.envir));
+	for(const [arg, param] of argToParam) {
+		const value = RArgument.valueOf(idMap.get(arg)) ?? idMap.get(arg);
+		if(!RSymbol.is(value) || Dataflow.sourcesOf(graph, param, EdgeType.Reads).every(r => written.has(r))) {
+			continue;
+		}
+		for(const holder of Resolve.byName(value.content, environment) ?? []) {
+			readEnvironmentContents(graph, call, holder);
+		}
+	}
 }
 
 /** for each parameter that we link that gets forced, add a reads edge from the call to argument to show that it reads it */

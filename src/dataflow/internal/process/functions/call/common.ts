@@ -10,11 +10,12 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../../../environments/resolve-helper';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { hasEnvState, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from '../../../../environments/ambient-state-name';
 import { resolveByName, scopeOf } from '../../../../environments/resolve-by-name';
 import { readRemovals } from '../../../../environments/apply-kill';
@@ -111,11 +112,20 @@ export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId,
 	return data.pipedArgument?.rootId === functionRootId && data.pipedArgument.argument === arg;
 }
 
+/** Whether the named call `call` surely calls a function the program defines. */
+function callsProgramFunction<OtherInfo>(call: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	const node = data.completeAst.idMap.get(call);
+	const defs = RFunctionCall.isNamed(node) ? Resolve.byName(node.functionName.content, data.environment) : undefined;
+	return defs !== undefined && defs.length > 0 && defs.every(d => d.type === ReferenceType.Function && !NodeId.isBuiltIn(d.nodeId));
+}
+
 /** Processes all arguments for a function call, updating the given final graph and environment. */
 export function processAllArguments<OtherInfo>(
 	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs, lookup }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
+	/* a function of the program reads what its body reads, which linking the call decides, see `readArgumentContents` */
+	let readsContents: boolean | undefined;
 	const callArgs: FunctionArgument[] = [];
 	const processedArguments: (DataflowInformation | undefined)[] = [];
 	const remainingReadInArgs = [];
@@ -174,7 +184,7 @@ export function processAllArguments<OtherInfo>(
 				if(!isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 					mayHaveHigherTarget &&= !happensInEveryBranch(resolved.cds);
 					finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);
-					if(!lookup) {
+					if(!lookup && hasEnvState(resolved) && (readsContents ??= !callsProgramFunction(functionRootId, data))) {
 						readEnvironmentContents(finalGraph, functionRootId, resolved);
 					}
 				}

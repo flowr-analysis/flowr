@@ -95,10 +95,10 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	/*
 	 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
 	 * hence, we add all argument values to the queue causing directly
-	 * (an assignment only stores the function, and a call handing an argument back unchanged, like `return(f)`,
-	 * did not call it either: what it is bound to is called later, or never)
+	 * (an assignment or a replacement like `e$h <- f` only stores the function, and a call handing an argument back
+	 * unchanged, like `return(f)`, did not call it either: what it is bound to is called later, or never)
 	 */
-	if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment)) {
+	if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment) || DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Replacement)) {
 		return;
 	}
 	for(const arg of callerInfo.args) {

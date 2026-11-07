@@ -121,6 +121,13 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 	for(let parameter = todo.pop(); parameter !== undefined; parameter = todo.pop()) {
 		const writes = written.get(parameter);
 		const owner = ownerOf.get(parameter) as DataflowGraphVertexFunctionDefinition;
+		/* a write every call of its function replays is known wherever it happens */
+		const calls = Dataflow.sourcesOf(graph, owner.id, EdgeType.Calls).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)));
+		for(const write of calls.length === 0 ? [] : writes) {
+			if(calls.every(c => replayedAt(write, owner, c, graph))) {
+				graph.unknownSideEffects.delete(NodeId.normalize(write));
+			}
+		}
 		for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
 			const holds = holdsEnvironment(graph, argument, environment);
 			/* a parameter handed on to the call is written by that call, so the calls of its own function write what they pass */

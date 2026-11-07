@@ -469,7 +469,7 @@ export const EnvironmentLookups: ReadonlySet<string> = new Set([
 
 /**
  * An environment is changed in place, so a call given a variable holding a tracked environment reads everything
- * written into the environment so far, unless the call only looks up bindings in it (see {@link EnvironmentLookups}).
+ * written into the environment so far, through the writes, unless the call only looks up bindings in it (see {@link EnvironmentLookups}).
  */
 export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, holder: IdentifierDefinition): void {
 	const envState = (holder as InGraphIdentifierDefinition).envState;
@@ -479,8 +479,8 @@ export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, hold
 	}
 	for(const fields of envState.current.memory.values()) {
 		for(const field of fields) {
+			/* the write reads what it stores, which is data to the call: a function stored there is not what it calls */
 			if(!NodeId.isBuiltIn(field.definedAt)) {
-				graph.addEdge(call, field.nodeId, EdgeType.Reads);
 				graph.addEdge(call, field.definedAt, EdgeType.Reads);
 			}
 		}

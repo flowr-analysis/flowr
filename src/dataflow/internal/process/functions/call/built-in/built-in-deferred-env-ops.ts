@@ -316,7 +316,7 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 				let next = state;
 				const type = referenceTypeOf(value === undefined ? undefined : graph.getVertex(value), graph);
 				for(const name of names) {
-					next = REnvironment.define({ name, nodeId: value ?? op.id, definedAt: op.id, type, cds }, global && next.level > 0, next);
+					next = REnvironment.define({ name, nodeId: value ?? op.id, definedAt: value === undefined ? op.id : call, type, cds }, global && next.level > 0, next);
 				}
 				return next;
 			}
@@ -348,8 +348,8 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 }
 
 /**
- * Whether the call `call` of `fn` replayed the replacement `write` of its body (see {@link EnvOpKind.Replace}) into the
- * environment it hands over, so what the replacement writes is known there.
+ * Whether the call `call` of `fn` replayed the replacement or assignment `write` of its body (see {@link EnvOpKind.Replace}
+ * and {@link EnvOpKind.Define}) into the environment it hands over, so what it writes is known there.
  * @example
  * ```ts
  * // register <- function(env, f) env$h <- f; register(reg, g) with reg <- new.env() replays, register(l, g) with a list does not
@@ -359,7 +359,7 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
  * ```
  */
 export function replayedAt(write: NodeId, fn: DataflowGraphVertexFunctionDefinition, call: NodeId, graph: DataflowGraph): boolean {
-	const op = fn.envOps?.find(o => o.id === write && o.kind === EnvOpKind.Replace);
+	const op = fn.envOps?.find(o => o.id === write && (o.kind === EnvOpKind.Replace || o.kind === EnvOpKind.Define));
 	if(op?.value === undefined || graph.idMap === undefined) {
 		return false;
 	}

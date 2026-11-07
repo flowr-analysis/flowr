@@ -401,6 +401,10 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		return undefined;
 	} else if(vertex.subflow !== undefined) {
 		return id;
+	} else if(!viaAccess && DfgVertex.isValue(vertex)) {
+		for(const named of functionsNamedBy(graph, id)) {
+			next(named, false, undefined);
+		}
 	}
 	const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
 	const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess);
@@ -429,6 +433,25 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		}
 	}
 	return undefined;
+}
+
+/**
+ * A string where a function is wanted names the function (`match.fun`, `do.call` and the apply family look it up),
+ * which is resolved where the string is written, by the environment of the call it is passed to.
+ */
+function functionsNamedBy(graph: DataflowGraph, id: NodeId): NodeId[] {
+	const idMap = graph.idMap;
+	const node = idMap?.get(id);
+	if(idMap === undefined || !RString.is(node)) {
+		return [];
+	}
+	for(let at = RNode.directParent(node, idMap); at !== undefined; at = RNode.directParent(at, idMap)) {
+		const call = graph.getVertex(at.info.id);
+		if(DfgVertex.isFunctionCall(call) && call.environment !== undefined) {
+			return Resolve.byNameAndType(node.content.str, call.environment, ReferenceType.Function)?.map(d => d.nodeId) ?? [];
+		}
+	}
+	return [];
 }
 
 /** The function definitions each call (of the walk) runs, whose parameters it binds. */

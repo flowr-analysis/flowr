@@ -23,6 +23,7 @@ import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
+import { ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
@@ -31,27 +32,19 @@ import { type DataflowInformation, type ControlDependency, happensInEveryBranch 
  * @returns        a map from each function-definition vertex to its transitive-effect summary
  * @useInstead {@link Dataflow.sideEffects.callGraphSummaries}
  */
-export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => Iterable<T>): Map<NodeId, Set<T>> {
-	const summary = new Map<NodeId, Set<T>>();
-	const callees = new Map<NodeId, NodeId[]>();
-	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		summary.set(id, new Set(own(id, vertex)));
-		/* an exit hook (`on.exit(expr)`) runs as part of the function */
-		const hooks = vertex.subflow.hooks.map(h => h.id);
-		callees.set(id, Dataflow.callsIn(vertex, graph).flatMap(([node]) => Dataflow.calleeIdsOf(graph, node)).toArray().concat(hooks));
-	}
-	/* pull each callee's summary, its callers are revisited whenever a function grew */
-	Dataflow.propagateToFixpoint(summary.keys(), callees, id => {
-		const effects = summary.get(id) as Set<T>;
-		const before = effects.size;
-		for(const callee of callees.get(id) ?? []) {
-			for(const effect of summary.get(callee) ?? []) {
-				effects.add(effect);
-			}
+export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => Iterable<T>): Map<NodeId, ReadonlySet<T>> {
+	const summaries = new ReachSummaries<NodeId, ReadonlySet<T>>(id => {
+		const vertex = graph.getVertex(id);
+		if(!DfgVertex.isFunctionDefinition(vertex)) {
+			return [];
 		}
-		return effects.size > before;
-	});
-	return summary;
+		/* an exit hook (`on.exit(expr)`) runs as part of the function */
+		return Dataflow.callsIn(vertex, graph).flatMap(([node]) => Dataflow.calleeIdsOf(graph, node)).toArray().concat(vertex.subflow.hooks.map(h => h.id));
+	}, id => {
+		const vertex = graph.getVertex(id);
+		return DfgVertex.isFunctionDefinition(vertex) ? new Set(own(id, vertex)) : undefined;
+	}, new Set(), unionOfSets);
+	return new Map(graph.verticesOfType(VertexType.FunctionDefinition).map(([id]) => [id, summaries.of(id)]));
 }
 
 /**

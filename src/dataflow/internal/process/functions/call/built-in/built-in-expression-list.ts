@@ -8,6 +8,7 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { MemoryView } from '../../../../../environments/frame-memory';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { loadNodesForNamespace } from './built-in-library';
+import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
@@ -56,7 +57,7 @@ function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
 /** @returns whether `read` sees a definition */
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: DefaultMap<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
-	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
+	const probableTarget = readName ? Resolve.byNameAndType(readName, scopeOf(read, environments), read.type) : undefined;
 
 	/* without a target the read stays ingoing (read-ids are unique within the same fold), a later fold may still resolve it */
 	if(probableTarget === undefined || !coveredByListDefinitions(probableTarget, listEnvironments)) {

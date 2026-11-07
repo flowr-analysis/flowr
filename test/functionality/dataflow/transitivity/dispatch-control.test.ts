@@ -31,7 +31,7 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 			{ name: 'a function from a sourced file reading a main global', code: 'k <- 4\nsource("lib.R")\nprint(f())', files: { 'lib.R': 'f <- function() g()\ng <- function() k * 2' } },
 			{ name: 'a sourced file sourcing another', code: 'source("a.R")\nprint(f())', files: { 'a.R': 'source("b.R")\nf <- function() g() + 1', 'b.R': 'g <- function() 5' } },
 			{ name: 'a super assignment in a sourced function', code: 'n <- 0\nsource("lib.R")\nup()\nprint(n)', files: { 'lib.R': 'up <- function() n <<- 3' } },
-			{ name: 'source within a function', code: 'load <- function() source("lib.R")\nload()\nprint(v)', files: { 'lib.R': 'v <- 9' }, red: 'R prints 9 as source evaluates in the global environment, the slice drops load() and its definition' },
+			{ name: 'source within a function', code: 'load <- function() source("lib.R")\nload()\nprint(v)', files: { 'lib.R': 'v <- 9' } },
 			{ name: 'a sourced file setting an option', code: 'source("lib.R")\nprint(pi)', files: { 'lib.R': 'options(digits = 3)' } }
 		];
 		for(const c of cases) {

@@ -16,7 +16,7 @@ import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processi
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from '../../../../environments/ambient-state-name';
-import { resolveByName } from '../../../../environments/resolve-by-name';
+import { resolveByName, scopeOf } from '../../../../environments/resolve-by-name';
 import { readRemovals } from '../../../../environments/apply-kill';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
@@ -161,7 +161,7 @@ export function processAllArguments<OtherInfo>(
 			const refType = AmbientStateName.is(ingoing.name) ? ReferenceType.Variable
 				: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
 					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, scopeOf(ingoing, data.environment), refType) : undefined;
 			if(tryToResolve !== undefined) {
 				readRemovals(finalGraph, inId, ingoing.name, data.environment);
 			}

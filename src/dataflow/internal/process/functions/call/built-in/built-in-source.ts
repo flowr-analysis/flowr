@@ -1,3 +1,4 @@
+import type { IdentifierReference } from '../../../../../environments/identifier';
 import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
@@ -36,7 +37,7 @@ import { REnvironment } from '../../../../../environments/environment';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { FnSig } from '../../../../../environments/built-in-props';
-import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, routeWrittenToStackEnv, unknownIfAmbiguous } from './built-in-envir-utils';
 
 let parserForSource: RShellExecutor | undefined;
 /** parses what is sourced while an asynchronous shell analyzes: a fresh R per call, without the default packages, which parsing does not need, so it starts in a third of the time */
@@ -170,6 +171,9 @@ export function processSourceCall<OtherInfo>(
 	const localArg = bound.get(config.envIn ?? 'local');
 	const routing = localArg === undefined || RLogical.is(localArg.value) ? undefined : resolveArgToEnvirOrAmbiguous(localArg, data);
 	const resolution = envirOf(routing);
+	/* without an environment to evaluate in (or `local = FALSE`) the code runs in the global one, wherever the call is */
+	const global = (localArg === undefined || (RLogical.is(localArg.value) && !localArg.value.content)) && !data.environment.current.globalEnv
+		? { level: 0, current: REnvironment.findGlobal(data.environment.current) } : undefined;
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: DataflowInformation.initialize(rootId, data);
@@ -194,7 +198,8 @@ export function processSourceCall<OtherInfo>(
 		return withAmbient();
 	}
 	if(filepath !== undefined && filepath.length > 0) {
-		let result = resolution ? { ...information, environment: resolution.envirData.environment } : information;
+		const evaluatedIn = resolution?.envirData.environment ?? global;
+		let result = evaluatedIn ? { ...information, environment: evaluatedIn } : information;
 		const origCds = data.cds?.slice() ?? [];
 		const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 		const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
@@ -213,10 +218,18 @@ export function processSourceCall<OtherInfo>(
 			const getId = sourcedDeterministicCountingIdGenerator(idPrefix, name.location);
 			result = sourceRequest(rootId, { request: 'file', content: f }, data, result, maybe, getId);
 		}
-		if(resolution === undefined) {
+		if(evaluatedIn === undefined) {
 			return result;
 		}
-		const routed = routeWrittenToEnvir({ ...result, environment: { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, result.environment.current) } }, resolution, rootId, data.environment);
+		const evaluated = {
+			...result,
+			...resolution === undefined || resolution.stack === 'global' ? readGlobally(result, information) : {},
+			environment: { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, result.environment.current) }
+		};
+		if(resolution === undefined) {
+			return routeWrittenToStackEnv(evaluated, data.environment, rootId);
+		}
+		const routed = routeWrittenToEnvir(evaluated, resolution, rootId, data.environment);
 		unknownIfAmbiguous(routing, routed, rootId);
 		return routed;
 	}
@@ -224,6 +237,13 @@ export function processSourceCall<OtherInfo>(
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
 	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	return withAmbient();
+}
+
+/** The reads of code evaluated in the global environment, which no frame of the function running it binds; the `call`'s own reads stay as they are. */
+function readGlobally(result: DataflowInformation, call: DataflowInformation): Pick<DataflowInformation, 'in' | 'unknownReferences'> {
+	const own = new Set([...call.in, ...call.unknownReferences]);
+	const global = (refs: readonly IdentifierReference[]) => refs.map(r => own.has(r) ? r : { ...r, global: true });
+	return { in: global(result.in), unknownReferences: global(result.unknownReferences) };
 }
 
 /** the files parsed for an inclusion, a requested file is not among them and its inclusions share its nodes */

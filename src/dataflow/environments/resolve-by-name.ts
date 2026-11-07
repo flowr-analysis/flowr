@@ -1,6 +1,6 @@
-import { EnvType, type Environment, type REnvironmentInformation } from './environment';
+import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { type BrandedIdentifier, Identifier, type BrandedNamespace, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
+import { type BrandedIdentifier, Identifier, type BrandedNamespace, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -63,6 +63,11 @@ const TargetTypePredicate = {
 function ownDefinitions(id: Identifier, environment: REnvironmentInformation): readonly IdentifierDefinition[] | undefined {
 	const own = resolveByNameAnyType(id, environment)?.filter(d => !NodeId.isBuiltIn(d.nodeId));
 	return own !== undefined && own.length > 0 ? own : undefined;
+}
+
+/** The environment the reference `ref` resolves in: the global one for a read evaluated there, `env` otherwise. */
+export function scopeOf(ref: Pick<IdentifierReference, 'global'>, env: REnvironmentInformation): REnvironmentInformation {
+	return ref.global ? { current: REnvironment.findGlobal(env.current), level: 0 } : env;
 }
 
 /**

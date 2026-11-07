@@ -23,6 +23,7 @@ import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
+import { scopeOf } from '../environments/resolve-by-name';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -710,7 +711,7 @@ export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, defi
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean, alsoFrom?: NodeId): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? Resolve.byNameAndType(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? Resolve.byNameAndType(bodyInput.name, scopeOf(bodyInput, environmentInformation), bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			if(maybeForRemaining) {
 				bodyInput.cds ??= [];

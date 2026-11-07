@@ -48,7 +48,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			return true;
 		} else if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
-			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
+			/* a call reads the function it names, so `eval(quote(f()))` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
 				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {

@@ -314,8 +314,6 @@ export const enum AmbientStateAccessType {
 	CloseDevice  = 'close-device',
 	/** makes another open device the active one */
 	SwitchDevice = 'switch-device',
-	/** evaluates its unevaluated argument, like `evalq`, see {@link evaluatesCapturedCode} */
-	EvaluateQuoted = 'evaluate-quoted',
 	/** sets the state of the random number generator, like `set.seed`, and its kind from the arguments at {@link AmbientStateAccess#kindFrom} on */
 	SetRng       = 'set-rng',
 	/** draws from the random number generator, which reads its state and advances it, like `runif` */
@@ -363,8 +361,6 @@ export type AmbientStateAccess = {
 	readonly keys:        readonly string[]
 	/** the argument `print(x)` dispatches on: a package method may read any option unless the value is plain */
 	readonly dispatchOn?: number
-} | {
-	readonly type: AmbientStateAccessType.EvaluateQuoted
 } | {
 	readonly type: AmbientStateAccessType.CloseDevice
 	/** `graphics.off()` closes every device */
@@ -487,8 +483,6 @@ export function applyAmbientStateAccess<OtherInfo>(
 			return deviceAccess(res, rootId, data, access.all ? 'close-all' : args.length > 0 ? 'switch' : 'close');
 		case AmbientStateAccessType.SwitchDevice:
 			return deviceAccess(res, rootId, data, 'switch');
-		case AmbientStateAccessType.EvaluateQuoted:
-			return evaluatesCapturedCode(res, rootId, data);
 		case AmbientStateAccessType.SetRng: {
 			const kindFrom = access.kindFrom ?? 1;
 			reads.push(AmbientStateName.rngKind);
@@ -716,7 +710,6 @@ const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientState
 	[AmbientStateAccessType.OpenDevice]:          Devices,
 	[AmbientStateAccessType.CloseDevice]:         Devices,
 	[AmbientStateAccessType.SwitchDevice]:        Devices,
-	[AmbientStateAccessType.EvaluateQuoted]:      Quoted,
 	[AmbientStateAccessType.SetRng]:              { reads: [AmbientStateName.rngKind], writes: [AmbientStateName.rng, AmbientStateName.rngKind] },
 	[AmbientStateAccessType.DrawRng]:             { reads: [AmbientStateName.rng], writes: [AmbientStateName.rng] },
 	[AmbientStateAccessType.ReadFiles]:           { reads: [AmbientStateName.workingDirectory, AmbientStateName.files], writes: [] },

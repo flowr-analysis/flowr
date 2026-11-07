@@ -38,8 +38,6 @@ export const CapturingCalls: ReadonlySet<string> = new Set(['expression']);
 /** Calls capturing an expression as a promise, forced at some later read of the variable they bind. */
 const DelayingCalls: ReadonlySet<string> = new Set(['delayedAssign']);
 const DelayedAssignFormals = ['x', 'value', 'eval.env', 'assign.env'];
-/** Calls evaluating their own unevaluated argument, in a frame of their own. */
-const EvaluatingElsewhereCalls: ReadonlySet<string> = new Set(['evalq']);
 /**
  * How a value reaches its use: `DefinedByOnCall` is the hop from a parameter to its argument, and an argument
  * counts because a call handing back one of them, a container included, must not hide the capture inside.
@@ -154,7 +152,7 @@ export const Quoted = {
 				if(evalEnv !== undefined) {
 					graph.addEdge(promise, evalEnv.info.id, EdgeType.Reads);
 				}
-			} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Eval) || EvaluatingElsewhereCalls.has(Identifier.getName(vertex.name))) {
+			} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Eval)) {
 				bindings ??= verticesByName(graph, VertexType.VariableDefinition, idMap);
 				resolveEvaluation(graph, vertex, idMap, namesOnce(), bindings, cfgOnce(), reachOf, enclosing ??= enclosingDefinitions(graph), evaluated);
 			} else {
@@ -350,13 +348,12 @@ function callsWithSideEffects(graph: DataflowGraph): ReadonlySet<NodeId> {
 /** Links a capture handed to an evaluating call, in that call's scope. */
 function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, bindings: ReadonlyMap<string, NodeId[]>, cfg: ControlFlowGraph | undefined, reachOf: (sites: readonly NodeId[]) => Reach, enclosing: ReadonlyMap<NodeId, readonly NodeId[]>, evaluated: NodeId[]): void {
 	const id = call.id;
-	const own = EvaluatingElsewhereCalls.has(Identifier.getName(call.name));
-	const sources = own ? capturedArgumentsOf(graph, id, true).map(expr => ({ expr, at: id })) : sourcesHandedTo(graph, call, idMap);
+	const sources = sourcesHandedTo(graph, call, idMap);
 	const environment = call.environment;
 	const node = idMap.get(id);
 	/* a frame of its own (`eval(expr, envir)` runs in the one it is given) says nothing about the bindings here,
 	   so every one of them stays possible */
-	const elsewhere = own || environment === undefined || (RFunctionCall.isNamed(node) && node.arguments.length > 1);
+	const elsewhere = environment === undefined || (RFunctionCall.isNamed(node) && node.arguments.length > 1);
 	const sites = sources.length > 0 ? evaluationSites(graph, id, enclosing) : undefined;
 	const reach = sites === undefined ? {} : reachOf(sites);
 	for(const { expr, at } of sources) {

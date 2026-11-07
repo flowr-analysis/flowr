@@ -1056,14 +1056,16 @@ export const BaseDefinitions = [
 	fn(base('nargs', 'sys.nframe'), BuiltInProcName.Default,
 		{ props: CallProp.Lang | CallProp.NonDet, frame: ArgProp.Presence, sig: sig({ '...': ArgProp.Forced }) }
 	),
-	/* `alist` keeps its arguments unevaluated, `evalq` evaluates its first one in another frame */
+	/* `alist` keeps its arguments unevaluated */
 	fn(base('alist'), BuiltInProcName.Default, { props: CallProp.Lang, sig: sig({ '...': ArgProp.Nse }) }),
-	fn(base('evalq'), BuiltInProcName.Default,
+	/* `evalq(expr, envir)` is `local(expr, envir)` that runs in the calling frame without `envir` */
+	fn(base('evalq'), BuiltInProcName.Local,
 		{
-			ambient: { type: AmbientStateAccessType.EvaluateQuoted },
-			props:   CallProp.Lang,
-			tags:    [SemanticCallTag.Eval],
-			sig:     sig({ expr: ArgProp.Nse | ArgProp.Injectable, envir: Forced.Value })
+			args:     { expr: 'expr', env: 'envir' },
+			inCaller: true,
+			props:    CallProp.Lang,
+			tags:     [SemanticCallTag.Eval],
+			sig:      sig({ expr: ArgProp.Alias | ArgProp.Forced | ArgProp.Injectable, envir: Forced.Value })
 		}
 	),
 	fn(base('eval.parent'), BuiltInProcName.Eval,

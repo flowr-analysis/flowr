@@ -217,8 +217,6 @@ function defaultBuiltInProcessor<OtherInfo>(
 	const first = firstParameterArgument(args, layout);
 	const nsePositions = nse === undefined ? undefined : new Set(nseArgumentPositions(nse, args.length, first));
 	let lastEnv = data.environment;
-	/* `evalq(expr)` runs `expr` right here, in the frame it is called from */
-	const inPlace = args.length === 1 && Identifier.getName(name.content) === 'evalq';
 	const { information: processed, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, sig, alternativeArgsFrom,
 		keepArgumentGraphs: nse !== undefined || masked !== undefined,
@@ -226,7 +224,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		nonFunction:        dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
 		patchData:          nsePositions === undefined ? undefined : (d, index) => {
-			if(nsePositions.has(index) && !inPlace) {
+			if(nsePositions.has(index)) {
 				lastEnv = d.environment;
 				return { ...d, environment: REnvironment.cleanOf(d.environment) };
 			}

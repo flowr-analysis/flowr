@@ -1,7 +1,10 @@
 // to get the types within JSON.stringify
 
 
-import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow/environments/environment';
+/** Use only if you do not know the object type; otherwise rely on `IEnvironment#builtInEnv`. */
+export function isDefaultBuiltInEnvironment(obj: unknown) {
+	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
+}
 
 /**
  * This is flowR's custom JSON replacer, used to stringify flowR-internal structures.
@@ -91,4 +94,7 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 	}
 }
 
-
+/** Serializes an environment, replacing the built-in environment with a placeholder. */
+export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
+	return isDefaultBuiltInEnvironment(v) ? '<BuiltInEnvironment>' : jsonReplacer(k, v);
+}

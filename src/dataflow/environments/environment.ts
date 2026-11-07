@@ -2,7 +2,7 @@
  * Provides an environment structure similar to R.
  * @module
  */
-import { jsonReplacer } from '../../util/json';
+import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
 import type {
 	BrandedIdentifier,
@@ -57,10 +57,7 @@ interface Jsonified {
 	globalEnv?:  true;
 }
 
-/** Use only if you do not know the object type; otherwise rely on {@link IEnvironment#builtInEnv}. */
-export function isDefaultBuiltInEnvironment(obj: unknown) {
-	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
-}
+export { isDefaultBuiltInEnvironment, builtInEnvJsonReplacer };
 
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
@@ -749,9 +746,4 @@ export interface REnvironmentInformation {
 	readonly current: Environment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
-}
-
-/** Serializes an environment, replacing the built-in environment with a placeholder. */
-export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
-	return isDefaultBuiltInEnvironment(v) ? '<BuiltInEnvironment>' : jsonReplacer(k, v);
 }

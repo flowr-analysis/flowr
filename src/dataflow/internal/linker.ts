@@ -747,7 +747,8 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 		const outgoingIds = new Set(outgoing.map(o => o.nodeId));
 		for(const [name, targets] of openIns.entries()) {
 			for(const def of environment.current.memory.get(Identifier.getName(name)) ?? []) {
-				if(outgoingIds.has(def.nodeId)) {
+				/* a definition within an argument of a call (`f(x <- x + 1)`) is made in the loop as well, if it is made at all */
+				if(outgoingIds.has(def.nodeId) || DfgVertex.isVariableDefinition(graph.getVertex(def.nodeId))) {
 					for(const target of targets) {
 						graph.addEdge(target.nodeId, def.nodeId, EdgeType.Reads);
 					}

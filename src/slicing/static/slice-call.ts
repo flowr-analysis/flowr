@@ -10,7 +10,7 @@ import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../../dataflow/environments/identifier';
-import { retrieveActiveEnvironment } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
+import { callBoundInScope, retrieveActiveEnvironment } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -49,7 +49,8 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 	guard(dataflowGraph.hasVertex(callerInfo.id), () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 	// bind with call-local environments during slicing
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
-	const resolved = (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
+	/* the environment knows nothing of the scopes a closure is nested in, the graph does for a name they bind first */
+	const resolved = callBoundInScope(callerInfo.id, dataflowGraph) ? [] : (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
 	const functionCallDefs = [...resolved.map(d => d.nodeId), ...Dataflow.targetsOf(dataflowGraph, callerInfo.id, EdgeType.Calls)];
 	const linked = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
 	/* a lookup by name still finds the methods the dispatch of the call rules out */

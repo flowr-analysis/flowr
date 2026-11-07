@@ -395,7 +395,7 @@ print(x)`,  emptyGraph()
 
 		assertDataflow(label('Read later definition', ['formals-named', 'name-normal', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'semicolons', 'binary-operator', 'infix-calls', ...BuiltInOperators.byName['+'].capabilities]), shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }', emptyGraph()
 			.use('1', 'b', { cds: [{ id: '0', when: true, byPromise: true }] }, false)
-			.reads('1', ['8', '11', '15'])
+			.reads('1', ['8', '11'])
 			.use('11', 'a', undefined, false)
 			.reads('11', '0')
 			.use('15', 'a', undefined, false)

@@ -34,6 +34,7 @@ import { isNotUndefined } from '../../util/assert';
 import { memoize } from '../../util/collections/defaultmap';
 import { Dataflow } from '../graph/df-helper';
 import { DemandSolver } from '../../util/fixpoint';
+import { ProgramOrder } from '../internal/program-order';
 
 /**
  * How a function treats its parameters: R hands arguments over as promises, so a parameter is strict when
@@ -106,6 +107,8 @@ interface StrictnessState {
 	readonly branches:   (ifCall: NodeId) => boolean | undefined
 	/** the definitions a call without a linked target leads back to, see {@link boundParameters} */
 	readonly untargeted: Map<NodeId, readonly NodeId[]>
+	/** whether a call of a function flowR states nothing about leaves the question open, see {@link FunctionStrictnessesOptions#knownOnly} */
+	readonly knownOnly:  boolean
 	/** the strictness of each definition asked for, a cycle of definitions settled together */
 	readonly solver:     DemandSolver<NodeId, FunctionStrictness>
 }
@@ -163,7 +166,7 @@ function branchOutcomes(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext 
 	});
 }
 
-function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined, constantBranches = true): StrictnessState {
+function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined, constantBranches = true, knownOnly = false): StrictnessState {
 	const owner = new Map<NodeId, NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		for(const param of Object.keys(vertex.params)) {
@@ -178,6 +181,7 @@ function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerConte
 		fnInfo:     builtInLookup(ctx),
 		branches:   branchOutcomes(graph, constantBranches ? ctx : undefined),
 		untargeted: new Map(),
+		knownOnly,
 		solver:     new DemandSolver({
 			transfer:  id => computeStrictness(id, state),
 			equals:    sameStrictness,
@@ -356,6 +360,9 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 				} else if((props & ArgProp.Forced) === 0
 					&& (hasProcessor(vertex, LazyThroughout) || (index !== 0 && hasProcessor(vertex, LazyAfterFirst)))) {
 					lazy = true;
+				} else if(state.knownOnly && state.fnInfo(vertex.name) === undefined) {
+					/* nothing says what the function does with the argument, it may just as well capture it unevaluated */
+					lazy = true;
 				}
 			}
 		}
@@ -485,6 +492,11 @@ export interface FunctionStrictnessesOptions {
 	readonly ctx?:              ReadOnlyFlowrAnalyzerContext
 	/** whether to resolve the condition of an `if` to a constant, which costs a value resolution per branch */
 	readonly constantBranches?: boolean
+	/**
+	 * whether a call of a function flowR states nothing about leaves open whether it evaluates what it is handed,
+	 * rather than counting as a built-in that does, for answers that must not claim a promise is forced when it is not
+	 */
+	readonly knownOnly?:        boolean
 }
 
 /** Where the promises bound to `params` may be forced: their reads, calls of closures capturing them, and the callees they are handed to. */
@@ -551,14 +563,14 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 }
 
 /** How surely the holder of a promise forces it, asked for a node `inner` within the promise. */
-export function promiseForcing(this: void, graph: DataflowGraph, { ctx, constantBranches }: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => Ternary {
+export function promiseForcing(this: void, graph: DataflowGraph, { ctx, constantBranches, knownOnly }: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => Ternary {
 	const idMap = graph.idMap;
 	let state: StrictnessState | undefined = undefined;
 	return (holder, inner) => {
 		if(idMap === undefined) {
 			return Ternary.Maybe;
 		}
-		state ??= strictnessStateOf(graph, ctx, constantBranches);
+		state ??= strictnessStateOf(graph, ctx, constantBranches, knownOnly);
 		if(state.owner.has(holder)) {
 			return handedTo(holder, state);
 		}
@@ -569,6 +581,79 @@ export function promiseForcing(this: void, graph: DataflowGraph, { ctx, constant
 		const argument = RNode.findEnclosing(inner, idMap, n => n.info.parent === holder);
 		return argument === undefined ? Ternary.Maybe : forcedByCallee(call, argument, idMap, state);
 	};
+}
+
+/**
+ * Whether nothing can ever evaluate the promise bound to the parameter: the function never reads it, not even
+ * through its frame, and calls nothing but built-ins that leave its frame alone, so no callee looks it up either.
+ */
+function neverEvaluated(param: NodeId, state: StrictnessState): boolean {
+	const owner = state.owner.get(param);
+	const definition = owner === undefined ? undefined : state.graph.getVertex(owner);
+	if(!DfgVertex.isFunctionDefinition(definition) || state.dispatch.has(definition.id)
+		|| Dataflow.sourcesOf(state.graph, param, EdgeType.Reads).length > 0
+		|| reflectiveRolesOf(definition, state.graph, { known: state.fnInfo }) !== 0) {
+		return false;
+	}
+	return Dataflow.callsIn(definition, state.graph).every(([, call]) => call.onlyBuiltin);
+}
+
+/** The parameters the promise of `holder` holding `inner` is bound to, `undefined` if the holder is no call linked to definitions only. */
+function promisedParameters(holder: NodeId, inner: NodeId, state: StrictnessState, idMap: AstIdMap): readonly NodeId[] | undefined {
+	if(state.owner.has(holder)) {
+		return [holder];
+	}
+	const call = state.graph.getVertex(holder);
+	const targets = Dataflow.calleeIdsOf(state.graph, holder);
+	if(!DfgVertex.isFunctionCall(call) || targets.length === 0 || targets.some(t => NodeId.isBuiltIn(t) || !DfgVertex.isFunctionDefinition(state.graph.getVertex(t)))) {
+		return undefined;
+	}
+	const argument = RNode.findEnclosing(inner, idMap, n => n.info.parent === holder);
+	const bound = argument === undefined ? undefined : boundParameters(call, argument, idMap, state.graph);
+	return bound === undefined || bound.length === 0 ? undefined : bound;
+}
+
+/**
+ * Settles what a definition within a promise (`f(x <- 5)`) does once the calls are linked. A promise nothing ever
+ * evaluates never makes it, so nothing reads it. One the holder surely forces makes it while the call runs, so for
+ * code the program runs once after the call it replaces what the code before the call defined.
+ */
+export function settleDefinitionsInPromises(this: void, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	let state: StrictnessState | undefined;
+	let forcing: ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
+	for(const [id, vertex] of graph.verticesOfType(VertexType.VariableDefinition)) {
+		const promised = vertex.cds?.filter(cd => cd.byPromise === true) ?? [];
+		if(promised.length === 0) {
+			continue;
+		}
+		state ??= strictnessStateOf(graph, ctx);
+		const known = state;
+		if(promised.some(cd => promisedParameters(cd.id, id, known, idMap)?.every(p => neverEvaluated(p, known)) === true)) {
+			for(const reader of Dataflow.sourcesOf(graph, id, EdgeType.Reads)) {
+				graph.removeEdgeType(reader, id, EdgeType.Reads);
+			}
+			continue;
+		}
+		forcing ??= promiseForcing(graph, { ctx, knownOnly: true });
+		const statement = ProgramOrder.runsOnceAt(id, graph);
+		if(statement === undefined || promised.length !== vertex.cds?.length || !promised.every(cd => forcing?.(cd.id, id) === Ternary.Always)) {
+			continue;
+		}
+		for(const reader of Dataflow.sourcesOf(graph, id, EdgeType.Reads)) {
+			if(ProgramOrder.runsOnceAt(reader, graph) === undefined || ProgramOrder.offset(reader, statement, graph) <= 0) {
+				continue;
+			}
+			for(const earlier of Dataflow.targetsOf(graph, reader, EdgeType.Reads)) {
+				if(earlier !== id && ProgramOrder.runsOnceAt(earlier, graph) !== undefined && ProgramOrder.offset(earlier, statement, graph) < 0) {
+					graph.removeEdgeType(reader, earlier, EdgeType.Reads);
+				}
+			}
+		}
+	}
 }
 
 /** Drops the resume of a jump within a promise ({@link ControlFlow.promise}) once the linked holder surely forces it. */

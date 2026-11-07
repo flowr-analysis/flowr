@@ -235,10 +235,15 @@ export const TidyverseDefinitions = [
 	fn(pkg(PkgName.Rlang, 'eval_bare'), BuiltInProcName.Default,
 		{ libFn: true, props: CallProp.Lang, tags: [SemanticCallTag.Eval], sig: sig({ expr: Forced.Value | ArgProp.Injectable, env: Forced.Value }) }
 	),
+	/* the defusing ones capture the promise of the argument they name without forcing it */
 	fn([
-		...Identifier.fromAllIn(TidyEvalPackages, ['enexpr', 'enexprs', 'enquo', 'enquos', 'ensym', 'ensyms', 'sym', 'syms', 'quo_name', 'as_label']),
+		...Identifier.fromAllIn(TidyEvalPackages, ['enexpr', 'enexprs', 'enquo', 'enquos', 'ensym', 'ensyms']),
+		...pkg(PkgName.Rlang, 'enquo0', 'enquos0')
+	], BuiltInProcName.Default, { libFn: true, props: CallProp.Lang, sig: sig({ '...': ArgProp.Nse }) }),
+	fn([
+		...Identifier.fromAllIn(TidyEvalPackages, ['sym', 'syms', 'quo_name', 'as_label']),
 		...pkg(PkgName.Rlang,
-			'inject', 'enquo0', 'enquos0', 'new_formula', 'f_rhs', 'f_lhs', 'fn_body', 'fn_fmls', 'fn_fmls_names', 'call2', 'as_name', 'as_string'
+			'inject', 'new_formula', 'f_rhs', 'f_lhs', 'fn_body', 'fn_fmls', 'fn_fmls_names', 'call2', 'as_name', 'as_string'
 		)
 	], BuiltInProcName.Default, { libFn: true, props: CallProp.Lang, sig: sig({ '...': ArgProp.Forced }) }),
 	fn(pkg(PkgName.Glue, 'glue_sql', 'glue_data_sql'), BuiltInProcName.Default,

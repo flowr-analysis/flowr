@@ -191,5 +191,15 @@ export const RValue = {
 	/** The string the value stands for. */
 	stringOf(this: void, value: Value): string | undefined {
 		return value.type === 'string' && isValue(value.value) ? value.value.str : undefined;
+	},
+	/** The logical value R takes the value to be as a condition (`if`), `undefined` if it is none or not known. */
+	truthOf(this: void, value: Value): boolean | undefined {
+		if(value.type === 'vector') {
+			return isValue(value.elements) && value.elements.length === 1 ? RValue.truthOf(value.elements[0]) : undefined;
+		} else if(value.type === 'logical') {
+			return typeof value.value === 'boolean' ? value.value : undefined;
+		}
+		const num = RValue.numberOf(value);
+		return num === undefined || Number.isNaN(num) ? undefined : num !== 0;
 	}
 } as const;

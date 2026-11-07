@@ -117,9 +117,9 @@ x <- 4
 }
 print(x)`, emptyGraph().autoPrints([18, 23]).autoPrints([19], true)
 				.use('16', 'x', { cds: [{ id: '19', when: true, byPromise: true }] })
-				.reads('16', ['7', '12'])
+				.reads('16', '7')
 				.use('21', 'x')
-				.reads('21', ['7', '12'])
+				.reads('21', '7')
 				.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
 				.calls('6', NodeId.toBuiltIn('<-'))
 				.argument('6', ['5', '0'])

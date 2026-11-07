@@ -24,10 +24,17 @@ import { ArgProp, type BuiltInFnInfo, FnSig } from '../../../../../environments/
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { Ternary } from '../../../../../../util/logic';
-import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
+import { type DataflowInformation, ControlDependency, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { FixpointSolver, ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
+import { RValue } from '../../../../../eval/values/r-value';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { isBaseRPackage } from '../../../../../../util/r-base-packages';
 
@@ -72,6 +79,7 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	let outlives: ((parameter: NodeId) => boolean) | undefined;
 	let later: ((call: NodeId, name: string) => readonly NodeId[]) | undefined;
 	let forcing: ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
+	let order: PromiseOrder | undefined;
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		/* a function of a package flowR has no body for forces its arguments as its signature states, see `keptPromisesOfPackageCall` */
 		const kept = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))
@@ -122,6 +130,299 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 						graph.addEdge(node, def, EdgeType.Reads);
 					}
 				}
+				(order ??= new PromiseOrder(graph, idMap)).settle(id, at, node, name);
+			}
+		}
+	}
+	for(const [fn] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		const definition = idMap.get(fn);
+		for(const parameter of RFunctionDefinition.is(definition) ? definition.parameters : []) {
+			for(const read of parameter.defaultValue === undefined ? [] : RNode.collectAllIds(parameter.defaultValue)) {
+				const name = DfgVertex.isUse(graph.getVertex(read)) ? nameOf(read) : undefined;
+				if(name !== undefined) {
+					(order ??= new PromiseOrder(graph, idMap)).settleDefault(fn, parameter.name.info.id, read, name);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Whether the branches of `fn` a node stands under are taken in the frame `call` makes: a parameter holds what that
+ * call hands it, so a condition on it may be constant there. {@link Ternary#Never} if one surely is not.
+ */
+function branchesTakenIn(conditions: readonly ControlDependency[], fn: NodeId, call: NodeId, graph: DataflowGraph, ctx: FlowrAnalyzerContext): Ternary {
+	let result = Ternary.Always;
+	for(const cd of conditions) {
+		const branch = graph.getVertex(cd.id);
+		const condition = DfgVertex.isFunctionCall(branch) && DfgVertex.hasOrigin(branch, BuiltInProcName.IfThenElse) ? branch.args[0] : undefined;
+		const values = condition === undefined || condition === EmptyArgument || cd.when === undefined ? undefined
+			: NodeValue.setOf(condition.nodeId, Resolve.info(graph, ctx), { callContext: new Map([[fn, call]]) })?.elements.map(RValue.truthOf);
+		const outcome = values !== undefined && values.length > 0 && values.every(v => v !== undefined && v === values[0]) ? values[0] : undefined;
+		if(outcome === undefined) {
+			result = Ternary.Maybe;
+		} else if(outcome !== cd.when) {
+			return Ternary.Never;
+		}
+	}
+	return result;
+}
+
+/**
+ * Whether every reference to the definition is a call of it among `calls`: it is bound to names (`f <- function...`)
+ * only these calls read, so no other way leads into it.
+ */
+function onlyCalledBy(fn: NodeId, calls: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
+	const binds = (source: NodeId) => DfgVertex.hasOrigin(graph.getVertex(source), BuiltInProcName.Assignment);
+	const holders: NodeId[] = [];
+	for(const [source, edge] of graph.edgesTo(fn)) {
+		if(DfEdge.isOnlyControlFlow(edge) || binds(source) || (DfEdge.isOnlyType(edge, EdgeType.Calls) && calls.has(source))) {
+			continue;
+		} else if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isVariableDefinition(graph.getVertex(source))) {
+			holders.push(source);
+		} else {
+			return false;
+		}
+	}
+	return holders.every(holder => graph.edgesTo(holder).entries().every(([source, edge]) => DfEdge.isOnlyControlFlow(edge) || binds(source) || calls.has(source)));
+}
+
+/**
+ * Settles what a function writes beyond its frame (`<<-`) under branches of its own, once the calls passing the
+ * write on are linked: bound to what a call hands it, a parameter may make a branch constant
+ * (`f <- function(go) if(go) n <<- 5; f(FALSE)`). A write no call can make is read by nobody. A write that a call the
+ * program runs once surely makes replaces, for the code the program runs once after that call, what came before it.
+ */
+export function settleConditionalWritesOfCalls(this: void, graph: DataflowGraph, ctx: FlowrAnalyzerContext): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	for(const [write, vertex] of graph.verticesOfType(VertexType.VariableDefinition)) {
+		const calls = Dataflow.targetsOf(graph, write, EdgeType.SideEffectOnCall);
+		const fn = calls.length === 0 ? undefined : RNode.strictlyEnclosingFunction(write, idMap);
+		const conditions = fn === undefined ? [] : ControlDependency.minus(vertex.cds ?? [], graph.getVertex(fn)?.cds ?? []);
+		if(fn === undefined || conditions.length === 0 || calls.some(c => !Dataflow.hasEdge(graph, c, fn, EdgeType.Calls))) {
+			continue;
+		}
+		const taken = calls.map(call => branchesTakenIn(conditions, fn, call, graph, ctx));
+		if(taken.every(t => t === Ternary.Never)) {
+			if(onlyCalledBy(fn, new Set(calls), graph)) {
+				for(const reader of Dataflow.sourcesOf(graph, write, EdgeType.Reads)) {
+					graph.removeEdgeType(reader, write, EdgeType.Reads);
+				}
+			}
+			continue;
+		}
+		const definition = graph.getVertex(fn);
+		const at = idMap.get(write)?.location;
+		/* a return or an error before the write may end the call without it */
+		const reached = DfgVertex.isFunctionDefinition(definition) && at !== undefined && RNode.strictlyEnclosingFunction(fn, idMap) === undefined
+			&& !definition.exitPoints.some(e => {
+				const exit = idMap.get(e.nodeId)?.location;
+				return e.type !== ExitPointType.Default && (exit === undefined || exit[0] < at[0] || (exit[0] === at[0] && exit[1] <= at[1]));
+			});
+		for(let i = 0; reached && i < calls.length; i++) {
+			const statement = taken[i] === Ternary.Always && !graph.getVertex(calls[i])?.cds?.length ? ProgramOrder.runsOnceAt(calls[i], graph) : undefined;
+			if(statement !== undefined) {
+				replaceEarlierDefinitions(write, statement, graph);
+			}
+		}
+	}
+}
+
+/**
+ * For code the program runs once after `statement`, which surely makes the definition `write`, drops what came before
+ * it. Where a `<<-` writes depends on whether the name was bound before, so the write reads what the code no longer does.
+ */
+function replaceEarlierDefinitions(write: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph): void {
+	for(const reader of Dataflow.sourcesOf(graph, write, EdgeType.Reads)) {
+		if(ProgramOrder.runsOnceAt(reader, graph) === undefined || ProgramOrder.offset(reader, statement, graph) <= 0) {
+			continue;
+		}
+		for(const earlier of Dataflow.targetsOf(graph, reader, EdgeType.Reads)) {
+			if(earlier !== write && ProgramOrder.runsOnceAt(earlier, graph) !== undefined && ProgramOrder.offset(earlier, statement, graph) < 0) {
+				graph.removeEdgeType(reader, earlier, EdgeType.Reads);
+				graph.addEdge(write, earlier, EdgeType.Reads);
+			}
+		}
+	}
+}
+
+/** How many calls deep {@link PromiseOrder} follows a promise handed on, or a callee that writes. */
+const MaxPromiseHandOn = 4;
+
+/**
+ * When a promise is forced relative to the writes of the call it is handed to: `f <- function(a) { x <<- 2; a }`
+ * forces `a` only once `x` is replaced, so `f(x)` never sees what `x` held before the call.
+ */
+class PromiseOrder {
+	private readonly graph: DataflowGraph;
+	private readonly idMap: AstIdMap;
+
+	constructor(graph: DataflowGraph, idMap: AstIdMap) {
+		this.graph = graph;
+		this.idMap = idMap;
+	}
+
+	/** The one definition the call is linked to, if it is a closure defined at the top level. */
+	private topLevelTarget(call: NodeId): NodeId | undefined {
+		const targets = Dataflow.calleeIdsOf(this.graph, call);
+		const [target] = targets;
+		return targets.length === 1 && !NodeId.isBuiltIn(target) && DfgVertex.isFunctionDefinition(this.graph.getVertex(target))
+			&& RNode.strictlyEnclosingFunction(target, this.idMap) === undefined ? target : undefined;
+	}
+
+	/** The statements of the body of the definition, in the order they run. */
+	private statementsOf(fn: NodeId): readonly RNode<ParentInformation>[] {
+		const definition = this.idMap.get(fn);
+		if(!RFunctionDefinition.is(definition)) {
+			return [];
+		}
+		return RExpressionList.is(definition.body) ? definition.body.children : [definition.body];
+	}
+
+	/** Where among the statements the node is, `-1` if in none. */
+	private statementIndex(id: NodeId, statements: readonly RNode<ParentInformation>[]): number {
+		const node = this.idMap.get(id);
+		for(const at of node === undefined ? [] : [node, ...RNode.iterateParents(node, this.idMap)]) {
+			const index = statements.indexOf(at);
+			if(index >= 0) {
+				return index;
+			}
+		}
+		return -1;
+	}
+
+	/** The call a statement makes on its own (`g()`) or assigns the result of (`v <- g()`). */
+	private callOf(statement: RNode<ParentInformation>): NodeId | undefined {
+		const vertex = this.graph.getVertex(statement.info.id);
+		const value = RBinaryOp.is(statement) && DfgVertex.hasOrigin(vertex, BuiltInProcName.Assignment) ? statement.rhs : statement;
+		return DfgVertex.isFunctionCall(this.graph.getVertex(value.info.id)) ? value.info.id : undefined;
+	}
+
+	/** Whether the call defines `name` in the frame it is evaluated in, with an assignment of its own. */
+	private assigns(id: NodeId, name: string, origin: BuiltInProcName): boolean {
+		return DfgVertex.hasOrigin(this.graph.getVertex(id), origin)
+			&& Dataflow.targetsOf(this.graph, id, EdgeType.Returns).some(t => {
+				const node = this.idMap.get(t);
+				return DfgVertex.isVariableDefinition(this.graph.getVertex(t)) && RSymbol.is(node) && Identifier.getName(node.content) === name;
+			});
+	}
+
+	/**
+	 * Whether running the statement of the top-level closure `fn` surely replaces the global `name`: `name <<- v`, a
+	 * call of a top-level closure surely doing so, or, for the call the promise came from, forcing another of its
+	 * arguments that assigns `name` (`f(n, n <- 4)`).
+	 */
+	private surelyWrites(statement: RNode<ParentInformation>, name: string, fn: NodeId, call: NodeId, depth: number): boolean {
+		const id = statement.info.id;
+		if(this.assigns(id, name, BuiltInProcName.SuperAssignment)) {
+			return true;
+		}
+		if(depth === 0 && DfgVertex.isUse(this.graph.getVertex(id))) {
+			const forced = Dataflow.targetsOf(this.graph, id, EdgeType.Reads).filter(p => this.idMap.get(this.idMap.get(p)?.info.parent ?? -1)?.info.parent === fn);
+			return forced.some(p => Dataflow.argumentsBoundTo(this.graph, p).some(a => RNode.findEnclosing(a, this.idMap, n => n.info.id === call) !== undefined
+				&& (this.assigns(a, name, BuiltInProcName.Assignment) || this.assigns(a, name, BuiltInProcName.SuperAssignment))));
+		}
+		const inner = this.callOf(statement);
+		const callee = inner === undefined || depth >= MaxPromiseHandOn ? undefined : this.topLevelTarget(inner);
+		if(inner === undefined || callee === undefined) {
+			return false;
+		}
+		const statements = this.statementsOf(callee);
+		const at = statements.findIndex(s => this.surelyWrites(s, name, callee, inner, depth + 1));
+		const definition = this.graph.getVertex(callee) as DataflowGraphVertexFunctionDefinition;
+		/* a return before the write may leave the callee without it */
+		return at >= 0 && !definition.exitPoints.some(e => e.type === ExitPointType.Return && this.statementIndex(e.nodeId, statements) < at);
+	}
+
+	/**
+	 * Whether the top-level closure `fn` surely replaces the global `name` before anything forces the promise `call`
+	 * binds to its parameter `param`: every read of the parameter follows a statement surely writing `name`, or
+	 * hands the promise on to a callee for which the same holds.
+	 */
+	private writtenBeforeForced(fn: NodeId, param: NodeId, name: string, call: NodeId, depth = 0): boolean {
+		const reads = Dataflow.sourcesOf(this.graph, param, EdgeType.Reads);
+		const statements = this.statementsOf(fn);
+		let firstWrite: number | undefined;
+		return reads.length > 0 && reads.every(read => {
+			const at = RNode.findEnclosing(read, this.idMap, RFunctionDefinition.is) === fn ? this.statementIndex(read, statements) : -1;
+			if(at < 0) {
+				return false;
+			}
+			firstWrite ??= statements.findIndex(s => this.surelyWrites(s, name, fn, call, depth));
+			if(firstWrite >= 0 && firstWrite < at) {
+				return true;
+			}
+			/* `g(a)`: the promise is handed on, and `g` decides when it is forced */
+			const inner = this.callOf(statements[at]);
+			const callee = inner === undefined || depth >= MaxPromiseHandOn ? undefined : this.topLevelTarget(inner);
+			const argument = this.idMap.get(read)?.info.parent;
+			const handed = argument === undefined ? undefined : this.idMap.get(argument);
+			if(inner === undefined || callee === undefined || !RArgument.is(handed) || handed.info.parent !== inner) {
+				return false;
+			}
+			const bound = [read, handed.info.id].flatMap(r => Dataflow.targetsOf(this.graph, r, EdgeType.DefinesOnCall));
+			return bound.length === 1 && this.writtenBeforeForced(callee, bound[0], name, inner, depth + 1);
+		});
+	}
+
+	/**
+	 * Drops what a read in an argument of the top-level call `call` sees of the definitions the program made before the
+	 * call, when the call replaces the name before it forces the promise.
+	 */
+	settle(call: NodeId, argument: NodeId, read: NodeId, name: string): void {
+		const fn = this.topLevelTarget(call);
+		const statement = fn === undefined || !this.graph.isRoot(read) ? undefined : ProgramOrder.runsOnceAt(call, this.graph);
+		if(fn === undefined || statement === undefined) {
+			return;
+		}
+		const before = Dataflow.targetsOf(this.graph, read, EdgeType.Reads).filter(t => ProgramOrder.runsOnceAt(t, this.graph) !== undefined && ProgramOrder.offset(t, statement, this.graph) < 0);
+		const params = before.length === 0 ? [] : Dataflow.targetsOf(this.graph, argument, EdgeType.DefinesOnCall);
+		if(params.length !== 1 || !this.writtenBeforeForced(fn, params[0], name, call)) {
+			return;
+		}
+		/* where a `<<-` writes depends on whether the name was bound before, so its writes read what the promise no longer does */
+		const writes = Dataflow.sourcesOf(this.graph, call, EdgeType.SideEffectOnCall).filter(w => {
+			const node = this.idMap.get(w);
+			return RSymbol.is(node) && Identifier.getName(node.content) === name;
+		});
+		for(const def of before) {
+			this.graph.removeEdgeType(read, def, EdgeType.Reads);
+			for(const write of writes) {
+				this.graph.addEdge(write, def, EdgeType.Reads);
+			}
+		}
+	}
+
+	/**
+	 * Drops what a read in the default of `param` cannot see: the default is evaluated once, in the frame of `fn`, by
+	 * the statement first forcing it, so it sees neither what later statements define, nor, once a statement before
+	 * surely redefines the name, the parameter it names or what came before (`function(a, b = a) { a <- 10; b }`).
+	 */
+	settleDefault(fn: NodeId, param: NodeId, read: NodeId, name: string): void {
+		const seen = Dataflow.targetsOf(this.graph, read, EdgeType.Reads);
+		if(seen.length < 2) {
+			return;
+		}
+		const statements = this.statementsOf(fn);
+		const reads = Dataflow.sourcesOf(this.graph, param, EdgeType.Reads);
+		const at = (r: NodeId) => RNode.findEnclosing(r, this.idMap, RFunctionDefinition.is) === fn ? this.statementIndex(r, statements) : -1;
+		/* the first statement that may force it, and the first that surely does */
+		const mayForce = Math.min(...reads.map(at));
+		const own = this.graph.getVertex(fn)?.cds ?? [];
+		const surelyForces = Math.min(...reads.filter(r => ControlDependency.minus(this.graph.getVertex(r)?.cds ?? [], own).length === 0).map(at));
+		if(mayForce < 0 || !Number.isFinite(mayForce)) {
+			return;
+		}
+		const lastWrite = statements.findLastIndex((s, i) => i < mayForce && this.assigns(s.info.id, name, BuiltInProcName.Assignment));
+		for(const before of seen) {
+			const node = this.idMap.get(before);
+			const parameter = node?.info.role === RoleInParent.ParameterName && this.idMap.get(node.info.parent ?? -1)?.info.parent === fn;
+			const index = this.statementIndex(before, statements);
+			if((parameter && lastWrite >= 0) || (index >= 0 && (index < lastWrite || index > surelyForces))) {
+				this.graph.removeEdgeType(read, before, EdgeType.Reads);
 			}
 		}
 	}

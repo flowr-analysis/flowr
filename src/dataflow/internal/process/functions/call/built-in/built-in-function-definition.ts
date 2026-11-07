@@ -35,6 +35,7 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { queryFnProps } from '../../../../../environments/query-fn-props';
@@ -362,6 +363,8 @@ function resolveIngoingRefs(
 export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnvironmentInformation, openReads: IdentifierReference[]) {
 	const open = new Set(openReads.map(r => r.nodeId));
 	const settled = new Set<NodeId>();
+	/* reads the scope binds before their closure exists, so they never reach past the scope */
+	const bound = new Set<NodeId>();
 	const superWrites = new DefaultMap<Identifier, NodeId[]>(() => []);
 	for(const [, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		for(const [target, name] of superAssignedTargets(graph, subflow.graph)) {
@@ -384,12 +387,14 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 			const allClosureWrites = resolved.every(ref => writes.includes(ref.nodeId));
 			if(allBuiltIn && resolved.length > 0 && !allClosureWrites) {
 				settled.add(ingoing.nodeId);
+			} else if(!AmbientStateName.is(ingoing.name) && resolved.some(ref => boundBeforeClosure(ref.nodeId, ingoing.nodeId, graph))) {
+				bound.add(ingoing.nodeId);
 			}
 			/* the state of the session (options, files, the working directory) is what it is where the function is called, so it stays open for its calls */
 			return allBuiltIn || allClosureWrites || AmbientStateName.is(ingoing.name);
 		}, { fn, graph });
 		for(const ref of subflow.in) {
-			if(ref.name !== undefined && !settled.has(ref.nodeId) && !open.has(ref.nodeId)) {
+			if(ref.name !== undefined && !settled.has(ref.nodeId) && !bound.has(ref.nodeId) && !open.has(ref.nodeId)) {
 				open.add(ref.nodeId);
 				openReads.push(ref);
 			}
@@ -402,6 +407,44 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 			}
 		}
 	}
+	if(bound.size > 0) {
+		const kept = openReads.filter(r => !bound.has(r.nodeId));
+		openReads.length = 0;
+		openReads.push(...kept);
+	}
+}
+
+/**
+ * Whether an enclosing scope binds the name of a call within a closure before the closure exists, see
+ * {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out,
+ * whatever the end of the script binds there.
+ */
+export function callBoundInScope(call: NodeId, graph: DataflowGraph): boolean {
+	return !graph.isRoot(call) && Dataflow.targetsOf(graph, call, EdgeType.Reads).some(r => boundBeforeClosure(r, call, graph));
+}
+
+function boundCallTargets(call: NodeId, graph: DataflowGraph): NodeId[] | undefined {
+	return callBoundInScope(call, graph) ? [...getAllLinkedFunctionDefinitions(new Set(Dataflow.targetsOf(graph, call, EdgeType.Reads)), graph)[0]].map(d => d.id) : undefined;
+}
+
+/**
+ * Whether the local definition `def` is made before the closure holding the read `read` is created, on every way
+ * there: `h <- function() 2; g <- function() h()` binds `h` in the scope before `g` exists, so no call of `g`
+ * looks past the scope for it. The definition has to be a statement of its own in a block that holds the closure
+ * in a later statement.
+ */
+function boundBeforeClosure(def: NodeId, read: NodeId, graph: DataflowGraph): boolean {
+	const idMap = graph.idMap;
+	const node = idMap?.get(def);
+	const assignment = node?.info.parent === undefined ? undefined : idMap?.get(node.info.parent);
+	const block = assignment?.info.parent === undefined ? undefined : idMap?.get(assignment.info.parent);
+	if(idMap === undefined || assignment === undefined || !RExpressionList.is(block)
+		|| !DfgVertex.hasOrigin(graph.getVertex(assignment.info.id), BuiltInProcName.Assignment)) {
+		return false;
+	}
+	const statement = [idMap.get(read), ...RNode.iterateParents(idMap.get(read), idMap)].find(p => p?.info.parent === block.info.id);
+	return statement !== undefined && statement.info.index > assignment.info.index
+		&& RNode.findEnclosing(read, idMap, RFunctionDefinition.is) !== RNode.findEnclosing(statement.info.id, idMap, RFunctionDefinition.is);
 }
 
 function* superAssignedTargets(graph: DataflowGraph, nodes: Iterable<NodeId>): Generator<[NodeId, Identifier]> {
@@ -695,7 +738,7 @@ export function updateNestedFunctionCalls(
 
 		/* the dispatch is decided anew, from every method the name may reach */
 		delete (vertex as { ruledOut?: readonly NodeId[] }).ruledOut;
-		const targets = new Set(Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
+		const targets = new Set(boundCallTargets(id, graph) ?? Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a dispatch depends on the classes of its arguments, so it waits for the value flow to be linked */
 		const dispatches = origin.includes(BuiltInProcName.S3Dispatch) || narrower.reachesS4Method(targets) || mayDispatch && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf);
 		if(dispatches && !deferred.has(id)) {
@@ -951,15 +994,16 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 }
 
 /**
- * Links a parameter default read (e.g. `function(a=b)`) to the body write(s) of the same name it could see as a promise,
- * e.g. in `f <- function(a=b) { b <- 1; a; b <- 5 }`, `a` links to `b <- 1`; may not narrow this down precisely in every case.
+ * Links a parameter default read (e.g. `function(a=b)`) to the body writes of the same name it could see as a promise:
+ * the default is evaluated where the parameter is first forced, after any of them. Which ones it surely sees is
+ * settled once the reads of the parameter are known, see {@link linkPromisesToWritesOfCall}.
  */
 function linkParameterReadToBodyWrites(graph: DataflowGraph, read: IdentifierReference, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): boolean {
 	const writes = read.name === undefined ? undefined : writesByName.get(read.name);
 	if(writes === undefined) {
 		return false;
 	}
-	for(const { nodeId } of writes[0].cds === undefined ? writes.slice(0, 1) : writes) {
+	for(const { nodeId } of writes) {
 		graph.addEdge(read.nodeId, nodeId, EdgeType.Reads);
 	}
 	return true;

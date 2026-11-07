@@ -50,9 +50,13 @@ type Dimension = 'timeMs' | 'memory' | 'steps' | 'vertices';
 /** One contingent, one operation: a slice is not billed for the analysis that preceded it. */
 interface GasScope {
 	/** what the elapsed-time bounds are measured from */
-	startTime:       number;
+	startTime:        number;
 	/** the {@link GasOverrides} in effect, innermost last */
-	readonly layers: readonly GasOverrides[];
+	readonly layers:  readonly GasOverrides[];
+	/** the scope this one was derived from, to report a degraded check to the enclosing scopes */
+	readonly parent?: GasScope;
+	/** set once a gas check in this scope or a scope derived from it reported more than normal */
+	degraded?:        boolean;
 }
 
 function isPair(v: number | Partial<GasThresholdPair> | undefined): v is Partial<GasThresholdPair> {
@@ -125,6 +129,8 @@ export interface WriteableFlowrAnalyzerGasContext extends ReadOnlyFlowrAnalyzerG
 	reset(): void;
 	/** see {@link FlowrAnalyzerGasContext#withGas} */
 	withGas<T>(overrides: GasOverrides | undefined, fn: () => T): T;
+	/** see {@link FlowrAnalyzerGasContext#withFreshGas} */
+	withFreshGas<T>(fn: () => Promise<T>): Promise<{ readonly value: T, readonly degraded: boolean }>;
 }
 
 /** Checks heap and elapsed-time pressure for named analysis features. See {@link ReadOnlyFlowrAnalyzerGasContext}. */
@@ -171,7 +177,21 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 	 * {@link scope} wherever the context can be threaded through.
 	 */
 	public withGas<T>(overrides: GasOverrides | undefined, fn: () => T): T {
-		const frame = this.derive(overrides);
+		return this.within(this.derive(overrides), fn);
+	}
+
+	/**
+	 * Runs `fn` against a contingent of its own: the configured bounds only, none of the overrides of the
+	 * operation asking, and a fresh start time. Reports whether any gas check during `fn` came back above normal,
+	 * so a result meant to be shared (see {@link FlowrAnalyzerCache#derive}) is only kept when it is complete.
+	 */
+	public async withFreshGas<T>(fn: () => Promise<T>): Promise<{ readonly value: T, readonly degraded: boolean }> {
+		const frame = this.derive(undefined, this.base, true);
+		const value = await this.within(frame, fn);
+		return { value, degraded: frame.degraded === true };
+	}
+
+	private within<T>(frame: GasScope, fn: () => T): T {
 		this.frames.push(frame);
 		let result: T;
 		try {
@@ -195,9 +215,17 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		return this.viewOf(this.derive(overrides));
 	}
 
-	private derive(overrides: GasOverrides | undefined, from?: GasScope): GasScope {
-		const inherited = (from ?? this.activeScope()).layers;
-		return { startTime: Date.now(), layers: overrides ? [...inherited, overrides] : inherited };
+	private derive(overrides: GasOverrides | undefined, from?: GasScope, detached = false): GasScope {
+		const parent = from ?? this.activeScope();
+		const layers = overrides ? [...parent.layers, overrides] : parent.layers;
+		return detached ? { startTime: Date.now(), layers } : { startTime: Date.now(), layers, parent };
+	}
+
+	/** marks `scope` and the scopes it was derived from as degraded, stopping at the first one already marked */
+	private static markDegraded(scope: GasScope | undefined): void {
+		for(let s = scope; s !== undefined && s.degraded !== true; s = s.parent) {
+			s.degraded = true;
+		}
 	}
 
 	private viewOf(scope: GasScope): ReadOnlyFlowrAnalyzerGasContext {
@@ -333,6 +361,9 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 			}
 		}
 
+		if(level > GasLevel.Normal) {
+			FlowrAnalyzerGasContext.markDegraded(scope);
+		}
 		return level;
 	}
 }

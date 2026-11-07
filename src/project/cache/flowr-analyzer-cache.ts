@@ -254,14 +254,21 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			return known;
 		}
 		const store = this.derivedCache;
-		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one */
-		const computed = this.args.context.gas.withGas(undefined, compute);
-		store.set(key, computed);
-		computed.catch(() => {
+		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one,
+		 * and a result computed under gas pressure (which may be incomplete) is handed out but not kept */
+		const forget = () => {
 			if(store.get(key) === computed) {
 				store.delete(key);
 			}
+		};
+		const computed: Promise<T> = this.args.context.gas.withFreshGas(compute).then(({ value, degraded }) => {
+			if(degraded) {
+				forget();
+			}
+			return value;
 		});
+		store.set(key, computed);
+		computed.catch(forget);
 		return computed;
 	}
 

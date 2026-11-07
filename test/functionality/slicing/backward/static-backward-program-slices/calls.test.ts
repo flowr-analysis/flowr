@@ -397,8 +397,9 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 			assertSliced(label('get with a piped, computed name resolves the same as the nested form', ['name-normal', 'numbers', 'strings', 'newlines', ...BuiltInOperators.byName['<-'].capabilities, 'global-scope', 'name-created-resolved', 'pipe-and-pipe-bind']),
 				shell, 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nprint(r)', ['4@r'], 'i <- 1\nv1 <- 5\nr <- "v" |> paste0(i) |> get()\nr',
 				{ minRVersion: MIN_VERSION_PIPE });
-			assertSliced(label('get with an unresolvable name drops the definition it reads', ['name-created']),
-				shell, 'x <- 1\nnm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nprint(get(nm))', ['3@get'], 'nm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nget(nm)');
+			/* the name is only known at runtime, so the lookup may read any variable it sees, here `x` */
+			assertSliced(label('get with an unresolvable name keeps what it may read', ['name-created']),
+				shell, 'x <- 1\nnm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nprint(get(nm))', ['3@get'], 'x <- 1\nnm <- Sys.getenv("FLOWR_TEST_UNSET_VAR", unset = "x")\nget(nm)');
 		});
 		describe('Combine get and assign', () => {
 			assertSliced(label('get in assign', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'assignment-functions', 'strings', 'unnamed-arguments', 'newlines', 'name-created-resolved']), shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', ['3@a'], 'b <- 5\nassign("a", get("b"))\na');

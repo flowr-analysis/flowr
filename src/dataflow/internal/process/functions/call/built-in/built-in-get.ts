@@ -10,7 +10,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
 import type { DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -84,6 +84,15 @@ export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVe
 	const info = Resolve.info(graph, ctx);
 	const names = NodeValue.stringsOf(name.nodeId, info);
 	if(names === undefined) {
+		/* a name only known at runtime may be that of any variable the lookup sees */
+		const idMap = graph.idMap;
+		const around = idMap === undefined ? new Set<NodeId>() : new Set(RNode.iterateParents(idMap.get(vertex.id), idMap).map(p => p.info.id));
+		for(const [def] of graph.verticesOfType(VertexType.VariableDefinition)) {
+			const fn = idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(def, idMap);
+			if((fn === undefined || around.has(fn)) && !ProgramOrder.definedLater(def, runsOnceAt, graph)) {
+				graph.addEdge(vertex.id, def, EdgeType.Returns | EdgeType.Reads);
+			}
+		}
 		return false;
 	}
 	const found = (ns: readonly string[]) => ns.flatMap(n => {

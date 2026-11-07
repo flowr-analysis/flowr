@@ -539,7 +539,9 @@ export function updateNestedFunctionCalls(
 	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment);
 	let rootDefinitions: DefaultMap<string, NodeId[]> | undefined;
 	const calls = graph.verticesOfType(VertexType.FunctionCall).toArray();
-	const deferred = new Set<NodeId>();
+	/* the calls that wait for the parameters they call through to be bound, and whether a call was linked since they began to */
+	let waiting: typeof calls = [];
+	let linked = false;
 	const lifted: [NodeId, IdentifierReference, NodeId][] = [];
 	const enclosingOf = memoize((id: NodeId) => graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(id, graph.idMap));
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
@@ -548,7 +550,16 @@ export function updateNestedFunctionCalls(
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
 		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
 	});
-	for(let i = 0; i < calls.length; i++) {
+	for(let i = 0; ; i++) {
+		if(i === calls.length) {
+			/* a call linked since binds parameters, which may be what a waiting call calls, so they try again until nothing changes */
+			if(!linked || waiting.length === 0) {
+				break;
+			}
+			calls.push(...waiting);
+			waiting = [];
+			linked = false;
+		}
 		const [id, vertex] = calls[i];
 		const { onlyBuiltin, name, args, origin } = vertex;
 		if(name === undefined) {
@@ -568,9 +579,8 @@ export function updateNestedFunctionCalls(
 
 		const targets = new Set(Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a call of a parameter sees what it is bound to only once the calls handing it down are linked */
-		if(!deferred.has(id) && targets.size > 0 && targets.values().every(t => !NodeId.isBuiltIn(t) && DfgVertex.isVariableDefinition(graph.getVertex(t)))) {
-			deferred.add(id);
-			calls.push(calls[i]);
+		if(targets.size > 0 && targets.values().every(t => !NodeId.isBuiltIn(t) && DfgVertex.isVariableDefinition(graph.getVertex(t)))) {
+			waiting.push(calls[i]);
 			continue;
 		}
 		const collectedNextMethods = new Set<NodeId>();
@@ -620,6 +630,7 @@ export function updateNestedFunctionCalls(
 			graph.addEdge(id, target, EdgeType.Calls);
 			/* the call reaches user code, so everything downstream has to stop treating it as built-in only */
 			vertex.onlyBuiltin = false;
+			linked = true;
 			for(const exitPoint of targetVertex.exitPoints) {
 				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 			}

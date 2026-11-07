@@ -55,4 +55,25 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		callsLikeR(parser, 'an lapply callback calling a global function', 'h <- function(i) i\ninvisible(lapply(1, function(i) h(i)))\ncat("ok")', '2@h', ['1@function']);
 		callsLikeR(parser, 'Recall calls its function', 'f <- function(n) if(n > 0) Recall(n - 1) else 0\nf(1)\ncat("ok")', '1@Recall', ['1@function']);
 	}));
+	describe('functions handed down several levels', () => testing(['higher-order-functions'], () => {
+		/* `l<i>` calls its first parameter with the rest, so the function `h` reaches `l1` through `depth` calls of parameters */
+		const handedDown = (depth: number) => Array.from({ length: depth - 1 }, (_, i) => {
+			const params = [...Array.from({ length: i + 1 }, (_, j) => `g${i + 1 - j}`).slice(0, -1), 'f', 'x'].join(', ');
+			return `l${i + 2} <- function(g${i + 2}, ${params}) g${i + 2}(${params})`;
+		}).join('\n') + `\ninvisible(l${depth}(${Array.from({ length: depth - 1 }, (_, i) => `l${depth - 1 - i}`).join(', ')}, h, 1))`;
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'a function applied twice by a composed closure', code: 'k <- 5\nj <- 2\nh <- function(x) x + k\nhh <- function(x) x + j\napply_twice <- function(f, x) f(f(x))\ncompose <- function(g) function(x) apply_twice(g, x)\nprint(compose(h)(1))', dropped: 'j <- 2' },
+			{ name: 'a function handed down four calls', code: 'k <- 5\nh <- function(x) x + k\nap1 <- function(f1, x) f1(x)\nap2 <- function(f2, x) ap1(f2, x)\nap3 <- function(f3, x) ap2(f3, x)\nap4 <- function(f4, x) ap3(f4, x)\nprint(ap4(h, 1))' },
+			{ name: 'a side effect of a function handed down through eighty calls of parameters', code: `n <- 0\nh <- function(x) { n <<- x; x }\nl1 <- function(f, x) f(x)\n${handedDown(80)}\nprint(n)` },
+			{ name: 'a side effect of a function handed down through six calls of parameters', code: 'n <- 0\nh <- function(x) { n <<- x; x }\nl1 <- function(f, x) f(x)\nl2 <- function(g2, f, x) g2(f, x)\nl3 <- function(g3, g2, f, x) g3(g2, f, x)\nl4 <- function(g4, g3, g2, f, x) g4(g3, g2, f, x)\nl5 <- function(g5, g4, g3, g2, f, x) g5(g4, g3, g2, f, x)\nl6 <- function(g6, g5, g4, g3, g2, f, x) g6(g5, g4, g3, g2, f, x)\ninvisible(l6(l5, l4, l3, l2, l1, h, 1))\nprint(n)' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+		callsLikeR(parser, 'a function applied twice by a composed closure', 'h <- function(x) x\napply_twice <- function(f, x) f(f(x))\ncompose <- function(g) function(x) apply_twice(g, x)\ninvisible(compose(h)(1))\ncat("ok")', '2:33', ['1@function']);
+		callsLikeR(parser, 'a function handed down four calls defined in reverse', 'ap4 <- function(f4, x) ap3(f4, x)\nap3 <- function(f3, x) ap2(f3, x)\nap2 <- function(f2, x) ap1(f2, x)\nap1 <- function(f1, x) f1(x)\nh <- function(x) x\ninvisible(ap4(h, 1))\ncat("ok")', '4:24', ['5@function']);
+		callsLikeR(parser, 'the outer function of a curried call', 'h <- function(x) x\nmk <- function(a) function(b) function(c) a(b(c))\ninc <- function(v) v\ninvisible(mk(h)(inc)(1))\ncat("ok")', '2:43', ['1@function']);
+		callsLikeR(parser, 'the inner function of a curried call', 'h <- function(x) x\nmk <- function(a) function(b) function(c) a(b(c))\ninc <- function(v) v\ninvisible(mk(h)(inc)(1))\ncat("ok")', '2:45', ['3@function']);
+		callsLikeR(parser, 'a function handed down through six calls of parameters', 'h <- function(x) x\nl1 <- function(f, x) f(x)\nl2 <- function(g2, f, x) g2(f, x)\nl3 <- function(g3, g2, f, x) g3(g2, f, x)\nl4 <- function(g4, g3, g2, f, x) g4(g3, g2, f, x)\nl5 <- function(g5, g4, g3, g2, f, x) g5(g4, g3, g2, f, x)\nl6 <- function(g6, g5, g4, g3, g2, f, x) g6(g5, g4, g3, g2, f, x)\ninvisible(l6(l5, l4, l3, l2, l1, h, 1))\ncat("ok")', '2:22', ['1@function']);
+	}));
 }));

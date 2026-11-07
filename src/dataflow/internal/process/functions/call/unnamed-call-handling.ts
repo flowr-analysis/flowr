@@ -3,14 +3,18 @@ import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../info';
 import { ControlFlow } from '../../../control-flow';
 import { processAllArguments } from './common';
-import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall, type RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EdgeType } from '../../../../graph/edge';
 import { Ternary } from '../../../../../util/logic';
 import { DataflowGraph } from '../../../../graph/graph';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { VertexType } from '../../../../graph/vertex';
-import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
+import { type BrandedIdentifier, type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
+import { resolveConstructorInstanceEnvState } from './built-in/built-in-class-generator';
+import { Resolve } from '../../../../environments/resolve-helper';
+import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RAccess } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -28,6 +32,9 @@ function accessResolvesToField(graph: DataflowGraph, accessId: NodeId, accessedI
 	const base = NodeId.normalize(accessedId);
 	return Dataflow.targetsOf(graph, accessId, EdgeType.Returns).some(target => NodeId.normalize(target) !== base);
 }
+
+/** the method R6 and reference classes run on a new instance */
+const Initializer = 'initialize' as BrandedIdentifier;
 
 /**
  * Processes an unnamed function call.
@@ -67,6 +74,21 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const argumentExits = processedArguments.flatMap(a => ControlFlow.promise(finalGraph, a, Ternary.Maybe, functionRootId));
 
 	const called = functionCall.calledFunction;
+	/* `Gen$new()` of an R6 or reference class runs the class's `initialize` method */
+	const instance = resolveConstructorInstanceEnvState(functionCall, data);
+	for(const init of instance === undefined ? [] : Resolve.byNameAndType(Initializer, instance, ReferenceType.Function) ?? []) {
+		if(!NodeId.isBuiltIn(init.nodeId)) {
+			finalGraph.addEdge(functionRootId, init.nodeId, EdgeType.Calls);
+			/* a reference class method's `v <<- x` and `initFields(v = x)` set fields of the new instance, which it then holds */
+			RNode.visitAst(data.completeAst.idMap.get(init.nodeId), n => {
+				if(RBinaryOp.is(n) && n.operator === '<<-') {
+					finalGraph.addEdge(functionRootId, n.lhs.info.id, EdgeType.Reads);
+				} else if(RFunctionCall.isNamed(n, 'initFields')) {
+					n.arguments.forEach(a => a !== EmptyArgument && a.value !== undefined && finalGraph.addEdge(functionRootId, a.value.info.id, EdgeType.Reads));
+				}
+			});
+		}
+	}
 	if(RFunctionDefinition.is(called)) {
 		FunctionSemantics.call.match.onCallAndLink(callArgs, called.parameters, finalGraph);
 	} else if(RAccess.is(called) && !accessResolvesToField(finalGraph, calledRootId, called.accessed.info.id)) {

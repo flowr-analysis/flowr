@@ -179,6 +179,11 @@ export const PlotFunctionOwners: ReadonlyMap<string, string[]> = Object.entries(
 /**
  * The packages exporting a plotting function, in the order {@link PlotFunctionPackages} lists them. More than
  * one means the name is ambiguous, so nothing may pin a call of it to a single package.
+ * @example
+ * ```ts
+ * plotFunctionOwners('ggplot');  // ['ggplot2']
+ * plotFunctionOwners('foo');     // []
+ * ```
  */
 export function plotFunctionOwners(name: string): readonly string[] {
 	return PlotFunctionOwners.get(name) ?? [];
@@ -406,6 +411,11 @@ export const BasePrimitiveTopics: Readonly<Record<string, string>> = Object.from
 /**
  * The one of {@link statedSignatures} a reader means: the definition for `pkg` when there is one, else base
  * R's, else whichever came first. `undefined` when flowR states nothing about the name at all.
+ * @example
+ * ```ts
+ * const stated = statedSignatures();
+ * statedSignatureOf(stated, 'filter', 'dplyr')?.pkg; // 'dplyr', not the one of stats
+ * ```
  */
 export function statedSignatureOf(stated: ReadonlyMap<string, readonly StatedSignature[]>, name: string, pkg?: string): StatedSignature | undefined {
 	const known = stated.get(name);
@@ -524,8 +534,13 @@ export function markPrimitives(definitions: BuiltInDefinitions): BuiltInDefiniti
 }
 
 /**
- * Whether the call names a plot function that can append to an existing plot, and if so whether its `add`
- * argument says so; `undefined` for a call that has no such argument at all.
+ * Whether the call names a plot function with an `add` parameter ({@link PlotFunctionsWithAddParam}), and if so whether its `add`
+ * argument says that it appends to the existing plot, and `undefined` for any other function.
+ * Keep in mind that only a literal `TRUE` counts as appending, so `add = flag` is `false` here, and that the id must be one of a function call.
+ * @example
+ * ```ts
+ * appendsToPlot(callId, graph); // true for `boxplot(x, add = TRUE)`, false for `boxplot(x)`, undefined for `plot(x)`
+ * ```
  */
 export function appendsToPlot(source: NodeId, graph: DataflowGraph): boolean | undefined {
 	const vertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;

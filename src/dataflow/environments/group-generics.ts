@@ -47,7 +47,16 @@ export function groupGenericOf(name: string): string | undefined {
 	return S4GroupOfMember.get(name);
 }
 
-/** The S4 group generics whose methods a call of `name` may dispatch to, the nearest first (`+` to `Arith`, then `Ops`). */
+/**
+ * The S4 group generics whose methods a call of `name` may dispatch to, the nearest first (`+` to `Arith`, then `Ops`).
+ * Empty for a name in no group. It tells which methods can be run, not whether any is defined.
+ * @example
+ * ```ts
+ * s4GroupGenericsOf('+');   // ['Arith', 'Ops']
+ * s4GroupGenericsOf('sum'); // ['Summary']
+ * s4GroupGenericsOf('foo'); // []
+ * ```
+ */
 export function s4GroupGenericsOf(name: string): readonly string[] {
 	const group = S4GroupOfMember.get(name);
 	return group === undefined ? [] : group === 'Arith' || group === 'Compare' || group === 'Logic' ? [group, 'Ops'] : [group];
@@ -69,7 +78,15 @@ const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
 const S3GroupOfMember: ReadonlyMap<string, string> = new Map(
 	S3Groups.flatMap(group => (s3GroupGenericMembers(group) ?? []).map(member => [member, group as string])));
 
-/** The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none. */
+/**
+ * The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none.
+ * An S3 method named after the name itself (`==.foo`) wins over the one of the group (`Ops.foo`) in R, so look for that first.
+ * @example
+ * ```ts
+ * s3GroupGenericOf('==');   // 'Ops'
+ * s3GroupGenericOf('foo');  // undefined
+ * ```
+ */
 export function s3GroupGenericOf(name: string): string | undefined {
 	return S3GroupOfMember.get(name);
 }

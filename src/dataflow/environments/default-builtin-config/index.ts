@@ -34,6 +34,13 @@ export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwner
 /**
  * What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be
  * defined for several packages, so all of them are here; {@link statedSignatureOf} picks by package).
+ * It walks all definitions each time, so compute it once and pass the map to {@link statedSignatureOf}. It also states
+ * the defaults only unless you pass the definitions of your configuration.
+ * @example
+ * ```ts
+ * const stated = statedSignatures();
+ * statedSignatureOf(stated, 'nchar')?.params; // the formals as flowR declares them, e.g. 'x, type, ...'
+ * ```
  */
 export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig): Map<string, StatedSignature[]> {
 	const stated = new Map<string, StatedSignature[]>();

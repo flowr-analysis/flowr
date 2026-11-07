@@ -29,7 +29,10 @@ export enum OperatorUsedAs {
 	Access     = 'access'
 }
 
-/** What an operation computes, for operators that belong to one of these families. */
+/**
+ * What an operation computes, for operators that belong to one of these families.
+ * Use {@link BuiltInOperators.ofCategory} to get the operators of a category instead of listing them.
+ */
 export enum OperatorCategory {
 	Arithmetic = 'arithmetic',
 	Comparison = 'comparison',
@@ -39,6 +42,12 @@ export enum OperatorCategory {
 /**
  * What flowR knows about an operator as part of R's syntax, stated by the built-in definition of the operator
  * (see {@link BuiltInOperators}).
+ * Operators without a category (`%in%`, `<-`, `~`, ...) belong to none of the {@link OperatorCategory}.
+ * @example
+ * ```ts
+ * const facts = BuiltInOperators.get('->>') as OperatorFacts;
+ * facts.usedAs === OperatorUsedAs.Assignment && facts.writtenAs === OperatorWrittenAs.Infix; // true
+ * ```
  */
 export interface OperatorFacts {
 	readonly name:             string;
@@ -228,7 +237,17 @@ const inRAst = (ops: readonly string[]): ReadonlySet<string> => new Set(ops.map(
 
 /**
  * The operators of R, as the {@link OperatorDefinitions} state them.
+ * Ask it instead of keeping own lists of operators, so that the parser, the clone detectors, and dataflow agree.
+ * It only knows operators as written in R code, so `byName['**']` exists but names the token `^`, and access
+ * operators like `$` are in the table of {@link RAccess.namedOperators}, not here. Importing it is cheap, as
+ * the module does not load the rest of the built-in configuration.
  * @helper ast
+ * @example
+ * ```ts
+ * BuiltInOperators.get('<<-')?.usedAs;                         // OperatorUsedAs.Assignment
+ * BuiltInOperators.ofCategory(OperatorCategory.Comparison);    // ['==', '!=', '>', '>=', '<', '<=']
+ * BuiltInOperators.inRAst.has(RawRType.LeftAssign);            // true, a token the parser names like an operator
+ * ```
  */
 export const BuiltInOperators = {
 	name:        'BuiltInOperators',

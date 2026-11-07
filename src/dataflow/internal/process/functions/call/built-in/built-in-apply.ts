@@ -20,6 +20,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { evaluateQuotedArguments } from './built-in-eval';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { applyAmbientStateOfCallee } from './built-in-ambient-state';
 import { CallProp, CallProps, FnSig, SemanticCallTag } from '../../../../../environments/built-in-props';
@@ -212,6 +213,11 @@ export function processApply<OtherInfo>(
 
 	if(isTheCall || folded !== undefined) {
 		information.graph.addEdge(rootId, functionId, EdgeType.Returns);
+	}
+	/* `do.call(f, list(quote(n <- 5)))` hands `f` the quoted code itself, which runs once `f` forces it */
+	if(DfgVertex.isFunctionCall(spread) && DfgVertex.hasOrigin(spread, BuiltInProcName.List)) {
+		const idMap = data.completeAst.idMap;
+		information = evaluateQuotedArguments(spread.args.map(a => RArgument.valueOf(idMap.get(FunctionArgument.getReference(a) ?? ''))), rootId, information, data);
 	}
 	for(const id of folded ?? []) {
 		information.graph.addEdge(rootId, id, EdgeType.Returns);

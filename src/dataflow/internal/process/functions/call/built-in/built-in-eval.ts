@@ -182,6 +182,30 @@ function boundValueOf<OtherInfo>(target: NodeId, data: DataflowProcessorInformat
 	return RBinaryOp.is(assignment) ? assignment.lhs.info.id === target ? assignment.rhs : assignment.lhs : undefined;
 }
 
+/**
+ * Processes the code the quoted values `nodes` hold where the call `rootId` may evaluate it: `do.call(f, list(quote(n <- 5)))`
+ * calls `f(n <- 5)`, so the code runs when `f` forces that argument, which is unknown here, hence it runs maybe.
+ * @example
+ * ```ts
+ * information = evaluateQuotedArguments(listElements, rootId, information, data);
+ * ```
+ */
+export function evaluateQuotedArguments<OtherInfo>(
+	nodes:       readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
+	rootId:      NodeId,
+	information: DataflowInformation,
+	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const maybe = { ...data, cds: [...data.cds ?? [], { id: rootId, when: true }] };
+	for(const node of nodes) {
+		const code = node === undefined ? undefined : quotedCodeOf(node, data);
+		if(code !== undefined) {
+			information = evaluateQuoted(code, undefined, rootId, information, maybe);
+		}
+	}
+	return information;
+}
+
 /** Runs the quoted `code` where `eval` runs it: right here, or in the environment `envir` names (see {@link evaluateInEnvir}); with several candidates, each may be the one. */
 function evaluateQuoted<OtherInfo>(
 	code:        readonly RNode<OtherInfo & ParentInformation>[],

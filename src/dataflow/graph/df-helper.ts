@@ -239,34 +239,6 @@ export const Dataflow = {
 		return getAllRefsToSymbol(graph, id);
 	},
 	/**
-	 * Recomputes `recompute(id)` for every node reachable from `seed` along the reverse of `successors`, so a
-	 * change at a node is carried on to whatever points at it, until nothing grows anymore. `recompute` updates
-	 * its node's value itself and reports whether it grew.
-	 */
-	propagateToFixpoint(this: void, seed: Iterable<NodeId>, successors: ReadonlyMap<NodeId, readonly NodeId[]>, recompute: (id: NodeId) => boolean): void {
-		const callers = new DefaultMap<NodeId, NodeId[]>(() => []);
-		for(const [id, next] of successors) {
-			for(const to of next) {
-				callers.get(to).push(id);
-			}
-		}
-		const pending = [...seed];
-		const queued = new Set<NodeId>(pending);
-		while(pending.length > 0) {
-			const id = pending.pop() as NodeId;
-			queued.delete(id);
-			if(!recompute(id)) {
-				continue;
-			}
-			for(const caller of callers.get(id)) {
-				if(!queued.has(caller)) {
-					queued.add(caller);
-					pending.push(caller);
-				}
-			}
-		}
-	},
-	/**
 	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
 	 */
 	sideEffects: {

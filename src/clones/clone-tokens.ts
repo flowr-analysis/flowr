@@ -8,6 +8,14 @@ import { BuiltInOperators } from '../dataflow/environments/default-builtin-confi
  * - `jplag`: the token set of JPlag's R language module, see {@link JPlagRToken}
  * - `normalized`: one token per AST node (kind and operator), identifiers and constants abstracted (type-2 clones)
  * - `exact`: like `normalized`, but leaves keep their lexeme (type-1 clones)
+ *
+ * Use `jplag` if you want results comparable with JPlag (and the {@link ClonePerspective.Syntax} perspective, as
+ * JPlag's grammar sees the code as written), `normalized` for renamed copies, and `exact` for verbatim copies.
+ * @example
+ * ```ts
+ * const exact = tokenize(ast, CloneTokenization.Exact).values;
+ * const renamed = tokenize(ast, CloneTokenization.Normalized).values; // equal for `x <- 1` and `y <- 2`
+ * ```
  */
 export enum CloneTokenization {
 	Jplag      = 'jplag',
@@ -55,7 +63,10 @@ function jplagHoist(ast: CloneAst, i: number, from: number): number {
 	return c;
 }
 
-/** The pivot token value terminating each token string, it never matches anything. */
+/**
+ * The pivot token value terminating each token string, it never matches anything.
+ * Pass it to {@link gstSequence}, as all other token values are positive.
+ */
 export const FileEndToken = 0;
 
 /**
@@ -237,7 +248,15 @@ function isLeaf(kind: CloneNodeKind): boolean {
 
 /**
  * Tokenizes the subtree `[from, from + size[from])` of `ast` (the whole file for `from = 0`).
- * The result does not include the {@link FileEndToken} pivot.
+ * The result does not include the {@link FileEndToken} pivot, which {@link gstSequence} appends.
+ * The `jplag` mode inserts tokens in front of already emitted ones where JPlag's grammar does, which costs
+ * extra time for deeply nested calls compared to the other modes.
+ * @example
+ * ```ts
+ * const { values, nodes } = tokenize(ast, CloneTokenization.Jplag);
+ * values.length === nodes.length; // true, nodes[t] is the preorder index of the AST node of token t
+ * const perFunction = ast.functions.map(f => tokenize(ast, CloneTokenization.Normalized, f.node));
+ * ```
  */
 export function tokenize(ast: CloneAst, mode: CloneTokenization, from = 0): CloneTokens {
 	const values: number[] = [];

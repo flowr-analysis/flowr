@@ -88,6 +88,21 @@ export interface CloneDetectionConfig extends MergeableRecord {
 	readonly similar:    SimilarConfig;
 }
 
+/**
+ * The configuration {@link detectClones} falls back to: only `gst` on functions, with JPlag's token set and minimum
+ * match length. Override single fields by spreading, as the nested configurations are not merged for you here
+ * (the `code-clones` query does merge them).
+ * Keep in mind that the thresholds of the algorithms are not comparable: `0.8` means a different amount of
+ * similarity for `gst` (matched tokens), `winnowing` (shared fingerprints), and `similar` (graph labels).
+ * @example
+ * ```ts
+ * const config: CloneDetectionConfig = {
+ *   ...DefaultCloneDetectionConfig,
+ *   algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing],
+ *   gst:        { ...DefaultCloneDetectionConfig.gst, threshold: 0.9 }
+ * };
+ * ```
+ */
 export const DefaultCloneDetectionConfig: CloneDetectionConfig = {
 	algorithms: [CloneAlgorithm.Gst],
 	scope:      CloneScope.All,
@@ -451,6 +466,24 @@ const Detectors: Record<CloneAlgorithm, (c: Corpus, config: CloneDetectionConfig
 /**
  * Runs the configured algorithms on the index. With `against`, only pairs with one fragment from `index` and one
  * from `against` are compared, which is how new code is searched in a corpus of pre-analyzed projects.
+ * Keep in mind that:
+ * - each algorithm reports at most {@link CloneDetectionConfig.maxPairs} pairs, the most similar ones, so a result
+ *   with exactly that many pairs is likely cut off (`n` copies of one function are `n(n-1)/2` pairs)
+ * - an algorithm that does not fit the index is silent, so {@link CloneAlgorithm.Similar} finds nothing in an index built
+ *   without PDGs (`pdgs: false`), see {@link CloneDetectionStats#units} for how many units it compared
+ * - the detection itself needs no parser or dataflow analysis, and the ids of fragments marked `external` belong to
+ *   the analysis of `against`
+ * @param index   - the code to check, built with {@link CloneIndex.build}
+ * @param config  - see {@link DefaultCloneDetectionConfig}
+ * @param against - an index of the same {@link ClonePerspective} to search `index` in, e.g., from {@link CloneIndex.deserialize}
+ * @example
+ * ```ts
+ * const index = await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical, pdgs: false });
+ * const { pairs, stats } = detectClones(index, { ...DefaultCloneDetectionConfig, scope: CloneScope.CrossFile });
+ * for(const { a, b, similarity } of pairs) {
+ *   console.log(`${a.name ?? a.id} in ${a.file} is ${(similarity * 100).toFixed(0)}% a clone of ${b.name ?? b.id} in ${b.file}`);
+ * }
+ * ```
  */
 export function detectClones(index: CloneIndex, config: CloneDetectionConfig, against?: CloneIndex): CloneDetectionResult {
 	const c = corpus(index, against);

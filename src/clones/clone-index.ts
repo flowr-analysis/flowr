@@ -1,3 +1,4 @@
+import type { CloneAlgorithm, CloneFragment, detectClones } from './clone-detector';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { buildCloneAst, type CloneAst, type CloneFunction, ClonePerspective } from './clone-ast';
 import { planInlining } from './clone-dataflow';
@@ -60,7 +61,21 @@ export const CloneIndex = {
 	name: 'CloneIndex',
 	/**
 	 * Builds the index of all files the analyzer knows. The dataflow analysis only runs if the perspective is
-	 * `dataflow` or PDGs are requested.
+	 * `dataflow` or PDGs are requested, so index with `syntax` or `canonical` and `pdgs: false` if you only want the
+	 * token- and tree-based detectors, which skips the most expensive step.
+	 * Keep in mind that:
+	 * - the index is a snapshot, so build a new one after you changed the requests of the analyzer
+	 * - {@link ClonePerspective.Dataflow} and `pdgs: true` need the dataflow graph of the whole project
+	 * - the {@link ClonePerspective.Syntax} perspective is the one to use if you want JPlag-compatible token strings
+	 * - an index built without PDGs cannot be searched with {@link CloneAlgorithm.Similar}
+	 * @see {@link CloneIndex.serialize} - to store the index
+	 * @see {@link detectClones} - to search it
+	 * @example
+	 * ```ts
+	 * analyzer.addRequest(requestFromInput('f <- function(x) x + 1'));
+	 * const index = await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical, pdgs: false });
+	 * const { pairs } = detectClones(index, DefaultCloneDetectionConfig); // gst, function level
+	 * ```
 	 */
 	async build(this: void, analyzer: ReadonlyFlowrAnalysisProvider, options: CloneIndexOptions): Promise<CloneIndex> {
 		const normalized = await analyzer.normalize();
@@ -78,6 +93,17 @@ export const CloneIndex = {
 		}));
 		return { perspective: options.perspective, files, pdgs };
 	},
+	/**
+	 * The JSON-compatible form of the index, with the typed arrays of the ASTs and PDGs turned into plain arrays.
+	 * It carries a format tag and a version, which {@link CloneIndex.deserialize} checks.
+	 * Keep in mind that the node ids in the index belong to the analysis that built it, which is why
+	 * fragments found in a stored index are marked {@link CloneFragment.external}.
+	 * @example
+	 * ```ts
+	 * const stored = JSON.stringify(CloneIndex.serialize(index));
+	 * const restored = CloneIndex.deserialize(JSON.parse(stored) as SerializedCloneIndex);
+	 * ```
+	 */
 	serialize(this: void, index: CloneIndex): SerializedCloneIndex {
 		return {
 			format:      'flowr-clone-index',
@@ -98,6 +124,18 @@ export const CloneIndex = {
 			pdgs: index.pdgs?.map(ps => ps.map(p => ({ color: Array.from(p.color), node: Array.from(p.node), edges: Array.from(p.edges) })))
 		};
 	},
+	/**
+	 * The inverse of {@link CloneIndex.serialize}. It only checks the format tag, the version, and that there is a
+	 * known perspective and a list of files, so pass nothing you did not get from `serialize` (or the `index` of a
+	 * `code-clones` query with `exportIndex`), as it throws on a different format or version.
+	 * Search against the result with the `against` parameter of {@link detectClones}, and only with an index of the
+	 * same {@link ClonePerspective} as the code you search with.
+	 * @example
+	 * ```ts
+	 * const corpus = CloneIndex.deserialize(JSON.parse(stored) as SerializedCloneIndex);
+	 * const { pairs } = detectClones(index, DefaultCloneDetectionConfig, corpus); // only clones between index and corpus
+	 * ```
+	 */
 	deserialize(this: void, data: SerializedCloneIndex): CloneIndex {
 		if(data.format !== 'flowr-clone-index' || data.version !== 1) {
 			throw new Error(`unsupported clone index format ${String(data.format)} version ${String(data.version)}`);

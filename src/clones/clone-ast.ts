@@ -83,7 +83,15 @@ export function mixHash(h: number, v: number): number {
 	return (Math.imul(h, 5) + 0xe6546b64) | 0;
 }
 
-/** The label of node `i`: its kind plus its operator, e.g. `binop:+`. */
+/**
+ * The label of node `i`: its kind plus its operator, e.g. `binop:+`. Labels are what the tree- and token-based
+ * detectors compare, so identifiers and constants (see {@link CloneAst.lex}) are not part of them.
+ * @example
+ * ```ts
+ * const ast = buildCloneAst(normalized.ast.files[0].root, 'a.R');
+ * Array.from(ast.kind, (_, i) => cloneLabel(ast, i)); // e.g. ['exprlist', 'binop:<-', 'symbol', 'function', ...]
+ * ```
+ */
 export function cloneLabel(ast: CloneAst, i: number): string {
 	const op = ast.op[i];
 	return op === '' ? KindNames[ast.kind[i]] : `${KindNames[ast.kind[i]]}:${op}`;
@@ -111,6 +119,15 @@ function leafText(node: RNode): string {
  *   `x[["a"]]` and `x$"a"` become `x$a`, `T`/`F` become `TRUE`/`FALSE`, and a tail `return(e)` becomes `e`
  * - `dataflow`: `canonical`, plus single-use temporaries are inlined along the dataflow graph, turning statement
  *   sequences into the expression trees of the values they compute (`t <- f(x); g(t)` becomes `g(f(x))`)
+ *
+ * Choose the weakest perspective that finds what you look for, as `dataflow` needs the dataflow graph of the whole
+ * project, which the other two do not. Index and search must use the same perspective, as the stored lists
+ * of an index are already rewritten.
+ * @example
+ * ```ts
+ * // x |> f(2) and f(x, 2) are different with `syntax` but the same with `canonical`
+ * const index = await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical, pdgs: false });
+ * ```
  */
 export enum ClonePerspective {
 	Syntax    = 'syntax',
@@ -132,7 +149,14 @@ function callOp(call: RFunctionCall<ParentInformation>): string {
 	return 'infixSpecial' in call && call.infixSpecial === true ? 'infix' : '';
 }
 
-/** How the operator database describes an assignment operator, `undefined` for other operators. */
+/**
+ * How the operator database ({@link BuiltInOperators}) describes an assignment operator, `undefined` for other operators.
+ * @example
+ * ```ts
+ * assignmentOperator('->>'); // { right: true, equal: false, super: true }
+ * assignmentOperator('+');   // undefined
+ * ```
+ */
 export function assignmentOperator(op: string): { readonly right: boolean, readonly equal: boolean, readonly super: boolean } | undefined {
 	const info = BuiltInOperators.byName[op];
 	if(info?.usedAs !== OperatorUsedAs.Assignment) {
@@ -497,6 +521,14 @@ function functionName(b: CloneAstBuilder, parent: number, self: number): string 
 
 /**
  * Flattens the normalized AST of one file (the root expression list) into a {@link CloneAst}, see {@link ClonePerspective}.
+ * Prefer {@link CloneIndex.build}, which does this for all files of an analyzer and runs the dataflow analysis the
+ * `dataflow` perspective needs. Call this directly for tests or for a single normalized file.
+ * @example
+ * ```ts
+ * const normalized = await analyzer.normalize();
+ * const ast = buildCloneAst(normalized.ast.files[0].root, 'a.R', ClonePerspective.Canonical);
+ * const tokens = tokenize(ast, CloneTokenization.Normalized);
+ * ```
  * The `inline` plan and the `graph` of the `dataflow` perspective come from {@link planInlining} and the dataflow
  * analysis; with the graph, rewrites ask it what a call is instead of going by names. The other perspectives are
  * purely syntactic, so they never depend on whether a dataflow graph happens to be around.
@@ -507,7 +539,13 @@ export function buildCloneAst(root: RNode<ParentInformation>, file: string, pers
 	return b.build(file);
 }
 
-/** Iterates the preorder indices of the direct children of `i`. */
+/**
+ * Iterates the preorder indices of the direct children of `i`, by skipping over the subtrees of the children.
+ * @example
+ * ```ts
+ * const statements = [...cloneChildren(ast, 0)]; // the top-level expressions of the file
+ * ```
+ */
 export function* cloneChildren(ast: CloneAst, i: number): Generator<number> {
 	const end = i + ast.size[i];
 	for(let c = i + 1; c < end; c += ast.size[c]) {

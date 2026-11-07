@@ -37,6 +37,8 @@ import { VertexType, DfgVertex } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { hasEnvState, Identifier, type IdentifierReference } from './environments/identifier';
 import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { SourceRange } from '../util/range';
@@ -301,13 +303,34 @@ function readFramesThroughEnvironment(graph: DataflowGraph): void {
 	const callsEnvironment = (id: NodeId) => Dataflow.hasEdge(graph, id, environmentCall, EdgeType.Calls);
 	/* `environment(fn)` hands out the frame `fn` was created in */
 	const ofClosures = new DefaultMap<NodeId, NodeId[]>(() => []);
+	const ofTopLevel: NodeId[] = [];
 	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const fn = call.args.length === 1 && callsEnvironment(id) ? FunctionArgument.getReference(call.args[0]) : undefined;
 		for(const closure of fn === undefined ? [] : getAllLinkedFunctionDefinitions(new Set([fn]), graph)[0]) {
 			const creator = RNode.strictlyEnclosingFunction(closure.id, idMap);
-			if(creator !== undefined) {
-				ofClosures.get(creator).push(id);
+			(creator === undefined ? ofTopLevel : ofClosures.get(creator)).push(id);
+		}
+	}
+	/* a function defined at the top hands out the global frame, which holds every definition made there, and a field of it
+	 * (`environment(g)$f`) is what the frame binds to that name */
+	if(ofTopLevel.length > 0) {
+		const frames = new Set(ofTopLevel);
+		/* per name, the accesses (`e$f`, `e[["f"]]`) of a value that is such a frame */
+		const fields = new DefaultMap<string, NodeId[]>(() => []);
+		for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
+			const access = DfgVertex.hasOrigin(call, BuiltInProcName.Access) ? idMap.get(id) : undefined;
+			const field = RAccess.is(access) && access.access.length === 1 ? RArgument.valueOf(access.access[0]) : undefined;
+			const name = RSymbol.is(field) && access?.operator === '$' ? Identifier.getName(field.content) : RString.is(field) ? field.content.str : undefined;
+			if(name !== undefined && RAccess.is(access) && (Dataflow.valueSources(access.accessed.info.id, graph) ?? [access.accessed.info.id]).some(o => frames.has(o))) {
+				fields.get(name).push(id);
 			}
+		}
+		for(const [def] of graph.verticesOfType(VertexType.VariableDefinition)) {
+			if(RNode.strictlyEnclosingFunction(def, idMap) !== undefined) {
+				continue;
+			}
+			ofTopLevel.forEach(call => graph.addEdge(call, def, EdgeType.Reads));
+			fields.get(NodeId.recoverBareName(def, idMap) ?? '').forEach(access => graph.addEdge(access, def, EdgeType.Returns));
 		}
 	}
 	for(const [, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {

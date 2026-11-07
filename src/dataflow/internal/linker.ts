@@ -32,6 +32,7 @@ import type { BuiltInLookup } from '../fn/frame-reflection';
 import { Dataflow } from '../graph/df-helper';
 import { AmbientStateName } from '../environments/ambient-state-name';
 import { instanceBindingsOfMethod } from '../fn/class-declaration';
+import { ReachSummaries, unionOfSets } from '../../util/fixpoint';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -510,24 +511,18 @@ const ReachesNothing: Reached = new Set();
  * call binds holds only what the call passes. All states of a strongly connected component reach the same.
  */
 export class LinkedFunctionResolver {
-	private readonly graph:      DataflowGraph;
+	private readonly graph:     DataflowGraph;
 	/** the number of each state, by whether an access led to it, its vertex, and its call */
-	private readonly numbers:    readonly [Map<NodeId, Map<NodeId | undefined, number>>, Map<NodeId, Map<NodeId | undefined, number>>] = [new Map(), new Map()];
-	private readonly states:     [id: NodeId, viaAccess: boolean, call: NodeId | undefined][] = [];
-	/** what a state reaches, once its component is complete */
-	private readonly reached:    (Reached | undefined)[] = [];
-	/* Tarjan's bookkeeping, for the states whose component is not complete yet */
-	private readonly index:      number[] = [];
-	private readonly low:        number[] = [];
-	private readonly successors: (readonly number[] | undefined)[] = [];
-	private readonly open:       number[] = [];
+	private readonly numbers:   readonly [Map<NodeId, Map<NodeId | undefined, number>>, Map<NodeId, Map<NodeId | undefined, number>>] = [new Map(), new Map()];
+	private readonly states:    [id: NodeId, viaAccess: boolean, call: NodeId | undefined][] = [];
 	/** the built-ins and function definitions the walk ends at, by their state */
-	private readonly ends = new Map<number, NodeId>();
-	private readonly scopes:     CallScopes = new Map();
-	private entered = 0;
+	private readonly ends =     new Map<number, Reached>();
+	private readonly scopes:    CallScopes = new Map();
+	private readonly summaries: ReachSummaries<number, Reached>;
 
 	constructor(graph: DataflowGraph) {
 		this.graph = graph;
+		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), ReachesNothing, unionOfSets);
 	}
 
 	/** The function definitions and built-ins the reads with the given ids may evaluate to. */
@@ -535,7 +530,7 @@ export class LinkedFunctionResolver {
 		const definitions = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 		const builtIns = new Set<BuiltIn>();
 		for(const read of reads) {
-			for(const id of this.reach(this.state(read, false, undefined))) {
+			for(const id of this.summaries.of(this.state(read, false, undefined))) {
 				if(NodeId.isBuiltIn(id)) {
 					builtIns.add(id);
 				} else {
@@ -559,94 +554,6 @@ export class LinkedFunctionResolver {
 		return state;
 	}
 
-	/** Completes the component of `start` and those it depends on, iterating Tarjan's algorithm. */
-	private reach(start: number): Reached {
-		const done = this.reached[start];
-		if(done !== undefined) {
-			return done;
-		}
-		const path = [start];
-		const positions = [0];
-		this.enter(start);
-		while(path.length > 0) {
-			const top = path.length - 1;
-			const state = path[top];
-			const successors = this.successors[state] as readonly number[];
-			if(positions[top] < successors.length) {
-				const next = successors[positions[top]++];
-				if(this.reached[next] !== undefined) {
-					continue;
-				} else if(this.index[next] === undefined) {
-					this.enter(next);
-					path.push(next);
-					positions.push(0);
-				} else {
-					this.low[state] = Math.min(this.low[state], this.index[next]);
-				}
-				continue;
-			}
-			path.pop();
-			positions.pop();
-			if(path.length > 0) {
-				const parent = path[path.length - 1];
-				this.low[parent] = Math.min(this.low[parent], this.low[state]);
-			}
-			if(this.low[state] === this.index[state]) {
-				this.complete(state);
-			}
-		}
-		return this.reached[start] as Reached;
-	}
-
-	private enter(state: number): void {
-		this.index[state] = this.low[state] = this.entered++;
-		this.open.push(state);
-		this.successors[state] = this.expand(state);
-	}
-
-	/** Every state of the component rooted at `root` reaches what its members are and what the components they lead to reach. */
-	private complete(root: number): void {
-		const members: number[] = [];
-		let state: number;
-		do{
-			state = this.open.pop() as number;
-			members.push(state);
-		} while(state !== root);
-		let reached: Reached = ReachesNothing;
-		let owned = false;
-		const join = (other: Reached) => {
-			if(other === reached || other.size === 0 || isSubsetOf(other, reached)) {
-				return;
-			} else if(!owned && isSubsetOf(reached, other)) {
-				reached = other;
-				return;
-			} else if(!owned) {
-				reached = new Set(reached);
-				owned = true;
-			}
-			for(const id of other) {
-				(reached as Set<NodeId>).add(id);
-			}
-		};
-		for(const member of members) {
-			const end = this.ends.get(member);
-			if(end !== undefined) {
-				join(new Set([end]));
-			}
-			for(const next of this.successors[member] as readonly number[]) {
-				/* a successor outside the component is complete already */
-				const done = this.reached[next];
-				if(done !== undefined) {
-					join(done);
-				}
-			}
-		}
-		for(const member of members) {
-			this.reached[member] = reached;
-			this.successors[member] = undefined;
-		}
-	}
-
 	/** The states the walk goes on to from `state`, none for a built-in or function definition it ends at. */
 	private expand(state: number): readonly number[] {
 		const [id, viaAccess, call] = this.states[state];
@@ -655,14 +562,10 @@ export class LinkedFunctionResolver {
 			successors.push(this.state(target, nextViaAccess, nextCall));
 		});
 		if(end !== undefined) {
-			this.ends.set(state, end);
+			this.ends.set(state, new Set([end]));
 		}
 		return successors;
 	}
-}
-
-function isSubsetOf(a: Reached, b: Reached): boolean {
-	return a.size <= b.size && a.values().every(id => b.has(id));
 }
 
 /**

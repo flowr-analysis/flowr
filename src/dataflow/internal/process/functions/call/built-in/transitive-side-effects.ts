@@ -1036,10 +1036,11 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientS
 				callees.add(callee);
 			}
 		}
-		/* a call the call makes without a node of its own (`eval(call("f"))`, `do.call(name)`) is part of it */
-		for(const made of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
-			if(graph.idMap?.has(made) === false && DfgVertex.isFunctionCall(graph.getVertex(made))) {
-				ids.add(made);
+		/* what the call evaluates that the code does not write (`eval(parse(text = s))`, `eval(call("f"))`, `do.call(name)`) is part of it */
+		for(const made of Dataflow.targetsOf(graph, id, EdgeType.Calls | EdgeType.Returns | EdgeType.Argument)) {
+			if(!NodeId.isWritten(made) && !NodeId.isBuiltIn(made)) {
+				const node = graph.idMap?.get(made);
+				(node === undefined ? [made] : RNode.collectAllIds(node)).forEach(inner => ids.add(inner));
 			}
 		}
 	}

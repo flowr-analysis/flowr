@@ -233,15 +233,10 @@ export interface FnInfo extends BuiltInFnInfo {
  */
 export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): FnInfo | undefined {
 	const db = signatureDbOf(ctx.deps);
-	const available = db.available();
-	const [bare, namespace, internal] = Identifier.toArray(name);
-	const pkg = namespace ?? packageExporting(bare, ctx);
+	const { pkg, qualified, entry } = fnEntry(name, ctx, version);
 	/* an unqualified ask keeps its form, the built-in layer has a search path of its own */
 	const stated = queryFnProps(name, { environment: ctx.env.makeCleanEnv() });
-	const qualified = pkg === undefined ? name : Identifier.make(bare, pkg, internal === true);
 	const assumed = pkg === undefined ? undefined : version ?? db.versionOf(pkg);
-	/* the identifier says how far to reach, `::` to the exports and `:::` past them */
-	const entry = pkg === undefined || !available ? undefined : db.functionOf(qualified, version);
 	const known = entry === undefined || pkg === undefined ? undefined : propsOfSignature(db.sources(), entry, pkg, assumed);
 	if(stated === undefined && known === undefined) {
 		return undefined;
@@ -265,6 +260,21 @@ export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, vers
 		foldable:        definition?.evalHandler !== undefined,
 		entry
 	};
+}
+
+/**
+ * The package {@link fnInfo} answers `name` for and the signature database entry it finds there, without the
+ * props of everything the entry calls, for a caller after the formals or the entry alone.
+ */
+export function fnEntry(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): { readonly pkg?: string, readonly qualified: Identifier, readonly entry?: DecodedFunction } {
+	const db = signatureDbOf(ctx.deps);
+	const available = db.available();
+	const [bare, namespace, internal] = Identifier.toArray(name);
+	const pkg = namespace ?? packageExporting(bare, ctx);
+	const qualified = pkg === undefined ? name : Identifier.make(bare, pkg, internal === true);
+	/* the identifier says how far to reach, `::` to the exports and `:::` past them */
+	const entry = pkg === undefined || !available ? undefined : db.functionOf(qualified, version);
+	return { pkg, qualified, entry };
 }
 
 /** The array itself, `undefined` when it holds nothing, so an empty one does not count as an answer. */

@@ -8,7 +8,7 @@ import { Identifier } from '../../../dataflow/environments/identifier';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
-import { fnInfo } from '../../../dataflow/environments/query-fn-props';
+import { fnEntry } from '../../../dataflow/environments/query-fn-props';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
@@ -58,8 +58,8 @@ const Dots = '...';
 
 /** the formals of a package function, if the signature database knows them: flowR's own built-ins merely state the ones they model */
 function packageFormals(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
-	const info = fnInfo(name, ctx);
-	return info?.entry === undefined || info.entry.signature.length === 0 ? undefined : [...info.parameters];
+	const signature = fnEntry(name, ctx).entry?.signature;
+	return signature === undefined || signature.length === 0 ? undefined : signature.map(p => p.name);
 }
 
 interface Targets {

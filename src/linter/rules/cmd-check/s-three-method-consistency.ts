@@ -4,7 +4,7 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { fnInfo } from '../../../dataflow/environments/query-fn-props';
+import { fnEntry, fnInfo } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
 import { callsBuiltIn } from '../../linter-util';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -170,7 +170,7 @@ export const S3_METHOD_CONSISTENCY = {
 		/* a function of the package named like a generic of base hides it, unless it is a generic itself */
 		const genericNames = new Set(ctx.env.deriveFromIndex(index => index.with(CallProp.Generic).map(g => Identifier.getName(g))));
 		for(const name of genericNames) {
-			const formals = RS3Generics.genericFormals[name] ?? fnInfo(Identifier.make(name), ctx)?.entry?.signature?.map(p => p.name) ?? [];
+			const formals = RS3Generics.genericFormals[name] ?? fnEntry(Identifier.make(name), ctx).entry?.signature.map(p => p.name) ?? [];
 			if(!generics.has(name) && !defined.has(name) && !SubsetGenerics.has(name) && formals.length > 0) {
 				generics.set(name, { formals, local: false });
 			}

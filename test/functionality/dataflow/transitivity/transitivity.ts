@@ -143,7 +143,7 @@ export function resolvesLikeR(parser: KnownParser, name: string, code: string, c
 	});
 }
 
-/** the call at `criterion` reaches the definitions `reaches` with a calls edge (R checks the program prints `ok`) */
+/** the call at `criterion` reaches the definitions `reaches`, directly or through the call graph (R checks the program prints `ok`) */
 export function callsLikeR(parser: KnownParser, name: string, code: string, criterion: SlicingCriterion, reaches: readonly SlicingCriterion[], verdict: Verdict = {}): void {
 	caseTest(verdict)(name, async() => {
 		const analyzer = await analyzerFor(parser, code);
@@ -151,7 +151,16 @@ export function callsLikeR(parser: KnownParser, name: string, code: string, crit
 		const graph = (await analyzer.dataflow()).graph;
 		const call = SlicingCriterion.parse(criterion, idMap);
 		const callGraph = await analyzer.callGraph();
-		const targets = new Set<NodeId>([...Dataflow.targetsOf(graph, call, EdgeType.Calls), ...Dataflow.callTargetsOf(call, graph), ...callGraph.edgesFrom(call)?.keys() ?? []]);
+		const targets = new Set<NodeId>([...Dataflow.targetsOf(graph, call, EdgeType.Calls), ...Dataflow.callTargetsOf(call, graph)]);
+		const todo = [call, ...targets];
+		for(let id = todo.pop(); id !== undefined; id = todo.pop()) {
+			for(const next of callGraph.edgesFrom(id)?.keys() ?? []) {
+				if(!targets.has(next)) {
+					targets.add(next);
+					todo.push(next);
+				}
+			}
+		}
 		assert.strictEqual((await printedByR(code)).split('\n').at(-1), 'ok');
 		for(const r of reaches) {
 			assert.isTrue(targets.has(SlicingCriterion.parse(r, idMap)), `${criterion} should call ${r}, has ${JSON.stringify([...targets])}`);
@@ -159,7 +168,10 @@ export function callsLikeR(parser: KnownParser, name: string, code: string, crit
 	});
 }
 
-/** the global state `scope` (the top-level expression on that line) writes, transitively, includes `writes`; R checks the program prints `ok` */
+/**
+ * the global state `scope` (the top-level expression on that line) writes, transitively, includes `writes`, an imprecise
+ * case may answer with any option for a specific one; R checks the program prints `ok`
+ */
 export function writesLikeR(parser: KnownParser, name: string, code: string, line: number, writes: readonly string[], verdict: Verdict = {}): void {
 	caseTest(verdict)(name, async() => {
 		const analyzer = await analyzerFor(parser, code);
@@ -169,6 +181,9 @@ export function writesLikeR(parser: KnownParser, name: string, code: string, lin
 		assert.isNotEmpty(scope, `nothing on line ${line}`);
 		const access = Dataflow.sideEffects.ambientAccess(info, scope);
 		assert.strictEqual((await printedByR(code)).split('\n').at(-1), 'ok');
-		assert.includeMembers([...access.writes, ...access.variables], [...writes], JSON.stringify([...access.writes, ...access.variables]));
+		const written = [...access.writes, ...access.variables];
+		/* an imprecise case may only know that some option changes */
+		const missing = writes.filter(w => !written.includes(w) && !(verdict.imprecise !== undefined && w.startsWith('#option:') && written.includes('#option:*')));
+		assert.isEmpty(missing, JSON.stringify(written));
 	});
 }

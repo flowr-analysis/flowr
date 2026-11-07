@@ -36,7 +36,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { queryFnProps } from '../../../../../environments/query-fn-props';
 import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 import { arraysGroupBy } from '../../../../../../util/collections/arrays';
-import { groupGenericOf } from '../../../../../environments/group-generics';
+import { groupGenericOf, s3GroupGenericOf } from '../../../../../environments/group-generics';
 import { DotsParameterName } from '../../../../../../util/arg-matching';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -463,9 +463,9 @@ function dispatchesOnClass(name: Identifier, environment: REnvironmentInformatio
  * Unless {@link dispatchedS3Methods} knows the class, every such method counts, same as the {@link BuiltInProcName.S3Dispatch} path.
  */
 function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): readonly NodeId[] {
-	const defs = Resolve.byNameAndType(name, environment, ReferenceType.S3MethodPrefix)
-		?.filter(d => !NodeId.isBuiltIn(d.nodeId) && !ProgramOrder.definedLater(d.nodeId, statement, graph));
-	if(defs === undefined || defs.length === 0) {
+	const defs = s3MethodPrefixesOf(name).flatMap(prefix => Resolve.byNameAndType(prefix, environment, ReferenceType.S3MethodPrefix) ?? [])
+		.filter(d => !NodeId.isBuiltIn(d.nodeId) && !ProgramOrder.definedLater(d.nodeId, statement, graph));
+	if(defs.length === 0) {
 		return [];
 	}
 	const dispatched = dispatchedS3Methods(call, name, defs, graph, environment, statement, ctx, infoOf) ?? defs;
@@ -474,6 +474,12 @@ function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifie
 		graph.addEdge(call.id, def.nodeId, EdgeType.Reads);
 	}
 	return linkedFunctionIds(dispatched, graph);
+}
+
+/** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
+function s3MethodPrefixesOf(name: Identifier): readonly Identifier[] {
+	const group = s3GroupGenericOf(Identifier.getName(name));
+	return group === undefined ? [name] : [name, group];
 }
 
 function linkedFunctionIds(defs: readonly IdentifierDefinition[], graph: DataflowGraph): NodeId[] {
@@ -503,10 +509,11 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 	if(!classes.every(isNotUndefined)) {
 		return undefined;
 	}
+	const prefixes = s3MethodPrefixesOf(name);
 	const picked = new Set<IdentifierDefinition>();
 	for(const cls of classes.flat()) {
 		for(const c of [...cls, 'default']) {
-			const found = methods.filter(m => m.name === undefined || Identifier.getName(m.name) === `${generic}.${c}`);
+			const found = methods.filter(m => m.name === undefined || prefixes.some(p => Identifier.getName(m.name as Identifier) === `${Identifier.getName(p)}.${c}`));
 			found.forEach(m => picked.add(m));
 			if(statement !== undefined && found.some(m => m.name !== undefined && m.cds === undefined && ProgramOrder.offset(m.nodeId, statement, graph) < 0)) {
 				break;
@@ -548,7 +555,7 @@ export function updateNestedFunctionCalls(
 			continue;
 		}
 		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */
-		const mayDispatch = generics.has(Identifier.getName(name));
+		const mayDispatch = s3MethodPrefixesOf(name).some(p => generics.has(Identifier.getName(p)));
 		if(onlyBuiltin && !mayDispatch && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
 			continue;
 		}

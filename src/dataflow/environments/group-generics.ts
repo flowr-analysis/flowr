@@ -57,6 +57,17 @@ export function s3GroupGenericMembers(name: string): readonly string[] | undefin
 	return name === 'Math' ? MathS3 : groupGenericMembers(name);
 }
 
+/** the S3 groups, `Ops` standing for the three S4 groups it unites and `Math` covering `Math2` */
+const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
+
+const S3GroupOfMember: ReadonlyMap<string, string> = new Map(
+	S3Groups.flatMap(group => (s3GroupGenericMembers(group) ?? []).map(member => [member, group as string])));
+
+/** The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none. */
+export function s3GroupGenericOf(name: string): string | undefined {
+	return S3GroupOfMember.get(name);
+}
+
 /** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */
 export function isGroupGeneric(name: string): name is RGroupGeneric {
 	return Object.hasOwn(RGroupGenerics, name);

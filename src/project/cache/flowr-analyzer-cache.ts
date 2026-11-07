@@ -247,6 +247,13 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	/**
 	 * A value computed from the current analysis once per `key`, dropped with the analysis.
 	 * A failed computation is not kept, so the next caller tries again.
+	 * Callers asking while it runs share the one promise, so a value of one analysis is never computed twice
+	 * concurrently. See {@link ReadonlyFlowrAnalysisProvider#derive} for what to keep in mind when choosing the `key`.
+	 * @example
+	 * ```ts
+	 * const first = cache.derive(key, compute);
+	 * const second = cache.derive(key, compute); // the same promise
+	 * ```
 	 */
 	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
 		const known = this.derivedCache.get(key) as Promise<T> | undefined;

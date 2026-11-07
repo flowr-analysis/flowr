@@ -184,6 +184,14 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 	 * Runs `fn` against a contingent of its own: the configured bounds only, none of the overrides of the
 	 * operation asking, and a fresh start time. Reports whether any gas check during `fn` came back above normal,
 	 * so a result meant to be shared (see {@link FlowrAnalyzerCache#derive}) is only kept when it is complete.
+	 * Use it for work that outlives the operation asking, and {@link FlowrAnalyzerGasContext#withGas} for the work of the asking
+	 * operation itself, since this one ignores the overrides in effect (so it does not inherit a tight bound of the caller).
+	 * `degraded` is also set if a check inside a nested scope reported more than normal.
+	 * @example
+	 * ```ts
+	 * const { value, degraded } = await analyzer.context().gas.withFreshGas(async() => await analyzer.dataflow());
+	 * const kept = degraded ? undefined : value; // a degraded value may be incomplete, so do not store it
+	 * ```
 	 */
 	public async withFreshGas<T>(fn: () => Promise<T>): Promise<{ readonly value: T, readonly degraded: boolean }> {
 		const frame = this.derive(undefined, this.base, true);

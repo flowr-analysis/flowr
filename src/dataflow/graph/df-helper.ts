@@ -304,6 +304,11 @@ export const Dataflow = {
 		const operator = assignment === undefined ? undefined : (graph.idMap.get(assignment) as RBinaryOp | undefined)?.operator;
 		return operator === '<<-' || operator === '->>';
 	},
+	/** Whether the definition `def` is made by a super assignment (`v <<- 5`, `v$a <<- 5`), see {@link Dataflow.superAssigns}. */
+	definedBySuperAssignment(this: void, graph: DataflowGraph, def: NodeId): boolean {
+		return Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => Dataflow.superAssigns(graph, t));
+	},
+
 	/** Every variable definition of the graph by its unquoted name, in a single pass. */
 	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {
 		const byName = new DefaultMap<string, NodeId[]>(() => []);

@@ -6,7 +6,6 @@ import { REnvironment, type REnvironmentInformation } from '../environments/envi
 import { anyRemovalMarker, removalMarkerOf } from '../environments/removal-marker';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
-import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from './edge';
 import type { DataflowGraph } from './graph';
 import { DfgVertex } from './vertex';
@@ -196,17 +195,17 @@ function overwrittenBefore(read: NodeId, call: NodeId, closure: NodeId, own: Fra
 	const scope = RNode.strictlyEnclosingFunction(closure, idMap);
 	const targets = Dataflow.targetsOf(graph, read, EdgeType.Reads);
 	/* a super assignment binds in the frame of the creating call only if that frame surely binds the name */
-	const bound = scope !== undefined && targets.some(t => RNode.strictlyEnclosingFunction(t, idMap) === scope && graph.getVertex(t)?.cds === undefined && !superAssigned(t, graph));
+	const bound = scope !== undefined && targets.some(t => RNode.strictlyEnclosingFunction(t, idMap) === scope && graph.getVertex(t)?.cds === undefined && !Dataflow.definedBySuperAssignment(graph, t));
 	const writes: FrameWrite[] = [...own.entries];
 	const elsewhere = new Set<NodeId>();
 	for(const target of bound ? targets : []) {
 		/* the call creating the frame made what the scope binds itself */
-		if(RNode.strictlyEnclosingFunction(target, idMap) === scope && !superAssigned(target, graph)) {
+		if(RNode.strictlyEnclosingFunction(target, idMap) === scope && !Dataflow.definedBySuperAssignment(graph, target)) {
 			writes.push({ id: target, by: instances[0], definite: graph.getVertex(target)?.cds === undefined });
 			continue;
 		}
 		const sibling = RNode.strictlyEnclosingFunction(target, idMap);
-		if(sibling === undefined || sibling === closure || RNode.strictlyEnclosingFunction(sibling, idMap) !== scope || !superAssigned(target, graph)) {
+		if(sibling === undefined || sibling === closure || RNode.strictlyEnclosingFunction(sibling, idMap) !== scope || !Dataflow.definedBySuperAssignment(graph, target)) {
 			continue;
 		}
 		const surely = graph.getVertex(target)?.cds === undefined;
@@ -248,11 +247,6 @@ function overwrittenBefore(read: NodeId, call: NodeId, closure: NodeId, own: Fra
 		}
 	}
 	return elsewhere;
-}
-
-/** Whether the definition `id` is made by a super assignment (`v <<- 5`, `v$a <<- 5`). */
-function superAssigned(id: NodeId, graph: DataflowGraph): boolean {
-	return Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).some(t => Dataflow.superAssigns(graph, t));
 }
 
 /**

@@ -112,7 +112,7 @@ function evaluatedDefinitions(node: RFunctionCall<ParentInformation>, config: Lo
 	for(const id of RNode.collectAllIdsWithStop(expr, RFunctionDefinition.is)) {
 		const name = literalName(idMap.get(id));
 		/* a super assignment defines outside the evaluation */
-		if(name !== undefined && DfgVertex.isVariableDefinition(graph.getVertex(id)) && !Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.SuperAssignment))) {
+		if(name !== undefined && DfgVertex.isVariableDefinition(graph.getVertex(id)) && !Dataflow.definedBySuperAssignment(graph, id)) {
 			ops.push({ id: node.info.id, kind: EnvOpKind.Define, names: [], literals: [name], envir: envir.info.id, value: id, returns: true });
 		}
 	}

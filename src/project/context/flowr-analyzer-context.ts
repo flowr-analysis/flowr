@@ -263,27 +263,27 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
-	/** Clone state into the context of a forked analyzer */
-	public fork(target: FlowrAnalyzerContext, options?: ForkOptions): void {
-		if(this._detectedR !== undefined) {
-			target.setDetectedRVersion(this._detectedR);
+	/** Clone state from the source context into this context */
+	public fork(source: FlowrAnalyzerContext, options?: ForkOptions): void {
+		if(source._detectedR !== undefined) {
+			this.setDetectedRVersion(source._detectedR);
 		}
 
 		const decoupleFiles = options?.decoupleFiles ?? false;
-		for(const file of this.files.getAllFiles()) {
+		for(const file of source.files.getAllFiles()) {
 			if(decoupleFiles && file instanceof FlowrInlineTextFile) {
-				target.files.addFile(new FlowrInlineTextFile(file.path(), file.content().toString()), file.roles);
+				this.files.addFile(new FlowrInlineTextFile(file.path(), file.content().toString()), file.roles);
 			} else {
-				target.addFile(file);
+				this.addFile(file);
 			}
 		}
-		for(const consideredFile of this.files.consideredFilesList()) {
-			target.files.addConsideredFile(consideredFile);
+		for(const consideredFile of source.files.consideredFilesList()) {
+			this.files.addConsideredFile(consideredFile);
 		}
 
-		target.addRequests(this.files.loadingOrder.getUnorderedRequests());
-		for(const plugin of this.activatedPlugins) {
-			target.activatedPlugins.add(plugin);
+		this.addRequests(source.files.loadingOrder.getUnorderedRequests());
+		for(const plugin of source.activatedPlugins) {
+			this.activatedPlugins.add(plugin);
 		}
 	}
 

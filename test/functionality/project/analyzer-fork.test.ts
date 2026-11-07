@@ -4,8 +4,8 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 
-async function graph(analyzer: FlowrAnalyzer) {
-	return (await analyzer.dataflow(true)).graph.withoutEnvironments().toJSON();
+async function graph(analyzer: FlowrAnalyzer, force = true) {
+	return (await analyzer.dataflow(force)).graph.withoutEnvironments().toJSON();
 }
 
 async function analyze(...requests: string[]) {
@@ -96,5 +96,31 @@ describe('Analyzer', withTreeSitter(parser => {
 		b.addRequest('y <- x + 2');
 		assert.deepStrictEqual(await graph(b), await analyze(aFile, bFile));
 	});
+
+	test('using the "forkDataflow" option to use the dataflow in the fork', async() => {
+		const a = await new FlowrAnalyzerBuilder()
+			.setParser(parser)
+			.setEngine('tree-sitter')
+			.build();
+
+		a.addRequest('x <- 1');
+
+		const graphA = await graph(a);
+
+		const b = await a.fork({ forkDataflow: true });
+		assert.deepStrictEqual(await graph(b, false), graphA);
+
+		b.addRequest('y <- x * 2');
+		const graphB = await graph(b);
+		assert.notDeepEqual(graphB, graphA);
+		assert.deepStrictEqual(await graph(a), graphA);
+	});
+
+	/* TODO:
+		- Tests for ForkOptions:
+			- Test for decoupeling files
+			- Test for lazy?
+		- Maybe?: Tests with dependency query and/or other analyses
+	*/
 
 }));

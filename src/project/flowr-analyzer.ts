@@ -46,8 +46,9 @@ export interface FlowrAnalysisOptions {
 /** Options for forking an analyzer */
 export interface ForkOptions {
 	readonly lazy?:          boolean;
+	/** Reuses the dataflow result from the parent analyzer */
 	readonly forkDataflow?:  boolean;
-	// Decouples inline files instead of using their references
+	/** Decouples inline files instead of using their references */
 	readonly decoupleFiles?: boolean;
 }
 
@@ -246,7 +247,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 			.registerPlugins(...this.ctx.plugins.values().toArray().flat())
 			.build();
 
-		this.ctx.fork(fork.ctx, options);
+		fork.ctx.fork(this.ctx, options);
+		fork.cache.fork(this.cache, options);
 		return fork;
 	}
 

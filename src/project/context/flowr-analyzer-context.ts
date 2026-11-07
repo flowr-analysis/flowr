@@ -135,6 +135,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
 	private _detectedR:    string | undefined;
 
+	public readonly plugins:    ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
 	public readonly baseConfig: FlowrConfig;
 	/** {@link baseConfig}, specialized for {@link _configKind} */
@@ -247,6 +248,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]> | readonly FlowrAnalyzerPlugin[] = []) {
 		const byType = Array.isArray(plugins) ? arraysGroupBy(plugins as readonly FlowrAnalyzerPlugin[], p => p.type)
 			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
+		this.plugins = byType;
 		this.baseConfig = config;
 		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);

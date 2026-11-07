@@ -3,15 +3,13 @@ import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
-import type { KnownParser } from '../../../src/r-bridge/parser';
 
 async function graph(analyzer: FlowrAnalyzer) {
 	return (await analyzer.dataflow(true)).graph.withoutEnvironments().toJSON();
 }
 
-async function analyze(parser: KnownParser, ...requests: string[]) {
+async function analyze(...requests: string[]) {
 	const analyzer = await new FlowrAnalyzerBuilder()
-		.setParser(parser)
 		.setEngine('tree-sitter')
 		.build();
 	analyzer.addRequest(...requests);
@@ -22,7 +20,6 @@ describe('Analyzer', withTreeSitter(parser => {
 	test('forked analyzers produce independent results as files and config change', async() => {
 		const a = await new FlowrAnalyzerBuilder()
 			.setParser(parser)
-			.setEngine('tree-sitter')
 			.configure('project.implicitSources', ['setup.R', 'main.R'])
 			.build();
 
@@ -55,7 +52,6 @@ describe('Analyzer', withTreeSitter(parser => {
 	test('forked analyzers can run in parallel without interfering with each other', async() => {
 		const a = await new FlowrAnalyzerBuilder()
 			.setParser(parser)
-			.setEngine('tree-sitter')
 			.build();
 
 		const initial = 'x <- 1';
@@ -72,15 +68,33 @@ describe('Analyzer', withTreeSitter(parser => {
 		b.addRequest(requestB);
 
 		const [resultA, resultB] = await Promise.all([graph(a), graph(b)]);
-		assert.deepStrictEqual(resultA, await analyze(parser, initial, requestA));
-		assert.deepStrictEqual(resultB, await analyze(parser, initial, requestB));
+		assert.deepStrictEqual(resultA, await analyze(initial, requestA));
+		assert.deepStrictEqual(resultB, await analyze(initial, requestB));
 	});
 
-	/* Further Tests: (To-be decided Todo's)
+	test('resetting and closing an analyzer does not interfere with its forks', async() => {
+		const a = await new FlowrAnalyzerBuilder()
+			.setParser(parser)
+			.setEngine('tree-sitter')
+			.build();
 
-	Test a.reset() and a.close()
-	Compare the files from the context
+		const aFile = 'x <- 1';
+		a.addRequest(aFile);
 
-	Extra: Test forks on queries
-	*/
+		const a2 = await a.fork();
+		const b = await a2.fork();
+		const bFile = 'y <- x + 2';
+		b.addRequest(bFile);
+		const graphB = await graph(b);
+
+		a2.reset();
+		assert.deepStrictEqual(await graph(b), graphB);
+
+		a2.close();
+		assert.deepStrictEqual(await graph(b), graphB);
+
+		b.addRequest('y <- x + 2');
+		assert.deepStrictEqual(await graph(b), await analyze(aFile, bFile));
+	});
+
 }));

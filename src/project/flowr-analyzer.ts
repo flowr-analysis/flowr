@@ -241,8 +241,9 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		// const forkDataflow = options?.forkDataflow ?? true;
 
 		const fork = await  new FlowrAnalyzerBuilder()
-			.setConfig(FlowrConfig.clone(this.flowrConfig))
 			.setEngine(this.parser.name)
+			.setConfig(FlowrConfig.clone(this.flowrConfig))
+			.registerPlugins(...this.ctx.plugins.values().toArray().flat())
 			.build();
 
 		this.ctx.fork(fork.ctx, options);

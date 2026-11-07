@@ -15,7 +15,7 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { rebindAliases, resolveSymbolToEnvir } from './built-in-envir-utils';
 import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
 import { accessedFieldName, linkFieldReads } from '../../../../linker';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config';
@@ -162,11 +162,15 @@ function processNumberBasedAccess<OtherInfo>(
 	if(existing !== undefined) {
 		data.environment.current.writableMemory.set(':=', existing);
 	}
-	if(head.value && outInfo.definitionRootNodes.length > 0) {
-		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, cds: [] },
-			outInfo.definitionRootNodes,
-			rootId, data
-		);
+	const table = head.value;
+	if(table && outInfo.definitionRootNodes.length > 0) {
+		/* the table changes in place: the change reads the table it changes, and every variable holding it sees the change */
+		const name = table.lexeme ?? '';
+		const before = (Resolve.byName(name, fnCall.information.environment) ?? []).filter(d => !NodeId.isBuiltIn(d.nodeId));
+		const [environment, envId] = rebindAliases(fnCall.information.environment, name, table.info.id, rootId);
+		fnCall.information.environment = environment;
+		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name, nodeId: table.info.id, definedAt: rootId, cds: [], envId }, outInfo.definitionRootNodes, rootId, data);
+		before.forEach(d => fnCall.information.graph.addEdge(table.info.id, d.nodeId, EdgeType.Reads));
 	}
 
 	return fnCall;

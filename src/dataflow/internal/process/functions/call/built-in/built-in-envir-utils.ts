@@ -507,6 +507,37 @@ export function holdsValueOf(holder: Pick<IdentifierDefinition, 'nodeId'>, graph
 	return sources !== undefined && sources.length > 0 && sources.every(v => origins.some(o => DfgVertex.hasOrigin(graph.getVertex(v), o)));
 }
 
+/**
+ * Binds every other variable holding the same object as the variable `name` (copied from it by `y <- x`, see
+ * {@link InGraphIdentifierDefinition#envId}) to the change in place `change` as well (`x[, a := 9L]`), which reaches all of them.
+ * @returns the environment and the identity the changed variable keeps, to hand on to its new definition
+ * @example
+ * ```r
+ * d <- data.table(a = 1:2)
+ * e <- d
+ * e[, a := 9L]   # rebinds d as well, so print(d$a) depends on it
+ * ```
+ */
+export function rebindAliases(environment: REnvironmentInformation, name: Identifier, change: NodeId, definedAt: NodeId): [REnvironmentInformation, NodeId | undefined] {
+	const changed = Resolve.byName(name, environment) as readonly Partial<InGraphIdentifierDefinition>[] | undefined;
+	const identities = new Set(changed?.map(d => d.envId ?? d.nodeId).filter(i => i !== undefined && !NodeId.isBuiltIn(i)));
+	if(identities.size === 0) {
+		return [environment, undefined];
+	}
+	const target = Identifier.getName(name);
+	for(let env: Environment | undefined = environment.current; env !== undefined && !env.builtInEnv; env = env.parent) {
+		for(const defs of env.memory.values()) {
+			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
+				if(def.name !== undefined && Identifier.getName(def.name) !== target && identities.has(def.envId ?? def.nodeId)) {
+					/* the alias may still hold the object as it was, so the change joins its binding */
+					environment = REnvironment.define({ ...def, name: def.name, nodeId: change, definedAt, cds: [] }, environment.current.lookup(Identifier.getName(def.name)) === undefined, environment);
+				}
+			}
+		}
+	}
+	return [environment, identities.size === 1 ? [...identities][0] : undefined];
+}
+
 /** Binds every variable holding the environment of `envDef` to its new state, where that variable is bound. */
 export function rebindHolders(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
 	for(const holder of holdersOf(environment, envDef)) {

@@ -555,6 +555,11 @@ export interface BuiltInFnInfo extends StatedProps {
 	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}.
 	 */
 	readonly frame?:           ArgProps
+	/**
+	 * the generics the call may dispatch to on (parts of) its arguments, like `as.character` for `paste` or `format`
+	 * for the columns `print` shows of a data frame; any method of them may run
+	 */
+	readonly dispatches?:      string[]
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */

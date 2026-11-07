@@ -39,7 +39,7 @@ import { applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from 
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
-import { linkedFunctionIds } from '../../../../dispatch-linking';
+import { internalGenericMethods, linkedFunctionIds } from '../../../../dispatch-linking';
 import { REnvironment } from '../../../../../environments/environment';
 
 /**
@@ -190,17 +190,16 @@ function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean
 	return !idMap.has(call) || RNode.findEnclosing(node, idMap, n => n.info.id === call) !== undefined;
 }
 
+const PrintName = Identifier.make('print');
+
 /**
  * Printing a visible top-level value dispatches to the `print` methods in scope, so the expression calls them:
  * those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known.
  */
 function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
-	/* an S4 object prints by the `show` methods `setMethod` registers */
-	const shows = Resolve.byNameAndType('show', environment, ReferenceType.Function)?.filter(d => {
-		const registration = graph.getVertex((d as InGraphIdentifierDefinition).definedAt);
-		return DfgVertex.isFunctionCall(registration) && registration.s4Method !== undefined;
-	}) ?? [];
-	const all = (Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? []).concat(shows);
+	/* printing runs what `print` dispatches to on its own, like `show` for an S4 object */
+	const internal = internalGenericMethods(info.ctx.env.builtInFunctionOf(PrintName)?.config?.dispatches ?? [], environment, graph);
+	const all = (Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? []).concat(internal);
 	const classes = all.length === 0 ? undefined : s3DispatchClassesOf(id, info);
 	const methods = classes === undefined ? all : printedBy(classes, all, graph);
 	if(methods.length === 0) {
@@ -210,8 +209,13 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 		graph.addEdge(id, method.nodeId, EdgeType.Reads);
 	}
 	const called = [...getAllLinkedFunctionDefinitions(new Set(methods.map(m => m.nodeId)), graph)[0]];
+	/* what an internal generic returns, like `format` for a column, is what is printed */
+	const returning = new Set(linkedFunctionIds(new Set(internal.map(m => m.nodeId)), graph));
 	for(const method of called) {
 		graph.addEdge(id, method.id, EdgeType.Calls);
+		for(const exit of returning.has(method.id) ? method.exitPoints : []) {
+			graph.addEdge(id, exit.nodeId, EdgeType.Reads);
+		}
 	}
 	for(const ref of called.flatMap(c => c.subflow.in)) {
 		for(const def of ref.name === undefined ? [] : Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {

@@ -22,7 +22,7 @@ import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, Ver
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
-import { callsNextMethod, type DispatchContext, DispatchNarrower, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
+import { callsNextMethod, type DispatchContext, DispatchNarrower, internalGenericMethods, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { EnvType, REnvironment } from '../../../../../environments/environment';
@@ -757,6 +757,8 @@ export function updateNestedFunctionCalls(
 	const enclosingOf = memoize((id: NodeId) => graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(id, graph.idMap));
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
 	const databaseInfoOf = memoize((name: Identifier) => ctx.functionInfo(name));
+	/* the generics a built-in dispatches to on its own whose methods the code binds */
+	const internalOf = memoize((name: Identifier) => ctx.env.builtInFunctionOf(name)?.config?.dispatches?.filter(g => generics.has(g) || shadowing.has(g)) ?? []);
 	const environmentAt = memoize((id: NodeId) => {
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
 		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
@@ -807,7 +809,8 @@ export function updateNestedFunctionCalls(
 		const mayDispatch = s3MethodPrefixesOf(name).some(p => generics.has(p));
 		/* a `setMethod("Arith", ...)` claims every member of the S4 group, so a built-in member may reach its methods */
 		const s4Groups = s4GroupGenericsOf(Identifier.getName(name)).filter(g => shadowing.has(g));
-		if(onlyBuiltin && !mayDispatch && s4Groups.length === 0 && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
+		const internal = internalOf(name);
+		if(onlyBuiltin && !mayDispatch && s4Groups.length === 0 && internal.length === 0 && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
 			continue;
 		}
 
@@ -855,13 +858,20 @@ export function updateNestedFunctionCalls(
 		}
 		const object = treatAsS3 ? dispatchedObjectOf(vertex, graph) : undefined;
 		let s3Objects: readonly NodeId[] | undefined = object === undefined ? undefined : [object];
-		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
-			/* a built-in keeps no environment, but the frame of the function it is in may bind methods */
+		/* a built-in keeps no environment, but the frame of the function it is in may bind methods */
+		const methodEnvironment = () => {
 			const frame = vertex.environment === undefined ? graph.getVertex(enclosingOf(id) ?? '') : undefined;
-			const own = linkOwnS3Methods(vertex, name, graph, DfgVertex.isFunctionDefinition(frame) ? REnvironment.overwrite(outEnvironment, frame.subflow.environment) : effectiveEnvironment, runsOnceAt(id), ctx, databaseInfoOf);
+			return DfgVertex.isFunctionDefinition(frame) ? REnvironment.overwrite(outEnvironment, frame.subflow.environment) : effectiveEnvironment;
+		};
+		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
+			const own = linkOwnS3Methods(vertex, name, graph, methodEnvironment(), runsOnceAt(id), ctx, databaseInfoOf);
 			own.methods.forEach(m => targets.add(m));
 			s3Objects = own.objects;
 			treatAsS3 = true;
+		}
+		for(const method of internal.length === 0 ? [] : internalGenericMethods(internal, methodEnvironment(), graph).filter(m => !definedLater(m.nodeId))) {
+			graph.addEdge(id, method.nodeId, EdgeType.Reads);
+			linkedFunctionIds(new Set([method.nodeId]), graph).forEach(t => targets.add(t));
 		}
 		const decide = (info?: ClassFlowInfo) => {
 			const decided = narrowedDispatchOf(narrower, vertex, s3Objects, targets, definedLater, info);

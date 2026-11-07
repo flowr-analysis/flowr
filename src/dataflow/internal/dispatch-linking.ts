@@ -21,6 +21,9 @@ import {
 	s4DispatchFormals, s4HierarchyOf, type S4Method, s4MethodsOf, selectS4Methods, signatureFor
 } from '../fn/dispatch';
 import { getAllLinkedFunctionDefinitions } from './linker';
+import type { REnvironmentInformation } from '../environments/environment';
+import { type IdentifierDefinition, type InGraphIdentifierDefinition, ReferenceType } from '../environments/identifier';
+import { Resolve } from '../environments/resolve-helper';
 
 /** What the dispatch of one call rules out, and what the next-method calls of the methods it runs may run. */
 export interface NarrowedDispatch {
@@ -369,6 +372,20 @@ export function linkedFunctionIds(ids: ReadonlySet<NodeId>, graph: DataflowGraph
 	return getAllLinkedFunctionDefinitions(ids, graph)[0].values().map(d => d.id).toArray();
 }
 
+
+/**
+ * The methods `environment` binds for the generics a built-in dispatches to on its own (see `dispatches` of a built-in):
+ * every `<generic>.<class>` and every function `setMethod` registers for one, whatever the class, as it may be that of a part.
+ */
+export function internalGenericMethods(generics: readonly string[], environment: REnvironmentInformation, graph: DataflowGraph): IdentifierDefinition[] {
+	return generics.flatMap(g => [
+		...Resolve.byNameAndType(g, environment, ReferenceType.S3MethodPrefix) ?? [],
+		...Resolve.byNameAndType(g, environment, ReferenceType.Function)?.filter(d => {
+			const registration = graph.getVertex((d as InGraphIdentifierDefinition).definedAt);
+			return DfgVertex.isFunctionCall(registration) && registration.s4Method !== undefined;
+		}) ?? []
+	]).filter(d => !NodeId.isBuiltIn(d.nodeId));
+}
 
 /** the edges by which a call reaches a definition registering a method, by name or as what a generic hands on */
 const RegistrationEdges = EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.Calls;

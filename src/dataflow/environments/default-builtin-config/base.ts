@@ -72,11 +72,11 @@ export const BaseDefinitions = [
 	),
 	/* the separator sits behind the `...`, so R (and the {@link FnSig}) only ever matches it by its full name */
 	fn(base('paste', 'paste0'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Pure, sig: sig({ '...': Forced.Value, sep: Forced.Value }) },
+		{ props: CallProp.Pure, sig: sig({ '...': Forced.Value, sep: Forced.Value }), dispatches: ['as.character'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }
 	),
 	fn(base('file.path'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Pure, sig: sig({ '...': Forced.Value, fsep: Forced.Value }) },
+		{ props: CallProp.Pure, sig: sig({ '...': Forced.Value, fsep: Forced.Value }), dispatches: ['as.character'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }
 	),
 	/* `x` carries the data, whatever follows only tunes the result */
@@ -508,7 +508,8 @@ export const BaseDefinitions = [
 			ambient:               PrintDispatched,
 			props:                 CallProp.Invisible | CallProp.Generic,
 			tags:                  [SemanticCallTag.Prints],
-			sig:                   sig({ x: ArgProp.Alias | ArgProp.Forced, '...': Forced.Value })
+			sig:                   sig({ x: ArgProp.Alias | ArgProp.Forced, '...': Forced.Value }),
+			dispatches:            ['show', 'format']
 		}
 	),
 	fn(base('message'), BuiltInProcName.Default, { ...Signals, signals: ['simpleMessage', 'message', 'condition'] }),
@@ -874,6 +875,31 @@ export const BaseDefinitions = [
 		},
 		Primitive
 	),
+	/* registers the method of an S3 class, which the dispatch finds after one bound by its name */
+	fn(base('.S3method'), BuiltInProcName.AssignmentLike,
+		{
+			targetVariable: true,
+			makeMaybe:      true,
+			registers:      true,
+			target:         { idx: 0, name: 'generic' },
+			targetClass:    { idx: 1, name: 'class' },
+			source:         { idx: 2, name: 'method' },
+			props:          CallProp.Scope | CallProp.Invisible,
+			sig:            sig({ generic: ArgProp.Value, class: ArgProp.Value, method: ArgProp.Value })
+		}
+	),
+	fn(base('registerS3method'), BuiltInProcName.AssignmentLike,
+		{
+			targetVariable: true,
+			makeMaybe:      true,
+			registers:      true,
+			target:         { idx: 0, name: 'genname' },
+			targetClass:    { idx: 1, name: 'class' },
+			source:         { idx: 2, name: 'method' },
+			props:          CallProp.Scope | CallProp.Invisible,
+			sig:            sig({ genname: ArgProp.Value, class: ArgProp.Value, method: ArgProp.Value, envir: ArgProp.Written })
+		}
+	),
 	fn(base('quote'), BuiltInProcName.Quote,
 		{ quoteArgumentsWithIndex: 0, keepEnvironment: true, props: CallProp.Lang, sig: sig({ expr: ArgProp.Nse }) }, Primitive
 	),
@@ -1207,7 +1233,7 @@ export const BaseDefinitions = [
 	/* the string and shape functions R declares formals for, restated one by one: the group above gives them
 	   what they do, this gives them the arguments they do it with (the names are R's own) */
 	fn(base('sprintf'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Pure, sig: sig({ fmt: Forced.Value, '...': Forced.Value }) },
+		{ props: CallProp.Pure, sig: sig({ fmt: Forced.Value, '...': Forced.Value }), dispatches: ['as.character'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }
 	),
 	fn(base('format'), BuiltInProcName.DefaultReadAllArgs,

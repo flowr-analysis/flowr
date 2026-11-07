@@ -17,6 +17,16 @@ import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
 
 /**
  * Finds code clones in all files of the analysis with a configurable selection of algorithms.
+ * Keep in mind that:
+ * - the `config` is merged into the defaults of {@link DefaultCloneDetectionConfig}, so state only what you change
+ * - `similar`, and `exportIndex`, build the program dependence graph of every function, which needs the dataflow analysis of the whole project
+ * - `against` must use the perspective of the query, otherwise the query throws, and with it only clones between the analyzed files and the stored ones are reported
+ * - nodes of fragments from `against` are marked `external` and are not part of the nodes this query involves
+ * @example
+ * ```ts
+ * const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Baxter], config: { gst: { threshold: 0.9 } } });
+ * const { index } = await analyzer.query({ type: 'code-clones', exportIndex: true }); // store it, search it later with `against: [index]`
+ * ```
  */
 export interface CodeClonesQuery extends BaseQueryFormat {
 	readonly type:         'code-clones';

@@ -13,6 +13,10 @@ export interface CodeClonesResult extends LintingResult {
 	readonly clone:      CloneFragment;
 }
 
+/**
+ * The configuration of the {@link CODE_CLONES} rule: the one of {@link detectClones} and the perspective for the index.
+ * An empty list of `algorithms` selects the default, so the configuration of the rule is merged into the (empty) default.
+ */
 export interface CodeClonesConfig extends CloneDetectionConfig {
 	readonly perspective: ClonePerspective;
 }
@@ -23,6 +27,19 @@ function describe(f: CloneFragment): string {
 	return `${f.name ? `${f.name} at ` : ''}${SourceLocation.format(f.loc)}`;
 }
 
+/**
+ * Reports each code clone pair once, located at its first fragment, with the other fragment in the result.
+ * It is best-effort and off by default, as it indexes the whole project.
+ * Keep in mind that algorithms and thresholds trade precision for recall (a pair is reported once per algorithm that finds it),
+ * and that `similar` needs the dataflow analysis for the program dependence graphs.
+ * @example
+ * ```ts
+ * const lint = await executeLintingRule('code-clones', analyzer, { algorithms: [CloneAlgorithm.Similar], similar: { threshold: 0.9 } });
+ * if('results' in lint) {
+ *   lint.results.map(r => `${SourceLocation.format(r.loc)} ~ ${SourceLocation.format(r.clone.loc)}`);
+ * }
+ * ```
+ */
 export const CODE_CLONES = {
 	createSearch:        () => Q.from([]),
 	processSearchResult: async(_elements, config, analyzer) => {

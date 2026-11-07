@@ -170,6 +170,15 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/**
 	 * A value computed from the current analysis once per `key` (e.g. the function computing it), shared by
 	 * every query and linter rule asking for it until the analysis is invalidated.
+	 * Keep in mind that:
+	 * - the key is compared by identity, so use a module-level function or object, not a fresh closure per call
+	 * - the value is kept in memory until the analysis changes, so derive small summaries, not copies of the graph
+	 * - `compute` runs against the configured gas bounds only, and a result computed under pressure is returned but not kept
+	 * - a failed computation is not kept, the next caller runs it again
+	 * @example
+	 * ```ts
+	 * const pdgs = await analyzer.derive(computePdgs, async() => computePdgs(await analyzer.dataflow()));
+	 * ```
 	 */
 	derive<T>(key: object, compute: () => Promise<T>): Promise<T>;
 	/**
@@ -177,12 +186,19 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * Pass a single query to get its result directly (see {@link Query.one}), a failing query then throws.
 	 * Pass a list of queries to get a record of their results by query type, where a failing query type is reported
 	 * as an error without affecting the others.
+	 * Keep in mind that:
+	 * - a single query is the one to use if you ask for one thing, a list is for several kinds of results of one
+	 *   analysis. Queries of the same type in a list run as one batch, while the single form returns the one
+	 *   entry of a query with {@link SupportedQuery#perQueryResults} (for `static-slice`, `{ slice, reconstruct }`)
+	 * - the list form does not throw but reports `{ error }` for the failing type, so check before you use a result
+	 * - queries share the analysis (and its cache) of the analyzer, so adding a request after a query invalidates it
 	 * @param query   - The query or the list of queries.
 	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
 	 * @example
 	 * ```ts
 	 * const { reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
-	 * const results = await analyzer.query([{ type: 'id-map' }, { type: 'dataflow' }]);
+	 * const results = await analyzer.query([{ type: 'id-map' }, { type: 'static-slice', criteria: ['3@x'] }]);
+	 * const { slice } = results['static-slice'].results['3@x']; // keyed by the criteria
 	 * ```
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;

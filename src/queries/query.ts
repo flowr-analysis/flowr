@@ -428,6 +428,12 @@ type ValueOf<Type extends SupportedQueryTypes> = ResultsOf<Type>[KeyOf<Type>];
 /**
  * What {@link Query.one} answers a single query of the given type with: the one entry of its `results` for a
  * query marked {@link SupportedQuery#perQueryResults}, its full result otherwise.
+ * Use it as the return type of wrappers that run one query, as the type follows the query type.
+ * @example
+ * ```ts
+ * type Slice = SingleQueryResult<'static-slice'>; // { slice, reconstruct }
+ * type Clones = SingleQueryResult<'code-clones'>;  // { pairs, stats, index? } (the full result)
+ * ```
  */
 export type SingleQueryResult<Type extends SupportedQueryTypes> = Type extends unknown
 	? typeof SupportedQueries[Type] extends { readonly perQueryResults: true } ? ValueOf<Type> : Awaited<QueryResult<Type>>
@@ -463,6 +469,9 @@ export const Query = {
 	 * Run a single query and answer with what it reported, without grouping, retries, or a {@link QueryResults}
 	 * to index into. For a query marked {@link SupportedQuery#perQueryResults}, this is the one entry of its
 	 * `results`, e.g. the slice and reconstruction of a `static-slice` query. A failing query throws.
+	 * Other than {@link executeQueries}, it does not retry and merges nothing, so give it exactly one query.
+	 * Virtual queries (like `compound`) are not supported, as they unfold into several queries, so use {@link executeQueries} for them.
+	 * Most callers want `analyzer.query(query)`, which does the same for an analyzer and also applies the gas bounds of the call.
 	 * @example
 	 * ```ts
 	 * const { slice, reconstruct } = await Query.one({ analyzer }, { type: 'static-slice', criteria: ['2@x'] });

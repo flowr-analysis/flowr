@@ -1,3 +1,4 @@
+import { hooksUnder } from '../../../../../hooks';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
@@ -199,7 +200,7 @@ export function processIfThenElse<OtherInfo>(
 		cfgExit:           reachesJoin ? rootId : undefined,
 		environment:       finalEnvironment,
 		graph:             nextGraph,
-		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
+		hooks:             uncertain ? cond.hooks.concat(hooksUnder(then?.hooks ?? [], cdTrue), hooksUnder(otherwise?.hooks ?? [], cdFalse)) : cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
 		kill:              killed,
 	};
 }

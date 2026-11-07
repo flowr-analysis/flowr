@@ -1,3 +1,4 @@
+import { hooksUnder } from '../../../../../hooks';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
@@ -175,7 +176,7 @@ export function processForLoop<OtherInfo>(
 		cfgExit:           rootId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
-		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
+		hooks:             variable.hooks.concat(vector.hooks, once ? body.hooks : hooksUnder(body.hooks, cd)),
 		kill:              loopKill,
 	};
 }

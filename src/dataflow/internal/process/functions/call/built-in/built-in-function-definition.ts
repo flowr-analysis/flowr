@@ -1,7 +1,7 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
-import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
+import { type DataflowInformation, ExitPointType, happensInEveryBranch, overwriteExitPoints } from '../../../../../info';
 import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, linkInstanceReads, produceNameSharedIdMap } from '../../../../linker';
 import { deferredEnvOps } from './built-in-deferred-env-ops';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -194,7 +194,8 @@ export function processFunctionDefinition<OtherInfo>(
 		while(hookEnvironment.level > outEnvironment.level) {
 			hookEnvironment = REnvironment.popLocal(hookEnvironment);
 		}
-		outEnvironment = REnvironment.overwrite(outEnvironment, hookEnvironment);
+		/* a hook registered under a condition may not run, so its writes join what the body leaves behind */
+		outEnvironment = REnvironment.overwrite(outEnvironment, hookEnvironment, happensInEveryBranch(hook.cds) ? undefined : hook.cds);
 		/* the jumps and errors of an exit hook overrule the exit points of the body */
 		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
 		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);

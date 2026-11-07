@@ -597,10 +597,15 @@ function escapeTargetFrames(fdef: DataflowGraphVertexFunctionDefinition): Genera
  * as a callback for {@link computeCallGraphSummaries}. Nested definitions share their outer frames, and a frame is
  * dominated by the built-ins it holds, so filtering each frame once per pass saves the bulk of the work.
  */
-function escapedDefinitions(this: void, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>): (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => readonly NodeId[] {
+function escapedDefinitions(this: void, graph: DataflowGraph, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>): (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => readonly NodeId[] {
 	const perFrame = new Map<MemoryView, readonly NodeId[]>();
-	return (_id, fdef) => {
+	/* the function an exit hook runs in folds the hook's writes into its final environment in the order R runs the hooks */
+	const hooks = new Set(graph.verticesOfType(VertexType.FunctionDefinition).flatMap(([, v]) => v.subflow.hooks.map(h => h.id)));
+	return (id, fdef) => {
 		const defs: NodeId[] = hidden.keys().filter(call => fdef.subflow.graph.has(call)).toArray();
+		if(hooks.has(id)) {
+			return defs;
+		}
 		for(const e of escapeTargetFrames(fdef)) {
 			let escaped = perFrame.get(e.memory);
 			if(escaped === undefined && e.memory instanceof Frame && e.memory.lazy() !== undefined) {
@@ -929,7 +934,7 @@ function drawsOn(graph: DataflowGraph, id: NodeId, environment: REnvironmentInfo
 export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<NodeId, AmbientAccess> {
 	const [graph, environment] = graphOf(from);
 	const names = escapedDefinitionMap(graph, new Map());
-	const escaped = escapedDefinitions(new Map());
+	const escaped = escapedDefinitions(graph, new Map());
 	const items = computeCallGraphSummaries(graph, (id, fdef) => {
 		const own = Dataflow.callsIn(fdef, graph).flatMap(([call]) => {
 			const record = graph.ambientAccessOf(call);
@@ -1091,7 +1096,7 @@ export function ambientWritesOfFunctions(this: void, info: AmbientSource): Map<N
 export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, defined: Set<string> = new Set(), open: readonly IdentifierReference[] = []): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {
 	const hidden = hiddenBuiltInWrites(graph, environment, drawingWritesDevice(ctx.config));
 	/* both passes ask what escapes each function, and neither changes a body or a call target in between */
-	const escapes = computeCallGraphSummaries(graph, escapedDefinitions(hidden));
+	const escapes = computeCallGraphSummaries(graph, escapedDefinitions(graph, hidden));
 	propagateTransitiveDefinitions(graph, environment, ctx, escapes);
 	const packages = propagateTransitivePackages(graph, environment, ctx);
 	const escaped = propagateTransitiveEscapedDefinitions(graph, packages.environment, defined, hidden, escapes, open);

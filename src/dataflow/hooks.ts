@@ -44,6 +44,18 @@ export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
 }
 
 /**
+ * The hooks as registered only under the given control dependencies, for hooks registered in a branch or loop body that may not run.
+ * @example
+ * ```ts
+ * // `if(c) on.exit(x <<- 1)` registers the hook only when `c` holds
+ * const branchHooks = hooksUnder(then.hooks, [{ id: ifId, when: true }]);
+ * ```
+ */
+export function hooksUnder(hooks: readonly HookInformation[], cds: readonly ControlDependency[]): HookInformation[] {
+	return hooks.map(h => ({ ...h, cds: (h.cds ?? []).concat(cds) }));
+}
+
+/**
  * Extracts all hooks of the given type from the list of hooks.
  * Please consider {@link compactHookStates} to remove redundant or dominated hooks first.
  */

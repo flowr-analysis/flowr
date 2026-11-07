@@ -1035,7 +1035,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					id:          'hooks',
 					code:        ['on.exit', 'setHook'],
 					supported:   'partially',
-					description: `_Code registered to run at a point the program does not write out, with \`on.exit\` or \`userhooks\`._ An \`on.exit\` body runs when the ${LinkTo('function-definitions', 'function')} it sits in ends, while \`setHook\` is not modelled.`,
+					description: `_Code registered to run at a point the program does not write out, with \`on.exit\` or \`userhooks\`._ An \`on.exit\` body runs when the ${LinkTo('function-definitions', 'function')} it sits in ends, in the order \`add\` and \`after\` give, and a hook registered in a branch or loop only maybe. \`setHook\` is not modelled.`,
 					example:     codeBlock('r', 'f <- function() {\n  on.exit(print("bye"))\n  1\n}\nf()'),
 					url:         [AdvancedR('on.exit', 'functions.html#on-exit'), { name: 'R Definition/userhooks', href: 'https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html' }]
 				},

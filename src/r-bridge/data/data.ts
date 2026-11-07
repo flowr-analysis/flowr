@@ -120,7 +120,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Closure Capture',
 							id:          'closure-capture',
 							supported:   'fully',
-							description: '_A function captures the environment it was defined in, not the values that were in it._ So it sees a write made to that environment after its definition, a sibling closure\'s `<<-` included.',
+							description: '_A function captures the environment it was defined in, not the values that were in it._ So it sees a write made to that environment after its definition, a sibling closure\'s `<<-` included. A closure a function returns without calling it reads its free variables where it is called, so the call making it does not read them.',
 							example:     codeBlock('r', 'make <- function() {\n  x <- 1\n  list(get = function() x, set = function(v) x <<- v)\n}\no <- make()\no$set(5)\nr <- o$get()\nprint(r)'),
 							url:         [AdvancedR('Function factories', 'function-factories.html'), RLang('Scope of variables')]
 						},

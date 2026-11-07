@@ -8,7 +8,7 @@ import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
-import type { DataflowGraph } from '../graph/graph';
+import type { DataflowFunctionFlowInformation, DataflowGraph } from '../graph/graph';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
@@ -187,6 +187,49 @@ export function linkInstanceReads(graph: DataflowGraph, info: DataflowGraphVerte
 	}
 }
 
+/** The function definition directly within `fn` that holds `id`, `undefined` if `id` is in the body of `fn` itself. */
+function outermostClosureOf(id: NodeId, fn: NodeId, idMap: AstIdMap): NodeId | undefined {
+	let closure: NodeId | undefined;
+	for(const parent of RNode.iterateParents(idMap.get(id), idMap)) {
+		if(parent.info.id === fn) {
+			return closure;
+		} else if(RFunctionDefinition.is(parent)) {
+			closure = parent.info.id;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Which free reads of the function `fn` are in a closure it makes without calling it: such a closure reads its free
+ * variables where it is called, which links them there (or, if nothing calls it, at the end of its scope), so a call of
+ * `fn` does not read them.
+ * @example
+ * ```ts
+ * // f <- function() function() x; g <- f(); x <- 2; g()
+ * const whereCalled = readsOfUncalledClosures(fId, fVertex.subflow, graph, idMap);
+ * whereCalled(xId); // true, `g()` reads `x`, `f()` does not
+ * ```
+ */
+export function readsOfUncalledClosures(fn: NodeId, subflow: DataflowFunctionFlowInformation, graph: DataflowGraph, idMap: AstIdMap): (read: NodeId) => boolean {
+	let called: Set<NodeId> | undefined;
+	return read => {
+		const closure = subflow.graph.has(read) ? undefined : outermostClosureOf(read, fn, idMap);
+		if(closure === undefined) {
+			return false;
+		}
+		if(called === undefined) {
+			called = new Set();
+			for(const node of subflow.graph) {
+				if(DfgVertex.isFunctionCall(graph.getVertex(node))) {
+					Dataflow.targetsOf(graph, node, EdgeType.Calls).forEach(t => called?.add(t));
+				}
+			}
+		}
+		return !called.has(closure);
+	};
+}
+
 /**
  * Links a function call with a single target function definition.
  */
@@ -202,6 +245,7 @@ export function linkFunctionCallWithSingleTarget(
 		let callee: readonly REnvironmentInformation[] | undefined;
 		let lexical: REnvironmentInformation | undefined;
 		const instance = fnSubflow.in.length === 0 ? undefined : instanceBindingsOfMethod(fnId, graph, idMap);
+		const readWhereCalled = readsOfUncalledClosures(fnId, fnSubflow, graph, idMap);
 		/* for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it */
 		for(const ingoing of fnSubflow.in) {
 			const name = ingoing.name;
@@ -209,6 +253,9 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			if(instance?.includes(Identifier.getName(name))) {
+				continue;
+			}
+			if(readWhereCalled(ingoing.nodeId)) {
 				continue;
 			}
 			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */

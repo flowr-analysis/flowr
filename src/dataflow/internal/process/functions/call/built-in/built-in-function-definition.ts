@@ -2,7 +2,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, happensInEveryBranch, overwriteExitPoints } from '../../../../../info';
-import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, linkInstanceReads, produceNameSharedIdMap } from '../../../../linker';
+import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, linkInstanceReads, produceNameSharedIdMap, readsOfUncalledClosures } from '../../../../linker';
 import { deferredEnvOps } from './built-in-deferred-env-ops';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
@@ -838,7 +838,11 @@ export function updateNestedFunctionCalls(
 			if(graph.idMap !== undefined) {
 				linkInstanceReads(graph, vertex, targetVertex, effectiveEnvironment, graph.idMap);
 			}
+			const readWhereCalled = graph.idMap === undefined ? undefined : readsOfUncalledClosures(target, targetVertex.subflow, graph, graph.idMap);
 			targetVertex.subflow.in = resolveIngoingRefs(targetVertex.subflow.in, effectiveEnvironment, (ingoing, found) => {
+				if(readWhereCalled?.(ingoing.nodeId)) {
+					return false;
+				}
 				const resolved = withoutExcludedMethods(ingoing, found, graph);
 				/* the state of the session (options, files, the working directory) is what it is at this very call, and what it was before the calls of the enclosing function */
 				if(AmbientStateName.is(ingoing.name)) {

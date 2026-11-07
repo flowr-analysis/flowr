@@ -71,7 +71,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'name-created',
 							code:        ['get', 'get0', 'mget', 'exists', 'match.fun'],
 							supported:   'fully',
-							description: `_A call that reads a string argument as the name it spells, such as \`get\`, \`get0\`, \`mget\`, \`exists\`, \`match.fun\`, and \`assign\`._ The string counts as a use of that name, or for \`assign\` as a ${LinkTo('assignment-functions', 'definition')}. The string may also reach the call through variables and the parameters of the functions it is in (\`f <- function(n) get(n)(); f("h")\`). A name only known at runtime (\`get(Sys.getenv("V"))\`) is not linked.`,
+							description: `_A call that reads a string argument as the name it spells, such as \`get\`, \`get0\`, \`mget\`, \`exists\`, \`match.fun\`, and \`assign\`._ The string counts as a use of that name, or for \`assign\` as a ${LinkTo('assignment-functions', 'definition')}. The string may also reach the call through variables and the parameters of the functions it is in (\`f <- function(n) get(n)(); f("h")\`). Without an environment, the name is looked up in the frame of the function and those of the functions it is defined in, then in the global names at the call. A name only known at runtime (\`get(Sys.getenv("V"))\`) is not linked.`,
 							example:     codeBlock('r', 'x <- 1\nr <- get("x")\nprint(r)'),
 							url:         [RLang('Identifiers', 'Identifiers-1')]
 						},
@@ -192,7 +192,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Environment Sharing',
 							id:          'environment-sharing',
 							supported:   'partially',
-							description: `_Handling side-effects through environments, which act as reference types and are not copied when modified._ A write through a parameter is kept as an unknown side effect of the call (see ${LinkTo('environment-alias')} and ${LinkTo('side-effects-in-function-call')}).`,
+							description: `_Handling side-effects through environments, which act as reference types and are not copied when modified._ A write through a parameter (\`env$f <- v\`, \`assign("f", v, envir = env)\`) is replayed at each call that hands over a known environment, a list is copied by R so its write stays in the function, and any other value keeps the write as an unknown side effect of the call (see ${LinkTo('environment-alias')} and ${LinkTo('side-effects-in-function-call')}).`,
 							example:     codeBlock('r', 'e <- new.env()\nassign("x", 42, envir = e)\nprint(get("x", envir = e))'),
 							url:         [RLang('Environment objects'), AdvancedR('Environments', 'environments.html')]
 						},
@@ -716,7 +716,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'exceptions-and-errors',
 							code:        ['stop', 'try', 'tryCatch', 'warning', 'withCallingHandlers'],
 							supported:   'partially',
-							description: `_A condition raised with \`stop\`/\`warning\` and caught with \`try\`/\`tryCatch\`/\`withCallingHandlers\`._ The path on which a call throws before a write stays open, so after \`tryCatch({ risky(); x <- 2 }, ...)\` the variable \`x\` may still hold its earlier value. A handler only runs when the block may signal a condition of its class, and a calling handler is linked to every \`warning\`, \`message\`, or \`signalCondition\` that may reach it, also in the functions the block calls. This holds for a handler written inline as well as for one given as a value (a variable, a list element, the result of a factory, or a parameter), which is resolved like any ${LinkTo('higher-order-functions', 'function value')}.`,
+							description: `_A condition raised with \`stop\`/\`warning\` and caught with \`try\`/\`tryCatch\`/\`withCallingHandlers\`._ The path on which a call throws before a write stays open, so after \`tryCatch({ risky(); x <- 2 }, ...)\` the variable \`x\` may still hold its earlier value. A handler only runs when the block may signal a condition of its class. Anything that may signal counts (an operator, a call of a built-in or of a function we cannot resolve, a variable that may force a promise), only \`stop\`, \`warning\`, and \`message\` handed constants are matched by the class they signal, so \`tryCatch(message("m"), warning = h)\` never runs \`h\`. A calling handler is linked to every \`warning\`, \`message\`, or \`signalCondition\` that may reach it, also in the functions the block calls. This holds for a handler written inline as well as for one given as a value (a variable, a list element, the result of a factory, or a parameter), which is resolved like any ${LinkTo('higher-order-functions', 'function value')}.`,
 							example:     codeBlock('r', 'tryCatch(\n  stop("boom"),\n  error = function(e) conditionMessage(e),\n  finally = print("done")\n)'),
 							url:         [RLang('Exception handling'), AdvancedR('Conditions', 'conditions.html')]
 						}

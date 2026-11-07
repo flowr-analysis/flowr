@@ -169,9 +169,27 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 		return undefined;
 	}
 	const defs = Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable);
-	/* an environment we do not track, or a free variable of a function body bound only once the function is called */
-	return resolveDefsToEnvirResolution(defs, node.info.id, data)
-		?? ((defs === undefined && data.environment.level === 0) || !data.ctx.config.solver.trackEnvironments ? undefined : 'ambiguous');
+	if(!data.ctx.config.solver.trackEnvironments) {
+		return resolveDefsToEnvirResolution(defs, node.info.id, data);
+	} else if(defs === undefined && data.environment.level > 0) {
+		return freeEnvirResolution(node.content, node.info.id, data);
+	}
+	/* an environment we do not track */
+	return resolveDefsToEnvirResolution(defs, node.info.id, data) ?? (defs === undefined ? undefined : 'ambiguous');
+}
+
+/**
+ * A free variable of a function body names an environment bound only once the function is called: what the body
+ * writes into it escapes the function like a `<<-` would, and the call adds it to the environment the name holds there.
+ */
+function freeEnvirResolution<OtherInfo>(
+	name:   Identifier,
+	nodeId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> {
+	const envState = REnvironment.pushLocal(data.environment);
+	const envDef = { name, nodeId, type: ReferenceType.Variable, definedAt: nodeId, cds: data.cds, envState, envWrites: true } as const;
+	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId };
 }
 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
@@ -401,6 +419,43 @@ export function rebindHolders(environment: REnvironmentInformation, envDef: Name
 		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
 	}
 	return environment;
+}
+
+/**
+ * Adds the `writes` a called function made into environments its free variables name (see
+ * {@link InGraphIdentifierDefinition#envWrites}) to the environments the caller binds these names to; a name still free
+ * in a calling function body stays with the writes, so its own calls add them. Returns the callee's and the caller's
+ * environment to merge.
+ */
+export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], callee: REnvironmentInformation, caller: REnvironmentInformation, call: NodeId, graph: DataflowGraph): [REnvironmentInformation, REnvironmentInformation] {
+	for(const written of writes) {
+		if(!hasEnvState(written) || written.name === undefined) {
+			continue;
+		}
+		const bound = Resolve.byNameAndType(written.name, caller, ReferenceType.Variable);
+		if(bound === undefined && caller.level > 0) {
+			continue;
+		}
+		callee = { current: callee.current.removeAll([{ name: written.name }]), level: callee.level };
+		for(const holder of bound ?? []) {
+			if(!hasEnvState(holder) || holder.name === undefined) {
+				handleUnknownSideEffect(graph, caller, call);
+				continue;
+			}
+			let envState = holder.envState;
+			for(const fields of written.envState.current.memory.values()) {
+				for(const field of fields as readonly InGraphIdentifierDefinition[]) {
+					if(field.name !== undefined) {
+						envState = REnvironment.define(field as NamedInGraphIdentifierDefinition, false, envState);
+						/* the call made the write */
+						graph.addEdge(field.nodeId, call, EdgeType.SideEffectOnCall);
+					}
+				}
+			}
+			caller = rebindHolders(caller, holder as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState, call);
+		}
+	}
+	return [callee, caller];
 }
 
 /**

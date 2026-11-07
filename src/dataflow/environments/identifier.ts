@@ -693,6 +693,11 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	/** Names the environment object {@link envState} tracks, so that every variable aliasing it sees the same writes. */
 	readonly envId?:           NodeId
 	/**
+	 * Whether {@link envState} holds only the writes a function makes into the environment a free variable names: the
+	 * environment itself is the one the name is bound to where the function is called, which adds these writes to it.
+	 */
+	readonly envWrites?:       true
+	/**
 	 * If this is a function that returns a tracked environment, stores the envState
 	 * that the function returns (best-effort: only set when statically detectable).
 	 */

@@ -58,7 +58,7 @@ describe('Transitivity in corner cases, checked against R', withTreeSitter(parse
 		{ name: 'within', code: 'k <- 2\nd <- data.frame(a = 1)\nd <- within(d, b <- a + k)\nprint(d$b)' },
 		{ name: 'Recall in an anonymous function', code: 'k <- 1\nprint(sapply(3, function(n) if(n <= 1) k else n * Recall(n - 1)))' },
 		{ name: 'R6 inheritance with super', code: 'library(R6)\nk <- 5\nA <- R6Class("A", public = list(get = function() k))\nB <- R6Class("B", inherit = A, public = list(get = function() super$get() * 2))\nprint(B$new()$get())' },
-		{ name: 'a callback registered in an environment', code: 'reg <- new.env()\non <- function(f) assign("cb", f, envir = reg)\nk <- 8\non(function() k)\nprint(reg$cb())', red: 'R prints 8, the slice drops k <- 8 the callback stored by assign reads' }
+		{ name: 'a callback registered in an environment', code: 'reg <- new.env()\non <- function(f) assign("cb", f, envir = reg)\nk <- 8\non(function() k)\nprint(reg$cb())' }
 	];
 	for(const c of cases) {
 		sliceMatchesR(parser, c);

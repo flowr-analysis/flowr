@@ -10,7 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -23,6 +23,7 @@ import { readRemovals, cancelRevivedKills, dropKilledWrites, makeKillsMaybe } fr
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
+import { addEnvironmentWrites } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -235,6 +236,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 				}
 			}
 			let hasUpdate = false;
+			const envWrites: IdentifierDefinition[] = [];
 			const seenByCaller = packageLayersOf(inputEnvironment);
 			for(const current of REnvironment.frames(environment.current)) {
 				if(current.t !== undefined) {
@@ -251,12 +253,18 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 							/* what a call of the list writes is written by the list, a later read of it looks no further */
 							listEnvironments.add(def.nodeId);
+							if((def as InGraphIdentifierDefinition).envWrites === true) {
+								envWrites.push(def);
+							}
 						}
 					}
 				}
 			}
 			if(!hasUpdate) {
 				continue;
+			}
+			if(envWrites.length > 0) {
+				[environment, inputEnvironment] = addEnvironmentWrites(envWrites, environment, inputEnvironment, functionCall, nextGraph);
 			}
 			const shadowing = localDefs.filter(d => isNotUndefined(d.name) && !writtenWithinCall(functionCall, d.nodeId, idMap));
 			if(shadowing.length > 0) {

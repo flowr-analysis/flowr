@@ -225,25 +225,7 @@ export function settleConditionalWritesOfCalls(this: void, graph: DataflowGraph,
 		for(let i = 0; reached && i < calls.length; i++) {
 			const statement = taken[i] === Ternary.Always && !graph.getVertex(calls[i])?.cds?.length ? ProgramOrder.runsOnceAt(calls[i], graph) : undefined;
 			if(statement !== undefined) {
-				replaceEarlierDefinitions(write, statement, graph);
-			}
-		}
-	}
-}
-
-/**
- * For code the program runs once after `statement`, which surely makes the definition `write`, drops what came before
- * it. Where a `<<-` writes depends on whether the name was bound before, so the write reads what the code no longer does.
- */
-function replaceEarlierDefinitions(write: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph): void {
-	for(const reader of Dataflow.sourcesOf(graph, write, EdgeType.Reads)) {
-		if(ProgramOrder.runsOnceAt(reader, graph) === undefined || ProgramOrder.offset(reader, statement, graph) <= 0) {
-			continue;
-		}
-		for(const earlier of Dataflow.targetsOf(graph, reader, EdgeType.Reads)) {
-			if(earlier !== write && ProgramOrder.runsOnceAt(earlier, graph) !== undefined && ProgramOrder.offset(earlier, statement, graph) < 0) {
-				graph.removeEdgeType(reader, earlier, EdgeType.Reads);
-				graph.addEdge(write, earlier, EdgeType.Reads);
+				ProgramOrder.replaceEarlier(write, statement, graph, true);
 			}
 		}
 	}

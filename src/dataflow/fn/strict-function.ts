@@ -646,16 +646,7 @@ export function settleDefinitionsInPromises(this: void, graph: DataflowGraph, { 
 		if(statement === undefined || promised.length !== vertex.cds?.length || !promised.every(cd => forcing?.(cd.id, id) === Ternary.Always)) {
 			continue;
 		}
-		for(const reader of Dataflow.sourcesOf(graph, id, EdgeType.Reads)) {
-			if(ProgramOrder.runsOnceAt(reader, graph) === undefined || ProgramOrder.offset(reader, statement, graph) <= 0) {
-				continue;
-			}
-			for(const earlier of Dataflow.targetsOf(graph, reader, EdgeType.Reads)) {
-				if(earlier !== id && ProgramOrder.runsOnceAt(earlier, graph) !== undefined && ProgramOrder.offset(earlier, statement, graph) < 0) {
-					graph.removeEdgeType(reader, earlier, EdgeType.Reads);
-				}
-			}
-		}
+		ProgramOrder.replaceEarlier(id, statement, graph, false);
 	}
 }
 

@@ -50,7 +50,7 @@ export default defineConfig({
 			'test/system-tests/**',
 			'test/mutations/**'
 		],
-		include: [`${TestSuites.functionality.folder}/**/*.test.ts`],
+		include:            [`${TestSuites.functionality.folder}/**/*.test.ts`],
 		/* changes no test imports, but which every test may depend on, run everything (also for `--changed`) */
 		forceRerunTriggers: [
 			...configDefaults.forceRerunTriggers,

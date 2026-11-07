@@ -49,12 +49,21 @@ export const RAccess = {
 	 * Type guard for {@link RNamedAccess} nodes.
 	 */
 	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedAccess<Info> {
-		return RAccess.is(node) && (node.operator === '$' || node.operator === '@');
+		return RAccess.is(node) && RAccess.isNamedOperator(node.operator);
 	},
 	/**
 	 * Type guard for {@link RIndexAccess} nodes.
 	 */
 	isIndex<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RIndexAccess<Info> {
-		return RAccess.is(node) && (node.operator === '[' || node.operator === '[[');
+		return RAccess.is(node) && !RAccess.isNamedOperator(node.operator);
+	},
+	/**
+	 * The operators that access by name (`x$name`, `x@name`) rather than by index (`x[i]`, `x[[i]]`).
+	 * This is the one place that distinguishes them; use {@link RAccess.isNamedOperator} or {@link RAccess.isNamed}.
+	 */
+	namedOperators: ['$', '@'] as const,
+	/** Whether `operator` accesses by name, see {@link RAccess.namedOperators}. */
+	isNamedOperator(this: void, operator: string): operator is RNamedAccess['operator'] {
+		return (RAccess.namedOperators as readonly string[]).includes(operator);
 	}
 } as const;

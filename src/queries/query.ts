@@ -429,8 +429,9 @@ type ValueOf<Type extends SupportedQueryTypes> = ResultsOf<Type>[KeyOf<Type>];
  * What {@link Query.one} answers a single query of the given type with: the one entry of its `results` for a
  * query marked {@link SupportedQuery#perQueryResults}, its full result otherwise.
  */
-export type SingleQueryResult<Type extends SupportedQueryTypes> =
-	typeof SupportedQueries[Type] extends { readonly perQueryResults: true } ? ValueOf<Type> : Awaited<QueryResult<Type>>;
+export type SingleQueryResult<Type extends SupportedQueryTypes> = Type extends unknown
+	? typeof SupportedQueries[Type] extends { readonly perQueryResults: true } ? ValueOf<Type> : Awaited<QueryResult<Type>>
+	: never;
 
 /** One call a `call-context` query found, with the kind and subkind it was found under. */
 export interface FoundCall extends CallContextQuerySubKindResult {

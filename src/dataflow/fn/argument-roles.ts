@@ -66,16 +66,18 @@ export interface LookupState {
 
 /** @see {@link LookupState}; also how far a value is followed back, for the walks that need to know. */
 interface RoleState extends LookupState {
-	readonly maxDepth: number
+	readonly maxDepth:   number
 	/**
 	 * What {@link rolesOfCall} answered for a call, as the walks ask the same calls over and over and matching
 	 * arguments to formals is the expensive part. Lives for the one run and is dropped with it.
 	 */
-	readonly args:     Map<NodeId, ArgumentProps>
+	readonly args:       Map<NodeId, ArgumentProps>
+	/** what {@link identityFrom} found per node and depth, for the walks that may reuse it; lives for the one run as well */
+	readonly identities: Map<NodeId, Identity[]>
 }
 
 function roleStateOf(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
-	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map() };
+	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map(), identities: new Map() };
 }
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
@@ -105,28 +107,78 @@ const NotStatedByACall = ArgProp.Alias | ArgProp.NoDefault;
 
 /** What `nodes` always yield, following identity-preserving steps only: `if(c) x else x` is `x`, `if(c) x else y` neither. */
 function identityOf(nodes: readonly NodeId[], state: RoleState): Set<NodeId> {
-	return intersect(nodes.map(node => identityFrom(node, state, 0, new Set())));
+	return intersect(nodes.map(node => identityFrom(node, state, 0, new Set()).found));
 }
 
-function identityFrom(node: NodeId, state: RoleState, depth: number, open: Set<NodeId>): Set<NodeId> {
-	const found = new Set<NodeId>([node]);
-	if(depth > state.maxDepth || open.has(node)) {
-		return found;
+/**
+ * What {@link identityFrom} found for a node at a depth. The walk stops at the nodes it is already on (`open`), so
+ * what it finds depends on which of the nodes it asked about were, and nothing else: the answer holds for every
+ * walk that has the same of them open.
+ */
+interface Identity {
+	readonly found:   ReadonlySet<NodeId>
+	/** the nodes the walk asked whether they are open */
+	readonly touched: ReadonlySet<NodeId>
+	/** those of them that were open when the walk started */
+	readonly open:    ReadonlySet<NodeId>
+}
+
+/** Whether the walk that found `known` would find the same with the given nodes open. */
+function holdsWith(known: Identity, open: ReadonlySet<NodeId>): boolean {
+	let shared = 0;
+	for(const id of open) {
+		if(known.touched.has(id)) {
+			if(!known.open.has(id)) {
+				return false;
+			}
+			shared++;
+		}
 	}
+	return shared === known.open.size;
+}
+
+const NoNodes: ReadonlySet<NodeId> = new Set();
+
+function identityFrom(node: NodeId, state: RoleState, depth: number, open: Set<NodeId>): Identity {
+	if(depth > state.maxDepth) {
+		return { found: new Set([node]), touched: NoNodes, open: NoNodes };
+	} else if(open.has(node)) {
+		const self = new Set([node]);
+		return { found: self, touched: self, open: self };
+	}
+	const byDepth = state.identities.get(node);
+	const cached = byDepth?.[depth];
+	if(cached !== undefined && holdsWith(cached, open)) {
+		return cached;
+	}
+	const found = new Set<NodeId>([node]);
+	const touched = new Set<NodeId>([node]);
+	const before = [...open];
 	open.add(node);
+	const walk = (next: NodeId): ReadonlySet<NodeId> => {
+		const reached = identityFrom(next, state, depth + 1, open);
+		for(const id of reached.touched) {
+			touched.add(id);
+		}
+		return reached.found;
+	};
 	const [branches, steps] = sameValueAs(node, state);
 	for(const step of steps) {
-		for(const id of identityFrom(step, state, depth + 1, open)) {
+		for(const id of walk(step)) {
 			found.add(id);
 		}
 	}
 	if(branches.length > 0) {
-		for(const id of intersect(branches.map(branch => identityFrom(branch, state, depth + 1, open)))) {
+		for(const id of intersect(branches.map(walk))) {
 			found.add(id);
 		}
 	}
 	open.delete(node);
-	return found;
+	const identity: Identity = { found, touched, open: new Set(before.filter(id => touched.has(id))) };
+	const atDepth = byDepth ?? [];
+	atDepth[depth] = identity;
+	state.identities.set(node, atDepth);
+	return identity;
 }
 
 /** What every one of the sets holds; nothing at all when there is not a single set. */
@@ -182,7 +234,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	const roles = new Map<NodeId, ArgProps>();
 	const add = (node: NodeId, props: ArgProps): void => {
 		/* forcing `if(c) a else b` evaluates only one of `a` and `b`, so neither is forced for certain */
-		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set());
+		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set()).found;
 		const written = writtenFormal(node, byName, state);
 		for(const formal of aliasTargets(node, byName, state)) {
 			const own = always === undefined || always.has(formal) || formal === written ? props : props & ~ArgProp.Forced;

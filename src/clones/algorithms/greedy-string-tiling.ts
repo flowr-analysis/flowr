@@ -83,7 +83,16 @@ export interface GstSequence {
 	table?:            RollingTokenHashTable;
 }
 
-/** Prepares `tokens` (without pivot) for tiling, appending the pivot `pivot`. */
+/**
+ * Prepares `tokens` (without pivot) for tiling, appending the pivot `pivot`.
+ * Prepare each token string once and reuse the sequence for all comparisons it takes part in, as the hash
+ * table for the minimum match length is cached on it. The sequence is only valid for one `minimumMatchLength` then.
+ * @example
+ * ```ts
+ * const a = gstSequence(tokenize(astA, CloneTokenization.Jplag).values, FileEndToken);
+ * const b = gstSequence(tokenize(astB, CloneTokenization.Jplag).values, FileEndToken);
+ * ```
+ */
 export function gstSequence(tokens: Int32Array, pivot: number): GstSequence {
 	const t = new Int32Array(tokens.length + 1);
 	t.set(tokens);
@@ -133,6 +142,14 @@ function findLongestUnmarkedMatch(lv: Int32Array, ls: number, lm: Uint8Array, rv
 /**
  * JPlag's `compareOrdered`: tiles `left` (the shorter sequence, ties broken by the caller) with `right`.
  * Returns the tiles of at least `minimumMatchLength` tokens.
+ * Pass the sequence with fewer tokens as `left` (as JPlag does) for results that equal JPlag's. The sequences are not
+ * changed apart from the cached hash tables, so they can take part in many comparisons, but always with the same `minimumMatchLength`.
+ * The worst case is cubic in the sequence lengths, so {@link detectClones} prefilters pairs by shared k-grams first.
+ * @example
+ * ```ts
+ * const tiles = greedyStringTiling(a, b, 8); // [{ left, right, length }, ...]
+ * const similarity = gstSimilarity(matchedTokens(tiles), a.tokens.length - 1, b.tokens.length - 1);
+ * ```
  */
 export function greedyStringTiling(left: GstSequence, right: GstSequence, minimumMatchLength: number): GstMatch[] {
 	const lt = left.tokens, rt = right.tokens;
@@ -177,7 +194,10 @@ export function greedyStringTiling(left: GstSequence, right: GstSequence, minimu
 	return globalMatches;
 }
 
-/** The number of tokens covered by `matches` (on either side, as tiles have equal lengths). */
+/**
+ * The number of tokens covered by `matches` (on either side, as tiles have equal lengths).
+ * @see {@link gstSimilarity}
+ */
 export function matchedTokens(matches: readonly GstMatch[]): number {
 	let n = 0;
 	for(const m of matches) {
@@ -188,7 +208,12 @@ export function matchedTokens(matches: readonly GstMatch[]): number {
 
 /**
  * JPlag's `JPlagComparison.similarity()` without base code: `(matched of first + matched of second) / (|first| + |second|)`,
- * where the lengths exclude the pivot (`Submission.getSimilarityDivisor`).
+ * where the lengths exclude the pivot (`Submission.getSimilarityDivisor`). `matched` is
+ * {@link matchedTokens} of the tiles and counts for both sides, so identical strings have similarity 1.
+ * @example
+ * ```ts
+ * gstSimilarity(8, 10, 8); // 16 / 18
+ * ```
  */
 export function gstSimilarity(matched: number, lengthA: number, lengthB: number): number {
 	const divisor = lengthA + lengthB;

@@ -615,6 +615,13 @@ class PdgBuilder {
 /**
  * Builds the PDG of a function. The vertices map to preorder indices of `ast` (the file's clone AST) for locations.
  * `environment`, that of the analysis, knows the configured built-ins.
+ * Needs the dataflow graph of the whole project, so this is the costly step of the `similar` algorithm, which is why
+ * {@link CloneIndex.build} only does it with `pdgs: true`. Build the PDGs once and reuse them for all comparisons.
+ * @example
+ * ```ts
+ * const def = normalized.idMap.get(ast.id[ast.functions[0].node]) as RFunctionDefinition<ParentInformation>;
+ * const pdg = buildPdg(def, ast, dataflow.graph, dataflow.environment);
+ * ```
  */
 export function buildPdg(fn: RFunctionDefinition<ParentInformation>, ast: CloneAst, graph: DataflowGraph, environment?: REnvironmentInformation): Pdg {
 	const b = new PdgBuilder(graph, environment);
@@ -882,6 +889,13 @@ function counts(labels: Int32Array, from: number, to: number, m: number): Int32A
  * classes of the transitive closure become the new labels. With the label count vectors `L^i` the partial
  * similarities are `mu = 1 - sum |L_F - L_G| / (sum L_F + sum L_G)` and `mu~(F, G) = sum min(L_F, L_G) / sum L_F`, and the
  * results are their arithmetic means over all `h` iterations.
+ * The comparison is quadratic in the graph sizes per iteration, so skip hopeless pairs with {@link similarSizeBound} first.
+ * @example
+ * ```ts
+ * if(similarSizeBound(f, g) >= 0.8) {
+ *   const { symmetric, fInG, gInF } = similarCompare(f, g, 3);
+ * }
+ * ```
  */
 export function similarCompare(f: Pdg, g: Pdg, h = 3): SimilarResult {
 	const pf = prepare(f), pg = prepare(g);
@@ -954,7 +968,8 @@ export function similarCompare(f: Pdg, g: Pdg, h = 3): SimilarResult {
 
 /**
  * An upper bound of {@link similarCompare}'s symmetric similarity from the graph sizes alone: every partial
- * similarity is at most `2 min(|V_F|, |V_G|) / (|V_F| + |V_G|)`.
+ * similarity is at most `2 min(|V_F|, |V_G|) / (|V_F| + |V_G|)`. With the graphs sorted by size, you can stop
+ * comparing a graph to the larger ones as soon as the bound falls below your threshold.
  */
 export function similarSizeBound(f: Pdg, g: Pdg): number {
 	const a = f.color.length, b = g.color.length;

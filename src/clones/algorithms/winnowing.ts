@@ -16,6 +16,13 @@ export interface Fingerprint {
 
 /**
  * The hashes of all k-grams of `tokens` (Karp-Rabin rolling hash modulo 2^32, as unsigned values).
+ * There are `tokens.length - k + 1` hashes, and none if the sequence is shorter than `k`. Equal k-grams of
+ * different sequences have equal hashes, and different k-grams may collide (it is a 32-bit hash).
+ * {@link detectClones} uses them as a lossless prefilter, as two sequences with a shared run of `k` tokens share a hash.
+ * @example
+ * ```ts
+ * kgramHashes(Int32Array.of(1, 2, 3, 4), 2).length; // 3
+ * ```
  */
 export function kgramHashes(tokens: Int32Array, k: number): Uint32Array {
 	if(tokens.length < k || k <= 0) {
@@ -102,7 +109,17 @@ export function winnow(hashes: Uint32Array, w: number): Fingerprint[] {
 	return result;
 }
 
-/** Fingerprints of a token sequence for noise threshold `k` and guarantee threshold `t`. */
+/**
+ * Fingerprints of a token sequence for noise threshold `k` and guarantee threshold `t`, with `t >= k`.
+ * Matches shorter than `k` tokens are never found and each match of at least `t` tokens is, so raise `k` for fewer
+ * false positives and lower `t` for more recall. Larger `t - k` windows select fewer fingerprints.
+ * Compare the sets of `hash` values of two sequences (the Dice coefficient is the similarity of the `winnowing` detector).
+ * @example
+ * ```ts
+ * const prints = fingerprints(tokenize(ast, CloneTokenization.Normalized).values, 5, 8);
+ * const hashes = new Set(prints.map(p => p.hash));
+ * ```
+ */
 export function fingerprints(tokens: Int32Array, k: number, t: number): Fingerprint[] {
 	return winnow(kgramHashes(tokens, k), Math.max(1, t - k + 1));
 }

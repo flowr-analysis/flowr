@@ -85,7 +85,13 @@ export function sharedNodes(a: CloneAst, i: number, b: CloneAst, j: number): num
 	return shared;
 }
 
-/** Baxter's similarity `2S / (2S + L + R)` of two subtrees. */
+/**
+ * Baxter's similarity `2S / (2S + L + R)` of two subtrees, 1 for subtrees equal in structure and leaves.
+ * @example
+ * ```ts
+ * treeSimilarity(ast, ast.functions[0].node, ast, ast.functions[1].node); // two function definitions of one file
+ * ```
+ */
 export function treeSimilarity(a: CloneAst, i: number, b: CloneAst, j: number): number {
 	const s = sharedNodes(a, i, b, j);
 	const l = a.size[i] - s, r = b.size[j] - s;
@@ -103,6 +109,16 @@ function within(asts: readonly CloneAst[], inner: SubtreeRef, outer: SubtreeRef)
  * pair is skipped if one of its members lies strictly within a member of a pair added before (the pairs added before
  * are at least as large, so with any order the final set is the same). Pairs of a subtree with its own ancestor are
  * skipped, as they are no clones but containment.
+ * This works on any list of files, so unlike the token-based detectors it finds clones of all sizes at once, and it
+ * only reports a pair if both subtrees have the same structure hash (so a clone needs the same shape, differing in leaves only).
+ * Raise `massThreshold` to ignore small subtrees, which otherwise dominate the results.
+ * @example
+ * ```ts
+ * const { pairs } = baxterClones(index.files, { massThreshold: 30, similarityThreshold: 0.9 });
+ * for(const { a, b, similarity } of pairs) {
+ *   console.log(index.files[a.file].file, a.node, index.files[b.file].file, b.node, similarity);
+ * }
+ * ```
  */
 export function baxterClones(asts: readonly CloneAst[], config: BaxterConfig): { readonly pairs: BaxterPair[], readonly subtrees: number, readonly comparisons: number } {
 	const buckets = new Map<number, SubtreeRef[]>();

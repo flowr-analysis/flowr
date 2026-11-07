@@ -22,9 +22,12 @@ import { BuiltInIndex, callFnProps, queryFnProps } from '../../../../../environm
 import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
+import { Ternary } from '../../../../../../util/logic';
 import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
 import { ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { AstIdMap } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
@@ -49,11 +52,13 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 }
 
 /**
- * A promise is forced when the callee first needs it, which may be after the call wrote what the promise reads
- * (`g <- function(b) { x <<- 1; b }; g(x)`) or after another argument did (`f(n, n <- 4)`), so a read within an
- * argument of a call of a closure may see what the call or the other arguments write.
+ * A promise reads the state at the point it is forced, which is wherever the callee first needs it: after the call
+ * wrote what the promise reads (`g <- function(b) { x <<- 1; b }; g(x)`), after another argument did (`f(n, n <- 4)`),
+ * or, once a closure captured its parameter, after the call returned (`mk <- function(a) function() a`). So a read
+ * within an argument of a call of a closure may see what the call, the other arguments, and, for a promise outliving
+ * the call, what the code after the call writes.
  */
-export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph): void {
+export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx: FlowrAnalyzerContext): void {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
 		return;
@@ -62,11 +67,14 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph): vo
 		const node = idMap.get(id);
 		return RSymbol.is(node) ? Identifier.getName(node.content) : undefined;
 	};
+	let outlives: ((parameter: NodeId) => boolean) | undefined;
+	let later: ((call: NodeId, name: string) => readonly NodeId[]) | undefined;
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(!Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+		/* a package export flowR materialized has no body to tell its promises from a primitive's eager arguments */
+		if(!Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
 			continue;
 		}
-		const args = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => new Set(RNode.collectAllIds(idMap.get(a.nodeId))));
+		const args = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => ({ ids: new Set(RNode.collectAllIds(idMap.get(a.nodeId))), at: a.nodeId }));
 		/* what each write is named, and the argument it is written in, if any */
 		const writes = new Map<string, [NodeId, ReadonlySet<NodeId> | undefined][]>();
 		const write = (name: string | undefined, def: NodeId, within?: ReadonlySet<NodeId>) => {
@@ -77,25 +85,77 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph): vo
 		for(const def of Dataflow.sourcesOf(graph, id, EdgeType.SideEffectOnCall)) {
 			write(NodeId.isBuiltIn(def) ? undefined : nameOf(def), def);
 		}
-		for(const arg of args) {
-			for(const node of arg) {
-				write(DfgVertex.isVariableDefinition(graph.getVertex(node)) ? nameOf(node) : undefined, node, arg);
+		for(const { ids } of args) {
+			for(const node of ids) {
+				write(DfgVertex.isVariableDefinition(graph.getVertex(node)) ? nameOf(node) : undefined, node, ids);
 			}
 		}
-		if(writes.size === 0) {
-			continue;
-		}
-		for(const arg of args) {
-			for(const node of arg) {
+		for(const { ids, at } of args) {
+			outlives ??= promiseOutlivesCall(graph, idMap, ctx);
+			const late = Dataflow.targetsOf(graph, at, EdgeType.DefinesOnCall).some(outlives);
+			for(const node of ids) {
 				const name = DfgVertex.isUse(graph.getVertex(node)) ? nameOf(node) : undefined;
-				for(const [def, within] of name === undefined ? [] : writes.get(name) ?? []) {
-					if(within !== arg) {
+				if(name === undefined) {
+					continue;
+				}
+				for(const [def, within] of writes.get(name) ?? []) {
+					if(within !== ids) {
+						graph.addEdge(node, def, EdgeType.Reads);
+					}
+				}
+				if(late) {
+					later ??= definitionsAfter(graph, idMap);
+					for(const def of later(id, name)) {
 						graph.addEdge(node, def, EdgeType.Reads);
 					}
 				}
 			}
 		}
 	}
+}
+
+/**
+ * Whether the promise bound to a parameter may be forced after its call returned: a closure within its function reads
+ * it and the function does not surely force it first, or it is handed on to such a parameter.
+ */
+function promiseOutlivesCall(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext): (parameter: NodeId) => boolean {
+	const ownerOf = new Map<NodeId, NodeId>();
+	for(const [id, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		for(const parameter of Dataflow.parametersOf(definition)) {
+			ownerOf.set(parameter, id);
+		}
+	}
+	const handedTo = new DefaultMap<NodeId, NodeId[]>(() => []);
+	for(const parameter of ownerOf.keys()) {
+		for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
+			for(const read of Dataflow.targetsOf(graph, argument, EdgeType.Reads)) {
+				if(ownerOf.has(read)) {
+					handedTo.get(read).push(parameter);
+				}
+			}
+		}
+	}
+	const captured = new Set(ownerOf.entries().filter(([parameter, owner]) => Dataflow.sourcesOf(graph, parameter, EdgeType.Reads)
+		.some(read => RNode.findEnclosing(read, idMap, RFunctionDefinition.is) !== owner)).map(([parameter]) => parameter));
+	const strict = FunctionSemantics.strictness(new Set(captured.values().map(p => ownerOf.get(p) as NodeId)), graph, { ctx });
+	const unforced = (parameter: NodeId) => captured.has(parameter) && strict[ownerOf.get(parameter) as NodeId].parameters[parameter] !== Ternary.Always;
+	const outlives = new ReachSummaries<NodeId, boolean>(p => handedTo.get(p), unforced, false, (a, b) => a || b);
+	return parameter => ownerOf.has(parameter) && outlives.of(parameter);
+}
+
+/** The definitions of a name that may be made after a call: those in its scope it does not surely run after, and every `<<-`. */
+function definitionsAfter(graph: DataflowGraph, idMap: AstIdMap): (call: NodeId, name: string) => readonly NodeId[] {
+	const byName = Dataflow.definitionsByName(graph);
+	const superAssigned = new Set(graph.verticesOfType(VertexType.FunctionCall)
+		.filter(([, v]) => DfgVertex.hasOrigin(v, BuiltInProcName.SuperAssignment))
+		.flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Returns)));
+	const scopeOf = (id: NodeId) => graph.isRoot(id) ? undefined : RNode.strictlyEnclosingFunction(id, idMap);
+	return (call, name) => {
+		const scope = scopeOf(call);
+		const statement = ProgramOrder.runsOnceAt(call, graph);
+		return byName.get(name).filter(def => superAssigned.has(def)
+			|| (scopeOf(def) === scope && (statement === undefined || ProgramOrder.offset(def, statement, graph) > 0)));
+	};
 }
 
 /**

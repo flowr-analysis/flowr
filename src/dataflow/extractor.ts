@@ -731,7 +731,7 @@ function extractDataFlowGraph<OtherInfo>(
 	linkMaterializedExportsToLoaders(df.graph, df.environment, ctx);
 	const cleanEnvironment = ctx.env.makeCleanEnv();
 	separateClosureInstances(df.graph, name => queryFnProps(name, { environment: cleanEnvironment }));
-	linkPromisesToWritesOfCall(df.graph);
+	linkPromisesToWritesOfCall(df.graph, ctx);
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 	linkLateWarningsAsErrors(df.graph, df.environment, completeAst.idMap);
 	linkHandlersToSignalSites(df.graph, df.environment, dfData);

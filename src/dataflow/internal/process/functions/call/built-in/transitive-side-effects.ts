@@ -8,6 +8,7 @@ import { attachExportVertex, attachLibrary } from './built-in-library';
 import type { IdentifierDefinition, IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -468,6 +469,35 @@ export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<N
 	return new Map(items.entries().map(([id, own]) => [id, accessOf(own, draws.get(id) ?? new Set())]));
 }
 
+/** Adds the ids of every file a `source` call among `ids` runs, transitively, found by where the call continues with another file. */
+function addSourcedFiles(graph: DataflowGraph, ids: Set<NodeId>): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	const todo = [...ids];
+	while(todo.length > 0) {
+		const id = todo.pop() as NodeId;
+		if(!DfgVertex.hasOrigin(graph.getVertex(id), BuiltInProcName.Source)) {
+			continue;
+		}
+		const file = idMap.get(id)?.info.file;
+		for(const next of Dataflow.targetsOf(graph, id, EdgeType.FlowEdge)) {
+			const node = idMap.get(next);
+			if(node === undefined || node.info.file === file || ids.has(next)) {
+				continue;
+			}
+			const root = RNode.iterateParents(node, idMap).reduce((_, parent) => parent, node);
+			for(const inner of RNode.collectAllIds(root)) {
+				if(!ids.has(inner)) {
+					ids.add(inner);
+					todo.push(inner);
+				}
+			}
+		}
+	}
+}
+
 /**
  * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls among `scope` and,
  * unless turned off, what the functions they call access. The calls within a function definition in `scope` only count if called.
@@ -479,6 +509,7 @@ export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<N
 export function ambientAccessOf(this: void, from: AmbientSource, scope: NodeId | Iterable<NodeId>, opts?: AmbientAccessOptions): AmbientAccess {
 	const [graph, environment] = graphOf(from);
 	const ids = new Set<NodeId>(typeof scope === 'string' || typeof scope === 'number' ? [scope] : scope);
+	addSourcedFiles(graph, ids);
 	/* the bodies of nested definitions, exit hooks among them, are no part of the scope (`collectAllIds` misses the hooks) */
 	const bodies = new Set<NodeId>();
 	const definitions = [...ids];

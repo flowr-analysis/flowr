@@ -11,6 +11,7 @@ import type { RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/mode
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
 import { FlowrConfig } from '../../../../src/config';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { DataflowGraph, type DataflowGraphJson, UnknownSideEffect } from '../../../../src/dataflow/graph/graph';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
@@ -210,6 +211,18 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('quoted code does not count', 'x <- quote(options(digits = 3))', 'file', {});
 		check('only the code of the scope counts', 'x <- 1\noptions(digits = 3)', 'first', {});
 		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options'] });
+	});
+
+	describe('sourced files', () => {
+		test(label('the top level of a sourced file runs as part of the scope', ['sourcing-external-files'], ['dataflow']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addFile(new FlowrInlineTextFile('a.R', 'options(digits = 3)\nsource("b.R")'), new FlowrInlineTextFile('b.R', 'sink("x.txt")'));
+			analyzer.addRequest(requestFromInput('source("a.R")\nx <- 1'));
+			const info = await analyzer.dataflow();
+			const [first, second] = (await analyzer.normalize()).ast.files[0].root.children;
+			assert.includeMembers(shown(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(first))).writes, ['#option:digits', '#sink']);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(second))).writes, []);
+		});
 	});
 
 	describe('reads', () => {

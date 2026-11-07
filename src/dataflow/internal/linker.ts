@@ -352,7 +352,6 @@ export function getAllLinkedFunctionDefinitions(
 	const builtIns = new Set<BuiltIn>();
 	/* `call` is the call whose return led into the current body, so a parameter it binds holds only what it passes */
 	const potential: [NodeId, boolean, NodeId | undefined][] = Array.from(functionDefinitionReadIds, id => [id, false, undefined]);
-	const visited = new Set<string>();
 	const expanded = new Set<string>();
 	const expandedViaAccess = new Set<string>();
 	const at = (id: NodeId, call: NodeId | undefined) => `${id}@${call ?? ''}`;
@@ -365,7 +364,6 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 		done.add(at(cid, call));
-		visited.add(at(cid, call));
 		if(NodeId.isBuiltIn(cid)) {
 			builtIns.add(cid);
 			continue;
@@ -388,7 +386,7 @@ export function getAllLinkedFunctionDefinitions(
 		for(const [target, e] of dataflowGraph.edgesFrom(cid)) {
 			if(DfEdge.includesType(e, handedBack)) {
 				hasReturnEdge = true;
-				if(!visited.has(at(target, returnedTo))) {
+				if(!(nextViaAccess ? expandedViaAccess : expanded).has(at(target, returnedTo))) {
 					potential.push([target, nextViaAccess, returnedTo]);
 				}
 			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && DfEdge.doesNotIncludeType(e, EdgeType.SideEffectOnCall)) {
@@ -401,7 +399,7 @@ export function getAllLinkedFunctionDefinitions(
 			const bound = followTargets.some(([target, onCall]) => onCall && passed?.has(target));
 			for(const [target, onCall] of followTargets) {
 				const next = onCall ? undefined : call;
-				if((!bound || !onCall || passed?.has(target)) && !visited.has(at(target, next))) {
+				if((!bound || !onCall || passed?.has(target)) && !(nextViaAccess ? expandedViaAccess : expanded).has(at(target, next))) {
 					potential.push([target, nextViaAccess, next]);
 				}
 			}

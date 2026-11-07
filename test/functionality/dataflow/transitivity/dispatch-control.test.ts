@@ -79,6 +79,23 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		}
 	}));
 
+	describe('handlers for the session', () => testing(['exceptions-and-errors', 'higher-order-functions'], () => {
+		const muffling = 'function(w) { n <<- 1; invokeRestart("muffleWarning") }';
+		const warns = 'f <- function() { warning("w"); 2 }';
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'a global calling handler', code: `n <- 0\nglobalCallingHandlers(warning = ${muffling})\n${warns}\nr <- f()\nprint(n + r)` },
+			{ name: 'a global calling handler by name', code: `n <- 0\nh <- ${muffling}\nglobalCallingHandlers(warning = h)\n${warns}\nr <- f()\nprint(n + r)` },
+			{ name: 'a global calling handler in a list', code: `n <- 0\nglobalCallingHandlers(list(warning = ${muffling}))\n${warns}\nr <- f()\nprint(n + r)` },
+			{ name: 'a global calling handler registered in a function', code: `n <- 0\nreg <- function() globalCallingHandlers(warning = ${muffling})\nreg()\n${warns}\nr <- f()\nprint(n + r)` },
+			{ name: 'a global message handler', code: 'n <- 0\nglobalCallingHandlers(message = function(m) { n <<- 1; invokeRestart("muffleMessage") })\nmessage("hi")\nprint(n)' },
+			{ name: 'a global calling handler that never runs', code: 'n <- 0\nglobalCallingHandlers(warning = function(w) n <<- 5)\nprint(n)' },
+			{ name: 'a global calling handler registered after the warning', code: `n <- 0\n${warns}\nr <- suppressWarnings(f())\nglobalCallingHandlers(warning = function(w) n <<- 5)\nprint(n)` }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
 	describe('switch and loops', () => testing(['switch'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'switch selecting a global', code: 'f <- function(t) switch(t, a = x, b = y)\nx <- 1\ny <- 2\nprint(f("b"))' },

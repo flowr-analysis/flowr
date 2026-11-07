@@ -13,7 +13,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
 import { VertexType, DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../../../graph/vertex';
 import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
-import { isUndefined } from '../../../../../../util/assert';
+import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
@@ -48,13 +48,13 @@ export function processTryCatch<OtherInfo>(
 	config: TryConfig
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args: args.map(RArgument.unnamedValueOrArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
-	if(args.length < 1 || RArgument.isEmpty(args[0])) {
+	if(config.block !== undefined && (args.length < 1 || RArgument.isEmpty(args[0]))) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
 	}
 
 	const { error } = config.handlers;
-	const { blockArg, errorArg, finallyArg, otherHandlers } = matchHandlers(res.callArgs, config);
+	const { blockArg, errorArg, finallyArg, otherHandlers } = matchHandlers(res.callArgs, config, res.information.graph);
 	const info = res.information;
 
 	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out:
@@ -241,17 +241,23 @@ export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, envir
 		if(config === undefined) {
 			continue;
 		}
-		const { blockArg, otherHandlers } = matchHandlers(vertex.args, config);
+		const { blockArg, otherHandlers } = matchHandlers(vertex.args, config, graph);
 		const block = blockArg.values().next().value;
-		const blockAst = block === undefined ? undefined : idMap.get(block);
-		for(const { nodeId: arg, name: condition } of blockAst === undefined ? [] : otherHandlers) {
+		/* a handler registered for the session sees what the program runs after it registered */
+		const blocks = config.block === undefined ? statementsAfter(vertex.id, idMap) : block === undefined ? [] : [idMap.get(block)].filter(isNotUndefined);
+		for(const { nodeId: arg, name: condition } of blocks.length === 0 ? [] : otherHandlers) {
 			for(const handler of Dataflow.targetsOf(graph, arg, EdgeType.Calls)) {
 				const writes = Dataflow.sourcesOf(graph, handler, EdgeType.SideEffectOnCall);
+				/* no construct encloses what signals to a handler of the session, so each site that may runs it */
+				const runs = config.block === undefined ? Dataflow.callTargetsOf(handler, graph).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t))) : [];
 				const at = graph.getVertex(handler)?.environment;
-				const sites = writes.length === 0 || at === undefined ? [] : signalSites(blockAst as RNode<OtherInfo & ParentInformation>, Identifier.getName(condition), graph, { ...data, environment: at }, false);
-				for(const write of writes) {
-					for(const site of sites) {
+				const sites = (writes.length === 0 && runs.length === 0) || at === undefined ? [] : blocks.flatMap(b => signalSites(b as RNode<OtherInfo & ParentInformation>, Identifier.getName(condition), graph, { ...data, environment: at }, false));
+				for(const site of sites) {
+					for(const write of writes) {
 						graph.addEdge(write, site, EdgeType.Reads);
+					}
+					for(const definition of runs) {
+						graph.addEdge(site, definition, EdgeType.Calls);
 					}
 				}
 			}
@@ -259,9 +265,25 @@ export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, envir
 	}
 }
 
+/**
+ * The top-level statements after the one holding `id`, which a call within a function body may run in any of
+ * once the function is defined.
+ */
+function statementsAfter(id: NodeId, idMap: AstIdMap): RNode<ParentInformation>[] {
+	let node = idMap.get(id);
+	for(let parent = node && RNode.directParent(node, idMap); parent !== undefined && node !== undefined; parent = RNode.directParent(parent, idMap)) {
+		if(RExpressionList.is(parent) && RNode.directParent(parent, idMap) === undefined) {
+			return parent.children.slice(parent.children.indexOf(node) + 1);
+		}
+		node = parent;
+	}
+	return [];
+}
+
 /** What a construct of {@link processTryCatch} is configured with. */
 interface TryConfig {
-	readonly block:    string
+	/** the argument the handlers are established for, none if they stay for the rest of the session (`globalCallingHandlers`) */
+	readonly block?:   string
 	readonly handlers: {
 		readonly error?:   string
 		readonly finally?: string
@@ -278,11 +300,14 @@ function tryConfigOf(call: DataflowGraphVertexFunctionCall, environment: REnviro
 }
 
 /** Which of the arguments `args` of a construct configured by `config` are its block and its handlers. */
-function matchHandlers(args: readonly FunctionArgument[], config: TryConfig) {
+function matchHandlers(given: readonly FunctionArgument[], config: TryConfig, graph: DataflowGraph) {
+	/* handlers for the session may come as one list of them */
+	const only = config.block === undefined && given.length === 1 && given[0] !== EmptyArgument && !FunctionArgument.isNamed(given[0]) ? graph.getVertex(given[0].nodeId) : undefined;
+	const args = DfgVertex.isFunctionCall(only) && DfgVertex.hasOrigin(only, BuiltInProcName.List) ? only.args : given;
 	const { error, finally: cleanupName } = config.handlers;
-	const argMaps = FunctionSemantics.call.match.toSpec(args, {
-		[config.block]: 'block',
-		'...':          '...',
+	const argMaps = FunctionSemantics.call.match.toSpec<'block' | '...' | 'error' | 'finally'>(args, {
+		...config.block === undefined ? {} : { [config.block]: 'block' },
+		'...': '...',
 		...error ? { [error]: 'error' } : {},
 		...cleanupName ? { [cleanupName]: 'finally' } : {}
 	});

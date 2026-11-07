@@ -665,6 +665,8 @@ export const BaseDefinitions = [
 	fn(base('withCallingHandlers'), BuiltInProcName.Try,
 		{ block: 'expr', aborts: false, handlers: {}, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }, Primitive
 	),
+	/* its handlers run on what the session signals from then on */
+	fn(base('globalCallingHandlers'), BuiltInProcName.Try, { aborts: false, handlers: {}, sig: sig({ '...': ArgProp.Callee }) }, Primitive),
 	fn(base('invokeRestart'), BuiltInProcName.Default, { sig: sig({ r: Forced.Value, '...': Forced.Value }) }, Primitive),
 	fn([...base('stopifnot'), ...pkg(PkgName.AssertThat, 'assert_that')], BuiltInProcName.StopIfNot,
 		{ props: CallProp.Invisible | CallProp.Throws, sig: sig({ '...': 0, exprs: ArgProp.NoDefault, exprObject: ArgProp.NoDefault, local: 0 }) }

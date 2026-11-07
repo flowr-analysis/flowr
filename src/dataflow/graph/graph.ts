@@ -462,6 +462,12 @@ export class DataflowGraph<
 		return this;
 	}
 
+	/** Forgets what the call `id` was recorded to touch, for code that never runs. */
+	public forgetAmbientAccess(id: NodeId): this {
+		this._ambientAccess.delete(NodeId.normalize(id));
+		return this;
+	}
+
 	/** Allows setting the id-map explicitly (which should only be used when, e.g., you plan to compare two dataflow graphs on the same AST-basis) */
 	public setIdMap(idMap: AstIdMap): void {
 		this._idMap = idMap;

@@ -55,6 +55,16 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		check('an exit hook restoring options', 'a01 <- function(op) { on.exit(options(op)); 1 }', { a01: ['#option:*', '#options'] });
 	});
 
+	describe('quoted code runs only if evaluated', () => {
+		check('quote', 'a01 <- function() quote(options(digits = 3))', { a01: [] });
+		check('bquote', 'a01 <- function(x) bquote(options(digits = .(x)))', { a01: [] });
+		check('expression', 'a01 <- function() expression(options(digits = 3))', { a01: [] });
+		check('substitute', 'a01 <- function() substitute(options(digits = 3))', { a01: [] });
+		check('trace', 'a01 <- function() trace(g, quote(options(digits = 3)))', { a01: [] });
+		check('evaluated', 'a01 <- function() eval(quote(options(digits = 3)))', { a01: ['#option:digits', '#options'] });
+		check('evaluated through a variable', 'a01 <- function() { e <- quote(options(digits = 3)); eval(e) }', { a01: ['#option:digits', '#options'] });
+	});
+
 	describe('environment variables', () => {
 		check('Sys.setenv names the variables', 'a01 <- function() Sys.setenv(LANG = "C", R_LIBS = "x")', { a01: ['#env', '#env:LANG', '#env:R_LIBS'] });
 		check('Sys.unsetenv names the variables by value', 'a01 <- function() Sys.unsetenv("TZ")', { a01: ['#env', '#env:TZ'] });
@@ -194,6 +204,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('a call reaching a function', 'f <- function() options(digits = 3)\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options'], writes: ['#option:digits', '#options'] });
 		check('a function never called does not count', 'f <- function() options(digits = 3)\nx <- 1', 'file', {});
 		check('the exit hook of a function never called does not count', 'f <- function() { on.exit(options(digits = 3)); 1 }\nx <- 1', 'file', {});
+		check('quoted code does not count', 'x <- quote(options(digits = 3))', 'file', {});
 		check('only the code of the scope counts', 'x <- 1\noptions(digits = 3)', 'first', {});
 		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options'] });
 	});

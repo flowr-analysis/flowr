@@ -182,6 +182,7 @@ export const Quoted = {
 		for(const at of evaluated) {
 			Nse.unmark(graph, at);
 		}
+		forgetAmbientAccessOfUnevaluated(graph);
 		graph.trackIncomingReads(false);
 		/* only once every mark has settled: the read a column gets makes it look bound from here on */
 		Nse.linkMasksToData(graph, masking);
@@ -496,6 +497,15 @@ function readAtForcingCalls<Info>(graph: DataflowGraph, factoryCall: NodeId, arg
 		}
 		return false;
 	});
+}
+
+/** Drops what calls within captured code nothing evaluates (`quote(options(digits = 3))`) were recorded to access, as they never run. */
+function forgetAmbientAccessOfUnevaluated(graph: DataflowGraph): void {
+	for(const id of graph.ambientAccessIds()) {
+		if(Quoted.evaluationDependencies(graph, id).length === 1 && Dataflow.sourcesOf(graph, id, EdgeType.NonStandardEvaluation).length > 0) {
+			graph.forgetAmbientAccess(id);
+		}
+	}
 }
 
 /** Drops the marker the call carries while we cannot say what it evaluates. */

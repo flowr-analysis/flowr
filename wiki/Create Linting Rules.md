@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-11-01, 18:30:05 UTC (v2.16.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
 
 # Create Linting Rules
 
@@ -83,7 +83,7 @@ const MY_NEW_RULE = {
 
 ## Step 4: Register the rule
 
-After implementing the rule, register it by adding it to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-rules.ts#L51"><code><span title="The registry of currently supported linting rules. A linting rule can be executed on a dataflow pipeline result using executeLintingRule .">LintingRules</span></code></a>.
+After implementing the rule, register it by adding it to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-rules.ts#L52"><code><span title="The registry of currently supported linting rules. A linting rule can be executed on a dataflow pipeline result using executeLintingRule .">LintingRules</span></code></a>.
 
 ## Step 5: Add the rule to the linter wiki generation
 

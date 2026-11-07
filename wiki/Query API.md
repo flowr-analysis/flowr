@@ -1,8 +1,8 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-In code, you run queries with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L376"><code>FlowrAnalyzer::<b>query</b></code></a>.
+In code, you run queries with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L392"><code>FlowrAnalyzer::<b>query</b></code></a>.
 Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
 For queries that report one entry per query (e.g., the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice)), the result is just that entry.
 A failing single query throws an error.
@@ -38,6 +38,8 @@ We support the following **active** queries (which we refer to as a `query`):
 
 1. [Abstract Interpretation Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Abstract-Interpretation) (`absint`):\
     Returns the abstract values inferred for every expression or at specific locations.
+1. [Ambient Access Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Ambient-Access) (`ambient-access`):\
+    What code reads and writes of the global state
 1. [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) (`call-context`):\
     Finds all calls in a set of files that matches specified criteria.
 1. [Call-Graph Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Graph) (`call-graph`):\
@@ -472,6 +474,14 @@ Valid item types:
                 Valid item types:
                     - (string)
                         Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Optional', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Console', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'DetachesPackage', 'Declares', 'Frames'
+            - _What code reads and writes of the global state (options, environment variables, devices, ...)._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'ambient-access'
+                - **criteria** [optional] _The code to ask for, each slicing criterion with all the code its node spans. Without, every file and the whole project._ (array)
+                Valid item types:
+                    - (string)
+                - **functions** [optional] _Also answer for every function definition the code writes._ (boolean)
+                - **includeCallees** [optional] _Whether what the called functions access counts as well (default true)._ (boolean)
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'

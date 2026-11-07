@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -9,8 +9,8 @@ offering the following benefits:
 
 In general, the mapping should be rather intuitive and focused primarily on the
 syntactic structure of the program. As with other types in flowR, you get corresponding helper objects.
-So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L21"><code><span title="Helper for working with RBinaryOp AST nodes.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
-(e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L28"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
+So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L20"><code><span title="Helper for working with RBinaryOp AST nodes.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
+(e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L27"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
 Consider the following example which shows the normalized AST of the code
 
 ```r
@@ -300,7 +300,7 @@ class RUnaryOp~Info = NoInfo~{
     operator#58; string
     operand#58; RNode#60;Info#62;
 }
-click RUnaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10" "Unary operations like #96;#43;#96; and #96;#45;#96;"
+click RUnaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L9" "Unary operations like #96;#43;#96; and #96;#45;#96;"
 class RBinaryOp~Info = NoInfo~{
     <<interface>>
     type#58; RType.BinaryOp
@@ -308,7 +308,7 @@ class RBinaryOp~Info = NoInfo~{
     lhs#58; RNode#60;Info#62;
     rhs#58; RNode#60;Info#62;
 }
-click RBinaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10" "Operators like #96;#43;#96;, #96;==#96;, #96;#38;#38;#96;, etc."
+click RBinaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L9" "Operators like #96;#43;#96;, #96;==#96;, #96;#38;#38;#96;, etc."
 class RSingleNode~Info~{
     <<type>>
 }
@@ -1119,9 +1119,9 @@ In summary, we have the following types:
      
      </details>
      
-   * **[RUnaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10)**   
+   * **[RUnaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L9)**   
      Unary operations like `+` and `-`
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L9">src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L9</a></summary>
      
      ```ts
      /**
@@ -1159,9 +1159,9 @@ In summary, we have the following types:
        
        </details>
        
-   * **[RBinaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10)**   
+   * **[RBinaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L9)**   
      Operators like `+`, `==`, `&&`, etc.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L9">src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L9</a></summary>
      
      ```ts
      /**
@@ -1432,7 +1432,7 @@ The following segments intend to give you an overview of how to work with the no
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page, you can use an instance of
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L210"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L91"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L240"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L91"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -1444,7 +1444,7 @@ From the REPL, you can use the <span title="Description (Repl Command): Get merm
 
 ### Multi-File Projects
 
-With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L210"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
+With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L240"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder()
@@ -1551,7 +1551,7 @@ you to decide how you want to traverse multiple files with a <a href="https://gi
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a>.
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L53"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 ### Visitors
 
@@ -1559,7 +1559,7 @@ If you want a simple visitor which traverses the AST, the <a href="https://githu
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
 For example, if you want to collect all the `id`s present within a normalized (sub-)AST,
-as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L378"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L449"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L54"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
+as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L378"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L478"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L54"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
 
 ```ts
 

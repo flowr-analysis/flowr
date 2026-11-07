@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3), do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -177,7 +177,7 @@ tryCatch`"]
     %% 2----------------------------------------
     %%   x: {**x** (id: 23, type: Parameter, def. @24)}
     anon-40[["`??
-      *??-??* (**id: anon-40**)`"]]
+      *??-??* (**id: anon-40**, 42+)`"]]
     built-in:_123_["`Built-In:
 #123;`"]
     style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;

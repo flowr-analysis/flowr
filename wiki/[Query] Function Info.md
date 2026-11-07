@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3), do not edit directly._
 <h2 id="Function Info Query">Function Info Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.\
@@ -25,7 +25,7 @@ Given a base-R name such as `sd`:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (44 ms)\
+Query: **function-info** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **stats** _(x, na.rm)_ _(R/sd.R:19)_\
 &nbsp;&nbsp;&nbsp;╰ **posterior** _(x, ...)_ _(R/rvar-summaries-over-draws.R:192)_\
 &nbsp;&nbsp;&nbsp;╰ **h2o** _(x, na.rm)_ _(R/frame.R:2998)_\
@@ -129,7 +129,7 @@ flowR states for it:
 
 _Results (prettified and summarized):_
 
-Query: **function-info** (13 ms)\
+Query: **function-info** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **base** _(x, pos, envir, mode, inherits)_ _(R/get.R:26)_\
 &nbsp;&nbsp;&nbsp;╰ **config** _(value, config, file, use_parent)_ _(R/get.R:43)_\
 &nbsp;&nbsp;&nbsp;╰ **crmPack**\
@@ -162,7 +162,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
         "assumePrimitive": false,
         "evalHandler": "eval:get",
         "tags": ["eval"],
-        "configKeys": ["props","tags","sig"]
+        "configKeys": ["keepEnvironment","props","tags","sig"]
       },
       {"kind":"function","namespace":"config","processor":"builtin:d-ra","assumePrimitive":false,"tags":["file","reads"],"configKeys":["libFn","tags","sig"]}
     ]

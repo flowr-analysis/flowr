@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3), do not edit directly._
 <h2 id="Code Clones Query">Code Clones Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds code clones in all analyzed files with a configurable selection of AST, token, fingerprint, and dependence-graph based algorithms.\
@@ -44,7 +44,7 @@ Use `config` to tune the thresholds of each algorithm, and `maxPairs` to limit t
 
 _Results (prettified and summarized):_
 
-Query: **code-clones** (9 ms)\
+Query: **code-clones** (34 ms)\
 &nbsp;&nbsp;&nbsp;╰ 2 clone pairs in 1 file\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [gst 1.00] **normalize** _<input 0>:1.14-4.1_ ~ **scale_it** _<input 0>:5.13-8.1_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [similar 1.00] **normalize** _<input 0>:1.14-4.1_ ~ **scale_it** _<input 0>:5.13-8.1_
@@ -387,7 +387,7 @@ end
 	
 </details>
 
-In code, passing the query on its own to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L376"><code>FlowrAnalyzer::<b>query</b></code></a> returns its result directly:
+In code, passing the query on its own to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L392"><code>FlowrAnalyzer::<b>query</b></code></a> returns its result directly:
 
 ```typescript
 const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: ['gst', 'similar'] });

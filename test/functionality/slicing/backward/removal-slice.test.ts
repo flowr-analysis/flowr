@@ -46,7 +46,7 @@ describe('Removal slices', { concurrent: false }, withShell(shell => {
 		assertRemoval('a write into a closure environment keeps the closure', [...caps, 'environment-sharing', 'closures'], 'x <- 1\nf <- function() { y <- 3; function() y }\ng <- f()\nenvironment(g)$y <- 10\nprint(g())\nprint(x)', ['6@print'],
 			'f <- function() {\n        y <- 3\n        function() y\n    }\ng <- f()\nenvironment(g)$y <- 10\nprint(g())', '[1] 10');
 		assertRemoval('a handler goes with the output it counts for', [...caps, 'exceptions-and-errors', 'super-left-assignment'], 'tally <- 0\nsafe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })\nignore <- safe(function() stop("x"))\nprint(tally)', ['4@print'],
-			'tally <- 0\nsafe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })', '');
+			'safe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })', '');
 	});
 	describe('Plots', () => {
 		assertRemoval('a plot takes its device along', [...caps, 'graphics-state'], 'x <- 1\npdf(NULL)\nplot(x)\ninvisible(dev.off())\nprint(x)', ['3@plot'], 'x <- 1\nprint(x)', '[1] 1');

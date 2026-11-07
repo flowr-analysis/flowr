@@ -11,7 +11,7 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
-import { VertexType, DfgVertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
@@ -21,9 +21,9 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { errorsOfWarnings } from './built-in-ambient-state';
+import { errorsOfWarnings, signalSites } from './built-in-ambient-state';
 import { builtInLookup } from '../../../../../environments/query-fn-props';
-import { CallProp, CallProps } from '../../../../../environments/built-in-props';
+import { ArgProp, CallProp, CallProps, type FnSig } from '../../../../../environments/built-in-props';
 import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -52,6 +52,7 @@ export function processTryCatch<OtherInfo>(
 			finally?: string
 		},
 		aborts?: boolean
+		sig?:    FnSig
 	}
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args: args.map(RArgument.unnamedValueOrArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
@@ -73,30 +74,32 @@ export function processTryCatch<OtherInfo>(
 	const errorArg = new Set(argMaps.get('error'));
 	const finallyArg = new Set(argMaps.get('finally'));
 	const dots = new Set(argMaps.get('...'));
-	const otherHandlerArg = res.callArgs
-		.filter((a): a is NamedFunctionArgument => FunctionArgument.isNamed(a) && dots.has(a.nodeId))
-		.map(a => a.nodeId);
+	/* the arguments a `...` of callees takes are the handlers of the other condition classes */
+	const handlesByDots = config.sig?.some(([formal, props]) => formal === '...' && (props & ArgProp.Callee) !== 0) ?? false;
+	const otherHandlers = handlesByDots ? res.callArgs.filter((a): a is NamedFunctionArgument => FunctionArgument.isNamed(a) && dots.has(a.nodeId)) : [];
 	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out:
 	   `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`.
 	   A construct declaring no handler parameter at all, as `try` does, catches whatever arrives. */
-	const catchesError = (config.aborts ?? true) && (error === undefined || namesAnErrorHandler(args));
+	const aborts = config.aborts ?? true;
+	const catchesError = aborts && (error === undefined || namesAnErrorHandler(args));
+	/* a handler of another class runs once something in the block signals such a condition, an exiting one leaves the block there */
+	const blockInfo = res.processedArguments.find(a => a !== undefined && blockArg.has(a.entryPoint));
+	const blockAst = blockInfo && data.completeAst.idMap.get(blockInfo.entryPoint);
+	const sitesOf = (condition: Identifier, link: boolean) => blockAst === undefined ? [] : signalSites(blockAst, Identifier.getName(condition), info.graph, data, link);
+	const signaling = new Map(otherHandlers.map(({ nodeId, name: condition }) => [nodeId, sitesOf(condition, false)]));
+	const signaled = new Set(aborts ? otherHandlers.flatMap(({ name: condition }) => sitesOf(condition, true)) : []);
 	const raising: NodeId[] = [];
-	if(catchesError) {
+	if(blockInfo !== undefined && blockAst !== undefined && (catchesError || signaled.size > 0)) {
 		const targetsOf = (n: Identifier) => [data.environment, info.environment]
 			.flatMap(env => Resolve.byNameAndType(n, env, ReferenceType.Function) ?? []);
 		const order = raisingOrder(info.graph, builtInLookup(data.ctx), { rootId, targetsOf });
-		for(const arg of res.processedArguments) {
-			const block = arg && blockArg.has(arg.entryPoint) ? data.completeAst.idMap.get(arg.entryPoint) : undefined;
-			if(arg && block) {
-				const raised = errorsOfWarnings(block, info.environment, info.graph, data);
-				for(const site of raised) {
-					info.graph.addEdge(site.nodeId, rootId, EdgeType.Reads);
-					info.graph.addEdge(rootId, site.nodeId, EdgeType.Reads);
-				}
-				(arg.exitPoints as ExitPoint[]) = arg.exitPoints.concat(raised);
-				raising.push(...order(block, []));
-			}
+		const raised = catchesError ? errorsOfWarnings(blockAst, info.environment, info.graph, data) : [];
+		for(const site of [...raised.map(r => r.nodeId), ...signaled]) {
+			info.graph.addEdge(site, rootId, EdgeType.Reads);
+			info.graph.addEdge(rootId, site, EdgeType.Reads);
 		}
+		(blockInfo.exitPoints as ExitPoint[]) = blockInfo.exitPoints.concat(raised);
+		raising.push(...order(blockAst, []));
 	}
 	/* if the block raises an error in every case, the error handler is not constrained by it */
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
@@ -124,9 +127,22 @@ export function processTryCatch<OtherInfo>(
 			(info.exitPoints as ExitPoint[]).push(...constrainExitPoints(errorExitPoints, blockArg));
 		}
 	}
-	for(const e of [...errorArg, ...otherHandlerArg]) {
+	/* a handler runs only once a condition is signaled, an error handler surely if the block raises in every case */
+	const whenSignaled: ControlDependency[] = [...data.cds ?? [], { id: rootId, when: true }];
+	const blockSurelyRaises = blockErrorExitPoints.length > 0 && happensInEveryBranch(blockErrorExitPoints.some(isUndefined) ? undefined : blockErrorExitPoints as ControlDependency[]);
+	for(const e of errorArg) {
 		info.graph.addEdge(rootId, e, EdgeType.Reads | EdgeType.Calls);
-		promoteCallToFunction(rootId, e, info, data);
+		promoteCallToFunction(rootId, e, info, data, blockSurelyRaises ? data.cds : whenSignaled);
+	}
+	for(const [arg, sites] of signaling) {
+		info.graph.addEdge(rootId, arg, EdgeType.Reads | EdgeType.Calls);
+		const handler = info.graph.getVertex(promoteCallToFunction(rootId, arg, info, data, whenSignaled) ?? arg);
+		/* what the handler changes outside its frame happens only once a site signals, its value and restarts do not outlive the construct */
+		for(const write of DfgVertex.isFunctionDefinition(handler) ? escapingWritesOf(handler) : []) {
+			for(const site of sites) {
+				info.graph.addEdge(write, site, EdgeType.Reads);
+			}
+		}
 	}
 	for(const f of finallyArg) {
 		info.graph.addEdge(rootId, f, EdgeType.Calls);
@@ -312,8 +328,8 @@ const CallTypes: ReadonlySet<RType> = new Set([RType.FunctionCall, RType.BinaryO
 /** the exits that leave the construct for a destination of their own, which `finally` still runs before */
 const JumpExitPoints: readonly ExitPointType[] = [ExitPointType.Break, ExitPointType.Next, ExitPointType.Return];
 
-/** Links the handler `arg` of the construct `call` as called: a symbol becomes a call, an anonymous function gets a synthetic one. */
-function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): void {
+/** Links the handler `arg` of the construct `call` as called: a symbol becomes a call, an anonymous function gets a synthetic one; returns the call or the function. */
+function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>, cds: readonly ControlDependency[] | undefined): NodeId | undefined {
 	const val = RArgument.valueOf(data.completeAst.idMap.get(arg));
 	if(RSymbol.is(val)) {
 		info.graph.updateToFunctionCall({
@@ -323,14 +339,14 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 			args:        [],
 			environment: data.environment,
 			onlyBuiltin: false,
-			cds:         data.cds,
+			cds:         cds?.slice(),
 			origin:      [BuiltInProcName.Function]
 		});
 		info.graph.addEdge(arg, val.info.id, EdgeType.Calls);
-		return;
+		return val.info.id;
 	}
 	if(!RFunctionDefinition.is(val)) {
-		return;
+		return undefined;
 	}
 	const functionId = val.info.id;
 	info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
@@ -341,7 +357,7 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 		environment: data.environment,
 		name:        `${UnnamedFunctionCallPrefix}${functionId}`,
 		onlyBuiltin: false,
-		cds:         data.cds,
+		cds:         cds?.slice(),
 		args:        [],
 		origin:      [BuiltInProcName.Function]
 	}, data.ctx.env.cleanEnv);
@@ -352,6 +368,25 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 	if(DfgVertex.isFunctionDefinition(handler)) {
 		ClosureRefs.resolveOpenIngoing(info.graph, syntheticCall, handler, data.environment);
 	}
+	return functionId;
+}
+
+/** The writes the body of `fn` makes to the lexical frames outside its own, like `x <<- 1`. */
+function escapingWritesOf(fn: DataflowGraphVertexFunctionDefinition): NodeId[] {
+	const writes: NodeId[] = [];
+	for(const frame of REnvironment.frames(fn.subflow.environment.current.parent)) {
+		if(frame.t !== undefined) {
+			continue;
+		}
+		for(const definitions of frame.memory.values()) {
+			for(const { nodeId } of definitions) {
+				if(fn.subflow.graph.has(nodeId)) {
+					writes.push(nodeId);
+				}
+			}
+		}
+	}
+	return writes;
 }
 
 function exitPointsOfHandler(id: NodeId, graph: DataflowGraph): readonly ExitPoint[] | undefined {

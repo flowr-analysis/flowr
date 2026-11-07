@@ -1168,7 +1168,7 @@ export function errorsOfWarnings<OtherInfo>(block: RNode<OtherInfo & ParentInfor
 		return [];
 	}
 	const cds = data.cds ? [...data.cds] : [];
-	return warningSites(block, graph, data, new Map()).map(site => {
+	return warningSites(block, graph, data, new Map(), { muffled: true, link: true }).map(site => {
 		for(const source of sources) {
 			graph.addEdge(site, source, EdgeType.Reads);
 		}
@@ -1176,8 +1176,23 @@ export function errorsOfWarnings<OtherInfo>(block: RNode<OtherInfo & ParentInfor
 	});
 }
 
-/** what may warn when `root` runs, `bodies` holds what may in the bodies of the closures seen so far */
-function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>): NodeId[] {
+/**
+ * What may signal a condition of the class `name` when `block` runs, which a handler for it depends on: everything that may warn,
+ * and for any class other than a warning also what muffles warnings, as that lets other conditions through. With `link`, only
+ * the sites written in `block` are listed, a call among them reads what may signal in the body it runs; otherwise all are listed.
+ */
+export function signalSites<OtherInfo>(block: RNode<OtherInfo & ParentInformation>, name: string, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, link: boolean): NodeId[] {
+	return warningSites(block, graph, data, new Map(), { muffled: name === 'warning', link });
+}
+
+/** How {@link warningSites} collects: `muffled` leaves out what muffles warnings, `link` has a call read what may warn in the body it runs instead of listing that. */
+interface WarningSiteMode {
+	readonly muffled: boolean
+	readonly link:    boolean
+}
+
+/** what may warn when `root` runs, see {@link WarningSiteMode}, `bodies` holds what may in the bodies of the closures seen so far */
+function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>, mode: WarningSiteMode): NodeId[] {
 	const sites: NodeId[] = [];
 	RNode.visitAst(root, node => {
 		if(RFunctionDefinition.is(node)) {
@@ -1186,12 +1201,12 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 			sites.push(node.info.id);
 		} else if(RFunctionCall.is(node)) {
 			const targets = node.named ? Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [] : [];
-			if(RFunctionCall.isNamed(node, 'suppressWarnings') && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
+			if(mode.muffled && RFunctionCall.isNamed(node, 'suppressWarnings') && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
 				return true;
 			}
-			const handlers = muffledHandlers(node, graph, data);
+			const handlers = mode.muffled ? muffledHandlers(node, graph, data) : undefined;
 			if(handlers !== undefined) {
-				sites.push(...handlers.flatMap(h => warningSites(h, graph, data, bodies)));
+				sites.push(...handlers.flatMap(h => warningSites(h, graph, data, bodies, mode)));
 				return true;
 			}
 			const callees = targets.flatMap(t => hidesBody(t) ? [undefined] : (t as Partial<InGraphIdentifierDefinition>).value?.map(id => data.completeAst.idMap.get(id)) ?? [undefined]);
@@ -1200,7 +1215,11 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 				return false;
 			}
 			/* the body runs in the function's own scope, we resolve what it calls where the construct is, which is where most functions live */
-			const within = callees.flatMap(c => bodySites(c, graph, data, bodies));
+			const within = callees.flatMap(c => bodySites(c, graph, data, bodies, mode));
+			if(!mode.link) {
+				sites.push(...within);
+				return false;
+			}
 			for(const site of within) {
 				graph.addEdge(node.info.id, site, EdgeType.Reads);
 			}
@@ -1240,12 +1259,12 @@ function callsBuiltIn<OtherInfo>(call: RFunctionCall<OtherInfo & ParentInformati
 }
 
 /** what may warn in the body of the closure `definition`, cached in `bodies` */
-function bodySites<OtherInfo>(definition: RFunctionDefinition<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>): readonly NodeId[] {
+function bodySites<OtherInfo>(definition: RFunctionDefinition<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>, mode: WarningSiteMode): readonly NodeId[] {
 	let sites = bodies.get(definition.info.id);
 	if(sites === undefined) {
 		/* a recursive call adds nothing to what the body may warn about */
 		bodies.set(definition.info.id, []);
-		sites = warningSites(definition.body, graph, data, bodies);
+		sites = warningSites(definition.body, graph, data, bodies, mode);
 		bodies.set(definition.info.id, sites);
 	}
 	return sites;

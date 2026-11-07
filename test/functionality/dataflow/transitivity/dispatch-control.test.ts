@@ -47,8 +47,8 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 			{ name: 'an error handler reading a global', code: 'v <- 7\nr <- tryCatch(stop("x"), error = function(e) v)\nprint(r)' },
 			{ name: 'a handler and finally with super assignments', code: 'n <- 0\ntryCatch(stop("x"), error = function(e) n <<- 1, finally = n <<- n + 10)\nprint(n)' },
 			{ name: 'a warning raised two calls deep', code: 'k <- 5\nf <- function() warning("w")\ng <- function() f()\nr <- tryCatch(g(), warning = function(w) k)\nprint(r)' },
-			{ name: 'a handler that never runs', code: 'n <- 0\nr <- tryCatch(1, error = function(e) n <<- 5)\nprint(n)', red: 'R prints 0, the slice drops n <- 0 as if the handler always ran' },
-			{ name: 'withCallingHandlers with a restart', code: 'n <- 0\nf <- function() { warning("w"); 2 }\nr <- withCallingHandlers(f(), warning = function(w) { n <<- 1; invokeRestart("muffleWarning") })\nprint(n + r)', red: 'R prints 3, the slice drops warning() in f, so the handler that sets n never runs' }
+			{ name: 'a handler that never runs', code: 'n <- 0\nr <- tryCatch(1, error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'withCallingHandlers with a restart', code: 'n <- 0\nf <- function() { warning("w"); 2 }\nr <- withCallingHandlers(f(), warning = function(w) { n <<- 1; invokeRestart("muffleWarning") })\nprint(n + r)' }
 		];
 		for(const c of cases) {
 			sliceMatchesR(parser, c);

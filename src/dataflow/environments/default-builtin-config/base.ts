@@ -967,10 +967,9 @@ export const BaseDefinitions = [
 	),
 	fn(base('NextMethod'), BuiltInProcName.S3Dispatch,
 		{
-			args:             { generic: 'generic', object: 'object' },
-			inferFromClosure: true,
-			props:            CallProp.Generic,
-			sig:              sig({ generic: 0, object: 0, '...': 0 })
+			next:  true,
+			props: CallProp.Generic,
+			sig:   sig({ generic: 0, object: 0, '...': 0 })
 		},
 		Primitive
 	),

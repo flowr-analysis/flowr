@@ -1107,7 +1107,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-inheritance',
 							code:        ['NextMethod'],
 							supported:   'partially',
-							description: `_Walk the class vector with \`NextMethod\`._ Where the class of the dispatched object is known, it reaches the ${LinkTo('oop-s3-dispatch', 'methods')} of the classes after that of its own method in the class vector, then the default, and otherwise every method of the generic. A method run for several class vectors decides its \`NextMethod\` per call of the generic like the dispatch itself. It hands on the current values of the formals.`,
+							description: `_Walk the class vector with \`NextMethod\`._ Where the class of the dispatched object is known, it reaches the ${LinkTo('oop-s3-dispatch', 'methods')} of the classes after that of its own method in the class vector, then the default, and otherwise every method of the generic. A method run for several class vectors decides its \`NextMethod\` per call of the generic like the dispatch itself. It hands on the current values of the formals. The generic and object \`NextMethod("f", x)\` names change nothing within a dispatch, while in a method called directly it dispatches the generic it names on the class of the first argument.`,
 							url:         [RLang('NextMethod'), RLang('Inheritance')]
 						}
 					]

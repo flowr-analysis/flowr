@@ -24,15 +24,19 @@ import { DotsParameterName } from '../../../../../../util/arg-matching';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
-	/** absent for a next-method call that names neither, handing on what it is given (`callNextMethod(...)`) */
+	/** absent for a next-method call (`callNextMethod(...)`, `NextMethod(...)`) */
 	args?: {
 		generic: string,
 		object:  string
 	},
-	/** For NextMethod/if `generic` is not given, try to infer from the closure? */
-	inferFromClosure?: boolean
+	/**
+	 * the call hands on to the next method of the dispatch running the function it is in (`NextMethod`): it continues along
+	 * the class vector of that dispatch, so neither the generic nor the object it names changes what runs (only in a function
+	 * called directly does it dispatch the generic it names)
+	 */
+	next?:         boolean
 	/** the call evaluates the formals of the function it is in to pick a method by their classes (`standardGeneric`) */
-	readsFormals?:     boolean
+	readsFormals?: boolean
 }
 
 /** Process an S3 dispatch call like `UseMethod`. */
@@ -49,9 +53,9 @@ export function processS3Dispatch<OtherInfo>(
 	}
 	if(config.args === undefined) {
 		const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S3DispatchNext }).information;
-		return args.length > 0 ? info : { ...info, in: [...info.in, ...formalReads(rootId, data)] };
+		return args.length > 0 && !config.next ? info : { ...info, in: [...info.in, ...formalReads(rootId, data)] };
 	}
-	if(args.length === 0 && !config.inferFromClosure) {
+	if(args.length === 0) {
 		dataflowLogger.warn('empty s3, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -62,7 +66,7 @@ export function processS3Dispatch<OtherInfo>(
 		'...':                 '...'
 	});
 	const generic = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
-	if(!generic && !config.inferFromClosure) {
+	if(!generic) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const obj = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('object')?.[0]));
@@ -79,29 +83,6 @@ export function processS3Dispatch<OtherInfo>(
 			origin:                BuiltInProcName.S3Dispatch
 		});
 		return dfObj;
-	}
-
-	if(!generic) {
-		patchFunctionCall({
-			nextGraph:             dfObj.graph,
-			rootId,
-			name,
-			data,
-			argumentProcessResult: [dfObj],
-			origin:                BuiltInProcName.S3DispatchNext
-		});
-		return {
-			hooks:             dfObj.hooks,
-			environment:       dfObj.environment,
-			exitPoints:        dfObj.exitPoints,
-			graph:             dfObj.graph,
-			entryPoint:        rootId,
-			cfgEntry:          ControlFlow.inSequence(dfObj.graph, [dfObj], rootId),
-			cfgExit:           rootId,
-			in:                [...dfObj.in, ...dfObj.unknownReferences, fnRef, ...formalReads(rootId, data)],
-			out:               dfObj.out,
-			unknownReferences: []
-		};
 	}
 
 	/* in `g <- "p"; f <- function(x) UseMethod(g)` the generic is the value of `g` where `f` is defined */

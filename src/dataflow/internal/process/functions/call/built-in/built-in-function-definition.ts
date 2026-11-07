@@ -19,6 +19,7 @@ import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
 import { callsNextMethod, type DispatchContext, DispatchNarrower, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
@@ -616,6 +617,8 @@ function withoutExcludedMethods(ingoing: IdentifierReference, resolved: readonly
 	});
 }
 
+const NextMethodId = NodeId.toBuiltIn('NextMethod');
+
 /** The object an S3 dispatch of a generic's body reads: the one `UseMethod("f", y)` names, else the first argument the generic is handed. */
 function dispatchedObjectOf(vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph): NodeId | undefined {
 	const call = graph.idMap === undefined ? undefined : graph.idMap.get(RNode.findEnclosing(vertex.id, graph.idMap, RFunctionCall.is) ?? '');
@@ -682,6 +685,27 @@ function linkNextMethods(graph: DataflowGraph, collected: ReadonlyMap<NodeId, No
 }
 
 /**
+ * A function called directly rather than by a dispatch has no dispatch to continue, so a `NextMethod("f")` within it
+ * dispatches the generic it names on the class of the first argument, running the methods after its own.
+ */
+function linkNamedNextMethods(graph: DataflowGraph, fn: NodeId, nextCalls: readonly NodeId[], environment: REnvironmentInformation, narrower: DispatchNarrower, ctx: FlowrAnalyzerContext): void {
+	const definition = graph.idMap?.get(fn);
+	const first = RFunctionDefinition.is(definition) ? definition.parameters[0]?.name.info.id : undefined;
+	for(const next of nextCalls) {
+		const node = graph.idMap?.get(next);
+		if(!RFunctionCall.is(node)) {
+			continue;
+		}
+		const generic = FunctionSemantics.call.match.toSpec(convertFnArguments(node.arguments), { generic: 'generic', object: 'object', '...': '...' }).get('generic')?.[0];
+		const names = generic === undefined ? [] : NodeValue.knownStringsOf(generic, { graph, idMap: graph.idMap, environment, ctx });
+		const methods = names.flatMap(n => Resolve.byNameAndType(n, environment, ReferenceType.S3MethodPrefix) ?? []).filter(d => !NodeId.isBuiltIn(d.nodeId));
+		const targets = new Set(linkedFunctionIds(new Set(methods.map(m => m.nodeId)), graph));
+		const narrowed = first === undefined || targets.size === 0 ? undefined : narrower.s3([first], names, targets);
+		linkNextMethods(graph, new Map([[next, fn]]), targets, narrowed?.next);
+	}
+}
+
+/**
  * Per context of the dispatch `dispatch` running the method `owner`, the methods the next-method call `next` within it
  * reaches that it cannot run there: those not after `owner` in the class vectors of that context. The method runs
  * when the dispatch or one of the next-method calls `collected` of the methods it runs runs it.
@@ -723,6 +747,14 @@ export function updateNestedFunctionCalls(
 		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
 	});
 	const narrower = new DispatchNarrower(graph, ctx);
+	/* per function, the `NextMethod` calls of its body */
+	const namedNextCalls = new Map<NodeId, NodeId[]>();
+	for(const [id, vertex] of calls) {
+		const fn = DfgVertex.hasOrigin(vertex, BuiltInProcName.S3DispatchNext) && Dataflow.targetsOf(graph, id, EdgeType.Calls).includes(NextMethodId) ? enclosingOf(id) : undefined;
+		if(fn !== undefined) {
+			namedNextCalls.set(fn, [...namedNextCalls.get(fn) ?? [], id]);
+		}
+	}
 	/* the dispatches, decided once the calls they may reach are linked */
 	const deferred = new Set<NodeId>();
 	let dispatching: typeof calls = [];
@@ -851,6 +883,10 @@ export function updateNestedFunctionCalls(
 			for(const exitPoint of targetVertex.exitPoints) {
 				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 			}
+			const named = treatAsS3 ? undefined : namedNextCalls.get(target);
+			if(named !== undefined) {
+				linkNamedNextMethods(graph, target, named, effectiveEnvironment, narrower, ctx);
+			}
 			if(treatAsS3 || targetVertex.mode?.includes('s4')) {
 				targetVertex.mode ??= [];
 				if(treatAsS3 && !targetVertex.mode.includes('s3')) {
@@ -941,7 +977,8 @@ export function updateNestedFunctionCalls(
 		FunctionSemantics.call.match.onCallAndLink(args, parameters, graph);
 	}
 	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
-	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));
+	/* a method only a next-method call reaches is linked by no call that resolves what it reads */
+	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => !DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		if(called.has(id)) {
 			continue;

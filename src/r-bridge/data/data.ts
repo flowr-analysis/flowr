@@ -183,7 +183,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'dynamic-variable-removal',
 									code:        ['rm', 'sys.frame'],
 									supported:   'partially',
-									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame._ Negative and zero offsets are handled from within depth-1 functions. A removal from the global environment inside a function, with `envir = .GlobalEnv`, `envir = globalenv()`, or `pos = 1`, is seen by the callers, like a `<<-` would be.'
 								}
 							],
 							url: [RLang('Environment objects')]
@@ -397,6 +397,15 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							url:         [AdvancedR('First-class functions', 'functions.html#first-class-functions')]
 						},
 						{
+							name:        'Higher-Order Functions',
+							id:          'higher-order-functions',
+							code:        ['lapply', 'sapply', 'Map', 'Reduce', 'Filter', 'do.call', 'match.fun', 'purrr::map'],
+							supported:   'partially',
+							description: `_A function handled as a value: handed to another function, like the callback of \`lapply\`, \`Reduce\`, or \`purrr::map\`, or picked at runtime with \`switch\`, \`match.fun\`, or \`do.call\`._ A function value is followed through the dataflow wherever it goes, also as a string that names it, so the call that runs it is linked to its ${LinkTo('function-definitions', 'definition')} and sees its reads and side effects. \`Reduce\` hands its running result to the callback and returns what the callback returns. A function whose name is only known at runtime, like \`get(paste0("f", i))\`, is not linked.`,
+							example:     codeBlock('r', 'k <- 2\nadd <- function(a, b) a + b * k\nReduce(add, 1:3)'),
+							url:         [AdvancedR('Functionals', 'functionals.html')]
+						},
+						{
 							name:        'Infix Calls',
 							id:          'infix-calls',
 							supported:   'fully',
@@ -416,7 +425,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Functions with global side effects',
 							id:          'functions-with-global-side-effects',
 							supported:   'partially',
-							description: `_A call that changes state the rest of the program reads without naming it, as \`setwd\` changes where a path points._ The ${LinkTo('working-directory', 'working directory')}, ${LinkTo('built-in-options', 'the options')}, and ${LinkTo('graphics-state', 'the graphics state')} are tracked, so a read links to the calls that set what it reads. Other ambient state, like environment variables or the random seed, stays an unknown side effect.`,
+							description: `_A call that changes state the rest of the program reads without naming it, as \`setwd\` changes where a path points._ The ${LinkTo('working-directory', 'working directory')}, ${LinkTo('built-in-options', 'the options')}, and ${LinkTo('graphics-state', 'the graphics state')} are tracked, so a read links to the calls that set what it reads. Other ambient state, like environment variables or the random seed, stays an unknown side effect. A call inside a function that acts on the global environment, like \`source\`, \`library\`, or \`rm(envir = .GlobalEnv)\`, affects the callers of that function as well.`,
 							example:     codeBlock('r', 'setwd("/tmp")\nread.csv("data.csv")')
 						},
 						{
@@ -689,7 +698,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'switch',
 							code:        ['switch'],
 							supported:   'fully',
-							description: '_Pick a branch by name or position with `switch`._ A branch left empty falls through to the next one, and every branch stays possible, as the selector does not narrow which of them runs.',
+							description: '_Pick a branch by name or position with `switch`._ A branch left empty falls through to the next one, and every branch stays possible, as the selector does not narrow which of them runs. The call returns the branch it picks, so a function chosen by `switch` is linked to the call that runs it.',
 							example:     codeBlock('r', 'switch("b", a = , b = "ab", c = "c")\nswitch(2, "one", "two")'),
 							url:         [RLang('Control structures')]
 						},
@@ -705,9 +714,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 						{
 							name:        'Exceptions and Errors',
 							id:          'exceptions-and-errors',
-							code:        ['stop', 'try', 'tryCatch', 'warning'],
+							code:        ['stop', 'try', 'tryCatch', 'warning', 'withCallingHandlers'],
 							supported:   'partially',
-							description: `_A condition raised with \`stop\`/\`warning\` and caught with \`try\`/\`tryCatch\`._ The path on which a call throws before a write is not kept open, so \`tryCatch({ risky(); x <- 2 }, ...)\` loses \`x\`. A handler is read as an ordinary ${LinkTo('function-definitions', 'function definition')}.`,
+							description: `_A condition raised with \`stop\`/\`warning\` and caught with \`try\`/\`tryCatch\`/\`withCallingHandlers\`._ The path on which a call throws before a write stays open, so after \`tryCatch({ risky(); x <- 2 }, ...)\` the variable \`x\` may still hold its earlier value. A handler only runs when the block may signal a condition of its class, and a calling handler is linked to every \`warning\`, \`message\`, or \`signalCondition\` that may reach it, also in the functions the block calls. This holds for a handler written inline as well as for one given as a value (a variable, a list element, the result of a factory, or a parameter), which is resolved like any ${LinkTo('higher-order-functions', 'function value')}.`,
 							example:     codeBlock('r', 'tryCatch(\n  stop("boom"),\n  error = function(e) conditionMessage(e),\n  finally = print("done")\n)'),
 							url:         [RLang('Exception handling'), AdvancedR('Conditions', 'conditions.html')]
 						}
@@ -894,7 +903,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'built-in-evaluation',
 									code:        ['eval', 'evalq', 'eval.parent'],
 									supported:   'partially',
-									description: `_Run an expression that is a value with \`eval\`, \`evalq\`, \`eval.parent\`, ..._ The captured code is linked where it is evaluated, also through a name bound once to \`quote\`, \`as.name\`, \`str2lang\`, or \`parse\`, but \`eval(expr, envir)\` with an ${LinkTo('dynamic-environment-resolution', 'environment')} we do not know stays an unknown side effect.`,
+									description: `_Run an expression that is a value with \`eval\`, \`evalq\`, \`eval.parent\`, ..._ The captured code is linked where it is evaluated, also through a name bound once to \`quote\`, \`as.name\`, \`str2lang\`, or \`parse\`, but \`eval(expr, envir)\` with an ${LinkTo('dynamic-environment-resolution', 'environment')} we do not know stays an unknown side effect. A constructed call, like \`eval(call("f", x))\` or \`eval(as.call(list(as.name("f"), x)))\`, runs like a \`do.call\` of that function, also when the call is bound to a name first.`,
 									example:     codeBlock('r', 'e <- quote(x + 1)\nx <- 2\neval(e)\nn <- as.name("x")\neval(n)'),
 									url:         [RLang('Evaluation of expressions'), AdvancedR('Evaluation', 'evaluation.html')]
 								},
@@ -1090,7 +1099,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-dispatch',
 							code:        ['UseMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to every ${LinkTo('function-definitions', 'definition')} named \`generic.class\` in scope, so the ${LinkTo('oop-s3-construction', 'class')} an object carries narrows the target only where it is known (heavily over-approximating).`,
+							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to every ${LinkTo('function-definitions', 'definition')} named \`generic.class\` in scope, so the ${LinkTo('oop-s3-construction', 'class')} an object carries narrows the target only where it is known (heavily over-approximating). A group generic like \`Ops.foo\`, \`Math.foo\`, or \`Summary.foo\` is reached from the operators and functions of its group, so \`a == b\` dispatches to \`Ops.foo\` for an object of class \`foo\`.`,
 							url:         [RLang('UseMethod'), RLang('Method dispatching')]
 						},
 						{
@@ -1142,7 +1151,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					code:        ['setRefClass'],
 					url:         [AdvancedR('R5 / Reference classes', 'r6.html#why-r6')],
 					supported:   'partially',
-					description: `_Reference classes made with \`setRefClass\`, whose objects are mutable and thus behave like the ${LinkTo('environment-sharing', 'shared environments')} they are built on._ \`$new()\` and \`$method()\` on an instance are unknown side effects, and no call links to the body it runs.`,
+					description: `_Reference classes made with \`setRefClass\`, whose objects are mutable and thus behave like the ${LinkTo('environment-sharing', 'shared environments')} they are built on._ A method call on an instance is linked to the method it runs, and \`.self\` is bound to that instance, so a method changing a field changes the object it was called on. Typing is not supported.`,
 					example:     codeBlock('r', 'Acc <- setRefClass("Acc",\n  fields = list(bal = "numeric"),\n  methods = list(dep = function(v) bal <<- bal + v))\na <- Acc$new(bal = 0)\na$dep(5)')
 				},
 				{
@@ -1151,7 +1160,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					code:        ['R6Class'],
 					url:         [AdvancedR('R6', 'r6.html')],
 					supported:   'partially',
-					description: `_Classes made with \`R6::R6Class\`, read as one unit rather than as the environment behind them._ Like ${LinkTo('oop-rc', 'RC')} an R6 object is mutable, and typing, inheritance, private/active bindings, and handling objects fully "as units" are not supported.`,
+					description: `_Classes made with \`R6::R6Class\`, read as one unit rather than as the environment behind them._ Like ${LinkTo('oop-rc', 'RC')} an R6 object is mutable. A method call is linked to the method it runs, also on a fresh \`$new()\` and through method chains, and \`self\` and \`private\` are bound to the instance the method runs on, so a method changing \`self$v\` changes that object. The instance is tracked when the receiver is a variable, written directly or one assignment away. Typing, inheritance, active bindings, and handling objects fully "as units" are not supported.`,
 					example:     codeBlock('r', 'Counter <- R6::R6Class("Counter", public = list(\n  i = 0,\n  add = function() {\n    self$i <- self$i + 1\n    invisible(self)\n  }\n))\nCounter$new()$add()$i')
 				},
 				{
@@ -1440,7 +1449,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					id:          'sourcing-external-files',
 					code:        ['source', 'sys.source'],
 					supported:   'partially',
-					description: `_Pull another file's code into the analysis with \`source\`, \`sys.source\`, ..._ A sourced file's ${LinkTo('global-scope', 'top-level bindings')} become visible to the code below the call. Only \`source\` is handled so far, and only where its path resolves.`,
+					description: `_Pull another file's code into the analysis with \`source\`, \`sys.source\`, ..._ A sourced file's ${LinkTo('global-scope', 'top-level bindings')} become visible to the code below the call. Inside a function, \`source\` evaluates the file in the global environment unless it is called with \`local = TRUE\`, as R does, and \`sys.source\` (which defaults to the base environment) is approximated the same way. Only a path that resolves is followed.`,
 					example:     codeBlock('r', 'source("helpers.R")\nsys.source("setup.R", envir = environment())')
 				},
 				{

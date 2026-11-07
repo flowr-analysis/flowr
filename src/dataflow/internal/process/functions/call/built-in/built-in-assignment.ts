@@ -30,7 +30,7 @@ import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
+import { closureFrameResolution, type EnvirResolution, EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
@@ -441,10 +441,10 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	source:      RNode<OtherInfo & ParentInformation>,
 	replacement: RSymbol<OtherInfo & ParentInformation>
 ): DataflowInformation | undefined {
-	if(target.operator !== '$' || !RSymbol.is(target.accessed)) {
+	if(target.operator !== '$') {
 		return undefined;
 	}
-	const envirResolution = resolveSymbolToEnvir(target.accessed.content, target.accessed.info.id, data);
+	const envirResolution = RSymbol.is(target.accessed) ? resolveSymbolToEnvir(target.accessed.content, target.accessed.info.id, data) : closureFrameResolution(target.accessed, data);
 	if(!envirResolution) {
 		return undefined;
 	}
@@ -471,6 +471,11 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		return { ...normalResult, environment: REnvironment.define(definition, true, normalResult.environment) };
 	}
 	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
+	if(envirResolution.envDef.closureFrame === true) {
+		/* `environment(g)$v <- x` writes the frame, `g` still holds the same closure */
+		normalResult.graph.addEdge(normalResult.entryPoint, envirResolution.envirNodeId, EdgeType.Reads);
+		return { ...normalResult, environment: rebindHolders(normalResult.environment, envirResolution.envDef, newEnvState, rootId) };
+	}
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation } = {
 		...envirResolution.envDef,
 		nodeId:    target.accessed.info.id,
@@ -643,10 +648,16 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	let envState: REnvironmentInformation | undefined;
 	let envId: NodeId | undefined;
 	let returnsEnvState: REnvironmentInformation | undefined;
+	let frame: EnvirResolution<OtherInfo>['envDef'] | undefined;
 	if(data.ctx.config.solver.trackEnvironments) {
 		const valueEntry = valueEntryPointOf(sourceArg);
 		const stackEnv = stackEnvStateFromSource(sourceArg, data, valueEntry);
-		if(isEnvCreatorSource(sourceArg, valueEntry)) {
+		frame = closureFrameResolution(source, data as DataflowProcessorInformation<OtherInfo & ParentInformation>)?.envDef;
+		if(frame !== undefined) {
+			/* the frame of a closure, shared with the variable holding the closure */
+			envState = frame.envState;
+			envId = frame.envId;
+		} else if(isEnvCreatorSource(sourceArg, valueEntry)) {
 			envState = createFreshEnvState(data, sourceArg);
 		} else if(stackEnv !== undefined) {
 			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env
@@ -704,6 +715,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	for(const write of writeNodes) {
 		markAsAssignment(information, write, useSourceIds, rootId, data, config);
+	}
+	if(frame !== undefined) {
+		information.environment = REnvironment.define(frame, information.environment.current.lookup(Identifier.getName(frame.name)) === undefined, information.environment);
 	}
 	if(copied?.name !== undefined && copied.envId === undefined && information.environment.current.lookup(Identifier.getName(copied.name))?.includes(copied)) {
 		information.environment = REnvironment.define({ ...copied, name: copied.name, envId: copied.nodeId }, false, information.environment);

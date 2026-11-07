@@ -23,7 +23,7 @@ import { readRemovals, cancelRevivedKills, dropKilledWrites, makeKillsMaybe } fr
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
-import { addEnvironmentWrites } from './built-in-envir-utils';
+import { addEnvironmentWrites, linkClosureFrameReads } from './built-in-envir-utils';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -102,21 +102,23 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 }
 
 interface TransitiveCallee<Fn = DataflowGraphVertexInfo> {
-	readonly fn:   Fn
-	readonly cds?: readonly ControlDependency[]
+	readonly fn:      Fn
+	/** called by the call itself rather than by one of its callees */
+	readonly direct?: boolean
+	readonly cds?:    readonly ControlDependency[]
 }
 
 /** Expands `initial` with everything it transitively calls, so a `<<-` escaping several call levels still folds into the caller. */
 function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<TransitiveCallee<DataflowGraphVertexFunctionDefinition>> {
 	const seen = new Set<NodeId>();
-	const stack: TransitiveCallee[] = initial.map(fn => ({ fn }));
+	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
-		const { fn, cds } = stack.pop() as TransitiveCallee;
+		const { fn, direct, cds } = stack.pop() as TransitiveCallee;
 		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
-		yield { fn, cds };
+		yield { fn, direct, cds };
 		for(const [, call] of Dataflow.callsIn(fn, graph)) {
 			if(call.onlyBuiltin || call.name === undefined) {
 				continue;
@@ -216,7 +218,10 @@ function packageLayersOf(env: REnvironmentInformation): Set<MemoryView> {
 function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap, listEnvironments: Set<NodeId>) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
-		for(const { fn: calledFn, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
+		for(const { fn: calledFn, direct, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
+			if(direct) {
+				linkClosureFrameReads(functionCall, calledFn, inputEnvironment, nextGraph);
+			}
 			/* walk the smaller of the two, a script may hold many unknown side effects and a function many vertices */
 			const inside = calledFn.subflow.graph;
 			const effects = nextGraph.unknownSideEffects;

@@ -20,6 +20,8 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { RPipe } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraph } from '../../../../../graph/graph';
+import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
+import { Dataflow } from '../../../../../graph/df-helper';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -166,7 +168,7 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 		return stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data);
 	}
 	if(!RSymbol.is(node)) {
-		return undefined;
+		return closureFrameResolution(node, data);
 	}
 	const defs = Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable);
 	if(!data.ctx.config.solver.trackEnvironments) {
@@ -176,6 +178,71 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 	}
 	/* an environment we do not track */
 	return resolveDefsToEnvirResolution(defs, node.info.id, data) ?? (defs === undefined ? undefined : 'ambiguous');
+}
+
+/**
+ * `environment(fn)` names the frame the closure `fn` holds, tracked as the environment state of the variable holding
+ * the closure: what is written into the frame is read by the closure once it is called (see {@link linkClosureFrameReads}).
+ */
+export function closureFrameResolution<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation> | undefined,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> | undefined {
+	const holder = closureFrameHolder(node, data);
+	if(holder === undefined) {
+		return undefined;
+	}
+	const envDef = { ...holder.def, envState: holder.def.envState ?? REnvironment.pushLocal(data.environment), envId: holder.def.envId ?? holder.def.nodeId, closureFrame: true } as const;
+	return { envirData: { ...data, environment: envDef.envState }, envDef, envirNodeId: holder.call };
+}
+
+/** The single variable holding the closure `fn` of an `environment(fn)` call. */
+function closureFrameHolder<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation> | undefined,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): { readonly def: NamedInGraphIdentifierDefinition, readonly call: NodeId } | undefined {
+	if(!RFunctionCall.isNamed(node, 'environment') || node.arguments.length !== 1 || !Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function)) {
+		return undefined;
+	}
+	const fn = RArgument.valueOf(node.arguments[0]);
+	const defs = RSymbol.is(fn) ? Resolve.byName(fn.content, data.environment) : undefined;
+	const def = defs?.length === 1 ? defs[0] as InGraphIdentifierDefinition : undefined;
+	return fn === undefined || def?.name === undefined || NodeId.isBuiltIn(def.definedAt) ? undefined : { def: def as NamedInGraphIdentifierDefinition, call: node.info.id };
+}
+
+/**
+ * A call of a closure whose frame was written (see {@link closureFrameResolution}) reads those writes wherever its
+ * body reads a name it does not bind itself.
+ */
+export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation, graph: DataflowGraph): void {
+	const vertex = graph.getVertex(call);
+	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
+	const frames = name === undefined ? [] : Resolve.byName(name, environment)?.filter(hasEnvState).filter(d => d.closureFrame === true) ?? [];
+	if(frames.length === 0) {
+		return;
+	}
+	const body = new Set(called.subflow.graph);
+	for(const id of body) {
+		const nested = graph.getVertex(id);
+		if(DfgVertex.isFunctionDefinition(nested)) {
+			nested.subflow.graph.forEach(inner => body.add(inner));
+		}
+	}
+	const idMap = graph.idMap;
+	for(const id of body) {
+		const read = idMap?.get(id);
+		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t))) {
+			continue;
+		}
+		for(const frame of frames) {
+			for(const def of frame.envState.current.lookup(Identifier.getName(read.content)) ?? []) {
+				/* the write as well, `environment(g)$v <- 5` defines `v` at the value it writes */
+				for(const target of [def.nodeId, def.definedAt]) {
+					graph.addEdge(id, target, EdgeType.Reads);
+				}
+			}
+		}
+	}
 }
 
 /**
@@ -399,7 +466,7 @@ export const EnvironmentLookups: ReadonlySet<string> = new Set([
 export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, holder: IdentifierDefinition): void {
 	const envState = (holder as InGraphIdentifierDefinition).envState;
 	/* a stack env or the frame of a function (`environment()`) holds variables the scoping links already */
-	if(envState === undefined || stackKindOf(envState) !== undefined || envState.current.closure !== undefined) {
+	if(envState === undefined || stackKindOf(envState) !== undefined || envState.current.closure !== undefined || (holder as InGraphIdentifierDefinition).closureFrame === true) {
 		return;
 	}
 	for(const fields of envState.current.memory.values()) {

@@ -697,6 +697,8 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * environment itself is the one the name is bound to where the function is called, which adds these writes to it.
 	 */
 	readonly envWrites?:       true
+	/** Whether {@link envState} tracks the frame of the closure this variable holds (`environment(fn)`), rather than an environment it holds. */
+	readonly closureFrame?:    true
 	/**
 	 * If this is a function that returns a tracked environment, stores the envState
 	 * that the function returns (best-effort: only set when statically detectable).

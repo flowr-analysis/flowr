@@ -29,6 +29,7 @@ const Kinds = ['reads', 'writes', 'assumed', 'local'] as const;
  * const b = AmbientAccessRecord.merge(a, { writes: ['#option:digits'] });
  * AmbientAccessRecord.equals(a, b); // false
  * ```
+ * @helper dataflow
  */
 export const AmbientAccessRecord = {
 	name: 'AmbientAccessRecord',

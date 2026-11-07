@@ -56,6 +56,7 @@ interface SerializedPdg {
 
 /**
  * Helper functions for the {@link CloneIndex}.
+ * @helper project
  */
 export const CloneIndex = {
 	name: 'CloneIndex',

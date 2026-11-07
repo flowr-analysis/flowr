@@ -399,7 +399,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 						{
 							name:        'Higher-Order Functions',
 							id:          'higher-order-functions',
-							code:        ['lapply', 'sapply', 'Map', 'Reduce', 'Filter', 'do.call', 'match.fun', 'purrr::map'],
+							code:        ['lapply', 'sapply', 'Map', 'Reduce', 'Filter', 'do.call', 'purrr::map'],
 							supported:   'partially',
 							description: `_A function handled as a value: handed to another function, like the callback of \`lapply\`, \`Reduce\`, or \`purrr::map\`, or picked at runtime with \`switch\`, \`match.fun\`, or \`do.call\`._ A function value is followed through the dataflow wherever it goes, also as a string that names it, so the call that runs it is linked to its ${LinkTo('function-definitions', 'definition')} and sees its reads and side effects. \`Reduce\` hands its running result to the callback and returns what the callback returns. A function whose name is only known at runtime, like \`get(paste0("f", i))\`, is not linked.`,
 							example:     codeBlock('r', 'k <- 2\nadd <- function(a, b) a + b * k\nReduce(add, 1:3)'),

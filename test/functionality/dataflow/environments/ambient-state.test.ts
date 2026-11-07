@@ -51,6 +51,8 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		});
 		check('recursion terminates', 'a <- function(n) { options(digits = n); if(n > 0) a(n - 1) }', { a: ['#option:digits', '#options'] });
 		check('frame-local writes are left out', 'a01 <- function() { withr::local_options(digits = 3); 1 }', { a01: [] });
+		check('an exit hook writes for the function', 'a01 <- function() { on.exit(options(digits = 3)); 1 }', { a01: ['#option:digits', '#options'] });
+		check('an exit hook restoring options', 'a01 <- function(op) { on.exit(options(op)); 1 }', { a01: ['#option:*', '#options'] });
 	});
 
 	describe('environment variables', () => {
@@ -191,6 +193,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('a block', '{\n options(digits = 3)\n sink("a.txt")\n}\nx <- 1', 'first', { reads: ['#options', '#wd'], writes: ['#file:a', '#files', '#option:digits', '#options', '#sink'] });
 		check('a call reaching a function', 'f <- function() options(digits = 3)\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options'], writes: ['#option:digits', '#options'] });
 		check('a function never called does not count', 'f <- function() options(digits = 3)\nx <- 1', 'file', {});
+		check('the exit hook of a function never called does not count', 'f <- function() { on.exit(options(digits = 3)); 1 }\nx <- 1', 'file', {});
 		check('only the code of the scope counts', 'x <- 1\noptions(digits = 3)', 'first', {});
 		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options'] });
 	});

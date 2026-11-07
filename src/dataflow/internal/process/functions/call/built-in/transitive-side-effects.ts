@@ -34,7 +34,9 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 	const callees = new Map<NodeId, NodeId[]>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		summary.set(id, new Set(own(id, vertex)));
-		callees.set(id, Dataflow.callsIn(vertex, graph).flatMap(([node]) => Dataflow.calleeIdsOf(graph, node)).toArray());
+		/* an exit hook (`on.exit(expr)`) runs as part of the function */
+		const hooks = vertex.subflow.hooks.map(h => h.id);
+		callees.set(id, Dataflow.callsIn(vertex, graph).flatMap(([node]) => Dataflow.calleeIdsOf(graph, node)).toArray().concat(hooks));
 	}
 	/* pull each callee's summary, its callers are revisited whenever a function grew */
 	Dataflow.propagateToFixpoint(summary.keys(), callees, id => {
@@ -461,12 +463,17 @@ export function ambientAccessOfFunctions(this: void, graph: DataflowGraph): Map<
  */
 export function ambientAccessOf(this: void, graph: DataflowGraph, scope: NodeId | Iterable<NodeId>, opts?: AmbientAccessOptions): AmbientAccess {
 	const ids = new Set<NodeId>(typeof scope === 'string' || typeof scope === 'number' ? [scope] : scope);
+	/* the bodies of nested definitions, exit hooks among them, are no part of the scope (`collectAllIds` misses the hooks) */
 	const bodies = new Set<NodeId>();
-	for(const id of ids) {
-		const vertex = graph.getVertex(id);
+	const definitions = [...ids];
+	while(definitions.length > 0) {
+		const vertex = graph.getVertex(definitions.pop() as NodeId);
 		if(DfgVertex.isFunctionDefinition(vertex)) {
 			for(const inner of vertex.subflow.graph) {
-				bodies.add(inner);
+				if(!bodies.has(inner)) {
+					bodies.add(inner);
+					definitions.push(inner);
+				}
 			}
 		}
 	}

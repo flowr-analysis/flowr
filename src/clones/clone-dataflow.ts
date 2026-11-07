@@ -15,6 +15,7 @@ import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-func
 import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { DataflowGraph } from '../dataflow/graph/graph';
+import type { REnvironmentInformation } from '../dataflow/environments/environment';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import type { AstIdMap, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -63,15 +64,15 @@ function statementWithin(node: RNodeWithParent, list: NodeId, idMap: AstIdMap): 
 	return current;
 }
 
-/** the names of the variables `value` reads, and whether all calls in it are pure */
-function readsOf(value: RNodeWithParent, graph: DataflowGraph): { names: Set<string>, pure: boolean } {
+/** the names of the variables `value` reads, and whether all calls in it are pure (`environment` knows the configured built-ins) */
+function readsOf(value: RNodeWithParent, graph: DataflowGraph, environment: REnvironmentInformation | undefined): { names: Set<string>, pure: boolean } {
 	const names = new Set<string>();
 	let pure = true;
 	RNode.visitAst(value, n => {
 		if(RSymbol.is(n)) {
 			names.add(Identifier.getName(n.content));
 		} else if(RFunctionCall.is(n) || RBinaryOp.is(n) || RUnaryOp.is(n) || RAccess.is(n)) {
-			pure &&= FunctionSemantics.call.props.hasAny(callFnProps(n.info.id, graph), CallProp.Pure);
+			pure &&= FunctionSemantics.call.props.hasAny(callFnProps(n.info.id, graph, environment), CallProp.Pure);
 		}
 	});
 	return { names, pure };
@@ -97,8 +98,9 @@ function assignsAny(statements: readonly RNodeWithParent[], names: ReadonlySet<s
  * statement of the same block, and with nothing in between that could change `e` (an impure `e` must be next to its
  * use, a pure one must not have its variables reassigned in between), is dropped and `e` takes the place of that read.
  * Function definitions are never inlined, as they are units of their own.
+ * `environment`, that of the analysis, knows the configured built-ins.
  */
-export function planInlining(graph: DataflowGraph, idMap: AstIdMap): InlinePlan {
+export function planInlining(graph: DataflowGraph, idMap: AstIdMap, environment?: REnvironmentInformation): InlinePlan {
 	const replace = new Map<NodeId, RNodeWithParent>();
 	const drop = new Set<NodeId>();
 	for(const node of idMap.values()) {
@@ -124,7 +126,7 @@ export function planInlining(graph: DataflowGraph, idMap: AstIdMap): InlinePlan 
 		/* moving `e` past other statements must not change what it computes or when its effects happen */
 		const between = list.children.slice(from + 1, to);
 		if(between.length > 0) {
-			const reads = readsOf(value, graph);
+			const reads = readsOf(value, graph, environment);
 			if(!reads.pure || assignsAny(between, reads.names)) {
 				continue;
 			}

@@ -65,15 +65,16 @@ export const CloneIndex = {
 	async build(this: void, analyzer: ReadonlyFlowrAnalysisProvider, options: CloneIndexOptions): Promise<CloneIndex> {
 		const normalized = await analyzer.normalize();
 		const needsDataflow = options.perspective === ClonePerspective.Dataflow || options.pdgs;
-		const graph = needsDataflow ? (await analyzer.dataflow()).graph : undefined;
-		const inline = options.perspective === ClonePerspective.Dataflow && graph ? planInlining(graph, normalized.idMap) : undefined;
+		const dataflow = needsDataflow ? await analyzer.dataflow() : undefined;
+		const graph = dataflow?.graph;
+		const inline = options.perspective === ClonePerspective.Dataflow && graph ? planInlining(graph, normalized.idMap, dataflow?.environment) : undefined;
 		const files = normalized.ast.files.map((f, i) => buildCloneAst(f.root, f.filePath ?? `<input ${i}>`, options.perspective, inline, options.perspective === ClonePerspective.Dataflow ? graph : undefined));
 		if(!options.pdgs || !graph) {
 			return { perspective: options.perspective, files };
 		}
 		const pdgs = files.map(ast => ast.functions.map(fn => {
 			const def = normalized.idMap.get(ast.id[fn.node]);
-			return buildPdg(def as RFunctionDefinition<ParentInformation>, ast, graph);
+			return buildPdg(def as RFunctionDefinition<ParentInformation>, ast, graph, dataflow?.environment);
 		}));
 		return { perspective: options.perspective, files, pdgs };
 	},

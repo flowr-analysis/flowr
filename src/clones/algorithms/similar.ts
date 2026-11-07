@@ -37,6 +37,7 @@ import { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
@@ -158,7 +159,7 @@ class PdgBuilder {
 	readonly aliases = new Map<NodeId, NodeId[]>();
 	readonly memo = new Map<string, number>();
 
-	constructor(private readonly graph: DataflowGraph) {}
+	constructor(private readonly graph: DataflowGraph, private readonly environment: REnvironmentInformation | undefined) {}
 
 	/** whether the dataflow graph resolved the call at `node` to the built-in processor `origin` */
 	is(node: Node | undefined, origin: BuiltInProcName): boolean {
@@ -175,7 +176,7 @@ class PdgBuilder {
 		if(this.graph.unknownSideEffects.has(id) || this.is(node, BuiltInProcName.RegisterHook) || (this.graph.ambientAccessOf(id)?.writes.length ?? 0) > 0) {
 			return true;
 		}
-		const stated = callFnProps(id, this.graph);
+		const stated = callFnProps(id, this.graph, this.environment);
 		const has = FunctionSemantics.call.props.hasAny;
 		return has(stated, [SemanticCallTag.Graphics, SemanticCallTag.Prints, CallProp.Configures, CallProp.Throws])
 			|| FunctionSemantics.call.props.hasAll(stated, [SemanticCallTag.File, SemanticCallTag.Writes]);
@@ -613,9 +614,10 @@ class PdgBuilder {
 
 /**
  * Builds the PDG of a function. The vertices map to preorder indices of `ast` (the file's clone AST) for locations.
+ * `environment`, that of the analysis, knows the configured built-ins.
  */
-export function buildPdg(fn: RFunctionDefinition<ParentInformation>, ast: CloneAst, graph: DataflowGraph): Pdg {
-	const b = new PdgBuilder(graph);
+export function buildPdg(fn: RFunctionDefinition<ParentInformation>, ast: CloneAst, graph: DataflowGraph, environment?: REnvironmentInformation): Pdg {
+	const b = new PdgBuilder(graph, environment);
 	const entry = b.vertex(PdgColor.Entry, fn, -1, 'Entry');
 	for(const p of fn.parameters) {
 		const v = b.vertex(PdgColor.Parameter, p, entry, Identifier.toString(p.name.content));

@@ -17,7 +17,8 @@ import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import type { AmbientAccessRecord } from '../../../../../graph/ambient-access';
-import { callFnProps } from '../../../../../environments/query-fn-props';
+import { BuiltInIndex, callFnProps, queryFnProps } from '../../../../../environments/query-fn-props';
+import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
@@ -419,20 +420,34 @@ function itemsOf(record: AmbientAccessRecord): string[] {
 	return [...record.reads.map(n => Reads + n), ...record.writes.map(n => Writes + n), ...record.assumed.map(n => Assumed + n)];
 }
 
-/** Whether the call `id` is tagged as a graphics call. */
-function drawsOn(graph: DataflowGraph, id: NodeId): boolean {
-	return FunctionSemantics.call.props.hasAny(callFnProps(id, graph), SemanticCallTag.Graphics);
+/** The dataflow graph of the whole program, with the environment of the analysis to know its configured built-ins (without, the defaults answer). */
+export type AmbientSource = DataflowGraph | (Pick<DataflowInformation, 'graph'> & Partial<Pick<DataflowInformation, 'environment'>>);
+
+function graphOf(from: AmbientSource): [DataflowGraph, REnvironmentInformation | undefined] {
+	return 'graph' in from ? [from.graph, from.environment] : [from, undefined];
+}
+
+/** Whether the call `id` is tagged as a graphics call, or reaches one through a parameter (`g <- function(f) f(1); g(plot)`). */
+function drawsOn(graph: DataflowGraph, id: NodeId, environment: REnvironmentInformation | undefined): boolean {
+	const draws = (info: BuiltInFnInfo | undefined) => FunctionSemantics.call.props.hasAny(info, SemanticCallTag.Graphics);
+	if(draws(callFnProps(id, graph, environment))) {
+		return true;
+	}
+	const builtIns = environment === undefined ? undefined : { level: 0, current: REnvironment.findBuiltIn(environment.current) };
+	return Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => NodeId.isBuiltIn(t)
+		&& draws(builtIns === undefined ? BuiltInIndex.default().get(NodeId.fromBuiltIn(t)) : queryFnProps(NodeId.fromBuiltIn(t), { environment: builtIns })));
 }
 
 /**
  * What each function accesses when it is called: the pseudo variables it reads and changes (see {@link AmbientStateName}), the global
  * variables it binds and the drawing calls it makes, together with what the functions it calls access.
  * Reads and writes confined to the function's own frame (`withr::local_options`) are left out.
- * @param graph - the dataflow graph of the whole program
- * @returns       per function-definition vertex what it may access, which is empty for a function accessing nothing
+ * @param from - see {@link AmbientSource}
+ * @returns      per function-definition vertex what it may access, which is empty for a function accessing nothing
  * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
  */
-export function ambientAccessOfFunctions(this: void, graph: DataflowGraph): Map<NodeId, AmbientAccess> {
+export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<NodeId, AmbientAccess> {
+	const [graph, environment] = graphOf(from);
 	const names = escapedDefinitionMap(graph, new Map());
 	const escaped = escapedDefinitions(new Map());
 	const items = computeCallGraphSummaries(graph, (id, fdef) => {
@@ -449,19 +464,20 @@ export function ambientAccessOfFunctions(this: void, graph: DataflowGraph): Map<
 		}
 		return own;
 	});
-	const draws = computeCallGraphSummaries(graph, (_id, fdef) => Dataflow.callsIn(fdef, graph).map(([call]) => call).filter(call => drawsOn(graph, call)));
+	const draws = computeCallGraphSummaries(graph, (_id, fdef) => Dataflow.callsIn(fdef, graph).map(([call]) => call).filter(call => drawsOn(graph, call, environment)));
 	return new Map(items.entries().map(([id, own]) => [id, accessOf(own, draws.get(id) ?? new Set())]));
 }
 
 /**
  * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls among `scope` and,
  * unless turned off, what the functions they call access. The calls within a function definition in `scope` only count if called.
- * @param graph - the dataflow graph of the whole program
+ * @param from  - see {@link AmbientSource}
  * @param scope - the ids to ask for, like those of a file, a block, or a single statement (see `RNode.collectAllIds`), or one id
  * @param opts  - see {@link AmbientAccessOptions}
  * @useInstead {@link Dataflow.sideEffects.ambientAccess}
  */
-export function ambientAccessOf(this: void, graph: DataflowGraph, scope: NodeId | Iterable<NodeId>, opts?: AmbientAccessOptions): AmbientAccess {
+export function ambientAccessOf(this: void, from: AmbientSource, scope: NodeId | Iterable<NodeId>, opts?: AmbientAccessOptions): AmbientAccess {
+	const [graph, environment] = graphOf(from);
 	const ids = new Set<NodeId>(typeof scope === 'string' || typeof scope === 'number' ? [scope] : scope);
 	/* the bodies of nested definitions, exit hooks among them, are no part of the scope (`collectAllIds` misses the hooks) */
 	const bodies = new Set<NodeId>();
@@ -488,7 +504,7 @@ export function ambientAccessOf(this: void, graph: DataflowGraph, scope: NodeId 
 		if(record !== undefined) {
 			items.push(...itemsOf(record));
 		}
-		if(drawsOn(graph, id)) {
+		if(drawsOn(graph, id, environment)) {
 			draws.add(id);
 		}
 		if(opts?.includeCallees !== false) {
@@ -498,7 +514,7 @@ export function ambientAccessOf(this: void, graph: DataflowGraph, scope: NodeId 
 		}
 	}
 	if(callees.size > 0) {
-		const functions = ambientAccessOfFunctions(graph);
+		const functions = ambientAccessOfFunctions(from);
 		for(const callee of callees) {
 			const access = functions.get(callee);
 			if(access !== undefined) {
@@ -516,13 +532,12 @@ export function ambientAccessOf(this: void, graph: DataflowGraph, scope: NodeId 
  * and the global variables it binds.
  * A function reports what its callees report as well, so with `a01 <- function() options(digits = 3)` and `a22 <- function() a01()`,
  * both set `#option:digits`. What a function only changes within its own frame (`withr::local_options`) is left out.
- * @param info - the dataflow graph of the whole program, or the dataflow information (only the graph is used)
+ * @param info - see {@link AmbientSource}
  * @returns      per function-definition vertex what it may change, which is empty for a function changing nothing
  * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
  */
-export function ambientWritesOfFunctions(this: void, info: DataflowGraph | Pick<DataflowInformation, 'graph'>): Map<NodeId, FunctionAmbientWrites> {
-	const graph = 'graph' in info ? info.graph : info;
-	return new Map(ambientAccessOfFunctions(graph).entries().map(([id, { writes, assumed, variables }]) => [id, { state: writes, assumed, variables }]));
+export function ambientWritesOfFunctions(this: void, info: AmbientSource): Map<NodeId, FunctionAmbientWrites> {
+	return new Map(ambientAccessOfFunctions(info).entries().map(([id, { writes, assumed, variables }]) => [id, { state: writes, assumed, variables }]));
 }
 
 /**

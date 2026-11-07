@@ -12,6 +12,9 @@ import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
 import { FlowrConfig } from '../../../../src/config';
 import { DataflowGraph, type DataflowGraphJson, UnknownSideEffect } from '../../../../src/dataflow/graph/graph';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import type { BuiltInDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import type { AmbientAccess, FunctionAmbientWrites } from '../../../../src/dataflow/internal/process/functions/call/built-in/transitive-side-effects';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
@@ -173,9 +176,9 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		});
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).setConfig(config).build();
 		analyzer.addRequest(requestFromInput(code));
-		const { graph } = await analyzer.dataflow();
+		const info = await analyzer.dataflow();
 		const root = (await analyzer.normalize()).ast.files[0].root;
-		return { graph, root };
+		return { graph: info.graph, info, root };
 	}
 
 	function shown(a: AmbientAccess): Shown {
@@ -183,11 +186,11 @@ describe('Ambient access of code', withTreeSitter(ts => {
 	}
 
 	async function access(code: string, selector: Selector, drawing = false): Promise<Shown> {
-		const { graph, root } = await run(code, drawing);
+		const { info, root } = await run(code, drawing);
 		const [first, second] = root.children;
 		const scope = selector === 'file' ? RNode.collectAllIds(root) : selector === 'first' ? RNode.collectAllIds(first)
 			: selector === 'second' ? RNode.collectAllIds(second) : first.info.id;
-		return shown(Dataflow.sideEffects.ambientAccess(graph, scope));
+		return shown(Dataflow.sideEffects.ambientAccess(info, scope));
 	}
 
 	function check(name: string, code: string, selector: Selector, expected: Partial<Shown>, drawing = false): void {
@@ -222,6 +225,21 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas'], draws: 1 }, true);
 		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#canvas'], draws: 1 }, true);
 		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#graphics', '#par:mfrow'], draws: 1 });
+
+		check('a draw through a parameter', 'g <- function(f, ...) f(...)\nh <- function() g(plot, 1)\nh()', 'file', {
+			reads: ['#env', '#graphics', '#options', '#palette', '#rng'], writes: ['#canvas'], assumed: ['#rng'], draws: 1
+		}, true);
+
+		test(label('a configured graphics built-in draws', [], ['dataflow']), async() => {
+			const myPlot: BuiltInDefinition = { type: 'function', names: [Identifier.from(['myPlot', 'base'])], processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.Graphics] }, assumePrimitive: false };
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).amendConfig(c => {
+				c.semantics.environment.overwriteBuiltIns.definitions = [myPlot];
+			}).build();
+			analyzer.addRequest(requestFromInput('myPlot(1)\nplot(2)'));
+			const info = await analyzer.dataflow();
+			const root = (await analyzer.normalize()).ast.files[0].root;
+			assert.strictEqual(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(root)).draws.size, 2);
+		});
 
 		test(label('every function', [], ['dataflow']), async() => {
 			const { graph } = await run('a <- function() plot(1)\nb <- function() a()\nc <- function() 1');

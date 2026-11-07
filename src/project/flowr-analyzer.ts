@@ -420,9 +420,11 @@ function qualifyInBackground(graph: DataflowGraph): void {
 	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
 	let next = 0;
 	const step = () => {
-		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
-			Dataflow.qualify(calls[next], graph, false);
-		}
+		graph.sharingTargetWalks(() => {
+			for(const end = Math.min(next + 256, calls.length); next < end; next++) {
+				Dataflow.qualify(calls[next], graph, false);
+			}
+		});
 		if(next < calls.length) {
 			later(step);
 		}

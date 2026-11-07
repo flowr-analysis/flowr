@@ -753,10 +753,13 @@ function extractDataFlowGraph<OtherInfo>(
 	orderRaisingBodies(df.graph, completeAst.idMap, ctx);
 	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	FunctionSemantics.settleDefinitionsInPromises(df.graph, { ctx });
-	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
-	resolveLinkToSideEffects(df.graph, ctx);
-	linkResourceReadersToWriters(df.graph, df.environment, ctx);
-	linkReadsOfDivertedOutput(df.graph, df.environment);
-	separateFileWritesPerCall(df.graph, df.environment, ctx);
+	/* these ask for the qualified names of many calls before they add an edge */
+	df.graph.sharingTargetWalks(() => {
+		linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
+		resolveLinkToSideEffects(df.graph, ctx);
+		linkResourceReadersToWriters(df.graph, df.environment, ctx);
+		linkReadsOfDivertedOutput(df.graph, df.environment);
+		separateFileWritesPerCall(df.graph, df.environment, ctx);
+	});
 	return df;
 }

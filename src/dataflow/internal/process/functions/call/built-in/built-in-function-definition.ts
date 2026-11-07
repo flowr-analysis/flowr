@@ -690,6 +690,7 @@ export function updateNestedFunctionCalls(
 	let waiting: typeof calls = [];
 	let linked = false;
 	const lifted: [NodeId, IdentifierReference, NodeId][] = [];
+	const handingOnDots: [readonly FunctionArgument[], readonly RParameter<ParentInformation>[]][] = [];
 	const enclosingOf = memoize((id: NodeId) => graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(id, graph.idMap));
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
 	const databaseInfoOf = memoize((name: Identifier) => ctx.functionInfo(name));
@@ -882,6 +883,9 @@ export function updateNestedFunctionCalls(
 			const linkedParameters = graph.idMap?.get(target);
 			if(RFunctionDefinition.is(linkedParameters)) {
 				FunctionSemantics.call.match.onCallAndLink(args, linkedParameters.parameters, graph);
+				if(FunctionSemantics.call.match.handsOnDots(args, graph)) {
+					handingOnDots.push([args, linkedParameters.parameters]);
+				}
 			}
 		}
 		if(narrowed !== undefined && narrowed.excluded.size > 0) {
@@ -892,6 +896,10 @@ export function updateNestedFunctionCalls(
 			vertex.ruledOutAt = perCall;
 		}
 		linkNextMethods(graph, collectedNextMethods, targets, narrowed?.next);
+	}
+	/* the dots a call hands on stand for what the calls of the function around hand over, all of them linked by now */
+	for(const [args, parameters] of handingOnDots) {
+		FunctionSemantics.call.match.onCallAndLink(args, parameters, graph);
 	}
 	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
 	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));

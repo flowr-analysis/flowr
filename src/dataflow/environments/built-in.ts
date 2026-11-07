@@ -141,6 +141,8 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo, Amb
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** without arguments, the result is the frame the call runs in, like `environment()`, so within a function it reads every binding of the frame */
 	readonly readsFrame?:            boolean,
+	/** the call reads the dots of the function it is called in, like `...elt(2)` */
+	readonly readsDots?:             boolean,
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
 	readonly scope?:                 AmbientScope,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
@@ -209,7 +211,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame, readsDots }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	if(scope !== undefined) {
 		return processAmbientScope(name, args, rootId, data, scope);
@@ -271,6 +273,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 				}
 			}
 		}
+	}
+	if(readsDots) {
+		res.in = [...res.in, { nodeId: rootId, name: Identifier.dotdotdot(), type: ReferenceType.Variable, cds: data.cds }];
 	}
 	/* before the unknown side effect, which forgets the values of the variables the ambient state is named by */
 	if(ambient !== undefined) {

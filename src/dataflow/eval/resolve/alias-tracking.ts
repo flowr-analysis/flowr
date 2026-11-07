@@ -134,11 +134,12 @@ export function callOfArgument(value: NodeId, idMap: AstIdMap): NodeId | undefin
 }
 
 /**
- * Whether the walk may follow `edge` from the parameter `id` of a function the context resolves for `call`: an argument
- * only if that call hands it, the default only if that call hands none.
+ * Whether the walk may follow `edge` from the parameter `id` of a function the context resolves for `calls`, the call
+ * running it and those handing on their dots to it: an argument only if one of them hands it, the default only if
+ * none does.
  */
-function followsInCall(edges: ReadonlyMap<NodeId, DfEdge>, target: NodeId, edge: DfEdge, call: NodeId, idMap: AstIdMap): boolean {
-	const handed = (t: NodeId, e: DfEdge) => DfEdge.isOnlyType(e, EdgeType.DefinedByOnCall) && callOfArgument(t, idMap) === call;
+function followsInCall(edges: ReadonlyMap<NodeId, DfEdge>, target: NodeId, edge: DfEdge, calls: readonly NodeId[], idMap: AstIdMap): boolean {
+	const handed = (t: NodeId, e: DfEdge) => DfEdge.isOnlyType(e, EdgeType.DefinedByOnCall) && calls.includes(callOfArgument(t, idMap) ?? '');
 	if(DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall)) {
 		return handed(target, edge);
 	}
@@ -740,6 +741,13 @@ function framesIntoReturn(call: NodeId, target: NodeId, edges: ReadonlyMap<NodeI
 	return fn === RNode.strictlyEnclosingFunction(call, idMap) ? frames : [];
 }
 
+/** The frame whose call hands the argument `argument`, the innermost one if none does. */
+function handingFrame(frames: readonly CallFrame[], argument: NodeId, idMap: AstIdMap): number {
+	const call = callOfArgument(argument, idMap);
+	const at = frames.findLastIndex(f => f.call === call);
+	return at < 0 ? frames.length - 1 : at;
+}
+
 /**
  * What the call binds a free variable of the function it calls to, if it binds any of the definitions the variable
  * is linked to on calls (`DefinedByOnCall`): read in the frame of that call, the variable sees those and none of
@@ -948,7 +956,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		} else {
 			const top = frames.at(-1);
 			const ownParameter = top !== undefined && isParameterOf(id, top.fn, idMap);
-			const inCall = ownParameter ? top.call : contextCallOf(id, idMap, callContext);
+			/* an argument handed on through the dots of the calls around comes from one of them */
+			const contextCall = ownParameter ? undefined : contextCallOf(id, idMap, callContext);
+			const inCalls = ownParameter ? frames.map(f => f.call) : contextCall === undefined ? undefined : [contextCall];
 			/* a definition holds what it is defined by, what it reads (the binding a `<<-` replaces) is not its value */
 			const flow = t === VertexType.VariableDefinition ? DefinitionValueFlowEdges : ValueFlowEdges;
 			const bound = top === undefined || ownParameter ? undefined : boundByCall(id, top.call, outgoingEdges, graph);
@@ -958,19 +968,21 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			}
 			inFrame?.replaced.forEach(r => replaced.add(r));
 			for(const [targetId, edge] of outgoingEdges) {
-				if((inCall !== undefined && !followsInCall(outgoingEdges, targetId, edge, inCall, idMap))
+				if((inCalls !== undefined && !followsInCall(outgoingEdges, targetId, edge, inCalls, idMap))
 					|| (inFrame !== undefined && !inFrame.keeps(targetId)) || replaced.has(targetId)
 					|| (bound !== undefined && DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) && !bound.has(targetId))) {
 					continue;
 				}
 				/* only edges the value flows along, a closure reading what its scope binds is linked both ways (`Reads` and `DefinedByOnCall`) */
 				if(DfEdge.hasAnyType(edge) && DfEdge.doesNotIncludeType(edge, ~flow)) {
+					const handing = ownParameter && DfEdge.includesType(edge, EdgeType.DefinedByOnCall) ? handingFrame(frames, targetId, idMap) : undefined;
 					const next = top === undefined ? frames
-						: ownParameter && DfEdge.includesType(edge, EdgeType.DefinedByOnCall) ? frames.slice(0, -1)
+						: handing !== undefined ? frames.slice(0, handing)
 							: inSameFrame(targetId, top.fn, graph, idMap) ? frames : [];
 					/* a function reads what its scope binds when it is called, so leaving its frame that way, the read is where the call is */
 					const runs = next === frames ? loops.along(id, targetId, outgoingEdges, iterations)
-						: top !== undefined && !ownParameter ? loops.along(top.call, targetId, outgoingEdges, top.runs ?? []) : [];
+						: handing !== undefined ? frames[handing].runs ?? []
+							: top !== undefined && !ownParameter ? loops.along(top.call, targetId, outgoingEdges, top.runs ?? []) : [];
 					if(runs !== undefined) {
 						enqueue(targetId, next, runs);
 					}

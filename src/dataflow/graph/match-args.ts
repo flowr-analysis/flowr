@@ -5,10 +5,9 @@
  * @lintIgnore use-instead
  */
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowGraph, FunctionArgument } from './graph';
 import { DfgVertex } from './vertex';
 import { EdgeType } from './edge';
@@ -19,6 +18,10 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../util/range';
 import type { SigParameter } from '../../project/sigdb/decode';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { signatureDbOf, type SignatureDb } from '../../project/sigdb/signature-db';
 import { OriginType } from '../origin/dfg-get-origin';
@@ -99,32 +102,43 @@ export const MatchArgs = {
 	/**
 	 * Binds a call's graph `args` to the `params` of the definition it calls **and mutates `graph`**, adding an
 	 * {@link EdgeType.DefinesOnCall} and a {@link EdgeType.DefinedByOnCall} edge per bound pair. It is the only
-	 * member here that writes anything.
+	 * member here that writes anything. Dots handed on (`g(...)`) stand for the arguments each known call of the
+	 * function around hands to its dots (see {@link forwardedArguments}), and a dots parameter the body reads only by
+	 * position (`..2`, `...elt(2)`) binds each argument to the reads of its position (see {@link elementReadsOf}).
 	 * @param args   - The arguments as the graph holds them.
 	 * @param params - The parameters of the called definition, in order.
 	 * @param graph  - The graph the edges are added to.
 	 * @returns      The argument id to parameter id mapping the edges were drawn for.
 	 */
 	onCallAndLink(this: void, args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-		const matched = matchArgumentsToParameters(graphArgumentNames(args), params.map(p => p?.special ? DotsParameterName : p?.name?.content));
+		const names = params.map(p => p?.special ? DotsParameterName : p?.name?.content);
 		const maps = new Map<NodeId, NodeId>();
-		for(let i = 0; i < args.length; i++) {
-			const arg = args[i];
-			if(arg === EmptyArgument) {
-				continue;
+		const expanded = forwardedArguments(args, graph);
+		if(expanded !== undefined) {
+			/* what a call linked before the calls handing on the dots were known no longer stands for them */
+			for(const arg of handedOnDotsOf(args, graph)) {
+				for(const param of params) {
+					graph.removeEdgeType(arg, param.name.info.id, EdgeType.DefinesOnCall);
+					graph.removeEdgeType(param.name.info.id, arg, EdgeType.DefinedByOnCall);
+				}
 			}
-			const param = matched[i];
-			const pid = param === undefined ? undefined : params[param].name?.info.id;
-			const aid = arg.nodeId;
-			if(pid === undefined) {
-				dataflowLogger.warn(`skipping argument ${i} (id: ${aid}) as there is no corresponding parameter - R should block that`);
-				continue;
-			}
-			graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
-			graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
-			maps.set(aid, pid);
+		}
+		for(const alternative of expanded ?? [args]) {
+			linkArguments(alternative, params, names, graph, maps);
 		}
 		return maps;
+	},
+	/**
+	 * Whether the call hands on the dots of the function it is in (`g(...)`), so that what it binds depends on the calls
+	 * of that function, see {@link MatchArgs.onCallAndLink}.
+	 * @example
+	 * ```ts
+	 * // `f <- function(...) g(...)`
+	 * MatchArgs.handsOnDots(argsOfTheCallToG, graph); // true
+	 * ```
+	 */
+	handsOnDots(this: void, args: readonly FunctionArgument[], graph: DataflowGraph): boolean {
+		return args.some(a => dotsHandedOnBy(a, graph) !== undefined);
 	},
 	/**
 	 * Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them
@@ -216,6 +230,180 @@ function formalsOf<Info extends ParentInformation>(this: void, call: RFunctionCa
 		}
 	}
 	return undefined;
+}
+
+/** At most this many argument lists the dots handed on through calls stand for, more make the binding unknown. */
+const MaxDotsExpansions = 16;
+
+/** The dots parameter the argument hands on (`g(...)`), if it is just that. */
+function dotsHandedOnBy(arg: FunctionArgument, graph: DataflowGraph): NodeId | undefined {
+	if(arg === EmptyArgument || FunctionArgument.isNamed(arg)) {
+		return undefined;
+	}
+	const node = graph.idMap?.get(arg.nodeId);
+	if(!RSymbol.is(node) || node.content !== DotsParameterName) {
+		return undefined;
+	}
+	const read = Dataflow.targetsOf(graph, arg.nodeId, EdgeType.Reads);
+	return read.length === 1 && definitionOfParameter(read[0], graph) !== undefined ? read[0] : undefined;
+}
+
+/** The ids of the arguments handing on dots, see {@link dotsHandedOnBy}. */
+function handedOnDotsOf(args: readonly FunctionArgument[], graph: DataflowGraph): NodeId[] {
+	return args.flatMap(a => dotsHandedOnBy(a, graph) === undefined ? [] : [FunctionArgument.getId(a)]).filter(isNotUndefined);
+}
+
+/** The function definition whose parameter `id` names. */
+function definitionOfParameter(id: NodeId, graph: DataflowGraph): RFunctionDefinition<ParentInformation> | undefined {
+	const idMap = graph.idMap;
+	const parameter = idMap?.get(idMap.get(id)?.info.parent ?? -1);
+	const definition = RParameter.is(parameter) ? idMap?.get(parameter.info.parent ?? -1) : undefined;
+	return RFunctionDefinition.is(definition) ? definition : undefined;
+}
+
+/**
+ * The argument lists `args` stands for once the dots it hands on (`g(...)`) are replaced, one per chain of known calls
+ * handing them on, each with the arguments these calls hand to the dots in order and by their names. `undefined` if
+ * `args` hands on no dots, or a function handing them on has a call flowR does not know the arguments of.
+ * @example
+ * ```ts
+ * // `f <- function(...) g(...)` called as `f(b = 1, a = 3)`: `g(...)` binds as `g(b = 1, a = 3)`
+ * forwardedArguments(argsOfTheCallToG, graph); // [[b = 1, a = 3]]
+ * ```
+ */
+function forwardedArguments(args: readonly FunctionArgument[], graph: DataflowGraph, seen: Set<NodeId> = new Set()): FunctionArgument[][] | undefined {
+	if(!args.some(a => dotsHandedOnBy(a, graph) !== undefined)) {
+		return undefined;
+	}
+	let lists: FunctionArgument[][] = [[]];
+	for(const arg of args) {
+		const dots = dotsHandedOnBy(arg, graph);
+		const options = dots === undefined ? [[arg]] : handedToDots(dots, graph, seen);
+		if(options === undefined) {
+			return undefined;
+		}
+		lists = lists.flatMap(l => options.map(o => [...l, ...o]));
+		if(lists.length > MaxDotsExpansions) {
+			return undefined;
+		}
+	}
+	return lists;
+}
+
+/** Per known call of the function with the dots parameter `dots`, the arguments it hands to them, see {@link forwardedArguments}. */
+function handedToDots(dots: NodeId, graph: DataflowGraph, seen: Set<NodeId>): FunctionArgument[][] | undefined {
+	const definition = definitionOfParameter(dots, graph);
+	if(definition === undefined || seen.has(dots)) {
+		return undefined;
+	}
+	const names = definition.parameters.map(p => p.special ? DotsParameterName : p.name.content);
+	const position = names.indexOf(DotsParameterName);
+	const callers = Dataflow.sourcesOf(graph, definition.info.id, EdgeType.Calls);
+	const lists: FunctionArgument[][] = [];
+	seen.add(dots);
+	try {
+		for(const caller of callers) {
+			const call = graph.getVertex(caller);
+			/* a call that runs the function with arguments of its own making (`lapply(x, f)`) hands on what flowR does not know */
+			if(!DfgVertex.isFunctionCall(call) || (call.origin !== 'unnamed' && !DfgVertex.hasOrigin(call, BuiltInProcName.Function))) {
+				return undefined;
+			}
+			const matched = matchArgumentsToParameters(graphArgumentNames(call.args), names);
+			const toDots = call.args.filter((a, i) => a !== EmptyArgument && matched[i] === position);
+			const handed = forwardedArguments(toDots, graph, seen);
+			if(handed === undefined && toDots.some(a => dotsHandedOnBy(a, graph) !== undefined)) {
+				return undefined;
+			}
+			lists.push(...handed ?? [toDots]);
+		}
+	} finally {
+		seen.delete(dots);
+	}
+	return callers.length === 0 || lists.length > MaxDotsExpansions ? undefined : lists;
+}
+
+/**
+ * The reads of the dots parameter `dots` per position they read (`..2`, `...elt(2)`), `undefined` unless the body
+ * reads the dots by position only.
+ */
+function elementReadsOf(dots: NodeId, graph: DataflowGraph): ReadonlyMap<number, readonly NodeId[]> | undefined {
+	const byPosition = new Map<number, NodeId[]>();
+	for(const read of Dataflow.sourcesOf(graph, dots, EdgeType.Reads)) {
+		const position = positionReadBy(graph.idMap?.get(read));
+		if(position === undefined) {
+			return undefined;
+		}
+		byPosition.set(position, [...byPosition.get(position) ?? [], read]);
+	}
+	return byPosition.size === 0 ? undefined : byPosition;
+}
+
+/** The built-in reading an element of the dots by its position. */
+const DotsElement = '...elt';
+
+/** The position of the dots `node` reads, as `..2` or `...elt(2)` do. */
+function positionReadBy(node: RNode<ParentInformation> | undefined): number | undefined {
+	if(RSymbol.is(node)) {
+		const position = /^\.\.(\d+)$/.exec(Identifier.getName(node.content))?.[1];
+		return position === undefined ? undefined : Number(position);
+	}
+	const first = RFunctionCall.isNamed(node, DotsElement) && node.arguments.length === 1 ? RArgument.valueOf(node.arguments[0]) : undefined;
+	const position = RNumber.literalValueOf(first);
+	return position !== undefined && Number.isInteger(position) && position > 0 ? position : undefined;
+}
+
+/**
+ * Binds `args` to `params` named `names`, see {@link MatchArgs.onCallAndLink}. Dots handed on that stand for nothing
+ * known may fill any parameter no other argument takes.
+ */
+function linkArguments(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], names: readonly (string | undefined)[], graph: DataflowGraph, maps: Map<NodeId, NodeId>): void {
+	const unknown = handedOnDotsOf(args, graph);
+	const known = unknown.length === 0 ? args : args.filter(a => !unknown.includes(FunctionArgument.getId(a) ?? ''));
+	const matched = matchArgumentsToParameters(graphArgumentNames(known), names);
+	const dots = names.indexOf(DotsParameterName);
+	const elements = dots < 0 ? undefined : elementReadsOf(params[dots].name.info.id, graph);
+	const link = (aid: NodeId, pid: NodeId) => {
+		graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
+		graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
+	};
+	let position = 0;
+	for(let i = 0; i < known.length; i++) {
+		const arg = known[i];
+		if(arg === EmptyArgument) {
+			continue;
+		}
+		const param = matched[i];
+		const pid = param === undefined ? undefined : params[param].name?.info.id;
+		const aid = arg.nodeId;
+		if(pid === undefined) {
+			dataflowLogger.warn(`skipping argument ${i} (id: ${aid}) as there is no corresponding parameter - R should block that`);
+			continue;
+		} else if(param === dots && elements !== undefined) {
+			/* only the reads of its position see the argument, and the call forces it only if one does */
+			const reads = elements.get(++position) ?? [];
+			reads.forEach(r => link(aid, r));
+			if(reads.length > 0) {
+				maps.set(aid, pid);
+			}
+			continue;
+		}
+		link(aid, pid);
+		maps.set(aid, pid);
+	}
+	const taken = new Set(matched);
+	for(const arg of unknown) {
+		for(const [param, { name }] of params.entries()) {
+			if(taken.has(param) && param !== dots) {
+				continue;
+			}
+			for(const target of param === dots && elements !== undefined ? [...elements.values()].flat() : [name.info.id]) {
+				link(arg, target);
+			}
+			if(!maps.has(arg)) {
+				maps.set(arg, name.info.id);
+			}
+		}
+	}
 }
 
 /** R's default search path, front to back: whatever the code attaches masks the base packages, `base` last. */

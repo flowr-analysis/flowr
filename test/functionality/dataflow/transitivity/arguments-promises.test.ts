@@ -9,7 +9,11 @@ describe('Transitivity through arguments and promises, checked against R', withT
 			{ name: 'a default referring to a local defined later', code: 'f <- function(b = y) { y <- 3; b }\nprint(f())' },
 			{ name: 'a default reading a global', code: 'k <- 6\nf <- function(b = k) g(b)\ng <- function(v) v\nprint(f())' },
 			{ name: 'dots forwarded through three calls', code: 'f <- function(...) g(...)\ng <- function(...) h(...)\nh <- function(a, b) a - b\nx <- 10\nprint(f(b = 1, a = x))' },
-			{ name: 'a dots element by position', code: 'u <- 1\nv <- 5\nf <- function(...) ..2\nprint(f(u, v))', dropped: 'u <- 1', imprecise: 'keeps u <- 1, the first dots element' },
+			{ name: 'a dots element by position', code: 'u <- 1\nv <- 5\nf <- function(...) ..2\nprint(f(u, v))', dropped: 'u <- 1' },
+			{ name: 'a dots element by ...elt', code: 'u <- 1\nv <- 5\nf <- function(...) ...elt(2)\nprint(f(u, v))', dropped: 'u <- 1' },
+			{ name: 'a dots element by position handed on', code: 'u <- 1\nv <- 5\nf <- function(...) g(...)\ng <- function(...) ..2\nprint(f(u, v))' },
+			{ name: 'dots handed on after a positional argument', code: 'f <- function(x, ...) g(...)\ng <- function(a, b) a\nh <- function(...) f(9, ...)\np <- 4\nq <- 7\nprint(h(p, q))' },
+			{ name: 'dots handed on beside a named argument', code: 'f <- function(...) g(k = 2, ...)\ng <- function(a, k) a\nx <- 8\nprint(f(x))' },
 			{ name: 'dots collected into a list', code: 'x <- 3\nf <- function(...) { l <- list(...); l$b }\nprint(f(a = 1, b = x))' },
 			{ name: 'a missing argument filled in', code: 'k <- 11\nf <- function(x) { if(missing(x)) x <- k; x }\nprint(f())' },
 			{ name: 'a partially matched argument', code: 'x <- 6\nf <- function(value) value\nprint(f(val = x))' },
@@ -55,7 +59,10 @@ describe('Transitivity through arguments and promises, checked against R', withT
 		resolvesLikeR(parser, 'a default referring to another parameter', 'f <- function(a, b = a * 2) b\ny <- f(4)\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'a default referring to a local defined later', 'f <- function(b = y) { y <- 3; b }\nz <- f()\ncat(z)', '3@z');
 		resolvesLikeR(parser, 'a default refers to a parameter changed before it is forced', 'f <- function(a, b = a) { a <- 10; b }\ny <- f(1)\ncat(y)', '3@y');
-		resolvesLikeR(parser, 'dots forwarded through three calls', 'f <- function(...) g(...)\ng <- function(...) h(...)\nh <- function(a, b) b\ny <- f(b = 1, a = 3)\ncat(y)', '5@y', { imprecise: 'unknown, forwarded dots are not matched to parameters' });
+		resolvesLikeR(parser, 'dots forwarded through three calls', 'f <- function(...) g(...)\ng <- function(...) h(...)\nh <- function(a, b) b\ny <- f(b = 1, a = 3)\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dots element by position handed on', 'u <- 1\nv <- 5\nf <- function(...) g(...)\ng <- function(...) ..2\ny <- f(u, v)\ncat(y)', '6@y');
+		resolvesLikeR(parser, 'dots handed on after a positional argument', 'f <- function(x, ...) g(...)\ng <- function(a, b) a\nh <- function(...) f(9, ...)\ny <- h(4, 7)\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'dots handed on by two callers', 'f <- function(...) g(...)\ng <- function(a, b) b\ny <- f(1, 2)\nz <- f(b = 3, a = 4)\ncat(y)', '5@y');
 		resolvesLikeR(parser, 'an argument never forced', 'x <- 1\nf <- function(a) 2\nf(x <- 5)\ncat(x)', '4@x');
 		resolvesLikeR(parser, 'an argument forced', 'x <- 1\nf <- function(a) a\nf(x <- 5)\ncat(x)', '4@x');
 		resolvesLikeR(parser, 'a default never forced', 'x <- 1\nf <- function(b = (x <<- 7)) 0\nf()\ncat(x)', '4@x');

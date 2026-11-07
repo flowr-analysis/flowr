@@ -1071,6 +1071,8 @@ export const BaseDefinitions = [
 	fn(base('nargs', 'sys.nframe'), BuiltInProcName.Default,
 		{ props: CallProp.Lang | CallProp.NonDet, frame: ArgProp.Presence, sig: sig({ '...': ArgProp.Forced }) }
 	),
+	/* they read the dots of the function they are called in, `...elt(2)` its second element */
+	fn(base('...elt', '...length', '...names'), BuiltInProcName.Default, { props: CallProp.Pure, readsDots: true, sig: sig({ n: ArgProp.Value }) }),
 	/* `alist` keeps its arguments unevaluated */
 	fn(base('alist'), BuiltInProcName.Default, { props: CallProp.Lang, sig: sig({ '...': ArgProp.Nse }) }),
 	/* `evalq(expr, envir)` is `local(expr, envir)` that runs in the calling frame without `envir` */

@@ -258,6 +258,15 @@ function globalPositionOf<OtherInfo>(
 	return stackEnvirResolution({ current: REnvironment.findGlobal(data.environment.current), level: 0 }, node.info.id, node.lexeme ?? '', data);
 }
 
+/** The environment the argument `arg` given for `formal` names, where a position formal may name the global environment by its number. */
+export function resolveEnvirOrPosition<OtherInfo>(
+	arg:    PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
+	formal: string,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
+): EnvirResolution<OtherInfo> | undefined {
+	return envirOf(resolveArgToEnvirOrAmbiguous(arg, data)) ?? (EnvirPositionFormals.includes(formal) ? globalPositionOf(arg, data) : undefined);
+}
+
 /** The first of `formals` whose argument resolves to a tracked environment; ambiguity is left to the caller. */
 export function resolveFirstEnvirArg<OtherInfo>(
 	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -271,8 +280,7 @@ export function resolveFirstEnvirArg<OtherInfo>(
 		if(arg === undefined) {
 			continue;
 		}
-		const resolution = envirOf(resolveArgToEnvirOrAmbiguous(arg, data))
-			?? (EnvirPositionFormals.includes(formal) ? globalPositionOf(arg, data) : undefined);
+		const resolution = resolveEnvirOrPosition(arg, formal, data);
 		if(resolution !== undefined) {
 			return resolution;
 		}

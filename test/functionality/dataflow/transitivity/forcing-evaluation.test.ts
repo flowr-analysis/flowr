@@ -12,7 +12,7 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 		{ name: 'exit hooks put first', code: 'f <- function() { on.exit(x <<- 1); on.exit(x <<- 2, add = TRUE, after = FALSE) }\nf()\nprint(x)' },
 		{ name: 'a seed set in an lapply callback', code: 'invisible(lapply(1, function(i) set.seed(42)))\nprint(runif(1))' },
 		{ name: 'a working directory restored by an exit hook', code: 'dir.create("sub")\nf <- function() { old <- setwd("sub"); on.exit(setwd(old)); 1 }\nf()\nprint(basename(getwd()))' },
-		{ name: 'a package attached in a function', code: 'f <- function() library(R6)\nf()\nprint(exists("R6Class"))', red: 'R prints TRUE, the slice drops f() which attaches R6' },
+		{ name: 'a package attached in a function', code: 'f <- function() library(R6)\nf()\nprint(exists("R6Class"))' },
 		{ name: 'a list attached in a function', code: 'f <- function() attach(list(qq = 3), name = "x")\nf()\nprint(qq)' },
 		{ name: 'suppressWarnings around a call', code: 'n <- 0\nf <- function() n <<- 1\nsuppressWarnings(f())\nprint(n)' },
 		{ name: 'local around a call', code: 'n <- 0\nf <- function() n <<- 1\nlocal(f())\nprint(n)' },

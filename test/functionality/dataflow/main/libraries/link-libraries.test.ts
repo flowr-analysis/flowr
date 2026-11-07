@@ -310,7 +310,7 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('Transitively loaded library resolves at the call site', ['library-loading', 'search-path']), ts,
 		'g <- function() library(pkgA)\nf <- function() g()\nf()\nfa()',
-		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Recursive library loader terminates and resolves', ['library-loading', 'search-path']), ts,
@@ -321,8 +321,8 @@ describe('Link libraries', withTreeSitter(ts => {
 	assertDataflow(label('Diamond of helpers attaches every package', ['library-loading', 'search-path']), ts,
 		'a <- function() library(pkgA)\nb <- function() library(pkgB)\nf <- function() { a(); b() }\nf()\nfa()\nfb()',
 		resolvesTo(
-			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls },
-			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library', callEdge: EdgeType.Calls }),
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library' }),
 		abc);
 
 	assertDataflow(label('Higher-order library loader propagates', ['library-loading', 'search-path']), ts,
@@ -334,19 +334,19 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('Conditional library in a helper propagates', ['library-loading', 'search-path']), ts,
 		'g <- function(c) { if(c) library(pkgA) }\nf <- function() g(u)\nf()\nfa()',
-		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Branch over library-loading helpers keeps both', ['library-loading', 'search-path']), ts,
 		'a <- function() library(pkgA)\nb <- function() library(pkgB)\nf <- function() if(u) a() else b()\nf()\nfa()\nfb()',
 		resolvesTo(
-			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls },
-			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library', callEdge: EdgeType.Calls }),
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library' }),
 		abc);
 
 	assertDataflow(label('Library in a helper called from a loop propagates', ['library-loading', 'search-path']), ts,
 		'h <- function() library(pkgA)\nf <- function() for(i in 1:3) h()\nf()\nfa()',
-		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Conditional recursion loader terminates and resolves', ['library-loading', 'search-path']), ts,

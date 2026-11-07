@@ -17,6 +17,7 @@ import type { REnvironmentInformation } from '../../../../environments/environme
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from '../../../../environments/ambient-state-name';
 import { resolveByName } from '../../../../environments/resolve-by-name';
+import { readRemovals } from '../../../../environments/apply-kill';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -161,6 +162,9 @@ export function processAllArguments<OtherInfo>(
 				: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
 					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
+			if(tryToResolve !== undefined) {
+				readRemovals(finalGraph, inId, ingoing.name, data.environment);
+			}
 			/* unless one target is certainly of the current scope, a higher one may still be meant */
 			let mayHaveHigherTarget = true;
 			for(const resolved of tryToResolve ?? []) {

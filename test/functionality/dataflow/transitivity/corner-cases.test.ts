@@ -26,7 +26,7 @@ describe('Transitivity in corner cases, checked against R', withTreeSitter(parse
 		{ name: 'delayedAssign', code: 'delayedAssign("v", k * 2)\nk <- 3\nprint(v)' },
 		{ name: 'eval in parent frame', code: 'f <- function() eval(quote(x <- 5), parent.frame())\nf()\nprint(x)' },
 		{ name: 'function lookup skips non functions', code: 'f <- function() 1\ng <- function() { f <- 2; f() }\nprint(g())' },
-		{ name: 'rm of a global in a function', code: 'x <- 1\nf <- function() rm("x", envir = .GlobalEnv)\nf()\nprint(exists("x"))', red: 'R prints FALSE, the slice drops f() which removes the global x' },
+		{ name: 'rm of a global in a function', code: 'x <- 1\nf <- function() rm("x", envir = .GlobalEnv)\nf()\nprint(exists("x"))' },
 		{ name: 'env var set two calls deep', code: 'f <- function() Sys.setenv(FOO = "a")\ng <- function() f()\ng()\nprint(Sys.getenv("FOO"))' },
 		{ name: 'seed set two calls deep', code: 'f <- function() set.seed(1)\ng <- function() f()\ng()\nprint(runif(1))' },
 		{ name: 'Reduce with init global', code: 'k <- 5\nprint(Reduce(function(a, b) a + b, 1:3, accumulate = TRUE, k)[4])' },

@@ -14,9 +14,10 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
-import { applyKills } from '../../../../../environments/apply-kill';
+import { applyGlobalKills, applyKills } from '../../../../../environments/apply-kill';
+import { EdgeType } from '../../../../../graph/edge';
 import type { EnvirResolution } from './built-in-envir-utils';
-import { envirOf, resolveArgToEnvirOrAmbiguous } from './built-in-envir-utils';
+import { resolveEnvirOrPosition } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -241,12 +242,15 @@ export function processRm<OtherInfo>(
 	const targets = collectRmTargets(args, data);
 
 	if(targets.frame !== undefined) {
+		const envir = resolveEnvirOrPosition(targets.frame.arg, targets.frame.formal, data);
+		/* a function removing from the global frame removes for its callers, as `<<-` defines for them */
+		if(envir?.stack === 'global') {
+			res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
+			return { ...res, environment: applyGlobalKills(res.environment, buildKills(targets, data.cds, rootId)) };
+		}
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope
-		if(targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
-			const envir = envirOf(resolveArgToEnvirOrAmbiguous(targets.frame.arg, data));
-			if(envir) {
-				return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
-			}
+		if(envir !== undefined && envir.stack === undefined && targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
+			return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
 		}
 		// any other frame we cannot identify, so the one we are analyzing stays untouched
 		return res;

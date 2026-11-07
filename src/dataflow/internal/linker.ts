@@ -265,7 +265,16 @@ function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunc
 		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default)));
 }
 
-/** Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function. */
+/**
+ * Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function.
+ * It needs the id map of the graph and answers `false` without one, and it walks up the AST from `target`, so ask it
+ * for the few reads a call has, not for every vertex.
+ * @example
+ * ```ts
+ * // for `f(x)`, the read of `x` is within an argument of the call to `f`
+ * isWithinArgumentOf(graph, callIdOfF, readIdOfX); // true
+ * ```
+ */
 export function isWithinArgumentOf(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -330,6 +339,7 @@ export function linkFunctionCalls(
 
 /**
  * convenience function returning all known call targets, as well as the name source which defines them
+ * Over-approximates for calls through reads and aliases (all functions the read may evaluate to are returned).
  * @param resolver - shares the walk with the other calls it resolves targets for, as long as the graph does not change
  * @useInstead {@link Dataflow.callTargetsOf}
  */
@@ -509,6 +519,15 @@ const ReachesNothing: Reached = new Set();
  *
  * A state is a vertex, whether an access led to it, and the call whose return led into its body, as a parameter that
  * call binds holds only what the call passes. All states of a strongly connected component reach the same.
+ *
+ * Keep in mind that a resolver is only valid for the graph state it was created for (it caches what it found, and
+ * adding edges afterwards makes its answers stale), that it trades memory for time (one entry per state it walked),
+ * and that it is not needed for a single call, where {@link Dataflow.callTargetsOf} does without. Drop it once you are done.
+ * @example
+ * ```ts
+ * const resolver = new LinkedFunctionResolver(graph);
+ * const [definitions, builtIns] = resolver.resolve(new Set([readId]));
+ * ```
  */
 export class LinkedFunctionResolver {
 	private readonly graph:     DataflowGraph;
@@ -525,7 +544,10 @@ export class LinkedFunctionResolver {
 		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), ReachesNothing, unionOfSets);
 	}
 
-	/** The function definitions and built-ins the reads with the given ids may evaluate to. */
+	/**
+	 * The function definitions and built-ins the reads with the given ids may evaluate to.
+	 * Reads that lead to no function contribute nothing, and the result may hold the same definition for several reads.
+	 */
 	public resolve(reads: ReadonlySet<NodeId>): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
 		const definitions = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 		const builtIns = new Set<BuiltIn>();

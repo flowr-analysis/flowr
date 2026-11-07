@@ -65,7 +65,14 @@ function ownDefinitions(id: Identifier, environment: REnvironmentInformation): r
 	return own !== undefined && own.length > 0 ? own : undefined;
 }
 
-/** The environment the reference `ref` resolves in: the global one for a read evaluated there, `env` otherwise. */
+/**
+ * The environment the reference `ref` resolves in: the global one for a read evaluated there, `env` otherwise.
+ * Use it before resolving a reference that may be global (as with `<<-`), instead of resolving in the current frame.
+ * @example
+ * ```ts
+ * const defs = resolveByName(ref.name, scopeOf(ref, environment), ReferenceType.Unknown);
+ * ```
+ */
 export function scopeOf(ref: Pick<IdentifierReference, 'global'>, env: REnvironmentInformation): REnvironmentInformation {
 	return ref.global ? { current: REnvironment.findGlobal(env.current), level: 0 } : env;
 }

@@ -143,6 +143,17 @@ export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identi
 /**
  * What flowR states about the call `id` makes, together with the name the call resolved to.
  * Only the graph is needed; the `fallback` environment decides for a call that kept none (and the default built-ins if there is none).
+ * Pass the whole dataflow information when you have it, and the bare graph when you only hold the graph (e.g., inside a graph visitor).
+ * Keep in mind that the name is the one the call resolved to (`dplyr::filter` for a `filter` call after `library(dplyr)`), that
+ * `undefined` means that the id is no function call, and that a user-defined function that shadows a built-in is answered with
+ * the props of the one that is called, which the graph settled before.
+ * @example
+ * ```ts
+ * const df = await analyzer.dataflow();
+ * const props = callFnProps(callId, df);
+ * props !== undefined && FunctionSemantics.call.props.hasAny(props, SemanticCallTag.Reads);
+ * const withoutInfo = callFnProps(callId, df.graph, df.environment); // the same
+ * ```
  */
 export function callFnProps(id: NodeId, graph: DataflowGraph, fallback?: REnvironmentInformation): (BuiltInFnInfo & { name: Identifier }) | undefined;
 export function callFnProps(id: NodeId, info: Pick<DataflowInformation, 'graph' | 'environment'>): (BuiltInFnInfo & { name: Identifier }) | undefined;
@@ -265,6 +276,13 @@ export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, vers
 /**
  * The package {@link fnInfo} answers `name` for and the signature database entry it finds there, without the
  * props of everything the entry calls, for a caller after the formals or the entry alone.
+ * It is the cheap half of {@link fnInfo}: the package is `undefined` for a name that no package exports, and the entry is
+ * `undefined` without a signature database, so check both before you rely on them.
+ * @example
+ * ```ts
+ * const { pkg, entry } = fnEntry(Identifier.make('lead', 'dplyr'), analyzer.inspectContext());
+ * entry?.signature; // the formals the database knows, if it carries dplyr
+ * ```
  */
 export function fnEntry(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): { readonly pkg?: string, readonly qualified: Identifier, readonly entry?: DecodedFunction } {
 	const db = signatureDbOf(ctx.deps);

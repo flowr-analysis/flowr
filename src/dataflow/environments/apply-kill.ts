@@ -150,7 +150,10 @@ export function removalsOf(name: Identifier, env: REnvironmentInformation): read
 	return nodes ?? NoRemovals;
 }
 
-/** A read of `name` that still sees a definition depends on the calls that may have removed it. */
+/**
+ * A read of `name` that still sees a definition depends on the calls that may have removed it, so a slice of the read keeps
+ * the `rm(name)` that might have run. Call it after you resolved the read, with the environment the read was resolved in.
+ */
 export function readRemovals(graph: DataflowGraph, read: NodeId, name: Identifier | undefined, env: REnvironmentInformation): void {
 	if(name === undefined) {
 		return;
@@ -222,6 +225,7 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 /**
  * {@link applyKills} on the global frame, as a removal with `envir = .GlobalEnv` within a function does. The removal is
  * marked even if the frame does not bind the name yet, as the function may only be called once it does.
+ * Use it only for kills a function performs on the global frame, as the kills of the current frame go through {@link applyKills}.
  */
 export function applyGlobalKills(env: REnvironmentInformation, kills: readonly KillReference[]): REnvironmentInformation {
 	const current = env.current.clone(true);

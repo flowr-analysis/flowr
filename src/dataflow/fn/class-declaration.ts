@@ -372,7 +372,15 @@ export function s3DispatchClassesOf(id: NodeId, info: ResolveInfo & { readonly g
 	return classes.length > 0 && classes.every(isNotUndefined) ? classes : undefined;
 }
 
-/** The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them. */
+/**
+ * The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them.
+ * The walk goes up the AST from the function, so it costs the nesting depth of the method, and a function nested in a method still counts as its method.
+ * @example
+ * ```ts
+ * // R6::R6Class("A", public = list(set = function(v) { self$x <- v }))
+ * instanceBindingsOfMethod(setFunctionId, df.graph, idMap); // ['self', 'private']
+ * ```
+ */
 export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly string[] | undefined {
 	for(let node = idMap.get(fn); node !== undefined; node = RNode.directParent(node, idMap)) {
 		const vertex = RFunctionCall.is(node) ? graph.getVertex(node.info.id) : undefined;

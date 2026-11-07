@@ -9,7 +9,7 @@ import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowGraph, FunctionArgument } from './graph';
-import { DfgVertex } from './vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from './vertex';
 import { EdgeType } from './edge';
 import { dataflowLogger } from '../logger';
 import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
@@ -127,6 +127,54 @@ export const MatchArgs = {
 			linkArguments(alternative, params, names, graph, maps);
 		}
 		return maps;
+	},
+	/**
+	 * Leaves unforced what the known calls of a function hand to its dots that no read of the dots sees once they are
+	 * handed on, as R never evaluates it: with `f <- function(...) g(...)` and `g <- function(a, b) b`, `f(u, v)`
+	 * forces `v` only. Run it once every call is linked, see {@link seenThroughDots}.
+	 * @example
+	 * ```ts
+	 * MatchArgs.unforceUnreadDots(graph); // `f(u, v)` above no longer reads `u`
+	 * ```
+	 */
+	unforceUnreadDots(this: void, graph: DataflowGraph): void {
+		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+			const definition = graph.idMap?.get(id);
+			const position = RFunctionDefinition.is(definition) ? definition.parameters.findIndex(p => p.special) : -1;
+			const dots = position < 0 ? undefined : (definition as RFunctionDefinition<ParentInformation>).parameters[position].name.info.id;
+			if(dots === undefined || !vertex.params[String(dots)]) {
+				continue;
+			}
+			const names = parameterNames((definition as RFunctionDefinition<ParentInformation>).parameters);
+			for(const caller of Dataflow.sourcesOf(graph, id, EdgeType.Calls)) {
+				const call = graph.getVertex(caller);
+				if(!DfgVertex.isFunctionCall(call) || (call.origin !== 'unnamed' && !DfgVertex.hasOrigin(call, BuiltInProcName.Function))) {
+					continue;
+				}
+				const matched = matchArgumentsToParameters(graphArgumentNames(call.args), names);
+				const toDots = call.args.filter((a, i) => a !== EmptyArgument && matched[i] === position);
+				/* dots the call hands on in turn stand for the arguments of the calls around, which it reads as well */
+				const lists = handedOnDotsOf(toDots, graph).length === 0 ? [toDots] : forwardedArguments(toDots, graph) ?? [];
+				const seen = new Map<NodeId, boolean>();
+				for(const list of lists) {
+					const inList = seenThroughDots(dots, list, graph, new Set());
+					list.forEach((arg, i) => {
+						const aid = FunctionArgument.getId(arg);
+						if(aid !== undefined) {
+							seen.set(aid, seen.get(aid) === true || inList?.[i] !== false);
+						}
+					});
+				}
+				for(const [arg, read] of seen) {
+					if(!read) {
+						graph.removeEdgeType(caller, arg, EdgeType.Reads);
+						graph.removeEdgeType(arg, caller, EdgeType.Reads);
+						graph.removeEdgeType(arg, dots, EdgeType.DefinesOnCall);
+						graph.removeEdgeType(dots, arg, EdgeType.DefinedByOnCall);
+					}
+				}
+			}
+		}
 	},
 	/**
 	 * Whether the call hands on the dots of the function it is in (`g(...)`), so that what it binds depends on the calls
@@ -336,6 +384,77 @@ function elementReadsOf(dots: NodeId, graph: DataflowGraph): ReadonlyMap<number,
 		byPosition.set(position, [...byPosition.get(position) ?? [], read]);
 	}
 	return byPosition.size === 0 ? undefined : byPosition;
+}
+
+/** The names of the parameters as {@link matchArgumentsToParameters} takes them. */
+function parameterNames(params: readonly RParameter<ParentInformation>[]): (string | undefined)[] {
+	return params.map(p => p?.special ? DotsParameterName : p?.name?.content);
+}
+
+/** The call whose argument `read` hands on the dots `dots` (`g(...)`), with the position of that argument. */
+function callHandingOn(read: NodeId, dots: NodeId, graph: DataflowGraph): [call: DataflowGraphVertexFunctionCall, at: number] | undefined {
+	const idMap = graph.idMap;
+	const argument = idMap?.get(idMap.get(read)?.info.parent ?? -1);
+	const call = graph.getVertex(argument?.info.parent ?? -1);
+	const at = DfgVertex.isFunctionCall(call) ? call.args.findIndex(a => a !== EmptyArgument && a.nodeId === read) : -1;
+	return at >= 0 && dotsHandedOnBy((call as DataflowGraphVertexFunctionCall).args[at], graph) === dots ? [call as DataflowGraphVertexFunctionCall, at] : undefined;
+}
+
+/**
+ * Per argument of `args` handed to the dots parameter `dots`, whether a read of the dots sees it: one reading its
+ * position (`..2`, `...elt(2)`), or one handing the dots on (`g(...)`) to definitions that read the parameter the
+ * argument binds to there, or see it through their own dots. `undefined` if the dots are read in any other way or
+ * handed on to anything else, for every argument may be seen then.
+ */
+function seenThroughDots(dots: NodeId, args: readonly FunctionArgument[], graph: DataflowGraph, visiting: Set<NodeId>): boolean[] | undefined {
+	if(visiting.has(dots)) {
+		return undefined;
+	}
+	visiting.add(dots);
+	try {
+		const seen = args.map(() => false);
+		for(const read of Dataflow.sourcesOf(graph, dots, EdgeType.Reads)) {
+			const position = positionReadBy(graph.idMap?.get(read));
+			if(position !== undefined) {
+				if(position <= args.length) {
+					seen[position - 1] = true;
+				}
+				continue;
+			}
+			const handing = callHandingOn(read, dots, graph);
+			const targets = handing === undefined ? [] : Dataflow.targetsOf(graph, handing[0].id, EdgeType.Calls);
+			if(handing === undefined || targets.length === 0) {
+				return undefined;
+			}
+			const [call, at] = handing;
+			const list = [...call.args.slice(0, at), ...args, ...call.args.slice(at + 1)];
+			if(handedOnDotsOf(list, graph).length > 0) {
+				return undefined;
+			}
+			for(const target of targets) {
+				const definition = graph.idMap?.get(target);
+				const vertex = graph.getVertex(target);
+				if(!RFunctionDefinition.is(definition) || !DfgVertex.isFunctionDefinition(vertex)) {
+					return undefined;
+				}
+				const names = parameterNames(definition.parameters);
+				const matched = matchArgumentsToParameters(graphArgumentNames(list), names);
+				const inner = names.indexOf(DotsParameterName);
+				const toInner = list.flatMap((a, i) => a !== EmptyArgument && matched[i] === inner ? [i] : []);
+				const innerSeen = toInner.length === 0 ? [] : seenThroughDots(definition.parameters[inner].name.info.id, toInner.map(i => list[i]), graph, visiting);
+				if(innerSeen === undefined) {
+					return undefined;
+				}
+				for(let j = 0; j < args.length; j++) {
+					const param = matched[at + j];
+					seen[j] ||= param === undefined || (param === inner ? innerSeen[toInner.indexOf(at + j)] : vertex.params[String(definition.parameters[param].name.info.id)] === true);
+				}
+			}
+		}
+		return seen;
+	} finally {
+		visiting.delete(dots);
+	}
 }
 
 /** The built-in reading an element of the dots by its position. */

@@ -976,6 +976,7 @@ export function updateNestedFunctionCalls(
 	for(const [args, parameters] of handingOnDots) {
 		FunctionSemantics.call.match.onCallAndLink(args, parameters, graph);
 	}
+	FunctionSemantics.call.match.unforceUnreadDots(graph);
 	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
 	/* a method only a next-method call reaches is linked by no call that resolves what it reads */
 	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => !DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));

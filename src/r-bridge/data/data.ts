@@ -759,7 +759,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									name:        'Dot-Dot-Dot',
 									id:          'formals-dot-dot-dot',
 									supported:   'fully',
-									description: `_The variadic parameter \`...\`, which collects every argument no other formal took._ Passing it on keeps those arguments together, and a call handing it on binds them, with their names, as each known call of the function around hands them over. \`..2\` and \`...elt(2)\` read only the second of them, while a formal behind it is only matched by ${LinkTo('named-arguments', 'its exact name')}.`,
+									description: `_The variadic parameter \`...\`, which collects every argument no other formal took._ Passing it on keeps those arguments together, and a call handing it on binds them, with their names, as each known call of the function around hands them over. \`..2\` and \`...elt(2)\` read only the second of them, and an argument no read sees once handed on is never forced, while a formal behind it is only matched by ${LinkTo('named-arguments', 'its exact name')}.`,
 									example:     codeBlock('r', 'f <- function(...) sum(...)\ng <- function(...) f(..., 1)\ng(2, 3)'),
 									url:         [RLang('Dot-dot-dot', 'Dot_002ddot_002ddot')]
 								},

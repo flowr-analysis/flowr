@@ -46,7 +46,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments', 'formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
 			shell, '\nx. <- function (x) { x }\nfoo(x, x.(y))\nfoo(x, x.(3))\n    ', ['4@foo'], 'x. <- function(x) x\nfoo(x, x.(3))');
 		assertSliced(label('Using ...', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-dot-dot-dot', 'formals-named', 'implicit-return', 'call-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'numbers']),
-			shell, '\nf1 <- function (a,b) { WW }\nf2 <- function (...) { f1(...) }\nx <- 3\nWW <- 4\ny <- 3\nf2(1,x)\n    ', ['7@f2'], 'f1 <- function(a, b) WW\nf2 <- function(...) f1(...)\nx <- 3\nWW <- 4\nf2(1,x)');
+			shell, '\nf1 <- function (a,b) { WW }\nf2 <- function (...) { f1(...) }\nx <- 3\nWW <- 4\ny <- 3\nf2(1,x)\n    ', ['7@f2'], 'f1 <- function(a, b) WW\nf2 <- function(...) f1(...)\nWW <- 4\nf2(1,x)');
 	});
 	describe('Functions using environment', () => {
 		const envCaps: FlowrCapabilityId[] = ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-named', 'implicit-return', 'call-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'binary-operator', 'infix-calls', ...BuiltInOperators.byName['+'].capabilities, 'numbers'];

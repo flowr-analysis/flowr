@@ -25,6 +25,7 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import { linkLateWarningsAsErrors, orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
+import { linkInstantiations } from './internal/process/functions/call/built-in/built-in-s-four';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
 import type { REnvironmentInformation } from './environments/environment';
 import { REnvironment } from './environments/environment';
@@ -665,6 +666,7 @@ function extractDataFlowGraph<OtherInfo>(
 
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	callActiveBindings(df.graph);
+	linkInstantiations(df.graph);
 	readFramesThroughEnvironment(df.graph);
 	df.graph.statementOrder = dfData.statementOrder;
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);

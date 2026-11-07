@@ -14,7 +14,7 @@ export const ClassesDefinitions = [
 		{
 			tags:       [SemanticCallTag.Declares],
 			assignment: { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir' },
-			classDecl:  { system: ClassSystem.S4, nameArg: { idx: 0, name: 'Class' }, relation: 'validity' },
+			classDecl:  { system: ClassSystem.S4, nameArg: { idx: 0, name: 'Class' }, validityArg: { idx: 1, name: 'method' }, relation: 'validity' },
 			props:      CallProp.Scope | CallProp.Invisible,
 			sig:        sig({ Class: ArgProp.NoDefault, method: ArgProp.NoDefault, where: 0 })
 		},
@@ -113,7 +113,8 @@ export const ClassesDefinitions = [
 	),
 	fn(pkg(PkgName.S7, 'S7_dispatch'), BuiltInProcName.S7Dispatch, { libFn: true }, Primitive),
 	/* S4 keeps its classes and generics in string-keyed registries, so a call naming one depends on whatever registered it */
-	fn(methods('new'), BuiltInProcName.S4Use, { classArgs: [{ idx: 0, name: 'Class' }], sig: sig({ Class: ArgProp.NoDefault, '...': 0 }) }),
+	/* fails for an unknown class, a slot of the wrong type, or an object its validity function rejects */
+	fn(methods('new'), BuiltInProcName.S4Use, { classArgs: [{ idx: 0, name: 'Class' }], instantiates: { initializer: 'initialize' }, props: CallProp.Throws, sig: sig({ Class: ArgProp.NoDefault, '...': 0 }) }),
 	fn(methods('getClass', 'getClassDef', 'getSlots', 'slotNames', 'isVirtualClass', 'removeClass', 'resetClass', 'getValidity'), BuiltInProcName.S4Use,
 		{ classArgs: [{ idx: 0, name: 'Class' }] }
 	),
@@ -149,7 +150,8 @@ export const ClassesDefinitions = [
 				containsArg:  { name: 'contains' },
 				/* the modern `slots=` and the historical `representation()` state the same thing */
 				memberArgs:   [{ idx: 1, name: 'representation', typed: true }, { name: 'slots', typed: true }],
-				prototypeArg: { idx: 2, name: 'prototype' }
+				prototypeArg: { idx: 2, name: 'prototype' },
+				validityArg:  { idx: 4, name: 'validity' }
 			},
 			sig: sig({ Class: ArgProp.NoDefault, representation: 0, prototype: 0, contains: 0, validity: 0, access: 0, where: 0, version: 0, sealed: 0, package: 0, S3methods: 0, slots: ArgProp.NoDefault })
 		},

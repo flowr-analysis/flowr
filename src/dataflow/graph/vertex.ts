@@ -126,6 +126,8 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * so no argument's meaning is guessed. See {@link declaredClassesImpl} to collect these across a graph.
 	 */
 	classDecl?:    ClassDeclaration
+	/** For an S4 instantiation (`new("P")`): the classes it creates an instance of, whose validity functions it runs */
+	instantiates?: readonly string[]
 }
 
 /** Describes the processor responsible for a function call */

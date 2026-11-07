@@ -8,10 +8,12 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type ClassArgRef, argForImpl, ClassSystem } from '../../../../../fn/class-declaration';
+import { type ClassArgRef, argForImpl, ClassSystem, declaredClassesImpl, superClassesOfImpl } from '../../../../../fn/class-declaration';
 import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { DfgVertex } from '../../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { Dataflow } from '../../../../../graph/df-helper';
+import type { DataflowGraph } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -41,6 +43,8 @@ export interface S4UseConfig {
 	readonly registersArg?:  ClassArgRef;
 	/** the call hands back a method of the generic its {@link genericArg} names (`getMethod`, `selectMethod`) */
 	readonly returnsMethod?: boolean;
+	/** the call creates an instance of the classes its {@link classArgs} name, running the methods of the `initializer` generic and their validity functions */
+	readonly instantiates?:  { readonly initializer: string };
 }
 
 
@@ -68,8 +72,16 @@ function defineOut<O>(info: DataflowInformation, rootId: NodeId, name: Identifie
 
 /** wires the S4 registrations a call *uses* (the classes and generic its arguments name by string), read against the registry so the call depends on whatever `setClass`/`setGeneric` wrote them */
 export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: NodeId, data: Data<O>, config: S4UseConfig): void {
-	for(const ref of config.classArgs ?? []) {
-		readNames(info, rootId, classNamesOf(argForImpl(args, ref), data).map(s4ClassName), ReferenceType.Variable, data);
+	const classes = (config.classArgs ?? []).flatMap(ref => classNamesOf(argForImpl(args, ref), data));
+	readNames(info, rootId, classes.map(s4ClassName), ReferenceType.Variable, data);
+	const vertex = config.instantiates ? info.graph.getVertex(rootId) : undefined;
+	if(config.instantiates && DfgVertex.isFunctionCall(vertex)) {
+		vertex.instantiates = classes;
+		for(const { nodeId } of Resolve.byNameAndType(config.instantiates.initializer, data.environment, ReferenceType.Function) ?? []) {
+			if(!NodeId.isBuiltIn(nodeId)) {
+				info.graph.addEdge(rootId, nodeId, EdgeType.Calls);
+			}
+		}
 	}
 	const generics = classNamesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? ''));
 	readNames(info, rootId, generics, ReferenceType.Function, data);
@@ -114,4 +126,32 @@ export function processS4Use<O>(name: RSymbol<O & ParentInformation>, args: Args
 	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S4Use }).information;
 	linkS4Uses(info, args, rootId, data, config);
 	return info;
+}
+
+/**
+ * Links every instantiation to the validity functions of the class it creates and of the superclasses of that,
+ * all of which R runs on the new object, to those of every class if the class is unknown; done once the graph
+ * knows every class declaration.
+ */
+export function linkInstantiations(graph: DataflowGraph): void {
+	const instantiations = graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => v.instantiates !== undefined).toArray();
+	if(instantiations.length === 0) {
+		return;
+	}
+	const validators = new Map<string, NodeId[]>();
+	for(const [, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(classDecl?.validity !== undefined && classDecl.name !== undefined) {
+			validators.set(classDecl.name, [...validators.get(classDecl.name) ?? [], classDecl.validity]);
+		}
+	}
+	const classes = validators.size === 0 ? undefined : declaredClassesImpl(graph);
+	for(const [id, vertex] of instantiations) {
+		const created = vertex.instantiates ?? [];
+		const checked = classes === undefined ? [] : created.length === 0 ? [...validators.keys()] : created.flatMap(cls => [cls, ...superClassesOfImpl(cls, classes)]);
+		for(const validity of checked.flatMap(cls => validators.get(cls) ?? [])) {
+			graph.addEdge(id, validity, EdgeType.Calls);
+		}
+		/* the call runs code of the program, which the linking of nested calls has to see */
+		vertex.onlyBuiltin &&= Dataflow.targetsOf(graph, id, EdgeType.Calls).every(NodeId.isBuiltIn);
+	}
 }

@@ -72,6 +72,8 @@ export interface ClassDeclaration {
 	readonly relation?:         'is' | 'validity';
 	/** names the declaration references rather than states as literals, e.g. an R6 `inherit = Generator` */
 	readonly byVariable:        readonly string[];
+	/** the function checking every new instance of the class, the id of the argument value stating it */
+	readonly validity?:         NodeId;
 	/** the names the methods of the class see the instance they are called on by, see {@link ClassDeclarationConfig.instanceBindings} */
 	readonly instanceBindings?: readonly string[];
 }
@@ -109,6 +111,8 @@ export interface ClassDeclarationConfig {
 	readonly prototypeArg?:     ClassArgRef;
 	/** the declaration relates existing classes rather than declaring one */
 	readonly relation?:         'is' | 'validity';
+	/** the argument carrying the function checking every new instance (S4 `validity`) */
+	readonly validityArg?:      ClassArgRef;
 	/** the names the methods of the class see the instance they are called on by (R6 `self` and `private`, RC `.self`), so writing through them changes that instance */
 	readonly instanceBindings?: readonly string[];
 }
@@ -224,6 +228,7 @@ export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, arg
 		prototype:        prototype.length > 0 ? prototype : undefined,
 		relation:         config.relation,
 		byVariable,
+		validity:         argForImpl(args, config.validityArg)?.info.id,
 		instanceBindings: config.instanceBindings
 	});
 }

@@ -1115,7 +1115,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s4-construction',
 							code:        ['setClass'],
 							supported:   'fully',
-							description: `_Declare a class with \`setClass\` and build one with \`new\`._ The \`new\` call is linked to the \`setClass\` that declared the class and a slot is read through ${LinkTo('slot-access', '`@`')} like any other access.`,
+							description: `_Declare a class with \`setClass\` and build one with \`new\`._ The \`new\` call is linked to the \`setClass\` that declared the class and calls the \`initialize\` methods and the validity functions of the class and its superclasses, and a slot is read through ${LinkTo('slot-access', '`@`')} like any other access.`,
 							url:         [RLang('Classes')]
 						},
 						{

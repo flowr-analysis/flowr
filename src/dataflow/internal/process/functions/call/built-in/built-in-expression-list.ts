@@ -24,6 +24,8 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { addEnvironmentWrites, linkClosureFrameReads } from './built-in-envir-utils';
+import { instantiateEnvOps } from './built-in-deferred-env-ops';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -105,6 +107,8 @@ interface TransitiveCallee<Fn = DataflowGraphVertexInfo> {
 	readonly fn:      Fn
 	/** called by the call itself rather than by one of its callees */
 	readonly direct?: boolean
+	/** the calls on the way to the function, each in the body of the function the one before calls, unless it is `direct` */
+	readonly chain?:  readonly NodeId[]
 	readonly cds?:    readonly ControlDependency[]
 }
 
@@ -113,13 +117,13 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 	const seen = new Set<NodeId>();
 	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
-		const { fn, direct, cds } = stack.pop() as TransitiveCallee;
+		const { fn, direct, chain, cds } = stack.pop() as TransitiveCallee;
 		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
-		yield { fn, direct, cds };
-		for(const [, call] of Dataflow.callsIn(fn, graph)) {
+		yield { fn, direct, chain, cds };
+		for(const [id, call] of Dataflow.callsIn(fn, graph)) {
 			if(call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}
@@ -130,7 +134,7 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 			const [targets] = getAllLinkedFunctionDefinitions(new Set(resolved.map(r => r.nodeId)), graph);
 			for(const target of targets) {
 				/* a callee reached only on some paths writes only maybe */
-				stack.push({ fn: target, cds: call.cds === undefined ? cds : [...cds ?? [], ...call.cds] });
+				stack.push({ fn: target, chain: [...chain ?? [], id], cds: call.cds === undefined ? cds : [...cds ?? [], ...call.cds] });
 			}
 		}
 	}
@@ -215,13 +219,14 @@ function packageLayersOf(env: REnvironmentInformation): Set<MemoryView> {
 	return layers;
 }
 
-function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap, listEnvironments: Set<NodeId>) {
+function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap, listEnvironments: Set<NodeId>, ctx: ReadOnlyFlowrAnalyzerContext) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
-		for(const { fn: calledFn, direct, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
+		for(const { fn: calledFn, direct, chain, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
 			if(direct) {
 				linkClosureFrameReads(functionCall, calledFn, inputEnvironment, nextGraph);
 			}
+			inputEnvironment = instantiateEnvOps(functionCall, calledFn, chain ?? [], inputEnvironment, nextGraph, ctx);
 			/* walk the smaller of the two, a script may hold many unknown side effects and a function many vertices */
 			const inside = calledFn.subflow.graph;
 			const effects = nextGraph.unknownSideEffects;
@@ -378,7 +383,7 @@ export function processExpressionList<OtherInfo>(
 		addNonDefaultExitPoints(exitPoints, invertExitCds, data.cds, processed.exitPoints);
 		environment = exitPoints.length > 0 ? REnvironment.overwrite(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap, listEnvironments);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, idMap, listEnvironments, data.ctx);
 
 		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
 		if(killed && processed.out.length > 0) {

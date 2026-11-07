@@ -33,7 +33,22 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'a function environment replaced', code: 'f <- function() z\nenvironment(f) <- list2env(list(z = 13))\nprint(f())' },
 			{ name: 'a local function capturing a local', code: 'g <- local({ s <- 2; function(v) v * s })\nprint(g(5))' },
 			{ name: 'an environment shared by two closures', code: 'e <- new.env()\nput <- function(v) assign("x", v, envir = e)\ntake <- function() get("x", envir = e)\nput(12)\nprint(take())' },
-			{ name: 'sys.function frames with local', code: 'k <- 2\nf <- function() local(k * 3)\nprint(f())' }
+			{ name: 'sys.function frames with local', code: 'k <- 2\nf <- function() local(k * 3)\nprint(f())' },
+			{ name: 'assign under a name a parameter holds', code: 'reg <- new.env()\nregister <- function(name, f) assign(name, f, envir = reg)\nk <- 3\nregister("h", function() k)\nprint(reg$h())' },
+			{ name: 'assign under a name a parameter holds from a variable', code: 'reg <- new.env()\nregister <- function(name, f) assign(name, f, envir = reg)\nk <- 3\nnm <- "h"\nregister(nm, function() k)\nprint(reg$h())' },
+			{ name: 'assign under a name built from a parameter', code: 'reg <- new.env()\nregister <- function(name, f) assign(paste0("on_", name), f, envir = reg)\nk <- 3\nregister("h", function() k)\nprint(reg$on_h())' },
+			{ name: 'assign under names of two calls', code: 'reg <- new.env()\nregister <- function(name, f) assign(name, f, envir = reg)\nk <- 3\nj <- 4\nregister("h", function() k)\nregister("g", function() j)\nprint(reg$g())', dropped: 'k <- 3' },
+			{ name: 'assign into an environment handed over under a name handed over', code: 'reg <- new.env()\nregister <- function(env, name, f) assign(name, f, envir = env)\nk <- 3\nregister(reg, "h", function() k)\nprint(reg$h())' },
+			{ name: 'assign into the calling frame under a name a parameter holds', code: 'set <- function(name, v) assign(name, v, envir = parent.frame())\nset("x", 5)\nprint(x)' },
+			{ name: 'assign into the global environment under a name a parameter holds', code: 'set <- function(name, v) assign(name, v, envir = .GlobalEnv)\nf <- function() set("x", 6)\nf()\nprint(x)' },
+			{ name: 'get of a name a parameter holds', code: 'reg <- new.env()\nk <- 3\nassign("h", function() k, envir = reg)\nfetch <- function(name) get(name, envir = reg)\nprint(fetch("h")())' },
+			{ name: 'get from an environment a free variable names', code: 'reg <- new.env()\nk <- 3\nassign("h", function() k, envir = reg)\nfetch <- function() get("h", envir = reg)\nprint(fetch()())' },
+			{ name: 'exists of a name a parameter holds', code: 'reg <- new.env()\nassign("h", 1, envir = reg)\nhas <- function(name) exists(name, envir = reg)\nprint(has("h"))' },
+			{ name: 'rm of a name a parameter holds', code: 'reg <- new.env()\nassign("h", 1, envir = reg)\ndrop <- function(name) rm(list = name, envir = reg)\ndrop("h")\nprint(exists("h", envir = reg))' },
+			{ name: 'rm from an environment a free variable names', code: 'reg <- new.env()\nassign("h", 1, envir = reg)\ndrop <- function() rm("h", envir = reg)\ndrop()\nprint(exists("h", envir = reg))' },
+			{ name: 'rm from the global environment of a name a parameter holds', code: 'x <- 1\ndrop <- function(n) rm(list = n, envir = .GlobalEnv)\ndrop("x")\nprint(exists("x"))' },
+			{ name: 'rm two calls deep of a name a parameter holds', code: 'x <- 1\ndrop <- function(n) rm(list = n, envir = .GlobalEnv)\nf <- function() drop("x")\nf()\nprint(exists("x"))' },
+			{ name: 'assign two calls deep under a name a parameter holds', code: 'reg <- new.env()\nregister <- function(name, f) assign(name, f, envir = reg)\nk <- 3\nsetup <- function() register("h", function() k)\nsetup()\nprint(reg$h())' }
 		];
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
@@ -45,6 +60,8 @@ describe('Transitivity through environments and super assignments, checked again
 		resolvesLikeR(parser, 'assign to the global environment two calls deep', 'f <- function() assign("z", 4, envir = .GlobalEnv)\ng <- function() f()\ng()\ncat(z)', '4@z');
 		resolvesLikeR(parser, 'local keeps its definitions', 'x <- 1\ny <- local({ x <- 2; x + 1 })\ncat(x)', '3@x');
 		resolvesLikeR(parser, 'local returns its last value', 'y <- local({ x <- 2; x + 1 })\ncat(y)', '2@y');
+		resolvesLikeR(parser, 'assign under a name a parameter holds', 'reg <- new.env()\nset <- function(name, v) assign(name, v, envir = reg)\nset("a", 1)\nset("b", 2)\ny <- get("b", envir = reg)\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'get of a name a parameter holds', 'reg <- new.env()\nassign("a", 1, envir = reg)\nassign("b", 2, envir = reg)\nfetch <- function(name) get(name, envir = reg)\ny <- fetch("b")\ncat(y)', '5@y', { imprecise: 'resolves 1 and 2, the body reads what every call names' });
 		resolvesLikeR(parser, 'a super assignment the callee never runs', 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\ncat(n)', '4@n', { imprecise: 'resolves 0 and 5, R never takes the branch' });
 	});
 }));

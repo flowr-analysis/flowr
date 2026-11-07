@@ -179,8 +179,38 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 * Set by `processFunctionDefinition` when exit points include NewEnv calls or symbols resolving to tracked envs.
 	 */
 	returnEnvState?: REnvironmentInformation
+	/** The calls of the body whose environment operation depends on the call of the function, see {@link DeferredEnvOp}. */
+	envOps?:         readonly DeferredEnvOp[]
 	/** Whether a call of the closure reads writes into the frame it holds, see {@link InGraphIdentifierDefinition#closureFrame}. */
 	framed?:         true
+}
+
+/** What a call does to the variable it names in an environment. */
+export enum EnvOpKind {
+	/** `assign(x, value, envir)` */
+	Define = 'define',
+	/** `get(x, envir)` and `exists(x, envir)` */
+	Read   = 'read',
+	/** `rm(list = x, envir)` */
+	Remove = 'remove'
+}
+
+/**
+ * A call in a function body working on a variable in an environment, where the name or the environment is only
+ * known once the function is called: given by a parameter, or named by a free variable.
+ */
+export interface DeferredEnvOp {
+	readonly id:       NodeId
+	readonly kind:     EnvOpKind
+	/** the expressions giving the names by their value */
+	readonly names:    readonly NodeId[]
+	/** the names written down as they are, as `rm` takes its `...` */
+	readonly literals: readonly string[]
+	readonly envir:    NodeId
+	/** the value a definition binds */
+	readonly value?:   NodeId
+	/** whether a read hands back what it reads, as `get` does and `exists` does not */
+	readonly returns:  boolean
 }
 
 /**

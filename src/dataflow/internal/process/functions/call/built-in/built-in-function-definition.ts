@@ -3,6 +3,7 @@ import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
+import { deferredEnvOps } from './built-in-deferred-env-ops';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
@@ -233,6 +234,7 @@ export function processFunctionDefinition<OtherInfo>(
 		? afterHookExitPoints.values().map(({ nodeId }) => envStateReturnedAt(nodeId, subgraph, outEnvironment, data)).find(isNotUndefined)
 		: undefined;
 
+	const envOps = deferredEnvOps(flow.graph, subgraph, data);
 	const graph = new DataflowGraph(idMap).mergeWith(subgraph, false, true);
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
@@ -242,7 +244,8 @@ export function processFunctionDefinition<OtherInfo>(
 		params:      readParams,
 		subflow:     flow,
 		exitPoints:  afterHookExitPoints,
-		returnEnvState
+		returnEnvState,
+		...envOps === undefined ? {} : { envOps }
 	}, data.ctx.env.cleanEnv);
 
 	return {

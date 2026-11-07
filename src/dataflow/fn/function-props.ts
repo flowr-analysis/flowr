@@ -19,6 +19,7 @@ import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgum
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
 import { Dataflow } from '../graph/df-helper';
+import { FixpointSolver } from '../../util/fixpoint';
 
 /** What flowR infers about a set of definitions, see {@link inferFunctions}. */
 export interface InferredFunctions {
@@ -52,34 +53,33 @@ export function inferFunctions(this: void, definitions: readonly NodeId[], graph
 /** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */
 function callProps(definitions: readonly NodeId[], state: LookupState, strict: Record<NodeId, FunctionStrictness>): Record<NodeId, StatedProps> {
 	const { join, filter, hasAny } = FunctionSemantics.call.props;
-	const props = new Map<NodeId, StatedProps>();
+	const own = new Map<NodeId, StatedProps>();
 	const callees = new Map<NodeId, readonly NodeId[]>();
-	/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
-	const toVisit = [...definitions];
-	while(toVisit.length > 0) {
-		const id = toVisit.pop() as NodeId;
-		if(props.has(id)) {
-			continue;
-		}
-		const own = propsOf(id, state);
-		props.set(id, strict[id]?.strict === Ternary.Always ? join(own.stated, { props: CallProp.Strict }) : own.stated);
-		callees.set(id, own.callees);
-		toVisit.push(...own.callees);
-	}
-	Dataflow.propagateToFixpoint(callees.keys(), callees, id => {
-		const before = props.get(id);
-		let grown = before ?? {};
-		for(const callee of callees.get(id) ?? []) {
-			grown = join(grown, filter(props.get(callee), PropagatedProps));
-		}
-		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
-		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
-			return false;
-		}
-		props.set(id, grown);
-		return true;
+	const solver = new FixpointSolver<NodeId, StatedProps>({
+		next: id => {
+			/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
+			const { stated, callees: called } = propsOf(id, state);
+			own.set(id, strict[id]?.strict === Ternary.Always ? join(stated, { props: CallProp.Strict }) : stated);
+			callees.set(id, called);
+			return called;
+		},
+		transfer: (id, valueOf) => {
+			const mine = own.get(id) as StatedProps;
+			let grown = mine;
+			for(const callee of callees.get(id) ?? []) {
+				grown = join(grown, filter(valueOf(callee), PropagatedProps));
+			}
+			return sameProps(grown, mine) ? mine : grown;
+		},
+		equals:  sameProps,
+		initial: id => own.get(id) as StatedProps
 	});
-	return Object.fromEntries(definitions.filter(id => hasAny(props.get(id))).map(id => [id, props.get(id) as StatedProps]));
+	return Object.fromEntries(definitions.map(id => [id, solver.of(id)] as const).filter(([, props]) => hasAny(props)));
+}
+
+/** Joining only ever adds, so the same bits and the same number of tags mean the same props. */
+function sameProps(a: StatedProps, b: StatedProps): boolean {
+	return (a.props ?? 0) === (b.props ?? 0) && (a.tags?.length ?? 0) === (b.tags?.length ?? 0);
 }
 
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */

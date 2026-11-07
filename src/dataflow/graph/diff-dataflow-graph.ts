@@ -18,6 +18,7 @@ import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 import { DfgVertex } from './vertex';
+import { AmbientAccessRecord } from './ambient-access';
 
 
 /**
@@ -26,6 +27,7 @@ import { DfgVertex } from './vertex';
  */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
+	diffAmbientAccess(ctx);
 	diffVertices(ctx);
 	GraphHelper.diff.outgoingEdges(ctx, diffEdges, ctx.config.compareControlFlow ? undefined : withoutControlFlow);
 }
@@ -54,6 +56,23 @@ function diffRootVertices(ctx: GraphDiffContext): void {
 		new Set(ctx.left.unknownSideEffects.values().map(UnknownSideEffect.id)),
 		new Set(ctx.right.unknownSideEffects.values().map(UnknownSideEffect.id)),
 		{ ...ctx, position: `${ctx.position}Unknown side effects differ in graphs. ` });
+}
+
+/** Compares what the calls are recorded to access of the global state; a graph recording nothing, like most built by hand, states nothing. */
+function diffAmbientAccess(ctx: GraphDiffContext): void {
+	const left = new Set(ctx.left.ambientAccessIds());
+	const right = new Set(ctx.right.ambientAccessIds());
+	if(left.size === 0 || right.size === 0) {
+		return;
+	}
+	setDifference(left, right, { ...ctx, position: `${ctx.position}Calls accessing the ambient state differ in graphs. ` });
+	for(const id of left.intersection(right)) {
+		const a = ctx.left.ambientAccessOf(id) as AmbientAccessRecord;
+		const b = ctx.right.ambientAccessOf(id) as AmbientAccessRecord;
+		if(!AmbientAccessRecord.equals(a, b)) {
+			reportDiffering(ctx, id, `${ctx.position}Ambient access of ${id} differs. `, a, b);
+		}
+	}
 }
 
 function reportDiffering(ctx: GenericDifferenceInformation<GraphDifferenceReport>, id: NodeId, prefix: string, a: unknown, b: unknown): void {

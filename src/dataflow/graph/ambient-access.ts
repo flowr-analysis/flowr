@@ -1,4 +1,5 @@
 import { uniqueArrayMerge } from '../../util/collections/arrays';
+import { setEquals } from '../../util/collections/set';
 
 /**
  * What a single call reads and writes of the global state (see {@link AmbientStateName}), recorded when the call is processed.
@@ -16,6 +17,7 @@ export interface AmbientAccessRecord {
 }
 
 const None: readonly string[] = [];
+const Kinds = ['reads', 'writes', 'assumed', 'local'] as const;
 
 export const AmbientAccessRecord = {
 	name: 'AmbientAccessRecord',
@@ -29,5 +31,9 @@ export const AmbientAccessRecord = {
 			assumed: union(a?.assumed, b.assumed),
 			local:   union(a?.local, b.local)
 		};
+	},
+	/** Whether both records state the same access, in any order. */
+	equals(this: void, a: AmbientAccessRecord, b: AmbientAccessRecord): boolean {
+		return Kinds.every(kind => setEquals(new Set(a[kind]), new Set(b[kind])));
 	}
 } as const;

@@ -271,6 +271,16 @@ describe('Ambient access of code', withTreeSitter(ts => {
 			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(reduced, ids)), shown(Dataflow.sideEffects.ambientAccess(graph, ids)));
 			assert.include(shown(Dataflow.sideEffects.ambientAccess(again, ids)).writes, '#option:digits');
 		});
+
+		test(label('graph diffs compare them', [], ['dataflow']), async() => {
+			const { graph } = await run('options(digits = 3)\nx <- getOption("digits")');
+			const again = DataflowGraph.fromJson(JSON.parse(JSON.stringify(graph.toJSON())) as DataflowGraphJson);
+			const equal = () => Dataflow.diffGraphs({ name: 'left', graph }, { name: 'right', graph: again }).isEqual();
+			assert.isTrue(equal());
+			const [first] = again.ambientAccessIds();
+			again.recordAmbientAccess(first, { writes: ['#option:width'] });
+			assert.isFalse(equal());
+		});
 	});
 
 	describe('queries do not change the graph', () => {

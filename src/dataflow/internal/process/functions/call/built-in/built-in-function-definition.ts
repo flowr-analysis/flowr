@@ -697,6 +697,25 @@ function linkLiftedReads(
 	environmentAt: (call: NodeId) => REnvironmentInformation,
 	runsOnceAt: (call: NodeId) => RNode<ParentInformation> | undefined
 ): void {
+	/* the top-level calls that run a definition, through the calls of the functions that enclose its calls */
+	const topLevelCallsOf = memoize((start: NodeId) => {
+		const calls = new Set<NodeId>();
+		const definitions = new Set<NodeId>([start]);
+		for(const definition of definitions) {
+			for(const call of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
+				if(!DfgVertex.isFunctionCall(graph.getVertex(call))) {
+					continue;
+				}
+				const outer = graph.isRoot(call) ? undefined : enclosingOf(call);
+				if(outer === undefined) {
+					calls.add(call);
+				} else {
+					definitions.add(outer);
+				}
+			}
+		}
+		return calls;
+	});
 	/* a call reads several states under its own id (`#wd`, `#file:f`), so a read is told apart by its name as well */
 	const seen = new DefaultMap<NodeId, Set<string>>(() => new Set());
 	while(lifted.length > 0) {
@@ -707,15 +726,7 @@ function linkLiftedReads(
 			continue;
 		}
 		known.add(key);
-		for(const call of Dataflow.sourcesOf(graph, definition, EdgeType.Calls)) {
-			if(!DfgVertex.isFunctionCall(graph.getVertex(call))) {
-				continue;
-			}
-			const outer = graph.isRoot(call) ? undefined : enclosingOf(call);
-			if(outer !== undefined) {
-				lifted.push([outer, read, holder]);
-				continue;
-			}
+		for(const call of topLevelCallsOf(definition)) {
 			const resolved = Resolve.byNameAndType(read.name, environmentAt(call), read.type);
 			const target = graph.getVertex(holder);
 			if(resolved === undefined && DfgVertex.isFunctionDefinition(target) && !target.subflow.in.some(r => r.nodeId === read.nodeId)) {

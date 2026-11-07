@@ -24,6 +24,7 @@ import { EnvType, REnvironment } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
+import { isComputedLookup, linkComputedLookup } from './built-in-get';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -563,6 +564,15 @@ export function updateNestedFunctionCalls(
 		const [id, vertex] = calls[i];
 		const { onlyBuiltin, name, args, origin } = vertex;
 		if(name === undefined) {
+			continue;
+		}
+		if(isComputedLookup(vertex, graph)) {
+			/* the parameters the name reads are bound only once the calls handing them down are linked */
+			if(linkComputedLookup(graph, vertex, environmentAt(id), ctx, runsOnceAt(id))) {
+				linked = true;
+			} else {
+				waiting.push(calls[i]);
+			}
 			continue;
 		}
 		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */

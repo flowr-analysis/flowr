@@ -1000,7 +1000,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true })
 				.calls(4, NodeId.toBuiltIn('<-'))
 				.calls(9, 3)
-				.call(8, 'get', [argumentInCall('8-get-name')], { returns: ['8-get-name'], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', 0, 4) })
+				.call(8, 'get', [argumentInCall('8-get-name')], { returns: ['8-get-name'], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, keepsEnvironment: true, environment: defaultEnv().defineFunction('a', 0, 4) })
 				.calls(8, NodeId.toBuiltIn('get'))
 				.defineFunction(3, [1], {
 					entryPoint:        0,

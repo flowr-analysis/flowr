@@ -71,7 +71,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'name-created',
 							code:        ['get', 'get0', 'mget', 'exists', 'match.fun'],
 							supported:   'fully',
-							description: `_A call that reads a string argument as the name it spells, such as \`get\`, \`get0\`, \`mget\`, \`exists\`, \`match.fun\`, and \`assign\`._ The string counts as a use of that name, or for \`assign\` as a ${LinkTo('assignment-functions', 'definition')}. A name only known at runtime (\`get(Sys.getenv("V"))\`) is not linked.`,
+							description: `_A call that reads a string argument as the name it spells, such as \`get\`, \`get0\`, \`mget\`, \`exists\`, \`match.fun\`, and \`assign\`._ The string counts as a use of that name, or for \`assign\` as a ${LinkTo('assignment-functions', 'definition')}. The string may also reach the call through variables and the parameters of the functions it is in (\`f <- function(n) get(n)(); f("h")\`). A name only known at runtime (\`get(Sys.getenv("V"))\`) is not linked.`,
 							example:     codeBlock('r', 'x <- 1\nr <- get("x")\nprint(r)'),
 							url:         [RLang('Identifiers', 'Identifiers-1')]
 						},

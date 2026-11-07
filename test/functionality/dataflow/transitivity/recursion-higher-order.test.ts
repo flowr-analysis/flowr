@@ -76,4 +76,26 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		callsLikeR(parser, 'the inner function of a curried call', 'h <- function(x) x\nmk <- function(a) function(b) function(c) a(b(c))\ninc <- function(v) v\ninvisible(mk(h)(inc)(1))\ncat("ok")', '2:45', ['3@function']);
 		callsLikeR(parser, 'a function handed down through six calls of parameters', 'h <- function(x) x\nl1 <- function(f, x) f(x)\nl2 <- function(g2, f, x) g2(f, x)\nl3 <- function(g3, g2, f, x) g3(g2, f, x)\nl4 <- function(g4, g3, g2, f, x) g4(g3, g2, f, x)\nl5 <- function(g5, g4, g3, g2, f, x) g5(g4, g3, g2, f, x)\nl6 <- function(g6, g5, g4, g3, g2, f, x) g6(g5, g4, g3, g2, f, x)\ninvisible(l6(l5, l4, l3, l2, l1, h, 1))\ncat("ok")', '2:22', ['1@function']);
 	}));
+
+	describe('functions looked up by a computed name', () => testing(['name-created', 'higher-order-functions'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'get of a parameter', code: 'h <- function() k\nk <- 3\nf <- function(n) get(n)()\nprint(f("h"))' },
+			{ name: 'get0 of a parameter into a local', code: 'h <- function() k\nk <- 3\ng <- function(n) { fn <- get0(n, mode = "function"); fn() }\nprint(g("h"))' },
+			{ name: 'get of a parameter handed down two calls', code: 'h <- function() k\nk <- 3\nf <- function(n) get(n)()\nw <- function(m) f(m)\nprint(w("h"))' },
+			{ name: 'get of a parameter names one of two functions', code: 'k <- 1\nj <- 2\nh <- function() k\nh2 <- function() j\nf <- function(n) get(n)()\nprint(f("h"))', dropped: 'j <- 2' },
+			{ name: 'get of a name only known at runtime', code: 'k <- 1\nh <- function() k\nf <- function(n) get(n)()\nprint(f(paste0("h", "")))' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+		callsLikeR(parser, 'get of a parameter', 'h <- function() 1\nf <- function(n) get(n)()\nf("h")\ncat("ok")', '3@f', ['1@function']);
+		callsLikeR(parser, 'get of a variable', 'h <- function() 1\nnm <- "h"\nget(nm)()\ncat("ok")', '3:1', ['1@function']);
+		callsLikeR(parser, 'get of a parameter handed down two calls', 'h <- function() 1\nf <- function(n) get(n)()\nw <- function(m) f(m)\nw("h")\ncat("ok")', '4@w', ['1@function']);
+		callsLikeR(parser, 'get of a parameter defined in reverse', 'w <- function(m) f(m)\nf <- function(n) get(n)()\nh <- function() 1\nw("h")\ncat("ok")', '4@w', ['3@function']);
+		callsLikeR(parser, 'get0 of a parameter into a local', 'h <- function() 1\ng <- function(n) { fn <- get0(n, mode = "function"); fn() }\ng("h")\ncat("ok")', '3@g', ['1@function']);
+		callsLikeR(parser, 'match.fun of get of a parameter', 'h <- function() 1\ng <- function(n) match.fun(get(n))()\ng("h")\ncat("ok")', '3@g', ['1@function']);
+		callsLikeR(parser, 'mget of a parameter', 'h <- function() 1\nf <- function(n) mget(n, inherits = TRUE)[[1]]()\nf("h")\ncat("ok")', '3@f', ['1@function']);
+		callsLikeR(parser, 'get of a parameter at two calls', 'h <- function() 1\nh2 <- function() 2\nf <- function(n) get(n)()\nf("h")\nf("h2")\ncat("ok")', '5@f', ['1@function', '2@function']);
+		callsLikeR(parser, 'get of a parameter sees a local function', 'h <- function() 1\nf <- function(n) { h <- function() 2; get(n)() }\nf("h")\ncat("ok")', '3@f', ['2:25']);
+	}));
 }));

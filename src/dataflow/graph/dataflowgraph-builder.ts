@@ -111,6 +111,8 @@ export class DataflowGraphBuilder<
 			returns?:            readonly NodeId[],
 			reads?:              readonly NodeId[],
 			onlyBuiltIn?:        boolean,
+			/** whether a call of only built-ins keeps its environment, as one looking names up in it does (`get`) */
+			keepsEnvironment?:   boolean,
 			environment?:        REnvironmentInformation,
 			builtInEnvironment?: IEnvironment,
 			cds?:                readonly ControlDependency[],
@@ -125,7 +127,7 @@ export class DataflowGraphBuilder<
 			id:          NodeId.normalize(id),
 			name,
 			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: NodeId.normalize(a.nodeId), cds: undefined }),
-			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
+			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) && !info?.keepsEnvironment ? undefined : info?.environment ?? this.defaultEnvironment,
 			cds:         normalizeCds(info?.cds),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [getDefaultProcessor(name) ?? BuiltInProcName.Function],

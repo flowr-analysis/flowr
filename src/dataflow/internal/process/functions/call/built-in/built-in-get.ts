@@ -3,14 +3,19 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { DfgVertex } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../../../graph/vertex';
+import type { DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { ProgramOrder } from '../../../../program-order';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvirPositionFormals, resolveConstantString, resolveFirstEnvirArg, suppliesArg } from './built-in-envir-utils';
@@ -42,7 +47,7 @@ function synthesizeTargets<OtherInfo>(
 	const location = literal ? retrieve.location : retrieve.location ?? name.location ?? SourceRange.invalid();
 	const literalLexeme = literal ? retrieve.lexeme : undefined;
 	return names.map((resolvedName, i) => {
-		const synthId = `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
+		const synthId = synthesizedTargetId(rootId, i);
 		const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
 			type:    RType.Symbol,
 			info:    { ...retrieve.info, id: synthId, parent: retrieve.info.id },
@@ -53,6 +58,43 @@ function synthesizeTargets<OtherInfo>(
 		data.completeAst.idMap.set(synthId, synthSymbol);
 		return synthSymbol;
 	});
+}
+
+function synthesizedTargetId(rootId: NodeId, i: number): NodeId {
+	return `${rootId}-get-name${i > 0 ? '-' + String(i) : ''}`;
+}
+
+/** Whether `vertex` is a lookup (`get(n)`) whose name was not known where it is written, see {@link linkComputedLookup}. */
+export function isComputedLookup(vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph): boolean {
+	const name = vertex.args[0];
+	return DfgVertex.hasOrigin(vertex, BuiltInProcName.Get) && name !== undefined && name !== EmptyArgument
+		&& !RString.is(graph.idMap?.get(name.nodeId)) && !graph.hasVertex(synthesizedTargetId(vertex.id, 0));
+}
+
+/**
+ * Links a lookup whose name was not known where it is written (`f <- function(n) get(n)()`) to the definitions of
+ * every name that reaches it, through the parameters of the calls linked so far, seen from where it is written
+ * (`environment` holds the global names at the calls of the enclosing function).
+ * Returns whether all names are known; only then the lookup no longer counts as an unknown side effect.
+ */
+export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, runsOnceAt: RNode<ParentInformation> | undefined): boolean {
+	const name = vertex.args[0] as Exclude<FunctionArgument, typeof EmptyArgument>;
+	const names = NodeValue.stringsOf(name.nodeId, Resolve.info(graph, ctx));
+	if(names === undefined) {
+		return false;
+	}
+	for(const n of names) {
+		/* the frames of the body hold what it bound before the lookup, the global names are those at the call */
+		const local = vertex.environment === undefined ? undefined : Resolve.byName(n, vertex.environment);
+		const defs = local?.some(d => !NodeId.isBuiltIn(d.nodeId) && !graph.isRoot(d.nodeId)) ? local : Resolve.byName(n, environment);
+		for(const { nodeId } of defs ?? []) {
+			if(!NodeId.isBuiltIn(nodeId) && !ProgramOrder.definedLater(nodeId, runsOnceAt, graph)) {
+				graph.addEdge(vertex.id, nodeId, EdgeType.Returns | EdgeType.Reads);
+			}
+		}
+	}
+	graph.unknownSideEffects.delete(NodeId.normalize(vertex.id));
+	return true;
 }
 
 /**
@@ -79,8 +121,10 @@ export function processGet<OtherInfo>(
 	const targets = retrieve === undefined ? [] : synthesizeTargets(retrieve, name, rootId, data);
 	if(targets.length === 0) {
 		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has no resolvable name argument, skipping`);
+		/* the name may still be known once the calls binding the parameters it reads are linked, see `linkComputedLookup` */
+		const later = config.returnsValue !== false && resolution === undefined && !suppliesArg(args, config.sig, EnvirPositionFormals);
 		// dynamic, unresolvable name: reached-but-unknown rather than dropped
-		const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true });
+		const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: later ? BuiltInProcName.Get : 'default', hasUnknownSideEffect: true });
 		/* `match.fun(f)` hands back the function `f` holds, as it only looks up what names one */
 		const handedBack = config.sig?.[0] !== undefined && (config.sig[0][1] & ArgProp.Alias) !== 0 ? processedArguments[0] : undefined;
 		if(handedBack !== undefined && retrieve !== undefined && !RString.is(retrieve)) {

@@ -704,17 +704,19 @@ export const BaseDefinitions = [
 	),
 	fn(base('get'), BuiltInProcName.Get,
 		{
-			props: CallProp.Pure,
-			tags:  [SemanticCallTag.Eval],
-			sig:   sig({ x: Forced.Value | ArgProp.Injectable, pos: ArgProp.Flag, envir: Forced.Value, mode: Forced.Flag, inherits: Forced.Flag })
+			keepEnvironment: true,
+			props:           CallProp.Pure,
+			tags:            [SemanticCallTag.Eval],
+			sig:             sig({ x: Forced.Value | ArgProp.Injectable, pos: ArgProp.Flag, envir: Forced.Value, mode: Forced.Flag, inherits: Forced.Flag })
 		},
 		{ evalHandler: BuiltInEvalName.Get }
 	),
 	fn(base('get0'), BuiltInProcName.Get,
 		{
-			props: CallProp.Pure,
-			tags:  [SemanticCallTag.Eval],
-			sig:   sig({
+			keepEnvironment: true,
+			props:           CallProp.Pure,
+			tags:            [SemanticCallTag.Eval],
+			sig:             sig({
 				x:          Forced.Value | ArgProp.Injectable,
 				envir:      Forced.Value,
 				mode:       Forced.Flag,
@@ -740,9 +742,10 @@ export const BaseDefinitions = [
 	fn(base('list2env'), BuiltInProcName.ListToEnv, { props: CallProp.Scope, sig: sig({ x: Forced.Value, envir: ArgProp.Written }) }),
 	fn(base('mget'), BuiltInProcName.Get,
 		{
-			props: CallProp.Pure,
-			tags:  [SemanticCallTag.Eval],
-			sig:   sig({
+			keepEnvironment: true,
+			props:           CallProp.Pure,
+			tags:            [SemanticCallTag.Eval],
+			sig:             sig({
 				x:          Forced.Value | ArgProp.Injectable,
 				envir:      Forced.Value,
 				mode:       Forced.Flag,
@@ -768,9 +771,10 @@ export const BaseDefinitions = [
 	),
 	fn(base('match.fun'), BuiltInProcName.Get,
 		{
-			props: CallProp.Pure,
-			tags:  [SemanticCallTag.Eval],
-			sig:   sig({ FUN: Forced.Value | ArgProp.Injectable | ArgProp.Alias, descend: ArgProp.Flag })
+			keepEnvironment: true,
+			props:           CallProp.Pure,
+			tags:            [SemanticCallTag.Eval],
+			sig:             sig({ FUN: Forced.Value | ArgProp.Injectable | ArgProp.Alias, descend: ArgProp.Flag })
 		},
 		{ evalHandler: BuiltInEvalName.Get }
 	),

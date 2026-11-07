@@ -163,7 +163,7 @@ function branchOutcomes(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext 
 	});
 }
 
-function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
+function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined, constantBranches = true): StrictnessState {
 	const owner = new Map<NodeId, NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		for(const param of Object.keys(vertex.params)) {
@@ -176,7 +176,7 @@ function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerConte
 		owner,
 		dispatch:   dispatchingDefinitions(graph),
 		fnInfo:     builtInLookup(ctx),
-		branches:   branchOutcomes(graph, ctx),
+		branches:   branchOutcomes(graph, constantBranches ? ctx : undefined),
 		untargeted: new Map(),
 		solver:     new DemandSolver({
 			transfer:  id => computeStrictness(id, state),
@@ -482,7 +482,9 @@ export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: Dataf
 /** What to ask for beyond the definitions themselves, see {@link strictnessOfEach}. */
 export interface FunctionStrictnessesOptions {
 	/** how to ask what a built-in states, so a configured or overwritten one answers */
-	readonly ctx?: ReadOnlyFlowrAnalyzerContext
+	readonly ctx?:              ReadOnlyFlowrAnalyzerContext
+	/** whether to resolve the condition of an `if` to a constant, which costs a value resolution per branch */
+	readonly constantBranches?: boolean
 }
 
 /** Where the promises bound to `params` may be forced: their reads, calls of closures capturing them, and the callees they are handed to. */
@@ -549,14 +551,14 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 }
 
 /** How surely the holder of a promise forces it, asked for a node `inner` within the promise. */
-export function promiseForcing(this: void, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => Ternary {
+export function promiseForcing(this: void, graph: DataflowGraph, { ctx, constantBranches }: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => Ternary {
 	const idMap = graph.idMap;
 	let state: StrictnessState | undefined = undefined;
 	return (holder, inner) => {
 		if(idMap === undefined) {
 			return Ternary.Maybe;
 		}
-		state ??= strictnessStateOf(graph, ctx);
+		state ??= strictnessStateOf(graph, ctx, constantBranches);
 		if(state.owner.has(holder)) {
 			return handedTo(holder, state);
 		}

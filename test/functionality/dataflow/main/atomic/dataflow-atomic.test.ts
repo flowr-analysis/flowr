@@ -11,7 +11,6 @@ import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environmen
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
 import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
@@ -26,6 +25,7 @@ import { RString } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | object {
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
@@ -154,7 +154,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(4)
 			);
 		});
-		assertDataflow(label('chained bracket access with variables', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities]), shell,
+		assertDataflow(label('chained bracket access with variables', ['name-normal', 'single-bracket-access', ...BuiltInOperators.byName['<-'].capabilities]), shell,
 			'a[x][y]', emptyGraph()
 				.use(0, 'a', { cds: [] })
 				.use(1, 'x')
@@ -166,7 +166,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.call(6, '[', [argumentInCall(3), argumentInCall(4)], { returns: [3], reads: [3, 4, NodeId.toBuiltIn('[')], onlyBuiltIn: true })
 				.calls(6, NodeId.toBuiltIn('['))
 		);
-		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
+		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', ...BuiltInOperators.byName['<-'].capabilities, 'replacement-functions']), shell,
 			'a[x] <- 5',  emptyGraph()
 				.use(1, 'x')
 				.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, NodeId.toBuiltIn('[<-')], onlyBuiltIn: true, link: { origin: [5] } })
@@ -176,7 +176,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
 		);
-		assertDataflow(label('nested assign', ['name-normal', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
+		assertDataflow(label('nested assign', ['name-normal', 'dollar-access', ...BuiltInOperators.byName['<-'].capabilities, 'replacement-functions']), shell,
 			'a$b$c <- 5',  emptyGraph()
 				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(7)], { returns: [0], reads: [1, 6, NodeId.toBuiltIn('$<-'), NodeId.toBuiltIn('$')], onlyBuiltIn: true, link: { origin: [6] } })
 				.calls(3, NodeId.toBuiltIn('$<-'))
@@ -196,7 +196,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 	describe('Unary Operators', () => {
 		for(const op of UnaryOperatorPool) {
 			const inputDifferent = `${op}x`;
-			const opData = OperatorDatabase[op];
+			const opData = BuiltInOperators.byName[op];
 			const graph = emptyGraph()
 				.use(0, 'x').reads(1, 0)
 				.call(1, op, [argumentInCall(0)], { reads: [NodeId.toBuiltIn(op)] })
@@ -216,7 +216,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				const inputDifferent = `x ${op} y`;
 				const inputSame = `x ${op} x`;
 
-				const capabilities = OperatorDatabase[op].capabilities;
+				const capabilities = BuiltInOperators.byName[op].capabilities;
 				/* only `&&` and `||` short-circuit, the vectorized `&`/`|` evaluate both operands */
 				if(op === '&&' || op === '||') {
 					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]),
@@ -271,7 +271,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				const args: FunctionArgument[] = [argumentInCall(0), argumentInCall(1)];
 
 				const constantAssignment = swapSourceAndTarget ? `5 ${op} x` : `x ${op} 5`;
-				assertDataflow(label(`${constantAssignment} (constant assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'numbers']),
+				assertDataflow(label(`${constantAssignment} (constant assignment)`, ['name-normal', ...BuiltInOperators.byName[op].capabilities, 'numbers']),
 					shell, constantAssignment,
 					emptyGraph()
 						.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
@@ -298,7 +298,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 						.use(1, 'y')
 						.reads(2, 1);
 				}
-				assertDataflow(label(`${variableAssignment} (variable assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities]),
+				assertDataflow(label(`${variableAssignment} (variable assignment)`, ['name-normal', ...BuiltInOperators.byName[op].capabilities]),
 					shell,
 					variableAssignment,
 					dataflowGraph,
@@ -323,7 +323,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 						.use(1, 'x');
 				}
 
-				assertDataflow(label(`${circularAssignment} (circular assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'return-value-of-assignments']),
+				assertDataflow(label(`${circularAssignment} (circular assignment)`, ['name-normal', ...BuiltInOperators.byName[op].capabilities, 'return-value-of-assignments']),
 					shell, circularAssignment,
 					circularGraph,
 					opConfig
@@ -331,7 +331,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			});
 		}
 		describe('Nested Assignments', () => {
-			assertDataflow(label('"x <- y <- 1"', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('"x <- y <- 1"', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- y <- 1', emptyGraph()
 					.call(3, '<-', [argumentInCall(1), argumentInCall(2)], { returns: [1], reads: [NodeId.toBuiltIn('<-')] })
 					.calls(3, NodeId.toBuiltIn('<-'))
@@ -346,7 +346,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(1, 'y', { definedBy: [2, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
 			);
-			assertDataflow(label('"1 -> x -> y"', ['name-normal', 'numbers', ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('"1 -> x -> y"', ['name-normal', 'numbers', ...BuiltInOperators.byName['->'].capabilities, 'return-value-of-assignments']),
 				shell, '1 -> x -> y', emptyGraph()
 					.call(2, '->', [argumentInCall(0), argumentInCall(1)], { returns: [1], reads: [NodeId.toBuiltIn('->')] })
 					.calls(2, NodeId.toBuiltIn('->'))
@@ -361,7 +361,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(1, 'x', { definedBy: [0, 2] })
 					.defineVariable(3, 'y', { definedBy: [2, 4] })
 			);
-			assertDataflow(label('"x <- 1 -> y"', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('"x <- 1 -> y"', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['->'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- 1 -> y', emptyGraph()
 					.call(3, '->', [argumentInCall(1), argumentInCall(2)], { returns: [2], reads: [NodeId.toBuiltIn('->')] })
 					.calls(3, NodeId.toBuiltIn('->'))
@@ -376,7 +376,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(2, 'y', { definedBy: [1, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
 			);
-			assertDataflow(label('"x <- y <- z"', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('"x <- y <- z"', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- y <- z', emptyGraph()
 					.use(2, 'z')
 					.argument(3, 2)
@@ -392,7 +392,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(1, 'y', { definedBy: [2, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
 			);
-			assertDataflow(label('Nested Global Assignments', ['name-normal', ...OperatorDatabase['<<-'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('Nested Global Assignments', ['name-normal', ...BuiltInOperators.byName['<<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <<- y <<- z', emptyGraph()
 					.use(2, 'z')
 					.argument(3, 2)
@@ -408,7 +408,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(1, 'y', { definedBy: [2, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
 			);
-			assertDataflow(label('Nested Global Mixed with Local Assignments', ['name-normal', ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('Nested Global Mixed with Local Assignments', ['name-normal', ...BuiltInOperators.byName['<<-'].capabilities, ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <<- y <- y2 <<- z', emptyGraph()
 					.use(3, 'z')
 					.argument(4, 3)
@@ -427,7 +427,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(1, 'y', { definedBy: [4, 5] })
 					.defineVariable(0, 'x', { definedBy: [5, 6] })
 			);
-			assertDataflow(label('Use Assignment on Target Side', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('Use Assignment on Target Side', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'a[x] <- x <- 3', emptyGraph()
 					.use(1, 'x')
 					.reads(1, 4)
@@ -444,7 +444,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.defineVariable(4, 'x', { definedBy: [5, 6] })
 					.defineVariable(0, 'a', { definedBy: [6, 3] })
 			);
-			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...BuiltInOperators.byName['->'].capabilities, 'return-value-of-assignments']),
 				shell, '3 -> x -> a[x]', emptyGraph()
 					.use(4, 'x')
 					.reads(4, 1)
@@ -462,7 +462,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.reads(3, 6)
 			);
 			/* R evaluates the value, then the indices, and rebinds the target last */
-			const replacementOrder = ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'function-calls'] as const;
+			const replacementOrder = ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'function-calls'] as const;
 			assertDataflow(label('Assignment in the index outlives the replacement', [...replacementOrder]),
 				shell, 'x <- c(1, 2)\nx[y <- 2] <- 5\nprint(y)', emptyGraph()
 					.defineVariable('2@y', 'y')
@@ -490,7 +490,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			);
 		});
 		describe('Double Assignments', () => {
-			assertDataflow(label('"x <- 1\nx <- 2\nprint(x)"', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'function-calls']),
+			assertDataflow(label('"x <- 1\nx <- 2\nprint(x)"', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'function-calls']),
 				shell, 'x <- 1\nx <- 2\nprint(x)', emptyGraph()
 					.constant('1:6')
 					.defineVariable('1@x', 'x', { definedBy: ['1:6', '1@<-'] })
@@ -514,7 +514,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		describe('Known Impact Assignments', () => {
 			describe('Loops Return Invisible Null', () => {
 				describe('With <-', () => {
-					assertDataflow(label('Repeat', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'repeat-loop']),
+					assertDataflow(label('Repeat', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments', 'repeat-loop']),
 						shell, 'x <- repeat x', emptyGraph()
 							.use(1, 'x', { cds: [{ id: 3 }] })
 							.argument(3, 1)
@@ -528,7 +528,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 							.defineVariable(0, 'x', { definedBy: [3, 4] })
 					);
 
-					assertDataflow(label('While', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'while-loop', 'numbers']),
+					assertDataflow(label('While', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments', 'while-loop', 'numbers']),
 						shell, 'x <- while (x) 3', emptyGraph()
 							.use(1, 'x')
 							.argument(4, 1)
@@ -544,7 +544,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 							.defineVariable(0, 'x', { definedBy: [4, 5] })
 					);
 
-					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers']),
+					assertDataflow(label('For', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers']),
 						shell, 'x <- for (i in 1:4) 3',  emptyGraph()
 							.call(4, ':', [argumentInCall(2), argumentInCall(3)], { returns: [], reads: [NodeId.toBuiltIn(':'), 2, 3], onlyBuiltIn: true })
 							.calls(4, NodeId.toBuiltIn(':'))
@@ -563,7 +563,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			});
 		});
 		describe('Assignment with Function Call', () => {
-			assertDataflow(label('define call with multiple args should only be defined by the call-return', ['name-normal', 'numbers', 'unnamed-arguments', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+			assertDataflow(label('define call with multiple args should only be defined by the call-return', ['name-normal', 'numbers', 'unnamed-arguments', 'call-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'a <- foo(x=3,y,z)',  emptyGraph()
 					.reads(4, 3)
 					.use(5, 'y', { cds: [{ id: 9, when: true, byPromise: true }] })
@@ -600,7 +600,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.calls('2@setNames', NodeId.toBuiltIn('setNames')),
 				{ resolveIdsAsCriterion: true }
 			);
-			assertDataflow(label('replacement call with a named argument points its argument edge at a real vertex', ['name-normal', 'numbers', 'named-arguments', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']),
+			assertDataflow(label('replacement call with a named argument points its argument edge at a real vertex', ['name-normal', 'numbers', 'named-arguments', 'call-normal', ...BuiltInOperators.byName['<-'].capabilities, 'replacement-functions']),
 				shell, 'v <- 1\ng(v, k = 2) <- 3', emptyGraph()
 					.constant('1:6')
 					.call('1:3', '<-', [argumentInCall('1@v'), argumentInCall('1:6')], { returns: ['1@v'], reads: [NodeId.toBuiltIn('<-'), '1:6'], onlyBuiltIn: true })
@@ -686,7 +686,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(0)
 					.constant(1)
 			);
-			assertDataflow(label('compare condition', ['if', 'logical', 'numbers', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('compare condition', ['if', 'logical', 'numbers', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > 5) 1',  emptyGraph()
 					.use(0, 'x')
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
@@ -697,7 +697,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(1)
 					.constant(3, { cds: [{ id: 5, when: true }] })
 			);
-			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > 5) y',  emptyGraph()
 					.use(0, 'x')
 					.use(3, 'y', { cds: [{ id: 5, when: true }] })
@@ -709,7 +709,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.calls(5, NodeId.toBuiltIn('if'))
 					.constant(1)
 			);
-			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > y) z',  emptyGraph()
 					.use(0, 'x')
 					.use(1, 'y')
@@ -720,7 +720,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
 					.calls(5, NodeId.toBuiltIn('if'))
 			);
-			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > y) x', emptyGraph()
 					.use(0, 'x')
 					.use(1, 'y')
@@ -731,7 +731,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
 					.calls(5, NodeId.toBuiltIn('if'))
 			);
-			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > x) x', emptyGraph()
 					.use(0, 'x')
 					.use(1, 'x')
@@ -742,7 +742,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
 					.calls(5, NodeId.toBuiltIn('if'))
 			);
-			assertDataflow(label('definition in if', ['if', 'logical', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]),
+			assertDataflow(label('definition in if', ['if', 'logical', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities]),
 				shell, 'if (x <- 3) x', emptyGraph()
 					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.reads(3, 0)
@@ -769,7 +769,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(0)
 					.constant(3)
 			);
-			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > 5) { 1 } else { 42 }',
 				emptyGraph()
 					.use(0, 'x')
@@ -787,7 +787,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(5, { cds: [{ id: 11, when: true }] })
 					.constant(9, { cds: [{ id: 11, when: false }] })
 			);
-			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { 42 }',
 				emptyGraph()
 					.use(0, 'x')
@@ -809,7 +809,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(1)
 					.constant(9, { cds: [{ id: 11, when: false }] })
 			);
-			assertDataflow(label('compare cond. symbol in then & else', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('compare cond. symbol in then & else', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { z }', emptyGraph()
 					.use(0, 'x')
 					.use(5, 'y', { cds: [{ id: 11, when: true }] })
@@ -825,7 +825,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.calls(11, NodeId.toBuiltIn('if'))
 					.constant(1)
 			);
-			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > y) { z } else { a }', emptyGraph()
 					.use(0, 'x')
 					.use(1, 'y')
@@ -841,7 +841,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
 					.calls(11, NodeId.toBuiltIn('if'))
 			);
-			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (y > x) { x } else { y }', emptyGraph()
 					.use(0, 'y')
 					.use(1, 'x')
@@ -857,7 +857,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
 					.calls(11, NodeId.toBuiltIn('if'))
 			);
-			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > x) { x } else { x }',  emptyGraph()
 					.use(0, 'x')
 					.use(1, 'x')
@@ -876,7 +876,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		});
 	});
 	describe('Inline Non-Strict Boolean Operations', () => {
-		assertDataflow(label('rhs has to depend on x', ['name-normal', 'logical', 'numbers', 'semicolons', ...OperatorDatabase['&&'].capabilities, ...OperatorDatabase['<-'].capabilities]),
+		assertDataflow(label('rhs has to depend on x', ['name-normal', 'logical', 'numbers', 'semicolons', ...BuiltInOperators.byName['&&'].capabilities, ...BuiltInOperators.byName['<-'].capabilities]),
 			shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.use(3, 'x')
@@ -950,7 +950,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.calls(2, NodeId.toBuiltIn('repeat'))
 					.nse(2, 0)
 			);
-			assertDataflow(label('using loop variable in repeat body', ['repeat-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'grouping']),
+			assertDataflow(label('using loop variable in repeat body', ['repeat-loop', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'grouping']),
 				shell,  'repeat { x <- 1 }',  emptyGraph()
 					.call(4, '<-', [argumentInCall(2, { cds: [{ id: 6 }] }), argumentInCall(3, { cds: [{ id: 6, when: true }] })], { returns: [2], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true, cds: [{ id: 6 }] })
 					.calls(4, NodeId.toBuiltIn('<-'))
@@ -962,7 +962,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant(3, { cds: [{ id: 6 }] })
 					.defineVariable(2, 'x', { definedBy: [3, 4], cds: [{ id: 6 }] })
 			);
-			assertDataflow(label('using variable in body', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'grouping']),
+			assertDataflow(label('using variable in body', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'grouping']),
 				shell, 'repeat { x <- y }',  emptyGraph()
 					.use(3, 'y', { cds: [{ id: 6 }] })
 					.call(4, '<-', [argumentInCall(2, { cds: [{ id: 6 }] }), argumentInCall(3, { cds: [{ id: 6 }] })], { returns: [2], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true, cds: [{ id: 6 }] })
@@ -994,7 +994,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				})
 				.constant(3, undefined, false)
 		);
-		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments', 'name-created-resolved']),
+		assertDataflow(label('simple get', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments', 'name-created-resolved']),
 			shell, 'a <- function() 1\nget("a")()', emptyGraph()
 				.call(9, `${UnnamedFunctionCallPrefix}9`, [], { returns: [1], reads: [8], environment: defaultEnv().defineFunction('a', 0, 4) })
 				.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true })

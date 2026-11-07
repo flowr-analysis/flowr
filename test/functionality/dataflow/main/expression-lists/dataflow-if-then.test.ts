@@ -2,13 +2,13 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 function getAssignOrigin(assign: string): { origin: BuiltInProcName[] } | object {
 	return assign === '<<-' || assign === '->' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
@@ -49,7 +49,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 								.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 								.constant('6', { cds: [{ id: '8', when: true }] });
 						}
-						assertDataflow(label('read previous def in cond', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if']),
+						assertDataflow(label('read previous def in cond', [...BuiltInOperators.byName[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if']),
 							shell,
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
 							baseGraph
@@ -67,14 +67,14 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 							.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 							.constant('3');
 						// otherwise will be pruned by TRUE
-						assertDataflow(label('read previous def in then', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
+						assertDataflow(label('read previous def in then', [...BuiltInOperators.byName[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
 							shell,
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
 							previousGraph
 						);
 					});
 				}
-				assertDataflow(label('read previous def in else', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
+				assertDataflow(label('read previous def in else', [...BuiltInOperators.byName[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
 					shell,
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,  emptyGraph()
 						.use('10', 'x')
@@ -91,7 +91,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 				);
 			});
 			describe('write within if', () => {
-				assertDataflow(label('without else directly together', ['if', 'logical', 'name-normal', ...OperatorDatabase[assign].capabilities, 'numbers', 'newlines']),
+				assertDataflow(label('without else directly together', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName[assign].capabilities, 'numbers', 'newlines']),
 					shell,
 					`if(TRUE) { x ${assign} 2 }\nx`, emptyGraph()
 						.use('8', 'x')
@@ -106,7 +106,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 						.constant('4')
 						.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 				);
-				assertDataflow(label('def in else read afterwards', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase[assign].capabilities, 'newlines']),
+				assertDataflow(label('def in else read afterwards', ['if', 'logical', 'numbers', 'name-normal', ...BuiltInOperators.byName[assign].capabilities, 'newlines']),
 					shell,
 					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,  emptyGraph()
 						.use('12', 'x')
@@ -122,7 +122,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 						.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				);
 
-				assertDataflow(label('def in then and else read afterward', ['if', 'name-normal', ...OperatorDatabase[assign].capabilities, 'numbers', 'newlines']),
+				assertDataflow(label('def in then and else read afterward', ['if', 'name-normal', ...BuiltInOperators.byName[assign].capabilities, 'numbers', 'newlines']),
 					shell,
 					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,  emptyGraph()
 						.use('0', 'z')
@@ -148,7 +148,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 	}
 	describe('Branch Coverage', () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
-		assertDataflow(label('assignment both branches in if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1\nif(r) { x <- 2 } else { x <- 3 }\n y <- x',  emptyGraph()
+		assertDataflow(label('assignment both branches in if', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1\nif(r) { x <- 2 } else { x <- 3 }\n y <- x',  emptyGraph()
 			.use('3', 'r')
 			.use('18', 'x')
 			.reads('18', ['6', '12'])
@@ -175,7 +175,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 			.defineVariable('17', 'y', { definedBy: ['18', '19'] })
 		);
 
-		assertDataflow(label('assignment if one branch', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if', 'numbers']), shell, 'x <- 1\nif(r) { x <- 2 } \n y <- x',  emptyGraph()
+		assertDataflow(label('assignment if one branch', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'if', 'numbers']), shell, 'x <- 1\nif(r) { x <- 2 } \n y <- x',  emptyGraph()
 			.use('3', 'r')
 			.use('12', 'x')
 			.reads('12', ['6', '0'])
@@ -196,7 +196,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 			.defineVariable('11', 'y', { definedBy: ['12', '13'] })
 		);
 
-		assertDataflow(label('assignment if multiple variables with else', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if']),
+		assertDataflow(label('assignment if multiple variables with else', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if']),
 			shell,
 			'x <- 1 \n y <- 2 \n if(r){ x <- 3 \n y <- 4} else {x <- 5} \n w <- x \n z <- y',
 			emptyGraph()
@@ -238,7 +238,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 				.defineVariable('23', 'w', { definedBy: ['24', '25'] })
 				.defineVariable('26', 'z', { definedBy: ['27', '28'] })
 		);
-		assertDataflow(label('assignment in else block', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1 \n if(r){} else{x <- 2} \n y <- x',  emptyGraph()
+		assertDataflow(label('assignment in else block', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1 \n if(r){} else{x <- 2} \n y <- x',  emptyGraph()
 			.use('3', 'r')
 			.use('15', 'x')
 			.reads('15', ['0', '9'])
@@ -260,7 +260,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 			.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: false }] })
 			.defineVariable('14', 'y', { definedBy: ['15', '16'] })
 		);
-		assertDataflow(label('nested if else', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
+		assertDataflow(label('nested if else', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
 			shell, `x <- 1
 if(y) {
   if(z) {
@@ -368,7 +368,7 @@ a()`,  emptyGraph()
 				})
 				.defineVariable('9', '"a"', { definedBy: ['13', '15'], cds: [{ id: '17', when: true }] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
-		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created-resolved']),
+		assertDataflow(label('assign from get', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created-resolved']),
 			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
 				.use('9-get-name', '"b"')
 				.reads('9-get-name', '0')
@@ -394,7 +394,7 @@ a()`,  emptyGraph()
 				.defineVariable('4', '"a"', { definedBy: ['9', '11'] })
 				.markIdForUnknownSideEffects('15')
 		);
-		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created-resolved']),
+		assertDataflow(label('get in function', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created-resolved']),
 			shell, `a <- 5
 f <- function() {
   get("a")
@@ -430,7 +430,7 @@ f()`,  emptyGraph()
 				})
 				.defineVariable('3', 'f', { definedBy: ['11', '12'] })
 		);
-		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created-resolved']),
+		assertDataflow(label('get in function argument', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created-resolved']),
 			shell, `a <- 5
 f <- function(a = get("a")) {
   a

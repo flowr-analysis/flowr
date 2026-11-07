@@ -1,9 +1,9 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 /**
  * A data-masked argument is evaluated in a frame whose parent is the caller, so a name that is not a column of the
@@ -11,7 +11,7 @@ import { describe } from 'vitest';
  */
 describe('Data Masking', { concurrent: false }, withShell(shell => {
 	const capabilities: FlowrCapabilityId[] = ['name-normal', 'call-normal', 'numbers',
-		'unnamed-arguments', 'named-arguments', ...OperatorDatabase['<-'].capabilities];
+		'unnamed-arguments', 'named-arguments', ...BuiltInOperators.byName['<-'].capabilities];
 
 	describe('keeps what a masked argument reads from the enclosing scope', () => {
 		const cases: Record<string, { call: string, minRVersion?: string }> = {

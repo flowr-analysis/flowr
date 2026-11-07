@@ -17,6 +17,7 @@ import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builti
 import { Identifier } from '../../dataflow/environments/identifier';
 import { ArgProp, type FnSig } from '../../dataflow/environments/built-in-props';
 import { type AmbientStateAccess, AmbientStateAccessType } from '../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
+import { OperatorUsedAs } from '../../dataflow/environments/default-builtin-config/operators';
 
 /** What removing code for a set of criteria takes out of the program. */
 export interface RemovalSliceResult {
@@ -96,7 +97,7 @@ function deviceWindows(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNode
 			continue;
 		}
 		for(const sibling of siblings.slice(open, close + 1)) {
-			if(!RBinaryOp.is(sibling) || RBinaryOp.getOperatorInfo(sibling)?.usedAs !== 'assignment') {
+			if(!RBinaryOp.is(sibling) || RBinaryOp.getOperatorInfo(sibling)?.usedAs !== OperatorUsedAs.Assignment) {
 				found.add(sibling.info.id);
 			}
 		}

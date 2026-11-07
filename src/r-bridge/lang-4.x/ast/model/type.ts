@@ -1,7 +1,7 @@
 /**
  * Token types as they are produced by the R parser.
  * Not all of them are directly handled by the normalize step.
- * Some of them are also listed as part of the {@link OperatorDatabase}.
+ * Some of them are also listed as part of the operator facts of the built-in configuration (`BuiltInOperators`).
  * @see RType
  */
 export enum RawRType {

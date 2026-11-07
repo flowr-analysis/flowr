@@ -1,13 +1,13 @@
 import { assertDataflow, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 
 describe('Context Assignments', { concurrent: false }, withShell(shell => {
 	describe('Table Assignment', () => {
-		assertDataflow(label('Assign single bracket', ['name-normal', 'function-calls', 'functions-with-global-side-effects', 'implicit-return', 'strings', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+		assertDataflow(label('Assign single bracket', ['name-normal', 'function-calls', 'functions-with-global-side-effects', 'implicit-return', 'strings', 'unnamed-arguments', ...BuiltInOperators.byName['<-'].capabilities, 'newlines']),
 			shell, `
 iris[,foo:=sample(bar),]
 print(iris)

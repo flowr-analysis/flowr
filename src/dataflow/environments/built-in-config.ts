@@ -1,3 +1,4 @@
+import type { OperatorFacts, BuiltInOperators } from './default-builtin-config/operators';
 import type { BuiltInProcessorMapper, ConfigOfBuiltInMappingName } from './built-in';
 import type { BuiltInEvalName } from './built-in-eval-name';
 import { BuiltIns } from './built-in';
@@ -40,6 +41,8 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean, deprInfo?: DeprecatedFunctionInformation };
 	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	readonly evalHandler?: BuiltInEvalName
+	/** for R's operators: what the parser and the analyses know about each of the names, see {@link BuiltInOperators} */
+	readonly operators?:   Readonly<Record<string, OperatorFacts>>
 }
 
 /**

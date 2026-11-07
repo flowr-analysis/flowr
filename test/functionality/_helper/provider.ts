@@ -5,7 +5,7 @@
 import type { RNumberValue, RStringValue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { RNa, RNull } from '../../../src/r-bridge/lang-4.x/convert-values';
 import type { NamespaceIdentifier } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import { OperatorArity, OperatorDatabase, Operators } from '../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { BuiltInOperators, OperatorArity, OperatorUsedAs } from '../../../src/dataflow/environments/default-builtin-config/operators';
 
 export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	// the default block
@@ -98,19 +98,19 @@ export const RSymbolPool: { val: string, str: string, namespace: NamespaceIdenti
 ];
 
 function canBeABinaryOp(op: string) {
-	const arity = OperatorDatabase[op].arity;
+	const arity = BuiltInOperators.byName[op].arity;
 	return arity === OperatorArity.Binary || arity === OperatorArity.Both;
 }
 
 function canBeAUnaryOp(op: string): boolean {
-	const arity = OperatorDatabase[op].arity;
+	const arity = BuiltInOperators.byName[op].arity;
 	return arity === OperatorArity.Unary || arity === OperatorArity.Both;
 }
 
 
-export const BinaryOperatorPool: ReadonlySet<string> = new Set(Operators.filter(canBeABinaryOp));
-export const BinaryNonAssignmentOperators: readonly string[] = [...BinaryOperatorPool].filter(op =>  OperatorDatabase[op].usedAs !== 'assignment');
+export const BinaryOperatorPool: ReadonlySet<string> = new Set(BuiltInOperators.names.filter(canBeABinaryOp));
+export const BinaryNonAssignmentOperators: readonly string[] = [...BinaryOperatorPool].filter(op =>  BuiltInOperators.byName[op].usedAs !== OperatorUsedAs.Assignment);
 
-export const UnaryOperatorPool: ReadonlySet<string> = new Set(Operators.filter(canBeAUnaryOp));
+export const UnaryOperatorPool: ReadonlySet<string> = new Set(BuiltInOperators.names.filter(canBeAUnaryOp));
 
-export const AssignmentOperators: readonly string[] = Operators.filter(op => OperatorDatabase[op].usedAs === 'assignment');
+export const AssignmentOperators: readonly string[] = BuiltInOperators.names.filter(op => BuiltInOperators.byName[op].usedAs === 'assignment');

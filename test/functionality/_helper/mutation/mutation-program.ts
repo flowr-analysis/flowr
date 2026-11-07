@@ -15,7 +15,6 @@ import { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-sym
 import { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RAccess } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { SourceRange } from '../../../../src/util/range';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { callFnProps } from '../../../../src/dataflow/environments/query-fn-props';
@@ -31,6 +30,7 @@ import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInOperators } from '../../../../src/dataflow/environments/default-builtin-config/operators';
 
 export interface MutationTarget {
 	/** the program to mutate */
@@ -200,7 +200,7 @@ export class MutationProgram {
 
 	/** whether `node` is an assignment of any kind, `<-`, `=`, `->`, `<<-` or `->>` */
 	static isAssignment(node: RNode<ParentInformation>): node is RBinaryOp<ParentInformation> {
-		return RBinaryOp.is(node) && OperatorDatabase[node.operator]?.usedAs === 'assignment';
+		return RBinaryOp.is(node) && BuiltInOperators.byName[node.operator]?.usedAs === 'assignment';
 	}
 
 	/**

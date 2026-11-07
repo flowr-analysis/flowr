@@ -2,11 +2,11 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 describe('for', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
@@ -23,7 +23,7 @@ describe('for', { concurrent: false }, withShell(shell => {
 	);
 
 	describe('Potential redefinition with break', () => {
-		assertDataflow(label('Potential redefinition inside the same loop', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'break']),
+		assertDataflow(label('Potential redefinition inside the same loop', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'if', 'break']),
 			shell,
 			`repeat {
   x <- 2
@@ -55,7 +55,7 @@ x`, emptyGraph()
 		);
 	});
 
-	assertDataflow(label('Read in for Loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
+	assertDataflow(label('Read in for Loop', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
 		.use('7', 'x', { cds: [{ id: '9', when: true }] })
 		.reads('7', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -71,7 +71,7 @@ x`, emptyGraph()
 		.constant('4')
 		.constant('5')
 	);
-	assertDataflow(label('Read after for loop', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph()
+	assertDataflow(label('Read after for loop', ['for-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph()
 		.use('11', 'x')
 		.reads('11', '6')
 		.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { origin: [BuiltInProcName.Default], returns: [], reads: ['1', '2', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
@@ -91,7 +91,7 @@ x`, emptyGraph()
 	);
 
 
-	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
+	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
 		.use('14', 'x')
 		.reads('14', ['9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -113,7 +113,7 @@ x`, emptyGraph()
 		.constant('10')
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: true }] })
 	);
-	assertDataflow(label('redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
+	assertDataflow(label('redefinition within loop', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
 		.use('10', 'x', { cds: [{ id: '13', when: true }] })
 		.reads('10', ['9', '0'])
 		.use('14', 'x')
@@ -137,12 +137,12 @@ x`, emptyGraph()
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: true }] })
 	);
 
-	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
+	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
 		shell, 'for(i in 1:10) x <- x + 1',
 		emptyGraph().defineVariable('1@x', 'x', { cds: [{ id: 10, when: true }] }).use('1@[2]x', 'x', { cds: [{ id: 10, when: true }] }).reads('1@[2]x', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
-	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x;\nx <- x }\n x', emptyGraph()
+	assertDataflow(label('double redefinition within loop', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x;\nx <- x }\n x', emptyGraph()
 		.use('10', 'x', { cds: [{ id: '16', when: true }] })
 		.reads('10', ['12', '0'])
 		.use('13', 'x', { cds: [{ id: '16', when: true }] })
@@ -222,7 +222,7 @@ x`, emptyGraph()
 
 	describe('Branch coverage', () => {
 		describe('repeat', () => {
-			assertDataflow(label('Break immediately', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 repeat {
    x <- 2;
@@ -341,7 +341,7 @@ print(x)`,  emptyGraph()
 		});
 
 		describe('for', () => {
-			assertDataflow(label('Break immediately (for)', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately (for)', ['for-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 for(i in 1:100) {
    x <- 2;
@@ -481,7 +481,7 @@ print(x)`,  emptyGraph()
 		});
 
 		describe('while', () => {
-			assertDataflow(label('Break immediately (while)', ['while-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately (while)', ['while-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 while(TRUE) {
    x <- 2;

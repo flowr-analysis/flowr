@@ -1,26 +1,26 @@
 import { assertSlicedF, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 assumeLoadedPackages('data.table');
 
 describe('Simple Forward', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const i of [1, 2, 3]) {
-			assertSlicedF(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+			assertSlicedF(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines']),
 				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
 			);
 		}
 		for(const i of [1, 2]) {
-			assertSlicedF(label(`slice constant assignment with print ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			assertSlicedF(label(`slice constant assignment with print ${i}`, ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'function-calls']),
 				shell, 'x <- 2\nx <- 3\nprint(x)', [`${i}@x`], i == 1 ? 'x <- 2' : 'x <- 3\nprint(x)'
 			);
 		}
-		assertSlicedF(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+		assertSlicedF(label('using setnames', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'function-calls']),
 			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['1@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)'
 		);
-		assertSlicedF(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+		assertSlicedF(label('using setnames but wanting another', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'function-calls']),
 			shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['2@y'], 'y <- 3\nprint(y)'
 		);
 		assertSlicedF(label('two vars'), shell, `x <- 1
@@ -36,23 +36,23 @@ print(x + y)
 	});
 	describe('Function definitions', () => {
 		/* the slice keeps the binding of `f`, so the body must not be reconstructed without its header */
-		assertSlicedF(label('definition reached by its own name', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'newlines', 'call-normal', 'unnamed-arguments']),
+		assertSlicedF(label('definition reached by its own name', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', ...BuiltInOperators.byName['+'].capabilities, 'newlines', 'call-normal', 'unnamed-arguments']),
 			shell, 'f <- function(a) a + 1\ny <- f(2)\nz <- 7\ny', ['1@f'], 'f <- function(a) a + 1\ny <- f(2)\ny',
 			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
 		);
-		assertSlicedF(label('unrelated definition stays out', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', 'newlines', 'function-calls']),
+		assertSlicedF(label('unrelated definition stays out', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', 'newlines', 'function-calls']),
 			shell, 'f <- function(a) a + 1\nx <- 3\nprint(x)', ['2@x'], 'x <- 3\nprint(x)',
 			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
 		);
 	});
 	describe('Constant conditionals', () => {
-		assertSlicedF(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
+		assertSlicedF(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'if']),
 			shell, 'x <- 1\nif(TRUE) { x <- 3 }\nx', ['1@x'], 'x <- 1');
-		assertSlicedF(label('if(FALSE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
+		assertSlicedF(label('if(FALSE)', ['name-normal', 'logical', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'if']),
 			shell, 'x <- 1\nif(FALSE) { x <- 3 }\nx', ['1@x'], 'x <- 1\nx');
 	});
 	describe('Independent Control-Flow', () => {
-		assertSlicedF(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
+		assertSlicedF(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'function-calls', ...BuiltInOperators.byName['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 for(i in 1:10) {
@@ -60,7 +60,7 @@ for(i in 1:10) {
 }
 print(x)
     `, ['2@x'], 'x <- 1\nfor(i in 1:10) { x <- x * 2 }\nprint(x)');
-		assertSlicedF(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
+		assertSlicedF(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...BuiltInOperators.byName['<-'].capabilities, 'function-calls', ...BuiltInOperators.byName['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 while(i > 3) {
@@ -68,7 +68,7 @@ while(i > 3) {
 }
 cat(x)
     `, ['2@x'], 'x <- 1\nwhile(i > 3) { x <- x * 2 }\ncat(x)');
-		assertSlicedF(label('if-then', ['name-normal', 'if', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
+		assertSlicedF(label('if-then', ['name-normal', 'if', 'newlines', 'numbers', 'unnamed-arguments', ...BuiltInOperators.byName['<-'].capabilities, 'function-calls', ...BuiltInOperators.byName['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 if(i > 3) {
@@ -78,7 +78,7 @@ cat(x)
     `, ['2@x'], `x <- 1
 if(i > 3) { x <- x * 2 }
 cat(x)`);
-		assertSlicedF(label('independent if-then with extra requirements', ['name-normal', 'if', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
+		assertSlicedF(label('independent if-then with extra requirements', ['name-normal', 'if', 'newlines', 'unnamed-arguments', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'function-calls', ...BuiltInOperators.byName['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 i <- 3
@@ -97,7 +97,7 @@ while (TRUE) {
     a <- a - 2
   }
 }`;
-		assertSlicedF(label('initial definition flows through the loop into both branches', ['name-normal', 'while-loop', 'logical', 'if', 'newlines', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['>'].capabilities, ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['-'].capabilities, 'precedence']),
+		assertSlicedF(label('initial definition flows through the loop into both branches', ['name-normal', 'while-loop', 'logical', 'if', 'newlines', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['>'].capabilities, ...BuiltInOperators.byName['+'].capabilities, ...BuiltInOperators.byName['-'].capabilities, 'precedence']),
 			shell, whileIfElse, ['1@a'], `a <- 1
 while(TRUE)
     { if(a > 0) { a <- a + 1 } else
@@ -111,9 +111,9 @@ while(TRUE)
 		);
 	});
 	describe('Access', () => {
-		assertSlicedF(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+		assertSlicedF(label('constant', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'a <- list(1,2)\na[3]', ['1@a'], 'a <- list(1,2)\na');
-		assertSlicedF(label('variable with owner dependency', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+		assertSlicedF(label('variable with owner dependency', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'i <- 4\na <- list(1,2,i)\nb <- a[i]', ['1@i'], 'i <- 4\na <- list(1,2,i)\nb <- a[i]');
 
 		describe('Definitions', () => {
@@ -127,7 +127,7 @@ cat(a)
 a <- list(3,4)
 cat(a)
 `;
-				assertSlicedF(label('Full redefinitions still apply', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
+				assertSlicedF(label('Full redefinitions still apply', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments']),
 					shell, code, ['7@a'], `a <- list(3,4)
 cat(a)`);
 			});
@@ -141,30 +141,30 @@ cat(a)
 a <- list(a=3,b=4)
 cat(a)
 `;
-				assertSlicedF(label('Full redefinitions still apply', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
+				assertSlicedF(label('Full redefinitions still apply', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...BuiltInOperators.byName['<-'].capabilities, 'numbers']),
 					shell, codeB, ['7@a'], `a <- list(a=3,b=4)
 cat(a)`);
 			});
 		});
 	});
 	describe('With directives', () => {
-		assertSlicedF(label('Single directive', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'comments']),
+		assertSlicedF(label('Single directive', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments', 'comments']),
 			shell, `
 #line 42 "foo.R"
 a <- 5
     `, ['3@a'], 'a <- 5', { skipTreeSitter: true /* directives aren't supported yet! */ });
 	});
-	assertSlicedF(label('variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+	assertSlicedF(label('variable', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 		shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['1@i'], [
 			'1@i', '1@<-',
 			'3@b', '3@<-', '3@[', '3@i'
 		]);
-	assertSlicedF(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple']),
+	assertSlicedF(label('subset sequence', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple']),
 		shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['1@i'], [
 			'1@i', '1@<-',
 			'3@b', '3@<-', '3@[', '3@i', '$15'
 		]);
-	assertSlicedF(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple', 'range-assignment']),
+	assertSlicedF(label('range assignment', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple', 'range-assignment']),
 		shell, 'a <- 1:10\na[1:5] <- 3\na', ['1@a'], [
 			'1@a', '1@<-',
 			'2@a', '2@[',
@@ -177,7 +177,7 @@ a[[2]] <- 3
 b[[4]] <- 5
 cat(a)
 `;
-	assertSlicedF(label('Repeated named access and definition', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
+	assertSlicedF(label('Repeated named access and definition', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'unnamed-arguments']),
 		shell, code, ['2@a'], [
 			'2@a', '2@<-',
 			'3@a', '3@[[',
@@ -191,7 +191,7 @@ a$b <- 3
 b[[4]] <- 5
 cat(a)
 `;
-	assertSlicedF(label('Repeated named access and definition', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
+	assertSlicedF(label('Repeated named access and definition', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...BuiltInOperators.byName['<-'].capabilities, 'numbers']),
 		shell, codeB, ['2@a'], [
 			'2@a', '2@<-',
 			'3@a', '3@$',
@@ -205,13 +205,13 @@ b <- read.csv("b.csv")
 x <- undefined_symbol
 plot(a$v)
 plot(b$v)`;
-		assertSlicedF(label('a seed of its own reaches only its assignment', ['name-normal', 'function-calls', ...OperatorDatabase['<-'].capabilities]),
+		assertSlicedF(label('a seed of its own reaches only its assignment', ['name-normal', 'function-calls', ...BuiltInOperators.byName['<-'].capabilities]),
 			shell, code, ['3@x'], 'x <- undefined_symbol');
-		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...OperatorDatabase['<-'].capabilities]),
+		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...BuiltInOperators.byName['<-'].capabilities]),
 			shell, code, ['1@a'], 'a <- read.csv("a.csv")\nplot(a$v)');
 	});
 	describe('Globals read in a function', () => {
-		const caps = ['name-normal', 'function-calls', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines'] as const;
+		const caps = ['name-normal', 'function-calls', 'normal-definition', 'implicit-return', ...BuiltInOperators.byName['<-'].capabilities, 'newlines'] as const;
 		assertSlicedF(label('reach the calls after the definition', [...caps]),
 			shell, 'f <- function() print(x)\nf()\nx <- 1\nf()', ['3@x'], 'f <- function() print(x)\nx <- 1\nf()');
 	});

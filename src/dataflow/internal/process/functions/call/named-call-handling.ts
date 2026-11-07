@@ -9,7 +9,6 @@ import { RParameter } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-p
 import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RExpressionList } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
-import { OperatorDatabase } from '../../../../../r-bridge/lang-4.x/ast/model/operators';
 import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -30,6 +29,7 @@ import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/b
 import { queryFnProps } from '../../../../environments/query-fn-props';
 import { REnvironment } from '../../../../environments/environment';
 import { InternalGenerics } from '../../../../environments/default-builtin-config';
+import { BuiltInOperators, OperatorUsedAs } from '../../../../environments/default-builtin-config/operators';
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
@@ -115,7 +115,7 @@ function framesBinding(idMap: AstIdMap): ReadonlyMap<string, ReadonlySet<NodeId 
 	if(frames === undefined) {
 		const found = new Map<string, Set<NodeId | undefined>>();
 		for(const node of idMap.values()) {
-			const target = RBinaryOp.is(node) && OperatorDatabase[node.operator]?.usedAs === 'assignment' ? (node.operator.startsWith('-') ? node.rhs : node.lhs)
+			const target = RBinaryOp.is(node) && BuiltInOperators.byName[node.operator]?.usedAs === OperatorUsedAs.Assignment ? (node.operator.startsWith('-') ? node.rhs : node.lhs)
 				: RParameter.is(node) ? node.name : undefined;
 			const name = RSymbol.is(target) ? Identifier.getName(target.content) : RString.is(target) ? target.content.str : undefined;
 			if(name !== undefined) {

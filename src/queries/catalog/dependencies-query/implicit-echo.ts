@@ -23,6 +23,7 @@ import { callIdentifierOf, isPlot } from './plot-objects';
 import { inputVariablesAt } from './data-flow';
 import { ExpectFunctionNames } from './function-info/test-functions';
 import type { FunctionInfo } from './function-info/function-info';
+import { OperatorUsedAs } from '../../../dataflow/environments/default-builtin-config/operators';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
 function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): RNode<ParentInformation> | undefined {
@@ -72,7 +73,7 @@ const Assigning: readonly BuiltInProcName[] = [BuiltInProcName.Assignment, Built
 
 function isAssignment(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation): boolean {
 	const vertex = node === undefined ? undefined : dataflow.graph.getVertex(node.info.id);
-	return (RBinaryOp.is(node) && RBinaryOp.getOperatorInfo(node)?.usedAs === 'assignment') || Assigning.some(p => DfgVertex.hasOrigin(vertex, p));
+	return (RBinaryOp.is(node) && RBinaryOp.getOperatorInfo(node)?.usedAs === OperatorUsedAs.Assignment) || Assigning.some(p => DfgVertex.hasOrigin(vertex, p));
 }
 
 /** whether the list is a `( )` group rather than a `{ }` block, which is what makes its value visible */

@@ -1,10 +1,10 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { access, arg, bin, comment, exprList, num, sym } from '../../../_helper/ast-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 describe('Parse value access', { concurrent: false }, withShell(shell => {
 	describe('Single bracket', () => {
@@ -18,7 +18,7 @@ describe('Parse value access', { concurrent: false }, withShell(shell => {
 		assertAst(label('One Variable', ['name-normal', 'single-bracket-access']),
 			shell, 'a[x]', exprList(access('[', [1, 2], a, [arg(sym('x', [1, 3]))]))
 		);
-		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'infix-calls', 'function-calls', 'numbers', ...OperatorDatabase['-'].capabilities]),
+		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'infix-calls', 'function-calls', 'numbers', ...BuiltInOperators.byName['-'].capabilities]),
 			shell, 'a[x + 3]', exprList(access('[', [1, 2], a, [
 				arg(bin('+', [1, 5], sym('x', [1, 3]), num('3', [1, 7])), undefined, { lexeme: 'x + 3', location: SourceRange.from(1, 3, 1, 7) })
 			]))

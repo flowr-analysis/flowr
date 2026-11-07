@@ -3,12 +3,12 @@ import type { Pos } from '../../../_helper/ast-builder';
 import { bin, comment, exprList, group, num, parameter, str, sym } from '../../../_helper/ast-builder';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RComment } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import type { RParameter } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 /** `function(...) { children }` starting at the beginning of the first line, with the braces at `open` and `close` */
 function fn(parameters: RParameter[], open: Pos, close: Pos, children: RNode[] = [], adToks?: RComment[]): RNode {
@@ -30,7 +30,7 @@ describe('Parse function definitions', { concurrent: false }, withShell(shell =>
 	describe('without parameters', () => {
 		assertAst(label('Noop', ['normal-definition', 'grouping']),
 			shell, 'function() { }', exprList(fn([], [1, 12], [1, 14])), opts);
-		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
+		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...BuiltInOperators.byName['+'].capabilities, ...BuiltInOperators.byName['*'].capabilities]),
 			shell, 'function() { x + 2 * 3 }', exprList(fn([], [1, 12], [1, 24], [
 				bin('+', [1, 16], sym('x', [1, 14]), bin('*', [1, 20], num('2', [1, 18]), num('3', [1, 22])))
 			])), opts);

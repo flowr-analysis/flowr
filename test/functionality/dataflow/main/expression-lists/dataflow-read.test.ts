@@ -2,11 +2,11 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 describe('Lists with variable references', { concurrent: false }, withShell(shell => {
 	describe('read-read same variable', () => {
@@ -24,7 +24,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 		);
 	});
 	describe('def-def same variable', () => {
-		assertDataflow(label('directly together', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
+		assertDataflow(label('directly together', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx <- 2', emptyGraph()
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
@@ -36,7 +36,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 		);
 
-		assertDataflow(label('multiple occurrences of same variable', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
+		assertDataflow(label('multiple occurrences of same variable', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx <- 3\n3\nx <- 9', emptyGraph()
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
@@ -54,7 +54,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 		);
 	});
 	describe('def followed by read', () => {
-		assertDataflow(label('directly together', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
+		assertDataflow(label('directly together', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx',  emptyGraph()
 				.use('3', 'x')
 				.reads('3', '0')
@@ -63,7 +63,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 		);
-		assertDataflow(label('redefinition links correctly', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), shell,
+		assertDataflow(label('redefinition links correctly', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), shell,
 			'x <- 2; x <- 3; x',
 			emptyGraph()
 				.use('6', 'x')
@@ -77,7 +77,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 				.constant('4')
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 		);
-		assertDataflow(label('multiple redefinition with circular definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), shell,
+		assertDataflow(label('multiple redefinition with circular definition', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), shell,
 			'x <- 2; x <- x; x',
 			emptyGraph()
 				.use('4', 'x')
@@ -92,7 +92,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 		);
-		assertDataflow(label('duplicate circular definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons']), shell,
+		assertDataflow(label('duplicate circular definition', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'semicolons']), shell,
 			'x <- x; x <- x;',
 			emptyGraph()
 				.use('1', 'x')
@@ -108,7 +108,7 @@ describe('Lists with variable references', { concurrent: false }, withShell(shel
 	});
 	// potentially incorrect? redefinition appears correct in dataflow graph, but why is the {} still flagged up as an expression list?
 	describe('Redefining expression lists', () => {
-		assertDataflow(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
+		assertDataflow(label('redefining {', ['name-escaped', ...BuiltInOperators.byName['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
 			shell, `\`{\` <- function(...) 3
 x <- 4
 {
@@ -166,7 +166,7 @@ print(x)`, emptyGraph()
 	});
 	describe('Escaped Identifiers Should Still Be Resolved', () => {
 		const distractor = 'x <- 3\ny <- 4\nz <- 2\n';
-		assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+		assertDataflow(label('without distractors', [...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, '`a` <- 2\na',
 			emptyGraph()
 				.use('2@a')
@@ -176,7 +176,7 @@ print(x)`, emptyGraph()
 				resolveIdsAsCriterion: true
 			}
 		);
-		assertDataflow(label('one distractor', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+		assertDataflow(label('one distractor', [...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, `\`a\` <- 2\n${distractor}a`,
 			emptyGraph()
 				.use('5@a')
@@ -186,7 +186,7 @@ print(x)`, emptyGraph()
 				resolveIdsAsCriterion: true
 			}
 		);
-		assertDataflow(label('one hundred distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+		assertDataflow(label('one hundred distractors', [...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, `\`a\` <- 2\n${distractor.repeat(100)}\na`,
 			emptyGraph()
 				.use(`${3 + 100 * 3}@a`)

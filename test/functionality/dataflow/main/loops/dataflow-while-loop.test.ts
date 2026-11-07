@@ -2,10 +2,10 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
 
 describe('While', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()
@@ -22,7 +22,7 @@ describe('While', { concurrent: false }, withShell(shell => {
 		.nse('3', '1')
 		.constant('0')
 	);
-	assertDataflow(label('assignment in loop body', ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']), shell, 'while (TRUE) { x <- 3 }', emptyGraph()
+	assertDataflow(label('assignment in loop body', ['while-loop', 'logical', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers']), shell, 'while (TRUE) { x <- 3 }', emptyGraph()
 		.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn('<-'), 4], onlyBuiltIn: true, cds: [{ id: 7, when: true }], origin: [BuiltInProcName.Assignment] })
 		.calls('5', NodeId.toBuiltIn('<-'))
 		.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 7, when: true }], origin: [BuiltInProcName.ExpressionList] })
@@ -34,7 +34,7 @@ describe('While', { concurrent: false }, withShell(shell => {
 		.constant('4')
 		.defineVariable('3', 'x', { definedBy: ['4', '5'], cds: [{ id: 7, when: true }] })
 	);
-	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities, 'precedence']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
+	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...BuiltInOperators.byName['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...BuiltInOperators.byName['-'].capabilities, ...BuiltInOperators.byName['>'].capabilities, 'precedence']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
 		.use('3', 'x')
 		.use('12', 'x', { cds: [{ id: 14, when: true }] })
 		.reads('12', '2')

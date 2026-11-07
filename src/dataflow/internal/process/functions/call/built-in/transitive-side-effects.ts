@@ -5,17 +5,21 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex, attachLibrary } from './built-in-library';
-import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { IdentifierDefinition, IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { hiddenSideEffects, isAssumedWrite, reachesBuiltInLate, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
+import { drawingWritesDevice, hiddenSideEffects, reachesBuiltInLate, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
+import type { AmbientAccessRecord } from '../../../../../graph/ambient-access';
+import { callFnProps } from '../../../../../environments/query-fn-props';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
+import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
 
 /**
@@ -205,18 +209,24 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 
 type NamedDefinition = InGraphIdentifierDefinition & { name: string };
 
-/** The ambient writes of body calls only linking resolved to a built-in (see {@link writesOfHiddenBuiltIn}), linking their reads as well. */
-function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInformation): Map<NodeId, NamedDefinition[]> {
-	const { writes, reads } = hiddenBuiltInAccess(graph, environment);
+/** The ambient writes of body calls only linking resolved to a built-in (see {@link writesOfHiddenBuiltIn}), recording and linking their reads as well. */
+function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInformation, drawing: boolean): Map<NodeId, NamedDefinition[]> {
+	const { writes, reads, targets } = hiddenBuiltInAccess(graph, REnvironment.findBuiltIn(environment.current), drawing);
+	for(const [id, resolved] of targets) {
+		hiddenSideEffects(graph, environment, id, resolved);
+	}
+	for(const id of new Set([...writes.keys(), ...reads.keys()])) {
+		graph.recordAmbientAccess(id, { reads: reads.get(id), writes: writes.get(id)?.map(d => d.name) });
+	}
 	linkHiddenReads(graph, reads);
 	return writes;
 }
 
-/** The ambient writes and reads of body calls only linking resolved to a built-in, per call. */
-function hiddenBuiltInAccess(graph: DataflowGraph, environment: REnvironmentInformation): { writes: Map<NodeId, NamedDefinition[]>, reads: Map<NodeId, string[]> } {
-	const builtIns = REnvironment.findBuiltIn(environment.current);
+/** The ambient writes and reads of body calls only linking resolved to a built-in, per call, with the built-ins each was resolved to. Does not change the graph. */
+function hiddenBuiltInAccess(graph: DataflowGraph, builtIns: Environment, drawing: boolean): { writes: Map<NodeId, NamedDefinition[]>, reads: Map<NodeId, string[]>, targets: [NodeId, readonly IdentifierDefinition[]][] } {
 	const writes = new Map<NodeId, NamedDefinition[]>();
 	const reads = new Map<NodeId, string[]>();
+	const resolvedTargets: [NodeId, readonly IdentifierDefinition[]][] = [];
 	const writesOf = new DefaultMap<NodeId, NamedDefinition[]>(() => [], writes);
 	const readsOf = new DefaultMap<NodeId, string[]>(() => [], reads);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -227,8 +237,8 @@ function hiddenBuiltInAccess(graph: DataflowGraph, environment: REnvironmentInfo
 		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
 			if(NodeId.isBuiltIn(target) && (own === undefined || NodeId.toBuiltIn(Identifier.getName(own)) !== target)) {
 				const targets = Resolve.byNameAndType(NodeId.fromBuiltIn(target), { current: builtIns, level: 0 }, ReferenceType.Function) ?? [];
-				hiddenSideEffects(graph, environment, id, targets);
-				const defs = targets.flatMap(d => writesOfHiddenBuiltIn(d, id));
+				resolvedTargets.push([id, targets]);
+				const defs = targets.flatMap(d => writesOfHiddenBuiltIn(d, id, drawing));
 				if(defs.length > 0) {
 					writesOf.get(id).push(...defs);
 				}
@@ -239,7 +249,7 @@ function hiddenBuiltInAccess(graph: DataflowGraph, environment: REnvironmentInfo
 			}
 		}
 	}
-	return { writes, reads };
+	return { writes, reads, targets: resolvedTargets };
 }
 
 /** A hidden call reads the state where the functions running it are called. */
@@ -372,31 +382,140 @@ export interface FunctionAmbientWrites {
 	readonly variables: ReadonlySet<string>
 }
 
+/** What running some code reads and writes of the global state, see {@link ambientAccessOf}. */
+export interface AmbientAccess {
+	/** the pseudo variables (see {@link AmbientStateName}) the code may read, like `#option:digits` */
+	readonly reads:     ReadonlySet<string>
+	/** the pseudo variables of the state it may change, like `#option:digits` */
+	readonly writes:    ReadonlySet<string>
+	/** the state only assumed changed by a body flowR cannot see and changed by nothing else, like `#rng` for `function(f) f()` */
+	readonly assumed:   ReadonlySet<string>
+	/** the global variables the functions it calls may bind, by `x <<- 1` reaching the global frame or `assign("x", 1, envir = .GlobalEnv)` */
+	readonly variables: ReadonlySet<string>
+	/** the calls tagged {@link SemanticCallTag.Graphics} (`plot`, `lines`, `par`, ...), which write the canvas only if `semantics.ambient.drawingWritesDevice` is set */
+	readonly draws:     ReadonlySet<NodeId>
+}
+
+/** Which of the {@link AmbientAccess} to take along when asking {@link ambientAccessOf}. */
+export interface AmbientAccessOptions {
+	/** whether to add what the functions called by the code access as well, defaults to true */
+	readonly includeCallees?: boolean
+}
+
+const Reads = 'r', Writes = 'w', Assumed = 'a', Variable = 'v';
+
+function accessOf(items: Iterable<string>, draws: ReadonlySet<NodeId>): AmbientAccess {
+	const access = { reads: new Set<string>(), writes: new Set<string>(), assumed: new Set<string>(), variables: new Set<string>() };
+	const byKind: Record<string, Set<string>> = { [Reads]: access.reads, [Writes]: access.writes, [Assumed]: access.assumed, [Variable]: access.variables };
+	for(const item of items) {
+		byKind[item[0]].add(item.slice(1));
+	}
+	return { ...access, assumed: access.assumed.difference(access.writes), draws };
+}
+
+function itemsOf(record: AmbientAccessRecord): string[] {
+	return [...record.reads.map(n => Reads + n), ...record.writes.map(n => Writes + n), ...record.assumed.map(n => Assumed + n)];
+}
+
+/** Whether the call `id` is tagged as a graphics call. */
+function drawsOn(graph: DataflowGraph, id: NodeId): boolean {
+	return FunctionSemantics.call.props.hasAny(callFnProps(id, graph), SemanticCallTag.Graphics);
+}
+
+/**
+ * What each function accesses when it is called: the pseudo variables it reads and changes (see {@link AmbientStateName}), the global
+ * variables it binds and the drawing calls it makes, together with what the functions it calls access.
+ * Reads and writes confined to the function's own frame (`withr::local_options`) are left out.
+ * @param graph - the dataflow graph of the whole program
+ * @returns       per function-definition vertex what it may access, which is empty for a function accessing nothing
+ * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
+ */
+export function ambientAccessOfFunctions(this: void, graph: DataflowGraph): Map<NodeId, AmbientAccess> {
+	const names = escapedDefinitionMap(graph, new Map());
+	const escaped = escapedDefinitions(new Map());
+	const items = computeCallGraphSummaries(graph, (id, fdef) => {
+		const own = Dataflow.callsIn(fdef, graph).flatMap(([call]) => {
+			const record = graph.ambientAccessOf(call);
+			return record === undefined ? [] : itemsOf(record);
+		}).toArray();
+		for(const def of escaped(id, fdef)) {
+			for(const { name } of names.get(def) ?? []) {
+				if(!AmbientStateName.is(name)) {
+					own.push(Variable.concat(name));
+				}
+			}
+		}
+		return own;
+	});
+	const draws = computeCallGraphSummaries(graph, (_id, fdef) => Dataflow.callsIn(fdef, graph).map(([call]) => call).filter(call => drawsOn(graph, call)));
+	return new Map(items.entries().map(([id, own]) => [id, accessOf(own, draws.get(id) ?? new Set())]));
+}
+
+/**
+ * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls among `scope` and,
+ * unless turned off, what the functions they call access. The calls within a function definition in `scope` only count if called.
+ * @param graph - the dataflow graph of the whole program
+ * @param scope - the ids to ask for, like those of a file, a block, or a single statement (see `RNode.collectAllIds`), or one id
+ * @param opts  - see {@link AmbientAccessOptions}
+ * @useInstead {@link Dataflow.sideEffects.ambientAccess}
+ */
+export function ambientAccessOf(this: void, graph: DataflowGraph, scope: NodeId | Iterable<NodeId>, opts?: AmbientAccessOptions): AmbientAccess {
+	const ids = new Set<NodeId>(typeof scope === 'string' || typeof scope === 'number' ? [scope] : scope);
+	const bodies = new Set<NodeId>();
+	for(const id of ids) {
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.isFunctionDefinition(vertex)) {
+			for(const inner of vertex.subflow.graph) {
+				bodies.add(inner);
+			}
+		}
+	}
+	const items: string[] = [];
+	const draws = new Set<NodeId>();
+	const callees = new Set<NodeId>();
+	for(const id of ids) {
+		if(bodies.has(id) || !DfgVertex.isFunctionCall(graph.getVertex(id))) {
+			continue;
+		}
+		const record = graph.ambientAccessOf(id);
+		if(record !== undefined) {
+			items.push(...itemsOf(record));
+		}
+		if(drawsOn(graph, id)) {
+			draws.add(id);
+		}
+		if(opts?.includeCallees !== false) {
+			for(const callee of Dataflow.calleeIdsOf(graph, id)) {
+				callees.add(callee);
+			}
+		}
+	}
+	if(callees.size > 0) {
+		const functions = ambientAccessOfFunctions(graph);
+		for(const callee of callees) {
+			const access = functions.get(callee);
+			if(access !== undefined) {
+				items.push(...access.reads.values().map(n => Reads + n), ...access.writes.values().map(n => Writes + n), ...access.assumed.values().map(n => Assumed + n), ...access.variables.values().map(n => Variable + n));
+				access.draws.forEach(d => draws.add(d));
+			}
+		}
+	}
+	return accessOf(items, draws);
+}
+
 /**
  * The global state each function may leave changed when it is called, as the names of the pseudo variables it changes
  * (see {@link AmbientStateName}): `#option:digits` for `options(digits = 3)`, `#env:PATH` for `Sys.setenv(PATH = "")`, or `#sink`,
  * and the global variables it binds.
  * A function reports what its callees report as well, so with `a01 <- function() options(digits = 3)` and `a22 <- function() a01()`,
  * both set `#option:digits`. What a function only changes within its own frame (`withr::local_options`) is left out.
- * @param info - the dataflow information of the whole program
+ * @param info - the dataflow graph of the whole program, or the dataflow information (only the graph is used)
  * @returns      per function-definition vertex what it may change, which is empty for a function changing nothing
- * @useInstead {@link Dataflow.sideEffects.ambientWrites}
+ * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
  */
-export function ambientWritesOfFunctions(this: void, info: Pick<DataflowInformation, 'graph' | 'environment'>): Map<NodeId, FunctionAmbientWrites> {
-	const hidden = hiddenBuiltInAccess(info.graph, info.environment).writes;
-	const names = escapedDefinitionMap(info.graph, hidden);
-	const summary = computeCallGraphSummaries(info.graph, escapedDefinitions(hidden));
-	return new Map(summary.entries().map(([id, definitions]) => [id, writesOf(definitions.values().flatMap(d => names.get(d) ?? []))]));
-}
-
-function writesOf(definitions: Iterable<NamedDefinition>): FunctionAmbientWrites {
-	const state = new Set<string>();
-	const assumed = new Set<string>();
-	const variables = new Set<string>();
-	for(const d of definitions) {
-		(!AmbientStateName.is(d.name) ? variables : isAssumedWrite(d) ? assumed : state).add(d.name);
-	}
-	return { state, assumed: assumed.difference(state), variables };
+export function ambientWritesOfFunctions(this: void, info: DataflowGraph | Pick<DataflowInformation, 'graph'>): Map<NodeId, FunctionAmbientWrites> {
+	const graph = 'graph' in info ? info.graph : info;
+	return new Map(ambientAccessOfFunctions(graph).entries().map(([id, { writes, assumed, variables }]) => [id, { state: writes, assumed, variables }]));
 }
 
 /**
@@ -405,7 +524,7 @@ function writesOf(definitions: Iterable<NamedDefinition>): FunctionAmbientWrites
  * @useInstead {@link Dataflow.sideEffects.propagateTransitive}
  */
 export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, defined: Set<string> = new Set(), open: readonly IdentifierReference[] = []): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {
-	const hidden = hiddenBuiltInWrites(graph, environment);
+	const hidden = hiddenBuiltInWrites(graph, environment, drawingWritesDevice(ctx.config));
 	/* both passes ask what escapes each function, and neither changes a body or a call target in between */
 	const escapes = computeCallGraphSummaries(graph, escapedDefinitions(hidden));
 	propagateTransitiveDefinitions(graph, environment, ctx, escapes);

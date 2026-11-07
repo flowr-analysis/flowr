@@ -15,6 +15,7 @@ import type { Writable } from 'ts-essentials';
 import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
 import { REnvironment } from '../environments/environment';
+import { AmbientAccessRecord } from './ambient-access';
 
 /**
  * Describes the information we store per function body.
@@ -135,6 +136,8 @@ export interface DataflowGraphJson {
 	readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
 	readonly edgeInformation:     [NodeId, [NodeId, DfEdge][]][]
 	readonly _unknownSideEffects: UnknownSideEffect[]
+	/** the ambient access of the calls touching global state, absent if there is none */
+	readonly _ambientAccess?:     [NodeId, AmbientAccessRecord][]
 }
 
 /**
@@ -207,6 +210,9 @@ export class DataflowGraph<
 	 */
 	private readonly _unknownSideEffects = new Set<UnknownSideEffect>();
 
+	/* sparse: only the calls touching the global state (options, devices, files, ...) have an entry */
+	private readonly _ambientAccess = new Map<NodeId, AmbientAccessRecord>();
+
 	constructor(idMap: AstIdMap | undefined) {
 		this._idMap = idMap;
 	}
@@ -256,7 +262,8 @@ export class DataflowGraph<
 			vertexInformation:   Array.from(this.vertexInformation),
 			/* mapping inside `Array.from`, a trailing `.map()` would build the outer array twice */
 			edgeInformation:     Array.from(this.edgeInformation, ([id, edges]) => [id, Array.from(edges)] as [NodeId, [NodeId, DfEdge][]]),
-			_unknownSideEffects: Array.from(this._unknownSideEffects)
+			_unknownSideEffects: Array.from(this._unknownSideEffects),
+			...this._ambientAccess.size > 0 ? { _ambientAccess: Array.from(this._ambientAccess) } : {}
 		};
 	}
 
@@ -436,6 +443,23 @@ export class DataflowGraph<
 	/** Retrieves the set of vertices which have side effects that we do not know anything about. */
 	public get unknownSideEffects(): Set<UnknownSideEffect> {
 		return this._unknownSideEffects;
+	}
+
+	/** What the call `id` reads and writes of the global state, if it touches any, see {@link AmbientAccessRecord}. */
+	public ambientAccessOf(id: NodeId): AmbientAccessRecord | undefined {
+		return this._ambientAccess.get(id);
+	}
+
+	/** The ids of all calls recorded as touching the global state. */
+	public ambientAccessIds(): IterableIterator<NodeId> {
+		return this._ambientAccess.keys();
+	}
+
+	/** Records that the call `id` touches the global state like given, adding to what it is known to touch already. */
+	public recordAmbientAccess(id: NodeId, access: Partial<AmbientAccessRecord>): this {
+		id = NodeId.normalize(id);
+		this._ambientAccess.set(id, AmbientAccessRecord.merge(this._ambientAccess.get(id), access));
+		return this;
 	}
 
 	/** Allows setting the id-map explicitly (which should only be used when, e.g., you plan to compare two dataflow graphs on the same AST-basis) */
@@ -659,6 +683,9 @@ export class DataflowGraph<
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
+		for(const [id, access] of otherGraph._ambientAccess) {
+			this._ambientAccess.set(id, AmbientAccessRecord.merge(this._ambientAccess.get(id), access));
+		}
 	}
 
 	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {
@@ -773,6 +800,9 @@ export class DataflowGraph<
 		graph.incomingIndex = undefined;
 		for(const unknown of data._unknownSideEffects) {
 			graph._unknownSideEffects.add(unknown);
+		}
+		for(const [id, access] of data._ambientAccess ?? []) {
+			graph._ambientAccess.set(id, access);
 		}
 		return graph;
 	}

@@ -24,6 +24,7 @@ import { appliedArguments } from '../../../../../graph/applied-arguments';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import type { LinkTo } from '../../../../../../queries/catalog/call-context-query/call-context-query-format';
 import type { DataflowGraph } from '../../../../../graph/graph';
+import type { FlowrConfig } from '../../../../../../config';
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -34,13 +35,14 @@ import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientStateName, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 import { type AmbientKeys, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
+import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/operators';
 
 const ListConstructors: ReadonlySet<string> = new Set(['list', 'c']);
 
 const DeviceStates = [AmbientStateName.graphics, AmbientStateName.otherDevices, AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy];
 
 const Accumulating: ReadonlySet<string> = new Set([
-	...DeviceStates, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption,
+	...DeviceStates, AmbientStateName.canvas, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption,
 	AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers, ...KeyedAccumulators
 ]);
 
@@ -106,12 +108,33 @@ function withAccess<OtherInfo>(
 	const cds = data.cds ? [...data.cds] : undefined;
 	const maybeWritten = writes.flatMap(w => typeof w === 'object' && w.mode === 'maybe' ? [w.name] : []);
 	const readRefs: IdentifierReference[] = uniqueArrayMerge(reads, maybeWritten).map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
+	recordAmbient(res.graph, rootId, res.environment, readRefs.map(r => r.name as string), writes);
 	/* the writes stay out of `out`: an assignment reads whatever else its source writes (`x <- y <- 3`) */
 	return {
 		...res,
 		unknownReferences: readRefs.length > 0 ? [...res.unknownReferences, ...readRefs] : res.unknownReferences,
 		environment:       defineAmbient(res.environment, rootId, cds, writes)
 	};
+}
+
+/** Whether the write of `name` binds in the current frame only, see {@link AmbientWrite}. */
+function writesLocally(environment: REnvironmentInformation, name: string, mode: AmbientWrite['mode'] | undefined): boolean {
+	return mode === 'local' || (environment.level > 0 && environment.current.memory.has(name as never));
+}
+
+/** Notes in `graph` what the call `rootId` reads and writes, see {@link DataflowGraph#recordAmbientAccess}; `environment` is the one the writes apply to. */
+function recordAmbient(graph: DataflowGraph, rootId: NodeId, environment: REnvironmentInformation, reads: readonly string[], writes: readonly (string | AmbientWrite)[]): void {
+	if(reads.length === 0 && writes.length === 0) {
+		return;
+	}
+	const global: string[] = [];
+	const assumed: string[] = [];
+	const local: string[] = [];
+	for(const write of writes) {
+		const { name, mode, assumed: isAssumed } = typeof write === 'string' ? { name: write, mode: undefined, assumed: undefined } : write;
+		(writesLocally(environment, name, mode) ? local : isAssumed ? assumed : global).push(name);
+	}
+	graph.recordAmbientAccess(rootId, { reads, writes: global, assumed, local });
 }
 
 /** Applies the writes of the call `rootId` to the environment, see {@link withAccess}. */
@@ -132,23 +155,28 @@ function defineAmbient(environment: REnvironmentInformation, rootId: NodeId, cds
 			...assumed ? { assumed } : {}
 		};
 		/* the state is global, wherever the call happens, unless the call or an earlier one (`local_seed`) scopes it to the current frame */
-		const local = mode === 'local' || (environment.level > 0 && environment.current.memory.has(name as never));
-		environment = REnvironment.define(def, !local, environment, keep);
+		environment = REnvironment.define(def, !writesLocally(environment, name, mode), environment, keep);
 	}
 	return environment;
 }
 
+/** {@link defineAmbient}, recording the writes for `rootId` in `graph` as well. */
+function defineRecorded(graph: DataflowGraph, environment: REnvironmentInformation, rootId: NodeId, cds: readonly ControlDependency[] | undefined, writes: readonly (string | AmbientWrite)[]): REnvironmentInformation {
+	recordAmbient(graph, rootId, environment, [], writes);
+	return defineAmbient(environment, rootId, cds, writes);
+}
+
 /** What an assignment writes beyond its target: only a global `.Random.seed` sets {@link AmbientStateName.rng}. */
-export function ambientWritesOfAssignment(environment: REnvironmentInformation, target: Identifier, rootId: NodeId, cds: readonly ControlDependency[] | undefined, global: boolean): REnvironmentInformation {
-	environment = ambientWritesOfRelease(environment, [target], rootId, cds);
-	return global && Identifier.getName(target) === AmbientStateName.rngVariable ? defineAmbient(environment, rootId, cds, [AmbientStateName.rng, AmbientStateName.rngKind]) : environment;
+export function ambientWritesOfAssignment(graph: DataflowGraph, environment: REnvironmentInformation, target: Identifier, rootId: NodeId, cds: readonly ControlDependency[] | undefined, global: boolean): REnvironmentInformation {
+	environment = ambientWritesOfRelease(graph, environment, [target], rootId, cds);
+	return global && Identifier.getName(target) === AmbientStateName.rngVariable ? defineRecorded(graph, environment, rootId, cds, [AmbientStateName.rng, AmbientStateName.rngKind]) : environment;
 }
 
 /** Rebinding or removing the names (all of them if `undefined`) may release an object a finalizer is registered for. */
-export function ambientWritesOfRelease(environment: REnvironmentInformation, names: readonly Identifier[] | undefined, rootId: NodeId, cds: readonly ControlDependency[] | undefined): REnvironmentInformation {
+export function ambientWritesOfRelease(graph: DataflowGraph, environment: REnvironmentInformation, names: readonly Identifier[] | undefined, rootId: NodeId, cds: readonly ControlDependency[] | undefined): REnvironmentInformation {
 	const holders = (Resolve.byName(AmbientStateName.finalizers, environment) ?? []).map(d => (d as { holder?: string }).holder);
 	const released = holders.some(h => h === undefined || names === undefined || names.some(n => Identifier.getName(n) === h));
-	return released ? defineAmbient(environment, rootId, cds, [AmbientStateName.finalizers]) : environment;
+	return released ? defineRecorded(graph, environment, rootId, cds, [AmbientStateName.finalizers]) : environment;
 }
 
 function* ambientDefinitionsBetween(after: REnvironmentInformation, before: REnvironmentInformation, skipUnchanged: boolean): Generator<[string, NodeId]> {
@@ -368,6 +396,11 @@ export type AmbientStateAccess = {
 	readonly queryLinksTo?:          LinkTo<RegExp | string>
 };
 
+/** Whether a call drawing on a device writes its canvas, see `semantics.ambient.drawingWritesDevice`. */
+export function drawingWritesDevice(config: FlowrConfig): boolean {
+	return config.semantics.ambient?.drawingWritesDevice === true;
+}
+
 /** Wires the {@link AmbientStateAccess} of a call into its dataflow information: reads become unknown references, writes define the pseudo variable globally. */
 export function applyAmbientStateAccess<OtherInfo>(
 	res: DataflowInformation,
@@ -386,6 +419,9 @@ export function applyAmbientStateAccess<OtherInfo>(
 	switch(access.type) {
 		case AmbientStateAccessType.ReadGraphics:
 			reads.push(AmbientStateName.graphics, AmbientStateName.palette);
+			if(drawingWritesDevice(data.ctx.config)) {
+				writes.push(AmbientStateName.canvas);
+			}
 			break;
 		case AmbientStateAccessType.SetGraphics:
 			/* the call returns the previous state */
@@ -517,6 +553,7 @@ function registerFinalizer<OtherInfo>(res: DataflowInformation, args: readonly P
 		return DfgVertex.isFunctionDefinition(definition) ? ambientWritesBetween(definition.subflow.environment, data.environment) : [];
 	});
 	const definition = { nodeId: rootId, name: AmbientStateName.finalizers, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : [], value, writes, holder: RSymbol.is(holder) ? Identifier.getName(holder.content) : undefined } as const;
+	recordAmbient(res.graph, rootId, res.environment, [], [AmbientStateName.finalizers]);
 	return { ...res, environment: REnvironment.define(definition, true, res.environment, true) };
 }
 
@@ -653,7 +690,7 @@ function applyWithUnknownArguments<OtherInfo>(res: DataflowInformation, rootId: 
 			/* like `options(op)`: it may set anything */
 			res.graph.markIdForUnknownSideEffects(rootId);
 	}
-	const { reads, writes } = unknownArgumentAccess(access);
+	const { reads, writes } = unknownArgumentAccess(access, drawingWritesDevice(data.ctx.config));
 	return withAccess(res, rootId, data, reads, writes);
 }
 
@@ -683,7 +720,7 @@ const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientState
 	[AmbientStateAccessType.RunFinalizers]:       { reads: [AmbientStateName.finalizers], writes: [] }
 };
 
-function unknownArgumentAccess(access: AmbientStateAccess): { readonly reads: readonly string[], readonly writes: readonly string[] } {
+function unknownArgumentAccess(access: AmbientStateAccess, drawing: boolean): { readonly reads: readonly string[], readonly writes: readonly string[] } {
 	switch(access.type) {
 		case AmbientStateAccessType.ReadOptions:
 			return { reads: optionReads(access.dispatchOn === undefined ? access.keys : undefined), writes: [] };
@@ -695,6 +732,8 @@ function unknownArgumentAccess(access: AmbientStateAccess): { readonly reads: re
 			return { reads: [], writes: [access.state] };
 		case AmbientStateAccessType.ReadState:
 			return { reads: [access.state], writes: [] };
+		case AmbientStateAccessType.ReadGraphics:
+			return { reads: UnknownArgumentAccess[access.type].reads, writes: drawing ? [AmbientStateName.canvas] : [] };
 		default:
 			return UnknownArgumentAccess[access.type];
 	}
@@ -762,6 +801,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 			environment = setAmbient(environment, AmbientStateName.otherDevicesOpenedBy, opener, true);
 			break;
 	}
+	recordAmbient(res.graph, rootId, res.environment, [], kind === 'close-all' ? DeviceStates : [AmbientStateName.graphics, AmbientStateName.device]);
 	const known = kind === 'close' ? opener.length > 0 : kind === 'close-all' && opener.length + otherOpeners.length > 0;
 	return withAccess({ ...res, environment }, rootId, data, reads, kind === 'open' || known ? [] : unnamedFile);
 }
@@ -808,13 +848,13 @@ function hiddenAccess(target: IdentifierDefinition): readonly AmbientStateAccess
 }
 
 /** The (maybe) writes of the call `callId` to the built-in `target` through a parameter, like `g <- function(f, ...) f(...); g(options, digits = 3)`. */
-export function writesOfHiddenBuiltIn(target: IdentifierDefinition, callId: NodeId): (InGraphIdentifierDefinition & { name: string })[] {
-	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a).writes).map(name => ({ nodeId: callId, name, type: ReferenceType.Variable, definedAt: callId, cds: [] }));
+export function writesOfHiddenBuiltIn(target: IdentifierDefinition, callId: NodeId, drawing = false): (InGraphIdentifierDefinition & { name: string })[] {
+	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a, drawing).writes).map(name => ({ nodeId: callId, name, type: ReferenceType.Variable, definedAt: callId, cds: [] }));
 }
 
 /** The states the call to the built-in `target` through a parameter reads, see {@link writesOfHiddenBuiltIn}. */
 export function readsOfHiddenBuiltIn(target: IdentifierDefinition): string[] {
-	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a).reads);
+	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a, false).reads);
 }
 
 function setOptions<OtherInfo>(
@@ -968,6 +1008,9 @@ export function processAmbientScope<OtherInfo>(
 	if(unknown) {
 		information.graph.markIdForUnknownSideEffects(rootId);
 	}
+	/* the state a scope changes around its code is back afterward */
+	const changed = scope.state === 'device' ? [AmbientStateName.graphics, AmbientStateName.device] : writes;
+	recordAmbient(information.graph, rootId, information.environment, [], code === undefined && !(scope.state === 'device' && local) ? changed : changed.map(w => ({ name: typeof w === 'string' ? w : w.name, mode: 'local' as const })));
 	if(code === undefined) {
 		const applied = { ...information, environment: apply(information.environment) };
 		/* the frame starts out with the state as it was */
@@ -1099,6 +1142,10 @@ export function applyAmbientStateOfCalledBuiltIns<OtherInfo>(res: DataflowInform
 		res = applyAmbientStateAccess(res, call.arguments, callId, data, targets.flatMap(hiddenAccess));
 		hiddenSideEffects(graph, before, callId, targets);
 	}
+	const access = res.graph.ambientAccessOf(callId);
+	if(access !== undefined && res.graph !== graph) {
+		graph.recordAmbientAccess(callId, access);
+	}
 	for(const read of res.unknownReferences.slice(known)) {
 		for(const def of Resolve.byName(read.name as Identifier, before) ?? []) {
 			graph.addEdge(read.nodeId, def.nodeId, EdgeType.Reads);
@@ -1135,7 +1182,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 	RNode.visitAst(root, node => {
 		if(RFunctionDefinition.is(node)) {
 			return true;
-		} else if(RBinaryOp.is(node) ? RBinaryOp.getOperatorInfo(node)?.usedAs !== 'assignment' : RUnaryOp.is(node) || RAccess.is(node)) {
+		} else if(RBinaryOp.is(node) ? RBinaryOp.getOperatorInfo(node)?.usedAs !== OperatorUsedAs.Assignment : RUnaryOp.is(node) || RAccess.is(node)) {
 			sites.push(node.info.id);
 		} else if(RFunctionCall.is(node)) {
 			const targets = node.named ? Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [] : [];

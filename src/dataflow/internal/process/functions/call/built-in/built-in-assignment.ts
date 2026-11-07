@@ -606,7 +606,7 @@ export function markAsAssignment<OtherInfo>(
 		}
 	}
 	information.environment = REnvironment.define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
-	information.environment = ambientWritesOfAssignment(information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
+	information.environment = ambientWritesOfAssignment(information.graph, information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
 	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
 	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {

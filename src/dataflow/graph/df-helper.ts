@@ -1,10 +1,11 @@
 import { DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
+import type { AmbientAccessRecord } from './ambient-access';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg, type Origin } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
-import { ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
+import { ambientAccessOf, ambientAccessOfFunctions, ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
 import { Identifier } from '../environments/identifier';
@@ -268,14 +269,23 @@ export const Dataflow = {
 	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
 	 */
 	sideEffects: {
-		propagateTransitive: propagateTransitiveSideEffects,
-		callGraphSummaries:  computeCallGraphSummaries,
+		propagateTransitive:      propagateTransitiveSideEffects,
+		callGraphSummaries:       computeCallGraphSummaries,
+		/**
+		 * What running the given code reads and writes of the global state (pseudo variables like `#option:digits`, see {@link AmbientStateName}),
+		 * the global variables the functions it calls bind, and its drawing calls (`SemanticCallTag.Graphics`), including what the functions it calls access.
+		 * The scope is one id or the ids of a file, a block, or a statement (see `RNode.collectAllIds`). Writes confined to a function's own frame are left out.
+		 */
+		ambientAccess:            ambientAccessOf,
+		/** {@link Dataflow.sideEffects.ambientAccess} for every function definition when it is called, including what the functions it calls access. */
+		ambientAccessOfFunctions: ambientAccessOfFunctions,
 		/**
 		 * The global state each function may leave changed when called, as pseudo variable names ({@link AmbientStateName}),
 		 * including what the functions it calls change, with what is only assumed of a body flowR cannot see (`f()` for a parameter `f`)
 		 * and the global variables it binds apart. Writes only to the function's own frame are left out.
+		 * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
 		 */
-		ambientWrites:       ambientWritesOfFunctions,
+		ambientWrites:            ambientWritesOfFunctions,
 	},
 	/**
 	 * Only returns the sub-part of the graph that is determined by the given selection.
@@ -318,6 +328,11 @@ export const Dataflow = {
 				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
+		for(const id of graph.ambientAccessIds()) {
+			if(select.has(id)) {
+				df.recordAmbientAccess(id, graph.ambientAccessOf(id) as AmbientAccessRecord);
+			}
+		}
 		return df as G;
 	},
 
@@ -348,6 +363,11 @@ export const Dataflow = {
 			const id = UnknownSideEffect.id(u);
 			if(select.has(id)) {
 				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
+			}
+		}
+		for(const id of graph.ambientAccessIds()) {
+			if(select.has(id)) {
+				df.recordAmbientAccess(id, graph.ambientAccessOf(id) as AmbientAccessRecord);
 			}
 		}
 		return df as G;

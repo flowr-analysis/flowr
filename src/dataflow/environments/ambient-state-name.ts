@@ -49,6 +49,8 @@ export const AmbientStateName = {
 	otherDevicesOpenedBy: '#device:other',
 	/** within a function, the call of its body that opened the active device, which only that body knows */
 	deviceOpenedHere:     '#device:here',
+	/** what is drawn on the active device, which every plot adds to; only written if `semantics.ambient.drawingWritesDevice` is set */
+	canvas:               '#canvas',
 	/** the color palette, which, other than the graphics parameters, all devices share */
 	palette:              '#palette',
 	/** the files on disk, which every call writing a file adds to and every call reading a file we cannot name reads */

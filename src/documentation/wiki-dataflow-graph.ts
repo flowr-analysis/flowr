@@ -1208,6 +1208,12 @@ ${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)', { ctx })}
 In general, as we cannot handle these correctly, we leave it up to other analyses (and ${ctx.linkPage('wiki/Query API', 'queries')}) to handle these cases
 as they see fit.
 
+### Ambient Access
+
+Calls reading or changing global state (options, environment variables, the working directory, graphics devices, files, ...) are recorded in the graph with the pseudo variables (\`#option:digits\`, \`#wd\`, ...) they read and write (\`_ambientAccess\` if serialized as JSON).
+Use \`Dataflow.sideEffects.ambientAccess(graph, scope)\` to aggregate this for a file, a block, or any other set of ids (including what the functions called there access) and \`Dataflow.sideEffects.ambientAccessOfFunctions(graph)\` for every function.
+Graphics calls are reported as \`draws\`. Set ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')} to also let them write the pseudo variable \`#canvas\`, which models what is drawn on the device.
+
 The \`load\` call above degrades to an unknown side effect only because the file could not be found.
 When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
 You can disable this and always treat \`load\` as an unknown side effect with the ${ctx.linkConfig('ignoreLoadCalls')} configuration option.

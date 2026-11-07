@@ -5,6 +5,7 @@ import { GraphDiff, GraphDifferenceReport, initDiffContext } from '../../util/di
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
 import { DataflowGraph, UnknownSideEffect } from './graph';
+import type { AmbientAccessRecord } from './ambient-access';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -130,6 +131,9 @@ export const GraphHelper = {
 		for(const unknown of graph.unknownSideEffects) {
 			const { id, linkTo } = UnknownSideEffect.split(unknown);
 			resultGraph.markIdForUnknownSideEffects(resolve(id), linkTo);
+		}
+		for(const id of graph.ambientAccessIds()) {
+			resultGraph.recordAmbientAccess(resolve(id), graph.ambientAccessOf(id) as AmbientAccessRecord);
 		}
 
 		return resultGraph as G;

@@ -127,6 +127,10 @@ export interface FlowrConfig {
 				readonly definitions:   BuiltInDefinitions
 			}
 		}
+		readonly ambient?: {
+			/** Whether a call drawing on a graphics device (`plot`, `lines`, ...) writes what is drawn, the pseudo variable `#canvas`, defaults to false */
+			readonly drawingWritesDevice?: boolean
+		}
 	},
 	readonly defaultPlugins: ConfigPlugin<string>[]
 	readonly repl: {
@@ -619,6 +623,9 @@ export const FlowrConfig = {
 						loadDefaults: true,
 						definitions:  []
 					}
+				},
+				ambient: {
+					drawingWritesDevice: false
 				}
 			},
 			defaultPlugins: FlowrDefaultPlugins,
@@ -727,7 +734,10 @@ export const FlowrConfig = {
 					loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
 					definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
 				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
-			}).optional().description('Semantics regarding how to handle the R environment.')
+			}).optional().description('Semantics regarding how to handle the R environment.'),
+			ambient: Joi.object({
+				drawingWritesDevice: Joi.boolean().optional().description('Whether calls drawing on a graphics device (e.g., `plot`) count as writing to it, which the ambient state queries then report.')
+			}).optional().description('Semantics regarding the global state (options, devices, files, ...) calls access.')
 		}).description('Configure language semantics and how flowR handles them.'),
 		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
 		repl:           Joi.object({

@@ -258,5 +258,5 @@ export function processRm<OtherInfo>(
 		return res;
 	}
 	const names = targets.all || targets.unknown ? undefined : targets.names.map(n => n.name);
-	return { ...res, environment: ambientWritesOfRelease(applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
+	return { ...res, environment: ambientWritesOfRelease(res.graph, applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
 }

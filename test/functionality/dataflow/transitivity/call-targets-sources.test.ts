@@ -12,7 +12,7 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 		callsLikeR(parser, 'match.fun of a parameter', 'h <- function() 1\nap <- function(f) { f <- match.fun(f); f() }\nap("h")\ncat("ok")', '2:40', ['1@function'], { red: 'R calls h through f(), flowR has no call edge from f() to h' });
 		callsLikeR(parser, 'an S4 generic reaches the method', 'setGeneric("go", function(o) standardGeneric("go"))\nsetClass("T", representation(v = "numeric"))\nsetMethod("go", "T", function(o)\n  1)\ngo(new("T", v = 1))\ncat("ok")', '5@go', ['3@function']);
 		callsLikeR(parser, 'sapply recursing into its caller', 'f <- function(n) if(n > 0) sapply(n - 1, f) else 0\ninvisible(f(1))\ncat("ok")', '1@sapply', ['1@function']);
-		callsLikeR(parser, 'a function chosen by switch', 'h <- function() 1\nk <- switch("a", a = h)\nk()\ncat("ok")', '3@k', ['1@function'], { red: 'R calls h through k(), flowR only links k() to the switch' });
+		callsLikeR(parser, 'a function chosen by switch', 'h <- function() 1\nk <- switch("a", a = h)\nk()\ncat("ok")', '3@k', ['1@function']);
 		callsLikeR(parser, 'a user infix operator', '"%+%" <- function(a, b) a\ninvisible(1 %+% 2)\ncat("ok")', '$15', ['1@function']);
 		callsLikeR(parser, 'a named error handler', 'hd <- function(e)\n  1\ninvisible(tryCatch(stop("x"), error = hd))\ncat("ok")', '3@tryCatch', ['1@function']);
 		callsLikeR(parser, 'Map over a function parameter', 'h <- function(a) a\nap <- function(f) Map(f, 1)\ninvisible(ap(h))\ncat("ok")', '2@Map', ['1@function']);
@@ -23,9 +23,10 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 
 	describe('global state writes', () => {
 		writesLikeR(parser, 'an option set through match.fun', 'h <- function() options(digits = 3)\nap <- function(f) { f <- match.fun(f); f() }\nap("h")\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits'], { red: 'R sets digits, flowR finds no write' });
-		writesLikeR(parser, 'an option set by a function chosen by switch', 'h <- switch("b", a = function() 1, b = function() options(digits = 3))\nh()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits'], { red: 'R sets digits, flowR finds no write' });
+		writesLikeR(parser, 'an option set by a function chosen by switch', 'h <- switch("b", a = function() 1, b = function() options(digits = 3))\nh()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a function returned by Reduce', 'comp <- Reduce(function(f, g) function() { f(); g() }, list(function() 1, function() options(digits = 3)))\ncomp()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits'], { red: 'R sets digits, flowR finds no write' });
 		writesLikeR(parser, 'an option set through eval of a constructed call', 'f <- function() options(digits = 3)\neval(call("f"))\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits'], { imprecise: 'any option, as eval may run anything' });
+		writesLikeR(parser, 'an option set by a function chosen by switch in a function', 'pick <- function(t) switch(t, a = function() 1, b = function() options(digits = 3))\npick("b")()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a calling handler', 'f <- function() { warning("w"); 1 }\nwithCallingHandlers(f(), warning = function(w) { options(digits = 3); invokeRestart("muffleWarning") })\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by an Ops method', 'Ops.foo <- function(e1, e2) { options(digits = 3); TRUE }\no <- structure(1, class = "foo")\ninvisible(o == 1)\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits'], { red: 'R sets digits, flowR finds no write as == is not dispatched' });
 		writesLikeR(parser, 'an option set by a function stored by evalq', 'e <- new.env()\nevalq(f <- function() options(digits = 3), e)\ne$f()\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits'], { red: 'R sets digits, flowR finds no write' });

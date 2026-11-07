@@ -246,6 +246,12 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(alias !== undefined) {
 		res.graph.addEdge(rootId, alias.entryPoint, EdgeType.Returns);
 	}
+	/* the call hands back the alternative it picks */
+	for(const alternative of alternativeArgsFrom === undefined ? [] : processedArguments.slice(alternativeArgsFrom)) {
+		if(alternative !== undefined) {
+			res.graph.addEdge(rootId, alternative.entryPoint, EdgeType.Returns);
+		}
+	}
 	if(readAllArguments) {
 		readArguments(res.graph, rootId, processedArguments);
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {

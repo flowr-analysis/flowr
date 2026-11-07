@@ -481,9 +481,11 @@ function computeStrictness(id: NodeId, state: StrictnessState): FunctionStrictne
 export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
 	const state = strictnessStateOf(graph, ctx);
 	const result: Record<NodeId, FunctionStrictness> = {};
-	for(const id of ids) {
-		result[id] = strictnessOf(id, state);
-	}
+	graph.sharingTargetWalks(() => {
+		for(const id of ids) {
+			result[id] = strictnessOf(id, state);
+		}
+	});
 	return result;
 }
 

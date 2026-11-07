@@ -123,7 +123,7 @@ export const Deferred = {
 		let reachedFromSites: ReadonlySet<NodeId> | undefined;
 		for(const [node, name] of within.filter(([, , writes]) => writes)) {
 			/* a write leaving the evaluating frame lands whenever a call of the closure evaluating it does */
-			const escapes = DfgVertex.hasOrigin(graph.getVertex(idMap.get(node)?.info.parent ?? ''), BuiltInProcName.SuperAssignment);
+			const escapes = Dataflow.superAssigns(graph, idMap.get(node)?.info.parent ?? '');
 			for(const site of escapes ? sites : []) {
 				if(site !== at) {
 					graph.addEdge(node, site, EdgeType.SideEffectOnCall);

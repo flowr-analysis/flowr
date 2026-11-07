@@ -495,7 +495,7 @@ function promiseOutlivesCall(graph: DataflowGraph, idMap: AstIdMap, forcing: (ho
 function definitionsAfter(graph: DataflowGraph, idMap: AstIdMap): (call: NodeId, name: string) => readonly NodeId[] {
 	const byName = Dataflow.definitionsByName(graph);
 	const superAssigned = new Set(graph.verticesOfType(VertexType.FunctionCall)
-		.filter(([, v]) => DfgVertex.hasOrigin(v, BuiltInProcName.SuperAssignment))
+		.filter(([id]) => Dataflow.superAssigns(graph, id))
 		.flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Returns)));
 	const scopeOf = memoize((id: NodeId) => graph.isRoot(id) ? undefined : RNode.strictlyEnclosingFunction(id, idMap));
 	return (call, name) => {

@@ -250,9 +250,9 @@ function overwrittenBefore(read: NodeId, call: NodeId, closure: NodeId, own: Fra
 	return elsewhere;
 }
 
-/** Whether the definition `id` is made by a super assignment (`v <<- 5`). */
+/** Whether the definition `id` is made by a super assignment (`v <<- 5`, `v$a <<- 5`). */
 function superAssigned(id: NodeId, graph: DataflowGraph): boolean {
-	return Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.SuperAssignment));
+	return Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).some(t => Dataflow.superAssigns(graph, t));
 }
 
 /**

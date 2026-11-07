@@ -24,6 +24,8 @@ import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { metaPackageCore } from '../../project/attached-packages';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -282,6 +284,25 @@ export const Dataflow = {
 			}
 		}
 		return origins;
+	},
+	/**
+	 * Whether the call at `id` binds with `<<-` (or `->>`), be it the assignment itself or a replacement it runs:
+	 * `x$a <<- v` rebinds `x` in an enclosing frame just like `x <<- v` does.
+	 * @example
+	 * ```ts
+	 * Dataflow.superAssigns(graph, id); // true for the `$<<-` replacement of `l$a <<- 5`
+	 * ```
+	 */
+	superAssigns(this: void, graph: DataflowGraph, id: NodeId): boolean {
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
+			return true;
+		} else if(!DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement) || graph.idMap === undefined) {
+			return false;
+		}
+		const assignment = RNode.findEnclosing(id, graph.idMap, RBinaryOp.is);
+		const operator = assignment === undefined ? undefined : (graph.idMap.get(assignment) as RBinaryOp | undefined)?.operator;
+		return operator === '<<-' || operator === '->>';
 	},
 	/** Every variable definition of the graph by its unquoted name, in a single pass. */
 	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {

@@ -336,7 +336,7 @@ function readFramesThroughEnvironment(graph: DataflowGraph): void {
 		}
 		const local = new Set(definitions.filter(d => d.own && d.name !== undefined).map(d => d.name));
 		/* a nested definition writes this frame only by `<<-` to a name it binds */
-		const bySuperAssignment = (id: NodeId) => DfgVertex.hasOrigin(graph.getVertex(idMap.get(id)?.info.parent ?? ''), BuiltInProcName.SuperAssignment);
+		const bySuperAssignment = (id: NodeId) => Dataflow.superAssigns(graph, idMap.get(id)?.info.parent ?? '');
 		for(const d of definitions.filter(d => local.has(d.name ?? '') && (d.own || bySuperAssignment(d.id)))) {
 			for(const call of frameCalls) {
 				graph.addEdge(call, d.id, EdgeType.Reads);

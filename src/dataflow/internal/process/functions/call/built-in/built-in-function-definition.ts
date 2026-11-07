@@ -452,7 +452,7 @@ function boundBeforeClosure(def: NodeId, read: NodeId, graph: DataflowGraph): bo
 
 function* superAssignedTargets(graph: DataflowGraph, nodes: Iterable<NodeId>): Generator<[NodeId, Identifier]> {
 	for(const nodeId of nodes) {
-		if(!DfgVertex.hasOrigin(graph.getVertex(nodeId), BuiltInProcName.SuperAssignment)) {
+		if(!Dataflow.superAssigns(graph, nodeId)) {
 			continue;
 		}
 		for(const target of Dataflow.targetsOf(graph, nodeId, EdgeType.Returns)) {

@@ -129,6 +129,19 @@ f <- function(x) {
 if(TRUE) 1 else 2
 `
 	},
+	'code-clones': {
+		configType: 'CodeClonesConfig', ruleType:   'CODE_CLONES', testfile:   'lint-code-clones',
+		example:    `
+normalize <- function(v) {
+	m <- mean(v)
+	(v - m) / sd(v)
+}
+scale_it <- function(values) {
+	mu <- mean(values)
+	(values - mu) / sd(values)
+}
+`
+	},
 	'useless-loop': {
 		configType: 'UselessLoopConfig', ruleType:   'USELESS_LOOP', testfile:   'lint-useless-loop',
 		example:    'for(i in c(1)) { print(i) }'

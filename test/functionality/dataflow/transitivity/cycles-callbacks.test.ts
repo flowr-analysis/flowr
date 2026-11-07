@@ -16,7 +16,7 @@ describe('Transitivity through call cycles, stored callbacks and late forcing, c
 		{ name: 'a default function argument', code: 'f <- function(cb = function() n <<- 1) cb()\nn <- 0\nf()\nprint(n)' },
 		{ name: 'a default calling a global function', code: 'g <- function() n <<- 5\nf <- function(a = g()) a\nn <- 0\nf()\nprint(n)' },
 		{ name: 'a function passed in dots', code: 'ap <- function(...) { fs <- list(...); fs[[1]]() }\nk <- 9\nprint(ap(function() k))' },
-		{ name: 'a promise forced after a nested super assignment', code: 'f <- function(a) g(a)\ng <- function(b) { x <<- 1; b }\nx <- 0\nprint(f(x))', red: 'R prints 1 as g forces the promise after x <<- 1, the slice drops x <<- 1 and prints 0' },
+		{ name: 'a promise forced after a nested super assignment', code: 'f <- function(a) g(a)\ng <- function(b) { x <<- 1; b }\nx <- 0\nprint(f(x))' },
 		{ name: 'promises forced out of order', code: 'f <- function(a, b) { b; a }\nn <- 0\nprint(f(n, n <- 4))' },
 		{ name: 'Reduce over closures', code: 'k <- 1\nadders <- lapply(1:3, function(i) function(x) x + i + k)\nprint(Reduce(function(acc, f) f(acc), adders, 0))' },
 		{ name: 'a super assignment into a local frame', code: 'r <- local({ v <- 1; f <- function() v <<- 5; f(); v })\nprint(r)' },
@@ -60,7 +60,7 @@ describe('Transitivity through call cycles, stored callbacks and late forcing, c
 		sliceMatchesR(parser, c);
 	}
 	resolvesLikeR(parser, 'value of promise after nested super assignment', 'f <- function(a) g(a)\ng <- function(b) { x <<- 1; b }\nx <- 0\ny <- f(x)\ncat(y)', '5@y', { imprecise: 'resolves 0 and unknown, R forces the promise after x <<- 1' });
-	resolvesLikeR(parser, 'value of promises forced out of order', 'f <- function(a, b) { b; a }\nn <- 0\ny <- f(n, n <- 4)\ncat(y)', '4@y', { red: 'R prints 4 as b is forced before a, flowR resolves only 0' });
+	resolvesLikeR(parser, 'value of promises forced out of order', 'f <- function(a, b) { b; a }\nn <- 0\ny <- f(n, n <- 4)\ncat(y)', '4@y', { imprecise: 'resolves 0 and 4, either argument may be forced first' });
 	resolvesLikeR(parser, 'value of function defined by super assignment', 'setup <- function() h <<- function() 4\nsetup()\ny <- h()\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of callee redefined', 'g <- function() 1\nf <- function() g()\ng <- function() 2\ny <- f()\ncat(y)', '5@y', { imprecise: 'resolves 2 and unknown' });
 	resolvesLikeR(parser, 'value of local closure later change', 'g <- local({ v <- 1; f <- function() v; v <- 2; f })\ny <- g()\ncat(y)', '3@y');

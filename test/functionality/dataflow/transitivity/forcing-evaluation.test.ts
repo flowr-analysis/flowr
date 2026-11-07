@@ -4,9 +4,9 @@ import { resolvesLikeR, sliceMatchesR, type TransitivityCase } from './transitiv
 
 describe('Transitivity through late forcing, evaluation and operator dispatch, checked against R', withTreeSitter(parser => {
 	const cases: readonly TransitivityCase[] = [
-		{ name: 'a promise forced after a sibling call sets its variable', code: 'f <- function(a) { g(); a }\ng <- function() x <<- 3\nx <- 0\nprint(f(x))', red: 'R prints 3 as a is forced after g(), the slice drops g() and prints 0' },
+		{ name: 'a promise forced after a sibling call sets its variable', code: 'f <- function(a) { g(); a }\ng <- function() x <<- 3\nx <- 0\nprint(f(x))' },
 		{ name: 'a default reading a local set before forcing', code: 'f <- function(a = v) { v <- 2; a }\nv <- 1\nprint(f())' },
-		{ name: 'a promise forced in an exit hook', code: 'f <- function(a) { on.exit(r <<- a); x <<- 5; invisible() }\nx <- 1\nf(x)\nprint(r)', red: 'R prints 5 as the exit hook forces a after x <<- 5, the slice drops x <<- 5' },
+		{ name: 'a promise forced in an exit hook', code: 'f <- function(a) { on.exit(r <<- a); x <<- 5; invisible() }\nx <- 1\nf(x)\nprint(r)' },
 		{ name: 'a promise forced in finally', code: 'f <- function(a) tryCatch(x <<- 5, finally = r <<- a)\nx <- 1\nf(x)\nprint(r)' },
 		{ name: 'substitute does not force', code: 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\nprint(x)', dropped: 'x <- 5', imprecise: 'keeps x <- 5 which substitute never forces' },
 		{ name: 'exit hooks put first', code: 'f <- function() { on.exit(x <<- 1); on.exit(x <<- 2, add = TRUE, after = FALSE) }\nf()\nprint(x)' },
@@ -62,7 +62,7 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 	for(const c of cases) {
 		sliceMatchesR(parser, c);
 	}
-	resolvesLikeR(parser, 'value of promise forced after sibling', 'f <- function(a) { g(); a }\ng <- function() x <<- 3\nx <- 0\ny <- f(x)\ncat(y)', '5@y', { red: 'R prints 3 as a is forced after g(), flowR resolves only 0' });
+	resolvesLikeR(parser, 'value of promise forced after sibling', 'f <- function(a) { g(); a }\ng <- function() x <<- 3\nx <- 0\ny <- f(x)\ncat(y)', '5@y', { imprecise: 'resolves 0 and 3, the promise may be forced before or after g()' });
 	resolvesLikeR(parser, 'value of default reading a local', 'f <- function(a = v) { v <- 2; a }\nv <- 1\ny <- f()\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of exit hooks put first', 'f <- function() { on.exit(x <<- 1); on.exit(x <<- 2, add = TRUE, after = FALSE) }\nf()\ncat(x)', '3@x', { imprecise: 'resolves 1 and 2, R runs the hook put first before the other' });
 	resolvesLikeR(parser, 'value of substitute does not force', 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\ncat(x)', '4@x', { imprecise: 'resolves 1 and 5, substitute never forces the argument' });

@@ -1,4 +1,4 @@
-import type { DataflowGraph } from '../../../../../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,6 +24,7 @@ import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
 import { ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
@@ -45,6 +46,56 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 		return DfgVertex.isFunctionDefinition(vertex) ? new Set(own(id, vertex)) : undefined;
 	}, new Set(), unionOfSets);
 	return new Map(graph.verticesOfType(VertexType.FunctionDefinition).map(([id]) => [id, summaries.of(id)]));
+}
+
+/**
+ * A promise is forced when the callee first needs it, which may be after the call wrote what the promise reads
+ * (`g <- function(b) { x <<- 1; b }; g(x)`) or after another argument did (`f(n, n <- 4)`), so a read within an
+ * argument of a call of a closure may see what the call or the other arguments write.
+ */
+export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	const nameOf = (id: NodeId) => {
+		const node = idMap.get(id);
+		return RSymbol.is(node) ? Identifier.getName(node.content) : undefined;
+	};
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(!Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+			continue;
+		}
+		const args = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => new Set(RNode.collectAllIds(idMap.get(a.nodeId))));
+		/* what each write is named, and the argument it is written in, if any */
+		const writes = new Map<string, [NodeId, ReadonlySet<NodeId> | undefined][]>();
+		const write = (name: string | undefined, def: NodeId, within?: ReadonlySet<NodeId>) => {
+			if(name !== undefined) {
+				writes.set(name, [...writes.get(name) ?? [], [def, within]]);
+			}
+		};
+		for(const def of Dataflow.sourcesOf(graph, id, EdgeType.SideEffectOnCall)) {
+			write(NodeId.isBuiltIn(def) ? undefined : nameOf(def), def);
+		}
+		for(const arg of args) {
+			for(const node of arg) {
+				write(DfgVertex.isVariableDefinition(graph.getVertex(node)) ? nameOf(node) : undefined, node, arg);
+			}
+		}
+		if(writes.size === 0) {
+			continue;
+		}
+		for(const arg of args) {
+			for(const node of arg) {
+				const name = DfgVertex.isUse(graph.getVertex(node)) ? nameOf(node) : undefined;
+				for(const [def, within] of name === undefined ? [] : writes.get(name) ?? []) {
+					if(within !== arg) {
+						graph.addEdge(node, def, EdgeType.Reads);
+					}
+				}
+			}
+		}
+	}
 }
 
 /**

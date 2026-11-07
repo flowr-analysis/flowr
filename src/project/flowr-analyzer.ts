@@ -168,6 +168,11 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	peekCallGraph(): CallGraph | undefined;
 	/**
+	 * A value computed from the current analysis once per `key` (e.g. the function computing it), shared by
+	 * every query and linter rule asking for it until the analysis is invalidated.
+	 */
+	derive<T>(key: object, compute: () => Promise<T>): Promise<T>;
+	/**
 	 * Access the query API for the request.
 	 * Pass a single query to get its result directly (see {@link Query.one}), a failing query then throws.
 	 * Pass a list of queries to get a record of their results by query type, where a failing query type is reported
@@ -362,6 +367,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public peekCallGraph(): CallGraph | undefined {
 		return this.cache.peekCallGraph();
+	}
+
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		return this.cache.derive(key, compute);
 	}
 
 	public async query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;

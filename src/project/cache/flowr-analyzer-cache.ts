@@ -49,6 +49,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	private running:          Promise<unknown> = Promise.resolve();
 	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
 	private callGraphCache:   CallGraph | undefined = undefined;
+	private derivedCache = new Map<object, Promise<unknown>>();
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {
 		super();
@@ -63,6 +64,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 		this.callGraphCache = undefined;
+		this.derivedCache = new Map();
 		this.computeIfAbsent(true, () => this.pipeline?.getResults(true));
 	}
 
@@ -240,6 +242,27 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			this.callGraphCache = CallGraph.compute((await this.dataflow(force)).graph);
 		}
 		return this.callGraphCache;
+	}
+
+	/**
+	 * A value computed from the current analysis once per `key`, dropped with the analysis.
+	 * A failed computation is not kept, so the next caller tries again.
+	 */
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		const known = this.derivedCache.get(key) as Promise<T> | undefined;
+		if(known !== undefined) {
+			return known;
+		}
+		const store = this.derivedCache;
+		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one */
+		const computed = this.args.context.gas.withGas(undefined, compute);
+		store.set(key, computed);
+		computed.catch(() => {
+			if(store.get(key) === computed) {
+				store.delete(key);
+			}
+		});
+		return computed;
 	}
 
 	/**

@@ -154,6 +154,17 @@ function classChangeOf(def: NodeId, graph: DataflowGraph): NodeId | undefined {
 	return typeof replacement === 'object' && replacement.setsClass ? replacement.call : undefined;
 }
 
+/**
+ * What the argument `bound` hands a function: its value, but for the target of a replacement call (`a` in
+ * `lab(a) <- 1`), which the call defines anew, the value the target has before.
+ */
+function handedValueOf(bound: NodeId, graph: DataflowGraph): readonly NodeId[] {
+	if(!DfgVertex.isVariableDefinition(graph.getVertex(bound)) || !Dataflow.sourcesOf(graph, bound, EdgeType.Returns).some(c => DfgVertex.hasOrigin(graph.getVertex(c), BuiltInProcName.Replacement))) {
+		return [bound];
+	}
+	return Dataflow.targetsOf(graph, bound, EdgeType.Reads).filter(r => DfgVertex.isVariableDefinition(graph.getVertex(r)));
+}
+
 function definitionStep(id: NodeId, node: RNode<ParentInformation> | undefined, info: ClassFlowInfo): FlowStep {
 	const { graph } = info;
 	if(node?.info.role === RoleInParent.ParameterName) {
@@ -164,10 +175,10 @@ function definitionStep(id: NodeId, node: RNode<ParentInformation> | undefined, 
 		const inCall = fn === undefined ? undefined : info.callContext?.get(fn);
 		if(inCall !== undefined) {
 			const handed = bound.filter(b => callOfArgument(b, info.idMap) === inCall);
-			return handed.length === 0 ? undefined : { from: handed };
+			return handed.length === 0 ? undefined : { from: handed.flatMap(b => handedValueOf(b, graph)) };
 		}
 		const calls = fn === undefined ? 0 : Dataflow.sourcesOf(graph, fn, EdgeType.Calls).length;
-		return calls === 0 || bound.length < calls ? undefined : { from: bound };
+		return calls === 0 || bound.length < calls ? undefined : { from: bound.flatMap(b => handedValueOf(b, graph)) };
 	}
 	const replacement = replacementOf(id, graph);
 	if(replacement === 'other') {

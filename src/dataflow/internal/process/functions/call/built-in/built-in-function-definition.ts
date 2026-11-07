@@ -1,5 +1,6 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
+import { convertFnArguments } from '../common';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, happensInEveryBranch, overwriteExitPoints } from '../../../../../info';
 import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, linkInstanceReads, produceNameSharedIdMap, readsOfUncalledClosures } from '../../../../linker';
@@ -17,10 +18,10 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
-import { callsNextMethod, DispatchNarrower, linkedFunctionIds, type NarrowedDispatch, unlinkExcludedMethods } from '../../../../dispatch-linking';
+import { callsNextMethod, type DispatchContext, DispatchNarrower, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { EnvType, REnvironment } from '../../../../../environments/environment';
@@ -615,8 +616,14 @@ function withoutExcludedMethods(ingoing: IdentifierReference, resolved: readonly
 	});
 }
 
-/** The object an S3 dispatch of a generic's body reads: the first argument it is handed, `undefined` if it names another. */
+/** The object an S3 dispatch of a generic's body reads: the one `UseMethod("f", y)` names, else the first argument the generic is handed. */
 function dispatchedObjectOf(vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph): NodeId | undefined {
+	const call = graph.idMap === undefined ? undefined : graph.idMap.get(RNode.findEnclosing(vertex.id, graph.idMap, RFunctionCall.is) ?? '');
+	/* `UseMethod("f", y)` dispatches on `y`, while `NextMethod` dispatches on the class vector of the method it is in */
+	if(RFunctionCall.is(call) && call.arguments.length > 1 && Dataflow.targetsOf(graph, call.info.id, EdgeType.Calls).includes(NodeId.toBuiltIn('UseMethod'))) {
+		const object = FunctionSemantics.call.match.toSpec(convertFnArguments(call.arguments), { generic: 'generic', object: 'object' }).get('object');
+		return object?.length === 1 ? object[0] : undefined;
+	}
 	const first = vertex.args[0];
 	return first !== undefined && first !== EmptyArgument && Dataflow.hasEdge(graph, vertex.id, first.nodeId, EdgeType.Reads) ? first.nodeId : undefined;
 }
@@ -675,6 +682,23 @@ function linkNextMethods(graph: DataflowGraph, collected: ReadonlyMap<NodeId, No
 }
 
 /**
+ * Per context of the dispatch `dispatch` running the method `owner`, the methods the next-method call `next` within it
+ * reaches that it cannot run there: those not after `owner` in the class vectors of that context. The method runs
+ * when the dispatch or one of the next-method calls `collected` of the methods it runs runs it.
+ */
+function nextMethodsPerCall(next: NodeId, owner: NodeId, dispatch: NodeId, contexts: readonly DispatchContext[], collected: ReadonlyMap<NodeId, NodeId>, graph: DataflowGraph): CallRuledOut[] | undefined {
+	const reached = Dataflow.targetsOf(graph, next, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	const within = ruledOutPerCall(contexts, narrowed => {
+		const runs = narrowed?.next.get(owner);
+		return runs === undefined ? [] : reached.filter(r => !runs.includes(r));
+	});
+	const runsOf = (method: NodeId, seen: ReadonlySet<NodeId>): CallRuledOut[] => [{ call: dispatch, methods: [], within },
+		...collected.entries().filter(([n, m]) => !seen.has(m) && Dataflow.hasEdge(graph, n, method, EdgeType.Calls))
+			.map(([n, m]) => ({ call: n, methods: [], within: runsOf(m, new Set([...seen, m])) }))];
+	return within === undefined ? undefined : runsOf(owner, new Set([owner]));
+}
+
+/**
  * Update the closure links of all nested function calls, done once at the end of the script.
  * @lintIgnore vertex-has-origin
  */
@@ -702,6 +726,8 @@ export function updateNestedFunctionCalls(
 	/* the dispatches, decided once the calls they may reach are linked */
 	const deferred = new Set<NodeId>();
 	let dispatching: typeof calls = [];
+	/* per next-method call, what it rules out per context of the dispatches running the method it is in */
+	const nextRuledOut = new Map<NodeId, CallRuledOut[]>();
 	for(let i = 0; ; i++) {
 		if(i === calls.length) {
 			/* a call linked since binds parameters, which may be what a waiting call calls, so they try again until nothing changes */
@@ -796,7 +822,8 @@ export function updateNestedFunctionCalls(
 		};
 		const narrowed = decide();
 		/* a dispatch on what the calls of its function hand it is decided per call as well */
-		const perCall = narrower.perCall(id, targets, narrowed, decide);
+		const contexts = narrower.perCall(id, targets, narrowed, decide);
+		const perCall = contexts === undefined ? undefined : ruledOutPerCall(contexts, n => [...n?.excluded ?? []], narrowed?.excluded);
 		narrowed?.excluded.forEach(e => targets.delete(e));
 		const enclosing = graph.isRoot(id) ? undefined : enclosingOf(id);
 		for(const target of targets) {
@@ -896,6 +923,18 @@ export function updateNestedFunctionCalls(
 			vertex.ruledOutAt = perCall;
 		}
 		linkNextMethods(graph, collectedNextMethods, targets, narrowed?.next);
+		for(const [next, owner] of collectedNextMethods) {
+			const ruledOut = contexts === undefined ? undefined : nextMethodsPerCall(next, owner, id, contexts, collectedNextMethods, graph);
+			nextRuledOut.set(next, [...nextRuledOut.get(next) ?? [], ...ruledOut ?? []]);
+		}
+	}
+	for(const [next, ruledOut] of nextRuledOut) {
+		const vertex = graph.getVertex(next) as DataflowGraphVertexFunctionCall;
+		if(ruledOut.length > 0) {
+			vertex.ruledOutAt = ruledOut;
+		} else {
+			delete (vertex as { ruledOutAt?: unknown }).ruledOutAt;
+		}
 	}
 	/* the dots a call hands on stand for what the calls of the function around hand over, all of them linked by now */
 	for(const [args, parameters] of handingOnDots) {

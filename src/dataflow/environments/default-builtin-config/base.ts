@@ -1195,7 +1195,11 @@ export const BaseDefinitions = [
 	/* they only make up a path, they do not go near the file system, so `File` would be wrong here */
 	fn(base('tempfile', 'tempdir'), BuiltInProcName.Default, { tags: [SemanticCallTag.TempFile], sig: sig({ '...': ArgProp.Forced }) }),
 	/* they are all mapped to `<-` but we separate super assignments */
-	replacement(['[', '[[', ...base('names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'environment', 'length', 'dim')], ['<-', '<<-'],
+	/* R dispatches these on the class of the target, to the `names<-.<class>` methods the code writes */
+	replacement(['[', '[[', ...base('names', 'dimnames', 'levels', 'length', 'dim')], ['<-', '<<-'],
+		{ readIndices: true, props: CallProp.Scope | CallProp.Generic }
+	),
+	replacement(base('attributes', 'attr', 'class', 'rownames', 'colnames', 'environment'), ['<-', '<<-'],
 		{ readIndices: true, props: CallProp.Scope }
 	),
 	replacement(base('body', 'formals'), ['<-', '<<-'],

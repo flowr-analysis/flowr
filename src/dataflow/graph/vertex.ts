@@ -142,10 +142,14 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	ruledOutAt?:   readonly CallRuledOut[]
 }
 
-/** The method definitions a dispatch rules out when the call `call` of the function holding it runs it. */
+/**
+ * The method definitions a dispatch rules out when the call `call` of the function holding it runs it, and `within`,
+ * per call of the function holding `call` in turn, what it further rules out when that call runs that one.
+ */
 export interface CallRuledOut {
 	readonly call:    NodeId
 	readonly methods: readonly NodeId[]
+	readonly within?: readonly CallRuledOut[]
 }
 
 /** One entry of an S4 method signature: the class, and the formal it is for when the signature names it. */

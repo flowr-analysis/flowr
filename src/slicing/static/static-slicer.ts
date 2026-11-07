@@ -3,12 +3,12 @@ import { log } from '../../util/log';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
-import { methodOnlyEdges } from '../../dataflow/internal/dispatch-linking';
+import { callsRuledOutAt, deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, ruledOutVia, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { MaxContextDepth, methodOnlyEdges } from '../../dataflow/internal/dispatch-linking';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfgVertex, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, VertexType } from '../../dataflow/graph/vertex';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -155,7 +155,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		let ruledOut: ReadonlySet<NodeId> | undefined;
 		if(perCall !== undefined) {
 			if(!dispatchVisits.has(id)) {
-				perCall.forEach(({ call }) => dispatchesOfCall.set(call, [...dispatchesOfCall.get(call) ?? [], id]));
+				callsRuledOutAt(perCall).forEach(call => dispatchesOfCall.set(call, [...dispatchesOfCall.get(call) ?? [], id]));
 			}
 			dispatchVisits.set(id, current);
 			ruledOut = ruledOutInSlice(perCall, strictlyEnclosing, info.graph, queue, openedBodies);
@@ -198,8 +198,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
 			sliceForCall(current, currentVertex, info, queue, ctx, ruledOut);
-			/* a call of a function joining the slice late lets the dispatches within run what it may run */
-			for(const dispatch of dispatchesOfCall.get(id) ?? []) {
+			/* a call of a function joining the slice late lets the dispatches within run what it may run, once, as they may be such calls themselves */
+			const waiting = dispatchesOfCall.get(id) ?? [];
+			dispatchesOfCall.delete(id);
+			for(const dispatch of waiting) {
 				const visit = dispatchVisits.get(dispatch);
 				if(visit !== undefined) {
 					processNode(visit);
@@ -354,24 +356,28 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 	}
 	const found: NodeId[] = [];
 	const seen = new Set<NodeId>();
-	/* each call with the call that ran the function holding it, which a dispatch decided per call depends on */
-	const calls: [NodeId, NodeId | undefined][] = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id))).map(id => [id, undefined]);
+	/* each call with the calls that ran the function holding it, innermost first, which a dispatch decided per call depends on */
+	const calls: [NodeId, readonly NodeId[]][] = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id))).map(id => [id, []]);
 	const decided = new Set<string>();
+	/* the calls a dispatch is decided for, which have to be followed again for every other way they are run */
+	const contexts = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([, v]) => callsRuledOutAt(v.ruledOutAt ?? [])));
 	for(let next = calls.pop(); next !== undefined; next = calls.pop()) {
 		const [call, via] = next;
-		const ruledOut = via === undefined ? undefined : (graph.getVertex(call) as DataflowGraphVertexFunctionCall).ruledOutAt?.find(r => r.call === via)?.methods;
-		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut?.includes(t))) {
+		const ruledOut = ruledOutVia((graph.getVertex(call) as DataflowGraphVertexFunctionCall).ruledOutAt, via);
+		const chain = [call, ...via].slice(0, MaxContextDepth);
+		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t))) {
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
 			const first = !seen.has(target);
 			seen.add(target);
 			if(first) {
 				found.push(...[...callee.subflow.graph].filter(inner => writers.has(inner)));
 			}
-			for(const [inner, vertex] of Dataflow.callsIn(callee, graph)) {
-				/* a function run again by another call decides its dispatches anew */
-				if(first || (vertex.ruledOutAt !== undefined && !decided.has(`${inner}:${call}`))) {
-					decided.add(`${inner}:${call}`);
-					calls.push([inner, call]);
+			for(const [innerCall, vertex] of Dataflow.callsIn(callee, graph)) {
+				/* a function run again by other calls decides its dispatches anew */
+				const key = `${innerCall}:${chain.join(',')}`;
+				if(first || ((vertex.ruledOutAt !== undefined || contexts.has(innerCall)) && !decided.has(key))) {
+					decided.add(key);
+					calls.push([innerCall, chain]);
 				}
 			}
 		}

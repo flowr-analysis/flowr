@@ -362,7 +362,9 @@ export type CalledFunctions = {
 	functionCall:        NodeId,
 	called:              readonly DataflowGraphVertexInfo[],
 	propagateExitPoints: readonly ExitPoint[],
-	calledBuiltIns?:     readonly NodeId[]
+	calledBuiltIns?:     readonly NodeId[],
+	/** the call runs one of `called`, as a dispatch picks one method, so each only may write what it writes */
+	alternatives?:       boolean
 };
 
 /**

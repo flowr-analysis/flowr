@@ -38,6 +38,8 @@ import { compactRecord } from '../../../../../../util/objects';
 import { applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { Dataflow } from '../../../../../graph/df-helper';
+import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
+import { linkedFunctionIds } from '../../../../dispatch-linking';
 import { REnvironment } from '../../../../../environments/environment';
 
 /**
@@ -188,9 +190,14 @@ function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean
 	return !idMap.has(call) || RNode.findEnclosing(node, idMap, n => n.info.id === call) !== undefined;
 }
 
-/** Printing a visible top-level value dispatches to the `print` methods in scope, so the expression runs them like a call would. */
-function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph): ReturnType<typeof linkFunctionCalls> {
-	const methods = Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? [];
+/**
+ * Printing a visible top-level value dispatches to the `print` methods in scope, so the expression runs them like a call would:
+ * those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known.
+ */
+function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
+	const all = Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? [];
+	const classes = all.length === 0 ? undefined : s3DispatchClassesOf(id, info);
+	const methods = classes === undefined ? all : printedBy(classes, all, graph);
 	if(methods.length === 0) {
 		return [];
 	}
@@ -205,7 +212,27 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 			}
 		}
 	}
-	return [{ functionCall: id, called, propagateExitPoints: [] }];
+	return [{ functionCall: id, called, propagateExitPoints: [], alternatives: called.length > 1 }];
+}
+
+/**
+ * Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run, with any that is
+ * no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it.
+ */
+function printedBy(classes: readonly (readonly string[])[], found: readonly IdentifierDefinition[], graph: DataflowGraph): IdentifierDefinition[] {
+	const methodOf = (d: IdentifierDefinition) => d.name === undefined ? undefined : /^print\.(.+)$/.exec(Identifier.getName(d.name))?.[1];
+	const { runs, next } = s3Dispatch(classes, found, methodOf);
+	for(const [method, after] of next) {
+		const targets = linkedFunctionIds(new Set([...after].map(m => m.nodeId)), graph);
+		for(const fn of getAllLinkedFunctionDefinitions(new Set([method.nodeId]), graph)[0]) {
+			for(const [call, vertex] of Dataflow.callsIn(fn, graph)) {
+				if(DfgVertex.hasOrigin(vertex, BuiltInProcName.S3DispatchNext)) {
+					targets.forEach(t => graph.addEdge(call, t, EdgeType.Calls));
+				}
+			}
+		}
+	}
+	return found.filter(d => runs.has(d) || methodOf(d) === undefined);
 }
 
 /** The bindings of every package layer `env` sees, which a callee's environment shares while nothing writes to them. */
@@ -220,7 +247,7 @@ function packageLayersOf(env: REnvironmentInformation): Set<MemoryView> {
 }
 
 function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkFunctionCalls>, inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], idMap: AstIdMap, listEnvironments: Set<NodeId>, ctx: ReadOnlyFlowrAnalyzerContext) {
-	for(const { functionCall, called } of calledEnvs) {
+	for(const { functionCall, called, alternatives } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall)?.cds;
 		for(const { fn: calledFn, direct, chain, cds } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
 			if(direct) {
@@ -284,7 +311,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 				};
 			}
 			const dependencies = cds === undefined ? callDependencies : [...callDependencies ?? [], ...cds];
-			inputEnvironment = REnvironment.overwrite(inputEnvironment, environment, dependencies);
+			inputEnvironment = alternatives ? REnvironment.append(inputEnvironment, environment) : REnvironment.overwrite(inputEnvironment, environment, dependencies);
 		}
 	}
 	return inputEnvironment;
@@ -367,7 +394,7 @@ export function processExpressionList<OtherInfo>(
 
 		const calledEnvs = linkFunctionCalls(nextGraph, idMap, processed.graph, activeReads.map(r => r.nodeId));
 		if(printed) {
-			calledEnvs.push(...printMethodsOf(processed.entryPoint, environment, nextGraph));
+			calledEnvs.push(...printMethodsOf(processed.entryPoint, environment, nextGraph, { graph: nextGraph, idMap, ctx: data.ctx, environment }));
 		}
 		for(const c of calledEnvs) {
 			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, idMap, nextGraph)) {

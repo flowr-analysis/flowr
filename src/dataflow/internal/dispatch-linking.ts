@@ -1,6 +1,6 @@
 import type { DataflowGraph } from '../graph/graph';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -32,8 +32,43 @@ export interface NarrowedDispatch {
 	readonly reads?:   readonly NodeId[]
 }
 
-/** how many calls of the function holding a dispatch are each decided on their own, beyond that all of them share one decision */
+/** how many contexts of calls a dispatch is decided for on its own, beyond that all of them share one decision */
 const MaxDispatchContexts = 64;
+/** how many calls deep the contexts of a dispatch go, the call of the function holding it the first */
+export const MaxContextDepth = 3;
+
+/** One call a dispatch is decided for: the call of the function holding the dispatch (or holding the call one level up). */
+export interface DispatchContext {
+	readonly call:      NodeId
+	/** what the dispatch rules out and may run next in the context of this call and those around it */
+	readonly narrowed?: NarrowedDispatch
+	/** per call of the function holding `call`, the context narrowed further */
+	readonly within?:   readonly DispatchContext[]
+}
+
+/**
+ * What `excludedOf` rules out per context of `contexts` beyond what the contexts around it rule out (`above`), the
+ * contexts that rule out nothing more left out.
+ * @example
+ * ```ts
+ * // f <- function(x) UseMethod("f"); g <- function(v) f(v); g(a); g(b)
+ * ruledOutPerCall(narrower.perCall(dispatch, targets, shared, decide), n => [...n?.excluded ?? []]);
+ * // [{ call: idOfFInG, methods: [], within: [{ call: idOfGa, methods: [idOfFb] }, { call: idOfGb, methods: [idOfFa] }] }]
+ * ```
+ */
+export function ruledOutPerCall(contexts: readonly DispatchContext[], excludedOf: (narrowed: NarrowedDispatch | undefined) => readonly NodeId[], above: ReadonlySet<NodeId> = new Set()): CallRuledOut[] | undefined {
+	const ruledOut: CallRuledOut[] = [];
+	for(const { call, narrowed, within } of contexts) {
+		const methods = excludedOf(narrowed).filter(m => !above.has(m));
+		const deeper = within === undefined ? undefined : ruledOutPerCall(within, excludedOf, new Set([...above, ...methods]));
+		if(deeper !== undefined) {
+			ruledOut.push({ call, methods, within: deeper });
+		} else if(methods.length > 0) {
+			ruledOut.push({ call, methods });
+		}
+	}
+	return ruledOut.length > 0 ? ruledOut : undefined;
+}
 
 /** What the narrowing of the calls of one linking pass shares: the S4 methods of the program and its class hierarchy, found once. */
 export class DispatchNarrower {
@@ -97,11 +132,13 @@ export class DispatchNarrower {
 		if(formals === undefined || formals.length === 0 || candidates.some(m => signatureFor(m, formals) === undefined)) {
 			return undefined;
 		}
+		/* a method set again for its signature before the call is gone */
+		const live = candidates.filter(m => !this.replacedBefore(m, candidates, formals, call.id));
 		/* what is no method, like the function a generic was made from, is the default a next method may fall back to */
 		const others = this.otherFunctions(targets, t => byFunction.has(t));
 		const next = new Map<NodeId, readonly NodeId[]>();
-		for(const method of candidates) {
-			const reached = [...nextS4Methods(method, candidates, formals, hierarchy).flatMap(m => m.functions), ...others];
+		for(const method of live) {
+			const reached = [...nextS4Methods(method, live, formals, hierarchy).flatMap(m => m.functions), ...others];
 			for(const fn of method.functions) {
 				next.set(fn, [...next.get(fn) ?? [], ...reached]);
 			}
@@ -119,7 +156,7 @@ export class DispatchNarrower {
 		if(tuples === undefined) {
 			return { excluded: new Set(), next };
 		}
-		const selected = new Set(tuples.flatMap(actual => selectS4Methods(candidates, formals, actual, hierarchy)).flatMap(m => m.functions));
+		const selected = new Set(tuples.flatMap(actual => selectS4Methods(live, formals, actual, hierarchy)).flatMap(m => m.functions));
 		/* a method handing on with `callNextMethod()` runs the next one as well */
 		for(const fn of selected) {
 			if(callsNextMethod(fn, this.graph)) {
@@ -127,6 +164,20 @@ export class DispatchNarrower {
 			}
 		}
 		return { excluded: new Set(all.flatMap(m => m.functions).filter(fn => !selected.has(fn) && targets.has(fn))), next, reads: uniqueArray(reads) };
+	}
+
+	/**
+	 * Whether `setMethod` surely sets another of `candidates` for the signature of `method` after it and before every run
+	 * of `call`, which replaces `method` for good: R keeps one method per signature.
+	 */
+	private replacedBefore(method: S4Method, candidates: readonly S4Method[], formals: readonly string[], call: NodeId): boolean {
+		const own = signatureFor(method, formals)?.join(',');
+		const at = ProgramOrder.runsOnceAt(method.registration, this.graph);
+		return at !== undefined && candidates.some(other => {
+			const otherAt = other === method || signatureFor(other, formals)?.join(',') !== own || (this.graph.getVertex(other.registration)?.cds ?? []).length > 0
+				? undefined : ProgramOrder.runsOnceAt(other.registration, this.graph);
+			return otherAt !== undefined && ProgramOrder.offset(other.registration, at, this.graph) > 0 && runsOnlyAfter(call, otherAt, this.graph);
+		});
 	}
 
 	/** The formals of the generic among `targets` that `candidates` are methods of, which S4 dispatches on. */
@@ -169,32 +220,36 @@ export class DispatchNarrower {
 	}
 
 	/**
-	 * Per call of the function holding the dispatch `call`, the methods among `targets` the dispatch rules out beyond `shared`
-	 * (what it rules out for every call) when that call runs it: `decide` narrows the dispatch for the classes the context of
-	 * one call gives. Only for a function the program calls by name alone and never hands on are all its calls known.
+	 * Per call of the function holding the dispatch `call`, how `decide` narrows the dispatch for the classes the context
+	 * of that call gives, and where that leaves more than one of `targets` beyond what `shared` rules out for every call,
+	 * per call of the function holding that call in turn, up to a few calls deep. Only for a function the program calls
+	 * by name alone and never hands on are all its calls known.
 	 * @example
 	 * ```r
 	 * f <- function(x) UseMethod("f")
-	 * f(structure(1, class = "a")) # rules out f.b
-	 * f(structure(1, class = "b")) # rules out f.a
+	 * g <- function(v) f(v)
+	 * g(structure(1, class = "a")) # f(v) in the context of this call rules out f.b
+	 * g(structure(1, class = "b")) # and of this one f.a
 	 * ```
 	 */
-	public perCall(call: NodeId, targets: ReadonlySet<NodeId>, shared: NarrowedDispatch | undefined, decide: (info: ClassFlowInfo) => NarrowedDispatch | undefined): CallRuledOut[] | undefined {
-		const fn = this.graph.isRoot(call) ? undefined : RNode.strictlyEnclosingFunction(call, this.info.idMap);
+	public perCall(call: NodeId, targets: ReadonlySet<NodeId>, shared: NarrowedDispatch | undefined, decide: (info: ClassFlowInfo) => NarrowedDispatch | undefined): DispatchContext[] | undefined {
 		const methods = [...targets].filter(t => DfgVertex.isFunctionDefinition(this.graph.getVertex(t)) && !shared?.excluded.has(t));
-		const callers = fn === undefined || methods.length < 2 ? [] : Dataflow.sourcesOf(this.graph, fn, EdgeType.Calls);
-		if(fn === undefined || callers.length === 0 || callers.length > MaxDispatchContexts || !calledByNameOnly(fn, callers, this.graph)) {
+		return methods.length < 2 ? undefined : this.contextsOf(call, new Map(), methods, decide, { left: MaxDispatchContexts });
+	}
+
+	private contextsOf(inner: NodeId, context: ReadonlyMap<NodeId, NodeId>, methods: readonly NodeId[], decide: (info: ClassFlowInfo) => NarrowedDispatch | undefined, budget: { left: number }): DispatchContext[] | undefined {
+		const fn = this.graph.isRoot(inner) ? undefined : RNode.strictlyEnclosingFunction(inner, this.info.idMap);
+		const callers = fn === undefined || context.has(fn) || context.size >= MaxContextDepth ? [] : Dataflow.sourcesOf(this.graph, fn, EdgeType.Calls);
+		if(fn === undefined || callers.length === 0 || callers.length > budget.left || !calledByNameOnly(fn, callers, this.graph)) {
 			return undefined;
 		}
-		const ruledOut: CallRuledOut[] = [];
-		for(const caller of callers) {
-			const excluded = decide({ ...this.info, callContext: new Map([[fn, caller]]) })?.excluded;
-			const extra = excluded === undefined ? [] : methods.filter(m => excluded.has(m));
-			if(extra.length > 0) {
-				ruledOut.push({ call: caller, methods: extra });
-			}
-		}
-		return ruledOut.length > 0 ? ruledOut : undefined;
+		budget.left -= callers.length;
+		return callers.map(caller => {
+			const at = new Map(context).set(fn, caller);
+			const narrowed = decide({ ...this.info, callContext: at });
+			const open = methods.filter(m => !narrowed?.excluded.has(m)).length;
+			return { call: caller, narrowed, within: open > 1 ? this.contextsOf(caller, at, methods, decide, budget) : undefined };
+		});
 	}
 
 	/** The function definitions among `targets` that are no method by `isMethod`. */
@@ -240,6 +295,29 @@ function calledByNameOnly(fn: NodeId, callers: readonly NodeId[], graph: Dataflo
 	return bound;
 }
 
+/** how many calls deep {@link runsOnlyAfter} follows the calls of the function holding a call */
+const MaxOrderDepth = 3;
+
+/**
+ * Whether every run of `call` comes after the top-level `statement`, which runs once: `call` runs once after it, or it
+ * is in a function that only calls by name run, each of which only after the statement.
+ * @example
+ * ```r
+ * setMethod("val", "A", function(o) k) # statement
+ * use <- function(o) val(o)            # the call `val(o)` runs only after it
+ * use(new("A"))
+ * ```
+ */
+export function runsOnlyAfter(call: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph, depth = 0): boolean {
+	const at = ProgramOrder.runsOnceAt(call, graph);
+	if(at !== undefined) {
+		return ProgramOrder.offset(call, statement, graph) > 0;
+	}
+	const fn = depth >= MaxOrderDepth || graph.isRoot(call) || graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(call, graph.idMap);
+	const callers = fn === undefined ? [] : Dataflow.sourcesOf(graph, fn, EdgeType.Calls);
+	return fn !== undefined && callers.length > 0 && calledByNameOnly(fn, callers, graph) && callers.every(c => runsOnlyAfter(c, statement, graph, depth + 1));
+}
+
 /** The one generic the S4 methods among `targets` belong to, `undefined` unless there is exactly one. */
 function genericOf(targets: ReadonlySet<NodeId>, byFunction: ReadonlyMap<NodeId, readonly S4Method[]>): string | undefined {
 	const generics = new Set([...targets].flatMap(t => byFunction.get(t) ?? []).map(m => m.generic));
@@ -265,7 +343,7 @@ function instantiated(created: readonly string[]): string[][] | undefined {
 function s3ClassOfMethod(fn: NodeId, prefixes: readonly string[], graph: DataflowGraph): string | undefined {
 	let cls: string | undefined;
 	for(const def of Dataflow.sourcesOf(graph, fn, EdgeType.DefinedBy)) {
-		const name = NodeId.recoverName(def, graph.idMap);
+		const name = NodeId.recoverBareName(def, graph.idMap);
 		const prefix = name === undefined ? undefined : prefixes.find(p => name.startsWith(p + '.'));
 		const of = prefix === undefined ? undefined : name?.slice(prefix.length + 1);
 		if(of === undefined || (cls !== undefined && cls !== of)) {

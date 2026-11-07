@@ -19,6 +19,8 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { ProgramOrder } from '../../../../program-order';
+import { runsOnlyAfter } from '../../../../dispatch-linking';
 import { REnvironment } from '../../../../../environments/environment';
 
 /** shorthand for the decorated-info generics every helper below carries through */
@@ -174,8 +176,8 @@ function registeredClasses(call: DataflowGraphVertexFunctionCall, graph: Dataflo
 
 /**
  * Drops what a `setMethod` reads of the methods registered before it for other signatures: it reads the generic by
- * name, which finds them as well, yet R keeps them apart. A registration it replaces (the same signature) or that
- * replaces the generic (`setGeneric`) stays a dependency.
+ * name, which finds them as well, yet R keeps them apart. A registration it replaces (the same signature) stays a
+ * dependency unless it replaces that one for good, before every call that sees it; so does one replacing the generic (`setGeneric`).
  * @example
  * ```r
  * setGeneric("f", function(o) standardGeneric("f"))
@@ -189,14 +191,28 @@ export function separateMethodRegistrations(graph: DataflowGraph): void {
 		if(classes === undefined) {
 			continue;
 		}
+		let replaces: boolean | undefined;
 		for(const read of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
 			const earlier = Dataflow.targetsOf(graph, read, EdgeType.DefinedBy).map(d => graph.getVertex(d)).find(v => DfgVertex.isFunctionCall(v) && v.s4Method !== undefined) as DataflowGraphVertexFunctionCall | undefined;
 			const other = earlier === undefined ? undefined : registeredClasses(earlier, graph);
-			if(other !== undefined && earlier?.s4Method?.generic === vertex.s4Method?.generic && other !== classes) {
+			if(other !== undefined && earlier?.s4Method?.generic === vertex.s4Method?.generic && (other !== classes || (replaces ??= replacesForGood(id, graph)))) {
 				graph.removeEdgeType(id, read, EdgeType.Reads);
 			}
 		}
 	}
+}
+
+/**
+ * Whether the registration `id` surely runs, once, and every call that sees the generic it defines runs after it, so
+ * that no call can see the method it replaces through it.
+ */
+function replacesForGood(id: NodeId, graph: DataflowGraph): boolean {
+	const at = ProgramOrder.runsOnceAt(id, graph);
+	if(at === undefined || (graph.getVertex(id)?.cds ?? []).length > 0) {
+		return false;
+	}
+	const defined = Dataflow.targetsOf(graph, id, EdgeType.Returns).filter(t => DfgVertex.isVariableDefinition(graph.getVertex(t)));
+	return defined.length > 0 && defined.every(d => Dataflow.sourcesOf(graph, d, EdgeType.Reads).every(reader => DfgVertex.isFunctionCall(graph.getVertex(reader)) && runsOnlyAfter(reader, at, graph)));
 }
 
 /**

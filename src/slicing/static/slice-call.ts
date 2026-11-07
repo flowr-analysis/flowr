@@ -111,7 +111,8 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 /**
  * The methods a dispatch decided per call of the function `enclosing` holding it does not run in a slice: those it rules
- * out at every call of `enclosing` the slice holds. A slice starting in `enclosing`, or holding none of its calls, keeps all.
+ * out at every call of `enclosing` the slice holds, at such a call with what it rules out at every call the slice holds
+ * of the function holding that call in turn. A slice starting in a function, or holding none of its calls, keeps all.
  * @example
  * ```ts
  * // f <- function(x) UseMethod("f"), sliced for f(structure(1, class = "a")) alone
@@ -125,7 +126,9 @@ export function ruledOutInSlice(perCall: readonly CallRuledOut[], enclosing: Nod
 	let common: ReadonlySet<NodeId> | undefined;
 	for(const caller of Dataflow.sourcesOf(graph, enclosing, EdgeType.Calls)) {
 		if(queue.hasId(caller)) {
-			const methods = perCall.find(p => p.call === caller)?.methods ?? [];
+			const at = perCall.find(p => p.call === caller);
+			const outer = at?.within === undefined || graph.idMap === undefined ? undefined : ruledOutInSlice(at.within, RNode.strictlyEnclosingFunction(caller, graph.idMap), graph, queue, opened);
+			const methods = [...at?.methods ?? [], ...outer ?? []];
 			const before = common;
 			common = new Set(before === undefined ? methods : methods.filter(m => before.has(m)));
 			if(common.size === 0) {
@@ -134,6 +137,34 @@ export function ruledOutInSlice(perCall: readonly CallRuledOut[], enclosing: Nod
 		}
 	}
 	return common;
+}
+
+/**
+ * The methods a dispatch decided per call does not run when the calls `via` ran it, the call of the function holding
+ * it first, then the call of the function holding that one, and so on.
+ * @example
+ * ```ts
+ * // f <- function(x) UseMethod("f"); g <- function(v) f(v); g(structure(1, class = "a"))
+ * ruledOutVia(dispatch.ruledOutAt, [idOfFInG, idOfGCall]); // the method f.b
+ * ```
+ */
+export function ruledOutVia(perCall: readonly CallRuledOut[] | undefined, via: readonly NodeId[]): NodeId[] {
+	const ruledOut: NodeId[] = [];
+	let level = perCall;
+	for(const call of via) {
+		const at = level?.find(p => p.call === call);
+		if(at === undefined) {
+			break;
+		}
+		ruledOut.push(...at.methods);
+		level = at.within;
+	}
+	return ruledOut;
+}
+
+/** Every call `perCall` decides for, at any depth. */
+export function callsRuledOutAt(perCall: readonly CallRuledOut[]): NodeId[] {
+	return perCall.flatMap(p => [p.call, ...callsRuledOutAt(p.within ?? [])]);
 }
 
 /**

@@ -27,6 +27,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /**
  * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
@@ -175,8 +176,9 @@ export function processReplacementFunction<OtherInfo>(
 		res.graph.addEdge(firstArg.info.id, NodeId.toBuiltIn(firstArg.operator), EdgeType.Reads);
 	}
 
-	// dispatches actually as S3:
-	const fns = res.in.filter(i => i.nodeId === rootId);
+	/* a built-in replacement dispatches to the `<name>.<class>` methods, while one the program defines runs and dispatches itself */
+	const own = Resolve.byNameAndType(name.content, data.environment, ReferenceType.Function);
+	const fns = own !== undefined && own.length > 0 && own.every(d => !NodeId.isBuiltIn(d.nodeId)) ? [] : res.in.filter(i => i.nodeId === rootId);
 	for(const fn of fns) {
 		(fn as { type: ReferenceType }).type = ReferenceType.S3MethodPrefix;
 	}

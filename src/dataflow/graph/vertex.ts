@@ -246,17 +246,19 @@ export enum EnvOpKind {
  * known once the function is called: given by a parameter, or named by a free variable.
  */
 export interface DeferredEnvOp {
-	readonly id:       NodeId
-	readonly kind:     EnvOpKind
+	readonly id:           NodeId
+	readonly kind:         EnvOpKind
 	/** the expressions giving the names by their value */
-	readonly names:    readonly NodeId[]
+	readonly names:        readonly NodeId[]
 	/** the names written down as they are, as `rm` takes its `...` */
-	readonly literals: readonly string[]
-	readonly envir:    NodeId
+	readonly literals:     readonly string[]
+	readonly envir:        NodeId
 	/** the value a definition binds */
-	readonly value?:   NodeId
+	readonly value?:       NodeId
 	/** whether a read hands back what it reads, as `get` does and `exists` does not */
-	readonly returns:  boolean
+	readonly returns:      boolean
+	/** for an operation on the frame of a caller handed on to the callers of the caller, how many calls up that frame lies */
+	readonly generations?: number
 }
 
 /**

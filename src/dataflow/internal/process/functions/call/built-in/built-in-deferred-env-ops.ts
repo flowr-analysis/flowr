@@ -3,6 +3,7 @@ import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lan
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -81,7 +82,7 @@ export function deferredEnvOps<OtherInfo>(roots: Iterable<NodeId>, graph: Datafl
 		const computed = named !== undefined && !RString.is(named);
 		/* without an environment, the operation works on the frame of the call, which no caller sees */
 		if(envir === undefined || (named === undefined && literals.length === 0) || literals.includes(undefined)
-			|| (kind === EnvOpKind.Define && !computed && !heldByParameter(envir.info.id, graph, data.completeAst.idMap) && !namesCallerFrame(envir, data.environment, graph, data.completeAst.idMap))) {
+			|| (kind === EnvOpKind.Define && !computed && !heldByParameter(envir.info.id, graph, data.completeAst.idMap) && callerGenerations(envir, data.environment, graph, data.completeAst.idMap) === undefined)) {
 			continue;
 		}
 		(ops ??= []).push({
@@ -105,7 +106,7 @@ function evaluatedDefinitions(node: RFunctionCall<ParentInformation>, config: Lo
 	const bound = FunctionSemantics.call.match.toNames(node.arguments, [config.args.expr, config.args.env]);
 	const envir = RArgument.valueOf(bound.get(config.args.env));
 	const expr = RArgument.valueOf(bound.get(config.args.expr));
-	if(expr === undefined || envir === undefined || !(heldByParameter(envir.info.id, graph, idMap) || namesCallerFrame(envir, environment, graph, idMap))) {
+	if(expr === undefined || envir === undefined || !(heldByParameter(envir.info.id, graph, idMap) || callerGenerations(envir, environment, graph, idMap) !== undefined)) {
 		return [];
 	}
 	const ops: DeferredEnvOp[] = [];
@@ -129,7 +130,7 @@ function replacementOf(id: NodeId, node: RNode<ParentInformation> | undefined, g
 	const value = RBinaryOp.is(assignment) && assignment.lhs === access && ReplacedBy.has(assignment.operator) ? (assignment as RBinaryOp<ParentInformation>).rhs : undefined;
 	const target = value !== undefined && RSymbol.is(access?.accessed) ? access : undefined;
 	const field = target !== undefined && target.access.length === 1 && FieldAccess.has(target.operator) ? RArgument.valueOf(target.access[0]) : undefined;
-	if(target === undefined || field === undefined || !(heldByParameter(target.accessed.info.id, graph, idMap) || namesCallerFrame(target.accessed, environment, graph, idMap))) {
+	if(target === undefined || field === undefined || !(heldByParameter(target.accessed.info.id, graph, idMap) || callerGenerations(target.accessed, environment, graph, idMap) !== undefined)) {
 		return undefined;
 	}
 	const literal = target.operator === '$' || RString.is(field) ? literalName(field) : undefined;
@@ -153,13 +154,27 @@ function readBindings(id: NodeId, graph: DataflowGraph): NodeId[] {
 	return Dataflow.targetsOf(graph, id, EdgeType.Reads).filter(t => !DfgVertex.isFunctionCall(graph.getVertex(t)));
 }
 
-/** Whether `node` names the frame of the caller (`parent.frame()`), directly or by a variable bound to it only. */
-function namesCallerFrame(node: RNode<ParentInformation> | undefined, environment: REnvironmentInformation, graph: DataflowGraph, idMap: AstIdMap): boolean {
-	if(stackEnvKindOf(node, { environment }) === StackEnvKind.CallerFrame) {
-		return true;
+/**
+ * How many calls up the frame `node` names lies: 1 for the caller (`parent.frame()`, directly or by a variable bound to
+ * it only), `n` for `parent.frame(n)` with a constant `n`, `undefined` for any other environment.
+ */
+function callerGenerations(node: RNode<ParentInformation> | undefined, environment: REnvironmentInformation, graph: DataflowGraph, idMap: AstIdMap): number | undefined {
+	if(!RSymbol.is(node)) {
+		return frameGenerations(node, environment);
 	}
-	const held = RSymbol.is(node) ? readBindings(node.info.id, graph).map(d => Dataflow.assignedValueOf(d, graph)) : [];
-	return held.length > 0 && held.every(v => v !== undefined && stackEnvKindOf(idMap.get(v), { environment }) === StackEnvKind.CallerFrame);
+	const held = readBindings(node.info.id, graph).map(d => frameGenerations(idMap.get(Dataflow.assignedValueOf(d, graph) ?? ''), environment));
+	return held.length > 0 && held.every(g => g !== undefined && g === held[0]) ? held[0] : undefined;
+}
+
+/** {@link callerGenerations} of a `parent.frame` call itself. */
+function frameGenerations(node: RNode<ParentInformation> | undefined, environment: REnvironmentInformation): number | undefined {
+	if(stackEnvKindOf(node, { environment }) === StackEnvKind.CallerFrame) {
+		return 1;
+	}
+	const call = RFunctionCall.isNamed(node, 'parent.frame') && node.arguments.length === 1 ? node : undefined;
+	const count = call === undefined ? undefined : RArgument.valueOf(call.arguments[0]);
+	const n = RNumber.is(count) ? count.content.num : undefined;
+	return call !== undefined && n !== undefined && Number.isInteger(n) && n > 1 && Resolve.isBuiltIn(call.functionName.content, environment, ReferenceType.Function) ? n : undefined;
 }
 
 /** The closure whose frame `environment(fn)` names, see {@link closureFrameResolution}. */
@@ -222,7 +237,7 @@ function envAtCall(envir: NodeId, environment: REnvironmentInformation, run: Run
 	/* run by a call of another function, only the global environment is the same for both */
 	if(stack === StackEnvKind.Global) {
 		return stack;
-	} else if(run.direct && namesCallerFrame(node, environment, run.graph, run.idMap)) {
+	} else if(run.direct && callerGenerations(node, environment, run.graph, run.idMap) === 1) {
 		return StackEnvKind.CallerFrame;
 	}
 	const closure = frameOf(node);
@@ -407,7 +422,13 @@ export function linkCallerFrameWrites(call: NodeId, fn: DataflowGraphVertexFunct
 	}
 	const run: Run = { fn, via: call, direct: true, graph, idMap, context: contextOfChain([call], fn.id, idMap) };
 	for(const op of fn.envOps) {
-		if(op.kind === EnvOpKind.Read || op.kind === EnvOpKind.Remove || !namesCallerFrame(idMap.get(op.envir), fn.subflow.environment, graph, idMap)) {
+		const generations = op.kind === EnvOpKind.Read || op.kind === EnvOpKind.Remove ? undefined : op.generations ?? callerGenerations(idMap.get(op.envir), fn.subflow.environment, graph, idMap);
+		if(generations === undefined) {
+			continue;
+		} else if(generations > 1) {
+			/* `parent.frame(n)` of the callee is `parent.frame(n - 1)` of the function the call is in, which runs it by this call */
+			graph.addEdge(op.value ?? op.id, call, EdgeType.SideEffectOnCall);
+			handOnToCallers({ ...op, generations: generations - 1 }, frame.info.id, graph, ctx);
 			continue;
 		}
 		const names = op.names.map(n => namesAt(n, run, ctx));
@@ -424,5 +445,17 @@ export function linkCallerFrameWrites(call: NodeId, fn: DataflowGraphVertexFunct
 				graph.addEdge(id, op.id, EdgeType.Reads);
 			}
 		}
+	}
+}
+
+/** Registers `op` with the function `fn`, so the calls of it, linked already or later, replay it in their frame in turn. */
+function handOnToCallers(op: DeferredEnvOp, fn: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): void {
+	const definition = graph.getVertex(fn);
+	if(!DfgVertex.isFunctionDefinition(definition) || definition.envOps?.some(o => o.id === op.id && o.generations === op.generations)) {
+		return;
+	}
+	(definition as { envOps?: readonly DeferredEnvOp[] }).envOps = [...definition.envOps ?? [], op];
+	for(const caller of Dataflow.sourcesOf(graph, fn, EdgeType.Calls)) {
+		linkCallerFrameWrites(caller, definition, graph, ctx);
 	}
 }

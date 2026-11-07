@@ -14,6 +14,7 @@ import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/defa
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 
 /** The context needed to resolve a stack env: the current environment (for the global) and the built-in environment. */
 type StackEnvContext = Pick<DataflowProcessorInformation<never>, 'environment' | 'ctx'>;
@@ -62,7 +63,15 @@ export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<S
 	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
 		return undefined;
 	}
-	return kind;
+	/* `parent.frame(2)` is the caller's caller, which no kind names */
+	return kind === StackEnvKind.CallerFrame && !namesDirectCaller(node) ? undefined : kind;
+}
+
+/** Whether `parent.frame` as `node` is handed no generation count or the count 1. */
+function namesDirectCaller<Info>(node: RNode<Info> | undefined): boolean {
+	const [n, ...rest] = RFunctionCall.is(node) ? node.arguments : [];
+	const value = n === undefined || n === EmptyArgument ? undefined : n.value;
+	return rest.length === 0 && (n === undefined || (RNumber.is(value) && value.content.num === 1));
 }
 
 /**

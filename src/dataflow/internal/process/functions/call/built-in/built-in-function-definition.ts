@@ -36,7 +36,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { queryFnProps } from '../../../../../environments/query-fn-props';
 import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 import { arraysGroupBy } from '../../../../../../util/collections/arrays';
-import { groupGenericOf, s3GroupGenericOf } from '../../../../../environments/group-generics';
+import { groupGenericOf, s3GroupGenericOf, s4GroupGenericsOf } from '../../../../../environments/group-generics';
 import { DotsParameterName } from '../../../../../../util/arg-matching';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -556,7 +556,9 @@ export function updateNestedFunctionCalls(
 		}
 		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */
 		const mayDispatch = s3MethodPrefixesOf(name).some(p => generics.has(Identifier.getName(p)));
-		if(onlyBuiltin && !mayDispatch && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
+		/* a `setMethod("Arith", ...)` claims every member of the S4 group, so a built-in member may reach its methods */
+		const s4Groups = s4GroupGenericsOf(Identifier.getName(name)).filter(g => shadowing.has(g));
+		if(onlyBuiltin && !mayDispatch && s4Groups.length === 0 && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
 			continue;
 		}
 
@@ -582,6 +584,13 @@ export function updateNestedFunctionCalls(
 					getAllLinkedFunctionDefinitions(new Set(ids.filter(d => graph.isRoot(d))), graph)[0].forEach(t => targets.add(t.id));
 				}
 			}
+		}
+		for(const group of s4Groups) {
+			const methods = Resolve.byNameAndType(group, effectiveEnvironment, ReferenceType.Function)?.filter(d => !NodeId.isBuiltIn(d.nodeId) && !definedLater(d.nodeId)) ?? [];
+			for(const method of methods) {
+				graph.addEdge(id, method.nodeId, EdgeType.Reads);
+			}
+			linkedFunctionIds(methods, graph).forEach(t => targets.add(t));
 		}
 		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
 			for(const method of linkOwnS3Methods(vertex, name, graph, effectiveEnvironment, runsOnceAt(id), ctx, databaseInfoOf)) {
@@ -614,9 +623,9 @@ export function updateNestedFunctionCalls(
 			for(const exitPoint of targetVertex.exitPoints) {
 				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 			}
-			if(treatAsS3) {
+			if(treatAsS3 || targetVertex.mode?.includes('s4')) {
 				targetVertex.mode ??= [];
-				if(!targetVertex.mode.includes('s3')) {
+				if(treatAsS3 && !targetVertex.mode.includes('s3')) {
 					targetVertex.mode.push('s3');
 				}
 				// collect all next method calls to link them to the same targets!

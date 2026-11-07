@@ -47,6 +47,12 @@ export function groupGenericOf(name: string): string | undefined {
 	return S4GroupOfMember.get(name);
 }
 
+/** The S4 group generics whose methods a call of `name` may dispatch to, the nearest first (`+` to `Arith`, then `Ops`). */
+export function s4GroupGenericsOf(name: string): readonly string[] {
+	const group = S4GroupOfMember.get(name);
+	return group === undefined ? [] : group === 'Arith' || group === 'Compare' || group === 'Logic' ? [group, 'Ops'] : [group];
+}
+
 /** The members a method registered on `name` answers for, `undefined` when `name` names no group (`Ops` flattened to its operators). */
 export function groupGenericMembers(name: string): readonly string[] | undefined {
 	return RGroupGenerics[name as RGroupGeneric];

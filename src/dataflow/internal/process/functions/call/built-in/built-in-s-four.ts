@@ -4,13 +4,15 @@ import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../../../../environments/resolve-helper';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem } from '../../../../../fn/class-declaration';
 import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { DfgVertex } from '../../../../../graph/vertex';
+import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { REnvironment } from '../../../../../environments/environment';
@@ -37,6 +39,8 @@ export interface S4UseConfig {
 	readonly classArgs?:     readonly ClassArgRef[];
 	/** the argument naming an S4 class the call adds to without declaring it (`to` in `setAs`): read and registered anew, so a later use depends on this call as well as on the declaration */
 	readonly registersArg?:  ClassArgRef;
+	/** the call hands back a method of the generic its {@link genericArg} names (`getMethod`, `selectMethod`) */
+	readonly returnsMethod?: boolean;
 }
 
 
@@ -69,6 +73,11 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	}
 	const generics = classNamesOf(argForImpl(args, config.genericArg), data).map(n => n + (config.genericSuffix ?? ''));
 	readNames(info, rootId, generics, ReferenceType.Function, data);
+	for(const { nodeId } of config.returnsMethod ? generics.flatMap(g => Resolve.byNameAndType(g, data.environment, ReferenceType.Function) ?? []) : []) {
+		if(!NodeId.isBuiltIn(nodeId)) {
+			info.graph.addEdge(rootId, nodeId, EdgeType.Returns);
+		}
+	}
 	const registered = classNamesOf(argForImpl(args, config.registersArg), data).map(s4ClassName);
 	readNames(info, rootId, registered, ReferenceType.Variable, data);
 	for(const cls of registered) {

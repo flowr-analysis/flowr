@@ -44,18 +44,21 @@ export const ClassesDefinitions = [
 		{
 			props:          CallProp.Invisible,
 			tags:           [SemanticCallTag.Declares],
-			assignmentLike: { targetVariable: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			/* a method joins the methods of its generic rather than replacing them */
+			assignmentLike: { targetVariable: true, makeMaybe: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 			genericArg:     { idx: 0, name: 'f' },
 			classArgs:      [{ idx: 1, name: 'signature' }],
 			sig:            sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 })
 		},
 		Primitive
 	),
+	/* reaches the method `setMethod` registered for a superclass, which receives the arguments given or else the formals of the calling method */
+	fn(methods('callNextMethod'), BuiltInProcName.S3Dispatch, { props: CallProp.Generic, sig: sig({ '...': 0 }) }),
 	fn(methods('setReplaceMethod'), BuiltInProcName.ClassRelation,
 		{
 			props:          CallProp.Invisible,
 			tags:           [SemanticCallTag.Declares],
-			assignmentLike: { targetVariable: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			assignmentLike: { targetVariable: true, makeMaybe: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 			genericArg:     { idx: 0, name: 'f' },
 			genericSuffix:  '<-',
 			classArgs:      [{ idx: 1, name: 'signature' }],
@@ -129,8 +132,11 @@ export const ClassesDefinitions = [
 			sig:          sig({ from: ArgProp.NoDefault, to: ArgProp.NoDefault, def: ArgProp.NoDefault, replace: 0, where: 0 })
 		}
 	),
-	fn(methods('existsMethod', 'hasMethod', 'getMethod', 'selectMethod', 'removeMethod'), BuiltInProcName.S4Use,
+	fn(methods('existsMethod', 'hasMethod', 'removeMethod'), BuiltInProcName.S4Use,
 		{ genericArg: { idx: 0, name: 'f' }, classArgs: [{ idx: 1, name: 'signature' }], sig: sig({ f: ArgProp.NoDefault, signature: 0, '...': 0 }) }
+	),
+	fn(methods('getMethod', 'selectMethod'), BuiltInProcName.S4Use,
+		{ genericArg: { idx: 0, name: 'f' }, classArgs: [{ idx: 1, name: 'signature' }], returnsMethod: true, sig: sig({ f: ArgProp.NoDefault, signature: 0, '...': 0 }) }
 	),
 	fn(methods('setClass'), BuiltInProcName.S7MakeConstructor,
 		{

@@ -11,7 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { EdgeType } from '../../../../../graph/edge';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -23,7 +23,8 @@ import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/mod
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
-	args: {
+	/** absent for a next-method call that names neither, handing on what it is given (`callNextMethod(...)`) */
+	args?: {
 		generic: string,
 		object:  string
 	},
@@ -39,6 +40,10 @@ export function processS3Dispatch<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S3DispatchConfig
 ): DataflowInformation {
+	if(config.args === undefined) {
+		const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S3DispatchNext }).information;
+		return args.length > 0 ? info : { ...info, in: [...info.in, ...formalReads(rootId, data)] };
+	}
 	if(args.length === 0 && !config.inferFromClosure) {
 		dataflowLogger.warn('empty s3, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -78,11 +83,6 @@ export function processS3Dispatch<OtherInfo>(
 			argumentProcessResult: [dfObj],
 			origin:                BuiltInProcName.S3DispatchNext
 		});
-		/* the next method receives the current values of the formals of the method it is called from */
-		const idMap = data.completeAst.idMap;
-		const enclosing = idMap.get(RNode.findEnclosing(rootId, idMap, RFunctionDefinition.is) ?? rootId);
-		const formals = RFunctionDefinition.is(enclosing) ? enclosing.parameters : [];
-		const formalReads = formals.map(param => ({ nodeId: rootId, name: param.name.content, cds: data.cds, type: ReferenceType.Variable }));
 		return {
 			hooks:             dfObj.hooks,
 			environment:       dfObj.environment,
@@ -91,7 +91,7 @@ export function processS3Dispatch<OtherInfo>(
 			entryPoint:        rootId,
 			cfgEntry:          ControlFlow.inSequence(dfObj.graph, [dfObj], rootId),
 			cfgExit:           rootId,
-			in:                [...dfObj.in, ...dfObj.unknownReferences, fnRef, ...formalReads],
+			in:                [...dfObj.in, ...dfObj.unknownReferences, fnRef, ...formalReads(rootId, data)],
 			out:               dfObj.out,
 			unknownReferences: []
 		};
@@ -150,4 +150,12 @@ export function processS3Dispatch<OtherInfo>(
 		out:               dfGeneric.out.concat(dfObj.out),
 		unknownReferences: []
 	};
+}
+
+/** the next method receives the current values of the formals of the method it is called from */
+function formalReads<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
+	const idMap = data.completeAst.idMap;
+	const enclosing = idMap.get(RNode.findEnclosing(rootId, idMap, RFunctionDefinition.is) ?? rootId);
+	const formals = RFunctionDefinition.is(enclosing) ? enclosing.parameters : [];
+	return formals.map(param => ({ nodeId: rootId, name: param.name.content, cds: data.cds, type: ReferenceType.Variable }));
 }

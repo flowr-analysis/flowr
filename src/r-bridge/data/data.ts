@@ -1115,7 +1115,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s4-construction',
 							code:        ['setClass'],
 							supported:   'fully',
-							description: `_Declare a class with \`setClass\` and build one with \`new\`._ The \`new\` call is linked to the \`setClass\` that declared the class, and a slot is read through ${LinkTo('slot-access', '`@`')} like any other access.`,
+							description: `_Declare a class with \`setClass\` and build one with \`new\`._ The \`new\` call is linked to the \`setClass\` that declared the class and a slot is read through ${LinkTo('slot-access', '`@`')} like any other access.`,
 							url:         [RLang('Classes')]
 						},
 						{
@@ -1130,8 +1130,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Inheritance',
 							id:          'oop-s4-inheritance',
 							code:        ['callNextMethod'],
-							supported:   'not',
-							description: `_Reach a parent method with \`callNextMethod\`, and inherit through \`contains\`._ \`callNextMethod\` is left unresolved, so nothing links it to the ${LinkTo('oop-s4-dispatch', 'method')} it would call, unlike ${LinkTo('oop-s3-inheritance', 'S3 inheritance')}.`,
+							supported:   'partially',
+							description: `_Reach a parent method with \`callNextMethod\`, and inherit through \`contains\`._ Like \`NextMethod\` in ${LinkTo('oop-s3-inheritance', 'S3 inheritance')}, \`callNextMethod\` reaches every ${LinkTo('oop-s4-dispatch', 'method')} of the generic, as the signature does not narrow which of them is next.`,
 							url:         [RLang('Inheritance')]
 						}
 					]

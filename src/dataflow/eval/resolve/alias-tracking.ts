@@ -484,10 +484,10 @@ const enum RunOrder {
  * is what a read after the loop sees from the last run, and what a read in the body sees from the run before.
  */
 class LoopRuns {
-	private readonly graph:     DataflowGraph;
-	private readonly idMap:     AstIdMap;
-	private readonly info:      ResolveInfo;
-	private readonly sequences: Map<NodeId, readonly Value[] | undefined> = new Map();
+	private readonly graph: DataflowGraph;
+	private readonly idMap: AstIdMap;
+	private readonly info:  ResolveInfo;
+	private sequences:      Map<NodeId, readonly Value[] | undefined> | undefined;
 
 	constructor(graph: DataflowGraph, idMap: AstIdMap, info: ResolveInfo) {
 		this.graph = graph;
@@ -515,6 +515,7 @@ class LoopRuns {
 
 	/** The element of each run, if the loop surely runs through all of them. */
 	private runsOf(loop: NodeId): readonly Value[] | undefined {
+		this.sequences ??= new Map();
 		if(this.sequences.has(loop)) {
 			return this.sequences.get(loop);
 		}
@@ -642,8 +643,9 @@ class LoopRuns {
 		const top = iterations.at(-1);
 		if(top === undefined) {
 			/* a read after the loop sees its last run, be it a definition of the body or the variable of the loop */
-			const variableOf = this.loopOfVariable(to);
-			if(variableOf === undefined && this.graph.getVertex(to)?.cds?.some(cd => RForLoop.is(this.idMap.get(cd.id))) !== true) {
+			const vertex = this.graph.getVertex(to);
+			const variableOf = DfgVertex.isVariableDefinition(vertex) ? this.loopOfVariable(to) : undefined;
+			if(variableOf === undefined && vertex?.cds?.some(cd => RForLoop.is(this.idMap.get(cd.id))) !== true) {
 				/* the body of a loop runs under the loop as its condition, so a node without one is in none */
 				return iterations;
 			}
@@ -688,6 +690,10 @@ function callsBuiltInAndDefinition(edges: ReadonlyMap<NodeId, DfEdge>): boolean 
 	}
 	return builtIn && defined;
 }
+
+/** The frames and runs the walk is in at a node, see {@link CallFrame} and {@link LoopIteration}. */
+type WalkContext = readonly [frames: readonly CallFrame[], iterations: readonly LoopIteration[]];
+const NoWalkContext: WalkContext = [[], []];
 
 /** How many frames of calls the walk keeps apart before it no longer tells them apart. */
 const MaxFrames = 8;
@@ -782,6 +788,7 @@ function chosenArguments(id: NodeId, vertex: DataflowGraphVertexFunctionCall, in
 	if(!isIf && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Switch)) {
 		return undefined;
 	}
+	info = { ...info, blocked: new Set(info.blocked) };
 	const node = info.idMap?.get(id);
 	const selector = RIfThenElse.is(node) ? node.condition : RFunctionCall.is(node) && node.arguments[0] !== EmptyArgument ? node.arguments[0]?.value : undefined;
 	if(selector === undefined) {
@@ -842,10 +849,13 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const clean = ctx.env.makeCleanEnv();
 	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
 	/* the frames and runs each fingerprint stands for, so the same node is walked once per frame and run it is reached in */
-	const contextOf = new Map<string, readonly [readonly CallFrame[], readonly LoopIteration[]]>([[cleanFingerprint, [[], []]]]);
+	const contextOf = new Map<string, WalkContext>();
 	const enqueue = (target: NodeId, at: readonly CallFrame[], runs: readonly LoopIteration[]) => {
-		const key = at.length === 0 && runs.length === 0 ? cleanFingerprint
-			: `${cleanFingerprint}|${at.map(f => `${f.fn}@${f.call}`).join('/')}|${runs.map(i => `${i.loop}:${i.k}`).join('/')}`;
+		if(at.length === 0 && runs.length === 0) {
+			queue.add(target, clean, cleanFingerprint, false);
+			return;
+		}
+		const key = `${cleanFingerprint}|${at.map(f => `${f.fn}@${f.call}`).join('/')}|${runs.map(i => `${i.loop}:${i.k}`).join('/')}`;
 		contextOf.set(key, [at, runs]);
 		queue.add(target, clean, key, false);
 	};
@@ -858,7 +868,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const folded: Value[] = [];
 	while(queue.nonEmpty()) {
 		const { id, envFingerprint } = queue.next();
-		const [frames, iterations] = contextOf.get(envFingerprint) ?? [[], []];
+		const [frames, iterations] = envFingerprint === cleanFingerprint ? NoWalkContext : contextOf.get(envFingerprint) ?? NoWalkContext;
 		const vertex = graph.getVertex(id);
 		if(!vertex) {
 			continue;
@@ -920,7 +930,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 				}
 			}
 		} else if(isFn) {
-			const chosen = chosenArguments(id, vertex, { graph, idMap, ctx, blocked: new Set(blocked), callContext, frames, iterations });
+			const chosen = chosenArguments(id, vertex, { graph, idMap, ctx, blocked, callContext, frames, iterations });
 			if(chosen === null) {
 				return Top;
 			}
@@ -952,7 +962,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 					continue;
 				}
 				/* only edges the value flows along, a closure reading what its scope binds is linked both ways (`Reads` and `DefinedByOnCall`) */
-				if(DfEdge.hasAnyType(edge) && DfEdge.hasNoType(DfEdge.without(edge, flow))) {
+				if(DfEdge.hasAnyType(edge) && DfEdge.doesNotIncludeType(edge, ~flow)) {
 					const next = top === undefined ? frames
 						: ownParameter && DfEdge.includesType(edge, EdgeType.DefinedByOnCall) ? frames.slice(0, -1)
 							: inSameFrame(targetId, top.fn, graph, idMap) ? frames : [];

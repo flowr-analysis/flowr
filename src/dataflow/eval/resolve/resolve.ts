@@ -19,6 +19,7 @@ import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-cons
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier, ReferenceType } from '../../environments/identifier';
 import { EdgeType } from '../../graph/edge';
+import { DfgVertex } from '../../graph/vertex';
 import type { REnvironmentInformation } from '../../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../graph/df-helper';
@@ -68,6 +69,11 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 				: RFunctionCall.calledName(node) ?? ((RBinaryOp.is(node) || RUnaryOp.is(node)) && onlyLiterals(node) ? Identifier.make(node.operator) : undefined);
 		return named !== undefined && environment !== undefined && foldsThroughBuiltIn(named, ctx)
 			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
+	}
+	const vertex = graph.getVertex(node.info.id);
+	if(DfgVertex.isFunctionCall(vertex) && vertex.onlyBuiltin && !foldsThroughBuiltIn(vertex.name, ctx)) {
+		/* a call resolved to built-ins only folds through the one it names, if any, see the origins below */
+		return undefined;
 	}
 	let name: Identifier | undefined;
 	if(graph.isQuoted(node.info.id)) {

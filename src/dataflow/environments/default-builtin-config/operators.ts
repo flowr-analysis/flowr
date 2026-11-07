@@ -1,6 +1,6 @@
 import { fn, pkg, base, utils } from './define';
 import type { AnyBuiltInDefinition } from '../built-in-config';
-import { PkgName } from '../identifier';
+import { PkgName } from '../pkg-name';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { BuiltInEvalName } from '../built-in-eval-name';
 import { ArgProp, CallProp } from '../built-in-props';

@@ -295,7 +295,7 @@ export class FlowRServerConnection {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
-				results: result as SliceResponseMessage['results']
+				results: result
 			});
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);

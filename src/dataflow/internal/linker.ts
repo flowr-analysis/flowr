@@ -20,6 +20,7 @@ import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
+import { readEnvironmentContents } from './process/functions/call/built-in/built-in-envir-utils';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
@@ -144,7 +145,8 @@ export function linkFunctionCallWithSingleTarget(
 			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
 			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= definitionFramesOf(fnSubflow.environment.level, environment), ingoing.type)
 				?? ((instance ??= instanceOfMethodCall(graph, fnId, info, environment, idMap))?.bindings.includes(Identifier.getName(name)) ? instance.holders : []);
-			for(const { nodeId, type, value, definedAt, envState } of defs as readonly InGraphIdentifierDefinition[]) {
+			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
+				const { nodeId, type, value, definedAt, envState } = def;
 				/* the state an earlier run of the function left behind is what its next run reads */
 				if(fnSubflow.graph.has(nodeId) && !AmbientStateName.is(name) || NodeId.isBuiltIn(nodeId)) {
 					continue;
@@ -153,6 +155,7 @@ export function linkFunctionCallWithSingleTarget(
 				graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 				if(envState !== undefined) {
 					linkFieldWritesOnCall(graph, id, fnId, ingoing.nodeId, nodeId, envState, idMap);
+					readEnvironmentContents(graph, id, def);
 				}
 				if(definedAt !== undefined && definedAt !== nodeId && !NodeId.isBuiltIn(definedAt)
 					&& graph.hasVertex(definedAt) && !DfgVertex.isVariableDefinition(graph.getVertex(nodeId))) {

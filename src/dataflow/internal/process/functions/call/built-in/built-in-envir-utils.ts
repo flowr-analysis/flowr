@@ -5,7 +5,6 @@ import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
@@ -20,9 +19,12 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RPipe } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { EdgeType } from '../../../../../graph/edge';
+import type { DataflowGraph } from '../../../../../graph/graph';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { MatchArgs } from '../../../../../graph/match-args';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { FnSig } from '../../../../../environments/built-in-props';
 
 function stackKindOf(envState: REnvironmentInformation): StackEnv | undefined {
@@ -361,6 +363,35 @@ function routeWrittenToCustomEnv(
 
 	const stripped = { current: result.environment.current.removeAll(namesToRemove), level: result.environment.level };
 	return { ...result, environment: rebindHolders(stripped, envDef, newEnvState, newDefAt) };
+}
+
+/**
+ * The calls that look up bindings in an environment they are given, or write into it, see {@link readEnvironmentContents}.
+ * Any other call gets the environment as a whole.
+ */
+export const EnvironmentLookups: ReadonlySet<string> = new Set([
+	BuiltInProcName.Access, BuiltInProcName.Assignment, BuiltInProcName.Attach, BuiltInProcName.EnvContents, BuiltInProcName.Get,
+	BuiltInProcName.Local, BuiltInProcName.NewEnv, BuiltInProcName.Replacement, BuiltInProcName.Rm, BuiltInProcName.With
+]);
+
+/**
+ * An environment is changed in place, so a call given a variable holding a tracked environment reads everything
+ * written into the environment so far, unless the call only looks up bindings in it (see {@link EnvironmentLookups}).
+ */
+export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, holder: IdentifierDefinition): void {
+	const envState = (holder as InGraphIdentifierDefinition).envState;
+	/* a stack env or the frame of a function (`environment()`) holds variables the scoping links already */
+	if(envState === undefined || stackKindOf(envState) !== undefined || envState.current.closure !== undefined) {
+		return;
+	}
+	for(const fields of envState.current.memory.values()) {
+		for(const field of fields) {
+			if(!NodeId.isBuiltIn(field.definedAt)) {
+				graph.addEdge(call, field.nodeId, EdgeType.Reads);
+				graph.addEdge(call, field.definedAt, EdgeType.Reads);
+			}
+		}
+	}
 }
 
 /** Binds every variable holding the environment of `envDef` to its new state, where that variable is bound. */

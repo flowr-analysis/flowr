@@ -18,6 +18,7 @@ import { type IdentifierReference, isReferenceType, ReferenceType } from '../../
 import { AmbientStateName } from '../../../../environments/ambient-state-name';
 import { resolveByName, scopeOf } from '../../../../environments/resolve-by-name';
 import { readRemovals } from '../../../../environments/apply-kill';
+import { type EnvironmentLookups, readEnvironmentContents } from './built-in/built-in-envir-utils';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -44,6 +45,8 @@ export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly alternativesFrom?: number
 	/** keep the graph of each processed argument its own, for a caller marking what lies within an argument */
 	readonly keepGraphs?:       boolean
+	/** whether the call only looks up bindings in an environment it is given, see {@link EnvironmentLookups} */
+	readonly lookup?:           boolean
 }
 
 export interface ProcessAllArgumentResult {
@@ -110,7 +113,7 @@ export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId,
 
 /** Processes all arguments for a function call, updating the given final graph and environment. */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs, lookup }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	const callArgs: FunctionArgument[] = [];
@@ -171,6 +174,9 @@ export function processAllArguments<OtherInfo>(
 				if(!isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 					mayHaveHigherTarget &&= !happensInEveryBranch(resolved.cds);
 					finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);
+					if(!lookup) {
+						readEnvironmentContents(finalGraph, functionRootId, resolved);
+					}
 				}
 			}
 			if(mayHaveHigherTarget) {

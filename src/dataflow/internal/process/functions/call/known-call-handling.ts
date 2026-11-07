@@ -4,6 +4,7 @@ import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { ExitPoint, DataflowInformation } from '../../../../info';
 import { ExitPointType, withCds } from '../../../../info';
 import { processAllArguments } from './common';
+import { EnvironmentLookups } from './built-in/built-in-envir-utils';
 import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -170,6 +171,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		finalGraph,
 		functionRootId:   rootId,
 		keepGraphs:       keepArgumentGraphs,
+		lookup:           EnvironmentLookups.has(origin),
 		patchData,
 		forced,
 		nonFunction,

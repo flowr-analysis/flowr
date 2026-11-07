@@ -24,7 +24,7 @@ describe('Transitivity through environments and super assignments, checked again
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'local keeps its definitions', code: 'x <- 1\ny <- local({ x <- 2; x + 1 })\nprint(x)' },
 			{ name: 'local returns its last value', code: 'k <- 5\ny <- local({ x <- k; x + 1 })\nprint(y)' },
-			{ name: 'an environment read by a function', code: 'e <- new.env()\nassign("a", 5, envir = e)\nf <- function(env) get("a", envir = env)\nprint(f(e))', red: 'R prints 5, the slice drops the assign into e the function reads through its parameter' },
+			{ name: 'an environment read by a function', code: 'e <- new.env()\nassign("a", 5, envir = e)\nf <- function(env) get("a", envir = env)\nprint(f(e))' },
 			{ name: 'an environment changed by a function', code: 'e <- new.env()\nset <- function(env) env$v <- 6\nset(e)\nprint(e$v)' },
 			{ name: 'an environment changed two calls deep', code: 'e <- new.env()\nset <- function(env, x) assign("v", x, envir = env)\nup <- function(env) set(env, 7)\nup(e)\nprint(get("v", envir = e))', red: 'R prints 7, the slice drops up(e), the write through a parameter is not passed up two calls' },
 			{ name: 'an environment changed two calls deep with $', code: 'e <- new.env()\nset <- function(env) env$v <- 7\nup <- function(env) set(env)\nup(e)\nprint(e$v)', red: 'R prints 7, the slice drops up(e) and prints NULL' },

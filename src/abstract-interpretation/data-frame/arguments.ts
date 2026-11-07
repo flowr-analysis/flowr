@@ -8,7 +8,7 @@ import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNull } from '../../r-bridge/lang-4.x/convert-values';
@@ -120,6 +120,42 @@ export function getEffectiveArgs(
 	excluded: readonly string[]
 ): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	return args.filter(arg => RArgument.isEmpty(arg) || !RArgument.isNamed(arg) || !excluded.includes(unquoteArgument(arg.name.content)));
+}
+
+/**
+ * Orders `args` the way R binds them to the formals `params` states: an argument named after a formal goes to the
+ * position of that formal, the unnamed ones fill the other positions in order, and the rest follows. Afterwards the
+ * position of a {@link FunctionParameterLocation} is that of its argument, whichever way the call names them.
+ * @example
+ * ```ts
+ * // subset(TRUE, FALSE, x = df) with x at 0, subset at 1, select at 2
+ * matchedArguments(args, params, info); // [x = df, TRUE, FALSE]
+ * ```
+ */
+export function matchedArguments(
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
+	params: object,
+	info: ResolveInfo
+): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
+	const formals = Object.values(params).filter((p): p is FunctionParameterLocation<unknown> => typeof p === 'object' && p !== null && typeof (p as { pos?: unknown }).pos === 'number');
+	const named = new Map(formals.filter(f => f.name !== undefined && f.pos >= 0).map(f => [f.name, f.pos] as const));
+	const ordered: (PotentiallyEmptyRArgument<ParentInformation> | undefined)[] = [];
+	const rest: PotentiallyEmptyRArgument<ParentInformation>[] = [];
+	for(const arg of args) {
+		const pos = RArgument.isNotEmpty(arg) && arg.name !== undefined ? named.get(Resolve.argument.toName(arg, info)) : undefined;
+		if(pos !== undefined) {
+			ordered[pos] = arg;
+		} else {
+			rest.push(arg);
+		}
+	}
+	const positional = rest.filter(a => RArgument.isEmpty(a) || a.name === undefined);
+	let next = 0;
+	for(let pos = 0; next < positional.length; pos++) {
+		ordered[pos] ??= positional[next++];
+	}
+	/* a formal no argument binds is missing */
+	return [...Array.from(ordered, a => a ?? EmptyArgument), ...rest.filter(a => !positional.includes(a))];
 }
 
 /**

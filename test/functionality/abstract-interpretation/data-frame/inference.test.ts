@@ -399,7 +399,7 @@ print(df)
 			}
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('a name bound only in a branch that never runs', () => {
 			testShape(
 				`
 if (2 < 1) {
@@ -409,7 +409,9 @@ if (2 < 1) {
 }
 print(df1)
 				`,
-				['4@df']
+				/* R stops at the print, as df1 is never bound, so there is no shape to compare against */
+				{ '6@df1': undefined },
+				{ skipRun: true }
 			);
 		});
 	});
@@ -2992,6 +2994,15 @@ result <- subset(df, select = 1:2)
 			{ '2@subset': [{ operation: 'accessCols', columns: [1, 2] }] }
 		);
 
+		/* R binds positional arguments to the formals names leave open */
+		testShape(
+			`
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+result <- subset(TRUE, FALSE, x = df)
+			`,
+			['2@result']
+		);
+
 		describe('Unsupported', { fails: true }, () => {
 			testShape(
 				`
@@ -3009,13 +3020,6 @@ result <- subset(df, select = -c(3, 4, 5))
 				['2@result']
 			);
 
-			testShape(
-				`
-df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
-result <- subset(TRUE, FALSE, x = df)
-				`,
-				['2@result']
-			);
 		});
 	});
 

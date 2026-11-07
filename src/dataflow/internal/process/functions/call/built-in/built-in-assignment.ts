@@ -99,8 +99,12 @@ export interface AssignmentConfiguration {
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
-	readonly source: { idx?: number, name: string };
-	readonly target: { idx?: number, name: string };
+	readonly source:       { idx?: number, name: string };
+	readonly target:       { idx?: number, name: string };
+	/** the class of the S3 method the call binds as `<target>.<class>`, like `.S3method("f", "b", m)` binds `f.b` */
+	readonly targetClass?: { idx?: number, name: string };
+	/** binds at the top level wherever the call runs, as registering a method (`setMethod`) does */
+	readonly registers?:   boolean;
 }
 
 
@@ -176,10 +180,24 @@ export function processAssignmentLike<OtherInfo>(
 			argsWithNames.set(name, arg);
 		}
 	}
-	const source = argsWithNames.get(config.source.name) ?? (config.source.idx === undefined ? undefined : argsWithoutNames[config.source.idx]);
-	const target = argsWithNames.get(config.target.name) ?? (config.target.idx === undefined ? undefined : argsWithoutNames[config.target.idx]);
-	const normalizedArgs = source && target ? [target, source] : args;
-	return processAssignment<OtherInfo>(name, normalizedArgs, rootId, data, { ...config, mayHaveMoreArgs: true });
+	const argOf = ({ idx, name }: { idx?: number, name: string }) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
+	const source = argOf(config.source);
+	const target = argOf(config.target);
+	const classArg = config.targetClass === undefined ? undefined : argOf(config.targetClass);
+	const normalizedArgs = source && target ? [target, source, ...classArg ? [classArg] : []] : args;
+	const classValue = RArgument.valueOf(classArg);
+	const cls = classValue === undefined ? undefined : resolveConstantString(classValue, data);
+	if(config.targetClass !== undefined && cls === undefined) {
+		const info = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		return info;
+	}
+	return processAssignment<OtherInfo>(name, normalizedArgs, rootId, data, {
+		...config,
+		mayHaveMoreArgs: true,
+		targetSuffix:    cls === undefined ? config.targetSuffix : `.${cls}`,
+		superAssignment: config.superAssignment || (config.registers && data.environment.level > 0)
+	});
 }
 
 /** Within a data-masking call `a := b` is rlang's name-value pair, not data.table's assignment. */
@@ -317,7 +335,7 @@ function processAssignmentTarget<OtherInfo>(
 		 * the reads that produced it; a dynamic name falls through to the unknown-target handling below */
 		const resolvedName = resolveConstantString(target, data);
 		if(resolvedName !== undefined) {
-			return assignToSymbol(resolvedName);
+			return assignToSymbol(resolvedName + (config.targetSuffix ?? ''));
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */

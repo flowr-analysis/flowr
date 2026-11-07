@@ -55,7 +55,7 @@ export const ClassesDefinitions = [
 			props:           CallProp.Invisible,
 			tags:            [SemanticCallTag.Declares],
 			/* a method joins the methods of its generic rather than replacing them */
-			assignmentLike:  { targetVariable: true, makeMaybe: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			assignmentLike:  { targetVariable: true, makeMaybe: true, registers: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 			genericArg:      { idx: 0, name: 'f' },
 			classArgs:       [{ idx: 1, name: 'signature' }],
 			registersMethod: true,
@@ -69,7 +69,7 @@ export const ClassesDefinitions = [
 		{
 			props:           CallProp.Invisible,
 			tags:            [SemanticCallTag.Declares],
-			assignmentLike:  { targetVariable: true, makeMaybe: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
+			assignmentLike:  { targetVariable: true, makeMaybe: true, registers: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 			genericArg:      { idx: 0, name: 'f' },
 			genericSuffix:   '<-',
 			classArgs:       [{ idx: 1, name: 'signature' }],

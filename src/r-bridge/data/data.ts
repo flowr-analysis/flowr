@@ -662,7 +662,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'while-loop',
 							code:        ['while'],
 							supported:   'fully',
-							description: '_The loop `while (x) b`, whose condition is read before every iteration._ Whether the body ever runs is unknown, so a name it binds and the one bound before it both reach a use below.',
+							description: '_The loop `while (x) b`, whose condition is read before every iteration._ Whether the body ever runs is unknown to the dataflow graph, so a name it binds and the one bound before it both reach a use below. Value resolution counts the runs when it can tell the condition of each one (`i <- 0; while(i < 3) i <- i + 1`) and resolves the value of the last one.',
 							example:     codeBlock('r', 'i <- 0\nwhile(i < 3) i <- i + 1\ni'),
 							url:         [RLang('while')]
 						},
@@ -671,7 +671,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'repeat-loop',
 							code:        ['repeat'],
 							supported:   'fully',
-							description: `_The loop \`repeat {b; if (x) break}\`, which only a ${LinkTo('break', '`break`')} or a ${LinkTo('return', '`return`')} leaves._ Like every loop the body is analyzed once, for any number of iterations.`,
+							description: `_The loop \`repeat {b; if (x) break}\`, which only a ${LinkTo('break', '`break`')} or a ${LinkTo('return', '`return`')} leaves._ Like every loop the body is analyzed once, for any number of iterations. Value resolution counts the runs of a body that ends with its only \`if (x) break\` when it can tell \`x\` in each one.`,
 							example:     codeBlock('r', 'i <- 0\nrepeat {\n  i <- i + 1\n  if(i > 2) break\n}\ni'),
 							url:         [RLang('repeat')]
 						},

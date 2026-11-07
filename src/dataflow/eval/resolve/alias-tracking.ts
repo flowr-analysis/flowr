@@ -10,8 +10,9 @@ import type { IEnvironment, REnvironmentInformation } from '../../environments/e
 import { Identifier, ReferenceType } from '../../environments/identifier';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBreak } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-break';
 import { RNext } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-next';
 import { ControlDependency } from '../../info';
@@ -74,7 +75,7 @@ export interface ResolveInfo {
 }
 
 /**
- * The `k`-th run of the body of the `for` loop at `loop`, out of a number of runs known in advance. The value walk
+ * The `k`-th run of the body of the loop at `loop` (a `for`, `while`, or `repeat`), out of a number of runs the value walk knows. It
  * enters the last one when it follows a read after the loop into the body, and steps back one run whenever a read
  * in the body sees what the body defines only later on, in the run before.
  */
@@ -472,7 +473,7 @@ function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RN
 const MaxUnrolledRuns = 16;
 
 /** The processors that evaluate what they are given in the frame they are called in. */
-const SameFrameProcessors: readonly BuiltInProcName[] = [BuiltInProcName.ExpressionList, BuiltInProcName.Assignment, BuiltInProcName.IfThenElse, BuiltInProcName.ForLoop];
+const SameFrameProcessors: readonly BuiltInProcName[] = [BuiltInProcName.ExpressionList, BuiltInProcName.Assignment, BuiltInProcName.IfThenElse, BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop];
 
 /** Where a node runs relative to another one in the same run of a loop body, see {@link LoopRuns#along}. */
 const enum RunOrder {
@@ -481,16 +482,32 @@ const enum RunOrder {
 	Unknown
 }
 
+/** A loop whose runs the value walk counts: a `for` by its sequence, a `while` by its condition, a `repeat` by the condition it breaks on last. */
+type CountedLoop = RForLoop<ParentInformation> | RWhileLoop<ParentInformation> | RRepeatLoop<ParentInformation>;
+
+function isCountedLoop(node: RNodeWithParent | undefined): node is CountedLoop {
+	return RForLoop.is(node) || RWhileLoop.is(node) || RRepeatLoop.is(node);
+}
+
+/** The `if(c) break` a `repeat` ends its body with, so each run of the body is a whole one. */
+function finalBreakOf(loop: RNodeWithParent | undefined): RIfThenElse<ParentInformation> | undefined {
+	const last = RRepeatLoop.is(loop) ? loop.body.children.at(-1) : undefined;
+	return RIfThenElse.is(last) && last.otherwise === undefined && last.then.children.length === 1 && RBreak.is(last.then.children[0]) ? last : undefined;
+}
+
 /**
- * The runs of the `for` loops a value walk passes, see {@link LoopIteration}: a loop over a sequence known in advance,
- * whose runs no `break` or `next` cuts short, runs its body once per element, so a definition the body surely makes
- * is what a read after the loop sees from the last run, and what a read in the body sees from the run before.
+ * The runs of the loops a value walk passes, see {@link LoopIteration}: a `for` over a sequence known in advance, or a
+ * `while` or `repeat` whose exit condition the value walk can tell for each run, and whose runs no `break` or `next` cuts short,
+ * runs its body a known number of times, so a read after the loop sees a definition the body surely makes from its last
+ * run, and a read in the body (or the condition of a `while`, which runs before the body) sees the last one before it,
+ * in the same run or the one before.
  */
 class LoopRuns {
 	private readonly graph: DataflowGraph;
 	private readonly idMap: AstIdMap;
 	private readonly info:  ResolveInfo;
-	private sequences:      Map<NodeId, readonly Value[] | undefined> | undefined;
+	/** per loop, the element of each run of a `for`, or how many runs a `while` makes */
+	private runs:           Map<NodeId, readonly Value[] | number | undefined> | undefined;
 
 	constructor(graph: DataflowGraph, idMap: AstIdMap, info: ResolveInfo) {
 		this.graph = graph;
@@ -513,57 +530,89 @@ class LoopRuns {
 
 	/** The element the variable of the loop holds in its `k`-th run. */
 	elementAt(loop: NodeId, k: number): Value | undefined {
-		return this.runsOf(loop)?.[k - 1];
+		const runs = this.runsOf(loop);
+		return typeof runs === 'object' ? runs[k - 1] : undefined;
 	}
 
-	/** The element of each run, if the loop surely runs through all of them. */
-	private runsOf(loop: NodeId): readonly Value[] | undefined {
-		this.sequences ??= new Map();
-		if(this.sequences.has(loop)) {
-			return this.sequences.get(loop);
+	/** How many runs the loop surely makes. */
+	private runCount(loop: NodeId): number | undefined {
+		const runs = this.runsOf(loop);
+		return typeof runs === 'object' ? runs.length : runs;
+	}
+
+	/** The element of each run of a `for`, or the number of runs of a `while`, if the loop surely runs through all of them. */
+	private runsOf(loop: NodeId): readonly Value[] | number | undefined {
+		this.runs ??= new Map();
+		if(this.runs.has(loop)) {
+			return this.runs.get(loop);
 		}
 		const node = this.idMap.get(loop);
-		let runs: readonly Value[] | undefined;
+		let runs: readonly Value[] | number | undefined;
 		if(RForLoop.is(node) && !this.cutShort(node.body)) {
 			const values = valueSetGuard(resolveIdToValue(node.vector.info.id, { ...this.info, blocked: new Set(this.info.blocked) }))?.elements;
 			const sequence = values?.length === 1 ? values[0] : undefined;
 			runs = sequence?.type === 'vector' && isValue(sequence.elements) && sequence.elements.length <= MaxUnrolledRuns ? iteratedElements(sequence) : undefined;
+		} else if(RWhileLoop.is(node) && !this.cutShort(node.body)) {
+			runs = this.runsUntil(node.condition.info.id, loop, false);
+			runs = runs === undefined ? undefined : runs - 1;
+		} else {
+			const exit = finalBreakOf(node);
+			runs = exit !== undefined && !this.cutShort((node as RRepeatLoop<ParentInformation>).body, exit.then.children[0].info.id) ? this.runsUntil(exit.condition.info.id, loop, true) : undefined;
 		}
-		this.sequences.set(loop, runs);
+		this.runs.set(loop, runs);
 		return runs;
 	}
 
-	/** Whether a `break` or `next` may end a run of the body early. */
-	private cutShort(body: RNodeWithParent): boolean {
-		let found = false;
-		RNode.visitAst(body, node => {
-			found ||= RBreak.is(node) || RNext.is(node);
-			return found || RFunctionDefinition.is(node);
-		});
-		return found;
-	}
-
-	/** The loop body the node is in, as the statement of the body that holds it. */
-	private statementIn(id: NodeId, loop: NodeId): RNodeWithParent | undefined {
-		const body = (this.idMap.get(loop) as RForLoop<ParentInformation> | undefined)?.body;
-		for(const node of [this.idMap.get(id), ...RNode.iterateParents(this.idMap.get(id), this.idMap)]) {
-			if(node === undefined || RFunctionDefinition.is(node)) {
+	/**
+	 * The first run of the loop whose check of `condition` surely ends it, as the check is `exitsWhen`: that of a `while`
+	 * comes before the body of the run and sees what the run before left behind, that of a `repeat` at the end of the body.
+	 */
+	private runsUntil(condition: NodeId, loop: NodeId, exitsWhen: boolean): number | undefined {
+		for(let k = 1; k <= MaxUnrolledRuns + 1; k++) {
+			const values = valueSetGuard(resolveIdToValue(condition, { ...this.info, blocked: new Set(this.info.blocked), iterations: [{ loop, k }] }))?.elements;
+			const truth = values?.length === 1 ? RValue.truthOf(values[0]) : undefined;
+			if(truth === undefined) {
 				return undefined;
-			} else if(node.info.parent === body?.info.id) {
-				return node;
+			} else if(truth === exitsWhen) {
+				return k;
 			}
 		}
 		return undefined;
 	}
 
-	/** The loops the node is in the body of, within its function, innermost first. */
-	private loopsAround(id: NodeId): NodeId[] {
+	/** Whether a `break` or `next` other than `exit` may end a run of the body early. */
+	private cutShort(body: RNodeWithParent, exit?: NodeId): boolean {
+		let found = false;
+		RNode.visitAst(body, node => {
+			found ||= (RBreak.is(node) || RNext.is(node)) && node.info.id !== exit;
+			return found || RFunctionDefinition.is(node);
+		});
+		return found;
+	}
+
+	/** The statement of the loop body that holds the node, or the condition of a `while` if that holds it. */
+	private statementIn(id: NodeId, loop: NodeId): RNodeWithParent | undefined {
+		const node = this.idMap.get(loop);
+		const body = isCountedLoop(node) ? node.body.info.id : undefined;
+		const condition = RWhileLoop.is(node) ? node.condition.info.id : undefined;
+		for(const n of [this.idMap.get(id), ...RNode.iterateParents(this.idMap.get(id), this.idMap)]) {
+			if(n === undefined || RFunctionDefinition.is(n)) {
+				return undefined;
+			} else if(n.info.parent === body || n.info.id === condition) {
+				return n;
+			}
+		}
+		return undefined;
+	}
+
+	/** The loops the node is in, within its function, innermost first: in their body, or with `conditions` in the condition of a `while` as well. */
+	private loopsAround(id: NodeId, conditions = true): NodeId[] {
 		const loops: NodeId[] = [];
 		let child = this.idMap.get(id);
 		for(const node of RNode.iterateParents(child, this.idMap)) {
 			if(RFunctionDefinition.is(node)) {
 				break;
-			} else if(RForLoop.is(node) && node.body.info.id === child?.info.id) {
+			} else if(isCountedLoop(node) && (node.body.info.id === child?.info.id || (conditions && RWhileLoop.is(node) && node.condition.info.id === child?.info.id))) {
 				loops.push(node.info.id);
 			}
 			child = node;
@@ -573,38 +622,23 @@ class LoopRuns {
 
 	/** The last run of the loop, if the node runs only once the loop is done. */
 	lastRunBefore(id: NodeId, loop: NodeId): LoopIteration | undefined {
-		const runs = this.after(id, loop) ? this.runsOf(loop)?.length ?? 0 : 0;
+		const runs = this.after(id, loop) ? this.runCount(loop) ?? 0 : 0;
 		return runs > 0 ? { loop, k: runs } : undefined;
 	}
 
-	/** Whether the node runs only once the loop is done: after it in a block of the same function. */
-	private after(id: NodeId, loop: NodeId): boolean {
-		const node = this.idMap.get(id);
-		if(node === undefined || RNode.findEnclosing(id, this.idMap, RFunctionDefinition.is) !== RNode.findEnclosing(loop, this.idMap, RFunctionDefinition.is)) {
-			return false;
-		}
-		/* the child on the way down to the node, for each of its ancestors */
-		const towards = new Map<NodeId, RNodeWithParent>();
-		let child: RNodeWithParent = node;
-		for(const parent of RNode.iterateParents(node, this.idMap)) {
-			towards.set(parent.info.id, child);
-			child = parent;
-		}
-		let loopChild = this.idMap.get(loop);
-		for(const parent of RNode.iterateParents(loopChild, this.idMap)) {
-			const other = towards.get(parent.info.id);
-			if(other !== undefined) {
-				return RExpressionList.is(parent) && loopChild !== undefined && other.info.index > loopChild.info.index;
-			}
-			loopChild = parent;
-		}
-		return false;
+	/** Whether the node runs only once the loop is done: after it in a block of the same function, `directly` a block that holds the loop itself. */
+	private after(id: NodeId, loop: NodeId, directly = false): boolean {
+		const [node, loopNode] = [this.idMap.get(id), this.idMap.get(loop)];
+		return RNode.findEnclosing(id, this.idMap, RFunctionDefinition.is) === RNode.findEnclosing(loop, this.idMap, RFunctionDefinition.is) && RNode.precedesInBlock(loopNode, node, this.idMap)
+			&& (!directly || RNode.iterateParents(node, this.idMap).some(p => p.info.id === loopNode?.info.parent));
 	}
 
-	/** Whether the body of the loop surely makes the node in every run, where it stands under no other condition. */
+	/** Whether the body of the loop surely makes the node in every run, where it stands under no other condition than that the loop goes on. */
 	private surelyIn(id: NodeId, loop: NodeId): boolean {
 		const own = this.graph.getVertex(loop)?.cds ?? [];
-		return ControlDependency.minus(this.graph.getVertex(id)?.cds ?? [], own).every(cd => cd.id === loop) && this.inLoopFrame(id, loop);
+		const exit = finalBreakOf(this.idMap.get(loop))?.info.id;
+		return ControlDependency.minus(this.graph.getVertex(id)?.cds ?? [], own).every(cd => cd.id === loop || (cd.id === exit && cd.when === false))
+			&& this.inLoopFrame(id, loop);
 	}
 
 	/** Whether the node binds in the environment the loop runs in, rather than one a call in the body makes per run (`local`). */
@@ -621,13 +655,14 @@ class LoopRuns {
 		return false;
 	}
 
-	/** Whether `to` runs before or after `from` in a run of the loop: by the statements holding them, or as the value an assignment defines its target by. */
+	/** Whether `to` runs before or after `from` in a run of the loop: by the statements holding them (the condition of a `while` first), or as the value an assignment defines its target by. */
 	private order(to: NodeId, from: NodeId, loop: NodeId): RunOrder {
 		const [a, b] = [this.statementIn(to, loop), this.statementIn(from, loop)];
 		if(a === undefined || b === undefined) {
 			return RunOrder.Unknown;
 		} else if(a !== b) {
-			return a.info.index < b.info.index ? RunOrder.Before : RunOrder.After;
+			const position = (s: RNodeWithParent) => s.info.parent === loop ? -1 : s.info.index;
+			return position(a) < position(b) ? RunOrder.Before : RunOrder.After;
 		}
 		const assigns = (target: NodeId, value: NodeId) => {
 			const assignment = this.idMap.get(this.idMap.get(target)?.info.parent ?? -1);
@@ -638,9 +673,48 @@ class LoopRuns {
 	}
 
 	/**
+	 * Whether a loop that surely runs at least once, standing before the read `from` in a block that holds it, surely
+	 * redefines what `to`, made before the loop, defines, so the read no longer sees `to`.
+	 */
+	private redefinedByLoop(from: NodeId, to: NodeId, edges: ReadonlyMap<NodeId, DfEdge>): boolean {
+		for(const [t, e] of edges) {
+			if(t === to || !DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall) || this.graph.getVertex(t)?.cds?.some(cd => isCountedLoop(this.idMap.get(cd.id))) !== true
+				|| !DfgVertex.isVariableDefinition(this.graph.getVertex(t))) {
+				continue;
+			}
+			const loop = this.loopsAround(t, false)[0];
+			if(loop !== undefined && this.surelyIn(t, loop) && this.after(from, loop, true) && !this.after(to, loop)
+				&& RNode.strictlyEnclosingFunction(to, this.idMap) === RNode.strictlyEnclosingFunction(loop, this.idMap)
+				&& !RNode.iterateParents(this.idMap.get(to), this.idMap).some(p => p.info.id === loop) && (this.runCount(loop) ?? 0) > 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether another definition among the `edges` of the read `from` in run `k` of the loop surely runs after `to`
+	 * (made in run `toRun`, or before the loop if that is `undefined`) and before `from`, so the read no longer sees `to`.
+	 */
+	private redefinedBetween(from: NodeId, to: NodeId, toRun: number | undefined, k: number, loop: NodeId, edges: ReadonlyMap<NodeId, DfEdge>): boolean {
+		for(const [t, e] of edges) {
+			if(t === to || !DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall) || !DfgVertex.isVariableDefinition(this.graph.getVertex(t))
+				|| !this.loopsAround(t).includes(loop) || !this.surelyIn(t, loop)) {
+				continue;
+			}
+			const order = this.order(t, from, loop);
+			const run = order === RunOrder.Before ? k : order === RunOrder.After ? k - 1 : 0;
+			if(run > 0 && (toRun === undefined || run > toRun || (run === toRun && this.order(to, t, loop) === RunOrder.Before))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * The runs the walk is in once it follows the edge from `from` to `to`, `undefined` if no run lets it: a read in the
-	 * first run cannot see what its body only defines later on, nor a read in a later run what came before the loop
-	 * if the body surely redefines it in the run before.
+	 * first run cannot see what its body only defines later on, nor any read a definition the body surely makes again
+	 * between the two.
 	 */
 	along(from: NodeId, to: NodeId, edges: ReadonlyMap<NodeId, DfEdge>, iterations: readonly LoopIteration[]): readonly LoopIteration[] | undefined {
 		const top = iterations.at(-1);
@@ -648,16 +722,21 @@ class LoopRuns {
 			/* a read after the loop sees its last run, be it a definition of the body or the variable of the loop */
 			const vertex = this.graph.getVertex(to);
 			const variableOf = DfgVertex.isVariableDefinition(vertex) ? this.loopOfVariable(to) : undefined;
-			if(variableOf === undefined && vertex?.cds?.some(cd => RForLoop.is(this.idMap.get(cd.id))) !== true) {
+			if(variableOf === undefined && vertex?.cds?.some(cd => isCountedLoop(this.idMap.get(cd.id))) !== true) {
 				/* the body of a loop runs under the loop as its condition, so a node without one is in none */
-				return iterations;
+				return this.redefinedByLoop(from, to, edges) ? undefined : iterations;
 			}
-			const loop = this.loopsAround(to)[0] ?? variableOf;
+			/* the condition of a `while` runs once more than its body */
+			const loop = this.loopsAround(to, false)[0] ?? variableOf;
 			if(loop === undefined || !this.after(from, loop)) {
 				return iterations;
 			}
-			const runs = this.runsOf(loop)?.length ?? 0;
-			return runs > 0 && (variableOf === loop || this.surelyIn(to, loop)) ? [{ loop, k: runs }] : iterations;
+			const runs = this.runCount(loop);
+			if(runs === 0 && variableOf === undefined) {
+				/* the body never runs */
+				return undefined;
+			}
+			return runs !== undefined && runs > 0 && (variableOf === loop || this.surelyIn(to, loop)) ? [{ loop, k: runs }] : iterations;
 		}
 		const fromInRun = this.loopsAround(from).includes(top.loop);
 		const around = this.loopsAround(to);
@@ -666,17 +745,16 @@ class LoopRuns {
 		} else if(around.includes(top.loop)) {
 			const order = fromInRun ? this.order(to, from, top.loop) : RunOrder.Unknown;
 			if(order === RunOrder.Before) {
-				return iterations;
+				return this.redefinedBetween(from, to, top.k, top.k, top.loop, edges) ? undefined : iterations;
 			} else if(order === RunOrder.After) {
-				if(top.k === 1) {
+				if(top.k === 1 || this.redefinedBetween(from, to, top.k - 1, top.k, top.loop, edges)) {
 					return undefined;
 				}
 				return this.surelyIn(to, top.loop) ? [...iterations.slice(0, -1), { loop: top.loop, k: top.k - 1 }] : iterations.slice(0, -1);
 			}
 			return [];
 		}
-		const redefined = top.k > 1 && fromInRun && [...edges].some(([t, e]) => DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall)
-			&& this.loopsAround(t).includes(top.loop) && this.order(t, from, top.loop) === RunOrder.After && this.surelyIn(t, top.loop));
+		const redefined = fromInRun && this.redefinedBetween(from, to, undefined, top.k, top.loop, edges);
 		return redefined ? undefined : iterations.filter(i => around.includes(i.loop));
 	}
 }
@@ -739,6 +817,12 @@ function framesIntoReturn(call: NodeId, target: NodeId, edges: ReadonlyMap<NodeI
 		return frames.length >= MaxFrames || frames.some(f => f.fn === fn) ? [] : [...frames, { fn, call, runs }];
 	}
 	return fn === RNode.strictlyEnclosingFunction(call, idMap) ? frames : [];
+}
+
+/** The innermost frame whose call is made in the function that holds `target`, see {@link CallFrame}. */
+function frameCalledBeside(frames: readonly CallFrame[], target: NodeId, idMap: AstIdMap): CallFrame | undefined {
+	const scope = RNode.strictlyEnclosingFunction(target, idMap);
+	return frames.findLast(f => RNode.strictlyEnclosingFunction(f.call, idMap) === scope);
 }
 
 /** The frame whose call hands the argument `argument`, the innermost one if none does. */
@@ -1002,10 +1086,12 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 					const next = top === undefined ? frames
 						: handing !== undefined ? frames.slice(0, handing)
 							: inSameFrame(targetId, top.fn, graph, idMap) ? frames : [];
-					/* a function reads what its scope binds when it is called, so leaving its frame that way, the read is where the call is */
+					/* a function reads what its scope binds when it is called, so leaving its frame that way, the read is where
+					 * the call is, or, through calls of further functions, where the call made in the scope of the target is */
+					const leaving = top === undefined || ownParameter ? undefined : frameCalledBeside(frames, targetId, idMap) ?? top;
 					const runs = next === frames ? loops.along(id, targetId, outgoingEdges, iterations)
 						: handing !== undefined ? frames[handing].runs ?? []
-							: top !== undefined && !ownParameter ? loops.along(top.call, targetId, outgoingEdges, top.runs ?? []) : [];
+							: leaving !== undefined ? loops.along(leaving.call, targetId, outgoingEdges, leaving.runs ?? []) : [];
 					if(runs !== undefined) {
 						enqueue(targetId, next, runs);
 					}

@@ -65,7 +65,18 @@ describe('Transitivity through calls and closures, checked against R', withTreeS
 		resolvesLikeR(parser, 'a closure called through a variable in a loop', 'x <- 1\nf <- function() x\ng <- f\nfor(i in 1:2) {\n  y <- g()\n  x <- 5\n}\ncat(y)', '8@y');
 		resolvesLikeR(parser, 'a loop in a function with a closure of its frame', 'h <- function() {\n  x <- 1\n  f <- function() x\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\ny <- h()\ncat(y)', '11@y');
 		resolvesLikeR(parser, 'a loop in a function with a global closure', 'x <- 1\nf <- function() x\nh <- function() {\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\ny <- h()\ncat(y)', '11@y');
-		resolvesLikeR(parser, 'a while loop redefining the global after the call', 'x <- 1\nf <- function() x\ni <- 0\nwhile(i < 2) {\n  i <- i + 1\n  y <- f()\n  x <- 7\n}\ncat(y)', '9@y', { imprecise: 'resolves 1 and 7, the runs of a while loop are not counted' });
+		resolvesLikeR(parser, 'a while loop redefining the global after the call', 'x <- 1\nf <- function() x\ni <- 0\nwhile(i < 2) {\n  i <- i + 1\n  y <- f()\n  x <- 7\n}\ncat(y)', '9@y');
+		resolvesLikeR(parser, 'a while loop redefining the global around the call', 'x <- 1\nf <- function() x\ni <- 0\nwhile(i < 3) {\n  i <- i + 1\n  x <- 2\n  y <- f()\n  x <- 7\n}\ncat(y)', '10@y');
+		resolvesLikeR(parser, 'a while loop counting down', 'n <- 0\ni <- 3\nwhile(i > 0) {\n  n <- n + 1\n  i <- i - 1\n}\ncat(n)', '7@n');
+		resolvesLikeR(parser, 'the counter of a while loop', 'i <- 0\nwhile(i < 3) i <- i + 1\ncat(i)', '3@i');
+		resolvesLikeR(parser, 'a while loop that never runs', 'x <- 1\nf <- function() x\ni <- 5\nwhile(i < 3) {\n  i <- i + 1\n  y <- f()\n  x <- 7\n}\ncat(x)', '9@x');
+		resolvesLikeR(parser, 'a while loop with an unknown bound', 'x <- 1\nf <- function() x\ni <- 0\nn <- length(commandArgs())\nwhile(i < n + 2) {\n  i <- i + 1\n  y <- f()\n  x <- 7\n}\ncat(y)', '10@y', { imprecise: 'resolves 1 and 7, the bound is not known' });
+		resolvesLikeR(parser, 'a repeat loop breaking at its end', 'x <- 1\nf <- function() x\ni <- 0\nrepeat {\n  i <- i + 1\n  y <- f()\n  x <- 7\n  if(i >= 2) break\n}\ncat(y)', '10@y');
+		resolvesLikeR(parser, 'a repeat loop breaking after one run', 'x <- 1\nf <- function() x\ni <- 0\nrepeat {\n  i <- i + 1\n  y <- f()\n  x <- 7\n  if(i >= 1) break\n}\ncat(y)', '10@y');
+		resolvesLikeR(parser, 'the counter of a repeat loop', 'i <- 0\nrepeat {\n  i <- i + 1\n  if(i >= 4) break\n}\ncat(i)', '6@i');
+		resolvesLikeR(parser, 'a global redefined before and after the call', 'x <- 1\nf <- function() x\nfor(i in 1:2) {\n  x <- 3\n  y <- f()\n  x <- 9\n}\ncat(y)', '8@y');
+		resolvesLikeR(parser, 'a global redefined around a closure calling a closure', 'x <- 1\ng <- function() x\nf <- function() g()\nfor(i in 1:2) {\n  x <- 3\n  y <- f()\n  x <- 9\n}\ncat(y)', '9@y');
+		resolvesLikeR(parser, 'a global redefined by the outer loop after the inner one', 'x <- 0\nf <- function() x\nfor(j in 1:2) {\n  for(i in 1:2) {\n    y <- f()\n    x <- 9\n  }\n  x <- 5\n}\ncat(y)', '10@y');
 	}));
 
 	describe('values', () => {

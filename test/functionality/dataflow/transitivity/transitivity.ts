@@ -208,8 +208,8 @@ export function writesLikeR(parser: KnownParser, name: string, code: string, lin
 		const access = Dataflow.sideEffects.ambientAccess(info, scope);
 		assert.strictEqual((await printedByR(code)).split('\n').at(-1), 'ok');
 		const written = [...access.writes, ...access.variables];
-		/* an imprecise case may only know that some option changes */
-		const missing = writes.filter(w => !written.includes(w) && !(verdict.imprecise !== undefined && w.startsWith('#option:') && written.includes('#option:*')));
+		/* an imprecise case may only know that some option, variable, ... changes (`#option:*`) */
+		const missing = writes.filter(w => !written.includes(w) && !(verdict.imprecise !== undefined && written.includes(w.replace(/:.*$/, ':*'))));
 		assert.isEmpty(missing, JSON.stringify(written));
 	});
 }

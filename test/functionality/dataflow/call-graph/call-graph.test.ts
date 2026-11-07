@@ -370,6 +370,17 @@ f.numeric <- function(x) {
 		);
 	}
 
+	/* a call forces a named argument by reading what it evaluates to, which is no function the call itself runs */
+	for(const { name, code, edge } of [
+		{ name: 'a call defined later',  code: 'f <- function(call) ab("x", call = call)\nab <- function(msg, call) { force(call); stop(msg) }\ng <- function() 1\nf(g)', edge: ['1@ab', '3@function'] as [NodeId, NodeId] },
+		{ name: 'an unknown call',       code: 'h <- function(x) 1\nk <- function(f) unknownFn(callback = f)\nk(h)',                                              edge: ['2@unknownFn', '1@function'] as [NodeId, NodeId] }
+	]) {
+		assertDataflow(label(`a named argument is not called by ${name}`, ['function-calls', 'function-definitions', 'named-arguments', 'resolve-arguments']),
+			ts, code, emptyGraph(),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [edge] }
+		);
+	}
+
 	test(decorateLabelContext(label('domains:hof a closure handed to lapply is reachable', ['name-normal', 'function-calls']), ['dataflow']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 		analyzer.addRequest('adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');

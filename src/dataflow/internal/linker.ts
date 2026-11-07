@@ -232,12 +232,32 @@ export type CalledFunctions = {
  * Whether the call `info` may get its function from `target`, which it has the edge `e` to. An unnamed call reads
  * the expression that gives its function. A named call that only reads another call reads state that call wrote,
  * like the options, unless that call binds the name. No call binds a name that resolves to nothing (`unbound`),
- * and a call processed by default (`options()`, `par()`) binds no name at all.
+ * and a call processed by default (`options()`, `par()`) binds no name at all. What lies within an argument the call
+ * reads only when forcing it.
  */
 function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, target: NodeId, e: DfEdge, unbound = false): boolean {
+	if(DfEdge.includesType(e, EdgeType.Calls | EdgeType.DefinedByOnCall)) {
+		return true;
+	} else if(isWithinArgumentOf(graph, info.id, target)) {
+		return false;
+	}
 	const vertex = graph.getVertex(target);
-	return DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || DfEdge.includesType(e, EdgeType.Calls | EdgeType.DefinedByOnCall) || !DfgVertex.isFunctionCall(vertex)
+	return DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || !DfgVertex.isFunctionCall(vertex)
 		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default)));
+}
+
+/** Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function. */
+export function isWithinArgumentOf(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return false;
+	}
+	for(let node = idMap.get(target); node !== undefined && node.info.id !== call; node = RNode.directParent(node, idMap)) {
+		if(Dataflow.hasEdge(graph, call, node.info.id, EdgeType.Argument)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap, isRoot: boolean): CalledFunctions | undefined {

@@ -17,6 +17,7 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Identifier } from '../environments/identifier';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from './df-helper';
+import { isWithinArgumentOf } from '../internal/linker';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -70,7 +71,8 @@ export function fallbackUntargetedCall(vtx: Pick<DataflowGraphVertexFunctionCall
 		const follow = currentId !== vtx.id && DfgVertex.isFunctionCall(currentVtx) ? EdgeType.Returns : UntargetedCallFollow;
 		for(const [tar, e] of graph.edgesFrom(currentId)) {
 			if(DfEdge.includesType(e, follow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)
-				&& (DfEdge.includesType(e, EdgeType.Returns) || !DfgVertex.isFunctionCall(graph.getVertex(tar)))) {
+				&& (DfEdge.includesType(e, EdgeType.Returns) || !DfgVertex.isFunctionCall(graph.getVertex(tar)))
+				&& (currentId !== vtx.id || !isWithinArgumentOf(graph, vtx.id, tar))) {
 				addedNew = true;
 				toVisit.push(tar);
 			}

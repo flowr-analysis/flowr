@@ -1,7 +1,7 @@
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
+import { getAllLinkedFunctionDefinitions, linkFunctionCalls, linkWritesCarriedByLoop } from '../../../../linker';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -61,7 +61,7 @@ function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
 
 /** @returns whether `read` sees a definition */
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: DefaultMap<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
-	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
+	const readName = Identifier.boundAs(read.name);
 	const probableTarget = readName ? Resolve.byNameAndType(readName, scopeOf(read, environments), read.type) : undefined;
 
 	/* without a target the read stays ingoing (read-ids are unique within the same fold), a later fold may still resolve it */
@@ -195,7 +195,12 @@ function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean
  * those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known.
  */
 function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
-	const all = Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? [];
+	/* an S4 object prints by the `show` methods `setMethod` registers */
+	const shows = Resolve.byNameAndType('show', environment, ReferenceType.Function)?.filter(d => {
+		const registration = graph.getVertex((d as InGraphIdentifierDefinition).definedAt);
+		return DfgVertex.isFunctionCall(registration) && registration.s4Method !== undefined;
+	}) ?? [];
+	const all = (Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? []).concat(shows);
 	const classes = all.length === 0 ? undefined : s3DispatchClassesOf(id, info);
 	const methods = classes === undefined ? all : printedBy(classes, all, graph);
 	if(methods.length === 0) {
@@ -276,6 +281,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 				}
 			}
 			let hasUpdate = false;
+			const written: IdentifierDefinition[] = [];
 			const envWrites: IdentifierDefinition[] = [];
 			const seenByCaller = packageLayersOf(inputEnvironment);
 			for(const current of REnvironment.frames(environment.current)) {
@@ -290,6 +296,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {
 							hasUpdate = true;
+							written.push(def);
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 							/* what a call of the list writes is written by the list, a later read of it looks no further */
 							listEnvironments.add(def.nodeId);
@@ -303,6 +310,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			if(!hasUpdate) {
 				continue;
 			}
+			linkWritesCarriedByLoop(nextGraph, functionCall, written, idMap);
 			if(envWrites.length > 0) {
 				[environment, inputEnvironment] = addEnvironmentWrites(envWrites, environment, inputEnvironment, functionCall, nextGraph);
 			}

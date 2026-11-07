@@ -201,6 +201,10 @@ export const Identifier = {
 	dotdotdot(this: void): BrandedIdentifier {
 		return '...';
 	},
+	/** The name `id` is bound as, `...` for its accesses like `..1` */
+	boundAs<I extends Identifier | undefined>(this: void, id: I): I | BrandedIdentifier {
+		return id !== undefined && Identifier.isDotDotDotAccess(id) ? Identifier.dotdotdot() : id;
+	},
 	/**
 	 * Check if the identifier is the special `...` argument / or one of its accesses like `..1`, `..2`, etc.
 	 * This always returns false for namespaced identifiers.

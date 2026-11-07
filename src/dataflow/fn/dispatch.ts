@@ -355,6 +355,9 @@ export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 			add(classDecl.name, classDecl.contains[0]);
 		}
 	}
+	/* the basic classes R places below `numeric` */
+	add('integer', 'numeric');
+	add('double', 'numeric');
 	/* a class declared by `setClass` as well is no plain S3 class */
 	classes.keys().forEach(c => oldClasses?.delete(c));
 	return { supers, declared, oldClasses };
@@ -391,12 +394,15 @@ function reachableThroughOpen(hierarchy: S4Hierarchy): ReadonlySet<string> {
 	return reachable;
 }
 
-/** The range of distances R may see from the class `actual` of an argument to the class `wanted` of a signature, `undefined` if it never matches. */
-function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, open: ReadonlySet<string>): [number, number] | undefined {
+/**
+ * The range of distances R may see from the class `actual` of an argument to the class `wanted` of a signature, and whether
+ * it surely matches; `undefined` if it never matches.
+ */
+function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, open: ReadonlySet<string>): [number, number, boolean] | undefined {
 	if(wanted === 'ANY') {
-		return [AnyDistance, AnyDistance];
+		return [AnyDistance, AnyDistance, true];
 	} else if(actual === wanted) {
-		return [0, 0];
+		return [0, 0, true];
 	} else if(actual === 'missing' || actual === 'ANY') {
 		return undefined;
 	}
@@ -404,9 +410,9 @@ function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, o
 	const known = depth.get(wanted);
 	const viaOpen = openAt !== undefined && (!hierarchy.declared.has(wanted) || open.has(wanted));
 	if(!viaOpen) {
-		return known === undefined ? undefined : [known, known];
+		return known === undefined ? undefined : [known, known, true];
 	}
-	return [Math.min(known ?? AnyDistance, openAt + 1), known ?? AnyDistance - 1];
+	return [Math.min(known ?? AnyDistance, openAt + 1), known ?? AnyDistance - 1, known !== undefined];
 }
 
 /**
@@ -416,23 +422,26 @@ function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, o
  */
 export function selectS4Methods(methods: readonly S4Method[], formals: readonly string[], actual: readonly string[], hierarchy: S4Hierarchy): S4Method[] {
 	const open = reachableThroughOpen(hierarchy);
-	const ranges: [S4Method, number, number][] = [];
+	const ranges: [S4Method, number, number, boolean][] = [];
 	for(const method of methods) {
 		const wanted = signatureFor(method, formals) ?? formals.map(() => 'ANY');
 		let low = 0;
 		let high = 0;
 		let applies = true;
+		let surely = true;
 		for(let i = 0; i < formals.length && applies; i++) {
 			const range = distanceRange(actual[i], wanted[i], hierarchy, open);
 			applies = range !== undefined;
 			low += range?.[0] ?? 0;
 			high += range?.[1] ?? 0;
+			surely &&= range?.[2] === true;
 		}
 		if(applies) {
-			ranges.push([method, low, high]);
+			ranges.push([method, low, high, surely]);
 		}
 	}
-	const best = Math.min(...ranges.map(([, , high]) => high));
+	/* only a method that surely applies rules out those further away, one that may not apply leaves them */
+	const best = Math.min(...ranges.filter(([, , , surely]) => surely).map(([, , high]) => high));
 	return ranges.filter(([, low]) => low <= best).map(([m]) => m);
 }
 

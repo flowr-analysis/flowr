@@ -170,6 +170,7 @@ export const LanguageDefinitions = [
 			sig:   sig({ channel: Forced.Handle, query: Forced.Value | ArgProp.Injectable, '...': ArgProp.Value })
 		}
 	),
-	replacement([...RAccess.namedOperators], ['<-', '<<-'], { readIndices: false, props: CallProp.Scope }),
+	/* R dispatches `$<-` (and `@<-` since R 4.3) on the class of the target, to the methods the code writes */
+	replacement([...RAccess.namedOperators], ['<-', '<<-'], { readIndices: false, props: CallProp.Scope | CallProp.Generic }),
 	fn(['`%@%`'], BuiltInProcName.DefaultReadAllArgs, Deprecated),
 ] as const satisfies AnyBuiltInDefinition[];

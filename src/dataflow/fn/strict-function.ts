@@ -18,6 +18,7 @@ import { Resolve } from '../environments/resolve-helper';
 import { fallbackUntargetedCall } from '../graph/call-graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex, VertexType } from '../graph/vertex';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
@@ -282,11 +283,24 @@ function parameterAt(definition: NodeId, index: number, idMap: AstIdMap, graph: 
 	return dotsBefore ? undefined : node.parameters[index]?.name.info.id;
 }
 
+/** Whether `id` is the dots handed on as they are (`g(...)`). */
+function handsOnDots(id: NodeId, idMap: AstIdMap): boolean {
+	const node = idMap.get(id);
+	return RSymbol.is(node) && node.content === Identifier.dotdotdot();
+}
+
+/** Whether `id`, bound to an argument, is a read of the dots by position (`..1`, `...elt(1)`) rather than a parameter. */
+function isElementRead(id: NodeId, graph: DataflowGraph): boolean {
+	const vertex = graph.getVertex(id);
+	return DfgVertex.isUse(vertex) || DfgVertex.isFunctionCall(vertex);
+}
 /** The parameters an argument of `call` binds to, by position in each definition an unlinked call may reach, `undefined` if unknown. */
+
 function boundParameters(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, graph: DataflowGraph, origins?: Map<NodeId, readonly NodeId[]>): NodeId[] | undefined {
 	const sources = new Set([argument, argumentValue(argument, idMap)]);
-	/* a call handed as the argument links on call what its own callees read as well, which binds no parameter */
-	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall)).filter(p => idMap.get(p)?.info.role === RoleInParent.ParameterName);
+	/* a call handed as the argument links on call what its own callees read as well, which binds no parameter,
+	 * an argument to dots read by position only is bound to the reads of its position (`..1`) */
+	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall)).filter(p => idMap.get(p)?.info.role === RoleInParent.ParameterName || isElementRead(p, graph));
 	if(linked.length > 0 || Dataflow.calleeIdsOf(graph, call.id).length > 0) {
 		return linked;
 	}
@@ -510,8 +524,11 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 			continue;
 		}
 		seen.add(param);
-		const owner = idMap.get(idMap.get(param)?.info.parent ?? -1)?.info.parent;
-		for(const read of Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
+		/* a read of the dots by position is bound to the argument itself */
+		const element = isElementRead(param, graph);
+		const binding = element ? Dataflow.targetsOf(graph, param, EdgeType.Reads).find(t => idMap.get(t)?.info.role === RoleInParent.ParameterName) : param;
+		const owner = idMap.get(idMap.get(binding ?? -1)?.info.parent ?? -1)?.info.parent;
+		for(const read of element ? [param] : Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
 			found.push(read);
 			/* only a closure within the function owning the parameter captures it, a read elsewhere is no call of one */
 			const closures: NodeId[] = [];
@@ -529,6 +546,9 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 				if(DfgVertex.isFunctionCall(call) && !isBuiltInCall(call)) {
 					const bound = boundParameters(call, read, idMap, graph) ?? [];
 					found.push(holder, ...forcingPointsOf(bound, graph, idMap, seen));
+				} else if(handsOnDots(read, idMap)) {
+					/* the dots are evaluated only by the call they are handed to */
+					found.push(holder);
 				}
 			}
 		}

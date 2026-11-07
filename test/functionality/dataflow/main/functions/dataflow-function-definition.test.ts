@@ -364,7 +364,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('0', '...', { definedBy: [] }, false)
 			.defineFunction('6', ['4'], {
 				out:               [],
-				in:                [{ nodeId: '4', name: '..11', cds: [], type: ReferenceType.Unknown }, { nodeId: 5, name: '{', type: ReferenceType.Function, cds: undefined }],
+				in:                [{ nodeId: 5, name: '{', type: ReferenceType.Function, cds: undefined }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['0', '4', '5']),

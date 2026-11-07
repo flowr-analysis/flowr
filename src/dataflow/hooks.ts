@@ -1,6 +1,6 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from './info';
-import { happensInEveryBranch } from './info';
+import { happensInEveryBranch, negateControlDependency } from './info';
 import { DefaultMap } from '../util/collections/defaultmap';
 
 export enum KnownHooks {
@@ -33,7 +33,13 @@ export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
 	for(const hook of hooks) {
 		if(!hook.add && happensInEveryBranch(hook.cds)) {
 			hooksByType.set(hook.type, [hook]);
-		} else if(hook.after) {
+			continue;
+		}
+		if(!hook.add) {
+			/* a replacement that may not happen leaves the hooks before it in place only maybe */
+			hooksByType.set(hook.type, hooksUnder(hooksByType.get(hook.type), hook.cds?.map(negateControlDependency) ?? []));
+		}
+		if(hook.after) {
 			hooksByType.get(hook.type).push(hook);
 		} else {
 			hooksByType.get(hook.type).unshift(hook);

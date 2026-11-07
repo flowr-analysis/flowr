@@ -3,7 +3,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../fn/function-semantics';
-import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -246,7 +246,11 @@ function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunct
 			}
 			/* a variable is looked up where the function was defined, global state (options, files, the working directory) is what it is where it is called */
 			const inCallee = AmbientStateName.is(name) ? undefined : (callee ??= environmentsOfCallee(info, environment)).values().map(env => Resolve.byNameAndType(name, env, ingoing.type)).find(isNotUndefined);
-			const defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= REnvironment.visibleTo(fnSubflow.environment.level, environment), ingoing.type) ?? [];
+			let defs = inCallee ?? Resolve.byNameAndType(name, AmbientStateName.is(name) ? environment : lexical ??= REnvironment.visibleTo(fnSubflow.environment.level, environment), ingoing.type) ?? [];
+			/* R looks the methods of a dispatch up where the generic is called first */
+			if(ingoing.type === ReferenceType.S3MethodPrefix && inCallee === undefined) {
+				defs = uniqueArrayMerge(defs, Resolve.byNameAndType(name, environment, ingoing.type) ?? []);
+			}
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				const { nodeId, type, value, definedAt, envState } = def;
 				/* the state an earlier run of the function left behind is what its next run reads */
@@ -791,7 +795,7 @@ export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, defi
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean, alsoFrom?: NodeId): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? Resolve.byNameAndType(bodyInput.name, scopeOf(bodyInput, environmentInformation), bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? Resolve.byNameAndType(Identifier.boundAs(bodyInput.name), scopeOf(bodyInput, environmentInformation), bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			if(maybeForRemaining) {
 				bodyInput.cds ??= [];
@@ -890,6 +894,53 @@ function carriedTo(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, 
 		}
 	}
 	return carried === undefined ? exit : { current: carried, level: exit.level };
+}
+
+/**
+ * A call in a loop runs again, so what its callee writes reaches the reads of the loop before the call as well:
+ * in `ch <- function() g <<- 2; for(i in 1:2) { s <- g; ch() }` the second `s <- g` reads `g <<- 2`. The loop is linked
+ * before the calls to functions made outside of it are resolved, so their writes `written` are carried over here, to the
+ * reads in the same frame and the free reads of the functions called there.
+ */
+export function linkWritesCarriedByLoop(graph: DataflowGraph, call: NodeId, written: readonly IdentifierDefinition[], idMap: AstIdMap): void {
+	let loop: RNode<ParentInformation> | undefined;
+	for(let node = idMap.get(call); node !== undefined && !RFunctionDefinition.is(node); node = RNode.directParent(node, idMap)) {
+		if(RLoopConstructs.is(node)) {
+			loop = node;
+		}
+	}
+	if(loop === undefined || written.length === 0) {
+		return;
+	}
+	const byName = new Map<string, IdentifierDefinition[]>();
+	for(const def of written) {
+		if(def.name !== undefined) {
+			const name = Identifier.getName(def.name);
+			byName.set(name, [...byName.get(name) ?? [], def]);
+		}
+	}
+	const writtenAs = (name: Identifier | undefined) => name === undefined ? undefined : byName.get(Identifier.getName(name));
+	for(const id of RNode.collectAllIdsWithStop(loop, RFunctionDefinition.is)) {
+		const vertex = graph.getVertex(id);
+		if(!DfgVertex.isUse(vertex) && !DfgVertex.isFunctionCall(vertex)) {
+			continue;
+		}
+		for(const def of writtenAs(DfgVertex.isFunctionCall(vertex) ? vertex.name : NodeId.recoverBareName(id, idMap)) ?? []) {
+			graph.addEdge(id, def.nodeId, EdgeType.Reads);
+			if(DfgVertex.isFunctionCall(vertex)) {
+				getAllLinkedFunctionDefinitions(new Set([def.nodeId]), graph)[0].forEach(fn => graph.addEdge(id, fn.id, EdgeType.Calls));
+			}
+		}
+		for(const target of DfgVertex.isFunctionCall(vertex) ? Dataflow.targetsOf(graph, id, EdgeType.Calls) : []) {
+			const fn = graph.getVertex(target);
+			for(const ingoing of DfgVertex.isFunctionDefinition(fn) ? fn.subflow.in : []) {
+				for(const def of writtenAs(ingoing.name) ?? []) {
+					graph.addEdge(ingoing.nodeId, def.nodeId, EdgeType.DefinedByOnCall);
+					graph.addEdge(id, def.nodeId, EdgeType.DefinesOnCall);
+				}
+			}
+		}
+	}
 }
 
 function addControlDependency(holder: { cds?: readonly ControlDependency[] | undefined }, cd: ControlDependency): boolean {

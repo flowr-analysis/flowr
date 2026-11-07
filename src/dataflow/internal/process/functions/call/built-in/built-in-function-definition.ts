@@ -4,7 +4,7 @@ import { convertFnArguments } from '../common';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, happensInEveryBranch, overwriteExitPoints } from '../../../../../info';
 import { bindAccessedField, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, linkInstanceReads, produceNameSharedIdMap, readsOfUncalledClosures } from '../../../../linker';
-import { deferredEnvOps } from './built-in-deferred-env-ops';
+import { deferredEnvOps, linkCallerFrameWrites } from './built-in-deferred-env-ops';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
@@ -172,7 +172,7 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
-	const compactedHooks = compactHookStates(body.hooks);
+	const compactedHooks = compactHookStates(body.hooks).filter(h => DfgVertex.isFunctionDefinition(subgraph.getVertex(h.id)));
 	/* a jump in a default leaves the function from where the parameter is first used */
 	const exitPoints = body.exitPoints.concat(processedParameters.flatMap(p => p.exitPoints.filter(e => e.type !== ExitPointType.Default)));
 	let afterHookExitPoints = exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error);
@@ -353,7 +353,7 @@ function resolveIngoingRefs(
 		if(instance !== undefined && ingoing.name !== undefined && instance.includes(Identifier.getName(ingoing.name))) {
 			return true;
 		}
-		const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, environment, ingoing.type) : undefined;
+		const resolved = ingoing.name ? Resolve.byNameAndType(Identifier.boundAs(ingoing.name), environment, ingoing.type) : undefined;
 		return resolved === undefined || onResolved(ingoing, resolved);
 	});
 }
@@ -476,9 +476,15 @@ interface NamesOfInterest {
  * The names the analyzed code binds that a built-in also goes by, so a call that resolved to only that built-in
  * may still land on one of them: a body looks its callee up when it runs, not when it is written.
  */
-function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfInterest {
+function namesShadowingBuiltIns(environment: REnvironmentInformation, graph: DataflowGraph): NamesOfInterest {
 	const shadowing = new Set<string>();
 	const generics = new Set<string>();
+	/* `as.character.zz` may be a method of `as` or of `as.character`, so every prefix is a candidate */
+	const methodOf = (name: string) => {
+		for(let dot = name.indexOf('.', 1); dot > 0; dot = name.indexOf('.', dot + 1)) {
+			generics.add(name.slice(0, dot));
+		}
+	};
 	for(const env of REnvironment.frames(environment.current)) {
 		/* an attached package may shadow a built-in a function body bound to before it was attached; its keys
 		 * suffice, building the definitions of every export would be costly */
@@ -489,15 +495,17 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfIn
 			continue;
 		}
 		for(const [identifier, definitions] of env.memory) {
-			if(definitions.every(d => NodeId.isBuiltIn(d.nodeId))) {
-				continue;
+			if(!definitions.every(d => NodeId.isBuiltIn(d.nodeId))) {
+				shadowing.add(Identifier.getName(identifier));
+				methodOf(Identifier.getName(identifier));
 			}
-			const name = Identifier.getName(identifier);
-			shadowing.add(name);
-			/* `as.character.zz` may be a method of `as` or of `as.character`, so every prefix is a candidate */
-			for(let dot = name.indexOf('.', 1); dot > 0; dot = name.indexOf('.', dot + 1)) {
-				generics.add(name.slice(0, dot));
-			}
+		}
+	}
+	/* a method a function binds in its own frame is seen by the dispatches within it */
+	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
+		const name = graph.isRoot(id) ? undefined : NodeId.recoverBareName(id, graph.idMap);
+		if(name !== undefined) {
+			methodOf(name);
 		}
 	}
 	return { shadowing, generics };
@@ -628,7 +636,14 @@ function dispatchedObjectOf(vertex: DataflowGraphVertexFunctionCall, graph: Data
 		return object?.length === 1 ? object[0] : undefined;
 	}
 	const first = vertex.args[0];
-	return first !== undefined && first !== EmptyArgument && Dataflow.hasEdge(graph, vertex.id, first.nodeId, EdgeType.Reads) ? first.nodeId : undefined;
+	if(first === undefined || first === EmptyArgument || !Dataflow.hasEdge(graph, vertex.id, first.nodeId, EdgeType.Reads)) {
+		return undefined;
+	}
+	/* the dispatch sees the value the parameter holds then, which a body binding it anew (`class(x) <- "b"`) changes */
+	const fn = graph.getVertex(graph.idMap === undefined ? '' : RNode.strictlyEnclosingFunction(vertex.id, graph.idMap) ?? '');
+	const name = NodeId.recoverBareName(first.nodeId, graph.idMap);
+	const rebound = DfgVertex.isFunctionDefinition(fn) && fn.subflow.graph.values().some(id => id !== first.nodeId && DfgVertex.isVariableDefinition(graph.getVertex(id)) && NodeId.recoverBareName(id, graph.idMap) === name);
+	return rebound ? undefined : first.nodeId;
 }
 
 /**
@@ -731,7 +746,7 @@ export function updateNestedFunctionCalls(
 	outEnvironment: REnvironmentInformation,
 	ctx: FlowrAnalyzerContext
 ) {
-	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment);
+	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment, graph);
 	let rootDefinitions: DefaultMap<string, NodeId[]> | undefined;
 	const calls = graph.verticesOfType(VertexType.FunctionCall).toArray();
 	/* the calls that wait for the parameters they call through to be bound, and whether a call was linked since they began to */
@@ -820,12 +835,14 @@ export function updateNestedFunctionCalls(
 		const collectedNextMethods = new Map<NodeId, NodeId>();
 		let treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
 		if(treatAsS3 && !graph.isRoot(id)) {
-			/* a body dispatches where it is called, which may see a method the end of the script has replaced */
+			/* a body dispatches where it is called, which may see a method the end of the script has replaced,
+			 * or one a function calling it defines in its own frame, which only the lookup by name reaches */
 			rootDefinitions ??= Dataflow.definitionsByName(graph);
 			const prefix = Identifier.getName(name) + '.';
 			for(const [defined, ids] of rootDefinitions.entries()) {
 				if(defined.startsWith(prefix)) {
-					getAllLinkedFunctionDefinitions(new Set(ids.filter(d => graph.isRoot(d))), graph)[0].forEach(t => targets.add(t.id));
+					getAllLinkedFunctionDefinitions(new Set(ids), graph)[0].forEach(t => targets.add(t.id));
+					ids.filter(d => !graph.isRoot(d)).forEach(d => graph.addEdge(id, d, EdgeType.Reads));
 				}
 			}
 		}
@@ -839,7 +856,9 @@ export function updateNestedFunctionCalls(
 		const object = treatAsS3 ? dispatchedObjectOf(vertex, graph) : undefined;
 		let s3Objects: readonly NodeId[] | undefined = object === undefined ? undefined : [object];
 		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
-			const own = linkOwnS3Methods(vertex, name, graph, effectiveEnvironment, runsOnceAt(id), ctx, databaseInfoOf);
+			/* a built-in keeps no environment, but the frame of the function it is in may bind methods */
+			const frame = vertex.environment === undefined ? graph.getVertex(enclosingOf(id) ?? '') : undefined;
+			const own = linkOwnS3Methods(vertex, name, graph, DfgVertex.isFunctionDefinition(frame) ? REnvironment.overwrite(outEnvironment, frame.subflow.environment) : effectiveEnvironment, runsOnceAt(id), ctx, databaseInfoOf);
 			own.methods.forEach(m => targets.add(m));
 			s3Objects = own.objects;
 			treatAsS3 = true;
@@ -880,6 +899,9 @@ export function updateNestedFunctionCalls(
 			/* the call reaches user code, so everything downstream has to stop treating it as built-in only */
 			vertex.onlyBuiltin = false;
 			linked = true;
+			if(enclosing !== undefined) {
+				linkCallerFrameWrites(id, targetVertex, graph, ctx);
+			}
 			for(const exitPoint of targetVertex.exitPoints) {
 				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 			}
@@ -1032,6 +1054,13 @@ function linkLiftedReads(
 			continue;
 		}
 		known.add(key);
+		/* the function the read is lifted to may write the variable itself before its call runs (`k <<- 2; g()`) */
+		const fn = graph.getVertex(definition);
+		for(const write of DfgVertex.isFunctionDefinition(fn) ? fn.subflow.graph : []) {
+			if(DfgVertex.isVariableDefinition(graph.getVertex(write)) && Dataflow.definedBySuperAssignment(graph, write) && NodeId.recoverBareName(write, graph.idMap) === Identifier.getName(read.name)) {
+				graph.addEdge(read.nodeId, write, EdgeType.Reads);
+			}
+		}
 		for(const call of topLevelCallsOf(definition)) {
 			const found = Resolve.byNameAndType(read.name, environmentAt(call), read.type);
 			const resolved = found && withoutExcludedMethods(read, found, graph);

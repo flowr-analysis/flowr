@@ -381,6 +381,33 @@ f.numeric <- function(x) {
 		);
 	}
 
+	/* every call enters the shared helpers under its own context, which used to make the call graph quadratic in the calls */
+	test(decorateLabelContext(label('many calls through shared helpers', ['function-calls', 'function-definitions', 'closures']), ['dataflow']), async() => {
+		const n = 150;
+		const lines = [
+			'`%||%` <- function(x, y) if (is.null(x)) y else x',
+			'state <- new.env()',
+			'peek <- function(name, default = NULL) state[[name]] %||% default',
+			'check <- function(x, arg = "x", call = NULL) { if (!is.function(x)) stop(arg, call = call); x }'
+		];
+		for(let i = 0; i < n; i++) {
+			lines.push(`f${i} <- function(x = NULL, fn = NULL) { h <- peek("h${i}", fn) %||% x; check(h, call = f${(i + 1) % n}); h(f${(i + 7) % n}) }`);
+		}
+		for(let i = 0; i < n; i++) {
+			lines.push(`f${i}(function(g) g, fn = f${(i + 3) % n})`);
+		}
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addRequest(lines.join('\n'));
+		const { idMap } = await analyzer.normalize();
+		const graph = await analyzer.callGraph();
+		const callAt = (line: number) => SlicingCriterion.parse(`${line}@f${line - 5 - n}`, idMap);
+		const definitionAt = (line: number) => SlicingCriterion.parse(`${line}@function`, idMap);
+		for(const i of [0, 1, n - 1]) {
+			const targets = new Set(graph.edgesFrom(callAt(5 + n + i)).keys());
+			assert.isTrue(targets.has(definitionAt(5 + i)), `f${i} calls its definition`);
+		}
+	});
+
 	test(decorateLabelContext(label('domains:hof a closure handed to lapply is reachable', ['name-normal', 'function-calls']), ['dataflow']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 		analyzer.addRequest('adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');

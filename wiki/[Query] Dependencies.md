@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-06, 07:52:59 UTC (v2.17.2), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,9 +18,9 @@ file of a `read.csv`:
 | `library` (Libraries) | 22 | `library`, `require`, `loadNamespace`, `requireNamespace` | `unknown` |
 | `remote` (Remote Installs) | 10 | `install_github`, `install_gitlab`, `install_bitbucket`, `install_git` | `unknown` |
 | `source` (Sourced Files) | 4 | `source`, `sys.source`, `source_url`, `source_gist` | `unknown` |
-| `read` (Read Data) | 236 | `i_am`, `scan`, `read.dcf`, `read.fwf` | `unknown` |
+| `read` (Read Data) | 236 | `dbConnect`, `dbConnect`, `dbConnect`, `dbConnect` | `unknown` |
 | **Outputs** | | | |
-| `write` (Outputs) | 213 | `raster_pdf`, `pdf`, `postscript`, `xfig` | `stdout` |
+| `write` (Outputs) | 213 | `dump`, `open`, `seek`, `open.connection` | `stdout` |
 | `visualize` (Visualizations) | 579 | `ggplot`, `ggplotly`, `ggMarginal`, `ggcorrplot` |  |
 | **What the script does with data** | | | |
 | `transform` (Data Transformations) | 140 | `subset`, `transform`, `filter`, `filter_out` |  |
@@ -49,7 +49,7 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (106 ms)\
+Query: **dependencies** (69 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
@@ -108,7 +108,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (15 ms)\
+Query: **dependencies** (10 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -183,7 +183,7 @@ In the meantime we offer several properties to overwrite the default behavior (e
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_
 
@@ -791,12 +791,9 @@ ggtitle`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
     %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
     %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
     %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
@@ -861,12 +858,12 @@ ggtitle`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
+    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
+    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
     %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%   aes:                        {**ggplot2::aes** (id: built-in:aes, type: BuiltInFunction, def. @built-in:aes)}
-    %%   vars:                       {**ggplot2::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
-    %%   ggsave:                     {**ggplot2::ggsave** (id: built-in:ggsave, type: BuiltInFunction, def. @built-in:ggsave)}
     %%   ggplot:                     {**ggplot2::ggplot** (id: built-in:ggplot, type: BuiltInFunction, def. @built-in:ggplot)}
     %%   qplot:                      {**ggplot2::qplot** (id: built-in:qplot, type: BuiltInFunction, def. @built-in:qplot)}
     %%   quickplot:                  {**ggplot2::quickplot** (id: built-in:quickplot, type: BuiltInFunction, def. @built-in:quickplot)}
@@ -1153,8 +1150,6 @@ ggtitle`"]
     %%   quo:                        {**ggplot2::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
     %%   quos:                       {**ggplot2::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
     %%   expr:                       {**ggplot2::expr** (id: built-in:expr, type: BuiltInFunction, def. @built-in:expr)}
-    %%   make_constructor:           {**ggplot2::make_constructor** (id: built-in:make_constructor, type: BuiltInFunction, def. @built-in:make_constructor)}
-    %%   theme_set:                  {**ggplot2::theme_set** (id: built-in:theme_set, type: BuiltInFunction, def. @built-in:theme_set)}
     %%   enexpr:                     {**ggplot2::enexpr** (id: built-in:enexpr, type: BuiltInFunction, def. @built-in:enexpr)}
     %%   enexprs:                    {**ggplot2::enexprs** (id: built-in:enexprs, type: BuiltInFunction, def. @built-in:enexprs)}
     %%   enquo:                      {**ggplot2::enquo** (id: built-in:enquo, type: BuiltInFunction, def. @built-in:enquo)}
@@ -1165,6 +1160,11 @@ ggtitle`"]
     %%   syms:                       {**ggplot2::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:                   {**ggplot2::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:                   {**ggplot2::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
+    %%   aes:                        {**ggplot2::aes** (id: built-in:aes, type: BuiltInFunction, def. @built-in:aes)}
+    %%   vars:                       {**ggplot2::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   ggsave:                     {**ggplot2::ggsave** (id: built-in:ggsave, type: BuiltInFunction, def. @built-in:ggsave)}
+    %%   make_constructor:           {**ggplot2::make_constructor** (id: built-in:make_constructor, type: BuiltInFunction, def. @built-in:make_constructor)}
+    %%   theme_set:                  {**ggplot2::theme_set** (id: built-in:theme_set, type: BuiltInFunction, def. @built-in:theme_set)}
     %%   is.ggplot:                  {**ggplot2::is.ggplot** (id: built-in:is.ggplot, type: BuiltInFunction, def. @built-in:is.ggplot)}
     %%   guide_train:                {**ggplot2::guide_train** (id: built-in:guide_train, type: BuiltInFunction, def. @built-in:guide_train)}
     %%   aes_auto:                   {**ggplot2::aes_auto** (id: built-in:aes_auto, type: BuiltInFunction, def. @built-in:aes_auto)}

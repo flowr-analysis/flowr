@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-11-04, 11:37:27 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -50,6 +50,14 @@ You can run the tests by issuing (some quick benchmarks may be available with `n
 ```shell
 npm run test
 ```
+
+By default, this only runs the tests affected by your uncommitted changes, that is, the tests that import a changed file directly or through other files (see [`vitest --changed`](https://vitest.dev/guide/cli#changed)).
+This already works on the very first run and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (`-t`), `npm run test` runs exactly those instead, changed or not.
+Changes to the test setup, the test files under `test/testfiles`, the vitest configuration, or `package.json` run every test.
+Use `npm run test:all` to run every test, `npm run test:branch` for the tests affected by all changes against `main`, and `npm run test:related -- <files>` for the tests depending on the given source files (see [`vitest related`](https://vitest.dev/guide/cli#vitest-related)).
+CI, `npm run test:full`, and `npm run checkup` always run every test.
+The section on [running only some tests](#running-only-some-tests) explains when the selection may be too broad or too narrow.
 
 Within the commandline,
 this should automatically drop you into a watch mode which will automatically re-run (potentially) affected tests if you change the code.
@@ -134,7 +142,7 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L413"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L470"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L39"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L413"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/clones/clone-tokens.ts#L275"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L39"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
@@ -147,7 +155,7 @@ The following example shows both in use:
 
 ```typescript
 
-assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+assertDataflow(label('without distractors', [...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 	shell, '`a` <- 2\na',
 	emptyGraph()
 		.use('2@a')
@@ -163,7 +171,12 @@ assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilit
 #### 🤏 Running Only Some Tests
 
 To run only some tests, vitest allows you to [filter](https://vitest.dev/guide/filtering.html) tests. 
-Besides, you can use the watch mode (with `npm run test`) to only run tests that are affected by your changes.
+By default, `npm run test` already runs only the tests affected by your uncommitted changes, even on the first run, and its watch mode re-runs the tests affected by every further change.
+For other selections, use `npm run test:branch` for all changes against `main`, `npm run test:related -- <files>` for the tests depending on the given files, or `npm run test:all` for every test.
+These scripts build on vitest's [`--changed`](https://vitest.dev/guide/cli#changed) and [`related`](https://vitest.dev/guide/cli#vitest-related) commands, which follow the imports of the test files.
+Most tests import the shared test helpers and the setup, so the selection is often broader than you might expect.
+Changes to the test setup, the test files under `test/testfiles`, the vitest configuration, or `package.json` run every test.
+Other data files and generated files are not visible in the imports and may select too few tests. When in doubt, run `npm run test:all`.
 
 <a id='system-tests'></a>
 ### 💽 System Tests

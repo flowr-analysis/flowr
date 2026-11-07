@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
 <h2 id="Dataflow Query">Dataflow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the dataflow graph of the given code.\
@@ -38,7 +38,8 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
         [2,{"tag":"fcall","id":2,"name":"+","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:d"]}]
       ],
       "edgeInformation": [[2,[[0,{"types":65}],[1,{"types":65}],["built-in:+",{"types":5}]]],[0,[[1,{"types":4096}]]],[1,[[2,{"types":4096}]]]],
-      "_unknownSideEffects": []
+      "_unknownSideEffects": [],
+      "_ambientAccess": [[2,{"reads":["#options"],"writes":[],"assumed":[],"local":[]}]]
     }
   },
   ".meta": {}

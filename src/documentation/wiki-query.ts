@@ -1,5 +1,7 @@
 import type { RShell } from '../r-bridge/shell';
+import { CloneAlgorithm } from '../clones/clone-detector';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { defaultDependencyCategories, type DefaultDependencyCategoryName, type DependencyCategorySettings } from '../queries/catalog/dependencies-query/dependencies-query-format';
 import { Constant, Unknown } from '../queries/catalog/dependencies-query/dependency-values';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -1095,6 +1097,61 @@ See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is
 	}
 });
 
+registerQueryDocumentation('code-clones', {
+	type:             'active',
+	shortDescription: 'Finds code clones in all analyzed files with a configurable selection of AST, token, fingerprint, and dependence-graph based algorithms.',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const example = `normalize <- function(v) {
+  m <- mean(v)
+  (v - m) / sd(v)
+}
+scale_it <- function(values) {
+  mu <- mean(values)
+  (values - mu) / sd(values)
+}`;
+		return `
+This query reports pairs of code fragments that are clones of each other, that is, code that was copied and possibly
+adapted. It runs over all files of the analysis, for example a whole folder or package, and offers four published
+algorithms. Each follows its paper and, where available, its reference implementation, and the sources state every
+place where they deviate:
+
+| algorithm | compares | after |
+|-----------|----------|-------|
+| \`baxter\` | all AST subtrees above a mass threshold, hashed by structure (ignoring identifiers and constants) and compared with \`2S / (2S + L + R)\` | Baxter et al., [Clone Detection Using Abstract Syntax Trees](https://doi.org/10.1109/ICSM.1998.738528), ICSM 1998 |
+| \`gst\` | the token strings of functions or files with Greedy String Tiling, by default with the token set of JPlag's R module | a port of [JPlag](https://github.com/jplag/JPlag), see Prechelt et al., [Finding Plagiarisms among a Set of Programs with JPlag](https://doi.org/10.3217/jucs-008-11-1016), 2002 |
+| \`winnowing\` | k-gram fingerprints selected by robust winnowing, reported with the matched passages | Schleimer et al., [Winnowing: Local Algorithms for Document Fingerprinting](https://doi.org/10.1145/872757.872770), SIGMOD 2003, the algorithm behind MOSS |
+| \`similar\` | the program dependence graphs of functions with SimilaR's importance-weighted Weisfeiler-Lehman relabeling | Bartoszuk and Gagolewski, [SimilaR: R Code Clone and Plagiarism Detection](https://doi.org/10.32614/RJ-2020-017), The R Journal 2020 |
+
+Before the detection, the query presents the code in one of three \`perspective\`s:
+
+- \`syntax\` shows the code as written. Use it to reproduce JPlag's token strings, which follow JPlag's own R grammar.
+- \`canonical\` (the default) rewrites syntactic sugar and newer R features into one core form. Pipes become calls, \`\\(x)\` becomes \`function(x)\`, right and equal assignments become \`<-\`, \`(e)\` and \`{e}\` become \`e\`, \`x[["a"]]\` becomes \`x$a\`, \`T\` and \`F\` become \`TRUE\` and \`FALSE\`, and a tail \`return(e)\` becomes \`e\`. Every rewritten node keeps the id of the node it stems from, so all findings point to the original source.
+- \`dataflow\` additionally inlines temporaries that are used exactly once along the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, so \`t <- f(x)\` followed by \`g(t)\` looks like \`g(f(x))\`. It only inlines where this cannot change what the code computes.
+
+The query is meant for large inputs. The candidate filters of \`gst\` and \`similar\` never drop a pair that could reach the threshold, and only \`similar\` needs the dataflow analysis.
+With \`exportIndex\`, the query also returns the clone index of the analyzed files (the flattened ASTs and the dependence graphs).
+A later query can pass such indices as \`against\` to search new code in a corpus of pre-analyzed projects without analyzing them again.
+Use \`config\` to tune the thresholds of each algorithm, and \`maxPairs\` to limit the number of reported pairs, as \`n\` copies of the same function already form \`n(n-1)/2\` pairs.
+
+${await showQuery(shell, example, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Similar] }], { showCode: true, collapseResult: true, ctx })}
+
+In code, passing the query on its own to ${ctx.linkM(FlowrAnalyzer, 'query')} returns its result directly:
+
+${codeBlock('typescript', `const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: ['gst', 'similar'] });
+for(const { algorithm, similarity, a, b } of pairs) {
+	console.log(\`\${algorithm} (\${similarity.toFixed(2)}): \${a.name ?? a.file} ~ \${b.name ?? b.file}\`);
+}`)}
+
+${
+	block({
+		type:    'NOTE',
+		content: `The ${ctx.linkPage('wiki/Linter', 'linter')} offers the same detection as its \`code-clones\` rule, which is not active by default. In the REPL, \`:query @code-clones gst similar <code>\` runs the query with the given algorithms.`
+	})
+}
+`;
+	}
+});
+
 registerQueryDocumentation('function-info', {
 	type:             'active',
 	shortDescription: 'Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.',
@@ -1148,6 +1205,17 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
+In code, you run queries with ${ctx.linkM(FlowrAnalyzer, 'query')}.
+Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
+For queries that report one entry per query (e.g., the ${linkToQueryOfName('static-slice')}), the result is just that entry.
+A failing single query throws an error.
+
+${codeBlock('ts', 'const { slice, reconstruct } = await analyzer.query({ type: \'static-slice\', criteria: [\'3@x\'] });')}
+
+Pass it a list of queries, and it answers with a record of the results by query type.
+Queries of the same type run together, and a failing query type is reported as an error without affecting the others:
+
+${codeBlock('ts', 'const results = await analyzer.query([{ type: \'id-map\' }, { type: \'dataflow\' }]);\nconst graph = results.dataflow.graph;')}
 
 ${
 	block({

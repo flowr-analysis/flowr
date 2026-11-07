@@ -77,11 +77,11 @@ async function extractStepsExample(analyzer: FlowrAnalyzer) {
  * Shows how to use the query API to perform a static slice (please do not simplify).
  */
 async function sliceQueryExample(analyzer: FlowrAnalyzer) {
-	const result = await analyzer.query([{
+	const { slice, reconstruct } = await analyzer.query({
 		type:     'static-slice',
 		criteria: ['1@y']
-	}]);
-	return result;
+	});
+	return { slice, reconstruct };
 }
 
 /**

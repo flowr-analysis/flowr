@@ -350,11 +350,16 @@ export function getAllLinkedFunctionDefinitions(
 ): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
 	const result = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 	const builtIns = new Set<BuiltIn>();
-	/* `call` is the call whose return led into the current body, so a parameter it binds holds only what it passes */
 	const potential: [NodeId, boolean, NodeId | undefined][] = Array.from(functionDefinitionReadIds, id => [id, false, undefined]);
 	const expanded = new Set<string>();
 	const expandedViaAccess = new Set<string>();
 	const at = (id: NodeId, call: NodeId | undefined) => `${id}@${call ?? ''}`;
+	const scopes: CallScopes = new Map();
+	const next = (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => {
+		if(!(viaAccess ? expandedViaAccess : expanded).has(at(id, call))) {
+			potential.push([id, viaAccess, call]);
+		}
+	};
 
 	while(potential.length !== 0) {
 		const [cid, viaAccess, call] = potential.pop() as [NodeId, boolean, NodeId | undefined];
@@ -364,48 +369,85 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 		done.add(at(cid, call));
-		if(NodeId.isBuiltIn(cid)) {
-			builtIns.add(cid);
+		const end = walkLinkedDefinitions(dataflowGraph, cid, viaAccess, call, scopes, next);
+		if(end === undefined) {
 			continue;
-		}
-		const vertex = dataflowGraph.getVertex(cid);
-		if(vertex === undefined) {
-			continue;
-		} else if(vertex.subflow !== undefined) {
-			result.add(vertex as Required<DataflowGraphVertexFunctionDefinition>);
-			continue;
-		}
-		const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
-		const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess);
-		let hasReturnEdge = false;
-		let followTargets: [NodeId, boolean][] | undefined;
-		/* a list handed on as a whole (a loop, an apply) yields its entries, an access the entry it names */
-		const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
-		/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
-		const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? cid : call;
-		for(const [target, e] of dataflowGraph.edgesFrom(cid)) {
-			if(DfEdge.includesType(e, handedBack)) {
-				hasReturnEdge = true;
-				if(!(nextViaAccess ? expandedViaAccess : expanded).has(at(target, returnedTo))) {
-					potential.push([target, nextViaAccess, returnedTo]);
-				}
-			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && DfEdge.doesNotIncludeType(e, EdgeType.SideEffectOnCall)) {
-				(followTargets ??= []).push([target, DfEdge.includesType(e, EdgeType.DefinedByOnCall)]);
-			}
-		}
-		if(!hasReturnEdge && followTargets) {
-			/* a parameter the call binds holds only what that call passes, the walk then goes on in the caller */
-			const passed = call === undefined ? undefined : new Set(Dataflow.targetsOf(dataflowGraph, call, EdgeType.Argument));
-			const bound = followTargets.some(([target, onCall]) => onCall && passed?.has(target));
-			for(const [target, onCall] of followTargets) {
-				const next = onCall ? undefined : call;
-				if((!bound || !onCall || passed?.has(target)) && !(nextViaAccess ? expandedViaAccess : expanded).has(at(target, next))) {
-					potential.push([target, nextViaAccess, next]);
-				}
-			}
+		} else if(NodeId.isBuiltIn(end)) {
+			builtIns.add(end);
+		} else {
+			result.add(dataflowGraph.getVertex(end) as Required<DataflowGraphVertexFunctionDefinition>);
 		}
 	}
 	return [result, builtIns];
+}
+
+/**
+ * One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to
+ * from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition.
+ * `call` is the call whose return led into the current body, so a parameter it binds holds only what it passes.
+ */
+function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void): NodeId | undefined {
+	if(NodeId.isBuiltIn(id)) {
+		return id;
+	}
+	const vertex = graph.getVertex(id);
+	if(vertex === undefined) {
+		return undefined;
+	} else if(vertex.subflow !== undefined) {
+		return id;
+	}
+	const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
+	const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess);
+	let hasReturnEdge = false;
+	let followTargets: [NodeId, boolean][] | undefined;
+	/* a list handed on as a whole (a loop, an apply) yields its entries, an access the entry it names */
+	const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
+	/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
+	const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? id : call;
+	for(const [target, e] of graph.edgesFrom(id)) {
+		if(DfEdge.includesType(e, handedBack)) {
+			hasReturnEdge = true;
+			next(target, nextViaAccess, returnedTo === call ? scopedTo(graph, scopes, call, target) : returnedTo);
+		} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && DfEdge.doesNotIncludeType(e, EdgeType.SideEffectOnCall)) {
+			(followTargets ??= []).push([target, DfEdge.includesType(e, EdgeType.DefinedByOnCall)]);
+		}
+	}
+	if(!hasReturnEdge && followTargets) {
+		/* a parameter the call binds holds only what that call passes, the walk then goes on in the caller */
+		const passed = call === undefined ? undefined : new Set(Dataflow.targetsOf(graph, call, EdgeType.Argument));
+		const bound = followTargets.some(([target, onCall]) => onCall && passed?.has(target));
+		for(const [target, onCall] of followTargets) {
+			if(!bound || !onCall || passed?.has(target)) {
+				next(target, nextViaAccess, onCall ? undefined : scopedTo(graph, scopes, call, target));
+			}
+		}
+	}
+	return undefined;
+}
+
+/** The function definitions each call (of the walk) runs, whose parameters it binds. */
+type CallScopes = Map<NodeId, ReadonlySet<NodeId>>;
+
+/**
+ * The call that restricts what `target` may hold: a call binds only the parameters of the functions it runs, so once
+ * the walk leaves their bodies (to a global, say), the call restricts nothing any more.
+ */
+function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undefined, target: NodeId): NodeId | undefined {
+	const idMap = graph.idMap;
+	if(call === undefined || idMap === undefined) {
+		return call;
+	}
+	let bodies = scopes.get(call);
+	if(bodies === undefined) {
+		bodies = new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls | EdgeType.Returns).map(t => RNode.findEnclosing(t, idMap, RFunctionDefinition.is)).filter(isNotUndefined));
+		scopes.set(call, bodies);
+	}
+	for(let node = idMap.get(target); node !== undefined; node = RNode.directParent(node, idMap)) {
+		if(bodies.has(node.info.id)) {
+			return call;
+		}
+	}
+	return undefined;
 }
 
 /**

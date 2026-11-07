@@ -285,7 +285,8 @@ function parameterAt(definition: NodeId, index: number, idMap: AstIdMap, graph: 
 /** The parameters an argument of `call` binds to, by position in each definition an unlinked call may reach, `undefined` if unknown. */
 function boundParameters(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, graph: DataflowGraph, origins?: Map<NodeId, readonly NodeId[]>): NodeId[] | undefined {
 	const sources = new Set([argument, argumentValue(argument, idMap)]);
-	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall));
+	/* a call handed as the argument links on call what its own callees read as well, which binds no parameter */
+	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall)).filter(p => idMap.get(p)?.info.role === RoleInParent.ParameterName);
 	if(linked.length > 0 || Dataflow.calleeIdsOf(graph, call.id).length > 0) {
 		return linked;
 	}

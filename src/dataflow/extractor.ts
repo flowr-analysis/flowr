@@ -114,15 +114,27 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 	if(ownerOf.size === 0) {
 		return;
 	}
-	for(const [parameter, writes] of writesOfParameters(graph, ownerOf, environment).entries()) {
+	const written = writesOfParameters(graph, ownerOf, environment);
+	const todo = [...written.keys()];
+	for(let parameter = todo.pop(); parameter !== undefined; parameter = todo.pop()) {
+		const writes = written.get(parameter);
 		for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
-			if(!holdsEnvironment(graph, argument, environment)) {
+			const holds = holdsEnvironment(graph, argument, environment);
+			/* a parameter handed on to the call is written by that call, so the calls of its own function write what they pass */
+			const handedOn = holds ? [] : parametersHeldBy(argument, graph, ownerOf).filter(r => ownerOf.get(r)?.subflow.graph.has(argument) === true);
+			if(!holds && handedOn.length === 0) {
 				continue;
 			}
 			for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)))) {
-				handleUnknownSideEffect(graph, environment, call);
+				if(holds) {
+					handleUnknownSideEffect(graph, environment, call);
+				}
 				for(const write of writes) {
 					graph.addEdge(call, write, EdgeType.Reads);
+				}
+				for(const outer of handedOn.filter(o => !written.get(o).includes(call))) {
+					written.get(outer).push(call);
+					todo.push(outer);
 				}
 			}
 		}
@@ -147,7 +159,7 @@ function writesOfParameters(graph: DataflowGraph, ownerOf: ReadonlyMap<NodeId, D
 	const inBodyOf = (parameter: NodeId, node: NodeId) => ownerOf.get(parameter)?.subflow.graph.has(node) === true;
 	for(const [node, vertex] of graph.vertices(true)) {
 		if(DfgVertex.isVariableDefinition(vertex) && vertex.par) {
-			const parameters = Dataflow.targetsOf(graph, node, EdgeType.Reads).filter(t => inBodyOf(t, node));
+			const parameters = parametersHeldBy(Dataflow.targetsOf(graph, node, EdgeType.Reads), graph, ownerOf).filter(t => inBodyOf(t, node));
 			if(parameters.length > 0) {
 				const replacements = Dataflow.targetsOf(graph, node, EdgeType.DefinedBy).filter(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Replacement));
 				for(const parameter of parameters) {
@@ -158,7 +170,7 @@ function writesOfParameters(graph: DataflowGraph, ownerOf: ReadonlyMap<NodeId, D
 			/* which arguments the callee writes is costly to ask, so only ask if an argument holds a parameter at all */
 			const parameters = new Map<NodeId, NodeId[]>();
 			for(const target of vertex.args.map(FunctionArgument.getReference)) {
-				const reached = target === undefined ? [] : [...definitionsReachedBy(target, graph)].filter(r => inBodyOf(r, node));
+				const reached = target === undefined ? [] : parametersHeldBy(target, graph, ownerOf).filter(r => inBodyOf(r, node));
 				if(target !== undefined && reached.length > 0) {
 					parameters.set(target, reached);
 				}
@@ -174,6 +186,28 @@ function writesOfParameters(graph: DataflowGraph, ownerOf: ReadonlyMap<NodeId, D
 		}
 	}
 	return written;
+}
+
+/** The parameters whose value `from` may hold, through reads and plain copies (`h <- p`), as an environment is shared by reference. */
+function parametersHeldBy(from: NodeId | readonly NodeId[], graph: DataflowGraph, parameters: ReadonlyMap<NodeId, unknown>): NodeId[] {
+	const held: NodeId[] = [];
+	const todo = typeof from === 'object' ? [...from] : [from];
+	const seen = new Set<NodeId>();
+	for(let id = todo.pop(); id !== undefined; id = todo.pop()) {
+		if(seen.has(id)) {
+			continue;
+		}
+		seen.add(id);
+		const vertex = graph.getVertex(id);
+		if(parameters.has(id)) {
+			held.push(id);
+		} else if(DfgVertex.isUse(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par)) {
+			todo.push(...Dataflow.targetsOf(graph, id, EdgeType.Reads));
+		} else if(DfgVertex.isVariableDefinition(vertex)) {
+			todo.push(...Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).filter(t => DfgVertex.isUse(graph.getVertex(t))));
+		}
+	}
+	return held;
 }
 
 function holdsEnvironment(graph: DataflowGraph, argument: NodeId, environment: REnvironmentInformation): boolean {

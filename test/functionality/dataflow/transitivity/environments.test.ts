@@ -12,11 +12,6 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'a super assignment creating a global two frames up', code: 'f <- function() { g <- function() qq <<- 8; g() }\nf()\nprint(qq)' },
 			{ name: 'a super assignment through a returned function', code: 'n <- 1\nmk <- function() function() n <<- n * 3\ninc <- mk()\ninc()\ninc()\nprint(n)' },
 			{ name: 'a super assignment by a function stored in a list', code: 'n <- 0\nl <- list(up = function() n <<- 5)\nl$up()\nprint(n)' },
-		resolvesLikeR(parser, 'get without an environment of a name a parameter holds', 'k <- 1\nj <- 2\nf <- function(n) get(n)\ny <- f("j")\ncat(y)', '4@y');
-		resolvesLikeR(parser, 'get without an environment sees the frame of the call', 'k <- 1\nf <- function(n) { k <- 7; get(n) }\ny <- f("k")\ncat(y)', '3@y');
-		resolvesLikeR(parser, 'get without an environment sees the frame of the definition', 'mk <- function() { k <- 5; function(n) get(n) }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
-		resolvesLikeR(parser, 'get without an environment sees a local written after the definition', 'mk <- function() { f <- function(n) get(n); k <- 5; f }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
-		resolvesLikeR(parser, 'get without an environment sees a global written after the definition', 'k <- 1\nf <- function(n) { get(n) }\nk <- 9\ny <- f("k")\ncat(y)', '4@y');
 			{ name: 'a super assignment the callee never runs', code: 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\nprint(n)' },
 			{ name: 'assign with a computed name', code: 'f <- function(nm) assign(nm, 2, envir = .GlobalEnv)\nf("v")\nprint(v)' }
 		];
@@ -53,6 +48,10 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'rm from an environment a free variable names', code: 'reg <- new.env()\nassign("h", 1, envir = reg)\ndrop <- function() rm("h", envir = reg)\ndrop()\nprint(exists("h", envir = reg))' },
 			{ name: 'rm from the global environment of a name a parameter holds', code: 'x <- 1\ndrop <- function(n) rm(list = n, envir = .GlobalEnv)\ndrop("x")\nprint(exists("x"))' },
 			{ name: 'rm two calls deep of a name a parameter holds', code: 'x <- 1\ndrop <- function(n) rm(list = n, envir = .GlobalEnv)\nf <- function() drop("x")\nf()\nprint(exists("x"))' },
+			{ name: 'a dollar assignment into an environment a parameter holds', code: 'reg <- new.env()\nregister <- function(env, f) env$h <- f\nk <- 3\nregister(reg, function() k)\nprint(reg$h())' },
+			{ name: 'a dollar assignment into an environment at two calls', code: 'reg <- new.env()\nregister <- function(env, f) env$h <- f\nk <- 3\nj <- 4\nregister(reg, function() k)\nregister(reg, function() j)\nprint(reg$h())', dropped: 'k <- 3', imprecise: 'keeps k <- 3, the read reaches the replacement in the body, which reads what every call hands over' },
+			{ name: 'a double bracket assignment into an environment a parameter holds', code: 'reg <- new.env()\nregister <- function(env, f) env[["h"]] <- f\nk <- 3\nregister(reg, function() k)\nprint(reg$h())' },
+			{ name: 'a dollar assignment into a list a parameter holds', code: 'l <- list(h = function() 1)\nset <- function(x, f) { x$h <- f; x }\nk <- 3\nl2 <- set(l, function() k)\nprint(l$h())', dropped: 'k <- 3' },
 			{ name: 'assign two calls deep under a name a parameter holds', code: 'reg <- new.env()\nregister <- function(name, f) assign(name, f, envir = reg)\nk <- 3\nsetup <- function() register("h", function() k)\nsetup()\nprint(reg$h())' }
 		];
 		for(const c of cases) {
@@ -67,6 +66,13 @@ describe('Transitivity through environments and super assignments, checked again
 		resolvesLikeR(parser, 'local returns its last value', 'y <- local({ x <- 2; x + 1 })\ncat(y)', '2@y');
 		resolvesLikeR(parser, 'assign under a name a parameter holds', 'reg <- new.env()\nset <- function(name, v) assign(name, v, envir = reg)\nset("a", 1)\nset("b", 2)\ny <- get("b", envir = reg)\ncat(y)', '5@y');
 		resolvesLikeR(parser, 'get of a name a parameter holds', 'reg <- new.env()\nassign("a", 1, envir = reg)\nassign("b", 2, envir = reg)\nfetch <- function(name) get(name, envir = reg)\ny <- fetch("b")\ncat(y)', '5@y', { imprecise: 'resolves 1 and 2, the body reads what every call names' });
+		resolvesLikeR(parser, 'a dollar assignment into an environment a parameter holds', 'e <- new.env()\nset <- function(env, v) env$x <- v\nset(e, 1)\nset(e, 2)\ny <- get("x", envir = e)\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'a dollar assignment into a closure environment handed over', 'mk <- function() { v <- 1; function() v }\ng <- mk()\nput <- function(env, x) env$v <- x\nput(environment(g), 4)\ny <- g()\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'get without an environment of a name a parameter holds', 'k <- 1\nj <- 2\nf <- function(n) get(n)\ny <- f("j")\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'get without an environment sees the frame of the call', 'k <- 1\nf <- function(n) { k <- 7; get(n) }\ny <- f("k")\ncat(y)', '3@y');
+		resolvesLikeR(parser, 'get without an environment sees the frame of the definition', 'mk <- function() { k <- 5; function(n) get(n) }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'get without an environment sees a local written after the definition', 'mk <- function() { f <- function(n) get(n); k <- 5; f }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'get without an environment sees a global written after the definition', 'k <- 1\nf <- function(n) { get(n) }\nk <- 9\ny <- f("k")\ncat(y)', '4@y');
 		resolvesLikeR(parser, 'a super assignment the callee never runs', 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\ncat(n)', '4@n');
 	});
 }));

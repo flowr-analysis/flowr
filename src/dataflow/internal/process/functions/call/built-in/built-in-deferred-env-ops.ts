@@ -24,7 +24,9 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config/shared';
 import { stackEnvKindOf } from './built-in-stack-env';
-import { rebindHolders } from './built-in-envir-utils';
+import { EnvironmentProducers, holdsValueOf, rebindHolders } from './built-in-envir-utils';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 
 const OpOfProcessor: Partial<Record<BuiltInProcName, EnvOpKind>> = {
 	[BuiltInProcName.Assignment]: EnvOpKind.Define,
@@ -45,7 +47,13 @@ export function deferredEnvOps<OtherInfo>(roots: Iterable<NodeId>, graph: Datafl
 	for(const id of roots) {
 		const vertex = graph.getVertex(id);
 		const node = data.completeAst.idMap.get(id);
-		if(!DfgVertex.isFunctionCall(vertex) || !RFunctionCall.isNamed(node)) {
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+			const op = replacementOf(id, node, graph, data.completeAst.idMap);
+			if(op !== undefined) {
+				(ops ??= []).push(op);
+			}
+			continue;
+		} else if(!DfgVertex.isFunctionCall(vertex) || !RFunctionCall.isNamed(node)) {
 			continue;
 		}
 		const defs = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t)) ? undefined : Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function);
@@ -109,11 +117,38 @@ function evaluatedDefinitions(node: RFunctionCall<ParentInformation>, config: Lo
 	return ops;
 }
 
+/**
+ * `env$x <- value` or `env[["x"]] <- value` in a body where `env` is a parameter: the call decides whether it writes into
+ * an environment the caller holds or into a copy of a list, see {@link EnvOpKind.Replace}.
+ */
+function replacementOf(id: NodeId, node: RNode<ParentInformation> | undefined, graph: DataflowGraph, idMap: AstIdMap): DeferredEnvOp | undefined {
+	const access: RAccess<ParentInformation> | undefined = RAccess.is(node) ? node : undefined;
+	const assignment = access && RNode.directParent(access, idMap);
+	const value = RBinaryOp.is(assignment) && assignment.lhs === access && ReplacedBy.has(assignment.operator) ? (assignment as RBinaryOp<ParentInformation>).rhs : undefined;
+	const target = value !== undefined && RSymbol.is(access?.accessed) ? access : undefined;
+	const field = target !== undefined && target.access.length === 1 && FieldAccess.has(target.operator) ? RArgument.valueOf(target.access[0]) : undefined;
+	if(target === undefined || field === undefined || !heldByParameter(target.accessed.info.id, graph, idMap)) {
+		return undefined;
+	}
+	const literal = target.operator === '$' || RString.is(field) ? literalName(field) : undefined;
+	return { id, kind: EnvOpKind.Replace, names: literal === undefined ? [field.info.id] : [], literals: literal === undefined ? [] : [literal], envir: target.accessed.info.id, value: value?.info.id, returns: true };
+}
+
+/** the assignments a replacement rebinds its target in the frame of the body with */
+const ReplacedBy: ReadonlySet<string> = new Set(['<-', '=']);
+/** the accesses naming a single variable of an environment */
+const FieldAccess: ReadonlySet<string> = new Set(['$', '[[']);
+
 /** Whether `id` reads a parameter, which holds what the call hands over (the body cannot know the environment it may hold). */
 function heldByParameter(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
 	const closure = frameOf(idMap.get(id));
-	const held = Dataflow.targetsOf(graph, closure?.info.id ?? id, EdgeType.Reads);
+	const held = readBindings(closure?.info.id ?? id, graph);
 	return held.length === 1 && idMap.get(held[0])?.info.role === RoleInParent.ParameterName;
+}
+
+/** What `id` reads, the target of a replacement (`env$x <- v`) reads the variable it rebinds besides the replacement itself. */
+function readBindings(id: NodeId, graph: DataflowGraph): NodeId[] {
+	return Dataflow.targetsOf(graph, id, EdgeType.Reads).filter(t => !DfgVertex.isFunctionCall(graph.getVertex(t)));
 }
 
 /** The closure whose frame `environment(fn)` names, see {@link closureFrameResolution}. */
@@ -140,7 +175,8 @@ interface Run {
 
 /** The parameter of the function run that `id` reads, if it reads just that. */
 function parameterReadBy(id: NodeId, { fn, graph }: Run): NodeId | undefined {
-	const bindings = DfgVertex.isUse(graph.getVertex(id)) ? Dataflow.targetsOf(graph, id, EdgeType.Reads) : [];
+	const vertex = graph.getVertex(id);
+	const bindings = DfgVertex.isUse(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par) ? readBindings(id, graph) : [];
 	return bindings.length === 1 && Object.hasOwn(fn.params, bindings[0]) ? bindings[0] : undefined;
 }
 
@@ -180,11 +216,14 @@ function envAtCall(envir: NodeId, environment: REnvironmentInformation, run: Run
 		return undefined;
 	}
 	/* a parameter holds what the call hands over, any other binding of the body is its own */
-	const bound = Dataflow.targetsOf(run.graph, symbol.info.id, EdgeType.Reads).some(b => run.fn.subflow.graph.has(b));
-	const held = bound ? run.idMap.get(valueAt(symbol.info.id, run)) : symbol;
+	const bound = readBindings(symbol.info.id, run.graph).some(b => run.fn.subflow.graph.has(b));
+	const handed = bound ? run.idMap.get(valueAt(symbol.info.id, run)) : symbol;
+	/* the call may hand over the frame of a closure itself, `put(environment(g))` */
+	const handedFrame = handed === symbol ? undefined : frameOf(handed);
+	const held = handedFrame ?? handed;
 	if(!RSymbol.is(held) || (held === symbol && bound)) {
 		return undefined;
-	} else if(closure !== undefined) {
+	} else if(closure !== undefined || handedFrame !== undefined) {
 		/* the frame of the closure the variable holds, tracked on the variable, see `closureFrameResolution` */
 		const defs = Resolve.byName(held.content, environment);
 		const def = defs?.length === 1 && !NodeId.isBuiltIn(defs[0].definedAt) ? defs[0] as NamedInGraphIdentifierDefinition : undefined;
@@ -231,7 +270,7 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 	for(const op of fn.envOps) {
 		const names = op.names.map(n => namesAt(n, run, ctx));
 		const at = envAtCall(op.envir, environment, run);
-		if(at === undefined || names.some(n => n === undefined || n.length === 0)) {
+		if(at === undefined || names.some(n => n === undefined || n.length === 0) || (op.kind === EnvOpKind.Replace && !writesEnvironment(at, graph))) {
 			continue;
 		}
 		const all = [...op.literals, ...names.flat() as string[]];
@@ -252,7 +291,8 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly string[], at: EnvAtCall, environment: REnvironmentInformation, cds: IdentifierDefinition['cds'], call: NodeId, graph: DataflowGraph): REnvironmentInformation {
 	const update = (state: REnvironmentInformation, global: boolean): REnvironmentInformation => {
 		switch(op.kind) {
-			case EnvOpKind.Define: {
+			case EnvOpKind.Define:
+			case EnvOpKind.Replace: {
 				let next = state;
 				const type = referenceTypeOf(value === undefined ? undefined : graph.getVertex(value), graph);
 				for(const name of names) {
@@ -280,6 +320,31 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly s
 		environment = rebindHolders(environment, holder, update(holder.envState, false), call);
 	}
 	return environment;
+}
+
+/**
+ * Whether the call `call` of `fn` replayed the replacement `write` of its body (see {@link EnvOpKind.Replace}) into the
+ * environment it hands over, so what the replacement writes is known there.
+ * @example
+ * ```ts
+ * // register <- function(env, f) env$h <- f; register(reg, g) with reg <- new.env() replays, register(l, g) with a list does not
+ * if(!replayedAt(replacement, register, call, graph)) {
+ *     handleUnknownSideEffect(graph, environment, call);
+ * }
+ * ```
+ */
+export function replayedAt(write: NodeId, fn: DataflowGraphVertexFunctionDefinition, call: NodeId, graph: DataflowGraph): boolean {
+	const op = fn.envOps?.find(o => o.id === write && o.kind === EnvOpKind.Replace);
+	if(op?.value === undefined || graph.idMap === undefined) {
+		return false;
+	}
+	const value = valueAt(op.value, { fn, via: call, direct: true, graph, idMap: graph.idMap });
+	return Dataflow.hasEdge(graph, value, call, EdgeType.SideEffectOnCall);
+}
+
+/** Whether a replacement into `at` writes into an environment: the frame of a closure, or what every holder surely holds as one. */
+function writesEnvironment(at: EnvAtCall, graph: DataflowGraph): boolean {
+	return typeof at === 'object' && at.holders.every(h => h.closureFrame === true || holdsValueOf(h, graph, EnvironmentProducers));
 }
 
 /** What a definition of the value `vertex` binds, as an assignment does: a function, a value, or what a read, call, or other definition hands on. */

@@ -477,6 +477,41 @@ export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, hold
 	}
 }
 
+/** What creates an environment rather than another value: `new.env()`, `globalenv()` and its kin, and `list2env()`. */
+export const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName.NewEnv, BuiltInProcName.StackEnv, BuiltInProcName.ListToEnv];
+
+/**
+ * Whether the variable definition `holder` surely holds a value one of `origins` created, following plain copies
+ * (`e2 <- e`). With {@link EnvironmentProducers} it holds an environment, which a replacement (`e$f <- v`) changes
+ * for every holder, with `[BuiltInProcName.List]` it holds a list, which the replacement copies.
+ * @example
+ * ```ts
+ * // reg <- new.env(): an environment, l <- list(h = 1): a list, x <- f(): neither is known
+ * if(holders.every(h => holdsValueOf(h, graph, EnvironmentProducers))) {
+ *     // the write reaches what the caller holds
+ * }
+ * ```
+ */
+export function holdsValueOf(holder: IdentifierDefinition, graph: DataflowGraph, origins: readonly BuiltInProcName[]): boolean {
+	const seen = new Set<NodeId>();
+	const holds = (definition: NodeId): boolean => {
+		if(seen.has(definition)) {
+			return false;
+		}
+		seen.add(definition);
+		const values = Dataflow.targetsOf(graph, definition, EdgeType.DefinedBy).filter(t => !DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+		return values.length > 0 && values.every(v => {
+			const vertex = graph.getVertex(v);
+			if(DfgVertex.isUse(vertex)) {
+				const read = Dataflow.targetsOf(graph, v, EdgeType.Reads);
+				return read.length > 0 && read.every(holds);
+			}
+			return origins.some(o => DfgVertex.hasOrigin(vertex, o));
+		});
+	};
+	return holds(holder.nodeId);
+}
+
 /** Binds every variable holding the environment of `envDef` to its new state, where that variable is bound. */
 export function rebindHolders(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
 	for(const holder of holdersOf(environment, envDef)) {

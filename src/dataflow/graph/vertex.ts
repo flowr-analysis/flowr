@@ -208,7 +208,9 @@ export enum EnvOpKind {
 	/** `get(x, envir)` and `exists(x, envir)` */
 	Read   = 'read',
 	/** `rm(list = x, envir)` */
-	Remove = 'remove'
+	Remove = 'remove',
+	/** `env$x <- value` and `env[["x"]] <- value`, which define in what `env` holds only if that is an environment, a list they copy */
+	Replace = 'replace'
 }
 
 /**

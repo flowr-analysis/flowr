@@ -48,6 +48,8 @@ import { mayForce } from './internal/process/functions/call/built-in/built-in-am
 import { AmbientStateName } from './environments/ambient-state-name';
 import { UnnamedFunctionCallPrefix } from './internal/process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from './environments/built-in-proc-name';
+import { holdsValueOf } from './internal/process/functions/call/built-in/built-in-envir-utils';
+import { replayedAt } from './internal/process/functions/call/built-in/built-in-deferred-env-ops';
 import { partitionArray, uniqueArray } from '../util/collections/arrays';
 import { DefaultMap, memoize } from '../util/collections/defaultmap';
 import { MatchArgs } from './graph/match-args';
@@ -118,6 +120,7 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 	const todo = [...written.keys()];
 	for(let parameter = todo.pop(); parameter !== undefined; parameter = todo.pop()) {
 		const writes = written.get(parameter);
+		const owner = ownerOf.get(parameter) as DataflowGraphVertexFunctionDefinition;
 		for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
 			const holds = holdsEnvironment(graph, argument, environment);
 			/* a parameter handed on to the call is written by that call, so the calls of its own function write what they pass */
@@ -126,7 +129,8 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 				continue;
 			}
 			for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)))) {
-				if(holds) {
+				/* a write the call replayed into the environment it hands over is known, see `instantiateEnvOps` */
+				if(holds && !writes.every(w => replayedAt(w, owner, call, graph))) {
 					handleUnknownSideEffect(graph, environment, call);
 				}
 				for(const write of writes) {
@@ -210,9 +214,11 @@ function parametersHeldBy(from: NodeId | readonly NodeId[], graph: DataflowGraph
 	return held;
 }
 
+/** Whether the `argument` may hold an environment, a list is copied by what writes into it */
 function holdsEnvironment(graph: DataflowGraph, argument: NodeId, environment: REnvironmentInformation): boolean {
 	const node = graph.idMap?.get(argument);
-	return RSymbol.is(node) && (Resolve.byName(node.content, environment)?.some(hasEnvState) ?? false);
+	const held = RSymbol.is(node) ? Resolve.byName(node.content, environment) ?? [] : [];
+	return held.some(hasEnvState) && !held.every(h => holdsValueOf(h, graph, [BuiltInProcName.List]));
 }
 
 function openReadsOfCalledFunctions(graph: DataflowGraph): IdentifierReference[] {

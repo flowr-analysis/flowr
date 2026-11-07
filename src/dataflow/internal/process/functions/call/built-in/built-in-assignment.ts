@@ -30,7 +30,7 @@ import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { closureFrameResolution, type EnvirResolution, EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
+import { closureFrameResolution, type EnvirResolution, EnvironmentProducers, EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
@@ -103,7 +103,6 @@ export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration
 	readonly target: { idx?: number, name: string };
 }
 
-const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName.NewEnv, BuiltInProcName.StackEnv, BuiltInProcName.ListToEnv];
 
 function yieldsEnvironment<OtherInfo>(
 	node:  RNode<OtherInfo & ParentInformation>,

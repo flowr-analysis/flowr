@@ -3,7 +3,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { fakeSigDb, sigdbAnalyzer } from '../_helper/sigdb';
 import type { SigDatabase } from '../../../src/project/sigdb/reader';
 import { FnProp } from '../../../src/project/sigdb/schema';
-import { executeQueries } from '../../../src/queries/query';
+import { executeQueries, Query } from '../../../src/queries/query';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** a CRAN package `mypkg` whose exported `foo` internally calls the (non-exported) `bar` */
@@ -19,11 +19,11 @@ describe('Expand library internals (call-graph / does-call)', withTreeSitter(ts 
 		const foo = NodeId.fromPkgFn('mypkg', 'foo');
 		const bar = NodeId.fromPkgFn('mypkg', 'bar');
 
-		const base = await executeQueries({ analyzer }, [{ type: 'call-graph' }]);
-		expect(base['call-graph'].graph.outgoingEdges(foo)?.has(bar)).toBeFalsy();
+		const base = await Query.one({ analyzer }, { type: 'call-graph' });
+		expect(base.graph.outgoingEdges(foo)?.has(bar)).toBeFalsy();
 
-		const expanded = await executeQueries({ analyzer }, [{ type: 'call-graph', expandLibraryInternals: true }]);
-		expect(expanded['call-graph'].graph.outgoingEdges(foo)?.has(bar)).toBe(true);
+		const expanded = await Query.one({ analyzer }, { type: 'call-graph', expandLibraryInternals: true });
+		expect(expanded.graph.outgoingEdges(foo)?.has(bar)).toBe(true);
 		// the original, cached call graph must stay untouched
 		expect((await analyzer.callGraph()).outgoingEdges(foo)?.has(bar)).toBeFalsy();
 	});

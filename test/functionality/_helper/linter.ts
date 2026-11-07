@@ -188,8 +188,8 @@ export function assertLintedLines(name: string, parser: KnownParser, code: strin
 	test(name, async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(code);
-		const linted = await analyzer.query([{ type: 'linter', rules: [rule] }]);
-		const results = (linted.linter.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
+		const linted = await analyzer.query({ type: 'linter', rules: [rule] });
+		const results = (linted.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
 		assert.deepStrictEqual(results.map(r => r.loc[0]), lines, `${rule} should report the lines ${JSON.stringify(lines)}`);
 	});
 }

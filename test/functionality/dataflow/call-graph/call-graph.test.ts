@@ -374,7 +374,7 @@ f.numeric <- function(x) {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 		analyzer.addRequest('adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');
 		const { idMap } = await analyzer.normalize();
-		const unreachable = new Set((await analyzer.query([{ type: 'call-graph', reportUnreachable: true }]))['call-graph'].unreachable);
+		const unreachable = new Set((await analyzer.query({ type: 'call-graph', reportUnreachable: true })).unreachable);
 		assert.isFalse(unreachable.has(SlicingCriterion.parse('1:22', idMap)), 'inner function');
 	});
 }));

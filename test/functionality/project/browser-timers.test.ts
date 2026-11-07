@@ -14,9 +14,9 @@ describe('Analyzer in a browser', withTreeSitter(parser => {
 		vi.stubGlobal('setTimeout', (fn: () => void, ms?: number) => Number(native(fn, ms)));
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(requestFromInput('library(dplyr)\nf <- function() 1\nf()'));
-		const result = await analyzer.query([{ type: 'dependencies' }]);
-		assert.notProperty(result.dependencies, 'error');
-		assert.lengthOf(result.dependencies.library, 1);
+		const result = await analyzer.query({ type: 'dependencies' });
+		assert.notProperty(result, 'error');
+		assert.lengthOf(result.library, 1);
 		await new Promise(resolve => native(resolve, 10));
 	});
 }));

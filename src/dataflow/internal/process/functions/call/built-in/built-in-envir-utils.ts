@@ -502,23 +502,8 @@ export const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName
  * ```
  */
 export function holdsValueOf(holder: IdentifierDefinition, graph: DataflowGraph, origins: readonly BuiltInProcName[]): boolean {
-	const seen = new Set<NodeId>();
-	const holds = (definition: NodeId): boolean => {
-		if(seen.has(definition)) {
-			return false;
-		}
-		seen.add(definition);
-		const values = Dataflow.targetsOf(graph, definition, EdgeType.DefinedBy).filter(t => !DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
-		return values.length > 0 && values.every(v => {
-			const vertex = graph.getVertex(v);
-			if(DfgVertex.isUse(vertex)) {
-				const read = Dataflow.targetsOf(graph, v, EdgeType.Reads);
-				return read.length > 0 && read.every(holds);
-			}
-			return origins.some(o => DfgVertex.hasOrigin(vertex, o));
-		});
-	};
-	return holds(holder.nodeId);
+	const sources = Dataflow.valueSources(holder.nodeId, graph);
+	return sources !== undefined && sources.length > 0 && sources.every(v => origins.some(o => DfgVertex.hasOrigin(graph.getVertex(v), o)));
 }
 
 /** Binds every variable holding the environment of `envDef` to its new state, where that variable is bound. */

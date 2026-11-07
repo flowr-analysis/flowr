@@ -20,6 +20,8 @@ import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-
 import { attachLibrary, type AttachSpec } from '../internal/process/functions/call/built-in/built-in-library';
 import { type Environment, EnvType, REnvironment, type REnvironmentInformation } from '../environments/environment';
 import { DepType } from '../../project/sigdb/schema';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { metaPackageCore } from '../../project/attached-packages';
 
 /**
@@ -228,6 +230,52 @@ export const Dataflow = {
 		const vertex = graph.getVertex(def);
 		const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
 		return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
+	},
+	/**
+	 * The vertices the value at `id` originates from: an argument is followed to its value, a read to the definitions it
+	 * reads, a definition to what it is defined by (other than the assignment making it), and with `throughAccess` an
+	 * access to what it accesses. A vertex none of these apply to is an origin, a read of nothing among them.
+	 * @returns the origins, `undefined` once more than `budget` vertices are visited
+	 * @example
+	 * ```ts
+	 * // e <- new.env(); e2 <- e
+	 * const origins = Dataflow.valueSources(e2Id, graph);  // [the new.env() call]
+	 * const holdsEnv = origins?.every(o => DfgVertex.hasOrigin(graph.getVertex(o), BuiltInProcName.NewEnv));
+	 * ```
+	 * The walk is purely structural: a call is an origin, what it returns is not followed.
+	 */
+	valueSources(this: void, id: NodeId, graph: DataflowGraph, opts?: { readonly throughAccess?: boolean, readonly budget?: number }): NodeId[] | undefined {
+		const budget = opts?.budget ?? 256;
+		const origins: NodeId[] = [];
+		const seen = new Set<NodeId>();
+		const todo = [id];
+		for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
+			if(seen.has(at)) {
+				continue;
+			} else if(seen.size >= budget) {
+				return undefined;
+			}
+			seen.add(at);
+			const node = graph.idMap?.get(at);
+			const vertex = graph.getVertex(at);
+			let next: readonly NodeId[] = [];
+			if(RArgument.is(node)) {
+				next = node.value === undefined ? [] : [node.value.info.id];
+			} else if(DfgVertex.isUse(vertex)) {
+				next = Dataflow.targetsOf(graph, at, EdgeType.Reads);
+			} else if(DfgVertex.isVariableDefinition(vertex)) {
+				next = Dataflow.targetsOf(graph, at, EdgeType.DefinedBy).filter(t => !DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+			} else if(opts?.throughAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.Access) && DfgVertex.isFunctionCall(vertex)) {
+				const [accessed] = vertex.args;
+				next = accessed === undefined || accessed === EmptyArgument ? [] : [accessed.nodeId];
+			}
+			if(next.length === 0) {
+				origins.push(at);
+			} else {
+				todo.push(...next);
+			}
+		}
+		return origins;
 	},
 	/** Every variable definition of the graph by its unquoted name, in a single pass. */
 	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {

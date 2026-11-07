@@ -12,7 +12,6 @@ import type { DataflowGraph } from './graph';
 import { DfgVertex } from './vertex';
 import { Dataflow } from './df-helper';
 import { ProgramOrder } from '../internal/program-order';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** What the frames of the closures one variable holds bind to a name, see {@link InGraphIdentifierDefinition#closureFrame}. */
 export interface FrameWrites {
@@ -106,7 +105,7 @@ export const ClosureFrames = {
 			if(!DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Argument) || NodeId.isBuiltIn(binding)) {
 				continue;
 			}
-			const created = creatorOf(graph, binding, new Set());
+			const created = creatorOf(graph, binding);
 			if(created === undefined) {
 				return undefined;
 			}
@@ -176,26 +175,9 @@ export const ClosureFrames = {
  * The call that created what `id` holds: the call a variable is defined by, through accesses of what holds it
  * (`g <- o$get` with `o <- mk()` holds what `mk()` created), `undefined` if that is not one call.
  */
-function creatorOf(graph: DataflowGraph, id: NodeId, seen: Set<NodeId>): NodeId | undefined {
-	const vertex = graph.getVertex(id);
-	if(seen.has(id) || vertex === undefined) {
-		return undefined;
-	}
-	seen.add(id);
-	if(DfgVertex.isVariableDefinition(vertex)) {
-		const created = Dataflow.targetsOf(graph, id, EdgeType.DefinedBy).filter(t => {
-			const by = graph.getVertex(t);
-			return DfgVertex.isFunctionCall(by) && !DfgVertex.hasOrigin(by, BuiltInProcName.Assignment);
-		});
-		return created.length === 1 ? creatorOf(graph, created[0], seen) : undefined;
-	} else if(!DfgVertex.isFunctionCall(vertex)) {
-		return undefined;
-	} else if(!DfgVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
-		return id;
-	}
-	const [accessed] = vertex.args;
-	const held = accessed === undefined || accessed === EmptyArgument ? [] : Dataflow.targetsOf(graph, accessed.nodeId, EdgeType.Reads);
-	return held.length === 1 ? creatorOf(graph, held[0], seen) : undefined;
+function creatorOf(graph: DataflowGraph, id: NodeId): NodeId | undefined {
+	const sources = Dataflow.valueSources(id, graph, { throughAccess: true });
+	return sources?.length === 1 && DfgVertex.isFunctionCall(graph.getVertex(sources[0])) ? sources[0] : undefined;
 }
 
 /**

@@ -343,7 +343,7 @@ function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: Slic
 	};
 }
 
-/** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the call `seeds` run, transitively. */
+/** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the `seeds` call (a printed value its `print` method), transitively. */
 function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): NodeId[] {
 	const writers = new Set<NodeId>();
 	for(const effect of graph.unknownSideEffects) {
@@ -357,13 +357,13 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 	const found: NodeId[] = [];
 	const seen = new Set<NodeId>();
 	/* each call with the calls that ran the function holding it, innermost first, which a dispatch decided per call depends on */
-	const calls: [NodeId, readonly NodeId[]][] = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id))).map(id => [id, []]);
+	const calls: [NodeId, readonly NodeId[]][] = [...seeds].map(id => [id, []]);
 	const decided = new Set<string>();
 	/* the calls a dispatch is decided for, which have to be followed again for every other way they are run */
 	const contexts = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([, v]) => callsRuledOutAt(v.ruledOutAt ?? [])));
 	for(let next = calls.pop(); next !== undefined; next = calls.pop()) {
 		const [call, via] = next;
-		const ruledOut = ruledOutVia((graph.getVertex(call) as DataflowGraphVertexFunctionCall).ruledOutAt, via);
+		const ruledOut = ruledOutVia((graph.getVertex(call) as Partial<DataflowGraphVertexFunctionCall> | undefined)?.ruledOutAt, via);
 		const chain = [call, ...via].slice(0, MaxContextDepth);
 		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t))) {
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;

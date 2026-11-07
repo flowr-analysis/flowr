@@ -191,7 +191,7 @@ function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean
 }
 
 /**
- * Printing a visible top-level value dispatches to the `print` methods in scope, so the expression runs them like a call would:
+ * Printing a visible top-level value dispatches to the `print` methods in scope, so the expression calls them:
  * those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known.
  */
 function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
@@ -205,6 +205,9 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 		graph.addEdge(id, method.nodeId, EdgeType.Reads);
 	}
 	const called = [...getAllLinkedFunctionDefinitions(new Set(methods.map(m => m.nodeId)), graph)[0]];
+	for(const method of called) {
+		graph.addEdge(id, method.id, EdgeType.Calls);
+	}
 	for(const ref of called.flatMap(c => c.subflow.in)) {
 		for(const def of ref.name === undefined ? [] : Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {
 			if(!NodeId.isBuiltIn(def.nodeId)) {

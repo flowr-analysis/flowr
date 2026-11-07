@@ -12,18 +12,18 @@ import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../../../graph/vertex';
 import type { DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { ProgramOrder } from '../../../../program-order';
-import { Identifier } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvirPositionFormals, resolveConstantString, resolveFirstEnvirArg, suppliesArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
 
@@ -84,10 +84,10 @@ export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVe
 		return false;
 	}
 	for(const n of names) {
-		/* the frames of the body hold what it bound before the lookup, the global names are those at the call */
-		const local = vertex.environment === undefined ? undefined : Resolve.byName(n, vertex.environment);
-		const defs = local?.some(d => !NodeId.isBuiltIn(d.nodeId) && !graph.isRoot(d.nodeId)) ? local : Resolve.byName(n, environment);
-		for(const { nodeId } of defs ?? []) {
+		/* the frames of the body and the closures around it hold what they bound before, the global names are those at the call */
+		const local = lexicalDefinitions(n, vertex, graph);
+		const defs = local.definite ? local.definitions : [...local.definitions, ...Resolve.byName(n, environment) ?? []];
+		for(const { nodeId } of defs) {
 			if(!NodeId.isBuiltIn(nodeId) && !ProgramOrder.definedLater(nodeId, runsOnceAt, graph)) {
 				graph.addEdge(vertex.id, nodeId, EdgeType.Returns | EdgeType.Reads);
 			}
@@ -95,6 +95,40 @@ export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVe
 	}
 	graph.unknownSideEffects.delete(NodeId.normalize(vertex.id));
 	return true;
+}
+
+/**
+ * What `name` is bound to where the lookup `call` without an environment (`get(n)`) looks before the global names: the
+ * frame of the function body it is in, then those of the functions it is defined in, each as it was when the closure
+ * was created and as the body around it leaves it, as a closure may be called later. `definite` once a binding surely holds.
+ * @example
+ * ```ts
+ * // mk <- function() { f <- function(n) get(n); k <- 5; f }: a call of f sees k <- 5
+ * const { definitions, definite } = lexicalDefinitions('k', getCall, graph);
+ * const all = definite ? definitions : [...definitions, ...Resolve.byName('k', globalAtCall) ?? []];
+ * ```
+ */
+export function lexicalDefinitions(name: BrandedIdentifier, call: DataflowGraphVertexFunctionCall, graph: DataflowGraph): { readonly definitions: readonly IdentifierDefinition[], readonly definite: boolean } {
+	const definitions: IdentifierDefinition[] = [];
+	const left: Environment[] = [];
+	const idMap = graph.idMap;
+	for(let fn = idMap && RNode.strictlyEnclosingFunction(call.id, idMap); idMap !== undefined && fn !== undefined;) {
+		fn = RNode.strictlyEnclosingFunction(fn, idMap);
+		const body = fn === undefined ? undefined : graph.getVertex(fn);
+		if(DfgVertex.isFunctionDefinition(body)) {
+			left.push(body.subflow.environment.current);
+		}
+	}
+	let level = 0;
+	for(let frame = call.environment?.current; frame !== undefined && !frame.builtInEnv && frame.globalEnv !== true; frame = frame.parent) {
+		const found = [...frame.lookup(name) ?? frame.superMemory?.get(name) ?? [], ...level > 0 ? left[level - 1]?.lookup(name) ?? [] : []];
+		definitions.push(...found);
+		if(found.some(d => d.cds === undefined)) {
+			return { definitions, definite: true };
+		}
+		level++;
+	}
+	return { definitions, definite: false };
 }
 
 /**

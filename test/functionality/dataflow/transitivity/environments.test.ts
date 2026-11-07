@@ -12,6 +12,11 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'a super assignment creating a global two frames up', code: 'f <- function() { g <- function() qq <<- 8; g() }\nf()\nprint(qq)' },
 			{ name: 'a super assignment through a returned function', code: 'n <- 1\nmk <- function() function() n <<- n * 3\ninc <- mk()\ninc()\ninc()\nprint(n)' },
 			{ name: 'a super assignment by a function stored in a list', code: 'n <- 0\nl <- list(up = function() n <<- 5)\nl$up()\nprint(n)' },
+		resolvesLikeR(parser, 'get without an environment of a name a parameter holds', 'k <- 1\nj <- 2\nf <- function(n) get(n)\ny <- f("j")\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'get without an environment sees the frame of the call', 'k <- 1\nf <- function(n) { k <- 7; get(n) }\ny <- f("k")\ncat(y)', '3@y');
+		resolvesLikeR(parser, 'get without an environment sees the frame of the definition', 'mk <- function() { k <- 5; function(n) get(n) }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'get without an environment sees a local written after the definition', 'mk <- function() { f <- function(n) get(n); k <- 5; f }\nk <- 1\nf <- mk()\ny <- f("k")\ncat(y)', '4@y');
+		resolvesLikeR(parser, 'get without an environment sees a global written after the definition', 'k <- 1\nf <- function(n) { get(n) }\nk <- 9\ny <- f("k")\ncat(y)', '4@y');
 			{ name: 'a super assignment the callee never runs', code: 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\nprint(n)' },
 			{ name: 'assign with a computed name', code: 'f <- function(nm) assign(nm, 2, envir = .GlobalEnv)\nf("v")\nprint(v)' }
 		];

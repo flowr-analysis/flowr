@@ -83,6 +83,7 @@ describe('Transitivity through recursion and higher-order calls, checked against
 			{ name: 'get0 of a parameter into a local', code: 'h <- function() k\nk <- 3\ng <- function(n) { fn <- get0(n, mode = "function"); fn() }\nprint(g("h"))' },
 			{ name: 'get of a parameter handed down two calls', code: 'h <- function() k\nk <- 3\nf <- function(n) get(n)()\nw <- function(m) f(m)\nprint(w("h"))' },
 			{ name: 'get of a parameter names one of two functions', code: 'k <- 1\nj <- 2\nh <- function() k\nh2 <- function() j\nf <- function(n) get(n)()\nprint(f("h"))', dropped: 'j <- 2' },
+			{ name: 'get of a parameter reads one of two globals', code: 'k <- 1\nj <- 2\nf <- function(n) get(n)\nprint(f("j"))', dropped: 'k <- 1' },
 			{ name: 'get of a name only known at runtime', code: 'k <- 1\nh <- function() k\nf <- function(n) get(n)()\nprint(f(paste0("h", "")))' }
 		];
 		for(const c of cases) {

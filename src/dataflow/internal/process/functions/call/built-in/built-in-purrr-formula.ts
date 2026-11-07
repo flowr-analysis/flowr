@@ -21,6 +21,7 @@ import { FunctionArgument } from '../../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../../util/assert';
+import { ClosureRefs } from '../../../../linker';
 
 interface BuiltInPurrrFormulaConfiguration {
 	/**
@@ -131,6 +132,11 @@ export function processPurrrFormula<OtherInfo>(
 	if(RFunctionDefinition.is(formulaNode)) {
 		const fdef = formulaNode as RFunctionDefinition<ParentInformation & OtherInfo>;
 		information.graph.addEdge(rootId, fdef.info.id, EdgeType.Calls);
+		/* the call runs the definition here, so what its body reads is resolved here */
+		const called = information.graph.getVertex(fdef.info.id);
+		if(DfgVertex.isFunctionDefinition(called)) {
+			ClosureRefs.resolveOpenIngoing(information.graph, rootId, called, data.environment);
+		}
 		try {
 			argToParamMap = FunctionSemantics.call.match.onCallAndLink(filteredCallArgs, fdef.parameters, information.graph);
 		} catch(e) {

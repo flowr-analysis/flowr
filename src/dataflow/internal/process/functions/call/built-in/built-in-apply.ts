@@ -133,25 +133,13 @@ export function processApply<OtherInfo>(
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
-	const { functionName, anonymous, asString, computed } = resolvedFn;
+	const { functionName, anonymous, computed } = resolvedFn;
 	let functionId: NodeId = resolvedFn.functionId;
 	if(!anonymous && !computed && !information.graph.hasVertex(functionId)) {
 		/* in `f |> Map(1:3)` the function comes from the pipe, which is processed after this call, so the call it makes is unknown */
 		dataflowLogger.warn(`Function argument ${Identifier.toString(functionName)} is not processed yet, treating the call as unknown`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
-	}
-	if(computed) {
-		/* the call the computed name stands for gets a vertex of its own, which reads the name */
-		const nameId = functionId;
-		functionId = `${nameId}-call`;
-		/* a use for now, made the call below like any other function handed over */
-		information.graph.addVertex({ tag: VertexType.Use, id: functionId, cds: data.cds }, data.ctx.env.cleanEnv);
-		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
-		information.graph.addEdge(functionId, nameId, EdgeType.Reads);
-	}
-	if(asString) {
-		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	}
 
 	const handedOn: FunctionArgument[] = processedArguments.map((arg, i) => {
@@ -204,32 +192,7 @@ export function processApply<OtherInfo>(
 			ClosureRefs.resolveOpenIngoing(information.graph, functionId, called, data.environment);
 		}
 	} else {
-		/* a callee binding names (`do.call("assign", ...)`) does so with arguments we cannot see here; loading a package is handled on its own */
-		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)?.some(t => t.type === ReferenceType.BuiltInFunction
-			&& CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
-			information.graph.markIdForUnknownSideEffects(rootId);
-		}
-		information.graph.updateToFunctionCall({
-			tag:         VertexType.FunctionCall,
-			id:          functionId,
-			name:        functionName,
-			args:        allOtherArguments,
-			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
-			onlyBuiltin: resolveInEnvironment === 'global',
-			cds:         data.cds,
-			origin:      [BuiltInProcName.Function]
-		});
-		/* once the call has its arguments, which may name the files it accesses */
-		information = applyAmbientStateOfCallee(information, functionId, functionName, data);
-		/* `do.call(new.env, list())` returns a new environment, so both calls get the origin `new.env()` has */
-		if(Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function)
-			?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.NewEnv)) {
-			for(const call of [information.graph.getVertex(rootId), information.graph.getVertex(functionId)]) {
-				if(DfgVertex.isFunctionCall(call)) {
-					call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
-				}
-			}
-		}
+		[information, functionId] = callNamedFunction(information, resolvedFn, allOtherArguments, rootId, data, resolveInEnvironment);
 	}
 
 	if(allOtherArguments === handedOn) {
@@ -262,6 +225,60 @@ export function processApply<OtherInfo>(
 		in:                information.in.filter(ref => ref.nodeId !== functionId),
 		unknownReferences: information.unknownReferences.filter(ref => ref.nodeId !== functionId)
 	};
+}
+
+/**
+ * Makes the node naming a function (`resolved`) the call of that function with `args`, as `do.call` does or evaluating
+ * a constructed call (`eval(call("f", x))`); a computed name gets a call of its own (`functionId`) that reads it.
+ * @returns the information with the call, and the id of the call
+ */
+export function callNamedFunction<OtherInfo>(
+	information: DataflowInformation,
+	resolved: ResolvedFunctionArgument,
+	args: readonly FunctionArgument[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	resolveInEnvironment?: 'global' | 'local',
+	functionId: NodeId = resolved.computed ? `${resolved.functionId}-call` : resolved.functionId
+): [DataflowInformation, NodeId] {
+	const { functionName, asString } = resolved;
+	if(functionId !== resolved.functionId) {
+		/* a use for now, made the call below like any other function handed over */
+		information.graph.addVertex({ tag: VertexType.Use, id: functionId, cds: data.cds }, data.ctx.env.cleanEnv);
+		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
+		information.graph.addEdge(functionId, resolved.functionId, EdgeType.Reads);
+		/* it runs only as the call making it runs */
+		information.graph.addEdge(functionId, rootId, EdgeType.Reads);
+	}
+	if(asString) {
+		information = { ...information, in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }] };
+	}
+	/* a callee binding names (`do.call("assign", ...)`) does so with arguments we cannot see here; loading a package is handled on its own */
+	const targets = Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function);
+	if(targets?.some(t => t.type === ReferenceType.BuiltInFunction && CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
+		information.graph.markIdForUnknownSideEffects(rootId);
+	}
+	information.graph.updateToFunctionCall({
+		tag:         VertexType.FunctionCall,
+		id:          functionId,
+		name:        functionName,
+		args:        args as FunctionArgument[],
+		environment: resolveInEnvironment === 'global' ? undefined : data.environment,
+		onlyBuiltin: resolveInEnvironment === 'global',
+		cds:         data.cds,
+		origin:      [BuiltInProcName.Function]
+	});
+	/* once the call has its arguments, which may name the files it accesses */
+	information = applyAmbientStateOfCallee(information, functionId, functionName, data);
+	/* `do.call(new.env, list())` returns a new environment, so both calls get the origin `new.env()` has */
+	if(targets?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.NewEnv)) {
+		for(const call of [information.graph.getVertex(rootId), information.graph.getVertex(functionId)]) {
+			if(DfgVertex.isFunctionCall(call)) {
+				call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
+			}
+		}
+	}
+	return [information, functionId];
 }
 
 /** The entry points of the arguments that fill the `formals` of `sig`. */

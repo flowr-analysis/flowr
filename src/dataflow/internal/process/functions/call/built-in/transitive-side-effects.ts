@@ -543,6 +543,12 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: NodeId |
 				callees.add(callee);
 			}
 		}
+		/* a call the call makes without a node of its own (`eval(call("f"))`, `do.call(name)`) is part of it */
+		for(const made of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
+			if(graph.idMap?.has(made) === false && DfgVertex.isFunctionCall(graph.getVertex(made))) {
+				ids.add(made);
+			}
+		}
 	}
 	if(callees.size > 0) {
 		const functions = ambientAccessOfFunctions(from);

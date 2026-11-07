@@ -19,14 +19,15 @@ describe('Transitivity of call targets, global state writes and sourcing, checke
 		callsLikeR(parser, 'Map over a function parameter', 'h <- function(a) a\nap <- function(f) Map(f, 1)\ninvisible(ap(h))\ncat("ok")', '2@Map', ['1@function']);
 		callsLikeR(parser, 'an R6 method', 'library(R6)\nC <- R6Class("C", public = list(go = function()\n  1))\no <- C$new()\ninvisible(o$go())\ncat("ok")', '$31', ['2@function']);
 		callsLikeR(parser, 'a function returned by Reduce', 'h <- function(x)\n  x\ncomp <- Reduce(function(f, g) function(x) g(f(x)), list(h, h))\ninvisible(comp(1))\ncat("ok")', '3:43', ['1@function']);
-		callsLikeR(parser, 'eval of a constructed call', 'f <- function()\n  1\ninvisible(eval(call("f")))\ncat("ok")', '3@eval', ['1@function'], { red: 'R calls f, flowR links eval only to built-ins' });
+		callsLikeR(parser, 'eval of a constructed call', 'f <- function()\n  1\ninvisible(eval(call("f")))\ncat("ok")', '3@eval', ['1@function']);
 	});
 
 	describe('global state writes', () => {
 		writesLikeR(parser, 'an option set through match.fun', 'h <- function() options(digits = 3)\nap <- function(f) { f <- match.fun(f); f() }\nap("h")\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a function chosen by switch', 'h <- switch("b", a = function() 1, b = function() options(digits = 3))\nh()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a function returned by Reduce', 'comp <- Reduce(function(f, g) function() { f(); g() }, list(function() 1, function() options(digits = 3)))\ncomp()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
-		writesLikeR(parser, 'an option set through eval of a constructed call', 'f <- function() options(digits = 3)\neval(call("f"))\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits'], { imprecise: 'any option, as eval may run anything' });
+		writesLikeR(parser, 'an option set through eval of a constructed call', 'f <- function() options(digits = 3)\neval(call("f"))\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
+		writesLikeR(parser, 'an option set through eval of a call constructed before', 'f <- function() options(digits = 3)\ncl <- call("f")\neval(cl)\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a function chosen by switch in a function', 'pick <- function(t) switch(t, a = function() 1, b = function() options(digits = 3))\npick("b")()\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by a calling handler', 'f <- function() { warning("w"); 1 }\nwithCallingHandlers(f(), warning = function(w) { options(digits = 3); invokeRestart("muffleWarning") })\nif(getOption("digits") == 3) cat("ok")', 2, ['#option:digits']);
 		writesLikeR(parser, 'an option set by an Ops method', 'Ops.foo <- function(e1, e2) { options(digits = 3); TRUE }\no <- structure(1, class = "foo")\ninvisible(o == 1)\nif(getOption("digits") == 3) cat("ok")', 3, ['#option:digits'], { red: 'R sets digits, flowR finds no write as == is not dispatched' });

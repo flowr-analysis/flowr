@@ -63,6 +63,7 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 		{ name: 'a replacement function called in a function', code: '"inc<-" <- function(x, value) x + value\ny <- 1\nf <- function() inc(y) <<- 2\nf()\nprint(y)' },
 		{ name: 'vapply over a function list reading globals', code: 'a <- 1\nb <- 2\nprint(sum(vapply(list(function() a, function() b), function(f) f(), numeric(1))))' },
 		{ name: 'a closure capturing a promise to a global changed later', code: 'mk <- function(v) function() v\nx <- 1\ng <- mk(x)\nx <- 2\nprint(g())' },
+		{ name: 'a function stored in an option', code: 'k <- 3\noptions(cb = function() k + 1)\nprint(getOption("cb")())' },
 		{ name: 'an exit hook put in a branch', code: 'f <- function(c) { x <<- 0; if(c) on.exit(x <<- 1) }\nf(length(commandArgs()) > 100)\nprint(x)' },
 		{ name: 'a function list built in a loop', code: 'fs <- list()\nfor(i in 1:2) { local({ j <- i; fs[[j]] <<- function() j * k }) }\nk <- 10\nprint(fs[[2]]())' }
 	];
@@ -76,7 +77,12 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 	resolvesLikeR(parser, 'value of exit hooks added in order', 'f <- function() { on.exit(x <<- 1, add = TRUE); on.exit(x <<- 2, add = TRUE) }\nf()\ncat(x)', '3@x');
 	resolvesLikeR(parser, 'value of an exit hook put in a branch', 'f <- function(c) { x <<- 0; if(c) on.exit(x <<- 1) }\nf(length(commandArgs()) > 100)\ncat(x)', '3@x', { imprecise: 'resolves 0 and 1, the condition is not known' });
 	resolvesLikeR(parser, 'value of substitute does not force', 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\ncat(x)', '4@x');
-	resolvesLikeR(parser, 'value of a function in an option', 'options(cb = function() 4)\ny <- getOption("cb")()\ncat(y)', '3@y', { imprecise: 'unknown, a function stored in an option is not resolved' });
+	resolvesLikeR(parser, 'value of a function in an option', 'options(cb = function() 4)\ny <- getOption("cb")()\ncat(y)', '3@y');
+	resolvesLikeR(parser, 'value of a function in an option set by a variable', 'h <- function() 7\noptions(cb = h)\ny <- getOption("cb")()\ncat(y)', '4@y');
+	resolvesLikeR(parser, 'value of a function in an option set in a function', 'f <- function() options(cb = function() 5)\nf()\ny <- getOption("cb")()\ncat(y)', '4@y');
+	resolvesLikeR(parser, 'value of a function in an option set twice', 'options(cb = function() 1)\noptions(cb = function() 2)\ny <- getOption("cb")()\ncat(y)', '4@y');
+	resolvesLikeR(parser, 'value of a function in an option set in a branch', 'options(cb = function() 1)\nif(length(commandArgs()) > 100) options(cb = function() 2)\ny <- getOption("cb")()\ncat(y)', '4@y', { imprecise: 'resolves 1 and 2, the condition is not known' });
+	resolvesLikeR(parser, 'value of an option restored', 'op <- options(cb = 1)\noptions(op)\ny <- is.null(getOption("cb"))\ncat(y)', '4@y', { imprecise: 'unknown, the restored options are not named' });
 	resolvesLikeR(parser, 'value of super assignment to a list element', 'l <- list(a = 1)\nf <- function() l$a <<- 5\nf()\ny <- l$a\ncat(y)', '5@y', { imprecise: 'unknown, the list element changed by a super assignment is not resolved' });
 	resolvesLikeR(parser, 'value of closure over promise to a global changed later', 'mk <- function(v) function() v\nx <- 1\ng <- mk(x)\nx <- 2\ny <- g()\ncat(y)', '6@y');
 	resolvesLikeR(parser, 'value of env of a function set later', 'e <- new.env()\nf <- function() v\nenvironment(f) <- e\nassign("v", 6, envir = e)\ny <- f()\ncat(y)', '6@y');

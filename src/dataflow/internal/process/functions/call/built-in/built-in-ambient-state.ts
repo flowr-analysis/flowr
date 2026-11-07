@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type ControlDependency, DataflowInformation, type ExitPoint, ExitPointType } from '../../../../../info';
+import { type ControlDependency, DataflowInformation, type ExitPoint, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -74,6 +74,34 @@ function maybe(name: string): AmbientWrite {
 /** what reading the options `keys` reads, every option if the keys are unknown */
 function optionReads(keys: readonly string[] | undefined): string[] {
 	return keys === undefined ? [AmbientStateName.allOptions] : [...keys.map(AmbientStateName.option), AmbientStateName.unknownOption];
+}
+
+/**
+ * Links `getOption(key)` to the values the calls it surely reads the option from set it to (`options(cb = function() 4)`),
+ * so it hands them back like a call hands back its result. Only where every such call names the option as an argument
+ * and nothing sets options we cannot name, as the call may otherwise hand back anything.
+ */
+function linkOptionValue<OtherInfo>(res: DataflowInformation, rootId: NodeId, keys: readonly string[] | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
+	if(keys?.length !== 1 || Resolve.byName(AmbientStateName.unknownOption, data.environment)?.some(d => !NodeId.isBuiltIn(d.nodeId))) {
+		return;
+	}
+	const defs = Resolve.byName(AmbientStateName.option(keys[0]), data.environment) ?? [];
+	if(!defs.some(d => happensInEveryBranch(d.cds))) {
+		return;
+	}
+	const values: NodeId[] = [];
+	for(const { nodeId } of defs) {
+		const setter = data.completeAst.idMap.get(nodeId);
+		const named = RFunctionCall.is(setter) ? setter.arguments.filter(a => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === keys[0]) : [];
+		const value = named.length === 1 ? RArgument.valueOf(named[0]) : undefined;
+		if(value === undefined) {
+			return;
+		}
+		values.push(value.info.id);
+	}
+	for(const value of values) {
+		res.graph.addEdge(rootId, value, EdgeType.Returns);
+	}
 }
 
 /** Whether calling `definition` runs a body flowR cannot see: a library function's, or whatever a parameter is bound to. */
@@ -455,7 +483,11 @@ export function applyAmbientStateAccess<OtherInfo>(
 		}
 		case AmbientStateAccessType.GetOption: {
 			const first = args.find(a => a !== EmptyArgument && (a.name === undefined || Identifier.getName(a.name.content) === 'x'));
-			reads.push(...optionReads(stringValuesOf(RArgument.valueOf(first), data)));
+			const keys = stringValuesOf(RArgument.valueOf(first), data);
+			reads.push(...optionReads(keys));
+			if(args.length === 1) {
+				linkOptionValue(res, rootId, keys, data);
+			}
 			break;
 		}
 		case AmbientStateAccessType.SetOptions:

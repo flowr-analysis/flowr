@@ -1,7 +1,7 @@
 import type { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
-import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
+import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -169,10 +169,19 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	peekCallGraph(): CallGraph | undefined;
 	/**
 	 * Access the query API for the request.
-	 * @param query   - The list of queries.
+	 * Pass a single query to get its result directly (see {@link Query.one}), a failing query then throws.
+	 * Pass a list of queries to get a record of their results by query type, where a failing query type is reported
+	 * as an error without affecting the others.
+	 * @param query   - The query or the list of queries.
 	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
+	 * @example
+	 * ```ts
+	 * const { reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
+	 * const results = await analyzer.query([{ type: 'id-map' }, { type: 'dataflow' }]);
+	 * ```
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
+	query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
 	/**
 	 * Access the taint analysis API for the request.
 	 */
@@ -355,10 +364,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.cache.peekCallGraph();
 	}
 
-	public async query<
-		Types extends SupportedQueryTypes = SupportedQueryTypes
-	>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>> {
-		return this.ctx.gas.withGas(options?.gas, () => executeQueries({ analyzer: this }, query));
+	public async query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
+	public async query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
+	public async query(query: Query | Queries, options?: FlowrAnalysisOptions): Promise<unknown> {
+		return this.ctx.gas.withGas(options?.gas, () => Array.isArray(query) ? executeQueries({ analyzer: this }, query as Queries) : Query.one({ analyzer: this }, query as Query));
 	}
 
 	public async runSearch<

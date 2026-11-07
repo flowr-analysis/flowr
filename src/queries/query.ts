@@ -3,9 +3,9 @@ import {
 	type CallContextQuerySubKindResult,
 	CallContextQueryDefinition
 } from './catalog/call-context-query/call-context-query-format';
-import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from './base-query-format';
+import type { BaseQueryFormat, BaseQueryMeta, BaseQueryResult, BasicQueryData } from './base-query-format';
 import { getGuardIssueUrl, guard } from '../util/assert';
-import { SupportedVirtualQueries, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
+import { SupportedVirtualQueries, type SupportedVirtualQueryTypes, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import { type DataflowQuery, DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import { type IdMapQuery, IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
@@ -52,7 +52,7 @@ import {
 	type ControlFlowQuery,
 	ControlFlowQueryDefinition
 } from './catalog/control-flow-query/control-flow-query-format';
-import type { AsyncOrSync, Writable } from 'ts-essentials';
+import type { AsyncOrSync } from 'ts-essentials';
 import { deepMergeObject, type MergeableRecord } from '../util/objects';
 import type { FlowrConfig } from '../config';
 import {
@@ -102,6 +102,7 @@ import {
 	GuessDepVersionsQueryDefinition
 } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
+import { type CodeClonesQuery, CodeClonesQueryDefinition } from './catalog/code-clones-query/code-clones-query-format';
 import {
 	type FunctionInfoQuery,
 	FunctionInfoQueryDefinition
@@ -142,6 +143,7 @@ export type Query = CallContextQuery
 	| DiceQuery
 	| GuessDepVersionsQuery
 	| FunctionInfoQuery
+	| CodeClonesQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -185,6 +187,8 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	 * If this query does not involve any nodes, this can be omitted.
 	 */
 	flattenInvolvedNodes?: (queryResults: BaseQueryResult, query: readonly Query[], certainty?: LintingResultCertainty) => NodeId[]
+	/** each query of this type reports exactly one entry in the `results` of its result, which {@link Query.one} answers with */
+	perQueryResults?:      true
 }
 
 export const SupportedQueries = {
@@ -219,7 +223,8 @@ export const SupportedQueries = {
 	'linter':               LinterQueryDefinition,
 	'dice':                 DiceQueryDefinition,
 	'guess-dep-versions':   GuessDepVersionsQueryDefinition,
-	'function-info':        FunctionInfoQueryDefinition
+	'function-info':        FunctionInfoQueryDefinition,
+	'code-clones':          CodeClonesQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
@@ -233,43 +238,40 @@ export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof 
 /**
  * Executes a set of queries that are all of the same type.
  * Only use this function if you are sure all queries are of the same type.
- * Otherwise, use {@link executeQueries}.
+ * Otherwise, use {@link executeQueries}, and {@link Query.one} for a single query.
  */
 export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	const qzt = queries[0].type;
-	/* every query must have the same type */
 	guard(queries.every(q => q.type === qzt), 'All queries must have the same type');
-	const query = SupportedQueries[qzt];
-	guard(query !== undefined, `Unsupported query type: ${qzt}`);
-	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
+	return runExecutor(data, qzt, queries) as QueryResult<SpecificQuery['type']>;
 }
 
-function isVirtualQuery<
-	Base extends SupportedQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(query: QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>): query is VirtualQueryArgumentsWithType<Base, VirtualArguments> {
-	return SupportedVirtualQueries[query.type as keyof typeof SupportedVirtualQueries] !== undefined;
+function runExecutor(data: BasicQueryData, type: SupportedQueryTypes, queries: readonly Query[]): Promise<BaseQueryResult> {
+	const definition = SupportedQueries[type] as SupportedQuery | undefined;
+	guard(definition !== undefined, `Unsupported query type: ${type}`);
+	return definition.executor(data, queries as never);
 }
 
-function groupQueriesByType<
-	Base extends SupportedQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): Record<Query['type'], Query[]> {
-	const grouped: Record<Query['type'], Query[]> = {} as Record<Query['type'], Query[]>;
-	function addQuery(query: Query) {
-		grouped[query.type] ??= [];
-		grouped[query.type].push(query);
+/** Groups the queries by type in the order the types first occur, unfolding virtual queries into the queries they stand for. */
+function groupQueriesByType(queries: Queries): Map<SupportedQueryTypes, Query[]> {
+	const grouped = new Map<SupportedQueryTypes, Query[]>();
+	function add(query: Query) {
+		const group = grouped.get(query.type);
+		if(group) {
+			group.push(query);
+		} else {
+			grouped.set(query.type, [query]);
+		}
 	}
 	for(const query of queries) {
-		if(isVirtualQuery(query)) {
-			const executor = SupportedVirtualQueries[query.type];
-			const subQueries = executor(query);
-			for(const subQuery of subQueries) {
-				addQuery(subQuery);
+		const virtual = SupportedVirtualQueries[query.type as SupportedVirtualQueryTypes];
+		if(virtual) {
+			for(const subQuery of virtual(query as never)) {
+				add(subQuery);
 			}
 		} else {
-			addQuery(query);
+			add(query as Query);
 		}
 	}
 	return grouped;
@@ -293,34 +295,27 @@ export type Queries<
 
 /**
  * This is the main query execution function that takes a set of queries and executes them on the given data.
- * @see {@link executeQueriesOfSameType}
+ * Queries of the same type run as one batch, and a failing batch is retried query by query, so it does not
+ * discard the results of other queries.
+ * @see {@link Query.one} - to run a single query and get its result directly
  */
 export async function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 >(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): Promise<QueryResults<Base>> {
-	const now = Date.now();
-	const grouped = groupQueriesByType(queries);
-	const entries = Object.entries(grouped) as [Base, typeof grouped[Base]][];
-
-	const results: [Base, Awaited<QueryResult<Base>> | undefined][] = [];
-
-	for(const [type, group] of entries) {
+	const start = Date.now();
+	const results: Record<string, BaseQueryResult | BaseQueryMeta> = {};
+	for(const [type, group] of groupQueriesByType(queries)) {
 		try {
-			const result = await executeQueriesOfSameType(data, group);
-			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
+			results[type] = await runExecutor(data, type, group);
 		} catch(e) {
 			const message = errorMessage(e);
 			log.error(`query of type '${type}' failed: ${message.split('\n')[0]}`);
-			results.push([type, await retryQueriesIndividually(data, group, message) as never]);
+			results[type] = await retryQueriesIndividually(data, group, message);
 		}
 	}
-
-	const r = Object.fromEntries(results) as Writable<QueryResults<Base>>;
-	r['.meta'] = {
-		timing: Date.now() - now
-	};
-	return r as QueryResults<Base>;
+	results['.meta'] = { timing: Date.now() - start };
+	return results as unknown as QueryResults<Base>;
 }
 
 function errorMessage(e: unknown): string {
@@ -339,7 +334,7 @@ async function retryQueriesIndividually(data: BasicQueryData, group: readonly Qu
 	let merged: BaseQueryResult | undefined;
 	for(const query of group) {
 		try {
-			const result = await executeQueriesOfSameType(data, [query]);
+			const result = await runExecutor(data, query.type, [query]);
 			merged = merged === undefined ? result : deepMergeObject(merged as unknown as MergeableRecord, result as unknown as MergeableRecord) as unknown as BaseQueryResult;
 		} catch(e) {
 			errors.push(errorMessage(e));
@@ -430,6 +425,13 @@ type KeyOf<Type extends SupportedQueryTypes> = Extract<keyof ResultsOf<Type>, st
 /** What one key of {@link ResultsOf} holds, e.g. one slice with its reconstruction. */
 type ValueOf<Type extends SupportedQueryTypes> = ResultsOf<Type>[KeyOf<Type>];
 
+/**
+ * What {@link Query.one} answers a single query of the given type with: the one entry of its `results` for a
+ * query marked {@link SupportedQuery#perQueryResults}, its full result otherwise.
+ */
+export type SingleQueryResult<Type extends SupportedQueryTypes> =
+	typeof SupportedQueries[Type] extends { readonly perQueryResults: true } ? ValueOf<Type> : Awaited<QueryResult<Type>>;
+
 /** One call a `call-context` query found, with the kind and subkind it was found under. */
 export interface FoundCall extends CallContextQuerySubKindResult {
 	readonly kind:    string;
@@ -457,14 +459,27 @@ export interface FoundLint {
 export const Query = {
 	name: 'Query',
 	/**
-	 * Run a single query and answer with what it reported, so a caller asking one thing is handed that one
-	 * thing instead of a {@link QueryResults} to index into.
+	 * Run a single query and answer with what it reported, without grouping, retries, or a {@link QueryResults}
+	 * to index into. For a query marked {@link SupportedQuery#perQueryResults}, this is the one entry of its
+	 * `results`, e.g. the slice and reconstruction of a `static-slice` query. A failing query throws.
+	 * @example
+	 * ```ts
+	 * const { slice, reconstruct } = await Query.one({ analyzer }, { type: 'static-slice', criteria: ['2@x'] });
+	 * ```
 	 */
 	async one<Type extends SupportedQueryTypes>(
-		this: void, data: BasicQueryData, query: Extract<Query, { type: Type }>
-	): Promise<Awaited<QueryResult<Type>>> {
-		const results = await executeQueries<Type>(data, [query] as never);
-		return results[query.type] as Awaited<QueryResult<Type>>;
+		this: void, data: BasicQueryData, query: QueryArgumentsWithType<Type>
+	): Promise<SingleQueryResult<Type>> {
+		const definition = SupportedQueries[query.type] as SupportedQuery;
+		const result = await runExecutor(data, query.type, [query]);
+		if(!definition.perQueryResults) {
+			return result as SingleQueryResult<Type>;
+		}
+		const results = (result as BaseQueryResult & { readonly results: Readonly<Record<string, unknown>> }).results;
+		for(const key in results) {
+			return results[key] as SingleQueryResult<Type>;
+		}
+		return undefined as SingleQueryResult<Type>;
 	},
 	/** Every key and result of one query, typed as that query reports them. */
 	entries<Base extends SupportedQueryTypes, Type extends Base>(

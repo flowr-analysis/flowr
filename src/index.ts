@@ -11,7 +11,7 @@
  *
  * const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
  * analyzer.addRequest('x <- 1\ny <- x\nx');
- * const slice = await analyzer.query([{ type: 'static-slice', criteria: ['3@x'] }]);
+ * const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
  * ```
  */
 
@@ -32,8 +32,10 @@ export type { SourcePosition, SourceLocationLike } from './util/range';
 export { Dataflow } from './dataflow/graph/df-helper';
 export { DataflowGraph } from './dataflow/graph/graph';
 export { DfgVertex, VertexType } from './dataflow/graph/vertex';
-/* the names of the global state (options, environment variables, devices, ...) calls change, see `Dataflow.sideEffects.ambientWrites` */
+/* the names of the global state (options, environment variables, devices, ...) calls change, see `Dataflow.sideEffects.ambientAccess` */
 export { AmbientStateName, KeyedState } from './dataflow/environments/ambient-state-name';
+export type { AmbientAccess, AmbientAccessOptions, FunctionAmbientWrites } from './dataflow/internal/process/functions/call/built-in/transitive-side-effects';
+export type { AmbientAccessRecord } from './dataflow/graph/ambient-access';
 export type { DataflowGraphVertexInfo } from './dataflow/graph/vertex';
 export { DfEdge, EdgeType } from './dataflow/graph/edge';
 export { FunctionSemantics } from './dataflow/fn/function-semantics';

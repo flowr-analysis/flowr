@@ -39,6 +39,16 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
 	type:  'string'
 	value: Str
 }
+/** One element of a {@link ValueList}, `name` is `undefined` for an element without one (`list(1)`). */
+export interface ValueListElement {
+	readonly name:  string | undefined
+	readonly value: Value
+}
+/** An R list with known elements in their order, each of which may still be unknown (`list(a = f(), b = 2)`). */
+export interface ValueList {
+	readonly type:     'list'
+	readonly elements: readonly ValueListElement[]
+}
 export interface ValueNull {
 	type: 'null'
 }
@@ -57,6 +67,7 @@ export interface ValueLogical {
 export type Value = Lift<
         ValueInterval
 		| ValueVector
+		| ValueList
         | ValueSet
         | ValueNumber
         | ValueString
@@ -139,6 +150,8 @@ export function stringifyValue(value: Lift<Value>): string {
 				return tryStringifyBoTop(v.elements, e => {
 					return `<${stringifyValue(v.elementDomain)}> c(${e.map(stringifyValue).join(',')})`;
 				}, () => `⊤ (vector, ${stringifyValue(v.elementDomain)})`, () => `⊥ (vector, ${stringifyValue(v.elementDomain)})`);
+			case 'list':
+				return `list(${v.elements.map(e => e.name === undefined ? stringifyValue(e.value) : `${e.name} = ${stringifyValue(e.value)}`).join(', ')})`;
 			case 'set':
 				return tryStringifyBoTop(v.elements, e => {
 					return e.length === 1 ? stringifyValue(e[0]) : `{ ${e.map(stringifyValue).join(',')} }`;

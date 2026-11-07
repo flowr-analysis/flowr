@@ -10,7 +10,8 @@ import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/
 import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNull, type RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { getScalarFromInteger } from './scalar/scalar-constants';
 
 /**
@@ -104,6 +105,9 @@ export function valueFromRNodeConstant(a: RNodeWithParent): Value {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
 	} else if(RFunctionDefinition.is(a)) {
 		return { type: 'function-definition' };
+	} else if(RSymbol.is(a) && a.content === RNull) {
+		/* `NULL` is reserved, no binding can shadow it */
+		return { type: 'null' };
 	}
 
 	return Top;

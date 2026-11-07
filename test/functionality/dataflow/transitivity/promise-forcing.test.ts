@@ -22,6 +22,6 @@ describe('Transitivity through promises forced late, checked against R', withTre
 	for(const c of cases) {
 		sliceMatchesR(parser, c);
 	}
-	resolvesLikeR(parser, 'value forced three calls down', 'f <- function(a) g(a)\ng <- function(b) h(b)\nh <- function(c) { y <<- 2; c }\ny <- 0\nv <- f(y)\ncat(v)', '5@v', { imprecise: 'the promise may be forced before or after the write' });
-	resolvesLikeR(parser, 'value forced by a closure after the call', 'mk <- function(a) function() a\nx <- 1\nh <- mk(x)\nx <- 5\nv <- h()\ncat(v)', '5@v', { imprecise: 'the closure may be called before or after the write' });
+	resolvesLikeR(parser, 'value forced three calls down', 'f <- function(a) g(a)\ng <- function(b) h(b)\nh <- function(c) { y <<- 2; c }\ny <- 0\nv <- f(y)\ncat(v)', '5@v');
+	resolvesLikeR(parser, 'value forced by a closure after the call', 'mk <- function(a) function() a\nx <- 1\nh <- mk(x)\nx <- 5\nv <- h()\ncat(v)', '5@v');
 }));

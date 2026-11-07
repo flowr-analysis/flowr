@@ -59,10 +59,10 @@ describe('Transitivity through call cycles, stored callbacks and late forcing, c
 	for(const c of cases) {
 		sliceMatchesR(parser, c);
 	}
-	resolvesLikeR(parser, 'value of promise after nested super assignment', 'f <- function(a) g(a)\ng <- function(b) { x <<- 1; b }\nx <- 0\ny <- f(x)\ncat(y)', '5@y', { imprecise: 'resolves 0 and unknown, R forces the promise after x <<- 1' });
-	resolvesLikeR(parser, 'value of promises forced out of order', 'f <- function(a, b) { b; a }\nn <- 0\ny <- f(n, n <- 4)\ncat(y)', '4@y', { imprecise: 'resolves 0 and 4, either argument may be forced first' });
+	resolvesLikeR(parser, 'value of promise after nested super assignment', 'f <- function(a) g(a)\ng <- function(b) { x <<- 1; b }\nx <- 0\ny <- f(x)\ncat(y)', '5@y');
+	resolvesLikeR(parser, 'value of promises forced out of order', 'f <- function(a, b) { b; a }\nn <- 0\ny <- f(n, n <- 4)\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of function defined by super assignment', 'setup <- function() h <<- function() 4\nsetup()\ny <- h()\ncat(y)', '4@y');
-	resolvesLikeR(parser, 'value of callee redefined', 'g <- function() 1\nf <- function() g()\ng <- function() 2\ny <- f()\ncat(y)', '5@y', { imprecise: 'resolves 2 and unknown' });
+	resolvesLikeR(parser, 'value of callee redefined', 'g <- function() 1\nf <- function() g()\ng <- function() 2\ny <- f()\ncat(y)', '5@y');
 	resolvesLikeR(parser, 'value of local closure later change', 'g <- local({ v <- 1; f <- function() v; v <- 2; f })\ny <- g()\ncat(y)', '3@y');
 	resolvesLikeR(parser, 'value of super assignment into a local frame', 'r <- local({ v <- 1; f <- function() v <<- 5; f(); v })\ncat(r)', '2@r');
 	resolvesLikeR(parser, 'value of assign into a closure env', 'mk <- function() { v <- 1; function() v }\ng <- mk()\nassign("v", 4, envir = environment(g))\ny <- g()\ncat(y)', '5@y');

@@ -39,12 +39,12 @@ describe('Transitivity through calls and closures, checked against R', withTreeS
 	}));
 
 	describe('values', () => {
-		resolvesLikeR(parser, 'a global read three calls deep', 'x <- 1\nf <- function() g()\ng <- function() h()\nh <- function() x\nx <- 2\ny <- f()\ncat(y)', '7@y', { imprecise: 'resolves the value and unknown, a call in a function body adds unknown' });
-		resolvesLikeR(parser, 'a value through three parameters', 'a <- function(p) b(p + 1)\nb <- function(q) cc(q * 2)\ncc <- function(r) r - 1\ny <- a(3)\ncat(y)', '5@y', { imprecise: 'resolves the value and unknown, a call in a function body adds unknown' });
-		resolvesLikeR(parser, 'an identity chain', 'id1 <- function(p) id2(p)\nid2 <- function(q) id3(q)\nid3 <- function(r) r\ny <- id1(6)\ncat(y)', '5@y', { imprecise: 'resolves the value and unknown, a call in a function body adds unknown' });
+		resolvesLikeR(parser, 'a global read three calls deep', 'x <- 1\nf <- function() g()\ng <- function() h()\nh <- function() x\nx <- 2\ny <- f()\ncat(y)', '7@y');
+		resolvesLikeR(parser, 'a value through three parameters', 'a <- function(p) b(p + 1)\nb <- function(q) cc(q * 2)\ncc <- function(r) r - 1\ny <- a(3)\ncat(y)', '5@y');
+		resolvesLikeR(parser, 'an identity chain', 'id1 <- function(p) id2(p)\nid2 <- function(q) id3(q)\nid3 <- function(r) r\ny <- id1(6)\ncat(y)', '5@y');
 		resolvesLikeR(parser, 'a local captured by a returned function', 'f <- function() { x <- 5; function() x }\ng <- f()\ny <- g()\ncat(y)', '4@y');
 		resolvesLikeR(parser, 'a parameter captured by a returned function', 'mk <- function(v) function() v\nk <- mk(7)\ny <- k()\ncat(y)', '4@y');
-		resolvesLikeR(parser, 'a global changed after the closure was made', 'x <- 1\nf <- function() function() x\ng <- f()\nx <- 2\ny <- g()\ncat(y)', '6@y', { imprecise: 'resolves 1 and 2, R reads x when the closure runs' });
+		resolvesLikeR(parser, 'a global changed after the closure was made', 'x <- 1\nf <- function() function() x\ng <- f()\nx <- 2\ny <- g()\ncat(y)', '6@y');
 		resolvesLikeR(parser, 'a lazy parameter captured unforced', 'f <- function(x) function() x\ny <- 2\ng <- f(y)\ny <- 3\nz <- g()\ncat(z)', '6@z');
 		resolvesLikeR(parser, 'a forced parameter captured', 'f <- function(x) { force(x); function() x }\ny <- 2\ng <- f(y)\ny <- 3\nz <- g()\ncat(z)', '6@z');
 		resolvesLikeR(parser, 'a super assignment three calls deep', 'n <- 0\nf <- function() g()\ng <- function() h()\nh <- function() n <<- 4\nf()\ncat(n)', '6@n');

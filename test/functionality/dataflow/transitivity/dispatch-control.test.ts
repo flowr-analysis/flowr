@@ -168,9 +168,9 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 	}));
 
 	describe('values', () => {
-		resolvesLikeR(parser, 'switch selecting a global', 'f <- function(t) switch(t, a = x, b = y)\nx <- 1\ny <- 2\nz <- f("b")\ncat(z)', '5@z', { imprecise: 'both branches' });
-		resolvesLikeR(parser, 'a for loop accumulating', 'x <- 0\nfor(i in 1:3) x <- x + i\ncat(x)', '3@x', { imprecise: 'unknown after the loop' });
-		resolvesLikeR(parser, 'a value carried to the next iteration', 'a <- 1\nb <- 0\nfor(i in 1:2) { b <- a; a <- 5 }\ncat(b)', '3@b', { imprecise: 'resolves 1 and 5, R reads a <- 5 in the last iteration' });
+		resolvesLikeR(parser, 'switch selecting a global', 'f <- function(t) switch(t, a = x, b = y)\nx <- 1\ny <- 2\nz <- f("b")\ncat(z)', '5@z');
+		resolvesLikeR(parser, 'a for loop accumulating', 'x <- 0\nfor(i in 1:3) x <- x + i\ncat(x)', '3@x');
+		resolvesLikeR(parser, 'a value carried to the next iteration', 'a <- 1\nb <- 0\nfor(i in 1:2) { b <- a; a <- 5 }\ncat(b)', '4@b');
 		resolvesLikeR(parser, 'an exit hook overriding a super assignment', 'x <- 1\nf <- function() { on.exit(x <<- 3); x <<- 2 }\nf()\ncat(x)', '4@x');
 	});
 

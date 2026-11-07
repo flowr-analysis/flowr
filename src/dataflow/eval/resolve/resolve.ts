@@ -18,6 +18,7 @@ import { isValue, type Lift, Top, type Value, type ValueNumber, type ValueVector
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier, ReferenceType } from '../../environments/identifier';
+import { EdgeType } from '../../graph/edge';
 import type { REnvironmentInformation } from '../../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../graph/df-helper';
@@ -69,6 +70,12 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 			&& Resolve.isBuiltIn(named, environment, ReferenceType.Function) ? named : undefined;
 	}
 	let name: Identifier | undefined;
+	if(graph.isQuoted(node.info.id)) {
+		/* a quoted call reached here is evaluated where the expression is (`eval`, a delayed binding), so what it calls
+		 * is what it is linked to */
+		const [target, ...others] = Dataflow.targetsOf(graph, node.info.id, EdgeType.Calls);
+		return target !== undefined && others.length === 0 && NodeId.isBuiltIn(target) ? NodeId.fromBuiltIn(target) : undefined;
+	}
 	for(const origin of Dataflow.origin(graph, node.info.id) ?? []) {
 		if(origin.type === OriginType.FunctionCallOrigin || origin.type === OriginType.WriteVariableOrigin) {
 			/* the call may go to a definition of the program instead, so we know too little to fold it */

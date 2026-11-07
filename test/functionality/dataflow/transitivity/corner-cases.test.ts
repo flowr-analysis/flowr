@@ -52,7 +52,7 @@ describe('Transitivity in corner cases, checked against R', withTreeSitter(parse
 		{ name: 'sys.function recursion', code: 'f <- function(n) if(n == 0) k else sys.function()(n - 1)\nk <- 3\nprint(f(2))' },
 		{ name: 'options read in a nested function', code: 'options(myopt = 7)\nf <- function() getOption("myopt")\ng <- function() f()\nprint(g())' },
 		{ name: 'option set in function read in function', code: 'set <- function() options(myopt = 8)\nget1 <- function() getOption("myopt")\nset()\nprint(get1())' },
-		{ name: 'local function shadowing a global function', code: 'h <- function() 1\nf <- function() { h <- function() 2; g <- function() h(); g() }\nprint(f())', dropped: 'function() 1', imprecise: 'keeps the shadowed global h' },
+		{ name: 'local function shadowing a global function', code: 'h <- function() 1\nf <- function() { h <- function() 2; g <- function() h(); g() }\nprint(f())', dropped: 'function() 1' },
 		{ name: 'closure capturing loop variable', code: 'fs <- list()\nfor(i in 1:2) fs[[i]] <- function() i\nprint(fs[[1]]())' },
 		{ name: 'with modifying via super assignment', code: 'n <- 0\nwith(list(a = 3), n <<- a)\nprint(n)' },
 		{ name: 'within', code: 'k <- 2\nd <- data.frame(a = 1)\nd <- within(d, b <- a + k)\nprint(d$b)' },
@@ -63,20 +63,20 @@ describe('Transitivity in corner cases, checked against R', withTreeSitter(parse
 	for(const c of cases) {
 		sliceMatchesR(parser, c);
 	}
-	resolvesLikeR(parser, 'value of promise forced after global change', 'x <- 1\nf <- function(a) { x <<- 2; a }\ny <- f(x)\ncat(y)', '4@y', { imprecise: 'resolves 1 and 2, R forces the promise after x <<- 2' });
+	resolvesLikeR(parser, 'value of promise forced after global change', 'x <- 1\nf <- function(a) { x <<- 2; a }\ny <- f(x)\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of default reads global changed in body', 'x <- 1\nf <- function(a = x) { x <<- 2; a }\ny <- f()\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of super assignment hits a parameter', 'x <- 0\nf <- function(x) { g <- function() x <<- 5; g(); x }\nf(1)\ncat(x)', '4@x');
 	resolvesLikeR(parser, 'value of assign without envir is local', 'f <- function() assign("x", 2)\nx <- 1\nf()\ncat(x)', '4@x');
 	resolvesLikeR(parser, 'value of super assignment in local', 'x <- 1\nlocal({ x <<- 2 })\ncat(x)', '3@x');
 	resolvesLikeR(parser, 'value of closure sees later local', 'f <- function() { x <- 1; g <- function() x; x <- 2; g }\nh <- f()\ny <- h()\ncat(y)', '4@y');
-	resolvesLikeR(parser, 'value of separate factory frames', 'mk <- function() { v <- 0; function() { v <<- 1; v } }\na <- mk()\nb <- mk()\ny <- b()\ncat(y)', '5@y', { imprecise: 'resolves 0 and 1, the read follows the super assignment in R' });
+	resolvesLikeR(parser, 'value of separate factory frames', 'mk <- function() { v <- 0; function() { v <<- 1; v } }\na <- mk()\nb <- mk()\ny <- b()\ncat(y)', '5@y');
 	resolvesLikeR(parser, 'value of on.exit reads a local changed later', 'f <- function() { v <- 1; on.exit(r <<- v); v <- 2 }\nf()\ncat(r)', '3@r');
 	resolvesLikeR(parser, 'value of on.exit replaced', 'f <- function() { on.exit(x <<- 1); on.exit(x <<- 2) }\nf()\ncat(x)', '3@x');
 	resolvesLikeR(parser, 'value of stop in a callee skips the rest', 'x <- 1\nf <- function() { stop("e"); x <<- 2 }\ntry(f(), silent = TRUE)\ncat(x)', '4@x');
-	resolvesLikeR(parser, 'value of function lookup skips non functions', 'f <- function() 1\ng <- function() { f <- 2; f() }\ny <- g()\ncat(y)', '3@y', { imprecise: 'resolves 1 and unknown, the call skips the local non-function f' });
-	resolvesLikeR(parser, 'value of local function shadowing', 'h <- function() 1\nf <- function() { h <- function() 2; g <- function() h(); g() }\ny <- f()\ncat(y)', '3@y', { imprecise: 'resolves 1 and 2, the inner h shadows the global one' });
-	resolvesLikeR(parser, 'value of closure capturing loop variable', 'fs <- list()\nfor(i in 1:2) fs[[i]] <- function() i\ny <- fs[[1]]()\ncat(y)', '3@y', { imprecise: 'unknown, R reads i after the loop' });
-	resolvesLikeR(parser, 'value of delayedAssign', 'delayedAssign("v", k * 2)\nk <- 3\ncat(v)', '3@v', { imprecise: 'unknown, the delayed binding is not resolved' });
-	resolvesLikeR(parser, 'value of numeric switch', 'a <- 1\nb <- 2\ny <- switch(2, a, b)\ncat(y)', '4@y', { imprecise: 'unknown, a numeric switch is not resolved' });
+	resolvesLikeR(parser, 'value of function lookup skips non functions', 'f <- function() 1\ng <- function() { f <- 2; f() }\ny <- g()\ncat(y)', '3@y');
+	resolvesLikeR(parser, 'value of local function shadowing', 'h <- function() 1\nf <- function() { h <- function() 2; g <- function() h(); g() }\ny <- f()\ncat(y)', '3@y');
+	resolvesLikeR(parser, 'value of closure capturing loop variable', 'fs <- list()\nfor(i in 1:2) fs[[i]] <- function() i\ny <- fs[[1]]()\ncat(y)', '3@y');
+	resolvesLikeR(parser, 'value of delayedAssign', 'delayedAssign("v", k * 2)\nk <- 3\ncat(v)', '3@v');
+	resolvesLikeR(parser, 'value of numeric switch', 'a <- 1\nb <- 2\ny <- switch(2, a, b)\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of Map closure', 'mk <- function(k) function(a) a * k\nm <- mk(3)\ny <- m(2)\ncat(y)', '4@y');
 }));

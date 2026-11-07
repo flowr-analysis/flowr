@@ -43,7 +43,7 @@ describe('Transitivity through recursion and higher-order calls, checked against
 	}));
 
 	describe('values', () => {
-		resolvesLikeR(parser, 'a recursive accumulator', 'acc <- 0\nr <- function(n) { if(n > 0) { acc <<- 6; r(n - 1) } }\nr(3)\ncat(acc)', '4@acc', { imprecise: 'resolves 0 and 6, R runs the call that sets 6' });
+		resolvesLikeR(parser, 'a recursive accumulator', 'acc <- 0\nr <- function(n) { if(n > 0) { acc <<- 6; r(n - 1) } }\nr(3)\ncat(acc)', '4@acc');
 		resolvesLikeR(parser, 'do.call of a constant function', 'g <- function() 5\ny <- do.call(g, list())\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'a super assignment in an lapply callback', 's <- 0\ninvisible(lapply(1, function(i) s <<- 4))\ncat(s)', '3@s');
 	});

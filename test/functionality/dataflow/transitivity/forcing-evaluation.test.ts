@@ -8,7 +8,7 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 		{ name: 'a default reading a local set before forcing', code: 'f <- function(a = v) { v <- 2; a }\nv <- 1\nprint(f())' },
 		{ name: 'a promise forced in an exit hook', code: 'f <- function(a) { on.exit(r <<- a); x <<- 5; invisible() }\nx <- 1\nf(x)\nprint(r)' },
 		{ name: 'a promise forced in finally', code: 'f <- function(a) tryCatch(x <<- 5, finally = r <<- a)\nx <- 1\nf(x)\nprint(r)' },
-		{ name: 'substitute does not force', code: 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\nprint(x)', dropped: 'x <- 5', imprecise: 'keeps x <- 5 which substitute never forces' },
+		{ name: 'substitute does not force', code: 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\nprint(x)', dropped: 'x <- 5' },
 		{ name: 'exit hooks put first', code: 'f <- function() { on.exit(x <<- 1); on.exit(x <<- 2, add = TRUE, after = FALSE) }\nf()\nprint(x)' },
 		{ name: 'a seed set in an lapply callback', code: 'invisible(lapply(1, function(i) set.seed(42)))\nprint(runif(1))' },
 		{ name: 'a working directory restored by an exit hook', code: 'dir.create("sub")\nf <- function() { old <- setwd("sub"); on.exit(setwd(old)); 1 }\nf()\nprint(basename(getwd()))' },
@@ -68,10 +68,10 @@ describe('Transitivity through late forcing, evaluation and operator dispatch, c
 	for(const c of cases) {
 		sliceMatchesR(parser, c);
 	}
-	resolvesLikeR(parser, 'value of promise forced after sibling', 'f <- function(a) { g(); a }\ng <- function() x <<- 3\nx <- 0\ny <- f(x)\ncat(y)', '5@y', { imprecise: 'resolves 0 and 3, the promise may be forced before or after g()' });
+	resolvesLikeR(parser, 'value of promise forced after sibling', 'f <- function(a) { g(); a }\ng <- function() x <<- 3\nx <- 0\ny <- f(x)\ncat(y)', '5@y');
 	resolvesLikeR(parser, 'value of default reading a local', 'f <- function(a = v) { v <- 2; a }\nv <- 1\ny <- f()\ncat(y)', '4@y');
 	resolvesLikeR(parser, 'value of exit hooks put first', 'f <- function() { on.exit(x <<- 1); on.exit(x <<- 2, add = TRUE, after = FALSE) }\nf()\ncat(x)', '3@x', { imprecise: 'resolves 1 and 2, R runs the hook put first before the other' });
-	resolvesLikeR(parser, 'value of substitute does not force', 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\ncat(x)', '4@x', { imprecise: 'resolves 1 and 5, substitute never forces the argument' });
+	resolvesLikeR(parser, 'value of substitute does not force', 'x <- 1\nf <- function(a) deparse(substitute(a))\nf(x <- 5)\ncat(x)', '4@x');
 	resolvesLikeR(parser, 'value of a function in an option', 'options(cb = function() 4)\ny <- getOption("cb")()\ncat(y)', '3@y', { imprecise: 'unknown, a function stored in an option is not resolved' });
 	resolvesLikeR(parser, 'value of super assignment to a list element', 'l <- list(a = 1)\nf <- function() l$a <<- 5\nf()\ny <- l$a\ncat(y)', '5@y', { imprecise: 'unknown, the list element changed by a super assignment is not resolved' });
 	resolvesLikeR(parser, 'value of closure over promise to a global changed later', 'mk <- function(v) function() v\nx <- 1\ng <- mk(x)\nx <- 2\ny <- g()\ncat(y)', '6@y');

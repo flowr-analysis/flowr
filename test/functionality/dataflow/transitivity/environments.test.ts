@@ -62,6 +62,6 @@ describe('Transitivity through environments and super assignments, checked again
 		resolvesLikeR(parser, 'local returns its last value', 'y <- local({ x <- 2; x + 1 })\ncat(y)', '2@y');
 		resolvesLikeR(parser, 'assign under a name a parameter holds', 'reg <- new.env()\nset <- function(name, v) assign(name, v, envir = reg)\nset("a", 1)\nset("b", 2)\ny <- get("b", envir = reg)\ncat(y)', '5@y');
 		resolvesLikeR(parser, 'get of a name a parameter holds', 'reg <- new.env()\nassign("a", 1, envir = reg)\nassign("b", 2, envir = reg)\nfetch <- function(name) get(name, envir = reg)\ny <- fetch("b")\ncat(y)', '5@y', { imprecise: 'resolves 1 and 2, the body reads what every call names' });
-		resolvesLikeR(parser, 'a super assignment the callee never runs', 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\ncat(n)', '4@n', { imprecise: 'resolves 0 and 5, R never takes the branch' });
+		resolvesLikeR(parser, 'a super assignment the callee never runs', 'n <- 0\nf <- function(go) if(go) n <<- 5\nf(FALSE)\ncat(n)', '4@n');
 	});
 }));

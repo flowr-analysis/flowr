@@ -54,11 +54,11 @@ describe('Transitivity through arguments and promises, checked against R', withT
 	describe('values', () => {
 		resolvesLikeR(parser, 'a default referring to another parameter', 'f <- function(a, b = a * 2) b\ny <- f(4)\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'a default referring to a local defined later', 'f <- function(b = y) { y <- 3; b }\nz <- f()\ncat(z)', '3@z');
-		resolvesLikeR(parser, 'a default refers to a parameter changed before it is forced', 'f <- function(a, b = a) { a <- 10; b }\ny <- f(1)\ncat(y)', '3@y', { imprecise: 'resolves 1 and 10, R forces b after a <- 10' });
+		resolvesLikeR(parser, 'a default refers to a parameter changed before it is forced', 'f <- function(a, b = a) { a <- 10; b }\ny <- f(1)\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'dots forwarded through three calls', 'f <- function(...) g(...)\ng <- function(...) h(...)\nh <- function(a, b) b\ny <- f(b = 1, a = 3)\ncat(y)', '5@y', { imprecise: 'unknown, forwarded dots are not matched to parameters' });
-		resolvesLikeR(parser, 'an argument never forced', 'x <- 1\nf <- function(a) 2\nf(x <- 5)\ncat(x)', '4@x', { imprecise: 'resolves 1 and 5, R never forces the argument' });
-		resolvesLikeR(parser, 'an argument forced', 'x <- 1\nf <- function(a) a\nf(x <- 5)\ncat(x)', '4@x', { imprecise: 'resolves 1 and 5, R always forces the argument' });
-		resolvesLikeR(parser, 'a default never forced', 'x <- 1\nf <- function(b = (x <<- 7)) 0\nf()\ncat(x)', '4@x', { imprecise: 'resolves 1 and 7, R never forces the default' });
+		resolvesLikeR(parser, 'an argument never forced', 'x <- 1\nf <- function(a) 2\nf(x <- 5)\ncat(x)', '4@x');
+		resolvesLikeR(parser, 'an argument forced', 'x <- 1\nf <- function(a) a\nf(x <- 5)\ncat(x)', '4@x');
+		resolvesLikeR(parser, 'a default never forced', 'x <- 1\nf <- function(b = (x <<- 7)) 0\nf()\ncat(x)', '4@x');
 		resolvesLikeR(parser, 'a promise forced in the caller frame', 'f <- function(a) { y <- 100; a }\ny <- 1\nz <- f(y + 1)\ncat(z)', '4@z');
 	});
 }));

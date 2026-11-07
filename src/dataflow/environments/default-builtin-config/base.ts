@@ -470,7 +470,14 @@ export const BaseDefinitions = [
 		{ props: CallProp.MayPure, sig: sig({ n: Forced.Value, expr: ArgProp.Value, simplify: ArgProp.Flag }) }
 	),
 	fn(base('Reduce'), BuiltInProcName.Apply,
-		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee }) }
+		{
+			indexOfFunction:        0,
+			nameOfFunctionArgument: 'f',
+			unquoteFunction:        true,
+			folds:                  ['x', 'init'],
+			props:                  CallProp.MayPure,
+			sig:                    sig({ f: ArgProp.Callee, x: ArgProp.Value, init: ArgProp.Value, right: ArgProp.Flag, accumulate: ArgProp.Flag, simplify: ArgProp.Flag })
+		}
 	),
 	fn(base('rapply'), BuiltInProcName.Apply,
 		{

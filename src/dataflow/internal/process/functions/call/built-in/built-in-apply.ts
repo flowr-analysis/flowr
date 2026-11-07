@@ -22,7 +22,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { applyAmbientStateOfCallee } from './built-in-ambient-state';
-import { CallProp, CallProps, SemanticCallTag } from '../../../../../environments/built-in-props';
+import { CallProp, CallProps, FnSig, SemanticCallTag } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** the function reference extracted from an argument passed to a higher-order call */
@@ -79,6 +79,13 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	 * `f(1, b = 2)` and returns what `f` returns.
 	 */
 	readonly isTheCall?:              boolean
+	/**
+	 * The formals of {@link BuiltInApplyConfiguration#sig} the function is folded over (`Reduce`): each of its
+	 * parameters gets what the call hands back so far, which is one of these or what the function returned.
+	 */
+	readonly folds?:                  readonly string[]
+	/** the formals of the function the call stands for */
+	readonly sig?:                    FnSig
 }
 
 /**
@@ -91,7 +98,7 @@ export function processApply<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: BuiltInApplyConfiguration
 ): DataflowInformation {
-	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects, isTheCall } = config;
+	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects, isTheCall, folds, sig } = config;
 	/* the length is one-based and the argument mapping zero-based, so the function sits at `indexOfFunction` */
 	const resFn = processKnownFunctionCall({
 		name, args, rootId, data, sig: FunctionSemantics.call.signature.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
@@ -162,7 +169,11 @@ export function processApply<OtherInfo>(
 	}).filter((_, i) => i !== index);
 	/* `do.call(f, list(a, b))` passes `a` and `b` to `f` as separate arguments */
 	const spread = isTheCall && handedOn.length === 1 ? information.graph.getVertex(FunctionArgument.getReference(handedOn[0]) as NodeId) : undefined;
-	const allOtherArguments = DfgVertex.isFunctionCall(spread) && DfgVertex.hasOrigin(spread, BuiltInProcName.List) ? spread.args : handedOn;
+	const folded = folds === undefined || sig === undefined ? undefined : foldedArguments(args, processedArguments, sig, folds);
+	/* a fold calls `f(sofar, element)` (or the other way round), both being what the call hands back at that point */
+	const sofar: FunctionArgument = { name: undefined, nodeId: rootId, cds: data.cds, type: ReferenceType.Argument };
+	const allOtherArguments = folded !== undefined ? [sofar, sofar]
+		: DfgVertex.isFunctionCall(spread) && DfgVertex.hasOrigin(spread, BuiltInProcName.List) ? spread.args : handedOn;
 
 	if(anonymous) {
 		const rootFnId = functionId;
@@ -236,8 +247,11 @@ export function processApply<OtherInfo>(
 		}
 	}
 
-	if(isTheCall) {
+	if(isTheCall || folded !== undefined) {
 		information.graph.addEdge(rootId, functionId, EdgeType.Returns);
+	}
+	for(const id of folded ?? []) {
+		information.graph.addEdge(rootId, id, EdgeType.Returns);
 	}
 	if(resolveInEnvironment !== 'global') {
 		return information;
@@ -248,6 +262,12 @@ export function processApply<OtherInfo>(
 		in:                information.in.filter(ref => ref.nodeId !== functionId),
 		unknownReferences: information.unknownReferences.filter(ref => ref.nodeId !== functionId)
 	};
+}
+
+/** The entry points of the arguments that fill the `formals` of `sig`. */
+function foldedArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo>[], processed: readonly (DataflowInformation | undefined)[], sig: FnSig, formals: readonly string[]): NodeId[] {
+	const slots = FnSig.slots(FnSig.layout(sig), args.map(a => RArgument.isEmpty(a) || a.name === undefined ? undefined : Identifier.getName(a.name.content)));
+	return slots.flatMap((slot, i) => formals.includes(sig[slot]?.[0]) && processed[i] !== undefined ? [processed[i].entryPoint] : []);
 }
 
 /** The position in `args` of the `n`-th unnamed argument (counting empty ones), `n` itself if there are fewer. */

@@ -19,6 +19,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { ControlFlow } from '../../../../control-flow';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { DotsParameterName } from '../../../../../../util/arg-matching';
 
 
 /** e.g. UseMethod(generic, object) */
@@ -30,6 +31,8 @@ interface S3DispatchConfig {
 	},
 	/** For NextMethod/if `generic` is not given, try to infer from the closure? */
 	inferFromClosure?: boolean
+	/** the call evaluates the formals of the function it is in to pick a method by their classes (`standardGeneric`) */
+	readsFormals?:     boolean
 }
 
 /** Process an S3 dispatch call like `UseMethod`. */
@@ -40,6 +43,10 @@ export function processS3Dispatch<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S3DispatchConfig
 ): DataflowInformation {
+	if(config.readsFormals) {
+		const info = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		return { ...info, in: [...info.in, ...formalReads(rootId, data).filter(r => r.name !== DotsParameterName)] };
+	}
 	if(config.args === undefined) {
 		const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S3DispatchNext }).information;
 		return args.length > 0 ? info : { ...info, in: [...info.in, ...formalReads(rootId, data)] };

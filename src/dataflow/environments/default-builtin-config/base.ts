@@ -950,6 +950,15 @@ export const BaseDefinitions = [
 		},
 		Primitive
 	),
+	/* evaluates the arguments of the generic it is in to dispatch on their classes */
+	fn(base('standardGeneric'), BuiltInProcName.S3Dispatch,
+		{
+			readsFormals: true,
+			props:        CallProp.Generic,
+			sig:          sig({ f: ArgProp.NoDefault, fdef: 0 })
+		},
+		Primitive
+	),
 	fn(base('NextMethod'), BuiltInProcName.S3Dispatch,
 		{
 			args:             { generic: 'generic', object: 'object' },

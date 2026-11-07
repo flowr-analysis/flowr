@@ -125,6 +125,11 @@ export interface AmbientConfig {
 
 export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo, AmbientConfig {
 	readonly cfg?:                   ExitPointType,
+	/**
+	 * The condition classes a call signals when every argument it is handed is a constant, like `simpleError`, `error`, and
+	 * `condition` for `stop("x")`. Handed anything else, it may signal a condition object of any class.
+	 */
+	readonly signals?:               readonly string[],
 	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
 	readonly alternativeArgsFrom?:   number,
 	readonly readAllArguments?:      boolean,

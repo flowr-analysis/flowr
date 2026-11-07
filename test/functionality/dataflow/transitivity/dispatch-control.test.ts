@@ -100,7 +100,7 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 			{ name: 'an error handler reading a global', code: 'v <- 7\nr <- tryCatch(stop("x"), error = function(e) v)\nprint(r)' },
 			{ name: 'a handler and finally with super assignments', code: 'n <- 0\ntryCatch(stop("x"), error = function(e) n <<- 1, finally = n <<- n + 10)\nprint(n)' },
 			{ name: 'a warning raised two calls deep', code: 'k <- 5\nf <- function() warning("w")\ng <- function() f()\nr <- tryCatch(g(), warning = function(w) k)\nprint(r)' },
-			{ name: 'a handler that never runs', code: 'n <- 0\nr <- tryCatch(1, error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'a handler that never runs', code: 'n <- 0\nr <- tryCatch(1, error = function(e) n <<- 5)\nprint(n)', dropped: 'n <<- 5' },
 			{ name: 'withCallingHandlers with a restart', code: 'n <- 0\nf <- function() { warning("w"); 2 }\nr <- withCallingHandlers(f(), warning = function(w) { n <<- 1; invokeRestart("muffleWarning") })\nprint(n + r)' }
 		];
 		for(const c of cases) {
@@ -118,14 +118,35 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 			{ name: 'a calling handler through a parameter', code: `n <- 0\n${warns}\nrun <- function(h) withCallingHandlers(f(), warning = h)\nr <- run(${muffling})\nprint(n + r)` },
 			{ name: 'an inline calling handler in a function body', code: `n <- 0\n${warns}\nrun <- function() withCallingHandlers(f(), warning = ${muffling})\nr <- run()\nprint(n + r)` },
 			{ name: 'a handler by name for a warning two calls deep in a function body', code: 'n <- 0\nh <- function(w) n <<- 1\nf <- function() warning("w")\ng <- function() f()\nrun <- function() tryCatch(g(), warning = h)\nrun()\nprint(n)' },
-			{ name: 'a calling handler by name that never runs', code: 'n <- 0\nh <- function(w) n <<- 5\nr <- withCallingHandlers(1, warning = h)\nprint(n)' },
+			{ name: 'a calling handler by name that never runs', code: 'n <- 0\nh <- function(w) n <<- 5\nr <- withCallingHandlers(1, warning = h)\nprint(n)', dropped: 'n <<- 5' },
 			{ name: 'an exiting handler by name', code: `n <- 0\nh <- function(w) n <<- 1\n${warns}\nr <- tryCatch(f(), warning = h)\nprint(n)` },
 			{ name: 'an exiting handler from a list', code: `n <- 0\nhs <- list(w = function(w) n <<- 1)\n${warns}\nr <- tryCatch(f(), warning = hs[["w"]])\nprint(n)` },
 			{ name: 'an exiting handler from a factory', code: `n <- 0\nmk <- function() function(w) n <<- 1\n${warns}\nr <- tryCatch(f(), warning = mk())\nprint(n)` },
 			{ name: 'an exiting handler through a parameter', code: `n <- 0\n${warns}\nrun <- function(h) tryCatch(f(), warning = h)\nr <- run(function(w) n <<- 1)\nprint(n)` },
-			{ name: 'an exiting handler by name that never runs', code: 'n <- 0\nh <- function(w) n <<- 5\nr <- tryCatch(1, warning = h)\nprint(n)' },
-			{ name: 'an error handler by name that never runs', code: 'n <- 0\nh <- function(e) n <<- 5\nr <- tryCatch(1, error = h)\nprint(n)' },
+			{ name: 'an exiting handler by name that never runs', code: 'n <- 0\nh <- function(w) n <<- 5\nr <- tryCatch(1, warning = h)\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'an error handler by name that never runs', code: 'n <- 0\nh <- function(e) n <<- 5\nr <- tryCatch(1, error = h)\nprint(n)', dropped: 'n <<- 5' },
 			{ name: 'an error handler from a factory', code: 'n <- 0\nmk <- function() function(e) n <<- 1\nr <- tryCatch(stop("x"), error = mk())\nprint(n)' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
+	describe('handlers by the class of the condition', () => testing(['exceptions-and-errors'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'a warning handler for a message', code: 'n <- 0\nr <- tryCatch(message("m"), warning = function(w) n <<- 5, message = function(m) 1)\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'a warning handler for an error', code: 'n <- 0\nr <- tryCatch(stop("e"), warning = function(w) n <<- 5, error = function(e) 2)\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'a warning handler for a message in a function', code: 'n <- 0\nf <- function() message("hi")\nr <- withCallingHandlers(f(), warning = function(w) n <<- 5, message = function(m) invokeRestart("muffleMessage"))\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'an error handler for a warning', code: 'n <- 0\nr <- tryCatch(warning("w"), error = function(e) n <<- 5, warning = function(w) 1)\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'an error handler for a warning made an error', code: 'n <- 0\noptions(warn = 2)\nr <- tryCatch(warning("w"), error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'an error handler for a variable', code: 'n <- 0\nx <- 3\nr <- tryCatch(x, error = function(e) n <<- 5)\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'an error handler for a promise', code: 'n <- 0\nf <- function(a) tryCatch(a, error = function(e) n <<- 5)\nf(stop("x"))\nprint(n)' },
+			{ name: 'an error handler for a missing variable', code: 'n <- 0\nr <- tryCatch(undefined_thing, error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'an error handler for a branch on NA', code: 'n <- 0\nv <- NA\nr <- tryCatch(if(v) 1, error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'an error handler for an unused argument', code: 'n <- 0\ng <- function() 1\nr <- tryCatch(g(2), error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'an error handler for a closure that cannot fail', code: 'n <- 0\ng <- function() 1\nr <- tryCatch(g(), error = function(e) n <<- 5)\nprint(n)', dropped: 'n <<- 5' },
+			{ name: 'an error handler for a missing variable in a called closure', code: 'n <- 0\nf <- function() undefined_thing\nr <- tryCatch(f(), error = function(e) n <<- 5)\nprint(n)' },
+			{ name: 'a condition handler for a signaled condition', code: 'n <- 0\nr <- tryCatch(signalCondition(simpleCondition("m")), condition = function(c) n <<- 5)\nprint(n)' }
 		];
 		for(const c of cases) {
 			sliceMatchesR(parser, c);
@@ -141,8 +162,8 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 			{ name: 'a global calling handler in a list', code: `n <- 0\nglobalCallingHandlers(list(warning = ${muffling}))\n${warns}\nr <- f()\nprint(n + r)` },
 			{ name: 'a global calling handler registered in a function', code: `n <- 0\nreg <- function() globalCallingHandlers(warning = ${muffling})\nreg()\n${warns}\nr <- f()\nprint(n + r)` },
 			{ name: 'a global message handler', code: 'n <- 0\nglobalCallingHandlers(message = function(m) { n <<- 1; invokeRestart("muffleMessage") })\nmessage("hi")\nprint(n)' },
-			{ name: 'a global calling handler that never runs', code: 'n <- 0\nglobalCallingHandlers(warning = function(w) n <<- 5)\nprint(n)' },
-			{ name: 'a global calling handler registered after the warning', code: `n <- 0\n${warns}\nr <- suppressWarnings(f())\nglobalCallingHandlers(warning = function(w) n <<- 5)\nprint(n)` }
+			{ name: 'a global calling handler that never runs', code: 'n <- 0\nglobalCallingHandlers(warning = function(w) n <<- 5)\nprint(n)', dropped: 'n <<- 5', imprecise: 'keeps the handler, print is a built-in flowR cannot tell never warns, so it may run the handler' },
+			{ name: 'a global calling handler registered after the warning', code: `n <- 0\n${warns}\nr <- suppressWarnings(f())\nglobalCallingHandlers(warning = function(w) n <<- 5)\nprint(n)`, dropped: 'n <<- 5', imprecise: 'keeps the handler, print is a built-in flowR cannot tell never warns, so it may run the handler' }
 		];
 		for(const c of cases) {
 			sliceMatchesR(parser, c);

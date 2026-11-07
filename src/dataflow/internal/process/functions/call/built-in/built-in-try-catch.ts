@@ -21,7 +21,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { errorsOfWarnings, signalSites } from './built-in-ambient-state';
+import { errorsOfWarnings, maySignal, signalSites } from './built-in-ambient-state';
 import { builtInLookup } from '../../../../../environments/query-fn-props';
 import { ArgProp, CallProp, CallProps, type FnSig } from '../../../../../environments/built-in-props';
 import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -80,6 +80,9 @@ export function processTryCatch<OtherInfo>(
 		(blockInfo.exitPoints as ExitPoint[]) = blockInfo.exitPoints.concat(raised);
 		raising.push(...order(blockAst, []));
 	}
+	/* a handler runs only if something the block runs may signal what it handles, one for the session may run anywhere after */
+	const runs = (condition: string) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
+	const errorRuns = error !== undefined && errorArg.size > 0 && runs(error);
 	/* if the block raises an error in every case, the error handler is not constrained by it */
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
 	const errorExitPoints: ExitPoint[] = [];
@@ -88,7 +91,7 @@ export function processTryCatch<OtherInfo>(
 			return [];
 		} else if(finallyArg.has(arg.entryPoint)) {
 			return exitPointsOfHandler(arg.entryPoint, info.graph) ?? arg.exitPoints;
-		} else if(errorArg.has(arg.entryPoint)) {
+		} else if(errorArg.has(arg.entryPoint) && errorRuns) {
 			/* a `return` within the handler only leaves the handler, its value is the one of the construct */
 			const handlerExits = exitPointsOfHandler(arg.entryPoint, info.graph) ?? [];
 			errorExitPoints.push(...handlerExits.map(e => e.type === ExitPointType.Return ? { ...e, type: ExitPointType.Default } : e));
@@ -109,14 +112,20 @@ export function processTryCatch<OtherInfo>(
 	/* a handler runs only once a condition is signaled, an error handler surely if the block raises in every case */
 	const whenSignaled: ControlDependency[] = [...data.cds ?? [], { id: rootId, when: true }];
 	const blockSurelyRaises = blockErrorExitPoints.length > 0 && happensInEveryBranch(blockErrorExitPoints.some(isUndefined) ? undefined : blockErrorExitPoints as ControlDependency[]);
+	/* the construct evaluates every handler it is handed, but calls only those that may run */
 	for(const e of errorArg) {
-		info.graph.addEdge(rootId, e, EdgeType.Reads | EdgeType.Calls);
-		promoteCallToFunction(rootId, e, info, data, blockSurelyRaises ? data.cds : whenSignaled);
+		info.graph.addEdge(rootId, e, errorRuns ? EdgeType.Reads | EdgeType.Calls : EdgeType.Reads);
+		if(errorRuns) {
+			promoteCallToFunction(rootId, e, info, data, blockSurelyRaises ? data.cds : whenSignaled);
+		}
 	}
 	/* what such a handler changes outside its frame is linked to the sites signaling it once linking knows what it calls, see linkHandlersToSignalSites */
-	for(const { nodeId: arg } of otherHandlers) {
-		info.graph.addEdge(rootId, arg, EdgeType.Reads | EdgeType.Calls);
-		promoteCallToFunction(rootId, arg, info, data, whenSignaled);
+	for(const { nodeId: arg, name: condition } of otherHandlers) {
+		const called = runs(Identifier.getName(condition));
+		info.graph.addEdge(rootId, arg, called ? EdgeType.Reads | EdgeType.Calls : EdgeType.Reads);
+		if(called) {
+			promoteCallToFunction(rootId, arg, info, data, whenSignaled);
+		}
 	}
 	for(const f of finallyArg) {
 		info.graph.addEdge(rootId, f, EdgeType.Calls);

@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ControlDependency, DataflowInformation, type ExitPoint, ExitPointType } from '../../../../../info';
-import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../../../graph/vertex';
@@ -37,6 +37,10 @@ import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collection
 import { AmbientStateName, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 import { type AmbientKeys, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
 import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/operators';
+import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import type { DefaultBuiltInProcessorConfiguration } from '../../../../../environments/built-in';
+import { RWhileLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 
 const ListConstructors: ReadonlySet<string> = new Set(['list', 'c']);
 
@@ -1165,11 +1169,16 @@ function belowTwo(value: Value): boolean {
 	return value.type === 'logical' || (RValue.numberOf(value) ?? 2) < 2;
 }
 
+/** The writes that may set `warn` to 2 or more before or within what turns `before` into `after`. */
+function warnsAsErrorsSources(after: REnvironmentInformation, before: REnvironmentInformation): Set<NodeId> {
+	const lookup = (name: string) => [...Resolve.byName(name, before) ?? [], ...Resolve.byName(name, after) ?? []];
+	const marked = new Set(lookup(AmbientStateName.warnsAsErrors).map(d => d.nodeId));
+	return new Set([...lookup(AmbientStateName.option('warn')).filter(d => marked.has(d.nodeId)), ...lookup(AmbientStateName.unknownOption)].map(d => d.nodeId));
+}
+
 /** With `warn >= 2` R turns warnings into errors, so whatever may warn in `block` is a maybe error exit reading the options that may set `warn`. */
 export function errorsOfWarnings<OtherInfo>(block: RNode<OtherInfo & ParentInformation>, after: REnvironmentInformation, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): ExitPoint[] {
-	const lookup = (name: string) => [...Resolve.byName(name, data.environment) ?? [], ...Resolve.byName(name, after) ?? []];
-	const marked = new Set(lookup(AmbientStateName.warnsAsErrors).map(d => d.nodeId));
-	const sources = new Set([...lookup(AmbientStateName.option('warn')).filter(d => marked.has(d.nodeId)), ...lookup(AmbientStateName.unknownOption)].map(d => d.nodeId));
+	const sources = warnsAsErrorsSources(after, data.environment);
 	if(sources.size === 0) {
 		return [];
 	}
@@ -1191,22 +1200,113 @@ export function signalSites<OtherInfo>(block: RNode<OtherInfo & ParentInformatio
 	return warningSites(block, graph, data, new Map(), { muffled: name === 'warning', link });
 }
 
-/** How {@link warningSites} collects: `muffled` leaves out what muffles warnings, `link` has a call read what may warn in the body it runs instead of listing that. */
+/** the classes of an error R raises on its own, as for arguments a closure does not take */
+const ErrorClasses: readonly string[] = ['simpleError', 'error', 'condition'];
+
+/**
+ * Whether running `block` may signal a condition a handler for the class `condition` catches, so whether the handler may run.
+ * Everything that may signal anything counts: an operator, an access, a call of a built-in, a call flowR cannot resolve,
+ * a variable that may force a promise or may not exist, a branch or loop on a value that is not constant, and what the
+ * closures called run. Only a built-in stating the {@link DefaultBuiltInProcessorConfiguration#signals|classes it signals}
+ * and handed nothing but constants is matched by its classes, a warning counting as an error if `warn` may be 2 or more
+ * (`after` is the environment once `block` ran). An interrupt may arrive anywhere.
+ * @example
+ * ```ts
+ * // tryCatch(1, error = h) never runs h, tryCatch(message("m"), warning = h) neither, tryCatch(f(), error = h) may
+ * if(maySignal(blockAst, 'error', info.graph, data, info.environment)) {
+ *     promoteCallToFunction(rootId, handler, info, data, cds);
+ * }
+ * ```
+ */
+export function maySignal<OtherInfo>(block: RNode<OtherInfo & ParentInformation>, condition: string, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, after: REnvironmentInformation): boolean {
+	if(condition === 'interrupt') {
+		return true;
+	}
+	const signal = { condition, warningsAreErrors: warnsAsErrorsSources(after, data.environment).size > 0 };
+	return warningSites(block, graph, data, new Map(), { muffled: condition === 'warning', link: false, signal }).length > 0;
+}
+
+/**
+ * How {@link warningSites} collects: `muffled` leaves out what muffles warnings, `link` has a call read what may warn in the body it runs instead of listing that.
+ * With `signal`, it collects what may signal a condition of that class instead, see {@link maySignal}.
+ */
 interface WarningSiteMode {
 	readonly muffled: boolean
 	readonly link:    boolean
+	readonly signal?: {
+		readonly condition:         string
+		readonly warningsAreErrors: boolean
+	}
+}
+
+/** Whether a handler for `signal` catches a condition of the `classes`. */
+function catches(signal: NonNullable<WarningSiteMode['signal']>, classes: readonly string[]): boolean {
+	return classes.includes(signal.condition) || (signal.warningsAreErrors && classes.includes('warning') && ErrorClasses.includes(signal.condition));
+}
+
+/** The classes the call `call` of the built-in `targets` signals, if it states them and is handed nothing but constants. */
+function signaledClasses(call: RFunctionCall<ParentInformation>, targets: readonly IdentifierDefinition[]): readonly string[] | undefined {
+	const [target] = targets;
+	const signals = targets.length === 1 && target.type === ReferenceType.BuiltInFunction ? (target.config as DefaultBuiltInProcessorConfiguration | undefined)?.signals : undefined;
+	return signals !== undefined && call.arguments.every(a => a !== EmptyArgument && RConstant.is(a.value)) ? signals : undefined;
+}
+
+/** Whether reading the variable `symbol` may signal: it may force a promise, be an active binding, or not exist. */
+function readMaySignal(symbol: RSymbol<ParentInformation>, graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap): boolean {
+	/* the body of a closure the block calls is not part of the graph of the block */
+	const vertex = graph.getVertex(symbol.info.id);
+	if(vertex === undefined ? NotRead.has(symbol.info.role) || (symbol.info.role === RoleInParent.BinaryOperationLhs && assigns(RNode.directParent(symbol, idMap))) : !DfgVertex.isUse(vertex)) {
+		return false;
+	}
+	const definitions = Resolve.byName(symbol.content, environment) ?? [];
+	return definitions.length === 0 || definitions.some(d => {
+		if(isReferenceType(d.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+			return false;
+		}
+		const at = idMap.get(d.nodeId);
+		const by = at && RNode.directParent(at, idMap);
+		/* an assignment operator evaluates its value right away */
+		return !assigns(by);
+	});
+}
+
+/** the places a symbol names something rather than reads it */
+const NotRead: ReadonlySet<RoleInParent> = new Set([RoleInParent.FunctionCallName, RoleInParent.ParameterName, RoleInParent.ArgumentName, RoleInParent.ForVariable]);
+
+function assigns(node: RNode<ParentInformation> | undefined): boolean {
+	return RBinaryOp.is(node) && RBinaryOp.getOperatorInfo(node)?.usedAs === OperatorUsedAs.Assignment;
+}
+
+/** Whether a call of the closure `definition` errs for its arguments alone, as one it has no parameter for. */
+function rejectsArguments(definition: RFunctionDefinition<ParentInformation>, call: RFunctionCall<ParentInformation>): boolean {
+	const names = definition.parameters.map(p => Identifier.getName(p.name.content));
+	if(names.includes('...')) {
+		return false;
+	}
+	const given = call.arguments.filter(a => a !== EmptyArgument);
+	return given.length > names.length || given.some(a => a.name !== undefined && !names.some(n => n.startsWith(Identifier.getName(a.name?.content ?? ''))));
 }
 
 /** what may warn when `root` runs, see {@link WarningSiteMode}, `bodies` holds what may in the bodies of the closures seen so far */
 function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>, mode: WarningSiteMode): NodeId[] {
 	const sites: NodeId[] = [];
+	const { signal } = mode;
 	RNode.visitAst(root, node => {
 		if(RFunctionDefinition.is(node)) {
 			return true;
 		} else if(RBinaryOp.is(node) ? RBinaryOp.getOperatorInfo(node)?.usedAs !== OperatorUsedAs.Assignment : RUnaryOp.is(node) || RAccess.is(node)) {
 			sites.push(node.info.id);
+		} else if(signal !== undefined && (RSymbol.is(node) ? readMaySignal(node, graph, data.environment, data.completeAst.idMap) : testsValue(node))) {
+			sites.push(node.info.id);
 		} else if(RFunctionCall.is(node)) {
 			const targets = node.named ? Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [] : [];
+			const classes = signal === undefined ? undefined : signaledClasses(node, targets);
+			if(signal !== undefined && classes !== undefined) {
+				if(catches(signal, classes)) {
+					sites.push(node.info.id);
+				}
+				return false;
+			}
 			if(mode.muffled && RFunctionCall.isNamed(node, 'suppressWarnings') && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
 				return true;
 			}
@@ -1221,6 +1321,9 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 			if(callees.length === 0 || !callees.every(RFunctionDefinition.is)) {
 				sites.push(node.info.id);
 				return false;
+			}
+			if(signal !== undefined && ErrorClasses.includes(signal.condition) && callees.some(c => rejectsArguments(c, node))) {
+				sites.push(node.info.id);
 			}
 			/* the body runs in the function's own scope, we resolve what it calls where the construct is, which is where most functions live */
 			const within = callees.flatMap(c => bodySites(c, graph, data, bodies, mode));
@@ -1238,6 +1341,12 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 		return false;
 	});
 	return sites;
+}
+
+/** Whether `node` branches or loops on a value that is not a constant, which R may reject (`if(NA)`). */
+function testsValue(node: RNode<ParentInformation>): boolean {
+	const tested = RIfThenElse.is(node) || RWhileLoop.is(node) ? node.condition : RForLoop.is(node) ? node.vector : undefined;
+	return tested !== undefined && !RConstant.is(tested);
 }
 
 /** The handlers of a `withCallingHandlers` whose first handler muffles every `warning` of its `expr`, `undefined` otherwise. */

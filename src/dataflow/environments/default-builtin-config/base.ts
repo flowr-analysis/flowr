@@ -13,6 +13,19 @@ import { AmbientStateName, KeyedState } from '../ambient-state-name';
 import { SigXY, SigX, SigXDots, SigShape, SigXTable, SigDots, SigUnique, SigDotsDeparsed, sig, Forced } from './signatures';
 import { StackEnvKind, StackEnvBuiltins, SetsAnyEnvVar, CopiesFiles, WithSig, ReadPrintingOptions, PrintDispatched, SetsEntryNamedBy, SetsEntry, LibrarySearchPath, DetachSearchPath, AttachSearchPath } from './shared';
 import type { AnyBuiltInDefinition } from '../built-in-config';
+import type { DefaultBuiltInProcessorConfiguration } from '../built-in';
+
+/** what signals a message or a warning, handing on what it is given */
+const Signals: DefaultBuiltInProcessorConfiguration = {
+	keepArgumentOut:       true,
+	hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ },
+	props:                 CallProp.Invisible,
+	tags:                  [SemanticCallTag.Prints],
+	sig:                   sig({ '...': ArgProp.Alias | ArgProp.Forced })
+};
+
+/** what signals an error */
+const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }) };
 
 /** The built-in definitions of the base package. */
 export const BaseDefinitions = [
@@ -498,15 +511,9 @@ export const BaseDefinitions = [
 			sig:                   sig({ x: ArgProp.Alias | ArgProp.Forced, '...': Forced.Value })
 		}
 	),
-	fn([...base('message', 'warning'), ...pkg(PkgName.Rlang, 'warn'), ...pkg(PkgName.Msgr, 'info')], BuiltInProcName.Default,
-		{
-			keepArgumentOut:       true,
-			hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ },
-			props:                 CallProp.Invisible,
-			tags:                  [SemanticCallTag.Prints],
-			sig:                   sig({ '...': ArgProp.Alias | ArgProp.Forced })
-		}
-	),
+	fn(base('message'), BuiltInProcName.Default, { ...Signals, signals: ['simpleMessage', 'message', 'condition'] }),
+	fn(base('warning'), BuiltInProcName.Default, { ...Signals, signals: ['simpleWarning', 'warning', 'condition'] }),
+	fn([...pkg(PkgName.Rlang, 'warn'), ...pkg(PkgName.Msgr, 'info')], BuiltInProcName.Default, Signals),
 	fn(base('invisible'), BuiltInProcName.Default,
 		{ keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: sig({ x: ArgProp.Alias | ArgProp.Forced }) }, Primitive
 	),
@@ -644,14 +651,13 @@ export const BaseDefinitions = [
 	fn(base('switch'), BuiltInProcName.Default,
 		{ alternativeArgsFrom: 1, useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure, sig: sig({ EXPR: Forced.Value }) }
 	),
+	fn(base('stop'), BuiltInProcName.Default, { ...Throws, signals: ['simpleError', 'error', 'condition'] }),
+	/* their classes depend on more than the message (`class = `, a glue template evaluated in the caller) */
 	fn([
-		...base('stop'),
 		...pkg(PkgName.Rlang, 'abort'), ...pkg(PkgName.Cli, 'cli_abort'),
 		...pkg(PkgName.RmethodsS3, 'throw'), ...pkg(PkgName.Roo, 'throw'), /* R.oo re-exports R.methodsS3::throw */
 		...pkg(PkgName.Purrr, 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length')
-	], BuiltInProcName.Default,
-	{ useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }) }
-	),
+	], BuiltInProcName.Default, Throws),
 	/* the block is evaluated whatever happens, the handlers only when something does, and an error keeps the value from coming back */
 	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, sig: sig({ expr: Forced.Value }) }, Primitive),
 	fn([...base('tryCatch'), ...pkg(PkgName.TryCatchLog, 'tryCatchLog')], BuiltInProcName.Try,

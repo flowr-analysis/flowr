@@ -30,13 +30,15 @@ Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip t
 By default, \`npm run test\` only runs the tests affected by your uncommitted changes, using [\`vitest --changed\`](https://vitest.dev/guide/cli#changed).
 A test is affected if it imports a changed file, directly or through other files.
 This already works on the very first run, without a complete run beforehand, and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (\`-t\`), it runs exactly those instead.
 To choose a different set of tests, use one of these scripts (\`test:related\` uses [\`vitest related\`](https://vitest.dev/guide/cli#vitest-related)):
 ${codeBlock('shell', `npm run test:all                     # every test, like CI
 npm run test:branch                  # the tests affected by all changes against main
 npm run test:related -- src/x.ts     # the tests depending on the given files`)}
 CI, \`npm run test:full\`, and \`npm run checkup\` always run every test, so nothing is skipped before a release.
 Keep in mind that most tests share the test helpers and the setup, so the selection is often broader than you might expect.
-Changes to data files, generated files, or the test setup are not visible in the imports, so they may select too few tests. Run \`npm run test:all\` whenever you are unsure.
+Changes to the test setup, the files under \`test/testfiles\`, the vitest configuration, or \`package.json\` run every test.
+Other data files and generated files are not visible in the imports, so they may select too few tests. Run \`npm run test:all\` whenever you are unsure.
 For more ways to run only some tests, see the ${ctx.linkPage('wiki/Linting and Testing', 'testing wiki section', 'running-only-some-tests')}.
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `

@@ -88,6 +88,8 @@ ${codeBlock('shell', 'npm run test')}
 
 By default, this only runs the tests affected by your uncommitted changes, that is, the tests that import a changed file directly or through other files (see [\`vitest --changed\`](https://vitest.dev/guide/cli#changed)).
 This already works on the very first run and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (\`-t\`), \`npm run test\` runs exactly those instead, changed or not.
+Changes to the test setup, the test files under \`test/testfiles\`, the vitest configuration, or \`package.json\` run every test.
 Use \`npm run test:all\` to run every test, \`npm run test:branch\` for the tests affected by all changes against \`main\`, and \`npm run test:related -- <files>\` for the tests depending on the given source files (see [\`vitest related\`](https://vitest.dev/guide/cli#vitest-related)).
 CI, \`npm run test:full\`, and \`npm run checkup\` always run every test.
 The section on [running only some tests](#running-only-some-tests) explains when the selection may be too broad or too narrow.
@@ -195,7 +197,8 @@ By default, \`npm run test\` already runs only the tests affected by your uncomm
 For other selections, use \`npm run test:branch\` for all changes against \`main\`, \`npm run test:related -- <files>\` for the tests depending on the given files, or \`npm run test:all\` for every test.
 These scripts build on vitest's [\`--changed\`](https://vitest.dev/guide/cli#changed) and [\`related\`](https://vitest.dev/guide/cli#vitest-related) commands, which follow the imports of the test files.
 Most tests import the shared test helpers and the setup, so the selection is often broader than you might expect.
-Changes to data files, generated files, or the test setup itself are not visible in the imports and may select too few tests. When in doubt, run \`npm run test:all\`.
+Changes to the test setup, the test files under \`test/testfiles\`, the vitest configuration, or \`package.json\` run every test.
+Other data files and generated files are not visible in the imports and may select too few tests. When in doubt, run \`npm run test:all\`.
 
 <a id='system-tests'></a>
 ### 💽 System Tests

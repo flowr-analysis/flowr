@@ -55,7 +55,14 @@ describe('Transitivity through calls and closures, checked against R', withTreeS
 			{ name: 'a closure in an inner loop and a global set by the outer one', code: 'x <- 1\nf <- function() x\nfor(j in 1:2) {\n  for(i in 1:2) {\n    y <- f()\n  }\n  x <- 4\n}\nprint(y)' },
 			{ name: 'a closure called by a closure in a loop', code: 'x <- 1\ng <- function() x\nf <- function() g()\nfor(i in 1:2) {\n  y <- f()\n  x <- 9\n}\nprint(y)' },
 			{ name: 'a closure in a while condition', code: 'x <- 1\nf <- function() x\ny <- 0\nwhile(f() < 3) {\n  y <- y + 1\n  x <- x + 1\n}\nprint(y)' },
-			{ name: 'a loop in a function with a closure of its frame', code: 'h <- function() {\n  x <- 1\n  f <- function() x\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\nprint(h())' }
+			{ name: 'a loop in a function with a closure of its frame', code: 'h <- function() {\n  x <- 1\n  f <- function() x\n  for(i in 1:2) {\n    y <- f()\n    x <- 6\n  }\n  y\n}\nprint(h())' },
+			{ name: 'a global redefined before and after the call', code: 'x <- 1\nf <- function() x\nfor(i in 1:2) {\n  x <- 3\n  y <- f()\n  x <- 9\n}\nprint(y)', dropped: 'x <- 9' },
+			{ name: 'a global redefined around a closure calling a closure', code: 'x <- 1\ng <- function() x\nf <- function() g()\nfor(i in 1:2) {\n  x <- 3\n  y <- f()\n  x <- 9\n}\nprint(y)', dropped: 'x <- 9' },
+			{ name: 'a global redefined only in the first run before the call', code: 'f <- function() x\nfor(i in 1:2) {\n  if(i == 1) x <- 1\n  y <- f()\n  x <- 2\n}\nprint(y)' },
+			{ name: 'a global redefined before a call in a branch', code: 'x <- 0\nf <- function() x\nfor(i in 1:2) {\n  x <- 3\n  if(i == 2) y <- f()\n  x <- 9\n}\nprint(y)', dropped: 'x <- 9' },
+			{ name: 'a global redefined by the outer loop after the inner one', code: 'x <- 0\nf <- function() x\nfor(j in 1:2) {\n  for(i in 1:2) {\n    y <- f()\n    x <- 9\n  }\n  x <- 5\n}\nprint(y)' },
+			{ name: 'a global redefined by the outer loop before the inner one', code: 'x <- 0\nf <- function() x\nfor(j in 1:2) {\n  x <- 5\n  for(i in 1:2) {\n    y <- f()\n    x <- 9\n  }\n}\nprint(y)', dropped: 'x <- 0' },
+			{ name: 'a global a called function redefines first', code: 'f <- function() x\ng <- function() { x <<- 4; f() }\nx <- 0\nfor(i in 1:2) {\n  y <- g()\n  x <- 9\n}\nprint(y)' }
 		];
 		for(const c of cases) {
 			sliceMatchesR(parser, c);

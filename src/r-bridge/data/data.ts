@@ -653,7 +653,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'for-loop',
 							code:        ['for'],
 							supported:   'fully',
-							description: '_The loop `for (i in 1:3) print(i)`, which binds its variable in the surrounding scope._ The body is analyzed once for any number of iterations, so a name it binds also reaches its own next read and the reads of the functions the body calls, and `i` stays bound after the loop.',
+							description: '_The loop `for (i in 1:3) print(i)`, which binds its variable in the surrounding scope._ The body is analyzed once for any number of iterations, so a name it binds also reaches its own next read and the reads of the functions the body calls, unless the body surely binds it anew before the call, and `i` stays bound after the loop. Value resolution tells the runs over a known sequence apart.',
 							example:     codeBlock('r', 'for(i in 1:3) print(i)\ni'),
 							url:         [RLang('Looping')]
 						},

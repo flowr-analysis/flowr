@@ -8,15 +8,15 @@ import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
+import { type BrandedIdentifier, type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowFunctionFlowInformation, DataflowGraph } from '../graph/graph';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType } from '../graph/vertex';
-import { REnvironment, type REnvironmentInformation } from '../environments/environment';
-import type { ControlDependency, ExitPoint } from '../info';
-import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
+import { type Environment, REnvironment, type REnvironmentInformation } from '../environments/environment';
+import type { ExitPoint } from '../info';
+import { ControlDependency, negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -826,7 +826,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 				}
 			}
 		}
-		linkLoopCarriedCalls(graph, environment);
+		linkLoopCarriedCalls(graph, environment, outgoingIds, new Set(outgoing.map(o => Identifier.getName(o.name))));
 		return;
 	}
 	/* fallback: keep only the last definition per identifier (used when no environment is available) */
@@ -850,15 +850,17 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 /**
  * A call in a loop runs again after the rest of the body ran, so it sees what the body leaves behind as well (`environment`),
  * and so do the free variables of the closures it calls: in `f <- function() x; for(i in 1:2) { y <- f(); x <- 2 }` the
- * second call of `f` reads `x <- 2`. Calls within the functions the loop defines run in frames of their own and are left alone.
+ * second call of `f` reads `x <- 2`. A name the body (`made`) surely binds anew before the call is not carried over:
+ * in `for(i in 1:2) { x <- 1; y <- f(); x <- 2 }` every call of `f` reads `x <- 1`.
+ * Calls within the functions the loop defines run in frames of their own and are left alone.
  */
-function linkLoopCarriedCalls(graph: DataflowGraph, environment: REnvironmentInformation): void {
+function linkLoopCarriedCalls(graph: DataflowGraph, environment: REnvironmentInformation, made: ReadonlySet<NodeId>, names: ReadonlySet<BrandedIdentifier | undefined>): void {
 	const idMap = graph.idMap;
 	for(const [id, info] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(info.onlyBuiltin || info.environment?.level !== environment.level) {
 			continue;
 		}
-		info.environment = REnvironment.append(info.environment, environment);
+		info.environment = REnvironment.append(info.environment, idMap === undefined ? environment : carriedTo(graph, info, info.environment, environment, made, names, idMap));
 		for(const target of idMap === undefined ? [] : Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
 			const fn = graph.getVertex(target);
 			if(DfgVertex.isFunctionDefinition(fn)) {
@@ -866,6 +868,23 @@ function linkLoopCarriedCalls(graph: DataflowGraph, environment: REnvironmentInf
 			}
 		}
 	}
+}
+
+/**
+ * What `exit` carries into the next run for the call `info`, without the `names` the body (`made`) surely binds anew
+ * before the call: a binding the call sees that the body makes in an earlier statement, under no condition the call is not under as well.
+ */
+function carriedTo(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, atCall: REnvironmentInformation, exit: REnvironmentInformation, made: ReadonlySet<NodeId>, names: ReadonlySet<BrandedIdentifier | undefined>, idMap: AstIdMap): REnvironmentInformation {
+	let carried: Environment | undefined;
+	const call = idMap.get(info.id);
+	for(const name of names) {
+		const defs = name === undefined || exit.current.memory.get(name) === undefined ? undefined : atCall.current.memory.get(name);
+		if(defs?.some(d => made.has(d.nodeId) && ControlDependency.minus(graph.getVertex(d.nodeId)?.cds ?? [], info.cds ?? []).length === 0 && RNode.precedesInBlock(idMap.get(d.nodeId), call, idMap))) {
+			carried ??= exit.current.clone(false);
+			carried.writableMemory.delete(name as BrandedIdentifier);
+		}
+	}
+	return carried === undefined ? exit : { current: carried, level: exit.level };
 }
 
 function addControlDependency(holder: { cds?: readonly ControlDependency[] | undefined }, cd: ControlDependency): boolean {

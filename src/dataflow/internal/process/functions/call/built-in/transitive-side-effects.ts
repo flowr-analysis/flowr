@@ -1,5 +1,5 @@
 import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
-import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
@@ -20,7 +20,7 @@ import { Dataflow } from '../../../../../graph/df-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import type { AmbientAccessRecord } from '../../../../../graph/ambient-access';
 import { BuiltInIndex, callFnProps, queryFnProps } from '../../../../../environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
+import { ArgProp, type BuiltInFnInfo, FnSig } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { Ternary } from '../../../../../../util/logic';
@@ -29,6 +29,7 @@ import { FixpointSolver, ReachSummaries, unionOfSets } from '../../../../../../u
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { isBaseRPackage } from '../../../../../../util/r-base-packages';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
@@ -72,8 +73,10 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	let later: ((call: NodeId, name: string) => readonly NodeId[]) | undefined;
 	let forcing: ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-		/* a package export flowR materialized has no body to tell its promises from a primitive's eager arguments */
-		if(!Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+		/* a function of a package flowR has no body for forces its arguments as its signature states, see `keptPromisesOfPackageCall` */
+		const kept = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))
+			? undefined : keptPromisesOfPackageCall(graph, vertex, ctx);
+		if(kept === false) {
 			continue;
 		}
 		const args = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => ({ ids: new Set(RNode.collectAllIds(idMap.get(a.nodeId))), at: a.nodeId }));
@@ -99,7 +102,7 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 				/* resolving the condition of each branch to a constant would cost a value resolution per branch */
 				forcing ??= FunctionSemantics.promiseForcing(graph, { ctx, constantBranches: false });
 				outlives ??= promiseOutlivesCall(graph, idMap, forcing);
-				late ??= Dataflow.targetsOf(graph, at, EdgeType.DefinesOnCall).some(outlives) && forcing(id, at) !== Ternary.Always;
+				late ??= kept === undefined ? Dataflow.targetsOf(graph, at, EdgeType.DefinesOnCall).some(outlives) && forcing(id, at) !== Ternary.Always : kept.has(at);
 				return late;
 			};
 			for(const node of ids) {
@@ -122,6 +125,55 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 			}
 		}
 	}
+}
+
+/**
+ * For a call of a package function flowR has no body for (not one of R's own packages, whose functions the built-in
+ * configuration states): `false` if it is none, else the arguments whose promises may be forced after the call
+ * returned. Its promises are forced in an order flowR does not know, so each may see what the others write, and a
+ * promise the signature does not state forced may be kept by a function the call hands back, which then forces it
+ * when it is called: `g <- purrr::partial(f, x); x <- 5; g()` reads the later `x`.
+ */
+function keptPromisesOfPackageCall(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, ctx: FlowrAnalyzerContext): ReadonlySet<NodeId> | false {
+	const info = call.name === undefined ? undefined : ctx.functionInfo(call.name);
+	const pkg = info?.package ?? (call.name === undefined ? undefined : Identifier.getNamespace(call.name));
+	if(pkg === undefined || isBaseRPackage(pkg)) {
+		return false;
+	}
+	if(!handsBackCalledValue(graph, call.id)) {
+		return new Set();
+	}
+	const layout = info?.sig === undefined ? undefined : FnSig.layout(info.sig);
+	const args = call.args.filter(FunctionArgument.isNotEmpty);
+	const slots = layout === undefined ? undefined : FnSig.slots(layout, args.map(FunctionArgument.getName));
+	return new Set(args.filter((_, i) => {
+		const props = layout === undefined || slots === undefined || slots[i] < 0 ? 0 : layout.props[slots[i]];
+		return (props & (ArgProp.Forced | ArgProp.Lazy)) === 0;
+	}).map(a => a.nodeId));
+}
+
+/**
+ * Whether the value of `call` may be called after it returned: it is a function, or it flows (through variables,
+ * returns, and reads) to where a call takes its function from, as `g` in `g <- f(); g()`.
+ */
+function handsBackCalledValue(graph: DataflowGraph, call: NodeId): boolean {
+	if(Dataflow.targetsOf(graph, call, EdgeType.Returns).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+		return true;
+	}
+	const seen = new Set<NodeId>([call]);
+	const todo = [call];
+	for(let id = todo.pop(); id !== undefined; id = todo.pop()) {
+		for(const [source, edge] of graph.edgesTo(id)) {
+			if(seen.has(source) || DfEdge.includesType(edge, EdgeType.Argument) || DfEdge.doesNotIncludeType(edge, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Returns)) {
+				continue;
+			} else if(DfgVertex.isFunctionCall(graph.getVertex(source)) && DfEdge.includesType(edge, EdgeType.Reads)) {
+				return true;
+			}
+			seen.add(source);
+			todo.push(source);
+		}
+	}
+	return false;
 }
 
 /**

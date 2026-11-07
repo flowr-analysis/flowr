@@ -39,6 +39,18 @@ describe('Transitivity through arguments and promises, checked against R', withT
 		}
 	}));
 
+	describe('promises of package functions', () => testing(['formals-promises', 'higher-order-functions'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'an argument kept by a purrr partial', code: 'x <- 1\ng <- purrr::partial(function(a) a, x)\nx <- 5\nprint(g())' },
+			{ name: 'an attached purrr partial', code: 'library(purrr)\nx <- 1\ng <- partial(function(a) a, x)\nx <- 5\nprint(g())', sigdb: true },
+			{ name: 'a named argument kept by a partial called through an alias', code: 'x <- 1\ng <- purrr::partial(function(a, b) a + b, b = x)\nh <- g\nx <- 5\nprint(h(1))' },
+			{ name: 'a dplyr filter forcing its condition in the call', code: 'k <- 1\nd <- dplyr::filter(data.frame(a = 1:3), a > k)\nk <- 99\nprint(nrow(d))', dropped: 'k <- 99' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
 	describe('values', () => {
 		resolvesLikeR(parser, 'a default referring to another parameter', 'f <- function(a, b = a * 2) b\ny <- f(4)\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'a default referring to a local defined later', 'f <- function(b = y) { y <- 3; b }\nz <- f()\ncat(z)', '3@z');

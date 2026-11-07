@@ -9,6 +9,7 @@ import type { IdentifierDefinition, IdentifierReference, InGraphIdentifierDefini
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RProject } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -26,7 +27,7 @@ import { Ternary } from '../../../../../../util/logic';
 import { type DataflowInformation, type ControlDependency, happensInEveryBranch } from '../../../../../info';
 import { FixpointSolver, ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { AstIdMap } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
@@ -520,6 +521,15 @@ export interface AmbientAccess {
 export interface AmbientAccessOptions {
 	/** whether to add what the functions called by the code access as well, defaults to true */
 	readonly includeCallees?: boolean
+	/**
+	 * What {@link ambientAccessOfFunctions} answered for the same graph, to reuse when asking for several scopes.
+	 * @example
+	 * ```ts
+	 * const functions = ambientAccessOfFunctions(info);
+	 * const perFile = ast.files.map(f => ambientAccessOf(info, f.root, { functions }));
+	 * ```
+	 */
+	readonly functions?:      ReadonlyMap<NodeId, AmbientAccess>
 }
 
 const Reads = 'r', Writes = 'w', Assumed = 'a', Variable = 'v';
@@ -615,16 +625,43 @@ function addSourcedFiles(graph: DataflowGraph, ids: Set<NodeId>): void {
 }
 
 /**
- * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls among `scope` and,
+ * The code to ask {@link ambientAccessOf} for: a whole project (all files), a node with all the code it spans (a file root,
+ * a block, a statement), the id of such a node, or exactly the given ids.
+ */
+export type AmbientScope = RProject<ParentInformation> | RNode<ParentInformation> | NodeId | Iterable<NodeId>;
+
+function idsOfScope(graph: DataflowGraph, scope: AmbientScope): Set<NodeId> {
+	if(typeof scope === 'string' || typeof scope === 'number') {
+		const node = graph.idMap?.get(scope);
+		return node === undefined ? new Set([scope]) : RNode.collectAllIds(node);
+	} else if(RProject.is<ParentInformation>(scope)) {
+		return RProject.collectAllIds(scope);
+	} else if('type' in scope) {
+		return RNode.collectAllIds(scope);
+	}
+	return new Set(scope);
+}
+
+/**
+ * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls in `scope` and,
  * unless turned off, what the functions they call access. The calls within a function definition in `scope` only count if called.
  * @param from  - see {@link AmbientSource}
- * @param scope - the ids to ask for, like those of a file, a block, or a single statement (see `RNode.collectAllIds`), or one id
+ * @param scope - see {@link AmbientScope}
  * @param opts  - see {@link AmbientAccessOptions}
  * @useInstead {@link Dataflow.sideEffects.ambientAccess}
+ * @example
+ * ```ts
+ * const { ast } = await analyzer.normalize();
+ * const info = await analyzer.dataflow();
+ * const all = ambientAccessOf(info, ast);                // every file of the project
+ * const first = ambientAccessOf(info, ast.files[0].root); // one file
+ * const stmt = ambientAccessOf(info, SlicingCriterion.parse('3^', ast.idMap)); // the statement on line 3
+ * ```
+ * A scope only counts what runs: a function defined but never called in it adds nothing, a `source`d file adds its top level.
  */
-export function ambientAccessOf(this: void, from: AmbientSource, scope: NodeId | Iterable<NodeId>, opts?: AmbientAccessOptions): AmbientAccess {
+export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientScope, opts?: AmbientAccessOptions): AmbientAccess {
 	const [graph, environment] = graphOf(from);
-	const ids = new Set<NodeId>(typeof scope === 'string' || typeof scope === 'number' ? [scope] : scope);
+	const ids = idsOfScope(graph, scope);
 	addSourcedFiles(graph, ids);
 	/* the bodies of nested definitions, exit hooks among them, are no part of the scope (`collectAllIds` misses the hooks) */
 	const bodies = new Set<NodeId>();
@@ -667,7 +704,7 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: NodeId |
 		}
 	}
 	if(callees.size > 0) {
-		const functions = ambientAccessOfFunctions(from);
+		const functions = opts?.functions ?? ambientAccessOfFunctions(from);
 		for(const callee of callees) {
 			const access = functions.get(callee);
 			if(access !== undefined) {

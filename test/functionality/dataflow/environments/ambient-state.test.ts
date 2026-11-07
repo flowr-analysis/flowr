@@ -213,6 +213,22 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options'] });
 	});
 
+	describe('scopes as nodes', () => {
+		test(label('a project, a file root, and a node id count the code they span', ['name-normal'], ['dataflow']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addRequest(requestFromInput('x <- 1\noptions(digits = 3)'));
+			const info = await analyzer.dataflow();
+			const { ast } = await analyzer.normalize();
+			const root = ast.files[0].root;
+			const expected = shown(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(root)));
+			assert.deepStrictEqual(expected.writes, ['#option:digits', '#options']);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, ast)), expected);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, root)), expected);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, root.info.id)), expected);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, root.children[0])).writes, []);
+		});
+	});
+
 	describe('sourced files', () => {
 		test(label('the top level of a sourced file runs as part of the scope', ['sourcing-external-files'], ['dataflow']), async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();

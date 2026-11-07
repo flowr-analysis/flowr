@@ -256,16 +256,23 @@ export const Dataflow = {
 		/**
 		 * What running the given code reads and writes of the global state (pseudo variables like `#option:digits`, see {@link AmbientStateName}),
 		 * the global variables the functions it calls bind, and its drawing calls (`SemanticCallTag.Graphics`), including what the functions it calls access.
-		 * The scope is one id or the ids of a file, a block, or a statement (see `RNode.collectAllIds`). Writes confined to a function's own frame are left out.
+		 * The scope is the whole project (`ast`), one file root, block, or statement, the id of such a node (each with all the code it spans),
+		 * or a set of exactly the ids to count (see `RNode.collectAllIds`). Writes confined to a function's own frame are left out.
 		 * Keep in mind that a function defined in the scope only counts if the scope calls it, that the result over-approximates
 		 * (a write in a branch counts as a write), and that `includeCallees: false` only looks at the calls in the scope.
 		 * Pass the dataflow information instead of the bare graph, so that the configured built-ins of the analysis are honored.
 		 * @example
 		 * ```ts
 		 * const df = await analyzer.dataflow();
-		 * const ids = RNode.collectAllIds((await analyzer.normalize()).ast.files[0].root);
-		 * const { reads, writes, draws } = Dataflow.sideEffects.ambientAccess(df, ids);
+		 * const { ast, idMap } = await analyzer.normalize();
+		 * const { reads, writes, draws } = Dataflow.sideEffects.ambientAccess(df, ast);
 		 * writes.has('#option:digits'); // true if the code may change `digits`, as `options(digits = 3)` does
+		 * Dataflow.sideEffects.ambientAccess(df, ast.files[0].root);                  // a single file
+		 * Dataflow.sideEffects.ambientAccess(df, SlicingCriterion.parse('3^', idMap)); // the statement on line 3
+		 * ```
+		 * The `ambient-access` query answers the same for files and slicing criteria:
+		 * ```ts
+		 * const result = await analyzer.query({ type: 'ambient-access', criteria: ['3^'] });
 		 * ```
 		 */
 		ambientAccess:            ambientAccessOf,

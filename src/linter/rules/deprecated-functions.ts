@@ -139,7 +139,7 @@ function indexAlways(always: readonly Identifier[]): Map<string, (BrandedNamespa
 /** The packages the code attaches; `undefined` when one of them cannot be named, so nothing is ruled out. */
 async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<string> | undefined> {
 	const attached = new Set<string>();
-	for(const lib of (await analyzer.query([{ type: 'dependencies', enabledCategories: ['library'] }]))['dependencies'].library) {
+	for(const lib of (await analyzer.query({ type: 'dependencies', enabledCategories: ['library'] })).library) {
 		if(lib.value === undefined || lib.value === Unknown) {
 			return undefined;
 		}
@@ -307,11 +307,8 @@ async function inferPackageVersions(analyzer: ReadonlyFlowrAnalysisProvider<Know
 		return new Map<BrandedNamespace, Range>();
 	}
 
-	const queryResult = await analyzer.query([{
-		type:     'guess-dep-versions',
-		packages: uniqueArray(packages)
-	}]);
-	const versions = queryResult['guess-dep-versions'].dependencies
+	const { dependencies } = await analyzer.query({ type: 'guess-dep-versions', packages: uniqueArray(packages) });
+	const versions = dependencies
 		.map(d => [d.package, RRange.parse(d.range)])
 		.filter(([_, version]) => isNotUndefined(version)) as [BrandedNamespace, Range][];
 

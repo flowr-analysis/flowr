@@ -2202,11 +2202,11 @@ async function focusRelated(node: DepNode | undefined): Promise<void> {
 	}
 	try {
 		const built = await analyzer();
-		const answer = await built.query([{ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) }]);
+		const answer = await built.query({ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) });
 		if(request !== focusRequest) {
 			return;
 		}
-		related = { code, key: node.key, ids: new Set([...ids, ...answer.dependencies['.meta'].focus ?? []].map(String)) };
+		related = { code, key: node.key, ids: new Set([...ids, ...answer['.meta'].focus ?? []].map(String)) };
 	} catch{ /* what cannot be sliced grays nothing out */ }
 	paintRelated();
 }

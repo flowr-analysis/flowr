@@ -121,7 +121,7 @@ function destinationOf(call: DataflowGraphVertexFunctionCall, sink: SecretSink, 
 /** whether a destination is controlled by others, uncertain as it stems from a parameter, or trusted */
 async function classifyDestination(data: ReadonlyFlowrAnalysisProvider, id: NodeId, controlled: readonly InputType[]): Promise<'controlled' | 'parameter' | 'trusted'> {
 	const criterion = SlicingCriterion.fromId(id);
-	const types = new Set((await data.query([{ type: 'input-sources', criterion }]))['input-sources']?.results[criterion]?.flatMap(s => s.types));
+	const types = new Set((await data.query({ type: 'input-sources', criterion })).results[criterion]?.flatMap(s => s.types));
 	if(controlled.some(t => t !== InputType.Parameter && types.has(t))) {
 		return 'controlled';
 	}

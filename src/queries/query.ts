@@ -68,6 +68,7 @@ import type { FilesQuery } from './catalog/files-query/files-query-format';
 import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
 import type { CallGraphQuery } from './catalog/call-graph-query/call-graph-query-format';
 import { CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
+import { type AmbientAccessQuery, AmbientAccessQueryDefinition } from './catalog/ambient-access-query/ambient-access-query-format';
 import type {
 	InspectRecursionQuery } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
 import {
@@ -132,6 +133,7 @@ export type Query = CallContextQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
 	| InspectFnPropsQuery
+	| AmbientAccessQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| SignatureQuery
@@ -216,6 +218,7 @@ export const SupportedQueries = {
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'inspect-fn-props':     InspectFnPropsQueryDefinition,
+	'ambient-access':       AmbientAccessQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'signature':            SignatureQueryDefinition,

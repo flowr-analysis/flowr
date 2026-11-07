@@ -288,6 +288,32 @@ ${
 	}
 });
 
+registerQueryDocumentation('ambient-access', {
+	type:             'active',
+	shortDescription: 'What code reads and writes of the global state',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function() options(digits = 3)\nf()\nSys.setenv(A = "1")';
+		return `
+This query reports what code reads and writes of the global state, such as options, environment variables,
+the working directory, open devices, or the search path, as the pseudo variables of ${ctx.link('AmbientStateName')}
+(\`#option:digits\`, \`#env:A\`, ...). A call counts with what the functions it calls access, so \`f()\` above writes \`digits\`.
+It also names the global variables the code binds (\`x <<- 1\`) and the drawing calls it makes.
+The same is available in code as \`Dataflow.sideEffects.ambientAccess\`.
+
+Without criteria, the query answers for every file and for the whole project (\`<project>\`):
+${
+	await showQuery(shell, exampleCode, [{ type: 'ambient-access' }], { showCode: true, collapseQuery: true, ctx })
+}
+
+With slicing criteria, it answers for each criterion with all the code its node spans, so \`3^\` asks for the statement on line 3.
+Set \`functions\` to also learn what calling each function accesses:
+${
+	await showQuery(shell, exampleCode, [{ type: 'ambient-access', criteria: ['2^'], functions: true }], { showCode: false, shorthand: sliceQueryShorthand(['2^'], escapeNewline(exampleCode)), ctx })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('inspect-fn-props', {
 	type:             'active',
 	shortDescription: 'Determine what functions and their formals do',

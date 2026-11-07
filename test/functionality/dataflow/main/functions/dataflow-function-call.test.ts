@@ -553,4 +553,18 @@ testFuncCorrect(1:5, sum)
 		const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === 'unknownFn');
 		expect(call && Dataflow.callTargetsOf(call[0], graph)).toEqual([]);
 	});
+	/* a write that happens when a call runs (`x <<- TRUE` in a closure) holds what it assigns, not what that call returns */
+	test('a call does not get its function from the call a definition is a side effect of', () => {
+		const graph = emptyGraph()
+			.call('c', 'g', [])
+			.defineVariable('v', 'g')
+			.constant('value')
+			.definedBy('v', 'value')
+			.reads('c', 'v')
+			.call('k', 'h', [])
+			.reads('v', 'k')
+			.sideEffectOnCall('v', 'k')
+			.returns('k', NodeId.toBuiltIn('print'));
+		expect(Dataflow.callTargetsOf('c', graph)).toEqual(['v']);
+	});
 }));

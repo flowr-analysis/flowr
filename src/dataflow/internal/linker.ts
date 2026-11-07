@@ -391,7 +391,7 @@ export function getAllLinkedFunctionDefinitions(
 				if(!visited.has(at(target, returnedTo))) {
 					potential.push([target, nextViaAccess, returnedTo]);
 				}
-			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits)) {
+			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, ValueFlowBits) && DfEdge.doesNotIncludeType(e, EdgeType.SideEffectOnCall)) {
 				(followTargets ??= []).push([target, DfEdge.includesType(e, EdgeType.DefinedByOnCall)]);
 			}
 		}

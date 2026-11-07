@@ -55,6 +55,30 @@ describe('Transitivity through dispatch, sourcing and control flow, checked agai
 		}
 	});
 
+	describe('handlers given by value', () => {
+		const muffling = 'function(w) { n <<- 1; invokeRestart("muffleWarning") }';
+		const warns = 'f <- function() { warning("w"); 2 }';
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'a calling handler by name', code: `n <- 0\nh <- ${muffling}\n${warns}\nr <- withCallingHandlers(f(), warning = h)\nprint(n + r)` },
+			{ name: 'a calling handler from a list', code: `n <- 0\nhs <- list(w = ${muffling})\n${warns}\nr <- withCallingHandlers(f(), warning = hs$w)\nprint(n + r)` },
+			{ name: 'a calling handler from a factory', code: `n <- 0\nmk <- function() ${muffling}\n${warns}\nr <- withCallingHandlers(f(), warning = mk())\nprint(n + r)` },
+			{ name: 'a calling handler through a parameter', code: `n <- 0\n${warns}\nrun <- function(h) withCallingHandlers(f(), warning = h)\nr <- run(${muffling})\nprint(n + r)` },
+			{ name: 'an inline calling handler in a function body', code: `n <- 0\n${warns}\nrun <- function() withCallingHandlers(f(), warning = ${muffling})\nr <- run()\nprint(n + r)` },
+			{ name: 'a handler by name for a warning two calls deep in a function body', code: 'n <- 0\nh <- function(w) n <<- 1\nf <- function() warning("w")\ng <- function() f()\nrun <- function() tryCatch(g(), warning = h)\nrun()\nprint(n)' },
+			{ name: 'a calling handler by name that never runs', code: 'n <- 0\nh <- function(w) n <<- 5\nr <- withCallingHandlers(1, warning = h)\nprint(n)' },
+			{ name: 'an exiting handler by name', code: `n <- 0\nh <- function(w) n <<- 1\n${warns}\nr <- tryCatch(f(), warning = h)\nprint(n)` },
+			{ name: 'an exiting handler from a list', code: `n <- 0\nhs <- list(w = function(w) n <<- 1)\n${warns}\nr <- tryCatch(f(), warning = hs[["w"]])\nprint(n)` },
+			{ name: 'an exiting handler from a factory', code: `n <- 0\nmk <- function() function(w) n <<- 1\n${warns}\nr <- tryCatch(f(), warning = mk())\nprint(n)` },
+			{ name: 'an exiting handler through a parameter', code: `n <- 0\n${warns}\nrun <- function(h) tryCatch(f(), warning = h)\nr <- run(function(w) n <<- 1)\nprint(n)` },
+			{ name: 'an exiting handler by name that never runs', code: 'n <- 0\nh <- function(w) n <<- 5\nr <- tryCatch(1, warning = h)\nprint(n)' },
+			{ name: 'an error handler by name that never runs', code: 'n <- 0\nh <- function(e) n <<- 5\nr <- tryCatch(1, error = h)\nprint(n)' },
+			{ name: 'an error handler from a factory', code: 'n <- 0\nmk <- function() function(e) n <<- 1\nr <- tryCatch(stop("x"), error = mk())\nprint(n)' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	});
+
 	describe('switch and loops', () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'switch selecting a global', code: 'f <- function(t) switch(t, a = x, b = y)\nx <- 1\ny <- 2\nprint(f("b"))' },

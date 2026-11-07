@@ -24,6 +24,7 @@ import { appliedArguments } from '../../../../../graph/applied-arguments';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import type { LinkTo } from '../../../../../../queries/catalog/call-context-query/call-context-query-format';
 import type { DataflowGraph } from '../../../../../graph/graph';
+import { Dataflow } from '../../../../../graph/df-helper';
 import type { FlowrConfig } from '../../../../../../config';
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined } from '../../../../../../util/assert';
@@ -1209,7 +1210,9 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 				sites.push(...handlers.flatMap(h => warningSites(h, graph, data, bodies, mode)));
 				return true;
 			}
-			const callees = targets.flatMap(t => hidesBody(t) ? [undefined] : (t as Partial<InGraphIdentifierDefinition>).value?.map(id => data.completeAst.idMap.get(id)) ?? [undefined]);
+			/* a name the construct does not see, as a global called in a function body, runs what the linker bound to the call */
+			const callees = targets.length === 0 ? Dataflow.calleeIdsOf(graph, node.info.id).map(id => data.completeAst.idMap.get(id))
+				: targets.flatMap(t => hidesBody(t) ? [undefined] : (t as Partial<InGraphIdentifierDefinition>).value?.map(id => data.completeAst.idMap.get(id)) ?? [undefined]);
 			if(callees.length === 0 || !callees.every(RFunctionDefinition.is)) {
 				sites.push(node.info.id);
 				return false;

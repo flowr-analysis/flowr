@@ -13,6 +13,24 @@ export type StateDomainBottom = typeof Bottom;
 export type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
 
 /**
+ * A copy of the mapping, Bottom if it is Bottom or, with `collapseOnBottom`, maps any key to Bottom.
+ * Every state is copied, so this checks and copies in one pass rather than scanning before `new Map`.
+ */
+function copyOfState<Domain extends AnyAbstractDomain>(value: StateDomainLift<Domain>, collapseOnBottom: boolean): StateDomainLift<Domain> {
+	if(value === Bottom) {
+		return Bottom;
+	}
+	const copy = new Map<NodeId, Domain>();
+	for(const [key, entry] of value) {
+		if(collapseOnBottom && entry.isBottom()) {
+			return Bottom;
+		}
+		copy.set(key, entry);
+	}
+	return copy;
+}
+
+/**
  * A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain.
  * The Bottom element is defined as {@link Bottom} symbol and the Top element as empty mapping.
  * @template Domain - Type of the value abstract domain to map the AST node IDs to
@@ -27,11 +45,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	public readonly collapseOnBottom: boolean;
 
 	constructor(value: Value, domain: Domain, collapseOnBottom = true) {
-		if(value === Bottom || (collapseOnBottom && value.values().some(entry => entry.isBottom()))) {
-			super(Bottom as Value);
-		} else {
-			super(new Map(value) as ReadonlyMap<NodeId, Domain> as Value);
-		}
+		super(copyOfState(value, collapseOnBottom) as Value);
 		this.domain = domain;
 		this.collapseOnBottom = collapseOnBottom;
 	}

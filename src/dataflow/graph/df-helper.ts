@@ -14,7 +14,7 @@ import { Resolve } from '../environments/resolve-helper';
 import { AttachedBasePackageSet, baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { getCallables, importOrigin } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { getAllFunctionCallTargets } from '../internal/linker';
+import { getAllFunctionCallTargets, type LinkedFunctionResolver } from '../internal/linker';
 import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
 import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { attachLibrary, type AttachSpec } from '../internal/process/functions/call/built-in/built-in-library';
@@ -187,9 +187,10 @@ export const Dataflow = {
 	 * @param call        - The id of the call
 	 * @param graph       - The graph the call is part of
 	 * @param environment - The environment to resolve the call name in, if the call does not carry one itself
+	 * @param resolver    - Shares the work with the targets of other calls it found, as long as the graph does not change
 	 */
-	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): NodeId[] {
-		return getAllFunctionCallTargets(call, graph, environment);
+	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
+		return getAllFunctionCallTargets(call, graph, environment, resolver);
 	},
 	/**
 	 * Whether every function the call may run is a built-in or one the program defines, so that what flowR knows

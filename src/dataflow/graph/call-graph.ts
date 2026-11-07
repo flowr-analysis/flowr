@@ -17,7 +17,7 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Identifier } from '../environments/identifier';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from './df-helper';
-import { isWithinArgumentOf } from '../internal/linker';
+import { isWithinArgumentOf, LinkedFunctionResolver } from '../internal/linker';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -33,6 +33,8 @@ export interface State {
 	visited:    Set<NodeId>;
 	// links to be added if not otherwise found
 	potentials: [NodeId, Set<NodeId>][]
+	/** shares what the calls of the graph target between them */
+	resolver:   LinkedFunctionResolver
 }
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
@@ -99,7 +101,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 
 	let addedTarget = false;
 	let addedBiTarget = false;
-	for(const tar of Dataflow.callTargetsOf(vid, graph, vtx.environment)) {
+	for(const tar of Dataflow.callTargetsOf(vid, graph, vtx.environment, state.resolver)) {
 		const targetVtx = graph.getVertex(tar);
 		if(NodeId.isBuiltIn(tar)) {
 			result.addEdge(vid, tar, EdgeType.Calls);
@@ -376,7 +378,8 @@ export const CallGraph = {
 		const result: CallGraph = new DataflowGraph(graph.idMap);
 		const state: State = {
 			visited:    new Set(),
-			potentials: []
+			potentials: [],
+			resolver:   new LinkedFunctionResolver(graph)
 		};
 		for(const [,vert] of graph.vertices(false)) {
 			if(DfgVertex.isFunctionCall(vert)) {

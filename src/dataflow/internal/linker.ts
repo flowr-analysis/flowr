@@ -311,9 +311,10 @@ export function linkFunctionCalls(
 
 /**
  * convenience function returning all known call targets, as well as the name source which defines them
+ * @param resolver - shares the walk with the other calls it resolves targets for, as long as the graph does not change
  * @useInstead {@link Dataflow.callTargetsOf}
  */
-export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): NodeId[] {
+export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
 	const info = graph.getVertex(call);
 	if(!DfgVertex.isFunctionCall(info)) {
 		return [];
@@ -336,13 +337,15 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	if(functionCallDefs.length === 0) {
 		return [];
 	}
-	const [targets, builtIns] = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
+	const reads = new Set(functionCallDefs);
+	const [targets, builtIns] = resolver?.resolve(reads) ?? getAllLinkedFunctionDefinitions(reads, graph);
 	return [...new Set([...targets.values().map(t => t.id), ...builtIns, ...functionCallDefs])];
 }
 
 /**
  * Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved
  * the accessed objects (first layer of reads/returns/calls/...). For call targets, use {@link Dataflow.callTargetsOf} instead.
+ * @see {@link LinkedFunctionResolver} - to find them for many sets of reads over the same graph
  */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
@@ -448,6 +451,174 @@ function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undef
 		}
 	}
 	return undefined;
+}
+
+/** What a state of {@link LinkedFunctionResolver} reaches, the ids of function definitions and built-ins. */
+type Reached = ReadonlySet<NodeId>;
+const ReachesNothing: Reached = new Set();
+
+/**
+ * Finds the function definitions and built-ins that reads may evaluate to (see {@link getAllLinkedFunctionDefinitions}).
+ * It remembers what each state of the walk reaches, so the walks of many calls over the same, unchanged graph (those of
+ * {@link CallGraph.compute}) share their work instead of walking the same bodies once per call.
+ *
+ * A state is a vertex, whether an access led to it, and the call whose return led into its body, as a parameter that
+ * call binds holds only what the call passes. All states of a strongly connected component reach the same.
+ */
+export class LinkedFunctionResolver {
+	private readonly graph:      DataflowGraph;
+	/** the number of each state, by whether an access led to it, its vertex, and its call */
+	private readonly numbers:    readonly [Map<NodeId, Map<NodeId | undefined, number>>, Map<NodeId, Map<NodeId | undefined, number>>] = [new Map(), new Map()];
+	private readonly states:     [id: NodeId, viaAccess: boolean, call: NodeId | undefined][] = [];
+	/** what a state reaches, once its component is complete */
+	private readonly reached:    (Reached | undefined)[] = [];
+	/* Tarjan's bookkeeping, for the states whose component is not complete yet */
+	private readonly index:      number[] = [];
+	private readonly low:        number[] = [];
+	private readonly successors: (readonly number[] | undefined)[] = [];
+	private readonly open:       number[] = [];
+	/** the built-ins and function definitions the walk ends at, by their state */
+	private readonly ends = new Map<number, NodeId>();
+	private readonly scopes:     CallScopes = new Map();
+	private entered = 0;
+
+	constructor(graph: DataflowGraph) {
+		this.graph = graph;
+	}
+
+	/** The function definitions and built-ins the reads with the given ids may evaluate to. */
+	public resolve(reads: ReadonlySet<NodeId>): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
+		const definitions = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
+		const builtIns = new Set<BuiltIn>();
+		for(const read of reads) {
+			for(const id of this.reach(this.state(read, false, undefined))) {
+				if(NodeId.isBuiltIn(id)) {
+					builtIns.add(id);
+				} else {
+					definitions.add(this.graph.getVertex(id) as Required<DataflowGraphVertexFunctionDefinition>);
+				}
+			}
+		}
+		return [definitions, builtIns];
+	}
+
+	private state(id: NodeId, viaAccess: boolean, call: NodeId | undefined): number {
+		const byCall = this.numbers[viaAccess ? 1 : 0].get(id) ?? new Map<NodeId | undefined, number>();
+		let state = byCall.get(call);
+		if(state === undefined) {
+			state = this.states.push([id, viaAccess, call]) - 1;
+			if(byCall.size === 0) {
+				this.numbers[viaAccess ? 1 : 0].set(id, byCall);
+			}
+			byCall.set(call, state);
+		}
+		return state;
+	}
+
+	/** Completes the component of `start` and those it depends on, iterating Tarjan's algorithm. */
+	private reach(start: number): Reached {
+		const done = this.reached[start];
+		if(done !== undefined) {
+			return done;
+		}
+		const path = [start];
+		const positions = [0];
+		this.enter(start);
+		while(path.length > 0) {
+			const top = path.length - 1;
+			const state = path[top];
+			const successors = this.successors[state] as readonly number[];
+			if(positions[top] < successors.length) {
+				const next = successors[positions[top]++];
+				if(this.reached[next] !== undefined) {
+					continue;
+				} else if(this.index[next] === undefined) {
+					this.enter(next);
+					path.push(next);
+					positions.push(0);
+				} else {
+					this.low[state] = Math.min(this.low[state], this.index[next]);
+				}
+				continue;
+			}
+			path.pop();
+			positions.pop();
+			if(path.length > 0) {
+				const parent = path[path.length - 1];
+				this.low[parent] = Math.min(this.low[parent], this.low[state]);
+			}
+			if(this.low[state] === this.index[state]) {
+				this.complete(state);
+			}
+		}
+		return this.reached[start] as Reached;
+	}
+
+	private enter(state: number): void {
+		this.index[state] = this.low[state] = this.entered++;
+		this.open.push(state);
+		this.successors[state] = this.expand(state);
+	}
+
+	/** Every state of the component rooted at `root` reaches what its members are and what the components they lead to reach. */
+	private complete(root: number): void {
+		const members: number[] = [];
+		let state: number;
+		do{
+			state = this.open.pop() as number;
+			members.push(state);
+		} while(state !== root);
+		let reached: Reached = ReachesNothing;
+		let owned = false;
+		const join = (other: Reached) => {
+			if(other === reached || other.size === 0 || isSubsetOf(other, reached)) {
+				return;
+			} else if(!owned && isSubsetOf(reached, other)) {
+				reached = other;
+				return;
+			} else if(!owned) {
+				reached = new Set(reached);
+				owned = true;
+			}
+			for(const id of other) {
+				(reached as Set<NodeId>).add(id);
+			}
+		};
+		for(const member of members) {
+			const end = this.ends.get(member);
+			if(end !== undefined) {
+				join(new Set([end]));
+			}
+			for(const next of this.successors[member] as readonly number[]) {
+				/* a successor outside the component is complete already */
+				const done = this.reached[next];
+				if(done !== undefined) {
+					join(done);
+				}
+			}
+		}
+		for(const member of members) {
+			this.reached[member] = reached;
+			this.successors[member] = undefined;
+		}
+	}
+
+	/** The states the walk goes on to from `state`, none for a built-in or function definition it ends at. */
+	private expand(state: number): readonly number[] {
+		const [id, viaAccess, call] = this.states[state];
+		const successors: number[] = [];
+		const end = walkLinkedDefinitions(this.graph, id, viaAccess, call, this.scopes, (target, nextViaAccess, nextCall) => {
+			successors.push(this.state(target, nextViaAccess, nextCall));
+		});
+		if(end !== undefined) {
+			this.ends.set(state, end);
+		}
+		return successors;
+	}
+}
+
+function isSubsetOf(a: Reached, b: Reached): boolean {
+	return a.size <= b.size && a.values().every(id => b.has(id));
 }
 
 /**

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-08, 09:49:56 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -1341,7 +1341,7 @@ parameter in that role.
 
 | Argument role | Built-ins | Meaning |
 | :-- | --: | :-- |
-| `Forced` | 1624 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
+| `Forced` | 1633 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
 | `NoDefault` | 69 | declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it |
 | `Alias` | 45 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge. |
 | `Value` | 849 | the result is computed from the argument's value, like `x` in `sum(x)` |

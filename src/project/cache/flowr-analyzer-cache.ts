@@ -1,4 +1,4 @@
-import type { KnownParser, ParseStepOutput } from '../../r-bridge/parser';
+import { type KnownParser, type ParseStepOutput, ParserName } from '../../r-bridge/parser';
 import { FlowrCache, type InvalidationEvent, InvalidationEventType } from './flowr-cache';
 import {
 	createDataflowPipeline,
@@ -146,7 +146,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private storeIncrementalSnapshotIfAvailable(): void {
-		if(this.args.parser.name !== 'tree-sitter') {
+		if(this.args.parser.name !== ParserName.TreeSitter) {
 			return;
 		}
 

@@ -8,6 +8,7 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { DataFrameOperationNames, type DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
 import { FlowrConfig } from '../../../src/config';
+import { ParserName } from '../../../src/r-bridge/parser';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -31,7 +32,7 @@ describe('Benchmark Slicer', () => {
 
 	describe('Stats by parsing text-based inputs', { concurrent: false }, function() {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
-			const slicer = new BenchmarkSlicer('r-shell');
+			const slicer = new BenchmarkSlicer(ParserName.Shell);
 			const request = { request: 'text' as const, content: 'a <- b' };
 			await slicer.init(request, FlowrConfig.default());
 			await slicer.slice('1@a');
@@ -88,7 +89,7 @@ describe('Benchmark Slicer', () => {
 
 		});
 		test('Slicing the same code three times', async() => {
-			const slicer = new BenchmarkSlicer('r-shell');
+			const slicer = new BenchmarkSlicer(ParserName.Shell);
 			const request = {
 				request: 'text' as const,
 				content: `library(x)
@@ -158,7 +159,7 @@ cat(d)`
 
 		describe('Slicing with sampling enabled', () => {
 			test('When equidistant sampling is enabled, then correct values are counted', async() => {
-				const slicer = new BenchmarkSlicer('r-shell');
+				const slicer = new BenchmarkSlicer(ParserName.Shell);
 				const request = {
 					request: 'text' as const,
 					content: `
@@ -193,7 +194,7 @@ e <- 5`,
 			});
 
 			test('When random sampling is enabled, then correct values are counted', async() => {
-				const slicer = new BenchmarkSlicer('r-shell');
+				const slicer = new BenchmarkSlicer(ParserName.Shell);
 				const request = {
 					request: 'text' as const,
 					content: `
@@ -229,7 +230,7 @@ e <- 5`,
 		});
 		describe('Control flow graph and data frame shape inference', () => {
 			test('Data frame shape inference', async() => {
-				const slicer = new BenchmarkSlicer('tree-sitter');
+				const slicer = new BenchmarkSlicer(ParserName.TreeSitter);
 				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
 				await slicer.init(request, FlowrConfig.default());
 				slicer.extractCFG();

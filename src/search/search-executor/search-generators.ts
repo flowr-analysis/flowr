@@ -18,6 +18,7 @@ import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-si
 import { searchLogger } from '../search-logger';
 import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { ParserName } from '../../r-bridge/parser';
 
 /**
  * This is a union of all possible generator node types
@@ -160,7 +161,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.slice(1) : c));
 
 	const info = input.parserInformation();
-	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
+	guard(info.name === ParserName.TreeSitter, 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
 	const result = await info.treeSitterQuery(args.source);
 	const relevant = result.filter(c => captures.has(c.name));
 

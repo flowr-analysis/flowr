@@ -5,7 +5,7 @@ import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '..
 import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import type Parser from 'web-tree-sitter';
 import type { SyntaxNode } from 'web-tree-sitter';
-import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
+import { type ParseStepOutputSingleFile, ParserName } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[];
@@ -169,7 +169,7 @@ export const parseCommand: ReplCodeCommand = {
 		const result = (await analyzer.parse()).files;
 		const parserInfo = analyzer.parserInformation();
 
-		if(parserInfo.name === 'r-shell') {
+		if(parserInfo.name === ParserName.Shell) {
 			for(const { parsed, filePath } of result as ParseStepOutputSingleFile<string>[]) {
 				if(filePath && filePath !== FlowrFile.INLINE_PATH) {
 					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }));

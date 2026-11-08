@@ -6,7 +6,7 @@ import semver from 'semver/preload';
 import { expensiveTrace, log } from '../util/log';
 import { initCommand } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { BaseRShellInformation, SyncParser } from './parser';
+import { type BaseRShellInformation, type SyncParser, ParserName } from './parser';
 import { retrieveParseDataFromRCode, type RParseRequest } from './retriever';
 import { SecureMode } from '../util/secure-mode';
 
@@ -23,7 +23,7 @@ const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
  * we provide {@link RShellExecutor#parse|parse(request)} and {@link RShellExecutor#rVersion|rVersion()}.
  */
 export class RShellExecutor implements SyncParser<string> {
-	public readonly name = 'r-shell';
+	public readonly name = ParserName.Shell as const;
 	public readonly incremental = false;
 	public readonly options:        Readonly<RShellExecutionOptions>;
 	private readonly prerequisites: string[];
@@ -53,7 +53,7 @@ export class RShellExecutor implements SyncParser<string> {
 
 	public information(): BaseRShellInformation {
 		return {
-			name:     'r-shell',
+			name:     ParserName.Shell,
 			rVersion: () => Promise.resolve(this.rVersion())
 		};
 	}

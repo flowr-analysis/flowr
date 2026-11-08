@@ -34,7 +34,7 @@ import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/step
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { getSizeOfCfGraph, getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
-import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
+import { type KnownParser, type KnownParserName, type KnownParserType, ParserName } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
@@ -146,7 +146,7 @@ export class BenchmarkSlicer {
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
 			'initialize R session', async() => {
-				if(this.parserName === 'r-shell') {
+				if(this.parserName === ParserName.Shell) {
 					return new RShell(FlowrConfig.getForEngine(config, 'r-shell'));
 				} else {
 					await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
@@ -180,7 +180,7 @@ export class BenchmarkSlicer {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
 		let numberOfRTokens: number;
 		let numberOfRTokensNoComments: number;
-		if(this.parser.name === 'r-shell') {
+		if(this.parser.name === ParserName.Shell) {
 			// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 			numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell);
 			numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell, true);

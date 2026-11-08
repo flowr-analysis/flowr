@@ -11,7 +11,7 @@ import type { AsyncOrSync, DeepReadonly } from 'ts-essentials';
 import { initCommand } from './init';
 import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
-import type { AsyncParser, RShellInformation } from './parser';
+import { type AsyncParser, type RShellInformation, ParserName } from './parser';
 import { type RParseRequest, retrieveParseDataFromRCode } from './retriever';
 import { SecureMode } from '../util/secure-mode';
 
@@ -143,7 +143,7 @@ export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOpti
  */
 export class RShell implements AsyncParser<string> {
 
-	public readonly name = 'r-shell';
+	public readonly name = ParserName.Shell as const;
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	public readonly incremental = false;
@@ -182,7 +182,7 @@ export class RShell implements AsyncParser<string> {
 
 	public information(): RShellInformation {
 		return {
-			name:                  'r-shell',
+			name:                  ParserName.Shell,
 			rVersion:              async() => await this.rVersion(),
 			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
 				return this.sendCommandWithOutput(command, addonConfig);

@@ -22,12 +22,18 @@ interface ParserContent<T> {
 	close(): void;
 }
 
+/** The parser engines flowR knows. */
+export enum ParserName {
+	Shell = 'r-shell',
+	TreeSitter = 'tree-sitter'
+}
+
 export interface BaseParserInformation {
 	readonly name: KnownParserName
 }
 
 export interface BaseRShellInformation extends BaseParserInformation {
-	readonly name: 'r-shell'
+	readonly name: ParserName.Shell
 	rVersion(): Promise<string>
 }
 
@@ -43,7 +49,7 @@ export interface RShellInformation extends BaseRShellInformation {
 }
 
 export interface TreeSitterInformation extends BaseParserInformation {
-	readonly name:           'tree-sitter'
+	readonly name:           ParserName.TreeSitter
 	readonly grammarVersion: number
 	/**
 	 * Runs the given tree-sitter query using the underlying tree-sitter parser and returns the resulting capture.

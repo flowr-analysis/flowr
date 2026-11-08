@@ -1,3 +1,4 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import type { PackageSignatureSource } from './reader';
 import { compareByCodeUnit } from '../../util/text/strings';
 import type { VersionRelease } from './sigdb-version';
@@ -14,7 +15,7 @@ import { baseRPackages } from '../../util/r-base-packages';
  */
 export interface MemoryPackage {
 	readonly version?:    string;
-	readonly exported:    readonly string[];
+	readonly exported:    readonly BrandedIdentifier[];
 	readonly deprecated?: readonly string[];
 	readonly s3Classes?:  readonly string[];
 	readonly s4Classes?:  readonly string[];
@@ -37,24 +38,24 @@ const UnknownVersion = '';
  * @see {@link SigDatabase} - the file-backed source
  */
 export class MemorySignatureSource implements PackageSignatureSource {
-	private readonly packages: ReadonlyMap<string, MemoryPackage>;
+	private readonly packages: ReadonlyMap<BrandedNamespace, MemoryPackage>;
 	/** reverse index `class -> owning package`, built on first use (see {@link classOwner}) */
-	private classIndex:        Map<string, string> | undefined;
+	private classIndex:        Map<string, BrandedNamespace> | undefined;
 
-	public constructor(packages: Readonly<Record<string, MemoryPackage>> | ReadonlyMap<string, MemoryPackage>) {
+	public constructor(packages: Readonly<Record<string, MemoryPackage>> | ReadonlyMap<BrandedNamespace, MemoryPackage>) {
 		this.packages = packages instanceof Map ? packages : new Map(Object.entries(packages));
 	}
 
-	public has(pkg: string): boolean {
+	public has(pkg: BrandedNamespace): boolean {
 		return this.packages.has(pkg);
 	}
 
-	public hasVersion(pkg: string, version: string): boolean {
+	public hasVersion(pkg: BrandedNamespace, version: string): boolean {
 		const known = this.versionOf(pkg);
 		return known !== UnknownVersion && known === version;
 	}
 
-	public isCranVersion(pkg: string, version: string): boolean {
+	public isCranVersion(pkg: BrandedNamespace, version: string): boolean {
 		return this.hasVersion(pkg, version);
 	}
 
@@ -63,7 +64,7 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return undefined;
 	}
 
-	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+	public lookup(pkg: BrandedNamespace, version?: string): LibraryExports | undefined {
 		const found = this.packages.get(pkg);
 		/* a source given no version has one answer and gives it whatever is asked for: it cannot say no */
 		if(found === undefined || !this.answersFor(pkg, version)) {
@@ -80,14 +81,14 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		};
 	}
 
-	public packagesExporting(name: string): readonly string[] {
+	public packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return [...this.packages]
 			.filter(([, p]) => p.exported.includes(name))
 			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || compareByCodeUnit(an, bn))
 			.map(([pkg]) => pkg);
 	}
 
-	public classOwner(className: string, version?: string): string | undefined {
+	public classOwner(className: string, version?: string): BrandedNamespace | undefined {
 		if(version !== undefined) {
 			return this.packageNames().find(pkg => {
 				const lib = this.lookup(pkg, version);
@@ -99,12 +100,12 @@ export class MemorySignatureSource implements PackageSignatureSource {
 	}
 
 	/** the functions a package was given with, the per-function view stays empty for the others */
-	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+	public functions(pkg: BrandedNamespace, version?: string): DecodedFunction[] | undefined {
 		const found = this.packages.get(pkg);
 		return found?.functions === undefined || !this.answersFor(pkg, version) ? undefined : [...found.functions];
 	}
 
-	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+	public functionByName(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): DecodedFunction | undefined {
 		return this.functions(pkg, version)?.find(f => f.name === name);
 	}
 
@@ -112,7 +113,7 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return undefined;
 	}
 
-	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
+	public dependencies(pkg: BrandedNamespace, version?: string): ResolvedDependency[] | undefined {
 		const found = this.packages.get(pkg);
 		if(found === undefined || !this.answersFor(pkg, version)) {
 			return undefined;
@@ -125,15 +126,15 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return undefined;
 	}
 
-	public packageNames(): string[] {
+	public packageNames(): BrandedNamespace[] {
 		return [...this.packages.keys()];
 	}
 
-	public isBaseR(pkg: string): boolean {
+	public isBaseR(pkg: BrandedNamespace): boolean {
 		return baseRPackages().includes(pkg);
 	}
 
-	public downloads(pkg: string): number {
+	public downloads(pkg: BrandedNamespace): number {
 		return this.packages.get(pkg)?.downloads ?? 0;
 	}
 
@@ -142,17 +143,17 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return undefined;
 	}
 
-	public releaseDate(pkg: string): Date | undefined {
+	public releaseDate(pkg: BrandedNamespace): Date | undefined {
 		return this.packages.get(pkg)?.released;
 	}
 
-	public releaseDates(pkg: string): VersionRelease[] {
+	public releaseDates(pkg: BrandedNamespace): VersionRelease[] {
 		const version = this.latestVersion(pkg);
 		const date = this.releaseDate(pkg);
 		return version === undefined || date === undefined ? [] : [{ version, date }];
 	}
 
-	public latestVersion(pkg: string): RVersion | undefined {
+	public latestVersion(pkg: BrandedNamespace): RVersion | undefined {
 		const known = this.versionOf(pkg);
 		return known === UnknownVersion ? undefined : RVersion.parse(known);
 	}
@@ -163,11 +164,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 	}
 
 	/** whether the package answers a lookup for `version`, which an unversioned one always does */
-	private answersFor(pkg: string, version: string | undefined): boolean {
+	private answersFor(pkg: BrandedNamespace, version: string | undefined): boolean {
 		return version === undefined || this.versionOf(pkg) === UnknownVersion || this.versionOf(pkg) === version;
 	}
 
-	private versionOf(pkg: string): string {
+	private versionOf(pkg: BrandedNamespace): string {
 		return this.packages.get(pkg)?.version ?? UnknownVersion;
 	}
 }

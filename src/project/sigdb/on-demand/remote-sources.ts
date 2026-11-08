@@ -1,4 +1,5 @@
 import zlib from 'zlib';
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /**
  * Where an on-demand signature source looks for the source of a package no database knows: CRAN, Bioconductor,
@@ -73,7 +74,7 @@ export function parseGitHubRemote(remote: string): { owner: string, repo: string
 }
 
 /** A package name R accepts, which is all that may go into a URL built from one. */
-export function isPackageName(name: string): boolean {
+export function isPackageName(name: BrandedNamespace): boolean {
 	return /^[A-Za-z][A-Za-z0-9.]*[A-Za-z0-9]$/.test(name);
 }
 

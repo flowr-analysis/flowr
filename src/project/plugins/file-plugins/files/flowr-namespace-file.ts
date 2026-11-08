@@ -11,7 +11,7 @@ import type {
 	ParentInformation
 } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold';
-import { Identifier } from '../../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../../dataflow/environments/identifier';
 import type { RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { RPrimitives } from '../../../../data/r-primitives.generated';
@@ -24,23 +24,23 @@ import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argum
 import { uniqueArray } from '../../../../util/collections/arrays';
 
 export interface NamespaceInfo {
-	exportedSymbols:      string[];
+	exportedSymbols:      BrandedIdentifier[];
 	/**
 	 * Names listed by `exportMethods()`: S4 methods the package registered for one of its classes, which is a
 	 * different claim than an ordinary export (the package answers a generic, it does not define the function).
 	 * As R's `loadNamespace`, this keeps only the non-primitive generics: a method on a primitive such as `+` or `[`
 	 * binds nothing in the namespace, so `pkg::"+"` does not exist and the call stays with base.
 	 */
-	exportedS4Methods:    string[];
+	exportedS4Methods:    BrandedIdentifier[];
 	/** Classes listed by `exportClasses()`: the S4 classes the package owns. Separated like {@link exportedS4Methods}. */
-	exportedS4Classes:    string[];
-	exportS3Generics:     Map<string, string[]>;
+	exportedS4Classes:    BrandedIdentifier[];
+	exportS3Generics:     Map<BrandedIdentifier, string[]>;
 	/** For `S3method(generic, class, fun)`, the function registered as the method `generic.class` when it is not named so. */
 	s3MethodFunctions?:   Map<string, string>;
 	exportedPatterns:     string[];
-	importedPackages:     Map<string, string[] | 'all'>;
+	importedPackages:     Map<BrandedNamespace, BrandedIdentifier[] | 'all'>;
 	loadsWithSideEffects: boolean;
-	callable:             string[];
+	callable:             BrandedIdentifier[];
 	/** Present only in complex parsed NAMESPACE files. Maps conditions to the parts they gate. */
 	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
 }
@@ -86,7 +86,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	}
 
 	/** See {@link isExportedInNamespaceFormat}, which this answers for the file's own content. */
-	public isExported(name: string, pkg: string = 'current'): boolean | RNode<ParentInformation>[] {
+	public isExported(name: BrandedIdentifier, pkg: BrandedNamespace = 'current'): boolean | RNode<ParentInformation>[] {
 		const fmt = this.content();
 		return isExportedInNamespaceFormat(fmt, name, pkg);
 	}
@@ -112,7 +112,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
  * @param name - The name of the symbol/function to check
  * @param pkg  - The package to check in
  */
-export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, name: string, pkg: string = 'current'): boolean | RNode<ParentInformation>[] {
+export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, name: BrandedIdentifier, pkg: BrandedNamespace = 'current'): boolean | RNode<ParentInformation>[] {
 	const nsInfo: NamespaceInfo | undefined = pkg === 'current' ? fmt.current : fmt[pkg];
 	return nsInfo ? isExportedInInfo(name, nsInfo) : false;
 }
@@ -121,7 +121,7 @@ export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, na
  * The package an explicit `importFrom(pkg, name)` takes `name` from. A package exporting such a name defines nothing
  * of it but re-exports that package's function (`dplyr::%>%` is `magrittr::%>%`), which stays its own export all the same.
  */
-export function importOrigin(this: void, name: string, nsInfo: NamespaceInfo): string | undefined {
+export function importOrigin(this: void, name: BrandedIdentifier, nsInfo: NamespaceInfo): BrandedNamespace | undefined {
 	for(const [pkg, names] of nsInfo.importedPackages) {
 		if(names !== 'all' && names.includes(name)) {
 			return pkg;
@@ -131,7 +131,7 @@ export function importOrigin(this: void, name: string, nsInfo: NamespaceInfo): s
 }
 
 /** As {@link isExportedInNamespaceFormat}, but for one already picked {@link NamespaceInfo}. */
-export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
+export function isExportedInInfo(this: void, name: BrandedIdentifier, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
 	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedS4Methods.includes(name) || nsInfo.exportedS4Classes.includes(name)) {
 		return true;
 	}
@@ -226,8 +226,8 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 }
 
 /** All exported names of a namespace that can be referenced (functions, symbols, patterns, and S3 methods as `generic.class`). */
-export function getExportedNames(info: NamespaceInfo): string[] {
-	const s3: string[] = [];
+export function getExportedNames(info: NamespaceInfo): BrandedIdentifier[] {
+	const s3: BrandedIdentifier[] = [];
 	for(const [g, methods] of info.exportS3Generics) {
 		for(const m of methods) {
 			s3.push(`${g}.${m}`);
@@ -238,12 +238,12 @@ export function getExportedNames(info: NamespaceInfo): string[] {
 }
 
 /** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
-export function getCallables(info: NamespaceInfo): string[] {
+export function getCallables(info: NamespaceInfo): BrandedIdentifier[] {
 	return info.callable.length > 0 ? info.callable : getExportedNames(info);
 }
 
 /** Sets the given list of strings as callable functions */
-export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo {
+export function setCallable(info: NamespaceInfo, func: BrandedIdentifier[]): NamespaceInfo {
 	const all = new Set(getExportedNames(info));
 	for(const f of func) {
 		if(all.has(f)) {
@@ -282,25 +282,25 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 	};
 }
 /** The array stored for `key` in a `string[]`-valued map, creating and registering an empty one if there is none yet. */
-function arrayAt<K>(map: Map<K, string[]>, key: K): string[] {
+function arrayAt<K, V = string>(map: Map<K, V[]>, key: NoInfer<K>): V[] {
 	const arr = map.get(key) ?? [];
 	map.set(key, arr);
 	return arr;
 }
 
 /** As {@link arrayAt}, but for an import map: a package imported wholesale (`'all'`) also gets a fresh array to add to. */
-function importArrayAt(map: Map<string, string[] | 'all'>, key: string): string[] {
+function importArrayAt(map: Map<BrandedNamespace, BrandedIdentifier[] | 'all'>, key: BrandedNamespace): BrandedIdentifier[] {
 	const arr = map.get(key);
 	if(arr && arr !== 'all') {
 		return arr;
 	}
-	const fresh: string[] = [];
+	const fresh: BrandedIdentifier[] = [];
 	map.set(key, fresh);
 	return fresh;
 }
 
 /** Registers `pkg` (creating it if new) as loading with side effects, as `useDynLib()` directives do. */
-function markSideEffectLoader(fmt: NamespaceFormat, pkg: string): void {
+function markSideEffectLoader(fmt: NamespaceFormat, pkg: BrandedNamespace): void {
 	(fmt[pkg] ??= emptyNamespaceInfo()).loadsWithSideEffects = true;
 }
 
@@ -309,7 +309,7 @@ type DirectiveArguments = readonly string[];
 
 /** an argument of a NAMESPACE directive as written, quotes included, and its name if it is given by one */
 interface DirectiveArgument {
-	readonly name?: string
+	readonly name?: BrandedIdentifier
 	readonly value: string
 }
 
@@ -320,7 +320,7 @@ function importFrom(g: NamespaceFormat, [pkg, ...symbols]: DirectiveArguments): 
 }
 
 /** What each NAMESPACE directive adds, shared by the AST-based and the plain-text parser so that both read a NAMESPACE alike. */
-const NamespaceDirectives = new Map<string, (g: NamespaceFormat, args: DirectiveArguments) => void>(Object.entries({
+const NamespaceDirectives = new Map<BrandedIdentifier, (g: NamespaceFormat, args: DirectiveArguments) => void>(Object.entries({
 	export:        (g, args) => g.current.exportedSymbols.push(...args.map(RString.unquote)),
 	exportPattern: (g, args) => g.current.exportedPatterns.push(...args.map(a => unquoteArgument(a))),
 	exportClasses: (g, args) => g.current.exportedS4Classes.push(...args.map(RString.unquote)),
@@ -353,13 +353,13 @@ const NamespaceDirectives = new Map<string, (g: NamespaceFormat, args: Directive
 }));
 
 /** As R's `parseNamespaceFile`, these options are read by name, every other argument by its position. */
-const DirectiveOptions: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+const DirectiveOptions: ReadonlyMap<BrandedIdentifier, ReadonlySet<BrandedIdentifier>> = new Map([
 	['import', new Set(['except'])],
 	['useDynLib', new Set(['.registration', '.fixes'])]
 ]);
 
 /** Applies the directive `name` (if it is one) with its `args` to `g`. */
-function applyDirective(g: NamespaceFormat, name: string, args: readonly DirectiveArgument[]): NamespaceFormat {
+function applyDirective(g: NamespaceFormat, name: BrandedIdentifier, args: readonly DirectiveArgument[]): NamespaceFormat {
 	const options = DirectiveOptions.get(name);
 	NamespaceDirectives.get(name)?.(g, args.filter(a => a.name === undefined || !options?.has(a.name)).map(a => a.value));
 	return g;
@@ -370,13 +370,13 @@ const cleanLineCommentRegex = /^#.*$/gm;
 /** A namespace that neither exports nor imports anything yet. */
 function emptyNamespaceInfo(): NamespaceInfo {
 	return {
-		exportedSymbols:      [] as string[],
-		exportedS4Methods:    [] as string[],
-		exportedS4Classes:    [] as string[],
-		exportS3Generics:     new Map<string, string[]>(),
+		exportedSymbols:      [] as BrandedIdentifier[],
+		exportedS4Methods:    [] as BrandedIdentifier[],
+		exportedS4Classes:    [] as BrandedIdentifier[],
+		exportS3Generics:     new Map<BrandedIdentifier, string[]>(),
 		exportedPatterns:     [] as string[],
-		importedPackages:     new Map<string, string[] | 'all'>(),
-		callable:             [] as string[],
+		importedPackages:     new Map<BrandedNamespace, BrandedIdentifier[] | 'all'>(),
+		callable:             [] as BrandedIdentifier[],
 		loadsWithSideEffects: false,
 	};
 }
@@ -415,7 +415,7 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		}
 	}
 
-	const mergedS3Generics = new Map<string, string[]>();
+	const mergedS3Generics = new Map<BrandedIdentifier, string[]>();
 	for(const [key, value] of target.exportS3Generics) {
 		mergedS3Generics.set(key, [...value]);
 	}
@@ -427,7 +427,7 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 			mergedS3Generics.set(key, [...value]);
 		}
 	}
-	const mergedImportedPackages = new Map<string, string[] | 'all'>();
+	const mergedImportedPackages = new Map<BrandedNamespace, BrandedIdentifier[] | 'all'>();
 	for(const [key, value] of target.importedPackages) {
 		mergedImportedPackages.set(key, value);
 	}

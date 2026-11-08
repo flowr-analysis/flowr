@@ -3,6 +3,7 @@ import { FlowrInlineTextFile } from '../../context/flowr-file';
 import { FlowrDescriptionFile } from '../../plugins/file-plugins/files/flowr-description-file';
 import type { DecodedFunction, SigParameter } from '../decode';
 import { MaxDefaultLength } from '../schema';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
 import { parseRRegexPattern } from '../../../util/r-regex';
 import { uniqueArray } from '../../../util/collections/arrays';
@@ -14,11 +15,11 @@ import { TreeSitterType } from '../../../r-bridge/lang-4.x/tree-sitter/tree-sitt
  * top level. This is what an on-demand signature source serves for a package no database knows.
  */
 export interface RecoveredPackage {
-	readonly name:      string;
+	readonly name:      BrandedNamespace;
 	readonly version?:  string;
 	/** where the sources came from, like `github:masurp/ggmirt` */
 	readonly origin:    string;
-	readonly exported:  readonly string[];
+	readonly exported:  readonly BrandedIdentifier[];
 	readonly s4Classes: readonly string[];
 	readonly functions: readonly DecodedFunction[];
 }
@@ -283,14 +284,14 @@ function sanitizedFunction(f: unknown): DecodedFunction | undefined {
  * exports: a package nobody vetted must not take over a call flowR knows to be security relevant, like `system`,
  * which would hide that call from every analysis looking for it. `undefined` for something that is no package.
  */
-export function sanitizeRecovered(value: unknown, shielded: ReadonlySet<string> = new Set()): RecoveredPackage | undefined {
+export function sanitizeRecovered(value: unknown, shielded: ReadonlySet<BrandedIdentifier> = new Set()): RecoveredPackage | undefined {
 	const pkg = value as Partial<RecoveredPackage> | undefined;
 	if(typeof pkg !== 'object' || pkg === null || typeof pkg.name !== 'string' || !/^[A-Za-z][A-Za-z0-9.]*$/.test(pkg.name)
 		|| !Array.isArray(pkg.exported) || !Array.isArray(pkg.functions) || !Array.isArray(pkg.s4Classes)) {
 		return undefined;
 	}
 	const exported = uniqueArray(pkg.exported.filter(isBindableName).filter(n => !shielded.has(n))).slice(0, RecoveredLimits.names);
-	const isExported = new Set(exported);
+	const isExported = new Set<BrandedIdentifier>(exported);
 	return {
 		name:      pkg.name,
 		version:   typeof pkg.version === 'string' && /^[0-9][0-9.-]{0,40}$/.test(pkg.version) ? pkg.version : undefined,

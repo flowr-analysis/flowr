@@ -43,12 +43,12 @@ function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
  * and prefer the {@link FlowrAnalyzer}.
  */
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
-	private args:             FlowrAnalyzerCacheOptions<Parser>;
-	private pipeline:         AnalyzerPipelineExecutor<Parser> = undefined as unknown as AnalyzerPipelineExecutor<Parser>;
+	private args:              FlowrAnalyzerCacheOptions<Parser>;
+	private pipeline!:         AnalyzerPipelineExecutor<Parser>;
 	/** the steps of the tape run so far, which the next caller waits for */
-	private running:          Promise<unknown> = Promise.resolve();
-	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
-	private callGraphCache:   CallGraph | undefined = undefined;
+	private running:           Promise<unknown> = Promise.resolve();
+	private controlFlowCache!: FlowrAnalyzerControlFlowCache;
+	private callGraphCache:    CallGraph | undefined = undefined;
 	private derivedCache = new Map<object, Promise<unknown>>();
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {

@@ -5,6 +5,7 @@
  */
 
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 
 /** The definition location of the binding, with a file path usually relative to the package project root. */
 export interface SigDefinitionLocation {
@@ -16,10 +17,10 @@ export interface SigDefinitionLocation {
 export interface LibraryExports {
 	/** R version identifier (see `RVersion.parse`) */
 	readonly version:    string;
-	readonly exported:   readonly string[];
+	readonly exported:   readonly BrandedIdentifier[];
 	/** defined-but-not-exported identifiers (only available when internal names are stored, which we usually avoid in the db) */
-	readonly internal:   readonly string[];
-	readonly deprecated: readonly string[];
+	readonly internal:   readonly BrandedIdentifier[];
+	readonly deprecated: readonly BrandedIdentifier[];
 	/**
 	 * S3 classes this package version OWNS: it registers at least one S3 method for the class (its NAMESPACE's
 	 * `S3method(generic, class)`) AND exports a same-named constructor function. See {@link FnProp.S3Owner}.
@@ -32,9 +33,9 @@ export interface LibraryExports {
 	/** package documentation url base in case this package is found at a different endpoint */
 	readonly cranUrl?:   string;
 	/** definition location per identifier, if the database carries them */
-	readonly locations?: ReadonlyMap<string, SigDefinitionLocation>;
+	readonly locations?: ReadonlyMap<BrandedIdentifier, SigDefinitionLocation>;
 	/** the package each re-exported name comes from (`importFrom(magrittr, "%>%")` plus `export("%>%")`), if the database carries it */
-	readonly reexports?: ReadonlyMap<string, string>;
+	readonly reexports?: ReadonlyMap<BrandedIdentifier, BrandedNamespace>;
 }
 
 export const SigDbMagic = 'flowr-sigdb';

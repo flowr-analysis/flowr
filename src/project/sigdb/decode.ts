@@ -1,3 +1,4 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 /**
  * Decoding a {@link PkgBlob} into the reader-facing views: the on-disk tuple form, the decoded function/
  * dependency records, and the {@link LibraryExports} export view. Pure -- no I/O, no mutation of inputs.
@@ -25,7 +26,7 @@ export interface CranBlobInfo {
  * Reconstruct the CRAN source blob link which is the newest non-archived version lives under `src/contrib`,
  * every other under `Archive`.
  */
-export function cranBlobUrl(cranBase: string, pkg: string, version: string, opts: CranBlobInfo): string | undefined {
+export function cranBlobUrl(cranBase: string, pkg: BrandedNamespace, version: string, opts: CranBlobInfo): string | undefined {
 	if(!opts.cran) {
 		return undefined;
 	}
@@ -64,7 +65,7 @@ export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
 
 /** one decoded parameter of a function signature */
 export interface SigParameter {
-	readonly name:     string;
+	readonly name:     BrandedIdentifier;
 	/** bitfield of {@link ArgProp}, as flowR's built-ins state it; a bit the extractor cannot see stays unset */
 	readonly props:    ArgProps;
 	readonly default?: string;
@@ -72,13 +73,13 @@ export interface SigParameter {
 
 /** the decoded view of one function at one package version */
 export interface DecodedFunction {
-	readonly name:        string;
+	readonly name:        BrandedIdentifier;
 	readonly file?:       string;
 	readonly line:        number;
 	readonly exported:    boolean;
 	readonly props:       readonly string[];
 	readonly signature:   readonly SigParameter[];
-	readonly callees:     readonly string[];
+	readonly callees:     readonly BrandedIdentifier[];
 	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
 	readonly topic?:      string;
 	/** the package this name is re-exported from, see {@link SigFunctionInfo.reexportOf} */
@@ -89,12 +90,11 @@ export interface DecodedFunction {
  * The transitive callees of `name`. Each local callee that is itself a function of `functions` (one package
  * version's set) is expanded, names outside the set stay as leaves. Deduplicated and ascending.
  */
-export function transitiveCallees(functions: readonly DecodedFunction[], name: string): string[] {
+export function transitiveCallees(functions: readonly DecodedFunction[], name: BrandedIdentifier): BrandedIdentifier[] {
 	const local = new Map(functions.map(f => [f.name, f.callees]));
-	const reached = new Set<string>();
+	const reached = new Set<BrandedIdentifier>();
 	const queue = [...(local.get(name) ?? [])];
-	while(queue.length > 0) {
-		const callee = queue.pop() as string;
+	for(let callee; (callee = queue.pop()) !== undefined;) {
 		if(reached.has(callee)) {
 			continue;
 		}
@@ -135,7 +135,7 @@ export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx:
 
 /** a decoded package dependency of one version (`type` is the compact {@link DepType} enum; map to a label via {@link DepTypeNames}) */
 export interface ResolvedDependency {
-	readonly name:        string;
+	readonly name:        BrandedNamespace;
 	readonly type:        DepType;
 	/** version qualifier as declared in DESCRIPTION, e.g. `>= 3.0.0` (absent = any version) */
 	readonly constraint?: string;
@@ -205,7 +205,7 @@ function isExportedEntry(bits: number, name: string): boolean {
 
 /** derive the {@link LibraryExports} export view of one package version from its blob + metadata */
 export function deriveLibraryExports(
-	strings: SigDict, blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: string, version?: string, cranBase = DefaultCranBase
+	strings: SigDict, blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: BrandedNamespace, version?: string, cranBase = DefaultCranBase
 ): LibraryExports | undefined {
 	const [latest, archived] = meta;
 	const ver = resolveVersion(blob, latest, version);

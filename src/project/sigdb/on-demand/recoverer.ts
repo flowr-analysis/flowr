@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type Parser from 'web-tree-sitter';
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { FlowrConfig } from '../../../config';
 import type { FetchBytes, OnDemandSource, PackageArchive, PackageRequest } from './remote-sources';
 import { isPackageName } from './remote-sources';
@@ -39,7 +40,7 @@ export interface OnDemandRecovererArgs {
 /** how many packages are fetched at once */
 const Parallel = 4;
 
-function isCacheEntry(value: unknown, name: string): value is CacheEntry {
+function isCacheEntry(value: unknown, name: BrandedNamespace): value is CacheEntry {
 	const entry = value as Partial<CacheEntry> | undefined;
 	const pkg = entry?.package as Partial<RecoveredPackage> | undefined;
 	return typeof entry === 'object' && entry !== null && entry.schema === CacheSchema && entry.name === name && typeof entry.at === 'number'
@@ -68,11 +69,11 @@ export class OnDemandRecoverer {
 		this.now = args.now ?? Date.now;
 	}
 
-	private cacheFile(name: string): string {
+	private cacheFile(name: BrandedNamespace): string {
 		return path.join(this.args.cacheDir, `${name}.json`);
 	}
 
-	private readEntry(name: string): CacheEntry | undefined {
+	private readEntry(name: BrandedNamespace): CacheEntry | undefined {
 		if(!isPackageName(name)) {
 			return undefined;
 		}
@@ -97,7 +98,7 @@ export class OnDemandRecoverer {
 	}
 
 	/** The package as fetched before, `undefined` if it never was or no source had it. */
-	public cached(name: string): RecoveredPackage | undefined {
+	public cached(name: BrandedNamespace): RecoveredPackage | undefined {
 		const found = sanitizeRecovered(this.readEntry(name)?.package);
 		return found?.name === name ? found : undefined;
 	}

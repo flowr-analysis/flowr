@@ -18,7 +18,7 @@ import { RFunctionDefinition } from './nodes/r-function-definition';
 import type { EmptyArgument, RFunctionCall } from './nodes/r-function-call';
 import type { RParameter } from './nodes/r-parameter';
 import type { RArgument } from './nodes/r-argument';
-import type { RExpressionList } from './nodes/r-expression-list';
+import { RExpressionList } from './nodes/r-expression-list';
 import type { RIndexAccess, RNamedAccess } from './nodes/r-access';
 import { RAccess } from './nodes/r-access';
 import type { RUnaryOp } from './nodes/r-unary-op';
@@ -425,6 +425,35 @@ export const RNode = {
 			yield current;
 			current = RNode.directParent(current, idMap);
 		}
+	},
+	/**
+	 * Whether `a` runs before `b` as part of an earlier statement of the closest block (`{ ... }` or the program) holding both.
+	 * @example
+	 * ```ts
+	 * // in `x <- 1\nif(u) f(x)`, the assignment runs before the call
+	 * RNode.precedesInBlock(assignment, call, idMap); // true
+	 * ```
+	 */
+	precedesInBlock<OtherInfo>(this: void, a: RNode<OtherInfo & ParentInformation> | undefined, b: RNode<OtherInfo & ParentInformation> | undefined, idMap: AstIdMap<OtherInfo & ParentInformation>): boolean {
+		if(a === undefined || b === undefined) {
+			return false;
+		}
+		/* the child on the way down to `b`, for each of its ancestors */
+		const towards = new Map<NodeId, RNode<OtherInfo & ParentInformation>>();
+		let child = b;
+		for(const parent of RNode.iterateParents(b, idMap)) {
+			towards.set(parent.info.id, child);
+			child = parent;
+		}
+		let aChild = a;
+		for(const parent of RNode.iterateParents(a, idMap)) {
+			const other = towards.get(parent.info.id);
+			if(other !== undefined) {
+				return RExpressionList.is(parent) && other.info.index > aChild.info.index;
+			}
+			aChild = parent;
+		}
+		return false;
 	},
 	/**
 	 * In contrast to the nesting stored in the {@link RNode} structure,

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -17,18 +17,7 @@ f("1 + 1")
 the following query checks whether the call to `f` calls `eval`:
 
 ```json
-[
-  {
-    "type": "does-call",
-    "queryId": "calls-eval",
-    "call": "2@f",
-    "calls": {
-      "type": "name",
-      "name": "eval",
-      "nameExact": true
-    }
-  }
-]
+[ { "type": "does-call",   "queryId": "calls-eval",   "call": "2@f",   "calls": { "type": "name",    "name": "eval",    "nameExact": true } } ]
 ```
 
 (This can be shortened to `@does-call (2@f:"eval")` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -57,105 +46,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 f <- function(x) { eval(x) };
 f("1 + 1")
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 8) during the analysis.
-
-```mermaid
-flowchart LR
-    %% Environment of 10 [level: 0]:
-    %% Built-in
-    %% 1----------------------------------------
-    %%   #option:*:    {**#option:*** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #options:     {**#options** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #graphics:    {**#graphics** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #palette:     {**#palette** (id: 8, type: Variable, cds: {}, def. @8)}
-    %%   #search-path: {**#search-path** (id: 8, type: Variable, cds: {}, def. @8)}
-    10["`*#91;RFunctionDefinition#93;* **function**
-      *1.6-28* (**id: 10**)`"]
-
-subgraph "flow-10" [function 10]
-    1["`*#91;RSymbol#93;* **x**
-      *1.15* (**id: 1**, v: )`"]
-    6(["`*#91;RSymbol#93;* **x**
-      *1.25* (**id: 6**)`"])
-    %% Environment of 8 [level: 1]:
-    %% Built-in
-    %% 1----------------------------------------
-    %% 2----------------------------------------
-    %%   x: {**x** (id: 1, type: Parameter, def. @2)}
-    8[["`*#91;RFunctionCall#93;* base#58;#58;**eval**
-      *1.20-26* (**id: 8**)
-    arg: (6)`"]]
-    style 8 stroke:red,stroke-width:5px; 
-    built-in:eval["`Built-In:
-eval`"]
-    style built-in:eval stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    9[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
-      *1.18* (**id: 9**)
-    arg: (8)`"]]
-    built-in:_123_["`Built-In:
-#123;`"]
-    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-end
-    0["`*#91;RSymbol#93;* **f**
-      *1.1* (**id: 0**, v: 10)`"]
-    11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-28* (**id: 11**)
-    arg: (0, 10)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    13{{"`*#91;RString#93;* **#34;1 #43; 1#34;**
-      *2.3-9* (**id: 13**, 15+)`"}}
-    %% Environment of 15 [level: 0]:
-    %% Built-in
-    %% 1----------------------------------------
-    %%   f: {**f** (id: 0, type: Function, def. @11)}
-    15[["`*#91;RFunctionCall#93;* **f**
-      *2.1-10* (**id: 15**)
-    arg: (13)`"]]
-    1 -.->|"flow"| 6
-    linkStyle 0 stroke:gray,color:gray;
-    1 -->|"def-by-on-call"| 13
-    6 -->|"reads"| 1
-    6 -.->|"flow"| 8
-    linkStyle 3 stroke:gray,color:gray;
-    8 -->|"reads, returns, arg"| 6
-    8 -.->|"reads, calls"| built-in:eval
-    linkStyle 5 stroke:gray;
-    8 -.->|"flow"| 9
-    linkStyle 6 stroke:gray,color:gray;
-    8 -->|"side-effect-on-call"| 15
-    9 -->|"returns, arg"| 8
-    9 -.->|"reads, calls"| built-in:_123_
-    linkStyle 9 stroke:gray;
-10 -.-|function| flow-10
-
-    10 -.->|"flow"| 0
-    linkStyle 11 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 11
-    0 -->|"defined-by"| 10
-    11 -->|"reads, arg"| 10
-    11 -->|"returns, arg"| 0
-    11 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 16 stroke:gray;
-    11 -.->|"flow"| 13
-    linkStyle 17 stroke:gray,color:gray;
-    13 -.->|"flow"| 15
-    linkStyle 18 stroke:gray,color:gray;
-    13 -->|"def-on-call"| 1
-    15 -->|"reads, arg"| 13
-    15 -->|"reads"| 0
-    15 -->|"returns"| 8
-    15 -->|"calls"| 10
-```
-
-</details>
 
 </details>
 	

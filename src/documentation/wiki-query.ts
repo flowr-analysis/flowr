@@ -1,5 +1,7 @@
 import type { RShell } from '../r-bridge/shell';
+import { CloneAlgorithm } from '../clones/clone-detector';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { defaultDependencyCategories, type DefaultDependencyCategoryName, type DependencyCategorySettings } from '../queries/catalog/dependencies-query/dependencies-query-format';
 import { Constant, Unknown } from '../queries/catalog/dependencies-query/dependency-values';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -110,7 +112,7 @@ This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'dataflow' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dataflow' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -126,7 +128,7 @@ This query calculates and returns the ${ctx.linkPage('wiki/Dataflow Graph', 'cal
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'call-graph' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'call-graph' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -144,7 +146,7 @@ Using the example code:
 ${codeBlock('r', exampleCode)}
 the following query checks whether the call to \`f\` calls \`eval\`:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'does-call', queryId: 'calls-eval', call: '2@f', calls: { type: 'name', name: 'eval', nameExact: true } }], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")', ctx })
+	await showQuery(shell, exampleCode, [{ type: 'does-call', queryId: 'calls-eval', call: '2@f', calls: { type: 'name', name: 'eval', nameExact: true } }], { showCode: true, shorthand: '(2@f:"eval")', ctx })
 }
 		`;
 	}
@@ -157,7 +159,7 @@ registerQueryDocumentation('files', {
 		return `
 This query returns the files that match the given criteria.
 ${
-	await showQuery(shell, '', [{ type: 'files' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, '', [{ type: 'files' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -173,7 +175,7 @@ This query returns the information about the analyzed project.
 If present, it will incorporate plugins to, e.g., extract author and license information from R package DESCRIPTION files.
 
 ${
-	await showQuery(shell, exampleCode, [{ type: 'project' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'project' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -190,7 +192,7 @@ This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'normalized-ast' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'normalized-ast' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -217,7 +219,7 @@ ${details('Example <code>' + exampleB + '</code>',
 
 Using the example code from above, the following query returns all clusters:
 ${
-	await showQuery(shell, exampleQueryCode, [{ type: 'dataflow-cluster' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleQueryCode, [{ type: 'dataflow-cluster' }], { showCode: false, ctx })
 }
 		`;
 	}
@@ -253,7 +255,7 @@ Please note, that functions that are just identities (e.g., \`function(x) x\`) a
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are higher-order functions:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order' }], { showCode: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
@@ -275,12 +277,38 @@ Please note, that functions that *may* be recursive due to indirect calls are al
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are recursive:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion' }], { showCode: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 ${
 	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('ambient-access', {
+	type:             'active',
+	shortDescription: 'What code reads and writes of the global state',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function() options(digits = 3)\nf()\nSys.setenv(A = "1")';
+		return `
+This query reports what code reads and writes of the global state, such as options, environment variables,
+the working directory, open devices, or the search path, as the pseudo variables of ${ctx.link('AmbientStateName')}
+(\`#option:digits\`, \`#env:A\`, ...). A call counts with what the functions it calls access, so \`f()\` above writes \`digits\`.
+It also names the global variables the code binds (\`x <<- 1\`) and the drawing calls it makes.
+The same is available in code as \`Dataflow.sideEffects.ambientAccess\`.
+
+Without criteria, the query answers for every file and for the whole project (\`<project>\`):
+${
+	await showQuery(shell, exampleCode, [{ type: 'ambient-access' }], { showCode: true, ctx })
+}
+
+With slicing criteria, it answers for each criterion with all the code its node spans, so \`3^\` asks for the statement on line 3.
+Set \`functions\` to also learn what calling each function accesses:
+${
+	await showQuery(shell, exampleCode, [{ type: 'ambient-access', criteria: ['2^'], functions: true }], { showCode: false, shorthand: sliceQueryShorthand(['2^'], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -317,7 +345,7 @@ properties named as the \`ArgProp\`/\`CallProp\` members they are.
 
 Using the example code \`${exampleCode}\` the following query returns what every identified function and formal does:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props' }], { showCode: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
@@ -349,7 +377,7 @@ Using the following example code:
 ${codeBlock('r', exampleCode)}
 the following query returns the information for all identified function definitions whether they throw exceptions:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-exception' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-exception' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -383,7 +411,7 @@ With this query you can use the ${ctx.linkPage('wiki/Search API', 'Search API')}
 
 Using the example code \`${exampleCode}\`, the following query returns all uses of 'x' in the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'search', search: Q.var('x').filter(VertexType.Use).build() }], { showCode: true, collapseQuery: false, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'search', search: Q.var('x').filter(VertexType.Use).build() }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -403,7 +431,7 @@ ${codeBlock('r', exampleCode)}
 
 the following query returns that the first assignment happens always before the other:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'happens-before', a: '1@x', b: '2@y' }], { showCode: true, collapseQuery: false, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'happens-before', a: '1@x', b: '2@y' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -419,7 +447,7 @@ This query provides access to all nodes in the ${ctx.linkPage('wiki/Normalized A
 
 Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'id-map' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'id-map' }], { showCode: true, ctx })
 }
 		`;
 	}
@@ -434,7 +462,7 @@ registerQueryDocumentation('config', {
 This query provides access to the current configuration of the flowR instance. See the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information on what the configuration represents.
 Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
 ${
-	await showQuery(shell, '', [{ type: 'config', update: { ignoreSourceCalls: true } }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, '', [{ type: 'config', update: { ignoreSourceCalls: true } }], { showCode: false, collapseResult: true, ctx })
 }
 
 Please note that, in the REPL, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
@@ -469,12 +497,12 @@ registerQueryDocumentation('absint', {
 		return `
 This query infers all shapes of dataframes within the code using abstract interpretation. For example, you can use:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference }], { showCode: true, ctx })
 }
 
 The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference, criteria: criteria }], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference, criteria: criteria }], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -496,7 +524,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'taint',
 		defs: defs
-	}], { showCode: true, collapseQuery: true, ctx })
+	}], { showCode: true, ctx })
 }
 `;
 	}
@@ -747,7 +775,7 @@ ${dependencyOverview(ctx, categories)}
 
 For a script reading \`${exampleCode}\`, the following query returns the loaded library:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dependencies' }], { showCode: false, ctx })
 }
 
 The query also handles more complicated scripts and offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
@@ -755,7 +783,7 @@ For example, consider the following script:
 ${codeBlock('r', longerCode)}
 The following query returns the dependencies of the script.
 ${
-	await showQuery(shell, longerCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, longerCode, [{ type: 'dependencies' }], { showCode: false, collapseResult: true, ctx })
 }
 
 Currently, the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
@@ -764,7 +792,7 @@ We welcome any feedback on this (consider opening a [new issue](${NewIssueUrl}))
 In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
 
 ${
-	await showQuery(shell, longerCode, [{ type: 'dependencies', ignoreDefaultFunctions: true, enabledCategories: ['library'], libraryFunctions: [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }] }], { showCode: false, collapseQuery: false, collapseResult: true, ctx })
+	await showQuery(shell, longerCode, [{ type: 'dependencies', ignoreDefaultFunctions: true, enabledCategories: ['library'], libraryFunctions: [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }] }], { showCode: false, collapseResult: true, ctx })
 }
 
 Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
@@ -775,7 +803,7 @@ Set \`assumedPackages\` to have those reported as well, as \`library\` entries m
 \`nodeId\` (no single call stands for "R attached this"), with the calls that pulled the package in listed as
 \`linkedIds\`:
 ${
-	await showQuery(shell, 'sd(c(1, 2, 3))', [{ type: 'dependencies', assumedPackages: true, enabledCategories: ['library'] }], { showCode: true, collapseQuery: false, collapseResult: false, ctx })
+	await showQuery(shell, 'sd(c(1, 2, 3))', [{ type: 'dependencies', assumedPackages: true, enabledCategories: ['library'] }], { showCode: true, collapseResult: false, ctx })
 }
 
 \`base\` is reported alongside the others but additionally marked \`alwaysAttached\`. The other six are attached by
@@ -787,7 +815,7 @@ To see what takes part in a dependency, ask the query to \`focus\` on it: \`.met
 dependency depends on and every node that depends on it, so a client can gray out the rest. In the REPL, the
 criteria go in parentheses, as with ${ctx.replCmd('query')} \`@dependencies (3@read.csv)\`, which prints the lines taking part:
 ${
-	await showQuery(shell, 'f <- "a.csv"\ng <- 2\nd <- read.csv(f)\nh <- g + 1\nprint(d)', [{ type: 'dependencies', focus: ['3@read.csv'], enabledCategories: ['read'] }], { showCode: true, collapseQuery: false, collapseResult: true, ctx })
+	await showQuery(shell, 'f <- "a.csv"\ng <- 2\nd <- read.csv(f)\nh <- g + 1\nprint(d)', [{ type: 'dependencies', focus: ['3@read.csv'], enabledCategories: ['read'] }], { showCode: true, collapseResult: true, ctx })
 }
 
 Beyond libraries, files and outputs, the query knows the \`visualize\` category (plots) and the \`transform\` category
@@ -807,7 +835,7 @@ resolved with the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} inste
 * Every plot additionally carries its \`title\` (from \`ggtitle\`, \`labs(title = )\` or \`main =\`) and the file it is written to as \`savedTo\`
   (by \`ggsave\`, which names its \`plot\` or saves \`last_plot()\`, or by the graphics device open when it is drawn).
 ${
-	await showQuery(shell, transformCode, [{ type: 'dependencies', enabledCategories: ['transform', 'visualize'] }], { showCode: true, collapseQuery: true, collapseResult: false, ctx })
+	await showQuery(shell, transformCode, [{ type: 'dependencies', enabledCategories: ['transform', 'visualize'] }], { showCode: true, collapseResult: false, ctx })
 }
 		`;
 	}
@@ -823,12 +851,12 @@ This query lints a given R script for common issues, such as missing files, unus
 
 For a script reading \`${exampleCode}\`, the following query returns all smells detected:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'linter' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'linter' }], { showCode: false, ctx })
 }
 
 You can also configure which rules to apply and what settings to use for these rules:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'linter', rules: ['file-path-validity'] }], { showCode: false, collapseQuery: true, shorthand: `rules:file-path-validity "${exampleCode}"`, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'linter', rules: ['file-path-validity'] }], { showCode: false, shorthand: `rules:file-path-validity "${exampleCode}"`, ctx })
 }
 
 We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
@@ -846,7 +874,7 @@ This control-flow query provides you access to the control flow graph.
 
 For a script reading \`${exampleCode}\`, the following query returns the CFG:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'control-flow' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'control-flow' }], { showCode: false, collapseResult: true, ctx })
 }
 
 You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
@@ -899,13 +927,13 @@ ${codeBlock('r', exampleCode)}
 The following query then gives you the aforementioned mapping:
 
 ${
-	await showQuery(shell, exampleCode, [{ type: 'location-map' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'location-map' }], { showCode: false, ctx })
 }
 
 The query also accepts a list of slice criteria to filter the results to only include the locations of specific nodes. For example:
 
 ${
-	await showQuery(shell, exampleCode, [{ type: 'location-map', ids: criteria }], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'location-map', ids: criteria }], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 
 All locations are given as a ${ctx.link('SourceRange')} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
@@ -1095,6 +1123,57 @@ See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is
 	}
 });
 
+registerQueryDocumentation('code-clones', {
+	type:             'active',
+	shortDescription: 'Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const example = `normalize <- function(v) {
+  m <- mean(v)
+  (v - m) / sd(v)
+}
+scale_it <- function(values) {
+  mu <- mean(values)
+  (values - mu) / sd(values)
+}`;
+		return `
+This query reports pairs of code fragments that are clones of each other, that is, code that was copied and possibly
+adapted. It runs over all files of the analysis, for example a whole folder or package, with three published algorithms:
+
+| algorithm | compares | after |
+|-----------|----------|-------|
+| \`baxter\` | all AST subtrees above a mass threshold, hashed by structure (ignoring identifiers and constants) and compared with \`2S / (2S + L + R)\` | Baxter et al., [Clone Detection Using Abstract Syntax Trees](https://doi.org/10.1109/ICSM.1998.738528), ICSM 1998 |
+| \`gst\` | the token strings of functions or files with Greedy String Tiling | as in [JPlag](https://github.com/jplag/JPlag), see Prechelt et al., [Finding Plagiarisms among a Set of Programs with JPlag](https://doi.org/10.3217/jucs-008-11-1016), 2002 |
+| \`winnowing\` | k-gram fingerprints selected by robust winnowing, reported with the matched passages | Schleimer et al., [Winnowing: Local Algorithms for Document Fingerprinting](https://doi.org/10.1145/872757.872770), SIGMOD 2003, the algorithm behind MOSS |
+
+Before the detection, the query presents the code in one of three \`perspective\`s:
+
+- \`syntax\` shows the code as written.
+- \`canonical\` (the default) rewrites syntactic sugar and newer R features into one core form. Pipes become calls, \`\\(x)\` becomes \`function(x)\`, right and equal assignments become \`<-\`, \`(e)\` and \`{e}\` become \`e\`, \`x[["a"]]\` becomes \`x$a\`, \`T\` and \`F\` become \`TRUE\` and \`FALSE\`, and a tail \`return(e)\` becomes \`e\`. Every rewritten node keeps the id of the node it stems from, so all findings point to the original source.
+- \`dataflow\` additionally inlines temporaries that are used exactly once along the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, so \`t <- f(x)\` followed by \`g(t)\` looks like \`g(f(x))\`. It only inlines where this cannot change what the code computes, and it is the only perspective that needs the dataflow analysis.
+
+With \`exportIndex\`, the query also returns the clone index of the analyzed files (their normalized ASTs).
+A later query can pass such indices as \`against\` to search new code in a corpus of pre-analyzed projects without analyzing them again.
+Use \`config\` to tune the thresholds of each algorithm, and \`maxPairs\` to limit the number of reported pairs, as \`n\` copies of the same function already form \`n(n-1)/2\` pairs.
+
+${await showQuery(shell, example, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing] }], { showCode: true, collapseResult: true, ctx })}
+
+In code, passing the query on its own to ${ctx.linkM(FlowrAnalyzer, 'query')} returns its result directly:
+
+${codeBlock('typescript', `const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: ['gst', 'winnowing'] });
+for(const { algorithm, similarity, a, b } of pairs) {
+	console.log(\`\${algorithm} (\${similarity.toFixed(2)}): \${a.name ?? a.file} ~ \${b.name ?? b.file}\`);
+}`)}
+
+${
+	block({
+		type:    'NOTE',
+		content: `The ${ctx.linkPage('wiki/Linter', 'linter')} offers the same detection as its \`code-clones\` rule, which is not active by default. In the REPL, \`:query @code-clones gst winnowing <code>\` runs the query with the given algorithms.`
+	})
+}
+`;
+	}
+});
+
 registerQueryDocumentation('function-info', {
 	type:             'active',
 	shortDescription: 'Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.',
@@ -1148,6 +1227,17 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
+In code, you run queries with ${ctx.linkM(FlowrAnalyzer, 'query')}.
+Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
+For queries that report one entry per query (e.g., the ${linkToQueryOfName('static-slice')}), the result is just that entry.
+A failing single query throws an error.
+
+${codeBlock('ts', 'const { slice, reconstruct } = await analyzer.query({ type: \'static-slice\', criteria: [\'3@x\'] });')}
+
+Pass it a list of queries, and it answers with a record of the results by query type.
+Queries of the same type run together, and a failing query type is reported as an error without affecting the others:
+
+${codeBlock('ts', 'const results = await analyzer.query([{ type: \'id-map\' }, { type: \'dataflow\' }]);\nconst graph = results.dataflow.graph;')}
 
 ${
 	block({

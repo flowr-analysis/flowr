@@ -1,6 +1,6 @@
 import { RBasePackageStore } from '../data/r-base-packages.generated';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
-import { RVersion } from './r-version';
+import { compareRVersions } from './r-version-order';
 import { memoize } from './collections/defaultmap';
 
 /**
@@ -30,14 +30,14 @@ export const AttachedBasePackageSet: ReadonlySet<string> = new Set(AttachedBaseP
 
 /** clamp `rVersion` to the newest R release the store knows about (so a future R version stays answerable) */
 function effective(rVersion: string): string {
-	return RVersion.compare(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;
+	return compareRVersions(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;
 }
 
 /** memoized per assumed R version, so the list is computed at most once per version (never per lookup) */
 const basePackagesAt = memoize((rVersion: string): readonly string[] => {
 	const eff = effective(rVersion);
 	return Object.entries(RBasePackageStore.packages)
-		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
+		.filter(([, [first, last]]) => compareRVersions(first, eff) <= 0 && compareRVersions(last, eff) >= 0)
 		.map(([name]) => name);
 });
 
@@ -51,7 +51,7 @@ const basePackagesAt = memoize((rVersion: string): readonly string[] => {
  */
 export function baseRPackages(rVersion?: string): readonly string[] {
 	// fast path: no version, or the exact newest-release string, avoids the (regex-based) version compare entirely
-	if(rVersion === undefined || rVersion === RBasePackageStore.newestRVersion || RVersion.compare(rVersion, RBasePackageStore.newestRVersion) >= 0) {
+	if(rVersion === undefined || rVersion === RBasePackageStore.newestRVersion || compareRVersions(rVersion, RBasePackageStore.newestRVersion) >= 0) {
 		return RBasePackageStore.current;   // the current base set, precomputed at bundle time
 	}
 	return basePackagesAt(rVersion);
@@ -103,5 +103,5 @@ export function isBaseRPackage(name: string, rVersion?: string): boolean {
 		return true;
 	}
 	const eff = effective(rVersion);
-	return RVersion.compare(range[0], eff) <= 0 && RVersion.compare(range[1], eff) >= 0;
+	return compareRVersions(range[0], eff) <= 0 && compareRVersions(range[1], eff) >= 0;
 }

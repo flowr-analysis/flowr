@@ -1,11 +1,10 @@
-import { RString } from '../nodes/r-string';
 import type { AstIdMap, ParentInformation } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { DfgVertex } from '../../../../../dataflow/graph/vertex';
-import { RNode } from '../model';
+import type { RNode } from '../model';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
-import { compareByCodeUnit } from '../../../../../util/text/strings';
+import { compareByCodeUnit, splitRQuotes } from '../../../../../util/text/strings';
 
 /**
  * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
@@ -154,11 +153,12 @@ export const NodeId = {
 	 */
 	recoverBareName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
 		const lexeme = NodeId.recoverName(id, idMap);
-		return lexeme === undefined ? undefined : RString.unquote(lexeme);
+		return lexeme === undefined ? undefined : splitRQuotes(lexeme).content;
 	},
 	/**
 	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and
-	 * the lexeme of anything else.
+	 * the lexeme of anything else. It reads the lexeme itself, as the AST helpers would make loading the identifiers expensive.
+	 * @lintIgnore
 	 * @see {@link NodeId.recoverName} - for the lexeme alone, which needs no graph
 	 */
 	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
@@ -170,9 +170,9 @@ export const NodeId = {
 		if(node === undefined) {
 			return undefined;
 		}
-		const lexeme = RNode.ownLexeme(node) ?? '';
+		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
 		if(DfgVertex.isUse(vertex)) {
-			return RString.unquote(lexeme);
+			return splitRQuotes(lexeme).content;
 		}
 		return lexeme;
 	}

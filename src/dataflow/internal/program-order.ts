@@ -3,16 +3,11 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
+import { DfEdge, EdgeType } from '../graph/edge';
 
 /**
  * Program order of top-level code outside loops and quotes: it runs once, so its definitions are not there yet for the statements before.
  * @helper dataflow
- * @example
- * ```r
- * f <- function() y
- * f()      # runs once, before `y` is defined below
- * y <- 1
- * ```
  */
 export const ProgramOrder = {
 	name: 'ProgramOrder',
@@ -30,12 +25,26 @@ export const ProgramOrder = {
 	offset(this: void, definition: NodeId, statement: RNode<ParentInformation> | undefined, graph: DataflowGraph): number {
 		return graph.isRoot(definition) ? statementsAfter(definition, statement, graph) : 0;
 	},
-	/**
-	 * Whether the definition at `definition` is made only after `statement` ran: it sits in a later top-level statement,
-	 * which holds a nested one too, as the function it is nested in does not exist before.
-	 */
+	/** Whether the definition at `definition` is made only after `statement` ran: it sits in a later top-level statement, which holds a nested one too, as the function it is nested in does not exist before. */
 	definedLater(this: void, definition: NodeId, statement: RNode<ParentInformation> | undefined, graph: DataflowGraph): boolean {
 		return statementsAfter(definition, statement, graph) > 0;
+	},
+	/** For code the program runs once after `statement`, which surely makes the definition `write`: what that code reads no longer sees the definitions made before `statement`. */
+	replaceEarlier(this: void, write: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph, readsEarlier: boolean): void {
+		const before = (id: NodeId) => ProgramOrder.runsOnceAt(id, graph) !== undefined && ProgramOrder.offset(id, statement, graph) < 0;
+		for(const [reader, edge] of graph.edgesTo(write)) {
+			if(!DfEdge.includesType(edge, EdgeType.Reads) || ProgramOrder.runsOnceAt(reader, graph) === undefined || ProgramOrder.offset(reader, statement, graph) <= 0) {
+				continue;
+			}
+			for(const [earlier, out] of graph.edgesFrom(reader)) {
+				if(earlier !== write && DfEdge.includesType(out, EdgeType.Reads) && before(earlier)) {
+					graph.removeEdgeType(reader, earlier, EdgeType.Reads);
+					if(readsEarlier) {
+						graph.addEdge(write, earlier, EdgeType.Reads);
+					}
+				}
+			}
+		}
 	}
 } as const;
 

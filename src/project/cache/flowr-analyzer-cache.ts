@@ -49,6 +49,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	private running:          Promise<unknown> = Promise.resolve();
 	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
 	private callGraphCache:   CallGraph | undefined = undefined;
+	private derivedCache = new Map<object, Promise<unknown>>();
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {
 		super();
@@ -63,6 +64,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 		this.callGraphCache = undefined;
+		this.derivedCache = new Map();
 		this.computeIfAbsent(true, () => this.pipeline?.getResults(true));
 	}
 
@@ -240,6 +242,41 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			this.callGraphCache = CallGraph.compute((await this.dataflow(force)).graph);
 		}
 		return this.callGraphCache;
+	}
+
+	/**
+	 * A value computed from the current analysis once per `key`, dropped with the analysis.
+	 * A failed computation is not kept, so the next caller tries again.
+	 * Callers asking while it runs share the one promise, so a value of one analysis is never computed twice
+	 * concurrently. See {@link ReadonlyFlowrAnalysisProvider#derive} for what to keep in mind when choosing the `key`.
+	 * @example
+	 * ```ts
+	 * const first = cache.derive(key, compute);
+	 * const second = cache.derive(key, compute); // the same promise
+	 * ```
+	 */
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		const known = this.derivedCache.get(key) as Promise<T> | undefined;
+		if(known !== undefined) {
+			return known;
+		}
+		const store = this.derivedCache;
+		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one,
+		 * and a result computed under gas pressure (which may be incomplete) is handed out but not kept */
+		const forget = () => {
+			if(store.get(key) === computed) {
+				store.delete(key);
+			}
+		};
+		const computed: Promise<T> = this.args.context.gas.withFreshGas(compute).then(({ value, degraded }) => {
+			if(degraded) {
+				forget();
+			}
+			return value;
+		});
+		store.set(key, computed);
+		computed.catch(forget);
+		return computed;
 	}
 
 	/**

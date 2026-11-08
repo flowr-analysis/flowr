@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
@@ -31,20 +31,14 @@ lead(1:10, n = 1)
 we can inspect the signature of the function it calls:
 
 ```json
-[
-  {
-    "type": "signature",
-    "package": "dplyr",
-    "function": "lead"
-  }
-]
+[ { "type": "signature",   "package": "dplyr",   "function": "lead" } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **signature** (11 ms)\
+Query: **signature** (9 ms)\
 &nbsp;&nbsp;&nbsp;╰ **dplyr**::**lead** v1.2.1\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **lead**(_x_, _n_ = _1L_, _default_ = _NULL_, _order_by_ = _NULL_, ...)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ exported  _can-throw_\
@@ -59,35 +53,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "signature": {
-    ".meta": {},
-    "databases": [{"scope":"current","version":2,"date":"2026-07-19"},{"scope":"base","version":2,"date":"2026-07-19"},{"scope":"history","version":2,"date":"2026-07-19"}],
-    "packageCount": 23765,
-    "sourceCount": 3,
-    "function": {
-      "name": "lead",
-      "package": "dplyr",
-      "version": "1.2.1",
-      "exported": true,
-      "properties": ["exported","can-throw"],
-      "parameters": [
-        {"name":"x","props":2},
-        {"name":"n","props":0,"default":"1L"},
-        {"name":"default","props":0,"default":"NULL"},
-        {"name":"order_by","props":0,"default":"NULL"},
-        {"name":"...","props":2}
-      ],
-      "callees": ["-","<","abort","shift","check_number_whole","check_dots_empty0"],
-      "file": "R/lead-lag.R",
-      "line": 74,
-      "sourceUrl": "https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74",
-      "docUrl": "https://rdrr.io/cran/dplyr/man/lead-lag.html",
-      "manUrl": "https://github.com/cran/dplyr/blob/1.2.1/man/lead-lag.Rd"
-    }
-  },
-  ".meta": {}
-}
+{"signature":{".meta":{},"databases":[{"scope":"current","version":2,"date":"2026-07-19"},{"scope":"base","version":2,"date":"2026-07-19"},{"scope":"history","version":2,"date":"2026-07-19"}],"packageCount":23765,"sourceCount":3,"function":{"name":"lead","package":"dplyr","version":"1.2.1","exported":true,"properties":["exported","can-throw"],"parameters":[{"name":"x","props":2},{"name":"n","props":0,"default":"1L"},{"name":"default","props":0,"default":"NULL"},{"name":"order_by","props":0,"default":"NULL"},{"name":"...","props":2}],"callees":["-","<","abort","shift","check_number_whole","check_dots_empty0"],"file":"R/lead-lag.R","line":74,"sourceUrl":"https://github.com/cran/dplyr/blob/1.2.1/R/lead-lag.R#L74","docUrl":"https://rdrr.io/cran/dplyr/man/lead-lag.html","manUrl":"https://github.com/cran/dplyr/blob/1.2.1/man/lead-lag.Rd"}},".meta":{}}
 ```
 
 </details>

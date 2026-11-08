@@ -175,10 +175,10 @@ export const PROBLEMATIC_INPUTS = {
 				continue;
 			}
 			const [criterion, call] = [SlicingCriterion.fromId(target), SlicingCriterion.fromId(nid)];
-			const res = (await data.query([{ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns }]))['input-sources']?.results;
-			const own = res?.[criterion] ?? [];
+			const res = (await data.query({ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns })).results;
+			const own = res[criterion] ?? [];
 			/* a file argument that is an input itself (`pdf(readline())`) only shows as a source of the call */
-			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res?.[call] ?? []).filter(s => s.id === target));
+			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res[call] ?? []).filter(s => s.id === target));
 			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
 			const evalValues: string[] = [];
 			if(consider?.resolveSourceArgs) {

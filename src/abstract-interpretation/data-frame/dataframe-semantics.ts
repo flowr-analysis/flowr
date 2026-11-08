@@ -23,7 +23,7 @@ import { Record } from '../../util/record';
 import type { AbsintContext, AbstractSemantics } from '../abstract-semantics';
 import type { StateDomain } from '../domains/state-domain';
 import { ValueSemantics, type SemanticsDefinition } from '../value-semantics';
-import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
+import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, matchedArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { DataFrameDomain } from './dataframe-domain';
 import { unescapeSpecialChars } from './resolve-args';
 import { applyDataFrameSemantics, ConstraintType, getConstraintType } from './semantics';
@@ -582,7 +582,7 @@ function applyFunctionCall<Params extends object, Mapper extends DataFrameFuncti
 			return;
 		}
 		let result: DataFrameOperations;
-		const args = getFunctionArguments(node, ctx.dfg);
+		const args = matchedArguments(getFunctionArguments(node, ctx.dfg), params, resolveInfo);
 
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
 			result = [{ operation: 'unknown', operand: undefined }];

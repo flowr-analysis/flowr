@@ -28,9 +28,9 @@ import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import {
+import type {
 	DEFAULT_SLICING_PIPELINE,
-	type TREE_SITTER_DATAFLOW_PIPELINE
+	TREE_SITTER_DATAFLOW_PIPELINE
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
@@ -47,7 +47,6 @@ import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
-import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import type { Tree } from 'web-tree-sitter';
 import { SliceDirection } from '../../../util/slice-direction';
 
@@ -287,19 +286,16 @@ export class FlowRServerConnection {
 		}
 
 		try {
-			const result = await fileInformation.analyzer.query([{
+			const result = await fileInformation.analyzer.query({
 				type:            'static-slice',
 				criteria:        request.criterion,
 				noMagicComments: request.noMagicComments,
 				direction:       request.direction
-			}]);
+			});
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
-				results: Object.fromEntries(
-					Object.entries(result)
-						.filter(([k]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
-				) as SliceResponseMessage['results']
+				results: result
 			});
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);

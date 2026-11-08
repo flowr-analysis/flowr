@@ -28,6 +28,8 @@ export interface LocalFunctionConfiguration {
 		/** The environment in `local(expr, env)` */
 		env:  string;
 	}
+	/** Without `env`, `expr` runs in the calling frame instead of a fresh one, as for `evalq`. */
+	readonly inCaller?: boolean
 }
 
 /** Processes a built-in 'local' function call. */
@@ -69,7 +71,7 @@ export function processLocal<OtherInfo>(
 		return dfEnv;
 	}
 
-	const dfExpr = evaluateInEnvir(expr, envirResolution, rootId, data);
+	const dfExpr = config.inCaller && env === undefined ? processDataflowFor(expr, data) : evaluateInEnvir(expr, envirResolution, rootId, data);
 	patchFunctionCall({
 		nextGraph:             dfEnv.graph,
 		rootId,
@@ -109,11 +111,7 @@ export function processLocal<OtherInfo>(
 	return baseResult;
 }
 
-/**
- * Evaluates `expr` in the environment `envir` pins down, or in a fresh frame on top of the current one, as `local`
- * and `eval(expr, envir)` do. The search path is global, so what `expr` attaches stays, and of a fresh frame only
- * what escaped it (e.g., via `<<-`) remains.
- */
+/** Evaluates `expr` in the environment `envir` pins down, or in a fresh frame on top of the current one, as `local` and `eval(expr, envir)` do. */
 export function evaluateInEnvir<OtherInfo>(
 	expr: RNode<OtherInfo & ParentInformation>,
 	envir: EnvirResolution<OtherInfo> | undefined,

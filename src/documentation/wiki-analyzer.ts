@@ -55,8 +55,8 @@ async function analyzerQuickExample() {
 	// obtain the identified loading order
 	console.log(analyzer.inspectContext().files.loadingOrder.getLoadingOrder());
 	// run a dependency query
-	const results = await analyzer.query([{ type: 'dependencies' }]);
-	return { analyzer, df, results };
+	const dependencies = await analyzer.query({ type: 'dependencies' });
+	return { analyzer, df, dependencies };
 }
 
 async function analyzerQuickExampleToRegisterPlugins() {
@@ -178,7 +178,8 @@ Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrap
 Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
 * ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekCallGraph', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* ${ctx.linkM(FlowrAnalyzer, 'query')} to run ${ctx.linkPage('wiki/Query API', 'queries')} on the analyzed code.
+* ${ctx.linkM(FlowrAnalyzer, 'query')} to run ${ctx.linkPage('wiki/Query API', 'queries')} on the analyzed code.\\
+Pass a single query object to get its result directly (e.g., the slice of a \`static-slice\` query), or a list of queries to get a record of their results by query type.
 * ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the ${ctx.linkPage('wiki/Search API', 'search API')}
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:

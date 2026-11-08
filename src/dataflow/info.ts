@@ -9,6 +9,8 @@ import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorat
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowBudgetExhaustion } from '../gas';
+import { ExitPointType } from './environments/built-in-kinds';
+export { ExitPointType } from './environments/built-in-kinds';
 
 /**
  * A control dependency links a vertex to the control flow element which
@@ -103,22 +105,6 @@ export function negateControlDependency(cd: ControlDependency): ControlDependenc
 	};
 }
 
-/**
- * Classifies the type of exit point encountered.
- * @see {@link ExitPoint}
- */
-export const enum ExitPointType {
-	/** The exit point is the implicit (last executed expression of a function/block) */
-	Default = 0,
-	/** The exit point is an explicit `return` call (or an alias of it) */
-	Return = 1,
-	/** The exit point is an explicit `break` call (or an alias of it) */
-	Break = 2,
-	/** The exit point is an explicit `next` call (or an alias of it) */
-	Next = 3,
-	/** The exit point is caused by an error being thrown, e.g., by `stop` or `stopifnot` */
-	Error = 4
-}
 
 /**
  * Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution).

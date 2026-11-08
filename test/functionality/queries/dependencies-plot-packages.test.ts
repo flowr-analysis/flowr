@@ -8,7 +8,7 @@ describe('Dependencies Query: plots of further packages', withTreeSitter(parser 
 	async function visualized(code: string): Promise<readonly DependencyInfo[]> {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(code);
-		return (await analyzer.query([{ type: 'dependencies' }])).dependencies.visualize;
+		return (await analyzer.query({ type: 'dependencies' })).visualize;
 	}
 	const fn = (d: DependencyInfo) => Array.isArray(d.functionName) ? d.functionName[0] : d.functionName;
 

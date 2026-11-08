@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-11-03, 07:59:48 UTC (v2.16.8, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
 
 This page describes the abstract interpretation framework of _flowR_.
 Abstract interpretation abstracts the concrete semantics of a program to automatically infer properties about the behavior of a program.
@@ -1604,12 +1604,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
      </details>
      
-   * [StateAbstractDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21)   
+   * [StateAbstractDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L34)   
      A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain.
      The Bottom element is defined as
      <code>Bottom</code>
      symbol and the Top element as empty mapping.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21">src/abstract-interpretation/domains/state-abstract-domain.ts#L21</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L34">src/abstract-interpretation/domains/state-abstract-domain.ts#L34</a></summary>
      
      ```ts
      /**
@@ -1627,11 +1627,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
          public readonly collapseOnBottom: boolean;
      
          constructor(value: Value, domain: Domain, collapseOnBottom = true) {
-             if(value === Bottom || (collapseOnBottom && value.values().some(entry => entry.isBottom()))) {
-                 super(Bottom as Value);
-             } else {
-                 super(new Map(value) as ReadonlyMap<NodeId, Domain> as Value);
-             }
+             super(copyOfState(value, collapseOnBottom) as Value);
              this.domain = domain;
              this.collapseOnBottom = collapseOnBottom;
          }
@@ -1658,13 +1654,13 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
          public set(node: NodeId, value: Domain): void {
              if(this.value !== Bottom) {
-                 (this._value as Map<NodeId, Domain>).set(node, value);
+                 (this._value as StateMap<Domain>).set(node, value);
              }
          }
      
          public remove(node: NodeId): void {
              if(this.value !== Bottom) {
-                 (this._value as Map<NodeId, Domain>).delete(node);
+                 (this._value as StateMap<Domain>).delete(node);
              }
          }
      
@@ -1684,6 +1680,19 @@ _flowR_ already provides different abstract domains for abstract interpretation 
          private compareValues(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, sizeOk: (thisSize: number, otherSize: number) => boolean, cmp: (a: Domain, b: Domain) => boolean): boolean {
              if(!sizeOk(this.value.size, other.value.size)) {
                  return false;
+             }
+             const mine = this.value as StateMap<Domain>;
+             const theirs = other.value as StateMap<Domain>;
+             if(mine.sharesWith(theirs)) {
+                 /* a key neither of them changed holds the same value in both, and every domain value equals and is below itself */
+                 for(const key of new Set([...mine.changedKeys(), ...theirs.changedKeys()])) {
+                     const currValue = mine.get(key);
+                     const otherValue = theirs.get(key);
+                     if(currValue !== undefined && (otherValue === undefined || !cmp(currValue, otherValue))) {
+                         return false;
+                     }
+                 }
+                 return true;
              }
              for(const [key, currValue] of this.value.entries()) {
                  const otherValue = other.get(key);
@@ -1705,18 +1714,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
          /** Merges every entry of `other` into a copy of `this`, applying `op` pointwise where both sides have a value for a key (used by join and widen). */
          private unionCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
-             const result = new Map(this.value);
-     
-             for(const [key, otherValue] of other.value.entries()) {
-                 const currValue = result.get(key);
-     
-                 if(currValue === undefined) {
-                     result.set(key, otherValue);
-                 } else {
-                     result.set(key, op(currValue, otherValue));
-                 }
-             }
-             return this.create(result);
+             return this.create((this.value as StateMap<Domain>).union(other.value as StateMap<Domain>, op));
          }
      
          protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
@@ -1738,7 +1736,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                      result.set(key, op(currValue, otherValue));
                  }
              }
-             return this.create(result);
+             return this.create(StateMap.adopt(result));
          }
      
          protected meetValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
@@ -1927,7 +1925,7 @@ click SingletonDomain href "https://github.com/flowr-analysis/flowr/tree/main/sr
 class StateAbstractDomain~Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>~{
     <<class>>
 }
-click StateAbstractDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L21" "A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element as empty mapping."
+click StateAbstractDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/state-abstract-domain.ts#L34" "A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element as empty mapping."
 class MultiValueStateDomain~Product extends PartialProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>~{
     <<class>>
 }

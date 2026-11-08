@@ -1,9 +1,6 @@
 import type { Identifier } from './identifier';
 
-/**
- * The states made of named entries: setting one entry replaces its pseudo variable `#<state>:<key>`, adds to the accumulating
- * `all` of the state, and an entry we cannot name adds to `#<state>:*` instead (`options(op)`, `Sys.setenv(...)`).
- */
+/** The states made of named entries: setting one entry replaces its pseudo variable `#<state>:<key>`, adds to the accumulating `all` of the state, and an entry we cannot name adds to `#<state>:*` instead (`options(op)`, `Sys.setenv(...)`). */
 export enum KeyedState {
 	/** the options `options(digits = 3)` sets */
 	Option = 'option',
@@ -34,11 +31,7 @@ const EntryPrefix: Readonly<Partial<Record<KeyedState, string>>> = {
 /** The key standing for any entry of a {@link KeyedState} we cannot name. */
 export const UnknownKey = '*';
 
-/**
- * Graphics parameters, options and other global state, tracked as global pseudo variables (`#...`) so readers link to the calls that set them.
- * Accumulating states only grow: `par(mar = ...)` keeps an earlier `par(mfrow = ...)`.
- * The pseudo variables a function may leave changed are what `Dataflow.sideEffects.ambientWrites` reports.
- */
+/** Graphics parameters, options and other global state, tracked as global pseudo variables (`#...`) so readers link to the calls that set them. */
 export const AmbientStateName = {
 	/** the graphics state (`par`, `layout`, ...) of the active device, which a new device starts afresh */
 	graphics:             '#graphics',
@@ -49,6 +42,8 @@ export const AmbientStateName = {
 	otherDevicesOpenedBy: '#device:other',
 	/** within a function, the call of its body that opened the active device, which only that body knows */
 	deviceOpenedHere:     '#device:here',
+	/** what is drawn on the active device, which every plot adds to; only written if `semantics.ambient.drawingWritesDevice` is set */
+	canvas:               '#canvas',
 	/** the color palette, which, other than the graphics parameters, all devices share */
 	palette:              '#palette',
 	/** the files on disk, which every call writing a file adds to and every call reading a file we cannot name reads */

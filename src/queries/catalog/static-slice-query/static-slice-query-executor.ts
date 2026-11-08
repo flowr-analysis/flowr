@@ -43,7 +43,7 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		const threshold = analyzer.flowrConfig.solver.slicer?.threshold;
 		if(query.removal) {
 			/* the plots, devices and saves the dependencies state are what a removed plot takes along */
-			const { dependencies } = await analyzer.query([{ type: 'dependencies' }]);
+			const dependencies = await analyzer.query({ type: 'dependencies' });
 			const removed = staticRemovalSlice(analyzer.inspectContext(), df, n, ids, Object.values(dependencies).filter(Array.isArray).flat() as DependencyInfo[], threshold).result;
 			const kept = keptAfterRemoval(n, removed);
 			results[key] = timedSliceEntry(query, { timesHitThreshold: 0, result: removed, slicedFor: ids }, Date.now() - sliceStart,

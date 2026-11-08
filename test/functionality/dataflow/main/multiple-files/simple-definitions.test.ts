@@ -14,7 +14,7 @@ describe('Simple Defs in Multiple Files', { concurrent: false }, withShell(shell
 			{ request: 'text', content: 'y <- 3' },
 			{ request: 'text', content: 'print(x + y)' },
 		],
-		emptyGraph()
+		emptyGraph().autoPrints([13], true)
 			.use(9)
 			.reads(9, '0')
 			.use(10)

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Dataflow Cluster Query">Dataflow Cluster Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Calculates and returns all the clusters present in the dataflow graph.\
@@ -14,11 +14,7 @@ while the code `x <- 1; y` has two clusters (given that the `y` has no relation 
 <details><summary>Example <code>x <- 1; x</code></summary>
 
 ```json
-[
-  {
-    "type": "dataflow-cluster"
-  }
-]
+[ { "type": "dataflow-cluster" } ]
 ```
 
 (This can be shortened to `@dataflow-cluster` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -46,11 +42,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 <details><summary>Example <code>x <- 1; y</code></summary>
 
 ```json
-[
-  {
-    "type": "dataflow-cluster"
-  }
-]
+[ { "type": "dataflow-cluster" } ]
 ```
 
 (This can be shortened to `@dataflow-cluster` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -69,10 +61,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dataflow-cluster": {".meta":{},"clusters":[{"startNode":3,"members":[3],"hasUnknownSideEffects":false},{"startNode":2,"members":[2,1,0],"hasUnknownSideEffects":false}]},
-  ".meta": {}
-}
+{"dataflow-cluster":{".meta":{},"clusters":[{"startNode":3,"members":[3],"hasUnknownSideEffects":false},{"startNode":2,"members":[2,1,0],"hasUnknownSideEffects":false}]},".meta":{}}
 ```
 
 </details>
@@ -100,73 +89,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dataflow-cluster": {
-    ".meta": {},
-    "clusters": [
-      {
-        "startNode": 89,
-        "members": [
-          89,
-          87,
-          85,
-          82,
-          83,
-          18,
-          23,
-          22,
-          57,
-          62,
-          69,
-          74,
-          77,
-          75,
-          79,
-          72,
-          67,
-          60,
-          65,
-          63,
-          58,
-          70,
-          20,
-          11,
-          "built-in:readr:read_csv",
-          16,
-          14,
-          17,
-          12,
-          26,
-          38,
-          52,
-          50,
-          48,
-          3,
-          7,
-          5,
-          "built-in:dplyr:%>%",
-          54,
-          55,
-          1,
-          43,
-          44,
-          46,
-          47,
-          29,
-          27,
-          31,
-          32,
-          24,
-          34,
-          36,
-          9
-        ],
-        "hasUnknownSideEffects": false
-      }
-    ]
-  },
-  ".meta": {}
-}
+{"dataflow-cluster":{".meta":{},"clusters":[{"startNode":89,"members":[89,87,85,82,83,18,23,22,57,62,69,74,77,75,79,72,67,60,65,63,58,70,20,11,"built-in:readr:read_csv",16,14,17,12,26,38,52,50,48,3,7,5,"built-in:dplyr:%>%",54,55,1,43,44,46,47,29,27,31,32,24,34,36,9],"hasUnknownSideEffects":false}]},".meta":{}}
 ```
 
 </details>

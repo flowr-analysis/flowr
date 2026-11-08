@@ -2,7 +2,6 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
@@ -10,6 +9,7 @@ import { FlowrConfig } from '../../../../../src/config';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('source', withTreeSitter(parser => {
 	const sources = {
@@ -24,7 +24,7 @@ describe('source', withTreeSitter(parser => {
 
 	const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.resolveSource.repeatedSourceLimit', 0);
 
-	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, 'source("simple")\ncat(N)', emptyGraph()
+	assertDataflow(label('simple source', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, 'source("simple")\ncat(N)', emptyGraph().autoPrints([7])
 		.use('5', 'N')
 		.reads('5', 'simple:1:1-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
@@ -43,7 +43,7 @@ describe('source', withTreeSitter(parser => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), parser, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
+	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), parser, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph().autoPrints([14])
 		.use('12', 'N')
 		.reads('12', 'simple:3:1-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
@@ -75,7 +75,7 @@ describe('source', withTreeSitter(parser => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), parser, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
+	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), parser, 'if (x) { source("simple") }\ncat(N)',  emptyGraph().autoPrints([12]).autoPrints([8], true)
 		.use('0', 'x')
 		.use('10', 'N')
 		.reads('10', 'simple:1:10-0')
@@ -102,7 +102,7 @@ describe('source', withTreeSitter(parser => {
 	);
 
 	// missing sources should just be ignored
-	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph()
+	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph().recordAmbientAccess(3, { reads: ['#wd', '#files'] })
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
 		.calls('3', NodeId.toBuiltIn('source'))
 		.constant('1')
@@ -110,10 +110,10 @@ describe('source', withTreeSitter(parser => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, {
+	assertDataflow(label('recursive source', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, {
 		request: 'file',
 		content: 'recursive1'
-	}, emptyGraph()
+	}, emptyGraph().autoPrints(['recursive2:2:1-3'])
 		.use('recursive2:2:1-1', 'x')
 		.reads('recursive2:2:1-1', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -149,7 +149,7 @@ describe('source', withTreeSitter(parser => {
 	);
 
 	describe('Increase source limit', () => {
-		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, { request: 'file', content: 'recursive1' },  emptyGraph()
+		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, { request: 'file', content: 'recursive1' },  emptyGraph()
 			.use('recursive2:2:1-1', 'x')
 			.use('1::recursive2:2:1-1', 'x')
 			.use('2::recursive2:2:1-1', 'x'), {
@@ -162,7 +162,7 @@ describe('source', withTreeSitter(parser => {
 	});
 
 
-	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), parser, 'x <- "simple"\nsource(x)', emptyGraph()
+	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), parser, 'x <- "simple"\nsource(x)', emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -188,8 +188,8 @@ describe('source', withTreeSitter(parser => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
-		parser, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph()
+	assertDataflow(label('sourcing a closure', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
+		parser, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph().autoPrints([12], true)
 			.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
 			.calls('3', NodeId.toBuiltIn('source'))
 			.argument('3', '1')
@@ -268,8 +268,8 @@ describe('source', withTreeSitter(parser => {
 		{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
-		parser, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
+	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...BuiltInOperators.byName['<<-'].capabilities]),
+		parser, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph().autoPrints([12]).autoPrints([8], true)
 			.use('10', 'x')
 			.reads('10', 'closure2:2:1-3')
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })

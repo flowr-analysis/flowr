@@ -17,13 +17,9 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Identifier } from '../environments/identifier';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from './df-helper';
+import { isWithinArgumentOf, LinkedFunctionResolver } from '../internal/linker';
 
-/**
- * A call graph is a dataflow graph where all vertices are function calls.
- * You can create a call graph from a dataflow graph using {@link CallGraph.compute}.
- * If you want to extract a sub call graph, use {@link CallGraph.computeSubCallGraph}.
- * @see {@link dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
- */
+/** A call graph is a dataflow graph where all vertices are function calls. */
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
 >;
@@ -32,6 +28,8 @@ export interface State {
 	visited:    Set<NodeId>;
 	// links to be added if not otherwise found
 	potentials: [NodeId, Set<NodeId>][]
+	/** shares what the calls of the graph target between them */
+	resolver:   LinkedFunctionResolver
 }
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
@@ -46,10 +44,7 @@ function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: 
 const UntargetedCallFollow = EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.DefinedBy | EdgeType.Returns;
 const UntargetedCallAvoid = EdgeType.NonStandardEvaluation | EdgeType.Argument;
 
-/**
- * The origins of what a call flowR found no target for calls, following its name back through reads and
- * parameter bindings: `f(x)` within `apply_f <- function(f, x) f(x)` ends at what callers hand in as `f`.
- */
+/** The origins of what a call flowR found no target for calls, following its name back through reads and parameter bindings: `f(x)` within `apply_f <- function(f, x) f(x)` ends at what callers hand in as `f`. */
 export function fallbackUntargetedCall(vtx: Pick<DataflowGraphVertexFunctionCall, 'id'>, graph: DataflowGraph): Set<NodeId> {
 	/* we track all aliases to their roots here, we know there is no known call target */
 	const collected: Set<NodeId> = new Set();
@@ -70,7 +65,8 @@ export function fallbackUntargetedCall(vtx: Pick<DataflowGraphVertexFunctionCall
 		const follow = currentId !== vtx.id && DfgVertex.isFunctionCall(currentVtx) ? EdgeType.Returns : UntargetedCallFollow;
 		for(const [tar, e] of graph.edgesFrom(currentId)) {
 			if(DfEdge.includesType(e, follow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)
-				&& (DfEdge.includesType(e, EdgeType.Returns) || !DfgVertex.isFunctionCall(graph.getVertex(tar)))) {
+				&& (DfEdge.includesType(e, EdgeType.Returns) || !DfgVertex.isFunctionCall(graph.getVertex(tar)))
+				&& (currentId !== vtx.id || !isWithinArgumentOf(graph, vtx.id, tar))) {
 				addedNew = true;
 				toVisit.push(tar);
 			}
@@ -97,7 +93,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 
 	let addedTarget = false;
 	let addedBiTarget = false;
-	for(const tar of Dataflow.callTargetsOf(vid, graph, vtx.environment)) {
+	for(const tar of Dataflow.callTargetsOf(vid, graph, vtx.environment, state.resolver)) {
 		const targetVtx = graph.getVertex(tar);
 		if(NodeId.isBuiltIn(tar)) {
 			result.addEdge(vid, tar, EdgeType.Calls);
@@ -179,11 +175,7 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	}
 }
 
-/**
- * The caller to record for a function definition found in the body of `from`. A definition the body writes is
- * not called by writing it, so it gets none; a definition flowR synthesizes for a deferred expression
- * (`on.exit` and its relatives) is one the body really runs, so it keeps `from`.
- */
+/** The caller to record for a function definition found in the body of `from`. */
 function callerOfBodyDefinition(from: NodeId | undefined, to: NodeId): NodeId | undefined {
 	return NodeId.isWritten(to) ? undefined : from;
 }
@@ -223,10 +215,7 @@ function reachedCallNames(graph: CallGraph, reached: ReadonlySet<NodeId>): Set<s
 	return names;
 }
 
-/**
- * The unreached function definitions that may still run: one the code hands to another call (a callback, an
- * S4 method, a shiny handler), and one bound to a `<generic>.<class>` name of a generic the program calls.
- */
+/** The unreached function definitions that may still run: one the code hands to another call (a callback, an S4 method, a shiny handler), and one bound to a `<generic>.<class>` name of a generic the program calls. */
 function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -259,8 +248,6 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
 /**
  * Helper object for call-graphs, you can compute new call graphs based on {@link CallGraph.compute}.
  * @helper dataflow
- * @see {@link Dataflow}
- * @see {@link CallGraph}
  */
 export const CallGraph = {
 	...GraphHelper,
@@ -284,11 +271,7 @@ export const CallGraph = {
 		return result;
 	},
 
-	/**
-	 * Whether the function definition with the given id (transitively) calls itself; `false` for ids that are no function definition.
-	 * @param id    - The id of the function definition
-	 * @param graph - The call graph to follow
-	 */
+	/** Whether the function definition with the given id (transitively) calls itself; `false` for ids that are no function definition. */
 	isRecursive(this: void, id: NodeId, graph: CallGraph): boolean {
 		if(!DfgVertex.isFunctionDefinition(graph.getVertex(id))) {
 			return false;
@@ -328,10 +311,7 @@ export const CallGraph = {
 		return entries;
 	},
 
-	/**
-	 * The calls no execution starting at the top level reaches: those in a function nothing (transitively) calls.
-	 * What {@link mayRunAnyway} may still run is left out, so a call reported here really does not run.
-	 */
+	/** The calls no execution starting at the top level reaches: those in a function nothing (transitively) calls. */
 	unreachableCalls(this: void, graph: CallGraph): NodeId[] {
 		const reached = new Set<NodeId>();
 		followCalls(graph, CallGraph.entryPoints(graph), reached);
@@ -364,17 +344,13 @@ export const CallGraph = {
 		return newCg;
 	},
 
-	/**
-	 * Computes the call graph from the given dataflow graph.
-	 * @see {@link CallGraph} - for details
-	 * @see {@link CallGraph.computeSubCallGraph} - to extract sub call graphs
-	 * @see {@link CallGraph.dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
-	 */
+	/** Computes the call graph from the given dataflow graph. */
 	compute(this: void, graph: DataflowGraph): CallGraph {
 		const result: CallGraph = new DataflowGraph(graph.idMap);
 		const state: State = {
 			visited:    new Set(),
-			potentials: []
+			potentials: [],
+			resolver:   new LinkedFunctionResolver(graph)
 		};
 		for(const [,vert] of graph.vertices(false)) {
 			if(DfgVertex.isFunctionCall(vert)) {

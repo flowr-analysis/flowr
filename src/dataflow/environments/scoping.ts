@@ -4,7 +4,6 @@ import { guard } from '../../util/assert';
 /**
  * Add a new local environment scope to the stack, returns the modified variant (shares the original stack, no deep-clone).
  * @useInstead {@link REnvironment.pushLocal}
- * @see {@link popLocalEnvironment} - to remove the local scope again
  */
 export function pushLocalEnvironment({ level, current }: REnvironmentInformation): REnvironmentInformation {
 	return {
@@ -16,7 +15,6 @@ export function pushLocalEnvironment({ level, current }: REnvironmentInformation
 /**
  * Remove the top local environment scope from the stack, returns the modified variant (shares the original stack, no deep-clone).
  * @useInstead {@link REnvironment.popLocal}
- * @see {@link pushLocalEnvironment} - to add a local scope
  */
 export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
 	guard(level > 0, 'cannot remove the global/root environment');
@@ -27,8 +25,19 @@ export function popLocalEnvironment({ current, level }: REnvironmentInformation)
 }
 
 /**
- * Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same lexical {@link REnvironmentInformation#level|level}.
+ * The frames of `environment` a function whose body runs at `bodyLevel` can see: the frame it was defined in and those around it, never the frames of the functions calling it.
+ * @useInstead {@link REnvironment.visibleTo}
  */
+export function framesVisibleTo(bodyLevel: number, environment: REnvironmentInformation): REnvironmentInformation {
+	const level = Math.max(0, Math.min(bodyLevel - 1, environment.level));
+	let current = environment.current;
+	for(let skip = environment.level - level; skip > 0 && current.parent !== undefined; skip--) {
+		current = current.parent;
+	}
+	return { current, level };
+}
+
+/** Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same lexical {@link REnvironmentInformation#level|level}. */
 export function padToCommonScope(base: REnvironmentInformation, next: REnvironmentInformation): { base: REnvironmentInformation, next: REnvironmentInformation } {
 	while(next.level < base.level) {
 		next = pushLocalEnvironment(next);
@@ -40,8 +49,7 @@ export function padToCommonScope(base: REnvironmentInformation, next: REnvironme
 }
 
 /**
- * The environment's search path with an empty global frame: attached packages stay visible, the global frame's
- * binds do not. Prefer this over `makeCleanEnv` wherever an environment is at hand; the chain below is shared.
+ * The environment's search path with an empty global frame: attached packages stay visible, the global frame's binds do not.
  * @useInstead {@link REnvironment.cleanOf}
  */
 export function cleanEnvOf({ current }: REnvironmentInformation): REnvironmentInformation {

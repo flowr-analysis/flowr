@@ -2,6 +2,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Bottom } from './lattice';
 import type { StateDomain } from './state-domain';
+import { StateMap } from './state-map';
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
 export type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
@@ -11,6 +12,18 @@ export type StateDomainTop = ReadonlyMap<NodeId, never>;
 export type StateDomainBottom = typeof Bottom;
 /** The type of the abstract values of the state abstract domain that are Top, Bottom, or actual values */
 export type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
+
+/**
+ * A copy of the mapping, Bottom if it is Bottom or, with `collapseOnBottom`, maps any key to Bottom.
+ * Every state is copied on every step of the analysis, so a {@link StateMap} is forked rather than copied.
+ */
+function copyOfState<Domain extends AnyAbstractDomain>(value: StateDomainLift<Domain>, collapseOnBottom: boolean): StateDomainLift<Domain> {
+	if(value === Bottom) {
+		return Bottom;
+	}
+	const copy = value instanceof StateMap ? (value as StateMap<Domain>).fork() : StateMap.of(value);
+	return collapseOnBottom && copy.bottoms > 0 ? Bottom : copy;
+}
 
 /**
  * A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain.
@@ -27,11 +40,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	public readonly collapseOnBottom: boolean;
 
 	constructor(value: Value, domain: Domain, collapseOnBottom = true) {
-		if(value === Bottom || (collapseOnBottom && value.values().some(entry => entry.isBottom()))) {
-			super(Bottom as Value);
-		} else {
-			super(new Map(value) as ReadonlyMap<NodeId, Domain> as Value);
-		}
+		super(copyOfState(value, collapseOnBottom) as Value);
 		this.domain = domain;
 		this.collapseOnBottom = collapseOnBottom;
 	}
@@ -58,13 +67,13 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 
 	public set(node: NodeId, value: Domain): void {
 		if(this.value !== Bottom) {
-			(this._value as Map<NodeId, Domain>).set(node, value);
+			(this._value as StateMap<Domain>).set(node, value);
 		}
 	}
 
 	public remove(node: NodeId): void {
 		if(this.value !== Bottom) {
-			(this._value as Map<NodeId, Domain>).delete(node);
+			(this._value as StateMap<Domain>).delete(node);
 		}
 	}
 
@@ -84,6 +93,19 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	private compareValues(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, sizeOk: (thisSize: number, otherSize: number) => boolean, cmp: (a: Domain, b: Domain) => boolean): boolean {
 		if(!sizeOk(this.value.size, other.value.size)) {
 			return false;
+		}
+		const mine = this.value as StateMap<Domain>;
+		const theirs = other.value as StateMap<Domain>;
+		if(mine.sharesWith(theirs)) {
+			/* a key neither of them changed holds the same value in both, and every domain value equals and is below itself */
+			for(const key of new Set([...mine.changedKeys(), ...theirs.changedKeys()])) {
+				const currValue = mine.get(key);
+				const otherValue = theirs.get(key);
+				if(currValue !== undefined && (otherValue === undefined || !cmp(currValue, otherValue))) {
+					return false;
+				}
+			}
+			return true;
 		}
 		for(const [key, currValue] of this.value.entries()) {
 			const otherValue = other.get(key);
@@ -105,18 +127,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 
 	/** Merges every entry of `other` into a copy of `this`, applying `op` pointwise where both sides have a value for a key (used by join and widen). */
 	private unionCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
-		const result = new Map(this.value);
-
-		for(const [key, otherValue] of other.value.entries()) {
-			const currValue = result.get(key);
-
-			if(currValue === undefined) {
-				result.set(key, otherValue);
-			} else {
-				result.set(key, op(currValue, otherValue));
-			}
-		}
-		return this.create(result);
+		return this.create((this.value as StateMap<Domain>).union(other.value as StateMap<Domain>, op));
 	}
 
 	protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
@@ -138,7 +149,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 				result.set(key, op(currValue, otherValue));
 			}
 		}
-		return this.create(result);
+		return this.create(StateMap.adopt(result));
 	}
 
 	protected meetValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {

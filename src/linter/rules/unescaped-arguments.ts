@@ -354,8 +354,7 @@ async function getUnescapedSources(
 
 	while(entries.length > 0) {
 		const criteria = uniqueArray(entries.map(entry => SlicingCriterion.fromId(entry.call)));
-		const queryResult = await data.query([{ type: 'input-sources', criterion: criteria, config: queryConfig }]);
-		const classified = queryResult['input-sources']?.results ?? {};
+		const classified = (await data.query({ type: 'input-sources', criterion: criteria, config: queryConfig })).results;
 		const next: CriticalTargetEntry[] = [];
 		for(const entry of entries) {
 			const call = graph.getVertex(entry.call);

@@ -98,7 +98,7 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 async function dependencyLines(code: string): Promise<string[][]> {
 	const analyzer = await analyzerFor(code);
 	const idMap = (await analyzer.normalize()).idMap;
-	const found = (await analyzer.query([{ type: 'dependencies' }])).dependencies as unknown as
+	const found = (await analyzer.query({ type: 'dependencies' })) as unknown as
 		Record<string, readonly { value?: string, nodeId?: string | number }[]>;
 	return ([['library', 'library'], ['source', 'source'], ['read', 'read'], ['write', 'write'], ['transform', 'transform'], ['visualize', 'visualize']] as const)
 		.flatMap(([key, label]) => (found[key] ?? []).map(entry => [
@@ -115,7 +115,7 @@ async function dependencyLines(code: string): Promise<string[][]> {
 async function lintLines(code: string): Promise<Finding[]> {
 	interface Raw { loc?: [number, number, number, number] }
 	const analyzer = await analyzerFor(code);
-	const answer = (await analyzer.query([{ type: 'linter' }])).linter as unknown as
+	const answer = (await analyzer.query({ type: 'linter' })) as unknown as
 		{ results?: Record<string, { results?: Raw[], '.meta'?: object }> };
 	const rules = answer.results ?? {};
 	return Object.entries(rules).flatMap(([rule, found]) => (found?.results ?? []).map((finding): Finding => ({
@@ -153,9 +153,8 @@ async function valueLines(code: string): Promise<string[][]> {
 	   by the criterion, so each one is asked for on its own. */
 	const resolved: string[][] = [];
 	for(const criterion of ValueNames) {
-		const answer = await analyzer.query([{ type: 'resolve-value', criteria: [criterion] }]);
-		const values = uniqueArray(Object.values(answer['resolve-value'].results)
-			.flatMap(found => found.values.map(v => stringifyValue(v)))).filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
+		const found = await analyzer.query({ type: 'resolve-value', criteria: [criterion] });
+		const values = uniqueArray(found.values.map(v => stringifyValue(v))).filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
 		if(values.length > 0) {
 			/* the comment says what it means, the tooltip keeps flowR's own form (`[6L, 6L]`) */
 			resolved.push([criterion, values.map(plain).join(', '), values.join(', ')]);
@@ -197,8 +196,7 @@ async function originLines(code: string): Promise<string[][]> {
 	const idMap = (await analyzer.normalize()).idMap;
 	const lines: string[][] = [];
 	for(const criterion of OriginNames) {
-		const result = await analyzer.query([{ type: 'origin', criterion }]);
-		for(const origin of result.origin.results[criterion] ?? []) {
+		for(const origin of await analyzer.query({ type: 'origin', criterion }) ?? []) {
 			const at = idMap?.get(origin.id);
 			const line = SourceRange.getStartLine(at?.location);
 			const what = at?.lexeme ?? String(origin.id);
@@ -240,7 +238,7 @@ function phrase(type: OriginType, what: string, line: number | undefined, builtI
 /** What the database holds for one function, straight off the `signature` query's {@link SignatureFunctionView}. */
 async function signatureLines(code: string, pkg: string, fn: string): Promise<string[][]> {
 	const analyzer = await analyzerFor(code);
-	const found = (await analyzer.query([{ type: 'signature', package: pkg, function: fn }])).signature.function;
+	const found = (await analyzer.query({ type: 'signature', package: pkg, function: fn })).function;
 	if(found === undefined) {
 		return [];
 	}

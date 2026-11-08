@@ -10,7 +10,13 @@ import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
-import type { FunctionAmbientWrites } from '../../../../src/dataflow/internal/process/functions/call/built-in/transitive-side-effects';
+import { FlowrConfig } from '../../../../src/config';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+import { DataflowGraph, type DataflowGraphJson, UnknownSideEffect } from '../../../../src/dataflow/graph/graph';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import type { BuiltInDefinition } from '../../../../src/dataflow/environments/built-in-config';
+import type { AmbientAccess, FunctionAmbientWrites } from '../../../../src/dataflow/internal/process/functions/call/built-in/transitive-side-effects';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
 	type Kind = keyof FunctionAmbientWrites;
@@ -49,6 +55,18 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		});
 		check('recursion terminates', 'a <- function(n) { options(digits = n); if(n > 0) a(n - 1) }', { a: ['#option:digits', '#options'] });
 		check('frame-local writes are left out', 'a01 <- function() { withr::local_options(digits = 3); 1 }', { a01: [] });
+		check('an exit hook writes for the function', 'a01 <- function() { on.exit(options(digits = 3)); 1 }', { a01: ['#option:digits', '#options'] });
+		check('an exit hook restoring options', 'a01 <- function(op) { on.exit(options(op)); 1 }', { a01: ['#option:*', '#options'] });
+	});
+
+	describe('quoted code runs only if evaluated', () => {
+		check('quote', 'a01 <- function() quote(options(digits = 3))', { a01: [] });
+		check('bquote', 'a01 <- function(x) bquote(options(digits = .(x)))', { a01: [] });
+		check('expression', 'a01 <- function() expression(options(digits = 3))', { a01: [] });
+		check('substitute', 'a01 <- function() substitute(options(digits = 3))', { a01: [] });
+		check('trace', 'a01 <- function() trace(g, quote(options(digits = 3)))', { a01: [] });
+		check('evaluated', 'a01 <- function() eval(quote(options(digits = 3)))', { a01: ['#option:digits', '#options'] });
+		check('evaluated through a variable', 'a01 <- function() { e <- quote(options(digits = 3)); eval(e) }', { a01: ['#option:digits', '#options'] });
 	});
 
 	describe('environment variables', () => {
@@ -145,6 +163,152 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 			assert.deepStrictEqual(AmbientStateName.entryOf('#search-path:dplyr'), { state: KeyedState.SearchPath, key: 'dplyr' });
 			assert.isUndefined(AmbientStateName.entryOf('#sink'));
 			assert.strictEqual(AmbientStateName.keyed(KeyedState.SearchPath, 'package:dplyr'), '#search-path:dplyr');
+		});
+	});
+}));
+
+describe('Ambient access of code', withTreeSitter(ts => {
+	type Selector = 'file' | 'first' | 'second' | 'block';
+	interface Shown { reads: string[], writes: string[], assumed: string[], variables: string[], draws: number }
+
+	async function run(code: string, drawing = false) {
+		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.semantics.ambient = { drawingWritesDevice: drawing };
+		});
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).setConfig(config).build();
+		analyzer.addRequest(requestFromInput(code));
+		const info = await analyzer.dataflow();
+		const root = (await analyzer.normalize()).ast.files[0].root;
+		return { graph: info.graph, info, root };
+	}
+
+	function shown(a: AmbientAccess): Shown {
+		return { reads: [...a.reads].sort(), writes: [...a.writes].sort(), assumed: [...a.assumed].sort(), variables: [...a.variables].sort(), draws: a.draws.size };
+	}
+
+	async function access(code: string, selector: Selector, drawing = false): Promise<Shown> {
+		const { info, root } = await run(code, drawing);
+		const [first, second] = root.children;
+		const scope = selector === 'file' ? RNode.collectAllIds(root) : selector === 'first' ? RNode.collectAllIds(first)
+			: selector === 'second' ? RNode.collectAllIds(second) : first.info.id;
+		return shown(Dataflow.sideEffects.ambientAccess(info, scope));
+	}
+
+	function check(name: string, code: string, selector: Selector, expected: Partial<Shown>, drawing = false): void {
+		test(label(name, [], ['dataflow']), async() => {
+			assert.deepStrictEqual(await access(code, selector, drawing), { reads: [], writes: [], assumed: [], variables: [], draws: 0, ...expected });
+		});
+	}
+
+	describe('scopes', () => {
+		check('a file', 'options(digits = 3)\nx <- 1', 'file', { writes: ['#option:digits', '#options'] });
+		check('a statement', 'options(digits = 3)\nsink("a.txt")', 'second', { reads: ['#wd'], writes: ['#file:a', '#files', '#sink'] });
+		check('a single call id', 'options(digits = 3)\nx <- 1', 'block', { writes: ['#option:digits', '#options'] });
+		check('a block', '{\n options(digits = 3)\n sink("a.txt")\n}\nx <- 1', 'first', { reads: ['#options', '#wd'], writes: ['#file:a', '#files', '#option:digits', '#options', '#sink'] });
+		check('a call reaching a function', 'f <- function() options(digits = 3)\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options'], writes: ['#option:digits', '#options'] });
+		check('a function never called does not count', 'f <- function() options(digits = 3)\nx <- 1', 'file', {});
+		check('the exit hook of a function never called does not count', 'f <- function() { on.exit(options(digits = 3)); 1 }\nx <- 1', 'file', {});
+		check('quoted code does not count', 'x <- quote(options(digits = 3))', 'file', {});
+		check('only the code of the scope counts', 'x <- 1\noptions(digits = 3)', 'first', {});
+		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options'] });
+	});
+
+	describe('scopes as nodes', () => {
+		test(label('a project, a file root, and a node id count the code they span', ['name-normal'], ['dataflow']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addRequest(requestFromInput('x <- 1\noptions(digits = 3)'));
+			const info = await analyzer.dataflow();
+			const { ast } = await analyzer.normalize();
+			const root = ast.files[0].root;
+			const expected = shown(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(root)));
+			assert.deepStrictEqual(expected.writes, ['#option:digits', '#options']);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, ast)), expected);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, root)), expected);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, root.info.id)), expected);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, root.children[0])).writes, []);
+		});
+	});
+
+	describe('sourced files', () => {
+		test(label('the top level of a sourced file runs as part of the scope', ['sourcing-external-files'], ['dataflow']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addFile(new FlowrInlineTextFile('a.R', 'options(digits = 3)\nsource("b.R")'), new FlowrInlineTextFile('b.R', 'sink("x.txt")'));
+			analyzer.addRequest(requestFromInput('source("a.R")\nx <- 1'));
+			const info = await analyzer.dataflow();
+			const [first, second] = (await analyzer.normalize()).ast.files[0].root.children;
+			assert.includeMembers(shown(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(first))).writes, ['#option:digits', '#sink']);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(second))).writes, []);
+		});
+	});
+
+	describe('reads', () => {
+		check('getOption reads the option', 'x <- getOption("digits")', 'file', { reads: ['#option:*', '#option:digits'] });
+		check('a read through a called function', 'f <- function() getOption("digits")\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options'] });
+		check('setwd reads and writes the working directory', 'setwd("a")', 'file', { reads: ['#files', '#wd'], writes: ['#wd'] });
+	});
+
+	describe('drawing', () => {
+		check('plot draws and writes no state by default', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], draws: 1 });
+		check('lines is a draw as well', 'plot(1)\nlines(1:2)', 'file', { reads: ['#graphics', '#palette'], draws: 2 });
+		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], draws: 1 });
+		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas'], draws: 1 }, true);
+		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#canvas'], draws: 1 }, true);
+		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#graphics', '#par:mfrow'], draws: 1 });
+
+		check('a draw through a parameter', 'g <- function(f, ...) f(...)\nh <- function() g(plot, 1)\nh()', 'file', {
+			reads: ['#env', '#graphics', '#options', '#palette', '#rng'], writes: ['#canvas'], assumed: ['#rng'], draws: 1
+		}, true);
+
+		test(label('a configured graphics built-in draws', [], ['dataflow']), async() => {
+			const myPlot: BuiltInDefinition = { type: 'function', names: [Identifier.from(['myPlot', 'base'])], processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.Graphics] }, assumePrimitive: false };
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).amendConfig(c => {
+				c.semantics.environment.overwriteBuiltIns.definitions = [myPlot];
+			}).build();
+			analyzer.addRequest(requestFromInput('myPlot(1)\nplot(2)'));
+			const info = await analyzer.dataflow();
+			const root = (await analyzer.normalize()).ast.files[0].root;
+			assert.strictEqual(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(root)).draws.size, 2);
+		});
+
+		test(label('every function', [], ['dataflow']), async() => {
+			const { graph } = await run('a <- function() plot(1)\nb <- function() a()\nc <- function() 1');
+			const all = [...Dataflow.sideEffects.ambientAccessOfFunctions(graph).values()].map(shown);
+			assert.deepStrictEqual(all.map(a => [a.writes.length, a.draws]).sort(), [[0, 0], [0, 1], [0, 1]]);
+		});
+	});
+
+	describe('records', () => {
+		test(label('survive serialization and reduction', [], ['dataflow']), async() => {
+			const { graph, root } = await run('options(digits = 3)\nx <- getOption("digits")');
+			const ids = RNode.collectAllIds(root);
+			const again = DataflowGraph.fromJson(JSON.parse(JSON.stringify(graph.toJSON())) as DataflowGraphJson);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(again, ids)), shown(Dataflow.sideEffects.ambientAccess(graph, ids)));
+			const reduced = Dataflow.reduceGraph(graph, ids);
+			assert.deepStrictEqual(shown(Dataflow.sideEffects.ambientAccess(reduced, ids)), shown(Dataflow.sideEffects.ambientAccess(graph, ids)));
+			assert.include(shown(Dataflow.sideEffects.ambientAccess(again, ids)).writes, '#option:digits');
+		});
+
+		test(label('graph diffs compare them', [], ['dataflow']), async() => {
+			const { graph } = await run('options(digits = 3)\nx <- getOption("digits")');
+			const again = DataflowGraph.fromJson(JSON.parse(JSON.stringify(graph.toJSON())) as DataflowGraphJson);
+			const equal = () => Dataflow.diffGraphs({ name: 'left', graph }, { name: 'right', graph: again }).isEqual();
+			assert.isTrue(equal());
+			const [first] = again.ambientAccessIds();
+			again.recordAmbientAccess(first, { writes: ['#option:width'] });
+			assert.isFalse(equal());
+		});
+	});
+
+	describe('queries do not change the graph', () => {
+		test(label('ambientWrites is pure', ['name-normal', 'call-normal'], ['dataflow']), async() => {
+			const { graph } = await run('g <- function(f, ...) f(...)\na01 <- function() g(plot, 1)\na22 <- function() g(options, digits = 3)');
+			const before = JSON.stringify(graph.toJSON());
+			const effects = [...graph.unknownSideEffects].map(UnknownSideEffect.id);
+			Dataflow.sideEffects.ambientWrites(graph);
+			Dataflow.sideEffects.ambientWrites(graph);
+			Dataflow.sideEffects.ambientAccessOfFunctions(graph);
+			assert.strictEqual(JSON.stringify(graph.toJSON()), before);
+			assert.deepStrictEqual([...graph.unknownSideEffects].map(UnknownSideEffect.id), effects);
 		});
 	});
 }));

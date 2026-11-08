@@ -1,8 +1,7 @@
 import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';
-import type { OperatorInformationValue } from '../operators';
-import { OperatorDatabase } from '../operators';
+import { BuiltInOperators, type OperatorFacts } from '../../../../../dataflow/environments/default-builtin-config/base-operators';
 
 /**
  * Unary operations like `+` and `-`
@@ -30,7 +29,7 @@ export const RUnaryOp = {
 	/**
 	 * Get the operator information for a binary operator node.
 	 */
-	getOperatorInfo<Info = NoInfo>(node: RUnaryOp<Info>): OperatorInformationValue | undefined {
-		return OperatorDatabase[node.operator];
+	getOperatorInfo<Info = NoInfo>(node: RUnaryOp<Info>): OperatorFacts | undefined {
+		return BuiltInOperators.byName[node.operator];
 	}
 } as const;

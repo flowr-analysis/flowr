@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Dataflow Query">Dataflow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the dataflow graph of the given code.\
@@ -17,7 +17,7 @@ Using the example code `x + 1`, the following query returns the dataflow graph o
 
 _Results (prettified and summarized):_
 
-Query: **dataflow** (4 ms)\
+Query: **dataflow** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ [Dataflow Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjEqICgqKmlkOiAwKiopYFwiXSlcbiAgICAxe3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjEuNSogKCoqaWQ6IDEqKilgXCJ9fVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNDM7KipcbiAgICAgICoxLjEtNSogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46XzQzX1tcImBCdWlsdC1JbjpcbiM0MztgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XzQzXyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDAgLS4tPnxcImZsb3dcInwgMVxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMSAtLi0+fFwiZmxvd1wifCAyXG4gICAgbGlua1N0eWxlIDEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMFxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl80M19cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -27,22 +27,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dataflow": {
-    ".meta": {},
-    "graph": {
-      "rootVertices": [0,1,2],
-      "vertexInformation": [
-        [0,{"tag":"use","id":0}],
-        [1,{"tag":"value","id":1}],
-        [2,{"tag":"fcall","id":2,"name":"+","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:d"]}]
-      ],
-      "edgeInformation": [[2,[[0,{"types":65}],[1,{"types":65}],["built-in:+",{"types":5}]]],[0,[[1,{"types":4096}]]],[1,[[2,{"types":4096}]]]],
-      "_unknownSideEffects": []
-    }
-  },
-  ".meta": {}
-}
+{"dataflow":{".meta":{},"graph":{"rootVertices":[0,1,2],"vertexInformation":[[0,{"tag":"use","id":0}],[1,{"tag":"value","id":1}],[2,{"tag":"fcall","id":2,"name":"+","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[0,{"types":65}],[1,{"types":65}],["built-in:+",{"types":5}]]],[0,[[1,{"types":4096}]]],[1,[[2,{"types":4096}]]]],"_unknownSideEffects":[],"_ambientAccess":[[2,{"reads":["#options"],"writes":[],"assumed":[],"local":[]}]]}},".meta":{}}
 ```
 
 </details>
@@ -52,37 +37,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 ```r
 x + 1
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered no unknown side effects during the analysis.
-
-```mermaid
-flowchart LR
-    0(["`*#91;RSymbol#93;* **x**
-      *1.1* (**id: 0**)`"])
-    1{{"`*#91;RNumber#93;* **1**
-      *1.5* (**id: 1**)`"}}
-    2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
-      *1.1-5* (**id: 2**)
-    arg: (0, 1)`"]]
-    built-in:_43_["`Built-In:
-#43;`"]
-    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    0 -.->|"flow"| 1
-    linkStyle 0 stroke:gray,color:gray;
-    1 -.->|"flow"| 2
-    linkStyle 1 stroke:gray,color:gray;
-    2 -->|"reads, arg"| 0
-    2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_43_
-    linkStyle 4 stroke:gray;
-```
-
-</details>
 
 </details>
 	

@@ -28,7 +28,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { CallProp, ImpureProps } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics, s3GroupGenericMembers } from '../../dataflow/environments/group-generics';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { DataflowInformation } from '../../dataflow/info';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -198,19 +198,19 @@ function hasContractedSignature(
  * `binds` is the assignment being removed, whose own {@link CallProp.Scope} is the binding this is all about and
  * so says nothing; the same property on a call within it, as `assign` states, is an effect of its own.
  */
-function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
-	const vertex = df.graph.getVertex(id);
+function doesMoreThanCompute(id: NodeId, graph: DataflowGraph, environment: REnvironmentInformation | undefined, binds: NodeId | undefined): boolean {
+	const vertex = graph.getVertex(id);
 	if(!DfgVertex.isFunctionCall(vertex)) {
 		return false;
 	}
 	/* two properties do not count: the `Scope` effect of the assignment being removed, which is the binding itself, and
 	   the `MayPure` of `do.call(f, args)` with a known `f`, as `f` is checked on its own as part of the value */
-	const ignored = (id === binds ? CallProp.Scope : 0) | (runsOnlyKnownFunctions(vertex, df) ? CallProp.MayPure : 0);
-	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), { props: ImpureProps.props & ~ignored, tags: ImpureProps.tags });
+	const ignored = (id === binds ? CallProp.Scope : 0) | (runsOnlyKnownFunctions(vertex, graph, environment) ? CallProp.MayPure : 0);
+	return FunctionSemantics.call.props.hasAny(callFnProps(id, graph, environment), { props: ImpureProps.props & ~ignored, tags: ImpureProps.tags });
 }
 
 /** whether the functions handed to a call like `do.call(f, args)` are all known, see {@link Dataflow.callsOnlyKnownFunctions} */
-function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): boolean {
+function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph, environment: REnvironmentInformation | undefined): boolean {
 	const handed = vertex.args.map(FunctionArgument.getReference)
 		.filter(r => r !== undefined && RSymbol.is(graph.idMap?.get(r)) && DfgVertex.isFunctionCall(graph.getVertex(r))) as NodeId[];
 	return handed.length > 0 && handed.every(h => Dataflow.callsOnlyKnownFunctions(h, graph, environment));
@@ -254,18 +254,16 @@ function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAs
 }
 
 /** Whether the definition's value has obligations, like side effects, so the definition cannot be removed. */
-function hasImportantArgs(definedBys: readonly NodeId[], df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
-	const dfg = df.graph;
+function hasImportantArgs(definedBys: readonly NodeId[], dfg: DataflowGraph, environment: REnvironmentInformation | undefined, binds: NodeId | undefined): boolean {
 	/* removing `u <- (runif(1))` removes the `runif` call too, which changes the random seed; calls in a function body defined there do not run */
 	const values = definedBys.filter(d => d !== binds).map(d => dfg.idMap?.get(d)).filter(isNotUndefined);
 	const runs = RNode.collectAllIdsWithStop(values, RFunctionDefinition.is).union(new Set(definedBys));
-	return runs.values().some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, binds)
+	return runs.values().some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, dfg, environment, binds)
 		|| dfg.edgesTo(d).values().some(edge => DfEdge.includesType(edge, InterestingEdgesTargets))
 		|| dfg.edgesFrom(d).entries().some(([target, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target)));
 }
 
-function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
-	const dfg = df.graph;
+function quickFixForUnused(variable: RNode<ParentInformation>, dfg: DataflowGraph, environment: REnvironmentInformation | undefined, ast: NormalizedAst): LintQuickFix[] | undefined {
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
 	if(variable.info.role === RoleInParent.Accessed || variable.info.role === RoleInParent.ForVariable) {
@@ -274,7 +272,7 @@ function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<Dataflow
 	}
 	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
 	const assignment = getAssignmentPeer(variable, ast, dfg);
-	if(hasImportantArgs(definedBys, df, assignment?.statement.info.id ?? variable.info.parent)) {
+	if(hasImportantArgs(definedBys, dfg, environment, assignment?.statement.info.id ?? variable.info.parent)) {
 		return undefined;
 	}
 	const totalRangeToRemove = SourceLocation.merge([
@@ -391,7 +389,7 @@ export const UNUSED_DEFINITION = {
 					variableName: NodeId.recoverBareName(node.info.id, normalize.idMap),
 					involvedId:   node.info.id,
 					loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-					quickFix:     quickFixForUnused(node, dataflow, normalize)
+					quickFix:     quickFixForUnused(node, dataflow.graph, dataflow.environment, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			})),
 			'.meta': metadata

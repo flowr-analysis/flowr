@@ -4,6 +4,7 @@ import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { ExitPoint, DataflowInformation } from '../../../../info';
 import { ExitPointType, withCds } from '../../../../info';
 import { processAllArguments } from './common';
+import { EnvironmentLookups } from './built-in/built-in-envir-utils';
 import { applyKills } from '../../../../environments/apply-kill';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -50,15 +51,9 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> {
 	readonly origin:                FunctionOriginInformation | 'default'
 	/** see {@link ProcessAllArgumentInput#nonFunction} */
 	readonly nonFunction?:          ReadonlySet<NodeId>
-	/**
-	 * Suppress the default control flow linkage (arguments in order, then the call).
-	 * Constructs that branch or loop set this and wire their control flow themselves.
-	 */
+	/** Suppress the default control flow linkage (arguments in order, then the call). Constructs that branch or loop set this and wire their control flow themselves. */
 	readonly customControlFlow?:    boolean
-	/**
-	 * From this argument index on, the arguments are alternatives of which at most one is evaluated,
-	 * which is how `switch` picks an arm. The arguments before it are evaluated in order as usual.
-	 */
+	/** From this argument index on, the arguments are alternatives of which at most one is evaluated, which is how `switch` picks an arm. */
 	readonly alternativeArgsFrom?:  number
 }
 
@@ -70,11 +65,7 @@ export interface ProcessKnownFunctionCallResult {
 	readonly processedArguments: readonly (DataflowInformation | undefined)[]
 	/** A reference to the function being called. */
 	readonly fnRef:              IdentifierReference
-	/**
-	 * The arguments as recorded on the function call vertex.
-	 * They are also part of the information via the function call vertex added, but sometimes useful separately.
-	 * For example, together with {@link FunctionSemantics.call.match.toSpec} to do custom parameter matching.
-	 */
+	/** The arguments as recorded on the function call vertex. */
 	readonly callArgs:           readonly FunctionArgument[]
 }
 
@@ -86,10 +77,7 @@ export interface NseMarkOptions {
 	readonly first?:     number
 }
 
-/**
- * The positions of the arguments `which` names among `count` arguments, where `first` is the position of the
- * argument filling the first parameter (`-1` if none does), as a named one may come later (`mutate(z = 1, .data = d)`).
- */
+/** The positions of the arguments `which` names among `count` arguments, where `first` is the position of the argument filling the first parameter (`-1` if none does), as a named one may come later (`mutate(z = 1, .data = d)`). */
 export function nseArgumentPositions(which: NseArguments | readonly number[] | undefined, count: number, first = 0): readonly number[] {
 	if(typeof which !== 'string') {
 		return which ?? [];
@@ -101,11 +89,7 @@ export function nseArgumentPositions(which: NseArguments | readonly number[] | u
 	return which === NseArguments.AllButFirst ? all.filter(i => i !== first) : all;
 }
 
-/**
- * Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}: a {@link NseKind.Quoted|quoted} one
- * entirely, a {@link NseKind.DataMasked|data-masked} one only where {@link FunctionSemantics.call.nse.suppliedByMask} holds, and a
- * {@link NseKind.Reevaluated|reevaluated} one as a whole but not within.
- */
+/** Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}: a {@link NseKind.Quoted|quoted} one entirely, a {@link NseKind.DataMasked|data-masked} one only where {@link FunctionSemantics.call.nse.suppliedByMask} holds, and a {@link NseKind.Reevaluated|reevaluated} one as a whole but not within. */
 export function markArgumentsAsNonStandardEvaluation(
 	graph:              DataflowGraph,
 	rootId:             NodeId,
@@ -136,19 +120,14 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
 		if(evaluated?.has(vtx)) {
 			continue;
 		}
-		/* every name in a mask is a candidate column, even one the caller binds: R asks the data first.
-		   {@link FunctionSemantics.call.nse.dropResolvedMask} takes the mark off the bound ones again, and keeps them as the
-		   names that mean both */
+		/* every name in a mask is a candidate column, even one the caller binds: R asks the data first. */
 		if(kind === NseKind.Quoted || FunctionSemantics.call.nse.maskCandidate(info)) {
 			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
 		}
 	}
 }
 
-/**
- * The main processor for function calls for which we know the target but need not
- * add any specific handling.
- */
+/** The main processor for function calls for which we know the target but need not add any specific handling. */
 export function processKnownFunctionCall<OtherInfo>(
 	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom, keepArgumentGraphs }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
@@ -170,6 +149,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		finalGraph,
 		functionRootId:   rootId,
 		keepGraphs:       keepArgumentGraphs,
+		lookup:           EnvironmentLookups.has(origin),
 		patchData,
 		forced,
 		nonFunction,

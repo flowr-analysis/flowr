@@ -29,9 +29,7 @@ export interface RegisterHookConfig {
 	}
 }
 
-/**
- * Process a hook such as `on.exit`
- */
+/** Process a hook such as `on.exit` */
 export function processRegisterHook<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -94,7 +92,8 @@ export function processRegisterHook<OtherInfo>(
 	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default : isSet(afterIds);
 
 	const info = res.information;
-	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({
+	/* `on.exit()` registers nothing, which replaces the hooks registered before unless it adds */
+	const hooks: HookInformation[] = Array.from(wrappedFunctions.size === 0 ? [rootId] : wrappedFunctions, id => ({
 		type:  config.hook,
 		id,
 		cds:   data.cds,

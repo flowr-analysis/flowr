@@ -25,11 +25,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const results: Record<string, InputSources> = {};
 	const nast = await analyzer.normalize();
 	const df = await analyzer.dataflow();
-	const ctx = analyzer.inspectContext();
-	const defaultConfig = addAll(
-		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
-		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
-	);
+	const defaultConfig = await analyzer.derive(resolveDefaultConfig, () => resolveDefaultConfig(analyzer));
 	const packages = unqualifiedPackages(analyzer, df.environment);
 
 	for(const query of queries) {
@@ -59,6 +55,15 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		...metaSince(start),
 		results
 	};
+}
+
+/** The default classifier config with the configured entries added, its searches (e.g. linter rules) resolved. */
+async function resolveDefaultConfig(analyzer: ReadonlyFlowrAnalysisProvider): Promise<InputClassifierConfig<InputClassifierFunctionIdentifiers>> {
+	const ctx = analyzer.inspectContext();
+	return addAll(
+		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
+		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
+	);
 }
 
 /**

@@ -80,6 +80,7 @@ function diceQueryCompleter(line: readonly string[], startingNewArg: boolean, _c
 export const DiceQueryDefinition = {
 	title:           'Dice Query',
 	executor:        executeDiceQuery,
+	perQueryResults: true,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result): boolean => summarizeSliceResults<DiceQuery>(
 		formatter, 'dice', queryResults as QueryResults<'dice'>['dice'], result,
 		(_, q) => q ? `Dice from {${q.from.join(', ')}} to {${q.to.join(', ')}}` : 'Dice'

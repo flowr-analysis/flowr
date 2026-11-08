@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Happens-Before Query">Happens-Before Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Check whether one normalized AST node happens before another in the CFG.\
@@ -16,18 +16,12 @@ y <- 2
 the following query returns that the first assignment happens always before the other:
 
 ```json
-[
-  {
-    "type": "happens-before",
-    "a": "1@x",
-    "b": "2@y"
-  }
-]
+[ { "type": "happens-before",   "a": "1@x",   "b": "2@y" } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **happens-before** (7 ms)\
+Query: **happens-before** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **1@x** happens before **2@y**: always
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -48,54 +42,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 x <- 1
 y <- 2
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered no unknown side effects during the analysis.
-
-```mermaid
-flowchart LR
-    1{{"`*#91;RNumber#93;* **1**
-      *1.6* (**id: 1**)`"}}
-    0["`*#91;RSymbol#93;* **x**
-      *1.1* (**id: 0**, v: 1)`"]
-    2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-6* (**id: 2**)
-    arg: (0, 1)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    4{{"`*#91;RNumber#93;* **2**
-      *2.6* (**id: 4**)`"}}
-    3["`*#91;RSymbol#93;* **y**
-      *2.1* (**id: 3**, v: 4)`"]
-    5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *2.1-6* (**id: 5**)
-    arg: (3, 4)`"]]
-    1 -.->|"flow"| 0
-    linkStyle 0 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 2
-    0 -->|"defined-by"| 1
-    2 -->|"reads, arg"| 1
-    2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 5 stroke:gray;
-    2 -.->|"flow"| 4
-    linkStyle 6 stroke:gray,color:gray;
-    4 -.->|"flow"| 3
-    linkStyle 7 stroke:gray,color:gray;
-    3 -->|"defined-by, flow"| 5
-    3 -->|"defined-by"| 4
-    5 -->|"reads, arg"| 4
-    5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 12 stroke:gray;
-```
-
-</details>
 
 </details>
 	

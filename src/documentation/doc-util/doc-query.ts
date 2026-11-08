@@ -11,7 +11,6 @@ import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
-import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { docTook } from './doc-timings';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
@@ -28,7 +27,6 @@ const QueryDocFile = 'src/documentation/wiki-query.ts';
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
-	readonly collapseQuery?:  boolean;
 	/** whether to add the detailed JSON results besides the prettified ones (default: true) */
 	readonly withJson?:       boolean;
 	readonly shorthand?:      string;
@@ -48,7 +46,7 @@ export async function showQuery<
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, withJson = true, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
+	{ showCode, collapseResult, withJson = true, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const builder = new FlowrAnalyzerBuilder().setParser(parser);
@@ -66,10 +64,10 @@ export async function showQuery<
 The analysis${docTook(duration)} ran (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
-	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
+	const str = JSON.stringify(queries, jsonReplacer, ' ');
 	return `
 
-${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g, '$1 ').replace(/\s{2,}([\]}])/g, ' $1') : str)}
+${codeBlock('json', str.split('\n').join(' ').replace(/([{[])\s{2,}/g, '$1 ').replace(/\s{2,}([\]}])/g, ' $1'))}
 
 ${(function() {
 	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
@@ -102,7 +100,7 @@ ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-${await printDfGraphForCode(parser, code, { switchCodeAndGraph: true })}
+${codeBlock('r', code)}
 
 </details>
 	` : ''

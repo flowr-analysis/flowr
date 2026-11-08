@@ -8,7 +8,7 @@ import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
 import { SourceRange } from '../../util/range';
-import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
+import { type Query, type QueryResults, type SupportedQuery, executeQueries, SupportedQueries, executeQueriesOfSameType } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { LintingResultCertainty } from '../../linter/linter-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -112,7 +112,11 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	from:       readonly Query[],
 	certainty?: LintingResultCertainty
 }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-	const result = await executeQueries({ analyzer: input }, args.from);
+	/* one (non-virtual) query, the common case, skips the grouping of a batch */
+	const [only] = args.from;
+	const result = (args.from.length === 1 && only.type in SupportedQueries
+		? { [only.type]: await executeQueriesOfSameType({ analyzer: input }, args.from), '.meta': { timing: 0 } }
+		: await executeQueries({ analyzer: input }, args.from)) as QueryResults;
 
 	// collect involved nodes
 	const { idMap } = await input.normalize();

@@ -123,6 +123,19 @@ describe('is-strict-function', withTreeSitter(ts => {
 	}).join('\n');
 	testStrict('mutually recursive functions answer quickly', ring, '1@function', Ternary.Always, { x: Ternary.Always, y: Ternary.Always });
 
+	test('a cycle answers the same whichever definition is asked first', async() => {
+		const code = 'f <- function(a, b) if(a > 0) g(a - 1, b) else b\ng <- function(a, b) if(a > 1) h(a, b) else f(a, b)\nh <- function(a, b) { f(a - 1, b); g(a - 2, 1) }';
+		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
+		analyzer.addRequest(requestFromInput(code));
+		const idMap = (await analyzer.normalize()).idMap;
+		const graph = (await analyzer.dataflow()).graph;
+		const ids = ['1@function', '2@function', '3@function'].map(c => SlicingCriterion.parse(c as SlicingCriterion, idMap));
+		const forward = FunctionSemantics.strictness(ids, graph);
+		for(const first of ids) {
+			assert.deepStrictEqual(FunctionSemantics.strictness([first, ...ids.filter(i => i !== first)], graph), forward, `asking ${first} first`);
+		}
+	});
+
 	describe('domains:promise', () => {
 		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
 		const strictOf = async(code: string, fn: SlicingCriterion) => {

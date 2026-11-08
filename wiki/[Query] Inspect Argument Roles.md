@@ -1,19 +1,19 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-06, 07:52:59 UTC (v2.17.2), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
 _This query is requested with the type `inspect-fn-props`._\
 Run in the REPL: `:query @inspect-fn-props [(<crit>;...)] <code | file://path>`
 
-Per function definition this states what each formal is used for, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L11"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> bits, and what the
-function itself does, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L78"><code><span title="The properties of the behavior of a call, as a bitmask.">CallProp</span></code></a> bits: the very scheme flowR states its built-ins and the
+Per function definition this states what each formal is used for, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L6"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> bits, and what the
+function itself does, as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L46"><code><span title="The properties of the behavior of a call, as a bitmask.">CallProp</span></code></a> bits: the very scheme flowR states its built-ins and the
 signature database stores its parameters with.
 
 R hands arguments over as promises, so whether a parameter is evaluated at all is part of the answer:
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L13"><code><span title="evaluated whenever the call happens, even if the result goes unused, like x in force(x)">ArgProp::<b>Forced</b></span></code></a> says every call forces it,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L56"><code><span title="never evaluated, the definite counterpart of ArgProp.Forced : no path of the body reads it">ArgProp::<b>Lazy</b></span></code></a> that none can, and neither of the two that it depends on the
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L8"><code><span title="evaluated whenever the call happens, even if the result goes unused, like x in force(x)">ArgProp::<b>Forced</b></span></code></a> says every call forces it,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L36"><code><span title="never evaluated, the definite counterpart of ArgProp.Forced : no path of the body reads it">ArgProp::<b>Lazy</b></span></code></a> that none can, and neither of the two that it depends on the
 path taken, on the caller, or on a function flowR could not resolve. A function forcing every one of its
-parameters is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L109"><code>CallProp::<b>Strict</b></code></a> in turn. A read that only hands the parameter
+parameters is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L71"><code>CallProp::<b>Strict</b></code></a> in turn. A read that only hands the parameter
 on is decided by the function receiving it, resolved through the call graph, while a read in a nested
 definition, in a loop, or under a condition leaves it open.
 
@@ -59,192 +59,12 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }
 ```
 
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
-
-```mermaid
-flowchart LR
-    %% Environment of 32 [level: 0]:
-    %% Built-in
-    %% 1----------------------------------------
-    %%   #rng: {**#rng** (id: 27, type: Variable, cds: {}, def. @27)}
-    32["`*#91;RFunctionDefinition#93;* **function**
-      *1.6-89* (**id: 32**)`"]
-
-subgraph "flow-32" [function 32]
-    1["`*#91;RSymbol#93;* **x**
-      *1.15* (**id: 1**, v: )`"]
-    3["`*#91;RSymbol#93;* **xs**
-      *1.18-19* (**id: 3**, v: )`"]
-    5["`*#91;RSymbol#93;* **FUN**
-      *1.22-24* (**id: 5**, v: )`"]
-    7["`*#91;RSymbol#93;* **opt**
-      *1.27-29* (**id: 7**, v: )`"]
-    12(["`*#91;RSymbol#93;* **opt**
-      *1.45-47* (**id: 12**)`"])
-    14[["`*#91;RFunctionCall#93;* base#58;#58;**missing**
-      *1.37-48* (**id: 14**)
-    arg: (12)`"]]
-    built-in:missing["`Built-In:
-missing`"]
-    style built-in:missing stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    17(["`*#91;RSymbol#93;* **xs**
-      *1.64-65* (**id: 17**)`"])
-    19[["`*#91;RFunctionCall#93;* base#58;#58;**length**
-      *1.57-66* (**id: 19**, 23+)
-    arg: (17)`"]]
-    built-in:length["`Built-In:
-length`"]
-    style built-in:length stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    21[["`*#91;RFunctionCall#93;* base#58;#58;**print**
-      *1.51-67* (**id: 21**, 23+)
-    arg: (19)`"]]
-    built-in:print["`Built-In:
-print`"]
-    style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    23[["`*#91;RIfThenElse#93;* base#58;#58;**if**
-      *1.34-67* (**id: 23**)
-    arg: (14, 21, #91;empty#93;)`"]]
-    built-in:if["`Built-In:
-if`"]
-    style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    25(["`*#91;RSymbol#93;* **xs**
-      *1.77-78* (**id: 25**)`"])
-    %% Environment of 27 [level: 1]:
-    %% Built-in
-    %% 1----------------------------------------
-    %% 2----------------------------------------
-    %%   x:   {**x** (id: 1, type: Parameter, def. @2)}
-    %%   xs:  {**xs** (id: 3, type: Parameter, def. @4)}
-    %%   FUN: {**FUN** (id: 5, type: Parameter, def. @6)}
-    %%   opt: {**opt** (id: 7, type: Parameter, def. @8)}
-    27[["`*#91;RSymbol#93;* **FUN**
-      *1.81-83* (**id: 27**)
-    arg: (25)`"]]
-    29[["`*#91;RFunctionCall#93;* base#58;#58;**lapply**
-      *1.70-84* (**id: 29**)
-    arg: (25, 27)`"]]
-    built-in:lapply["`Built-In:
-lapply`"]
-    style built-in:lapply stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    30(["`*#91;RSymbol#93;* **x**
-      *1.87* (**id: 30**)`"])
-    31[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
-      *1.32* (**id: 31**)
-    arg: (23, 29, 30)`"]]
-    built-in:_123_["`Built-In:
-#123;`"]
-    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    style 23 stroke:purple,stroke-width:4px; 
-    style 14 stroke:purple,stroke-width:4px; 
-    style 19 stroke:purple,stroke-width:4px; 
-    style 21 stroke:purple,stroke-width:4px; 
-    style 21 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 29 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 31 stroke:purple,stroke-width:4px; 
-end
-    0["`*#91;RSymbol#93;* **f**
-      *1.1* (**id: 0**, v: 32)`"]
-    33[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-89* (**id: 33**)
-    arg: (0, 32)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    1 -.->|"flow"| 3
-    linkStyle 0 stroke:gray,color:gray;
-    3 -.->|"flow"| 5
-    linkStyle 1 stroke:gray,color:gray;
-    5 -.->|"flow"| 7
-    linkStyle 2 stroke:gray,color:gray;
-    7 -.->|"flow"| 12
-    linkStyle 3 stroke:gray,color:gray;
-    12 -->|"reads"| 7
-    12 -.->|"flow"| 14
-    linkStyle 5 stroke:gray,color:gray;
-    14 -->|"reads, arg"| 12
-    14 -.->|"branch (when: true)"| 17
-    linkStyle 7 stroke:gray,color:gray;
-    14 -.->|"branch (when: false)"| 23
-    linkStyle 8 stroke:gray,color:gray;
-    14 -.->|"reads, calls"| built-in:missing
-    linkStyle 9 stroke:gray;
-    17 -->|"reads"| 3
-    17 -.->|"flow"| 19
-    linkStyle 11 stroke:gray,color:gray;
-    19 -->|"reads, arg"| 17
-    19 -.->|"reads, calls"| built-in:length
-    linkStyle 13 stroke:gray;
-    19 -.->|"flow"| 21
-    linkStyle 14 stroke:gray,color:gray;
-    21 -->|"reads, returns, arg"| 19
-    21 -.->|"reads, calls"| built-in:print
-    linkStyle 16 stroke:gray;
-    21 -.->|"flow"| 23
-    linkStyle 17 stroke:gray,color:gray;
-    23 -->|"returns, arg"| 21
-    23 -->|"reads, arg"| 14
-    23 -.->|"reads, calls"| built-in:if
-    linkStyle 20 stroke:gray;
-    23 -.->|"flow"| 25
-    linkStyle 21 stroke:gray,color:gray;
-    25 -->|"reads"| 3
-    25 -.->|"flow"| 27
-    linkStyle 23 stroke:gray,color:gray;
-    27 -->|"reads"| 5
-    27 -.->|"flow"| 29
-    linkStyle 25 stroke:gray,color:gray;
-    27 -->|"arg"| 25
-    29 -->|"arg"| 25
-    29 -->|"reads, arg"| 27
-    29 -.->|"reads, calls"| built-in:lapply
-    linkStyle 29 stroke:gray;
-    29 -.->|"flow"| 30
-    linkStyle 30 stroke:gray,color:gray;
-    30 -->|"reads"| 1
-    30 -.->|"flow"| 31
-    linkStyle 32 stroke:gray,color:gray;
-    31 -->|"arg"| 23
-    31 -->|"arg"| 29
-    31 -->|"returns, arg"| 30
-    31 -.->|"reads, calls"| built-in:_123_
-    linkStyle 36 stroke:gray;
-32 -.-|function| flow-32
-
-    32 -.->|"flow"| 0
-    linkStyle 38 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 33
-    0 -->|"defined-by"| 32
-    33 -->|"reads, arg"| 32
-    33 -->|"returns, arg"| 0
-    33 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 43 stroke:gray;
-```
-
-</details>
-
 </details>
 	
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 
 ```json
-[
-  {
-    "type": "inspect-fn-props",
-    "filter": [
-      "1@function"
-    ]
-  }
-]
+[ { "type": "inspect-fn-props",   "filter": [ "1@function" ] } ]
 ```
 
 (This can be shortened to `@inspect-fn-props (1@function) "f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -271,179 +91,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 ```r
 f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 21 (linked)) during the analysis.
-
-```mermaid
-flowchart LR
-    %% Environment of 32 [level: 0]:
-    %% Built-in
-    %% 1----------------------------------------
-    %%   #rng: {**#rng** (id: 27, type: Variable, cds: {}, def. @27)}
-    32["`*#91;RFunctionDefinition#93;* **function**
-      *1.6-89* (**id: 32**)`"]
-
-subgraph "flow-32" [function 32]
-    1["`*#91;RSymbol#93;* **x**
-      *1.15* (**id: 1**, v: )`"]
-    3["`*#91;RSymbol#93;* **xs**
-      *1.18-19* (**id: 3**, v: )`"]
-    5["`*#91;RSymbol#93;* **FUN**
-      *1.22-24* (**id: 5**, v: )`"]
-    7["`*#91;RSymbol#93;* **opt**
-      *1.27-29* (**id: 7**, v: )`"]
-    12(["`*#91;RSymbol#93;* **opt**
-      *1.45-47* (**id: 12**)`"])
-    14[["`*#91;RFunctionCall#93;* base#58;#58;**missing**
-      *1.37-48* (**id: 14**)
-    arg: (12)`"]]
-    built-in:missing["`Built-In:
-missing`"]
-    style built-in:missing stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    17(["`*#91;RSymbol#93;* **xs**
-      *1.64-65* (**id: 17**)`"])
-    19[["`*#91;RFunctionCall#93;* base#58;#58;**length**
-      *1.57-66* (**id: 19**, 23+)
-    arg: (17)`"]]
-    built-in:length["`Built-In:
-length`"]
-    style built-in:length stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    21[["`*#91;RFunctionCall#93;* base#58;#58;**print**
-      *1.51-67* (**id: 21**, 23+)
-    arg: (19)`"]]
-    built-in:print["`Built-In:
-print`"]
-    style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    23[["`*#91;RIfThenElse#93;* base#58;#58;**if**
-      *1.34-67* (**id: 23**)
-    arg: (14, 21, #91;empty#93;)`"]]
-    built-in:if["`Built-In:
-if`"]
-    style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    25(["`*#91;RSymbol#93;* **xs**
-      *1.77-78* (**id: 25**)`"])
-    %% Environment of 27 [level: 1]:
-    %% Built-in
-    %% 1----------------------------------------
-    %% 2----------------------------------------
-    %%   x:   {**x** (id: 1, type: Parameter, def. @2)}
-    %%   xs:  {**xs** (id: 3, type: Parameter, def. @4)}
-    %%   FUN: {**FUN** (id: 5, type: Parameter, def. @6)}
-    %%   opt: {**opt** (id: 7, type: Parameter, def. @8)}
-    27[["`*#91;RSymbol#93;* **FUN**
-      *1.81-83* (**id: 27**)
-    arg: (25)`"]]
-    29[["`*#91;RFunctionCall#93;* base#58;#58;**lapply**
-      *1.70-84* (**id: 29**)
-    arg: (25, 27)`"]]
-    built-in:lapply["`Built-In:
-lapply`"]
-    style built-in:lapply stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    30(["`*#91;RSymbol#93;* **x**
-      *1.87* (**id: 30**)`"])
-    31[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
-      *1.32* (**id: 31**)
-    arg: (23, 29, 30)`"]]
-    built-in:_123_["`Built-In:
-#123;`"]
-    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    style 23 stroke:purple,stroke-width:4px; 
-    style 14 stroke:purple,stroke-width:4px; 
-    style 19 stroke:purple,stroke-width:4px; 
-    style 21 stroke:purple,stroke-width:4px; 
-    style 21 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 29 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 27 stroke:purple,stroke-width:4px; 
-    style 31 stroke:purple,stroke-width:4px; 
-end
-    0["`*#91;RSymbol#93;* **f**
-      *1.1* (**id: 0**, v: 32)`"]
-    33[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-89* (**id: 33**)
-    arg: (0, 32)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    1 -.->|"flow"| 3
-    linkStyle 0 stroke:gray,color:gray;
-    3 -.->|"flow"| 5
-    linkStyle 1 stroke:gray,color:gray;
-    5 -.->|"flow"| 7
-    linkStyle 2 stroke:gray,color:gray;
-    7 -.->|"flow"| 12
-    linkStyle 3 stroke:gray,color:gray;
-    12 -->|"reads"| 7
-    12 -.->|"flow"| 14
-    linkStyle 5 stroke:gray,color:gray;
-    14 -->|"reads, arg"| 12
-    14 -.->|"branch (when: true)"| 17
-    linkStyle 7 stroke:gray,color:gray;
-    14 -.->|"branch (when: false)"| 23
-    linkStyle 8 stroke:gray,color:gray;
-    14 -.->|"reads, calls"| built-in:missing
-    linkStyle 9 stroke:gray;
-    17 -->|"reads"| 3
-    17 -.->|"flow"| 19
-    linkStyle 11 stroke:gray,color:gray;
-    19 -->|"reads, arg"| 17
-    19 -.->|"reads, calls"| built-in:length
-    linkStyle 13 stroke:gray;
-    19 -.->|"flow"| 21
-    linkStyle 14 stroke:gray,color:gray;
-    21 -->|"reads, returns, arg"| 19
-    21 -.->|"reads, calls"| built-in:print
-    linkStyle 16 stroke:gray;
-    21 -.->|"flow"| 23
-    linkStyle 17 stroke:gray,color:gray;
-    23 -->|"returns, arg"| 21
-    23 -->|"reads, arg"| 14
-    23 -.->|"reads, calls"| built-in:if
-    linkStyle 20 stroke:gray;
-    23 -.->|"flow"| 25
-    linkStyle 21 stroke:gray,color:gray;
-    25 -->|"reads"| 3
-    25 -.->|"flow"| 27
-    linkStyle 23 stroke:gray,color:gray;
-    27 -->|"reads"| 5
-    27 -.->|"flow"| 29
-    linkStyle 25 stroke:gray,color:gray;
-    27 -->|"arg"| 25
-    29 -->|"arg"| 25
-    29 -->|"reads, arg"| 27
-    29 -.->|"reads, calls"| built-in:lapply
-    linkStyle 29 stroke:gray;
-    29 -.->|"flow"| 30
-    linkStyle 30 stroke:gray,color:gray;
-    30 -->|"reads"| 1
-    30 -.->|"flow"| 31
-    linkStyle 32 stroke:gray,color:gray;
-    31 -->|"arg"| 23
-    31 -->|"arg"| 29
-    31 -->|"returns, arg"| 30
-    31 -.->|"reads, calls"| built-in:_123_
-    linkStyle 36 stroke:gray;
-32 -.-|function| flow-32
-
-    32 -.->|"flow"| 0
-    linkStyle 38 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 33
-    0 -->|"defined-by"| 32
-    33 -->|"reads, arg"| 32
-    33 -->|"returns, arg"| 0
-    33 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 43 stroke:gray;
-```
-
-</details>
 
 </details>
 	

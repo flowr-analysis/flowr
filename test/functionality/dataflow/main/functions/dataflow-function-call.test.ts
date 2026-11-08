@@ -7,7 +7,6 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { Identifier, ReferenceType } from '../../../../../src/dataflow/environments/identifier';
@@ -19,11 +18,12 @@ import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ExitPointType } from '../../../../../src/dataflow/info';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Function Call', withTreeSitter(ts => {
 	describe('Calling previously defined functions', () => {
-		assertDataflow(label('Calling function a', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']),
-			ts, 'i <- 4; a <- function(x) { x }\na(i)', emptyGraph()
+		assertDataflow(label('Calling function a', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']),
+			ts, 'i <- 4; a <- function(x) { x }\na(i)', emptyGraph().autoPrints([15], true)
 				.use('8', 'x', undefined, false)
 				.reads('8', '4')
 				.use('13', 'i', { cds: [{ id: '15', when: true, byPromise: true }] })
@@ -66,8 +66,8 @@ describe('Function Call', withTreeSitter(ts => {
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 		);
 
-		assertDataflow(label('Calling function a with an indirection', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments']), ts, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
-			emptyGraph()
+		assertDataflow(label('Calling function a with an indirection', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments']), ts, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
+			emptyGraph().autoPrints([18], true)
 				.use('8', 'x', undefined, false)
 				.reads('8', '4')
 				.use('13', 'a', undefined)
@@ -120,9 +120,9 @@ describe('Function Call', withTreeSitter(ts => {
 				.defineVariable('12', 'b', { definedBy: ['13', '14'] })
 		);
 
-		assertDataflow(label('Calling with a constant function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-named', 'implicit-return', 'unnamed-arguments']), ts, `i <- 4
+		assertDataflow(label('Calling with a constant function', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'formals-named', 'implicit-return', 'unnamed-arguments']), ts, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
-a(i)`, emptyGraph()
+a(i)`, emptyGraph().autoPrints([21], true)
 			.use('9', 'x', undefined, false)
 			.reads('9', '4')
 			.use('19', 'i', { cds: [{ id: '21', when: true, byPromise: true }] })
@@ -185,7 +185,7 @@ a(i)`, emptyGraph()
 	});
 
 	describe('Directly calling a function', () => {
-		const outGraph = emptyGraph()
+		const outGraph = emptyGraph().autoPrints([14], true)
 			.use('6', 'x', undefined, false)
 			.reads('6', '2')
 			.call('8', '+', [argumentInCall('6'), argumentInCall('7')], {
@@ -221,16 +221,16 @@ a(i)`, emptyGraph()
 			.definesOnCall('12', '2')
 			.definedByOnCall('2', '12');
 
-		assertDataflow(label('Calling with constant argument using lambda', ['lambda-syntax', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...OperatorDatabase['+'].capabilities]), ts, '(\\(x) { x + 1 })(2)',
+		assertDataflow(label('Calling with constant argument using lambda', ['lambda-syntax', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
 		);
-		assertDataflow(label('Calling with constant argument', ['formals-named', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...OperatorDatabase['+'].capabilities]), ts, '(function(x) { x + 1 })(2)',
+		assertDataflow(label('Calling with constant argument', ['formals-named', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, '(function(x) { x + 1 })(2)',
 			outGraph
 		);
 
 		assertDataflow(label('Calling a function which returns another', ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', 'numbers', 'closures']), ts, `a <- function() { function() { 42 } }
-a()()`, emptyGraph()
+a()()`, emptyGraph().autoPrints([13], true)
 			.call('6', '{', [argumentInCall('5')], {
 				returns:     ['5'],
 				reads:       [NodeId.toBuiltIn('{')],
@@ -275,7 +275,7 @@ a()()`, emptyGraph()
 	});
 
 	describe('Argument which is expression', () => {
-		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...OperatorDatabase['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph()
+		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph().recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
 			.use('2', 'x', { cds: [{ id: '5', when: true, byPromise: true }] })
 			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [NodeId.toBuiltIn('+')], cds: [{ id: '5', when: true, byPromise: true }] })
 			.calls('3', NodeId.toBuiltIn('+'))
@@ -287,7 +287,7 @@ a()()`, emptyGraph()
 	});
 
 	describe('Argument which is anonymous function call', () => {
-		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), ts, 'f(function() { 3 })', emptyGraph()
+		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), ts, 'f(function() { 3 })', emptyGraph().recordAmbientAccess(7, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'], assumed: ['#rng'] })
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
 				reads:       [NodeId.toBuiltIn('{')],
@@ -310,7 +310,7 @@ a()()`, emptyGraph()
 
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow(label('Calling \'seq\'', ['function-calls', 'numbers', 'unnamed-arguments', 'named-arguments']), ts, 'seq(1, length(pkgnames), by = stepsize)',
-			emptyGraph()
+			emptyGraph().autoPrints([11], true)
 				.use('4', 'pkgnames')
 				.use('9', 'stepsize')
 				.use('10', 'by')
@@ -331,7 +331,7 @@ a()()`, emptyGraph()
 	});
 
 	describe('Late function bindings', () => {
-		assertDataflow(label('Late binding of y', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']), ts, 'a <- function() { y }\ny <- 12\na()', emptyGraph()
+		assertDataflow(label('Late binding of y', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']), ts, 'a <- function() { y }\ny <- 12\na()', emptyGraph().autoPrints([11], true)
 			.use('3', 'y', undefined, false)
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
@@ -371,8 +371,8 @@ a()()`, emptyGraph()
 	});
 
 	describe('Deal with empty calls', () => {
-		assertDataflow(label('Not giving first parameter', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'formals-default', 'implicit-return', 'newlines', 'empty-arguments', 'unnamed-arguments']), ts, `a <- function(x=3,y) { y }
-a(,3)`, emptyGraph()
+		assertDataflow(label('Not giving first parameter', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'formals-named', 'formals-default', 'implicit-return', 'newlines', 'empty-arguments', 'unnamed-arguments']), ts, `a <- function(x=3,y) { y }
+a(,3)`, emptyGraph().autoPrints([15], true)
 			.use('8', 'y', undefined, false)
 			.reads('8', '4')
 			.call('9', '{', [argumentInCall('8')], {
@@ -408,7 +408,7 @@ a(,3)`, emptyGraph()
 		);
 	});
 	describe('Reuse parameters in call', () => {
-		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph()
+		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph().recordAmbientAccess(6, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
 			.use('3', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
 			.reads('3', '2')
 			.use('4', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
@@ -419,7 +419,7 @@ a(,3)`, emptyGraph()
 		);
 	});
 	describe('Define in parameters', () => {
-		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph()
+		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph().autoPrints([6]).recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
 			.use('6', 'x')
 			.reads('6', '1')
 			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [NodeId.toBuiltIn('<-'), 2], onlyBuiltIn: true, cds: [{ id: '5', when: true, byPromise: true }] })
@@ -449,7 +449,7 @@ a(,3)`, emptyGraph()
 		);
 	});
 	describe('*apply', () => {
-		const caps: FlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities];
+		const caps: FlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['*'].capabilities];
 		describe('no additional arguments', () => {
 			for(const applyFn of ['sapply', 'vapply', 'lapply']) {
 				assertDataflow(label(applyFn + ' without arguments', caps), ts, `g <- function(x) { x * 2 }
@@ -552,5 +552,41 @@ testFuncCorrect(1:5, sum)
 		const graph = (await analyzer.dataflow()).graph;
 		const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === 'unknownFn');
 		expect(call && Dataflow.callTargetsOf(call[0], graph)).toEqual([]);
+	});
+	/* a write that happens when a call runs (`x <<- TRUE` in a closure) holds what it assigns, not what that call returns */
+	test('a call does not get its function from the call a definition is a side effect of', () => {
+		const graph = emptyGraph()
+			.call('c', 'g', [])
+			.defineVariable('v', 'g')
+			.constant('value')
+			.definedBy('v', 'value')
+			.reads('c', 'v')
+			.call('k', 'h', [])
+			.reads('v', 'k')
+			.sideEffectOnCall('v', 'k')
+			.returns('k', NodeId.toBuiltIn('print'));
+		expect(Dataflow.callTargetsOf('c', graph)).toEqual(['v']);
+	});
+	/* the walks are shared while the graph stays as it is, a change drops them */
+	test('shared target walks find what single walks do', () => {
+		const graph = emptyGraph()
+			.defineFunction('f', ['r'], { out: [], in: [], unknownReferences: [], entryPoint: 'r', graph: new Set(['r']), environment: defaultEnv() })
+			.defineVariable('g', 'g')
+			.definedBy('g', 'f')
+			.use('u', 'g')
+			.reads('u', 'g')
+			.call('c', 'g', [])
+			.reads('c', 'u')
+			.call('d', 'h', [])
+			.reads('d', 'u');
+		const alone = ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph));
+		expect(graph.sharingTargetWalks(() => ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph)))).toEqual(alone);
+		expect(alone[0]).toContain('f');
+		graph.sharingTargetWalks(() => {
+			expect(Dataflow.callTargetsOf('c', graph)).toContain('f');
+			graph.defineFunction('f2', ['r2'], { out: [], in: [], unknownReferences: [], entryPoint: 'r2', graph: new Set(['r2']), environment: defaultEnv() })
+				.definedBy('g', 'f2');
+			expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
+		});
 	});
 }));

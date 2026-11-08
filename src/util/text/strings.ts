@@ -164,3 +164,14 @@ export function* dottedSplits(name: string): Generator<readonly [prefix: string,
 export function compareByCodeUnit(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }
+
+export type RQuote = '"' | '\'' | '`';
+
+/** Splits off the matching R quotes (double, single, or backtick) wrapping `str`, escapes are not interpreted. */
+export function splitRQuotes(str: string): { readonly quote: RQuote | undefined, readonly content: string } {
+	const quote = str[0];
+	if(str.length > 1 && (quote === '"' || quote === '\'' || quote === '`') && str[str.length - 1] === quote) {
+		return { quote, content: str.slice(1, -1) };
+	}
+	return { quote: undefined, content: str };
+}

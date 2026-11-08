@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-03, 10:21:01 UTC (v2.16.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Inspect Higher-Order Functions Query">Inspect Higher-Order Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are higher-order functions\
@@ -41,85 +41,12 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 f <- function() function(x) x; f()
 ```
 
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered no unknown side effects during the analysis.
-
-```mermaid
-flowchart LR
-    7["`*#91;RFunctionDefinition#93;* **function**
-      *1.6-29* (**id: 7**)`"]
-
-subgraph "flow-7" [function 7]
-    %% Environment of 5 [level: 1]:
-    %% Built-in
-    %% 1----------------------------------------
-    %% 2----------------------------------------
-    5["`*#91;RFunctionDefinition#93;* **function**
-      *1.17-29* (**id: 5**)`"]
-
-subgraph "flow-5" [function 5]
-    1["`*#91;RSymbol#93;* **x**
-      *1.26* (**id: 1**, v: )`"]
-    3(["`*#91;RSymbol#93;* **x**
-      *1.29* (**id: 3**)`"])
-end
-   %% No edges found for 5
-end
-    0["`*#91;RSymbol#93;* **f**
-      *1.1* (**id: 0**, v: 7)`"]
-    8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-29* (**id: 8**)
-    arg: (0, 7)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    %% Environment of 10 [level: 0]:
-    %% Built-in
-    %% 1----------------------------------------
-    %%   f: {**f** (id: 0, type: Function, def. @8)}
-    10[["`*#91;RFunctionCall#93;* **f**
-      *1.32-34* (**id: 10**)`"]]
-    1 -.->|"flow"| 3
-    linkStyle 0 stroke:gray,color:gray;
-    3 -->|"reads"| 1
-5 -.-|function| flow-5
-
-7 -.-|function| flow-7
-
-    7 -.->|"flow"| 0
-    linkStyle 4 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 8
-    0 -->|"defined-by"| 7
-    8 -->|"reads, arg"| 7
-    8 -->|"returns, arg"| 0
-    8 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 9 stroke:gray;
-    8 -.->|"flow"| 10
-    linkStyle 10 stroke:gray,color:gray;
-    10 -->|"reads"| 0
-    10 -->|"returns"| 5
-    10 -->|"calls"| 7
-```
-
-</details>
-
 </details>
 	
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 
 ```json
-[
-  {
-    "type": "inspect-higher-order",
-    "filter": [
-      "1@function"
-    ]
-  }
-]
+[ { "type": "inspect-higher-order",   "filter": [ "1@function" ] } ]
 ```
 
 (This can be shortened to `@inspect-higher-order (1@function) "f <- function() function(x) x; f()"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -145,6 +72,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Inspect Higher-Order Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts#L266"><code>executor</code></a>.
+The Inspect Higher-Order Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L129"><code>executor</code></a>.
 
 </details>

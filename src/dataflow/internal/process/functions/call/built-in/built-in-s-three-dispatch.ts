@@ -11,7 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { EdgeType } from '../../../../../graph/edge';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -19,16 +19,20 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { ControlFlow } from '../../../../control-flow';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { DotsParameterName } from '../../../../../../util/arg-matching';
 
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
-	args: {
+	/** absent for a next-method call (`callNextMethod(...)`, `NextMethod(...)`) */
+	args?: {
 		generic: string,
 		object:  string
 	},
-	/** For NextMethod/if `generic` is not given, try to infer from the closure? */
-	inferFromClosure?: boolean
+	/** the call hands on to the next method of the dispatch running the function it is in (`NextMethod`): it continues along the class vector of that dispatch, so neither the generic nor the object it names changes what runs (only in a function called directly does it dispatch the generic it names) */
+	next?:         boolean
+	/** the call evaluates the formals of the function it is in to pick a method by their classes (`standardGeneric`) */
+	readsFormals?: boolean
 }
 
 /** Process an S3 dispatch call like `UseMethod`. */
@@ -39,7 +43,15 @@ export function processS3Dispatch<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S3DispatchConfig
 ): DataflowInformation {
-	if(args.length === 0 && !config.inferFromClosure) {
+	if(config.readsFormals) {
+		const info = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		return { ...info, in: [...info.in, ...formalReads(rootId, data).filter(r => r.name !== DotsParameterName)] };
+	}
+	if(config.args === undefined) {
+		const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S3DispatchNext }).information;
+		return args.length > 0 && !config.next ? info : { ...info, in: [...info.in, ...formalReads(rootId, data)] };
+	}
+	if(args.length === 0) {
 		dataflowLogger.warn('empty s3, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -50,7 +62,7 @@ export function processS3Dispatch<OtherInfo>(
 		'...':                 '...'
 	});
 	const generic = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
-	if(!generic && !config.inferFromClosure) {
+	if(!generic) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const obj = RArgument.valueOf(RArgument.getWithId(args, argMaps.get('object')?.[0]));
@@ -67,34 +79,6 @@ export function processS3Dispatch<OtherInfo>(
 			origin:                BuiltInProcName.S3Dispatch
 		});
 		return dfObj;
-	}
-
-	if(!generic) {
-		patchFunctionCall({
-			nextGraph:             dfObj.graph,
-			rootId,
-			name,
-			data,
-			argumentProcessResult: [dfObj],
-			origin:                BuiltInProcName.S3DispatchNext
-		});
-		/* the next method receives the current values of the formals of the method it is called from */
-		const idMap = data.completeAst.idMap;
-		const enclosing = idMap.get(RNode.findEnclosing(rootId, idMap, RFunctionDefinition.is) ?? rootId);
-		const formals = RFunctionDefinition.is(enclosing) ? enclosing.parameters : [];
-		const formalReads = formals.map(param => ({ nodeId: rootId, name: param.name.content, cds: data.cds, type: ReferenceType.Variable }));
-		return {
-			hooks:             dfObj.hooks,
-			environment:       dfObj.environment,
-			exitPoints:        dfObj.exitPoints,
-			graph:             dfObj.graph,
-			entryPoint:        rootId,
-			cfgEntry:          ControlFlow.inSequence(dfObj.graph, [dfObj], rootId),
-			cfgExit:           rootId,
-			in:                [...dfObj.in, ...dfObj.unknownReferences, fnRef, ...formalReads],
-			out:               dfObj.out,
-			unknownReferences: []
-		};
 	}
 
 	/* in `g <- "p"; f <- function(x) UseMethod(g)` the generic is the value of `g` where `f` is defined */
@@ -150,4 +134,12 @@ export function processS3Dispatch<OtherInfo>(
 		out:               dfGeneric.out.concat(dfObj.out),
 		unknownReferences: []
 	};
+}
+
+/** the next method receives the current values of the formals of the method it is called from */
+function formalReads<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): IdentifierReference[] {
+	const idMap = data.completeAst.idMap;
+	const enclosing = idMap.get(RNode.findEnclosing(rootId, idMap, RFunctionDefinition.is) ?? rootId);
+	const formals = RFunctionDefinition.is(enclosing) ? enclosing.parameters : [];
+	return formals.map(param => ({ nodeId: rootId, name: param.name.content, cds: data.cds, type: ReferenceType.Variable }));
 }

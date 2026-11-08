@@ -3,10 +3,10 @@ import { arg, bin, call, comment, exprList, group, num, sym, un } from '../../..
 import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider';
 import { label } from '../../../_helper/label';
 import { startAndEndsWith } from '../../../../../src/util/text/strings';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 /** operators for which the grouping/precedence shapes are pinned (the rest only gets the simple form and the associativity check) */
 const PrecedenceRepresentatives = new Set(['+', '^', '<-', '&&']);
@@ -15,7 +15,7 @@ describe('Parse simple operations', { concurrent: false }, withShell(shell => {
 	describe('unary operations', () => {
 		for(const op of UnaryOperatorPool) {
 			const input = `${op}42`;
-			assertAst(label(input, ['unary-operator', 'numbers', ...OperatorDatabase[op].capabilities]),
+			assertAst(label(input, ['unary-operator', 'numbers', ...BuiltInOperators.byName[op].capabilities]),
 				shell, input, exprList(un(op, [1, 1], num('42', [1, 2 + op.length - 1])))
 			);
 		}
@@ -31,7 +31,7 @@ describe('Parse simple operations', { concurrent: false }, withShell(shell => {
 		}
 
 		describe('Intermixed with comments', () => {
-			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines', ...OperatorDatabase['+'].capabilities]),
+			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines', ...BuiltInOperators.byName['+'].capabilities]),
 				shell, '1 + # comment\n2',
 				exprList(bin('+', [1, 3], num('1', [1, 1]), num('2', [2, 1]), [comment('# comment', [1, 5])])),
 				{ ignoreAdToks: false }
@@ -47,7 +47,7 @@ describe('Parse simple operations', { concurrent: false }, withShell(shell => {
 		});
 	});
 	describe('Comment Breaks for Unary', () => {
-		assertAst(label('Comment Breaks for Unary', ['unary-operator', 'comments', 'newlines', 'name-normal', 'function-calls', ...OperatorDatabase['~'].capabilities]),
+		assertAst(label('Comment Breaks for Unary', ['unary-operator', 'comments', 'newlines', 'name-normal', 'function-calls', ...BuiltInOperators.byName['~'].capabilities]),
 			shell, 'res <- func(~ # comment\n     var)',
 			exprList(bin('<-', [1, 5], sym('res', [1, 1]), call(sym('func', [1, 8]), [
 				arg(un('~', [1, 13], sym('var', [2, 6]), [comment('# comment', [1, 15])]), undefined,
@@ -63,7 +63,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 	describe(`${op}`, () => {
 		const simpleInput = `1 ${op} 1`;
 		const k = op.length - 1;
-		const caps = OperatorDatabase[op].capabilities;
+		const caps = BuiltInOperators.byName[op].capabilities;
 		const one = (col: number) => num('1', [1, col]);
 		assertAst(label(simpleInput, ['binary-operator', 'infix-calls', 'function-calls', 'numbers', ...caps]),
 			shell, simpleInput, exprList(bin(op, [1, 3], one(1), one(5 + k)))

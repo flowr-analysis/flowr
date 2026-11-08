@@ -3,7 +3,6 @@
  * See {@link reconstructToCode}.
  * @module
  */
-
 import { expensiveTrace, log, LogLevel } from '../util/log';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { guard } from '../util/assert';
@@ -33,6 +32,7 @@ import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-se
 import { Identifier } from '../dataflow/environments/identifier';
 import { type InlineWarning, sourcePathOf } from './inline/source-inline-map';
 import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
+import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/base-operators';
 
 /**
  * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
@@ -187,7 +187,7 @@ function evaluatesToRhs(n: RBinaryOp<ParentInformation> | RPipe<ParentInformatio
 		return false;
 	}
 	const info = RBinaryOp.getOperatorInfo(n);
-	return info?.usedAs === 'assignment' && info.stringUsedInRAst !== RawRType.RightAssign;
+	return info?.usedAs === OperatorUsedAs.Assignment && info.stringUsedInRAst !== RawRType.RightAssign;
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {

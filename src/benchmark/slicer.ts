@@ -477,8 +477,8 @@ export class BenchmarkSlicer {
 			this.guardActive();
 			const analyzer = await this.buildAnalyzerForAdditionalPhases();
 			if(analyzer !== undefined) {
-				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
-				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
+				await this.measureAdditional('dependencies query', () => analyzer.query({ type: 'dependencies' }));
+				await this.measureAdditional('linter run', () => analyzer.query({ type: 'linter' }));
 			}
 			if(calibrate) {
 				/* the calibration times itself, so that neither the warmup nor the reps it discards count */

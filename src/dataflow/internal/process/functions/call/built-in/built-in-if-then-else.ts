@@ -1,3 +1,4 @@
+import { hooksUnder } from '../../../../../hooks';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
@@ -52,11 +53,7 @@ function conditionalArgsOf<OtherInfo>(
 	return (['cond', 'yes', 'no'] as const).map(k => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }
 
-/**
- * Processes an if-then-else built-in function call.
- * For example, `if(cond) thenExpr else elseExpr` and `if(cond) thenExpr`.
- * The arguments will be either `[cond, thenExpr]` or `[cond, thenExpr, elseExpr]`.
- */
+/** Processes an if-then-else built-in function call. */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -87,10 +84,7 @@ export function processIfThenElse<OtherInfo>(
 	/* within a loop, what the condition reads may change after it, for the next iteration */
 	const mayChange = !onlyLiterals(condArg) && RLoopConstructs.encloses(rootId, data.completeAst.idMap);
 	const values = mayChange ? undefined : NodeValue.setOf(condArg.info.id, data);
-	/*
-	 * `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition
-	 * says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here.
-	 */
+	/* `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here. */
 	const branchesAreLazy = config?.args === undefined;
 	const conditionIsAlways = (value: boolean) => branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === value) ?? false);
 	const alwaysFalse = conditionIsAlways(false);
@@ -133,10 +127,7 @@ export function processIfThenElse<OtherInfo>(
 	if(uncertain && otherwise !== undefined) {
 		makeAmbientWritesMaybe(otherwise.environment, cond.environment, finalEnvironment, cdFalse);
 	}
-	/*
-	 * we assign all branch references with a maybe marker; we do not merge even if they appear in both branches
-	 * because the maybe links will refer to different ids
-	 */
+	/* we assign all branch references with a maybe marker; we do not merge even if they appear in both branches because the maybe links will refer to different ids */
 	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) =>
 		uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
 	const ingoing: IdentifierReference[] = cond.in.concat(
@@ -199,7 +190,7 @@ export function processIfThenElse<OtherInfo>(
 		cfgExit:           reachesJoin ? rootId : undefined,
 		environment:       finalEnvironment,
 		graph:             nextGraph,
-		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
+		hooks:             uncertain ? cond.hooks.concat(hooksUnder(then?.hooks ?? [], cdTrue), hooksUnder(otherwise?.hooks ?? [], cdFalse)) : cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
 		kill:              killed,
 	};
 }

@@ -30,7 +30,7 @@ describe('Linter results do not depend on what ran before', withTreeSitter(parse
 		if(before !== 'nothing') {
 			await analyzer[before]();
 		}
-		const { results } = (await analyzer.query([{ type: 'linter' }])).linter;
+		const { results } = (await analyzer.query({ type: 'linter' }));
 		return Object.fromEntries(Object.entries(results).map(([rule, r]) => [rule, JSON.parse(JSON.stringify(r, (k, v: unknown) => k === '.meta' ? undefined : v)) as unknown]));
 	}
 	const fresh = lint('nothing');

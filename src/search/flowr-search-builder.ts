@@ -54,6 +54,13 @@ export const FlowrSearchGenerator = {
 	 * Initializes a new search query based on the results of the given JSON query or queries.
 	 * Internally, the {@link SupportedQuery#flattenInvolvedNodes} function is used to flatten the resulting nodes of the query.
 	 * Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
+	 * Keep in mind that the query runs when the search is executed, which may be expensive (a `code-clones` query indexes
+	 * the whole project), and that the `certainty` is only passed on to queries that report their involved nodes by certainty.
+	 * @example
+	 * ```ts
+	 * const search = Q.fromQuery({ type: 'dependencies', enabledCategories: ['write'] }).first();
+	 * const elements = await analyzer.runSearch(search);
+	 * ```
 	 */
 	fromQuery(from: Query | readonly Query[], certainty?: LintingResultCertainty): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 		const queries = Array.isArray(from) ? from as readonly Query[] : [from as Query];

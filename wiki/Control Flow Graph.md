@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-04, 13:52:01 UTC (v2.17.0, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
 2)&nbsp;a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), and 3)&nbsp;a control flow graph&nbsp;(CFG).
@@ -360,7 +360,7 @@ In mermaid visualizations, we use rectangles for statements and rounded rectangl
 Blocks are visualized as boxes around the contained vertices.
 
 > [!NOTE]
-> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L36"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
+> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L35"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 > 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 > 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
 
@@ -392,15 +392,15 @@ We used the following simplification: `unique-cf-sets` .
 A control edge says the same, but only when a condition holds, which is how the branches of an `if` or the
 body of a loop are attached. Diagrams draw these dashed.
 
-The edge *is* the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> it stands for, the same one the vertices behind it carry in
+The edge *is* the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L22"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> it stands for, the same one the vertices behind it carry in
 their `cds`, so it names the deciding vertex, whether it is the true or the false case, and whether the
 decision comes from iterating a loop:
 
- * **[ControlDependency](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20)**   
+ * **[ControlDependency](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L22)**   
    A control dependency links a vertex to the control flow element which
    may have an influence on its execution.
    Within `if(p) a else b`, `a` and `b` have a control dependency on the `if` (which in turn decides based on `p`).
-   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20">src/dataflow/info.ts#L20</a></summary>
+   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L22">src/dataflow/info.ts#L22</a></summary>
    
    ```ts
    /**
@@ -661,7 +661,7 @@ f <- function() b; f()
 
 </details>
 
-A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L36"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> of the function definitions that
+A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L35"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a> of the function definitions that
 are called from this vertex, taken from the `calls` edges the dataflow analysis resolved.
 
 For built-in functions that are provided by flowR's built-in configuration (see the [interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface)) the CFG does not contain

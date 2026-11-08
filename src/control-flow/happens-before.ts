@@ -29,14 +29,20 @@ function walkBack(cfg: ControlFlowGraph, b: NodeId, stop: (current: NodeId, cd: 
  * Determines if node `a` happens before node `b` in the control flow graph.
  */
 export function happensBefore(cfg: ControlFlowGraph, a: NodeId, b: NodeId): Ternary {
-	let result = Ternary.Never;
+	return happensBeforeEach(cfg, new Set([a]), b).get(a) ?? Ternary.Never;
+}
+
+/** {@link happensBefore} for each of the `candidates` and `b`, from one walk back from `b`, which ends once one always happens before (leaving the rest out) or all are met; one it does not reach never does. */
+export function happensBeforeEach(cfg: ControlFlowGraph, candidates: ReadonlySet<NodeId>, b: NodeId): ReadonlyMap<NodeId, Ternary> {
+	const found = new Map<NodeId, Ternary>();
 	walkBack(cfg, b, (current, cd) => {
-		if(current === a) {
-			result = cd ? Ternary.Maybe : Ternary.Always;
+		if(!candidates.has(current) || found.has(current)) {
+			return false;
 		}
-		return current === a;
+		found.set(current, cd ? Ternary.Maybe : Ternary.Always);
+		return !cd || found.size === candidates.size;
 	});
-	return result;
+	return found;
 }
 
 /** Whether one of the `candidates` always happens before `b`; one walk back from `b` settles all candidates at once. */

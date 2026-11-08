@@ -1280,8 +1280,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			async function flowrPrints(code: string): Promise<boolean> {
 				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 				analyzer.addRequest(code);
-				const results = await analyzer.query([{ type: 'dependencies' }]);
-				return (results.dependencies.write ?? []).some(d => d.implicit === true);
+				const results = await analyzer.query({ type: 'dependencies' });
+				return (results.write ?? []).some(d => d.implicit === true);
 			}
 			test.each([
 				/* echoed */
@@ -1326,8 +1326,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				})
 				.build();
 			analyzer.addRequest('summary(x)');
-			const results = await analyzer.query([{ type: 'dependencies' }]);
-			assert.deepStrictEqual(results.dependencies.write.filter(d => d.implicit), []);
+			const results = await analyzer.query({ type: 'dependencies' });
+			assert.deepStrictEqual(results.write.filter(d => d.implicit), []);
 		});
 	});
 

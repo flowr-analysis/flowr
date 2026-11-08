@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 19:13:15 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Project Query">Project Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns information about the analyzed project\
@@ -15,7 +15,7 @@ If present, it will incorporate plugins to, e.g., extract author and license inf
 
 _Results (prettified and summarized):_
 
-Query: **project** (0 ms)\
+Query: **project** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Kind: unknown\
 &nbsp;&nbsp;&nbsp;╰ Dataflow not performed (run `:df#`, then re-run this query, or pass "withDf": true)
 
@@ -26,32 +26,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "project": {
-    ".meta": {},
-    "files": [],
-    "roleCounts": {
-      "description": 0,
-      "namespace": 0,
-      "news": 0,
-      "vignette": 0,
-      "test": 0,
-      "install": 0,
-      "data": 0,
-      "documentation": 0,
-      "license": 0,
-      "virtual-env": 0,
-      "manifest": 0,
-      "startup": 0,
-      "environment": 0,
-      "source": 0,
-      "other": 0
-    },
-    "kind": "unknown",
-    "dfaPerformed": false
-  },
-  ".meta": {}
-}
+{"project":{".meta":{},"files":[],"roleCounts":{"description":0,"namespace":0,"news":0,"vignette":0,"test":0,"install":0,"data":0,"documentation":0,"license":0,"virtual-env":0,"manifest":0,"startup":0,"environment":0,"source":0,"other":0},"kind":"unknown","dfaPerformed":false},".meta":{}}
 ```
 
 </details>
@@ -61,37 +36,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 ```r
 x + 1
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered no unknown side effects during the analysis.
-
-```mermaid
-flowchart LR
-    0(["`*#91;RSymbol#93;* **x**
-      *1.1* (**id: 0**)`"])
-    1{{"`*#91;RNumber#93;* **1**
-      *1.5* (**id: 1**)`"}}
-    2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
-      *1.1-5* (**id: 2**)
-    arg: (0, 1)`"]]
-    built-in:_43_["`Built-In:
-#43;`"]
-    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    0 -.->|"flow"| 1
-    linkStyle 0 stroke:gray,color:gray;
-    1 -.->|"flow"| 2
-    linkStyle 1 stroke:gray,color:gray;
-    2 -->|"reads, arg"| 0
-    2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_43_
-    linkStyle 4 stroke:gray;
-```
-
-</details>
 
 </details>
 	

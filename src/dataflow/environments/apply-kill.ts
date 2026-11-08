@@ -10,12 +10,10 @@ import { anyRemovalMarker, noteRemovalMarker, removalMarkerOf } from './removal-
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from './identifier';
 import { withAppliedCds } from './reference-to-maybe';
+import type { DataflowGraph } from '../graph/graph';
+import { EdgeType } from '../graph/edge';
 
-/**
- * Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional
- * one only revives it in its branch, and a wholesale (`all`/`unknown`) removal stays but spares the names written
- * after it.
- */
+/** Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional one only revives it in its branch, and a wholesale (`all`/`unknown`) removal stays but spares the names written after it. */
 export function cancelRevivedKills(kills: readonly KillReference[], writes: readonly IdentifierReference[]): KillReference[] {
 	const written = new Set<BrandedIdentifier>();
 	const writtenMaybe = new Map<BrandedIdentifier, ControlDependency[]>();
@@ -148,6 +146,16 @@ export function removalsOf(name: Identifier, env: REnvironmentInformation): read
 	return nodes ?? NoRemovals;
 }
 
+/** A read of `name` that still sees a definition depends on the calls that may have removed it, so a slice of the read keeps the `rm(name)` that might have run. */
+export function readRemovals(graph: DataflowGraph, read: NodeId, name: Identifier | undefined, env: REnvironmentInformation): void {
+	if(name === undefined) {
+		return;
+	}
+	for(const removal of removalsOf(name, env)) {
+		graph.addEdge(read, removal, EdgeType.Reads);
+	}
+}
+
 /** Groups the `named` kills by the name they remove, so removals from separate branches are decided together. */
 function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, { refs: IdentifierReference[], by?: NodeId[] }> {
 	const named = new Map<Identifier, { refs: IdentifierReference[], by?: NodeId[] }>();
@@ -173,36 +181,57 @@ function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
 	return refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
 }
 
-function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[], killedBy: readonly NodeId[] | undefined): void {
+/** Records the calls `killedBy` as removals of `name` in the frame, which replace the earlier ones unless `cds` makes them maybe. */
+function markRemoval(env: Environment, name: Identifier, killedBy: readonly NodeId[], cds: readonly ControlDependency[] | undefined): void {
+	const plain = Identifier.getName(name);
+	const marker = removalMarkerOf(plain);
+	noteRemovalMarker(plain);
+	const earlier = cds === undefined ? [] : env.memory.get(marker) ?? [];
+	env.writableMemory.set(marker, earlier.concat(killedBy.map(by => (
+		{ name: marker, type: ReferenceType.Variable, nodeId: by, definedAt: by, cds }
+	))));
+}
+
+function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[], killedBy: readonly NodeId[] | undefined, mark: boolean): void {
 	if(isCertainRemoval(refs)) {
 		const removed = env.lookup(Identifier.getName(name)) !== undefined;
 		env.remove(name);
-		if(removed && killedBy !== undefined) {
-			const plain = Identifier.getName(name);
-			const marker = removalMarkerOf(plain);
-			noteRemovalMarker(plain);
-			env.writableMemory.set(marker, killedBy.map(by => (
-				{ name: marker, type: ReferenceType.Variable, nodeId: by, definedAt: by, cds: undefined }
-			)));
+		if((removed || mark) && killedBy !== undefined) {
+			markRemoval(env, name, killedBy, undefined);
 		}
 	} else {
 		// the definition survives unless the killing branch executed
 		for(const ref of refs) {
 			weakenName(env, name, (ref.cds ?? []).map(negateControlDependency));
 		}
+		if(mark && killedBy !== undefined) {
+			markRemoval(env, name, killedBy, refs.flatMap(r => r.cds ?? []));
+		}
 	}
 }
 
-/**
- * Applies the given {@link KillReference|kills} to a copy of `env`. `named` kills remove (or, when conditional,
- * weaken to maybe) a single definition; `all` kills clear the current frame; `unknown` kills weaken every
- * in-scope definition to maybe. Returns `env` unchanged when there is nothing to apply.
- */
-export function applyKills(env: REnvironmentInformation, kills: readonly KillReference[] | undefined): REnvironmentInformation {
+/** Applies the given {@link KillReference|kills} to a copy of `env`. */
+export function applyKills(env: REnvironmentInformation, kills: readonly KillReference[] | undefined, mark = false): REnvironmentInformation {
 	if(!kills || kills.length === 0) {
 		return env;
 	}
 	const current = env.current.clone(true);
+	applyKillsToFrame(current, kills, mark);
+	return { current, level: env.level };
+}
+
+/** {@link applyKills} on the global frame, as a removal with `envir = .GlobalEnv` within a function does. */
+export function applyGlobalKills(env: REnvironmentInformation, kills: readonly KillReference[]): REnvironmentInformation {
+	const current = env.current.clone(true);
+	let global = current;
+	while(!global.globalEnv && !global.parent.builtInEnv) {
+		global = global.writableParent;
+	}
+	applyKillsToFrame(global, kills, true);
+	return { current, level: env.level };
+}
+
+function applyKillsToFrame(current: Environment, kills: readonly KillReference[], mark: boolean): void {
 	for(const kill of kills) {
 		if(kill.kind === 'all') {
 			if(happensInEveryBranch(kill.cds)) {
@@ -215,9 +244,8 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 		}
 	}
 	for(const [name, { refs, by }] of groupNamedKills(kills)) {
-		applyNamedKill(current, name, refs, by);
+		applyNamedKill(current, name, refs, by, mark);
 	}
-	return { current, level: env.level };
 }
 
 /** Attaches `cds` to a list of kills, turning them into conditional (maybe) kills. */
@@ -233,11 +261,7 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 	});
 }
 
-/**
- * Drops the writes that a still-effective removal undid: a definite `named` kill takes out its own name and a
- * definite wholesale kill takes out every name it did not spare. Conditional and `unknown` kills leave the (now
- * maybe) definition in place, as it may still be visible afterwards.
- */
+/** Drops the writes that a still-effective removal undid: a definite `named` kill takes out its own name and a definite wholesale kill takes out every name it did not spare. */
 export function dropKilledWrites(out: readonly IdentifierReference[], kills: readonly KillReference[] | undefined): readonly IdentifierReference[] {
 	if(!kills?.length || out.length === 0) {
 		return out;

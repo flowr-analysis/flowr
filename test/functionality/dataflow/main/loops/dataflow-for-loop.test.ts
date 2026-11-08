@@ -2,11 +2,11 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('for', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
@@ -23,14 +23,14 @@ describe('for', { concurrent: false }, withShell(shell => {
 	);
 
 	describe('Potential redefinition with break', () => {
-		assertDataflow(label('Potential redefinition inside the same loop', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'break']),
+		assertDataflow(label('Potential redefinition inside the same loop', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'if', 'break']),
 			shell,
 			`repeat {
   x <- 2
   if(z) break
   x <- 3
 }
-x`, emptyGraph()
+x`, emptyGraph().autoPrints([14])
 				.use('5', 'z', { cds: [{ id: '13' }, { id: '8', when: false }] })
 				.use('14', 'x')
 				.reads('14', ['2', '9'])
@@ -55,7 +55,7 @@ x`, emptyGraph()
 		);
 	});
 
-	assertDataflow(label('Read in for Loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
+	assertDataflow(label('Read in for Loop', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
 		.use('7', 'x', { cds: [{ id: '9', when: true }] })
 		.reads('7', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -71,7 +71,7 @@ x`, emptyGraph()
 		.constant('4')
 		.constant('5')
 	);
-	assertDataflow(label('Read after for loop', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph()
+	assertDataflow(label('Read after for loop', ['for-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines']), shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph().autoPrints([11])
 		.use('11', 'x')
 		.reads('11', '6')
 		.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { origin: [BuiltInProcName.Default], returns: [], reads: ['1', '2', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
@@ -91,7 +91,7 @@ x`, emptyGraph()
 	);
 
 
-	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
+	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph().autoPrints([14])
 		.use('14', 'x')
 		.reads('14', ['9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -113,7 +113,7 @@ x`, emptyGraph()
 		.constant('10')
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: true }] })
 	);
-	assertDataflow(label('redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
+	assertDataflow(label('redefinition within loop', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph().autoPrints([14])
 		.use('10', 'x', { cds: [{ id: '13', when: true }] })
 		.reads('10', ['9', '0'])
 		.use('14', 'x')
@@ -137,12 +137,12 @@ x`, emptyGraph()
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: true }] })
 	);
 
-	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
+	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
 		shell, 'for(i in 1:10) x <- x + 1',
 		emptyGraph().defineVariable('1@x', 'x', { cds: [{ id: 10, when: true }] }).use('1@[2]x', 'x', { cds: [{ id: 10, when: true }] }).reads('1@[2]x', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
-	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x;\nx <- x }\n x', emptyGraph()
+	assertDataflow(label('double redefinition within loop', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x;\nx <- x }\n x', emptyGraph().autoPrints([17], true)
 		.use('10', 'x', { cds: [{ id: '16', when: true }] })
 		.reads('10', ['12', '0'])
 		.use('13', 'x', { cds: [{ id: '16', when: true }] })
@@ -171,7 +171,7 @@ x`, emptyGraph()
 		.defineVariable('12', 'x', { definedBy: ['13', '14'], cds: [{ id: '16', when: true }] })
 	);
 
-	assertDataflow(label('loop-variable redefined within loop', ['name-normal', 'for-loop', 'semicolons', 'newlines', 'numbers']), shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph()
+	assertDataflow(label('loop-variable redefined within loop', ['name-normal', 'for-loop', 'semicolons', 'newlines', 'numbers']), shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph().autoPrints([12])
 		.use('6', 'i', { cds: [{ id: '11', when: true }] })
 		.reads('6', ['0', '7'])
 		.use('12', 'i')
@@ -222,13 +222,13 @@ x`, emptyGraph()
 
 	describe('Branch coverage', () => {
 		describe('repeat', () => {
-			assertDataflow(label('Break immediately', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 repeat {
    x <- 2;
    break
 }
-print(x)`,  emptyGraph()
+print(x)`,  emptyGraph().autoPrints([14])
 					.use('12', 'x')
 					.reads('12', '5')
 					.reads('12', '0')
@@ -266,7 +266,7 @@ repeat {
    if(foo) 
       break
 }
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([17])
 					.use('8', 'foo', { cds: [{ id: '13' }, { id: '11', when: false }] })
 					.use('15', 'x')
 					.reads('15', '5')
@@ -309,7 +309,7 @@ repeat {
    next;
    x <- 3;
 }
-print(x)`,  emptyGraph()
+print(x)`,  emptyGraph().autoPrints([19])
 					.use('17', 'x')
 					.reads('17', '5')
 					.reads('17', '0')
@@ -341,13 +341,13 @@ print(x)`,  emptyGraph()
 		});
 
 		describe('for', () => {
-			assertDataflow(label('Break immediately (for)', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately (for)', ['for-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 for(i in 1:100) {
    x <- 2;
    break
 }
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([18])
 					.use('16', 'x')
 					.reads('16', ['0', '9'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -392,7 +392,7 @@ for(i in 1:100) {
    if(foo) 
       break
 }
-print(x)`,  emptyGraph()
+print(x)`,  emptyGraph().autoPrints([21])
 					.use('12', 'foo', { cds: [{ id: '17', when: true }, { id: '15', when: false }] })
 					.use('19', 'x')
 					.reads('19', ['0', '9'])
@@ -442,7 +442,7 @@ for(i in 1:100) {
    next;
    x <- 3;
 }
-print(x)`,  emptyGraph()
+print(x)`,  emptyGraph().autoPrints([23])
 					.use('21', 'x')
 					.reads('21', ['0', '9'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -481,13 +481,13 @@ print(x)`,  emptyGraph()
 		});
 
 		describe('while', () => {
-			assertDataflow(label('Break immediately (while)', ['while-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately (while)', ['while-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 while(TRUE) {
    x <- 2;
    break
 }
-print(x)`,  emptyGraph()
+print(x)`,  emptyGraph().autoPrints([15])
 					.use('13', 'x')
 					.reads('13', ['6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
@@ -526,7 +526,7 @@ while(TRUE) {
    if(foo) 
       break
 }
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([18])
 					.use('9', 'foo', { cds: [{ id: 14, when: true }, { id: '12', when: false }] })
 					.use('16', 'x')
 					.reads('16', ['6'])
@@ -570,7 +570,7 @@ while(TRUE) {
    next;
    x <- 3;
 }
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([20])
 					.use('18', 'x')
 					.reads('18', ['6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })

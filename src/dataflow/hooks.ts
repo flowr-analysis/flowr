@@ -1,16 +1,12 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from './info';
-import { happensInEveryBranch } from './info';
+import { happensInEveryBranch, negateControlDependency } from './info';
 import { DefaultMap } from '../util/collections/defaultmap';
+import type { KnownHooks } from './environments/built-in-kinds';
+export { KnownHooks } from './environments/built-in-kinds';
 
-export enum KnownHooks {
-	/** Triggers on the exit of a function, no matter how this exit is enforced. */
-	OnFnExit = 'fn-exit',
-}
 
-/**
- * Information about a registered hook within the dataflow information.
- */
+/** Information about a registered hook within the dataflow information. */
 export interface HookInformation {
 	/** The type of the hook */
 	type:   KnownHooks,
@@ -25,15 +21,19 @@ export interface HookInformation {
 }
 
 
-/**
- * Compacts a list of hook registrations by removing redundant and dominated ones.
- */
+/** Compacts a list of hook registrations by removing redundant and dominated ones. */
 export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
 	const hooksByType: DefaultMap<KnownHooks, HookInformation[]> = new DefaultMap(() => []);
 	for(const hook of hooks) {
 		if(!hook.add && happensInEveryBranch(hook.cds)) {
 			hooksByType.set(hook.type, [hook]);
-		} else if(hook.after) {
+			continue;
+		}
+		if(!hook.add) {
+			/* a replacement that may not happen leaves the hooks before it in place only maybe */
+			hooksByType.set(hook.type, hooksUnder(hooksByType.get(hook.type), hook.cds?.map(negateControlDependency) ?? []));
+		}
+		if(hook.after) {
 			hooksByType.get(hook.type).push(hook);
 		} else {
 			hooksByType.get(hook.type).unshift(hook);
@@ -43,10 +43,12 @@ export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
 	return hooksByType.values().flatMap(f => f).toArray();
 }
 
-/**
- * Extracts all hooks of the given type from the list of hooks.
- * Please consider {@link compactHookStates} to remove redundant or dominated hooks first.
- */
+/** The hooks as registered only under the given control dependencies, for hooks registered in a branch or loop body that may not run. */
+export function hooksUnder(hooks: readonly HookInformation[], cds: readonly ControlDependency[]): HookInformation[] {
+	return hooks.map(h => ({ ...h, cds: (h.cds ?? []).concat(cds) }));
+}
+
+/** Extracts all hooks of the given type from the list of hooks. Please consider {@link compactHookStates} to remove redundant or dominated hooks first. */
 export function getHookInformation(hooks: HookInformation[], type: KnownHooks): HookInformation[] {
 	return hooks.filter(h => h.type === type);
 }

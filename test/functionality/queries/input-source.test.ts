@@ -67,8 +67,8 @@ describe('A configured built-in reaches the classifier', { concurrent: false }, 
 			'the configured built-in has to be part of the system inputs');
 		assert.notInclude((defaultInputClassifierConfig(new FlowrAnalyzerContext(FlowrConfig.default()))[InputType.System] as readonly Identifier[]).map(Identifier.toString), 'base::launchIt',
 			'and it must not leak into the default configuration');
-		const out = await analyzer.query([{ type: 'input-sources', criterion: '2@eval' }]);
-		assert.deepStrictEqual(out['input-sources'].results['2@eval'].flatMap(s => s.types), [InputType.System]);
+		const out = await analyzer.query({ type: 'input-sources', criterion: '2@eval' });
+		assert.deepStrictEqual(out.results['2@eval'].flatMap(s => s.types), [InputType.System]);
 	});
 }));
 

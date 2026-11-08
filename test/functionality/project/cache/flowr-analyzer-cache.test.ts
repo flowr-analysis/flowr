@@ -65,6 +65,24 @@ describe('Analyzer Cache', withTreeSitter((shell) => {
 		});
 	});
 
+	describe('Derived values', () => {
+		const key = {};
+		test('computed once per analysis, again after a reset', async() => {
+			const cache = FlowrAnalyzerCache.create(createCache('x <- 1'));
+			let computed = 0;
+			const compute = () => Promise.resolve(++computed);
+			expect([await cache.derive(key, compute), await cache.derive(key, compute)]).toEqual([1, 1]);
+			cache.reset();
+			expect(await cache.derive(key, compute)).toBe(2);
+		});
+
+		test('a failed computation is not kept', async() => {
+			const cache = FlowrAnalyzerCache.create(createCache('x <- 1'));
+			await expect(cache.derive(key, () => Promise.reject(new Error('fail')))).rejects.toThrow('fail');
+			expect(await cache.derive(key, () => Promise.resolve(3))).toBe(3);
+		});
+	});
+
 	describe('Tree disposal', () => {
 		function spyOnDelete(parse: unknown): () => number {
 			const tree = (parse as { files: { parsed: { delete(): void } }[] }).files[0].parsed;

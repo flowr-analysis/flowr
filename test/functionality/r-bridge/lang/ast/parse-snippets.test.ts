@@ -1,15 +1,15 @@
 import { bin, exprList, group, num, sym } from '../../../_helper/ast-builder';
 import { assertAst, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Parse Larger Snippets', { concurrent: false }, withShell(shell => {
 	describe('if-then, assignments, symbols, and comparisons', () => {
 		assertAst(label('Manual Max Function', [
-			'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, ...OperatorDatabase['->'].capabilities, ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['->>'].capabilities, 'numbers', 'if', ...OperatorDatabase['>'].capabilities, 'grouping', 'newlines'
+			'name-normal', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['='].capabilities, ...BuiltInOperators.byName['->'].capabilities, ...BuiltInOperators.byName['<<-'].capabilities, ...BuiltInOperators.byName['->>'].capabilities, 'numbers', 'if', ...BuiltInOperators.byName['>'].capabilities, 'grouping', 'newlines'
 		]), shell,
 		`
 a <- 3

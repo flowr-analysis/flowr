@@ -36,7 +36,7 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 /** every job: a stable id, a label, and the argv to run (all forced into no-watch / one-shot mode) */
 const allJobs: Job[] = [
 	{ id: 'lint',      label: 'lint',                 argv: [npm, 'run', 'lint'] },
-	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'], summary: true, weight: 2 },
+	{ id: 'tests',     label: 'functionality tests',  argv: [npm, 'run', 'test:all', '--', '--run', '--allowOnly=false'], summary: true, weight: 2 },
 	{ id: 'system',    label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'], weight: 1 },
 	{ id: 'yields',    label: 'yield snippets',       argv: [npm, 'run', 'test:yields', '--', '--run'] },
 	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true, weight: 4 },

@@ -34,6 +34,7 @@ export function fdefBoundaryParser(argument: string): boolean {
 export const ProvenanceQueryDefinition = {
 	title:           'Provenance Query',
 	executor:        executeProvenanceQuery,
+	perQueryResults: true,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'provenance'>['provenance'];
 		const df = await analyzer.dataflow();

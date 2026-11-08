@@ -117,6 +117,11 @@ export class VisitingQueue {
 		return this.stoppedEarly;
 	}
 
+	/** Whether a node was left out for having been added more often than the threshold allows. */
+	public hitThreshold(): boolean {
+		return this.timesHitThreshold > 0;
+	}
+
 	public hasId(id: NodeId): boolean {
 		return this.idThreshold.has(id);
 	}

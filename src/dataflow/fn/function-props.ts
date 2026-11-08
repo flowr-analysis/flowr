@@ -1,6 +1,5 @@
 /**
- * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
@@ -19,6 +18,7 @@ import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgum
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
 import { Dataflow } from '../graph/df-helper';
+import { ReachSummaries } from '../../util/fixpoint';
 
 /** What flowR infers about a set of definitions, see {@link inferFunctions}. */
 export interface InferredFunctions {
@@ -35,51 +35,42 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
 }
 
 /**
- * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the
- * function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal,
- * `Forced`/`Lazy` included. An unset bit reads as "nothing says so", never as "no".
+ * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal, `Forced`/`Lazy` included.
  * @useInstead {@link FunctionSemantics.props}
  */
 export function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
 	const { ctx, only } = options;
-	const strict = strictnessOfEach(definitions, graph, { ctx });
-	return {
-		props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
-		roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
-	};
+	return graph.sharingTargetWalks(() => {
+		const strict = strictnessOfEach(definitions, graph, { ctx });
+		return {
+			props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
+			roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
+		};
+	});
 }
 
 /** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */
 function callProps(definitions: readonly NodeId[], state: LookupState, strict: Record<NodeId, FunctionStrictness>): Record<NodeId, StatedProps> {
 	const { join, filter, hasAny } = FunctionSemantics.call.props;
-	const props = new Map<NodeId, StatedProps>();
-	const callees = new Map<NodeId, readonly NodeId[]>();
-	/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
-	const toVisit = [...definitions];
-	while(toVisit.length > 0) {
-		const id = toVisit.pop() as NodeId;
-		if(props.has(id)) {
-			continue;
-		}
-		const own = propsOf(id, state);
-		props.set(id, strict[id]?.strict === Ternary.Always ? join(own.stated, { props: CallProp.Strict }) : own.stated);
-		callees.set(id, own.callees);
-		toVisit.push(...own.callees);
-	}
-	Dataflow.propagateToFixpoint(callees.keys(), callees, id => {
-		const before = props.get(id);
-		let grown = before ?? {};
-		for(const callee of callees.get(id) ?? []) {
-			grown = join(grown, filter(props.get(callee), PropagatedProps));
-		}
-		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
-		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
-			return false;
-		}
-		props.set(id, grown);
-		return true;
-	});
-	return Object.fromEntries(definitions.filter(id => hasAny(props.get(id))).map(id => [id, props.get(id) as StatedProps]));
+	const own = new Map<NodeId, StatedProps>();
+	/* what a function carries over to its callers: its own propagated props and those of everything it reaches */
+	const carried = new ReachSummaries<NodeId, StatedProps>(id => {
+		/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
+		const { stated, callees } = propsOf(id, state);
+		own.set(id, strict[id]?.strict === Ternary.Always ? join(stated, { props: CallProp.Strict }) : stated);
+		return callees;
+	}, id => filter(own.get(id), PropagatedProps), {}, join);
+	return Object.fromEntries(definitions.map(id => {
+		const reached = carried.of(id);
+		const mine = own.get(id) as StatedProps;
+		const grown = join(mine, reached);
+		return [id, sameProps(grown, mine) ? mine : grown] as const;
+	}).filter(([, props]) => hasAny(props)));
+}
+
+/** Joining only ever adds, so the same bits and the same number of tags mean the same props. */
+function sameProps(a: StatedProps, b: StatedProps): boolean {
+	return (a.props ?? 0) === (b.props ?? 0) && (a.tags?.length ?? 0) === (b.tags?.length ?? 0);
 }
 
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */

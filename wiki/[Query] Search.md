@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Search Query">Search Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides access to flowR's search API\
@@ -9,36 +9,12 @@ With this query you can use the [Search API](https://github.com/flowr-analysis/f
 Using the example code `x + 1`, the following query returns all uses of 'x' in the code:
 
 ```json
-[
-  {
-    "type": "search",
-    "search": {
-      "generator": {
-        "type": "generator",
-        "name": "get",
-        "args": {
-          "filter": {
-            "name": "x"
-          }
-        }
-      },
-      "search": [
-        {
-          "type": "transformer",
-          "name": "filter",
-          "args": {
-            "filter": "use"
-          }
-        }
-      ]
-    }
-  }
-]
+[ { "type": "search",   "search": { "generator": { "type": "generator",     "name": "get",     "args": { "filter": { "name": "x" } } },    "search": [ { "type": "transformer",      "name": "filter",      "args": { "filter": "use" } } ] } } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **search** (4 ms)\
+Query: **search** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ [query](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IExSXG4wKFwiPGI+Z2V0PC9iPihmaWx0ZXI6ICMxMjM7IzM0O25hbWUjMzQ7IzU4OyMzNDt4IzM0OyMxMjU7KTxici8+X2dlbmVyYXRvcl9cIikgLS0+IDFbXCI8Yj5maWx0ZXI8L2I+KGZpbHRlcjogIzM0O3VzZSMzNDspPGJyLz5fdHJhbnNmb3JtZXJfXCJdIiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19): {0}
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -48,18 +24,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "search": {
-    ".meta": {},
-    "results": [
-      {
-        "ids": [0],
-        "search": {"generator":{"type":"generator","name":"get","args":{"filter":{"name":"x"}}},"search":[{"type":"transformer","name":"filter","args":{"filter":"use"}}]}
-      }
-    ]
-  },
-  ".meta": {}
-}
+{"search":{".meta":{},"results":[{"ids":[0],"search":{"generator":{"type":"generator","name":"get","args":{"filter":{"name":"x"}}},"search":[{"type":"transformer","name":"filter","args":{"filter":"use"}}]}}]},".meta":{}}
 ```
 
 </details>
@@ -69,37 +34,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 ```r
 x + 1
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered no unknown side effects during the analysis.
-
-```mermaid
-flowchart LR
-    0(["`*#91;RSymbol#93;* **x**
-      *1.1* (**id: 0**)`"])
-    1{{"`*#91;RNumber#93;* **1**
-      *1.5* (**id: 1**)`"}}
-    2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
-      *1.1-5* (**id: 2**)
-    arg: (0, 1)`"]]
-    built-in:_43_["`Built-In:
-#43;`"]
-    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    0 -.->|"flow"| 1
-    linkStyle 0 stroke:gray,color:gray;
-    1 -.->|"flow"| 2
-    linkStyle 1 stroke:gray,color:gray;
-    2 -->|"reads, arg"| 0
-    2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_43_
-    linkStyle 4 stroke:gray;
-```
-
-</details>
 
 </details>
 	

@@ -7,7 +7,7 @@ import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveListToEnvState } from './built-in-list';
 import { findReturnsEnvState } from './built-in-envir-utils';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -38,7 +38,7 @@ export function processClassGenerator<OtherInfo>(
 	return info;
 }
 
-/** The method env of a class generator's `public`/`methods` `list(...)` (via {@link resolveListToEnvState}); `undefined` if absent. */
+/** The env an instance of a class generator's class carries: its `public`/`methods` and `fields`/`private` lists (via {@link resolveListToEnvState}), or an empty one, as every R6 or reference class object is an environment, shared by every variable holding it. */
 export function resolveClassMethodsToEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
@@ -53,7 +53,7 @@ export function resolveClassMethodsToEnvState<OtherInfo>(
 		const resolved = list === undefined ? undefined : resolveListToEnvState(list, envState ? { environment: envState } : data, values);
 		envState = resolved ?? envState;
 	}
-	return envState;
+	return envState ?? REnvironment.pushLocal(data.environment);
 }
 
 const ConstructorField = 'new';

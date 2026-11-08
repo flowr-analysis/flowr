@@ -30,7 +30,7 @@ describe('the wiki example of every linting rule, with a quick fix exactly when 
 				}
 				analyzer.addRequest(requestFromInput(`${fileProtocol}/pkg/R/code.R`));
 			}
-			const result = (await analyzer.query([{ type: 'linter', rules: [{ name: name as LintingRuleNames, config: (config ?? {}) as never }] }])).linter.results[name as LintingRuleNames];
+			const result = (await analyzer.query({ type: 'linter', rules: [{ name: name as LintingRuleNames, config: (config ?? {}) as never }] })).results[name as LintingRuleNames];
 			assert.isDefined(result, `${name} was not run`);
 			assert.isFalse(LintingResults.isError(result), `${name} failed: ${JSON.stringify(result)}`);
 			const findings = LintingResults.unpackSuccess(result).results;

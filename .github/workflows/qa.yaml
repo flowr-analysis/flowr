@@ -276,7 +276,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:all -- --run --allowOnly=false"
 
 
   performance-test:

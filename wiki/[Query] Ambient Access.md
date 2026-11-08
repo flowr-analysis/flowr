@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 11:35:56 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4), do not edit directly._
 <h2 id="Ambient Access Query">Ambient Access Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 What code reads and writes of the global state\
@@ -6,7 +6,7 @@ _This query is requested with the type `ambient-access`._\
 Run in the REPL: `:query @ambient-access [(<crit>;...)] <code | file://path>`
 
 This query reports what code reads and writes of the global state, such as options, environment variables,
-the working directory, open devices, or the search path, as the pseudo variables of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L35"><code><span title="The name of a global pseudo variable tracking a part of the global state, see the helper of the same name.">AmbientStateName</span></code></a>
+the working directory, open devices, or the search path, as the pseudo variables of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L38"><code><span title="Graphics parameters, options and other global state, tracked as global pseudo variables (#...) so readers link to the calls that set them.">AmbientStateName</span></code></a>
 (`#option:digits`, `#env:A`, ...). A call counts with what the functions it calls access, so `f()` above writes `digits`.
 It also names the global variables the code binds (`x <<- 1`) and the drawing calls it makes.
 The same is available in code as `Dataflow.sideEffects.ambientAccess`.
@@ -21,7 +21,7 @@ Without criteria, the query answers for every file and for the whole project (`<
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (48 ms)\
+Query: **ambient-access** (55 ms)\
 &nbsp;&nbsp;&nbsp;╰ **<file 1>**: reads: #option:*, #option:digits, #options writes: #env, #env:A, #option:digits, #options\
 &nbsp;&nbsp;&nbsp;╰ **<project>**: reads: #option:*, #option:digits, #options writes: #env, #env:A, #option:digits, #options
 
@@ -58,7 +58,7 @@ Set `functions` to also learn what calling each function accesses:
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (32 ms)\
+Query: **ambient-access** (28 ms)\
 &nbsp;&nbsp;&nbsp;╰ **2^**: reads: #option:*, #option:digits, #options writes: #option:digits, #options\
 &nbsp;&nbsp;&nbsp;╰ **function 7**: reads: #option:*, #option:digits writes: #option:digits, #options
 

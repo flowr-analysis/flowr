@@ -60,15 +60,11 @@ describe('Fixpoint', () => {
 
 	describe('FixpointSolver', () => {
 		/* the length of the longest path, capped at 10 */
-		const longest = (graph: Graph, widen?: (a: number, b: number) => number) => new FixpointSolver<string, number>({
-			next:       n => graph[n] ?? [],
-			transfer:   (n, valueOf) => Math.min(10, Math.max(0, ...(graph[n] ?? []).map(s => valueOf(s) + 1))),
-			equals:     (a, b) => a === b,
-			initial:    () => 0,
-			widen,
-			widenAfter: 2,
-			budget:     1000,
-			exhausted:  () => -1
+		const longest = (graph: Graph) => new FixpointSolver<string, number>({
+			next:     n => graph[n] ?? [],
+			transfer: (n, valueOf) => Math.min(10, Math.max(0, ...(graph[n] ?? []).map(s => valueOf(s) + 1))),
+			equals:   (a, b) => a === b,
+			initial:  () => 0
 		});
 
 		test('computes acyclic nodes once', () => {
@@ -81,22 +77,6 @@ describe('Fixpoint', () => {
 			assert.deepStrictEqual(['a', 'b', 'c'].map(n => solver.of(n)), [10, 10, 0]);
 		});
 
-		test('widens after the given number of visits', () => {
-			const solver = longest({ a: ['b'], b: ['a'] }, (a, b) => b > a ? 10 : b);
-			assert.deepStrictEqual([solver.of('a'), solver.of('b')], [10, 10]);
-		});
-
-		test('gives up once the budget is spent', () => {
-			const solver = new FixpointSolver<string, number>({
-				next:      n => n === 'a' ? ['a'] : [],
-				transfer:  (n, valueOf) => valueOf(n) + 1,
-				equals:    (a, b) => a === b,
-				initial:   () => 0,
-				budget:    5,
-				exhausted: () => -1
-			});
-			assert.strictEqual(solver.of('a'), -1);
-		});
 	});
 
 	describe('DemandSolver', () => {

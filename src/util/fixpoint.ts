@@ -3,11 +3,7 @@ import { ArrayQueue } from './collections/queue';
 /** the number of a node whose component is complete, see {@link StronglyConnected} */
 const Complete = -1;
 
-/**
- * The strongly connected components of a graph whose successors are asked for only once a node is reached (Tarjan's
- * algorithm, iterative). Each component is completed once everything it leads to is, so callees come before callers.
- * Completed nodes are remembered, so later visits from other starts share the work.
- */
+/** The strongly connected components of a graph whose successors are asked for only once a node is reached (Tarjan's algorithm, iterative). */
 export class StronglyConnected<K> {
 	private readonly next:       (node: K) => Iterable<K>;
 	private readonly onComplete: (members: readonly K[], successorsOf: (member: K) => readonly K[]) => void;
@@ -90,10 +86,7 @@ export class StronglyConnected<K> {
 	}
 }
 
-/**
- * What each node reaches, joined over everything it leads to: `of(n) = own(n)` joined with `of(s)` for every successor `s`.
- * As the join is the only thing applied, all members of a cycle hold the same value, which is computed once.
- */
+/** What each node reaches, joined over everything it leads to: `of(n) = own(n)` joined with `of(s)` for every successor `s`. */
 export class ReachSummaries<K, V> {
 	private readonly values = new Map<K, V>();
 	private readonly components: StronglyConnected<K>;
@@ -144,25 +137,15 @@ export function unionOfSets<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): ReadonlySe
 /** A monotone equation system over the nodes of a graph, each node's value depending on those of its successors. */
 export interface FixpointProblem<K, V> {
 	/** the nodes whose values the value of a node depends on, asked for once per node */
-	readonly next:        (node: K) => Iterable<K>
+	readonly next:     (node: K) => Iterable<K>
 	/** the value of a node given the current values of its successors (and only of those, or of itself) */
-	readonly transfer:    (node: K, valueOf: (successor: K) => V) => V
-	readonly equals:      (a: V, b: V) => boolean
+	readonly transfer: (node: K, valueOf: (successor: K) => V) => V
+	readonly equals:   (a: V, b: V) => boolean
 	/** what a node of a cycle is assumed to hold before its first round */
-	readonly initial:     (node: K) => V
-	/** applied to the old and new value of a node once it has been computed `widenAfter` times within its cycle */
-	readonly widen?:      (previous: V, next: V) => V
-	readonly widenAfter?: number
-	/** how many times the nodes of one cycle may be computed in total before all of them answer `exhausted` */
-	readonly budget?:     number
-	readonly exhausted?:  (node: K) => V
+	readonly initial:  (node: K) => V
 }
 
-/**
- * Solves a {@link FixpointProblem} for the nodes asked for and what they depend on, component by component in the order
- * of {@link StronglyConnected}: a node outside any cycle is computed once, the nodes of a cycle are computed until no
- * value changes, in a fixed order, recomputing a node only if one of its successors changed.
- */
+/** Solves a {@link FixpointProblem} for the nodes asked for and what they depend on, component by component in the order of {@link StronglyConnected}: a node outside any cycle is computed once, the nodes of a cycle are computed until no value changes, in a fixed order, recomputing a node only if one of its successors changed. */
 export class FixpointSolver<K, V> {
 	private readonly values = new Map<K, V>();
 	private readonly components: StronglyConnected<K>;
@@ -179,7 +162,7 @@ export class FixpointSolver<K, V> {
 	}
 
 	private settle(members: readonly K[], successorsOf: (member: K) => readonly K[]): void {
-		const { transfer, equals, initial, widen, widenAfter = Infinity, budget = Infinity, exhausted } = this.problem;
+		const { transfer, equals, initial } = this.problem;
 		const valueOf = (node: K) => this.values.get(node) as V;
 		const only = members[0];
 		if(members.length === 1 && !successorsOf(only).includes(only)) {
@@ -193,26 +176,13 @@ export class FixpointSolver<K, V> {
 				dependents.get(s)?.push(m);
 			}
 		}
-		const visits = new Map<K, number>();
 		const pending = new ArrayQueue(members);
 		const queued = new Set(members);
-		for(let spent = 0; !pending.isEmpty(); spent++) {
-			if(spent >= budget) {
-				for(const m of members) {
-					this.values.set(m, exhausted ? exhausted(m) : initial(m));
-				}
-				return;
-			}
+		while(!pending.isEmpty()) {
 			const node = pending.dequeue() as K;
 			queued.delete(node);
-			const count = (visits.get(node) ?? 0) + 1;
-			visits.set(node, count);
-			const previous = valueOf(node);
-			let value = transfer(node, valueOf);
-			if(widen !== undefined && count > widenAfter) {
-				value = widen(previous, value);
-			}
-			if(equals(previous, value)) {
+			const value = transfer(node, valueOf);
+			if(equals(valueOf(node), value)) {
 				continue;
 			}
 			this.values.set(node, value);
@@ -238,12 +208,7 @@ export interface DemandProblem<K, V> {
 	readonly exhausted: (node: K) => V
 }
 
-/**
- * Solves a {@link DemandProblem} for the nodes asked for, finding the cycles as Tarjan's algorithm does while the values
- * are computed: a node outside any cycle is computed once, the nodes of a cycle are computed round by round, in the
- * order they were reached and each seeing the latest values, until a round changes nothing. A node that joins a
- * cycle during the rounds is iterated with it.
- */
+/** Solves a {@link DemandProblem} for the nodes asked for, finding the cycles as Tarjan's algorithm does while the values are computed: a node outside any cycle is computed once, the nodes of a cycle are computed round by round, in the order they were reached and each seeing the latest values, until a round changes nothing. */
 export class DemandSolver<K, V> {
 	private readonly problem: DemandProblem<K, V>;
 	private readonly values = new Map<K, V>();

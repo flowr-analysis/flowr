@@ -1,12 +1,12 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4), do not edit directly._
 <h2 id="code-clones">Code Clones&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#experimental'>![experimental](https://img.shields.io/badge/experimental-lightgrey) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
 
 This rule is a <code>best-effort</code> rule.
  
-Finds duplicated code (code clones) with a configurable selection of AST, token, fingerprint, and dependence-graph based algorithms.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/code-clones.ts#L43">src/linter/rules/code-clones.ts</a>._
+Finds duplicated code (code clones) with a configurable selection of AST, token, and fingerprint based algorithms.\
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/code-clones.ts#L42">src/linter/rules/code-clones.ts</a>._
 
 ### Configuration
 
@@ -22,8 +22,6 @@ The `code-clones` rule accepts the following configuration options:
 - 
 
 - <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/code-clones.ts#L21"><code>perspective</code></a>
-
-- 
 
 - 
 

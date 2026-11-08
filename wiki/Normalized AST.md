@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -280,20 +280,20 @@ class RNamedAccess~Info = NoInfo~{
     operator#58; #34;$#34; | #34;@#34;
     access#58; #91;RUnnamedArgument#60;Info#62;#93;
 }
-click RNamedAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20" "Represents an R named access operation with #96;$#96; or #96;@#96;, the field is a string."
+click RNamedAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L21" "Represents an R named access operation with #96;$#96; or #96;@#96;, the field is a string."
 class RAccessBase~Info = NoInfo~{
     <<interface>>
     type#58; RType.Access
     accessed#58; RNode#60;Info#62;
     operator#58; #34;$#34; | #34;@#34; | #34;#91;#34; | #34;#91;#91;#34;
 }
-click RAccessBase href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L10" "Represents an R Indexing operation with #96;$#96;, #96;@#96;, #96;#91;#91;#96;, or #96;#91;#96;."
+click RAccessBase href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L11" "Represents an R Indexing operation with #96;$#96;, #96;@#96;, #96;#91;#91;#96;, or #96;#91;#96;."
 class RIndexAccess~Info = NoInfo~{
     <<interface>>
     operator#58; #34;#91;#34; | #34;#91;#91;#34;
     access#58; #123;#125;
 }
-click RIndexAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26" "access can be a number, a variable or an expression that resolves to one, a filter etc."
+click RIndexAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L27" "access can be a number, a variable or an expression that resolves to one, a filter etc."
 class RUnaryOp~Info = NoInfo~{
     <<interface>>
     type#58; RType.UnaryOp
@@ -336,7 +336,7 @@ class RString~Info = NoInfo~{
     type#58; RType.String
     content#58; RStringValue
 }
-click RString href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13" "Represents a string like #96;#34;hello#34;#96;, including raw strings like #96;r#34;(hello)#34;#96;."
+click RString href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L14" "Represents a string like #96;#34;hello#34;#96;, including raw strings like #96;r#34;(hello)#34;#96;."
 class RLogical~Info = NoInfo~{
     <<interface>>
     type#58; RType.Logical
@@ -1088,9 +1088,9 @@ In summary, we have the following types:
          
          </details>
          
-   * **[RNamedAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20)**   
+   * **[RNamedAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L21)**   
      Represents an R named access operation with `$` or `@`, the field is a string.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L21">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L21</a></summary>
      
      ```ts
      /**
@@ -1104,9 +1104,9 @@ In summary, we have the following types:
      
      </details>
      
-   * **[RIndexAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26)**   
+   * **[RIndexAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L27)**   
      access can be a number, a variable or an expression that resolves to one, a filter etc.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L27">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L27</a></summary>
      
      ```ts
      /** access can be a number, a variable or an expression that resolves to one, a filter etc. */
@@ -1299,9 +1299,9 @@ In summary, we have the following types:
          
          </details>
          
-       * **[RString](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13)**   
+       * **[RString](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L14)**   
          Represents a string like `"hello"`, including raw strings like `r"(hello)"`.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13">src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L14">src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L14</a></summary>
          
          ```ts
          /**
@@ -1551,7 +1551,7 @@ you to decide how you want to traverse multiple files with a <a href="https://gi
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a>.
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L53"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L30"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 ### Visitors
 

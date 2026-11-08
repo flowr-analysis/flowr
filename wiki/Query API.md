@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -45,7 +45,7 @@ We support the following **active** queries (which we refer to as a `query`):
 1. [Call-Graph Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Graph) (`call-graph`):\
     Returns the call graph of the given code.
 1. [Code Clones Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Code-Clones) (`code-clones`):\
-    Finds code clones in all analyzed files with a configurable selection of AST, token, fingerprint, and dependence-graph based algorithms.
+    Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.
 1. [Config Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Config) (`config`):\
     Returns the current configuration of flowR.
 1. [Control-Flow Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Control-Flow) (`control-flow`):\
@@ -576,13 +576,13 @@ Valid item types:
                 - **packages** [optional] _Restrict the package list to these names; every exporting package is considered when omitted._ (array)
                 Valid item types:
                     - (string)
-            - _Finds code clones with a configurable selection of algorithms (AST, token, fingerprint, and dependence-graph based)._ (object)
+            - _Finds code clones with a configurable selection of algorithms (AST, token, and fingerprint based)._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'code-clones'
                 - **algorithms** [optional] _The clone detection algorithms to run (default: gst)._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'baxter', 'gst', 'winnowing', 'similar'
+                        Only allows: 'baxter', 'gst', 'winnowing'
                 - **perspective** [optional] _How the code is presented to the algorithms: as written (syntax), with sugar and newer R features rewritten (canonical, default), or additionally with single-use temporaries inlined along the dataflow (dataflow)._ (string)
                     Only allows: 'syntax', 'canonical', 'dataflow'
                 - **config** [optional] _Thresholds and options of the algorithms, merged into the defaults._ (object)
@@ -591,14 +591,14 @@ Valid item types:
                     - **maxPairs** [optional] (number)
                     - **gst** [optional] (object)
                         - **tokens** (string)
-                            Only allows: 'jplag', 'normalized', 'exact'
+                            Only allows: 'normalized', 'exact'
                         - **minimumMatchLength** (number)
                         - **threshold** (number)
                         - **unit** (string)
                             Only allows: 'function', 'file'
                     - **winnowing** [optional] (object)
                         - **tokens** (string)
-                            Only allows: 'jplag', 'normalized', 'exact'
+                            Only allows: 'normalized', 'exact'
                         - **k** (number)
                         - **t** (number)
                         - **threshold** (number)
@@ -608,11 +608,7 @@ Valid item types:
                     - **baxter** [optional] (object)
                         - **massThreshold** (number)
                         - **similarityThreshold** (number)
-                    - **similar** [optional] (object)
-                        - **iterations** (number)
-                        - **threshold** (number)
-                        - **minimumVertices** (number)
-                - **exportIndex** [optional] _Also return the clone index of the analyzed files, including the program dependence graphs of all functions so it can serve every algorithm later. Building it runs the dataflow analysis._ (boolean)
+                - **exportIndex** [optional] _Also return the clone index of the analyzed files, to search against it later._ (boolean)
                 - **against** [optional] _Previously exported clone indices to search the analyzed files against. They must use the same perspective as the query._ (array)
                 Valid item types:
                     - (object)
@@ -625,7 +621,6 @@ Valid item types:
                         - **files** [required] (array)
                         Valid item types:
                             - (object)
-                        - **pdgs** [optional] (array)
         - _Virtual queries (used for structure)_ (alternatives)
             - _Compound query used to combine queries of the same type_ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -1964,7 +1959,7 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))
 

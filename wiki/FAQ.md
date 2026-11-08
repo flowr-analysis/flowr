@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
@@ -208,8 +208,8 @@ Anything you configure directly wins over the value the project kind defaults to
 
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
 thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L323"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L309"><code><span title="The one helper to ask a vertex what it is. Every check tolerates an absent vertex, which is what getVertex() hands back for an id the graph does not know.">DfgVertex</span></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L53"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L204"><code><span title="The one helper to ask a vertex what it is.">DfgVertex</span></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L30"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
 The [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.
 

@@ -197,13 +197,13 @@ function sameRanges(a: readonly SourceRange[], b: readonly SourceRange[]): boole
 }
 
 /** the names R binds no matter how they are written, which a renaming has to leave alone */
-const NotRenameable: ReadonlySet<string> = new Set(['T', 'F']);
+const NotRenameable: ReadonlySet<BrandedIdentifier> = new Set(['T', 'F']);
 
 /**
  * The names a program binds that every reference reaches under the same spelling: never an argument name, a
  * `$` or `@` field, a package, a name a string spells out or an attached package exports, as a renaming must leave those be.
  */
-function renameableNames(program: MutationProgram): string[] {
+function renameableNames(program: MutationProgram): BrandedIdentifier[] {
 	const bound = new Set<BrandedIdentifier>();
 	const unsafe = new Set<BrandedIdentifier>();
 	for(const node of program.nodes()) {

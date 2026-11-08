@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import type { Pos } from '../../../_helper/ast-builder';
 import { bin, comment, exprList, group, lgl, num, sym } from '../../../_helper/ast-builder';
-import { SourceRange } from '../../../../../src/util/range';
+import { SourceRange, type Line, type Column } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
@@ -14,7 +14,7 @@ interface IfThen {
 	readonly locationTrue: Pos
 	readonly then:         RNode
 	/** where the then-branch ends, the else-branch is placed relative to it */
-	readonly end:          readonly [line: number, col: number]
+	readonly end:          readonly [line: Line, col: Column]
 	readonly capabilities: FlowrCapabilityId[]
 }
 

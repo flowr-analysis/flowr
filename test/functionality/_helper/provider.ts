@@ -108,7 +108,7 @@ function canBeAUnaryOp(op: string): boolean {
 
 
 export const BinaryOperatorPool: ReadonlySet<BrandedIdentifier> = new Set(BuiltInOperators.names.filter(canBeABinaryOp));
-export const BinaryNonAssignmentOperators: readonly string[] = [...BinaryOperatorPool].filter(op =>  BuiltInOperators.byName[op].usedAs !== OperatorUsedAs.Assignment);
+export const BinaryNonAssignmentOperators: readonly BrandedIdentifier[] = [...BinaryOperatorPool].filter(op =>  BuiltInOperators.byName[op].usedAs !== OperatorUsedAs.Assignment);
 
 export const UnaryOperatorPool: ReadonlySet<BrandedIdentifier> = new Set(BuiltInOperators.names.filter(canBeAUnaryOp));
 

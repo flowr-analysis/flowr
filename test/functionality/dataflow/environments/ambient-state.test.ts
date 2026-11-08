@@ -23,12 +23,12 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 	type Kind = 'writes' | 'assumed' | 'variables';
 
 	/** what each function, named by what it is assigned to, may leave changed (sorted) */
-	async function summaries(code: string, kind: Kind): Promise<Record<string, string[]>> {
+	async function summaries(code: string, kind: Kind): Promise<Record<BrandedIdentifier, BrandedIdentifier[]>> {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 		analyzer.addRequest(requestFromInput(code));
 		const dfi = await analyzer.dataflow();
 		const idMap = (await analyzer.normalize()).idMap;
-		const result: Record<string, string[]> = {};
+		const result: Record<BrandedIdentifier, BrandedIdentifier[]> = {};
 		for(const [id, writes] of Dataflow.sideEffects.ambientAccessOfFunctions(dfi)) {
 			const parent = RNode.directParent(idMap.get(id) as RNodeWithParent, idMap);
 			if(RBinaryOp.is(parent)) {
@@ -167,7 +167,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 describe('Ambient access of code', withTreeSitter(ts => {
 	type Selector = 'file' | 'first' | 'second' | 'block';
-	interface Shown { reads: string[], writes: string[], assumed: string[], variables: BrandedIdentifier[], draws: number }
+	interface Shown { reads: BrandedIdentifier[], writes: BrandedIdentifier[], assumed: BrandedIdentifier[], variables: BrandedIdentifier[], draws: number }
 
 	async function run(code: string, drawing = false) {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {

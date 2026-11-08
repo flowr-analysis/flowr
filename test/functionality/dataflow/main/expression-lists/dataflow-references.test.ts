@@ -14,7 +14,7 @@ function variableNames(references: readonly IdentifierReference[]): BrandedIdent
 	return [...names].sort();
 }
 
-function killNames(kills: readonly KillReference[] | undefined): string[] {
+function killNames(kills: readonly KillReference[] | undefined): BrandedIdentifier[] {
 	const names = new Set((kills ?? []).map(k => k.kind === 'named'
 		? (k.reference.name !== undefined ? Identifier.getName(k.reference.name) : '?')
 		: k.kind));

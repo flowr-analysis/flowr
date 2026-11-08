@@ -15,7 +15,7 @@ import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processin
 import type { RShell } from '../../../src/r-bridge/shell';
 import { SlicingCriterion, type SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../src/util/assert';
-import { SourceRange } from '../../../src/util/range';
+import { SourceRange, type Line } from '../../../src/util/range';
 import { Record } from '../../../src/util/record';
 import { decorateLabelContext, type TestLabel } from '../_helper/label';
 import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../_helper/shell';
@@ -54,7 +54,7 @@ export interface InferenceTestOptions {
 interface TestEntry<Domain extends AnyAbstractDomain> {
 	criterion: SlicingCriterion,
 	node:      RSymbol<ParentInformation>,
-	line:      number
+	line:      Line
 	inferred:  Domain | undefined,
 }
 

@@ -1389,7 +1389,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Package attribution', () => {
 		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
-		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
+		const recordedElsewhere = new Set<BrandedIdentifier>(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
 
 		test('every entry names a package that exports it', async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();

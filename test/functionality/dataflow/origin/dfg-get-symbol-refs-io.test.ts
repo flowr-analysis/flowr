@@ -36,7 +36,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 				}
 
 				const [sl, sc, el] = node.info.fullRange as SourceRange;
-				return [sl, sc, el, sc + (node.lexeme as string).length - 1];
+				return [Number(sl), Number(sc), Number(el), sc + (node.lexeme as string).length - 1];
 			})
 			.sort((a, b) => a[0] === b[0] ? b[1] - a[1] : b[0] - a[0]);
 

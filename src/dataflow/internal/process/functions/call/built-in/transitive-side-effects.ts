@@ -25,7 +25,9 @@ import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { Ternary } from '../../../../../../util/logic';
 import { type DataflowInformation, ControlDependency, ExitPointType, happensInEveryBranch } from '../../../../../info';
-import { ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
+import { ReachSummaries } from '../../../../../../util/fixpoint';
+import { Monoid } from '../../../../../../util/monoid';
+import { Relation } from '../../../../../../util/collections/relation';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -42,8 +44,16 @@ import { isBaseRPackage } from '../../../../../../util/r-base-packages';
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
  * @useInstead {@link Dataflow.sideEffects.callGraphSummaries}
  */
-export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => Iterable<T>): Map<NodeId, ReadonlySet<T>> {
-	const summaries = new ReachSummaries<NodeId, ReadonlySet<T>>(id => {
+export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => Iterable<T>): Relation<NodeId, T> {
+	return foldCallGraph(graph, Monoid.set<T>(), (id, fdef) => new Set(own(id, fdef)));
+}
+
+/**
+ * Computes, for every function-definition vertex `F`, what `F` and every function it transitively calls contribute together.
+ * @useInstead {@link Dataflow.sideEffects.foldCallGraph}
+ */
+export function foldCallGraph<M>(this: void, graph: DataflowGraph, monoid: Monoid<M>, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => M): Map<NodeId, M> {
+	const summaries = new ReachSummaries<NodeId, M>(id => {
 		const vertex = graph.getVertex(id);
 		if(!DfgVertex.isFunctionDefinition(vertex)) {
 			return [];
@@ -52,8 +62,8 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 		return Dataflow.callsIn(vertex, graph).flatMap(([node]) => Dataflow.calleeIdsOf(graph, node)).toArray().concat(vertex.subflow.hooks.map(h => h.id));
 	}, id => {
 		const vertex = graph.getVertex(id);
-		return DfgVertex.isFunctionDefinition(vertex) ? new Set(own(id, vertex)) : undefined;
-	}, new Set(), unionOfSets);
+		return DfgVertex.isFunctionDefinition(vertex) ? own(id, vertex) : undefined;
+	}, monoid);
 	return new Map(graph.verticesOfType(VertexType.FunctionDefinition).map(([id]) => [id, summaries.of(id)]));
 }
 
@@ -433,7 +443,7 @@ function promiseOutlivesCall(graph: DataflowGraph, idMap: AstIdMap, forcing: (ho
 	const captured = (parameter: NodeId) => Dataflow.sourcesOf(graph, parameter, EdgeType.Reads)
 		.some(read => RNode.findEnclosing(read, idMap, RFunctionDefinition.is) !== ownerOf.get(parameter));
 	const open = (p: NodeId) => forcing(p, p) !== Ternary.Always;
-	const outlives = new ReachSummaries<NodeId, boolean>(p => open(p) ? handedTo.get(p) : [], p => open(p) && captured(p), false, (a, b) => a || b);
+	const outlives = new ReachSummaries<NodeId, boolean>(p => open(p) ? handedTo.get(p) : [], p => open(p) && captured(p), Monoid.any);
 	return parameter => ownerOf.has(parameter) && outlives.of(parameter);
 }
 

@@ -588,7 +588,7 @@ export class LinkedFunctionResolver {
 
 	constructor(graph: DataflowGraph) {
 		this.graph = graph;
-		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), ReachesNothing, unionOfSets);
+		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), { empty: ReachesNothing, concat: unionOfSets });
 	}
 
 	/** The function definitions and built-ins the reads with the given ids may evaluate to. */

@@ -59,7 +59,7 @@ function callProps(definitions: readonly NodeId[], state: LookupState, strict: R
 		const { stated, callees } = propsOf(id, state);
 		own.set(id, strict[id]?.strict === Ternary.Always ? join(stated, { props: CallProp.Strict }) : stated);
 		return callees;
-	}, id => filter(own.get(id), PropagatedProps), {}, join);
+	}, id => filter(own.get(id), PropagatedProps), { empty: {}, concat: join });
 	return Object.fromEntries(definitions.map(id => {
 		const reached = carried.of(id);
 		const mine = own.get(id) as StatedProps;

@@ -1,3 +1,5 @@
+import { Monoid } from './monoid';
+import { isNotUndefined } from './assert';
 /** the number of a node whose component is complete, see {@link StronglyConnected} */
 const Complete = -1;
 
@@ -86,26 +88,13 @@ export class ReachSummaries<K, V> {
 	private readonly components: StronglyConnected<K>;
 
 	/**
-	 * @param next  - the nodes a node leads to, asked for once per node
-	 * @param own   - what a node contributes itself, asked for once per node after its successors
-	 * @param empty - the value of a node that neither has nor reaches anything
-	 * @param join  - joins two values, may return either of them if it subsumes the other but must not change them
+	 * @param next   - the nodes a node leads to, asked for once per node
+	 * @param own    - what a node contributes itself, asked for once per node after its successors
+	 * @param monoid - joins the values, its `concat` may return either of them if it subsumes the other but must not change them
 	 */
-	constructor(next: (node: K) => Iterable<K>, own: (node: K) => V | undefined, empty: V, join: (a: V, b: V) => V) {
+	constructor(next: (node: K) => Iterable<K>, own: (node: K) => V | undefined, monoid: Monoid<V>) {
 		this.components = new StronglyConnected(next, (members, successorsOf) => {
-			let value = empty;
-			for(const m of members) {
-				const mine = own(m);
-				if(mine !== undefined) {
-					value = join(value, mine);
-				}
-				for(const s of successorsOf(m)) {
-					const reached = this.values.get(s);
-					if(reached !== undefined) {
-						value = join(value, reached);
-					}
-				}
-			}
+			const value = Monoid.fold(monoid, members.flatMap(m => [own(m), ...successorsOf(m).map(s => this.values.get(s))]).filter(isNotUndefined));
 			for(const m of members) {
 				this.values.set(m, value);
 			}

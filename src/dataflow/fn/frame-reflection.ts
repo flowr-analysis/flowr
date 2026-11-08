@@ -10,6 +10,7 @@ import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReachSummaries } from '../../util/fixpoint';
+import { Monoid } from '../../util/monoid';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
 export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
@@ -83,7 +84,7 @@ function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefini
 		const vertex = graph.getVertex(node);
 		/* a call reading the frame is what uses it, so it is a consumer rather than another name for it, and carries nothing on */
 		return !body.has(node) || node === frame || (DfgVertex.isFunctionCall(vertex) && !passesOn(vertex)) ? [] : Dataflow.targetsOf(graph, node, CarryingEdges);
-	}, node => node === frame, false, (a, b) => a || b);
+	}, node => node === frame, Monoid.any);
 	return new Set([frame, ...body.values().filter(node => carries.of(node))]);
 }
 

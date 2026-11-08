@@ -1,3 +1,4 @@
+import type { CallContext } from '../eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../graph/graph';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -22,15 +23,18 @@ import {
 } from '../fn/dispatch';
 import { getAllLinkedFunctionDefinitions } from './linker';
 import type { REnvironmentInformation } from '../environments/environment';
-import { type IdentifierDefinition, type InGraphIdentifierDefinition, ReferenceType } from '../environments/identifier';
+import { type BrandedIdentifier, type IdentifierDefinition, type InGraphIdentifierDefinition, ReferenceType } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
+
+/** The methods each method hands on to with `NextMethod()`, in the order they run. */
+export type NextMethods = ReadonlyMap<NodeId, readonly NodeId[]>;
 
 /** What the dispatch of one call rules out, and what the next-method calls of the methods it runs may run. */
 export interface NarrowedDispatch {
 	/** the method definitions the call cannot run */
 	readonly excluded: ReadonlySet<NodeId>
 	/** per method, the methods a `NextMethod()`/`callNextMethod()` within it may run; a method missing here may run any */
-	readonly next:     ReadonlyMap<NodeId, readonly NodeId[]>
+	readonly next:     NextMethods
 	/** the registrations the choice relies on beyond those of the methods, which the call depends on */
 	readonly reads?:   readonly NodeId[]
 }
@@ -68,7 +72,7 @@ export function ruledOutPerCall(contexts: readonly DispatchContext[], excludedOf
 export class DispatchNarrower {
 	private readonly info:  ClassFlowInfo;
 	private readonly graph: DataflowGraph;
-	private s4State?:       { readonly methods: ReadonlyMap<string, readonly S4Method[]>, readonly byFunction: ReadonlyMap<NodeId, readonly S4Method[]>, readonly hierarchy: S4Hierarchy };
+	private s4State?:       { readonly methods: ReadonlyMap<BrandedIdentifier, readonly S4Method[]>, readonly byFunction: ReadonlyMap<NodeId, readonly S4Method[]>, readonly hierarchy: S4Hierarchy };
 	private registers?:     boolean;
 
 	constructor(graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
@@ -101,7 +105,7 @@ export class DispatchNarrower {
 	}
 
 	/** The methods among `targets` the S4 dispatch of `call` (a call of `name`) cannot run for the classes of its arguments, and the methods `callNextMethod()` in each method may run, `undefined` if nothing can be narrowed. */
-	public s4(call: DataflowGraphVertexFunctionCall, name: string, targets: ReadonlySet<NodeId>, registeredLater: (registration: NodeId) => boolean, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
+	public s4(call: DataflowGraphVertexFunctionCall, name: BrandedIdentifier, targets: ReadonlySet<NodeId>, registeredLater: (registration: NodeId) => boolean, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
 		const { methods, byFunction, hierarchy } = this.s4Info();
 		const created = call.instantiates;
 		const generics = created === undefined ? undefined : new Set([...targets].flatMap(t => byFunction.get(t) ?? []).map(m => m.generic));
@@ -152,7 +156,7 @@ export class DispatchNarrower {
 	}
 
 	/** Whether `setMethod` surely sets another of `candidates` for the signature of `method` after it and before every run of `call`, which replaces `method` for good: R keeps one method per signature. */
-	private replacedBefore(method: S4Method, candidates: readonly S4Method[], formals: readonly string[], call: NodeId): boolean {
+	private replacedBefore(method: S4Method, candidates: readonly S4Method[], formals: readonly BrandedIdentifier[], call: NodeId): boolean {
 		const own = signatureFor(method, formals)?.join(',');
 		const at = ProgramOrder.runsOnceAt(method.registration, this.graph);
 		return at !== undefined && candidates.some(other => {
@@ -163,14 +167,14 @@ export class DispatchNarrower {
 	}
 
 	/** The formals of the generic among `targets` that `candidates` are methods of, which S4 dispatches on. */
-	private s4Formals(targets: ReadonlySet<NodeId>, candidates: readonly S4Method[]): readonly string[] | undefined {
+	private s4Formals(targets: ReadonlySet<NodeId>, candidates: readonly S4Method[]): readonly BrandedIdentifier[] | undefined {
 		const { byFunction } = this.s4Info();
 		const generics = [...targets].filter(t => !byFunction.has(t) && DfgVertex.isFunctionDefinition(this.graph.getVertex(t)) && (this.graph.getVertex(t) as DataflowGraphVertexFunctionDefinition).mode?.includes('s4'));
 		return generics.length <= 1 ? s4DispatchFormals(generics[0], candidates, this.info.idMap) : undefined;
 	}
 
 	/** The `setOldClass` call registering the S3 class `cls` if S4 dispatch surely sees it: the only registration of `cls`, run once before any of `methods` is set. */
-	private oldClassRegistration(cls: string | undefined, methods: readonly S4Method[]): NodeId | undefined {
+	private oldClassRegistration(cls: BrandedIdentifier | undefined, methods: readonly S4Method[]): NodeId | undefined {
 		const registrations = cls === undefined ? undefined : this.s4Info().hierarchy.oldClasses?.get(cls);
 		const registration = registrations?.length === 1 ? registrations[0] : undefined;
 		const at = registration === undefined ? undefined : ProgramOrder.runsOnceAt(registration, this.graph);
@@ -181,7 +185,7 @@ export class DispatchNarrower {
 	}
 
 	/** The `<prefix>.<class>` methods among `targets` an S3 dispatch on the objects `objects` cannot run, and what `NextMethod()` in each method it runs may run, `undefined` if the class of an object is not known. */
-	public s3(objects: readonly NodeId[], prefixes: readonly string[], targets: ReadonlySet<NodeId>, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
+	public s3(objects: readonly NodeId[], prefixes: readonly BrandedIdentifier[], targets: ReadonlySet<NodeId>, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
 		const perObject = objects.map(o => s3DispatchClassesOf(o, info));
 		if(perObject.length === 0 || !perObject.every(isNotUndefined)) {
 			return undefined;
@@ -199,7 +203,7 @@ export class DispatchNarrower {
 		return methods.length < 2 ? undefined : this.contextsOf(call, new Map(), methods, decide, { left: MaxDispatchContexts });
 	}
 
-	private contextsOf(inner: NodeId, context: ReadonlyMap<NodeId, NodeId>, methods: readonly NodeId[], decide: (info: ClassFlowInfo) => NarrowedDispatch | undefined, budget: { left: number }): DispatchContext[] | undefined {
+	private contextsOf(inner: NodeId, context: CallContext, methods: readonly NodeId[], decide: (info: ClassFlowInfo) => NarrowedDispatch | undefined, budget: { left: number }): DispatchContext[] | undefined {
 		const fn = this.graph.isRoot(inner) ? undefined : RNode.strictlyEnclosingFunction(inner, this.info.idMap);
 		const callers = fn === undefined || context.has(fn) || context.size >= MaxContextDepth ? [] : Dataflow.sourcesOf(this.graph, fn, EdgeType.Calls);
 		if(fn === undefined || callers.length === 0 || callers.length > budget.left || !calledByNameOnly(fn, callers, this.graph)) {
@@ -262,7 +266,7 @@ export function runsOnlyAfter(call: NodeId, statement: RNode<ParentInformation>,
 }
 
 /** The first formal the functions of `methods` share, which an instantiation hands the new object. */
-function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly string[] | undefined {
+function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly BrandedIdentifier[] | undefined {
 	const firsts = new Set(methods.flatMap(m => m.functions).map(fn => {
 		const node = idMap.get(fn);
 		return RFunctionDefinition.is(node) ? node.parameters[0]?.name.content : undefined;
@@ -272,8 +276,8 @@ function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly 
 }
 
 /** The class the function `fn` is the S3 method of, for one of the generics `prefixes`, `undefined` unless every name it is bound to says the same. */
-function s3ClassOfMethod(fn: NodeId, prefixes: readonly string[], graph: DataflowGraph): string | undefined {
-	let cls: string | undefined;
+function s3ClassOfMethod(fn: NodeId, prefixes: readonly BrandedIdentifier[], graph: DataflowGraph): BrandedIdentifier | undefined {
+	let cls: BrandedIdentifier | undefined;
 	for(const def of Dataflow.sourcesOf(graph, fn, EdgeType.DefinedBy)) {
 		const name = NodeId.recoverBareName(def, graph.idMap);
 		const prefix = name === undefined ? undefined : prefixes.find(p => name.startsWith(p + '.'));
@@ -287,7 +291,7 @@ function s3ClassOfMethod(fn: NodeId, prefixes: readonly string[], graph: Dataflo
 }
 
 /** Per formal, the argument `call` binds to it, `undefined` for none; `undefined` overall if the call hands on `...` or binds several. */
-function boundArguments(call: DataflowGraphVertexFunctionCall, formals: readonly string[], idMap: AstIdMap): (NodeId | undefined)[] | undefined {
+function boundArguments(call: DataflowGraphVertexFunctionCall, formals: readonly BrandedIdentifier[], idMap: AstIdMap): (NodeId | undefined)[] | undefined {
 	if(call.args.some(a => a !== EmptyArgument && RSymbol.is(RArgument.valueOf(idMap.get(a.nodeId))) && RArgument.valueOf(idMap.get(a.nodeId))?.lexeme === '...')) {
 		return undefined;
 	}

@@ -7,7 +7,7 @@ import { BuiltInOperators, OperatorCategory } from './base-operators';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexInfo, DfgVertex } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../../queries/catalog/call-context-query/cascade-action';
-import { Identifier, PkgName } from '../identifier';
+import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { ArgProp, CallProp, type FnSig, SemanticCallTag, type SemanticCallTags } from '../built-in-props';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../util/r-base-packages';
 import { RBasePrimitives } from '../../../data/r-base-primitives.generated';
@@ -44,7 +44,7 @@ export const StackEnvBuiltins = {
 } as const satisfies Record<string, StackEnvKind>;
 
 /** The package exporting each plotting function flowR models, so {@link namespacePlotFunctions} can namespace it instead of leaving it bare (bare stays always-on, which is the conservative default for an unknown owner). */
-export const PlotFunctionPackages: Readonly<Record<string, readonly string[]>> = {
+export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdentifier[]>> = {
 	DHARMa:     ['plotSimulatedResiduals'],
 	ape:        ['tiplabels'],
 	car:        ['densityPlot', 'qqPlot'],
@@ -140,21 +140,21 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly string[]>> =
 };
 
 /** the packages exporting each name, several when more than one of them draws under that name */
-export const PlotFunctionOwners: ReadonlyMap<string, string[]> = Object.entries(PlotFunctionPackages)
+export const PlotFunctionOwners: ReadonlyMap<BrandedIdentifier, BrandedNamespace[]> = Object.entries(PlotFunctionPackages)
 	.reduce((owners, [pkg, names]) => {
 		for(const n of names) {
 			owners.set(n, [...(owners.get(n) ?? []), pkg]);
 		}
 		return owners;
-	}, new Map<string, string[]>());
+	}, new Map<BrandedIdentifier, BrandedNamespace[]>());
 
 /** The packages exporting a plotting function, in the order {@link PlotFunctionPackages} lists them. */
-export function plotFunctionOwners(name: string): readonly string[] {
+export function plotFunctionOwners(name: BrandedIdentifier): readonly BrandedNamespace[] {
 	return PlotFunctionOwners.get(name) ?? [];
 }
 
 /** `names` under every package exporting each: base R from the shipped data, the rest from {@link PlotFunctionPackages}. */
-export function namespacePlotFunctions(names: readonly string[]): (Identifier | string)[] {
+export function namespacePlotFunctions(names: readonly BrandedIdentifier[]): (Identifier | string)[] {
 	return names.flatMap<Identifier | string>(n => {
 		const base = baseRExportOwner(n);
 		if(base !== undefined) {
@@ -249,7 +249,7 @@ export const GgPlotImplicitAddons = ['geom_count', 'geom_bin_2d', 'geom_spoke', 
 	'scale_fill_economist', 'scale_fill_fivethirtyeight', 'scale_colour_gradient_tableau', 'scale_colour_few', 'scale_color_calc', 'scale_fill_few',
 	'scale_fill_gdocs', 'scale_color_hc', 'scale_color_gdocs', 'scale_color_canva', 'scale_color_gradient_tableau', 'scale_fill_solarized',
 	'scale_fill_continuous_tableau', 'scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'] as const;
-export const PlotFunctionsWithAddParam: Set<string> = new Set(['map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot']);
+export const PlotFunctionsWithAddParam: Set<BrandedIdentifier> = new Set(['map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot']);
 export const GraphicsPlotAddons = ['points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage', 'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines'];
 export const GgPlotAddons = ['ggdraw', 'last_plot'];
@@ -298,7 +298,7 @@ export const WithSig: FnSig  = sig({ data: ArgProp.NoDefault | ArgProp.Written, 
 /** what flowR states about one of the functions it defines, in the words a page shows */
 export interface StatedSignature {
 	/** the package the definition is for, `base` when it names none */
-	readonly pkg:     string;
+	readonly pkg:     BrandedNamespace;
 	/** The formals flowR models, `x, ...`, or `undefined` where it declares none (not R's own declaration). */
 	readonly params?: string;
 	/** what it does, from {@link CallProps.labels} */
@@ -308,7 +308,7 @@ export interface StatedSignature {
 }
 
 /** The manual page documenting a base R primitive, for the ones not documented under their own name (a primitive is written in C, so no signature/source/help-topic extractor sees it; `sin` is documented under `Trig`). */
-export const PrimitivesPerTopic: Readonly<Record<string, readonly string[]>> = {
+export const PrimitivesPerTopic: Readonly<Record<string, readonly BrandedIdentifier[]>> = {
 	'Arithmetic':   ['%%', '%/%', '*', '+', '-', '/', '^'],
 	'assignOps':    ['<-', '<<-', '='],
 	'call':         ['as.call'],
@@ -358,7 +358,7 @@ export const BasePrimitiveTopics: Readonly<Record<string, string>> = Object.from
 	Object.entries(PrimitivesPerTopic).flatMap(([topic, names]) => names.map(name => [name, topic])));
 
 /** The one of {@link statedSignatures} a reader means: the definition for `pkg` when there is one, else base R's, else whichever came first. */
-export function statedSignatureOf(stated: ReadonlyMap<string, readonly StatedSignature[]>, name: string, pkg?: string): StatedSignature | undefined {
+export function statedSignatureOf(stated: ReadonlyMap<BrandedIdentifier, readonly StatedSignature[]>, name: BrandedIdentifier, pkg?: BrandedNamespace): StatedSignature | undefined {
 	const known = stated.get(name);
 	return known?.find(entry => entry.pkg === pkg) ?? known?.find(entry => entry.pkg === PkgName.Base) ?? known?.[0];
 }
@@ -394,7 +394,7 @@ export const LinkToLastPlot = {
 } as const;
 
 /** The internal generics: they dispatch in C rather than through `UseMethod`, so the list has to be written down. */
-export const InternalGenerics: ReadonlySet<string> = new Set(['$', '[', '[[', '+', '-', '*', '/', '^', '%%', '%/%', '==', '!=', '<', '>', '<=', '>=', '&', '|', '!', 'c', 'length',
+export const InternalGenerics: ReadonlySet<BrandedIdentifier> = new Set(['$', '[', '[[', '+', '-', '*', '/', '^', '%%', '%/%', '==', '!=', '<', '>', '<=', '>=', '&', '|', '!', 'c', 'length',
 	'dim', 'dimnames', 'names', 'max', 'min', 'range', 'sum', 'prod', 'abs', 'sqrt', 'exp', 'log', 'floor', 'ceiling',
 	'round', 'signif', 'trunc', 'cumsum', 'cumprod', 'cummax', 'cummin', 'as.character', 'as.integer', 'as.double',
 	'as.logical', 'as.complex', 'as.numeric', 'as.raw', 'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix',
@@ -402,7 +402,7 @@ export const InternalGenerics: ReadonlySet<string> = new Set(['$', '[', '[[', '+
 	'xtfrm']);
 
 /** Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics} (no R body, so {@link fnInfoFromSignature} never sees them). */
-export const RGenerics: ReadonlySet<string> = new Set([...RBasePackageStore.generics, ...InternalGenerics]);
+export const RGenerics: ReadonlySet<BrandedIdentifier> = new Set([...RBasePackageStore.generics, ...InternalGenerics]);
 
 /** Label the names of every function definition that `has` with `prop`, splitting an entry that mixes them with names that do not. */
 function labelNames(definitions: BuiltInDefinitions, prop: CallProp, has: (name: Identifier) => boolean): BuiltInDefinitions {

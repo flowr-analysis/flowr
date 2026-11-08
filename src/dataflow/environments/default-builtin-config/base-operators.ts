@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../identifier';
 import { fn, pkg, base, utils } from './define-helpers';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import { PkgName } from '../pkg-name';
@@ -36,7 +37,7 @@ export enum OperatorCategory {
 
 /** What flowR knows about an operator as part of R's syntax, stated by the built-in definition of the operator (see {@link BuiltInOperators}). */
 export interface OperatorFacts {
-	readonly name:             string;
+	readonly name:             BrandedIdentifier;
 	/** how the R parser names the token, `**` is `^` there */
 	readonly stringUsedInRAst: RawRType | `%${string}%`;
 	readonly writtenAs:        OperatorWrittenAs;
@@ -47,7 +48,7 @@ export interface OperatorFacts {
 	readonly capabilities:     SupportedFlowrCapabilityId[];
 }
 
-function operator(name: string, stringUsedInRAst: OperatorFacts['stringUsedInRAst'], capabilities: SupportedFlowrCapabilityId[], more: Partial<Pick<OperatorFacts, 'arity' | 'writtenAs' | 'category' | 'usedAs'>> = {}): OperatorFacts {
+function operator(name: BrandedIdentifier, stringUsedInRAst: OperatorFacts['stringUsedInRAst'], capabilities: SupportedFlowrCapabilityId[], more: Partial<Pick<OperatorFacts, 'arity' | 'writtenAs' | 'category' | 'usedAs'>> = {}): OperatorFacts {
 	return { name, stringUsedInRAst, capabilities, usedAs: OperatorUsedAs.Operation, writtenAs: OperatorWrittenAs.Infix, arity: OperatorArity.Binary, ...more };
 }
 
@@ -215,8 +216,8 @@ export const OperatorDefinitions = [
 ] as const satisfies AnyBuiltInDefinition[];
 
 const byName: Readonly<Record<string, OperatorFacts>> = Object.fromEntries(OperatorDefinitions.flatMap(d => Object.entries(d.operators ?? {})));
-const names: readonly string[] = Object.keys(byName);
-const inRAst = (ops: readonly string[]): ReadonlySet<string> => new Set(ops.map(op => byName[op].stringUsedInRAst));
+const names: readonly BrandedIdentifier[] = Object.keys(byName);
+const inRAst = (ops: readonly BrandedIdentifier[]): ReadonlySet<BrandedIdentifier> => new Set(ops.map(op => byName[op].stringUsedInRAst));
 
 /**
  * The operators of R, as the {@link OperatorDefinitions} state them.
@@ -237,7 +238,7 @@ export const BuiltInOperators = {
 		return byName[op];
 	},
 	/** the operators of the given category */
-	ofCategory(this: void, category: OperatorCategory): readonly string[] {
+	ofCategory(this: void, category: OperatorCategory): readonly BrandedIdentifier[] {
 		return names.filter(op => byName[op].category === category);
 	}
 } as const;

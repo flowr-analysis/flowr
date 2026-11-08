@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../environments/identifier';
 import { deepMergeObject } from '../../util/objects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -84,7 +85,7 @@ export class DataflowGraphBuilder<
 	}
 
 	/** Adds a **vertex** for a **function call** (V2). */
-	public call(id: NodeId, name: string, args: FunctionArgument[],
+	public call(id: NodeId, name: BrandedIdentifier, args: FunctionArgument[],
 		info?: {
 			returns?:            readonly NodeId[],
 			reads?:              readonly NodeId[],
@@ -135,9 +136,9 @@ export class DataflowGraphBuilder<
 			}
 			if(FunctionArgument.isPositional(arg)) {
 				this.argument(id, arg.nodeId);
-				if(typeof arg.nodeId === 'string' && arg.nodeId.endsWith('-arg')) {
-					const withoutSuffix = arg.nodeId.slice(0, -4);
-					this.reads(arg.nodeId, withoutSuffix);
+				const wrapped = NodeId.wrappedByArgument(arg.nodeId);
+				if(wrapped !== undefined) {
+					this.reads(arg.nodeId, wrapped);
 				}
 			} else if(!this.hasVertex(arg.nodeId, true)) {
 				this.use(arg.nodeId, arg.name, { cds: arg.cds });
@@ -155,7 +156,7 @@ export class DataflowGraphBuilder<
 	}
 
 	/** Adds a **vertex** for a **variable definition** (V4). */
-	public defineVariable(id: NodeId, name?: string,
+	public defineVariable(id: NodeId, name?: BrandedIdentifier,
 		info?: { cds?: readonly ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
@@ -172,7 +173,7 @@ export class DataflowGraphBuilder<
 	}
 
 	/** Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests. */
-	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
+	public use(id: NodeId, name?: BrandedIdentifier, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv(deepMergeObject({
 			tag:         VertexType.Use,
 			id:          NodeId.normalize(id),

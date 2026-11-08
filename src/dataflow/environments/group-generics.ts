@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from './identifier';
 /** R's group generics, kept apart from the builtin configuration so anything may ask about them without pulling the whole dataflow setup in (the signature database does, and that would be a cycle). */
 
 const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
@@ -28,42 +29,42 @@ export type RGroupGeneric = keyof typeof RGroupGenerics;
 const S4Groups = ['Arith', 'Compare', 'Logic', 'Math', 'Math2', 'Summary', 'Complex', 'matrixOps'] as const;
 
 /** Member name to its S4 group (`sin` to `Math`, `+` to `Arith`). */
-export const S4GroupOfMember: ReadonlyMap<string, string> = new Map(
+export const S4GroupOfMember: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new Map(
 	S4Groups.flatMap(group => RGroupGenerics[group].map(member => [member as string, group as string])));
 
 /** The S4 group generic `name` is a member of, `undefined` for a name that is in none. */
-export function groupGenericOf(name: string): string | undefined {
+export function groupGenericOf(name: BrandedIdentifier): BrandedIdentifier | undefined {
 	return S4GroupOfMember.get(name);
 }
 
 /** The S4 group generics whose methods a call of `name` may dispatch to, the nearest first (`+` to `Arith`, then `Ops`). */
-export function s4GroupGenericsOf(name: string): readonly string[] {
+export function s4GroupGenericsOf(name: BrandedIdentifier): readonly BrandedIdentifier[] {
 	const group = S4GroupOfMember.get(name);
 	return group === undefined ? [] : group === 'Arith' || group === 'Compare' || group === 'Logic' ? [group, 'Ops'] : [group];
 }
 
 /** The members a method registered on `name` answers for, `undefined` when `name` names no group (`Ops` flattened to its operators). */
-export function groupGenericMembers(name: string): readonly string[] | undefined {
+export function groupGenericMembers(name: BrandedIdentifier): readonly BrandedIdentifier[] | undefined {
 	return RGroupGenerics[name as RGroupGeneric];
 }
 
 /** The members an S3 `<group>.<class>` method answers for; S3 has no `Math2`, so `Math` covers both (see {@link MathS3}). */
-export function s3GroupGenericMembers(name: string): readonly string[] | undefined {
+export function s3GroupGenericMembers(name: BrandedIdentifier): readonly BrandedIdentifier[] | undefined {
 	return name === 'Math' ? MathS3 : groupGenericMembers(name);
 }
 
 /** the S3 groups, `Ops` standing for the three S4 groups it unites and `Math` covering `Math2` */
 const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
 
-const S3GroupOfMember: ReadonlyMap<string, string> = new Map(
+const S3GroupOfMember: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new Map(
 	S3Groups.flatMap(group => (s3GroupGenericMembers(group) ?? []).map(member => [member, group as string])));
 
 /** The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none. */
-export function s3GroupGenericOf(name: string): string | undefined {
+export function s3GroupGenericOf(name: BrandedIdentifier): BrandedIdentifier | undefined {
 	return S3GroupOfMember.get(name);
 }
 
 /** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */
-export function isGroupGeneric(name: string): name is RGroupGeneric {
+export function isGroupGeneric(name: BrandedIdentifier): name is RGroupGeneric {
 	return Object.hasOwn(RGroupGenerics, name);
 }

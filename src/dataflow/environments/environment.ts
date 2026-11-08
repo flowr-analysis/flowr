@@ -5,8 +5,8 @@
 import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
 import type {
-	BrandedIdentifier,
 	BrandedNamespace,
+	BrandedIdentifier,
 	IdentifierDefinition,
 	ReferenceType
 } from './identifier';
@@ -52,7 +52,7 @@ interface Jsonified {
 	parent:      Jsonified | undefined;
 	builtInEnv?: true;
 	memory:      ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>;
-	n?:          string;
+	n?:          BrandedNamespace;
 	t?:          EnvType;
 	globalEnv?:  true;
 }
@@ -71,7 +71,7 @@ function sameDefinition(a: IdentifierDefinition, b: IdentifierDefinition): boole
 export class Environment implements IEnvironment {
 	readonly id:           number;
 	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
-	n?:                    string;
+	n?:                    BrandedNamespace;
 	/** which search-path layer this env is (package/namespace/imports), if any */
 	t?:                    EnvType;
 	/** if created by a closure, the node id of that closure */
@@ -81,7 +81,7 @@ export class Environment implements IEnvironment {
 	private frame:         Frame;
 	cache?:                Map<Identifier, IdentifierDefinition[]>;
 	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
-	tailCache?:            Map<ReferenceType, Map<string, readonly IdentifierDefinition[] | undefined>>;
+	tailCache?:            Map<ReferenceType, Map<BrandedIdentifier, readonly IdentifierDefinition[] | undefined>>;
 	builtInEnv?:           true;
 	/** set on the built-in environment once a definition below binds a promise or a text connection, which reads then look for */
 	forcing?:              true;
@@ -94,7 +94,12 @@ export class Environment implements IEnvironment {
 	/** What the lexical frame this stands in for held when its closure was created; `<<-` binds lexically, so defining super needs this. */
 	superMemory?:          MemoryView;
 	/** What the configuration states about packages R does not attach on startup, by package; only the built-in env carries it (see {@link statedIn}). */
-	namespaces?:           ReadonlyMap<string, BuiltInMemory>;
+	namespaces?:           ReadonlyMap<BrandedNamespace, BuiltInMemory>;
+
+	/** The environment below which nothing else lies, the only one without a parent. */
+	public static root(): Environment {
+		return new Environment(undefined as unknown as Environment, true);
+	}
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, frame?: Frame) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
@@ -109,7 +114,7 @@ export class Environment implements IEnvironment {
 	}
 
 	/** Marks this as an attached-package layer (see {@link EnvType}) for package `name`. */
-	public asLibrary(name: string, type: EnvType): this {
+	public asLibrary(name: BrandedNamespace, type: EnvType): this {
 		this.n = name;
 		this.t = type;
 		return this;
@@ -396,7 +401,7 @@ export class Environment implements IEnvironment {
 		const order: Environment[] = [];
 		const inBoth = new Set<Environment>();
 		const fromOther = new Set<Environment>();
-		const merged = new DefaultMap<EnvType | undefined, Map<string | undefined, Environment>>(() => new Map());
+		const merged = new DefaultMap<EnvType | undefined, Map<BrandedNamespace | undefined, Environment>>(() => new Map());
 		for(const layers of thisLayers.length > otherLayers.length ? [thisLayers, otherLayers] : [otherLayers, thisLayers]) {
 			for(const layer of layers) {
 				const byName = merged.get(layer.t);
@@ -592,8 +597,8 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
 }
 
 /** The packages attached below the global environment, i.e. those whose exports R resolves without a namespace. */
-function attachedPackagesOf(this: void, env: Environment): Set<string> {
-	const attached = new Set<string>([PkgName.Base]);
+function attachedPackagesOf(this: void, env: Environment): Set<BrandedNamespace> {
+	const attached = new Set<BrandedNamespace>([PkgName.Base]);
 	for(const e of searchPathOf(env)) {
 		if(e.t !== EnvType.Imports && e.n !== undefined) {
 			attached.add(e.n);

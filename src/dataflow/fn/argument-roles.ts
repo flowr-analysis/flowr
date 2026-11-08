@@ -16,7 +16,7 @@ import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { Identifier } from '../environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { happensInEveryBranch } from '../info';
@@ -264,7 +264,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 }
 
 /** Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not identity). */
-function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): Set<NodeId> {
+function aliasTargets(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeId>, state: RoleState): Set<NodeId> {
 	const found = new Set<NodeId>([node]);
 	const queue: [NodeId, number][] = [[node, 0]];
 	for(let at = 0; at < queue.length; at++) {
@@ -288,14 +288,14 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: 
 }
 
 /** The formal parameter a symbol argument names. */
-function writtenFormal(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): NodeId | undefined {
+function writtenFormal(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeId>, state: RoleState): NodeId | undefined {
 	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
 	return name === undefined ? undefined : byName.get(name);
 }
 
 /** The formals of `definition` by name, for {@link writtenFormal}. */
-function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<string, NodeId> {
-	const byName = new Map<string, NodeId>();
+function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<BrandedIdentifier, NodeId> {
+	const byName = new Map<BrandedIdentifier, NodeId>();
 	for(const formal of Object.keys(definition.params)) {
 		const name = NodeId.recoverBareName(NodeId.normalize(formal), state.graph.idMap);
 		if(name !== undefined) {

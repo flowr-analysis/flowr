@@ -1,3 +1,4 @@
+import type { ParameterOfArgument } from '../graph/match-args';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { DefaultMap } from '../../util/collections/defaultmap';
@@ -277,7 +278,7 @@ export function linkFunctionCallWithSingleTarget(graph: DataflowGraph, { subflow
 }
 
 /** A call reads everything written into an environment it hands to a parameter (see {@link readEnvironmentContents}), unless the body only writes into what the parameter holds, by writes each call replays (see {@link DeferredEnvOp}): `register <- function(env, f) env$h <- f` reads nothing of `env`, so one call does not read what another stored. */
-function readArgumentContents(graph: DataflowGraph, call: NodeId, environment: REnvironmentInformation, argToParam: ReadonlyMap<NodeId, NodeId>, envOps: readonly DeferredEnvOp[] | undefined, idMap: AstIdMap): void {
+function readArgumentContents(graph: DataflowGraph, call: NodeId, environment: REnvironmentInformation, argToParam: ParameterOfArgument, envOps: readonly DeferredEnvOp[] | undefined, idMap: AstIdMap): void {
 	const written = new Set(envOps?.filter(o => o.kind === EnvOpKind.Define || o.kind === EnvOpKind.Replace).map(o => o.envir));
 	for(const [arg, param] of argToParam) {
 		const value = RArgument.valueOf(idMap.get(arg)) ?? idMap.get(arg);
@@ -291,7 +292,7 @@ function readArgumentContents(graph: DataflowGraph, call: NodeId, environment: R
 }
 
 /** for each parameter that we link that gets forced, add a reads edge from the call to argument to show that it reads it */
-function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Record<NodeId, boolean>, argToParam: ReadonlyMap<NodeId, NodeId>): void {
+function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Record<NodeId, boolean>, argToParam: ParameterOfArgument): void {
 	for(const [arg, param] of argToParam) {
 		if(readParams[String(param)]) {
 			graph.addEdge(callId, arg, EdgeType.Reads);
@@ -657,7 +658,7 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 	});
 	const unresolved = linkInputs(references, environment, [], graph, false);
 	for(const call of references.filter(r => r.type === ReferenceType.Function)) {
-		linkCallToDefinitions(graph, call.nodeId, Resolve.byNameAndType(call.name as Identifier, environment, ReferenceType.Function)?.map(d => d.nodeId) ?? [], idMap);
+		linkCallToDefinitions(graph, call.nodeId, Resolve.byNameAndType(call.name, environment, ReferenceType.Function)?.map(d => d.nodeId) ?? [], idMap);
 	}
 	return unresolved;
 }
@@ -777,7 +778,7 @@ export function linkWritesCarriedByLoop(graph: DataflowGraph, call: NodeId, writ
 	if(loop === undefined || written.length === 0) {
 		return;
 	}
-	const byName = new Map<string, IdentifierDefinition[]>();
+	const byName = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 	for(const def of written) {
 		if(def.name !== undefined) {
 			const name = Identifier.getName(def.name);
@@ -890,9 +891,9 @@ export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs
 	}
 }
 
-/** The call writing a field into the environment the symbol `readId` holds: `x$f <- v` (its replacement call) or `assign("f", v, envir = x)`. */
 const AssignFormals: readonly BrandedIdentifier[] = ['x', 'value', 'pos', 'envir', 'inherits', 'immediate'];
 
+/** The call writing a field into the environment the symbol `readId` holds: `x$f <- v` (its replacement call) or `assign("f", v, envir = x)`. */
 function fieldAssignmentOf(readId: NodeId, idMap: AstIdMap): NodeId | undefined {
 	const read = idMap.get(readId);
 	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
@@ -930,14 +931,14 @@ export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState
 }
 
 /** The factory that creates and returns only `closure`, calling only known built-ins and not reflecting on its frame, with the names its frame binds. */
-function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup, idMap: AstIdMap): { readonly factory: NodeId, readonly locals: ReadonlySet<string> } | undefined {
+function factoryOf(closure: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup, idMap: AstIdMap): { readonly factory: NodeId, readonly locals: ReadonlySet<BrandedIdentifier> } | undefined {
 	const id = RNode.strictlyEnclosingFunction(closure.id, idMap);
 	const factory = id === undefined ? undefined : graph.getVertex(id);
 	if(!DfgVertex.isFunctionDefinition(factory) || factory.exitPoints.length === 0 || !factory.exitPoints.every(e => e.nodeId === closure.id)
 		|| FunctionSemantics.frameReflection(factory, graph, { known }) !== 0) {
 		return undefined;
 	}
-	const locals = new Set<string>();
+	const locals = new Set<BrandedIdentifier>();
 	for(const node of factory.subflow.graph) {
 		const vertex = graph.getVertex(node);
 		if(node === closure.id || closure.subflow.graph.has(node)) {

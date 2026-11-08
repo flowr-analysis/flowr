@@ -1,5 +1,6 @@
 /** What a class declaration states across R's object systems (S4, RC, S7, R6) and how declarations relate; which argument means what is configured per built-in in {@link ClassDeclarationConfig}, not guessed. */
 
+import type { BrandedIdentifier } from '../environments/identifier';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -47,11 +48,11 @@ export interface ClassDeclaration {
 	/** the declaration only *relates* two existing classes (`setIs`) or attaches a validator (`setValidity`), it declares no class of its own */
 	readonly relation?:         'is' | 'validity';
 	/** names the declaration references rather than states as literals, e.g. an R6 `inherit = Generator` */
-	readonly byVariable:        readonly string[];
+	readonly byVariable:        readonly BrandedIdentifier[];
 	/** the function checking every new instance of the class, the id of the argument value stating it */
 	readonly validity?:         NodeId;
 	/** the names the methods of the class see the instance they are called on by, see {@link ClassDeclarationConfig.instanceBindings} */
-	readonly instanceBindings?: readonly string[];
+	readonly instanceBindings?: readonly BrandedIdentifier[];
 	/** the S3 class vector `setOldClass` registers as S4 classes, each extending the next, empty if it does not resolve */
 	readonly oldClasses?:       readonly string[];
 }
@@ -59,7 +60,7 @@ export interface ClassDeclaration {
 /** Which argument of a class-declaring built-in says what; `idx` is the position when the call names no argument. */
 export interface ClassArgRef {
 	readonly idx?:  number;
-	readonly name?: string;
+	readonly name?: BrandedIdentifier;
 }
 
 /** A member-carrying argument, plus how its entries are to be read. */
@@ -92,7 +93,7 @@ export interface ClassDeclarationConfig {
 	/** the argument carrying the function checking every new instance (S4 `validity`) */
 	readonly validityArg?:      ClassArgRef;
 	/** the names the methods of the class see the instance they are called on by (R6 `self` and `private`, RC `.self`), so writing through them changes that instance */
-	readonly instanceBindings?: readonly string[];
+	readonly instanceBindings?: readonly BrandedIdentifier[];
 	/** the S3 class vector to register as S4 classes (`setOldClass`), and the arguments that make the classes of an object decide instead */
 	readonly oldClass?:         { readonly classesArg: ClassArgRef, readonly openArgs: readonly ClassArgRef[] };
 }
@@ -122,9 +123,9 @@ function literal<Info>(node: RNode<Info & ParentInformation> | undefined): strin
 }
 
 /** The character vector a node states: a literal, or the literals of a `c(...)`/`list(...)` around them. */
-function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined): { values: string[], byVariable: string[] } {
+function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined): { values: string[], byVariable: BrandedIdentifier[] } {
 	const values: string[] = [];
-	const byVariable: string[] = [];
+	const byVariable: BrandedIdentifier[] = [];
 	const collect = (n: RNode<Info & ParentInformation> | undefined): void => {
 		const str = literal(n);
 		if(str !== undefined) {
@@ -258,9 +259,9 @@ export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredC
 }
 
 /** Variable name to the class its generator declares, for the `Cls <- R6Class(...)`/`Cls <- new_class(...)` bindings. */
-function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, DeclaredClass>): Map<string, string> {
+function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, DeclaredClass>): Map<BrandedIdentifier, string> {
 	const classOfId = new Map(classes.values().map(d => [d.id, d.name] as const));
-	const generators = new Map<string, string>();
+	const generators = new Map<BrandedIdentifier, string>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
 		const lexeme = NodeId.recoverName(id, graph.idMap);
 		if(lexeme === undefined) {
@@ -313,7 +314,7 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 }
 
 /** The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them. */
-export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly string[] | undefined {
+export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly BrandedIdentifier[] | undefined {
 	for(let node = idMap.get(fn); node !== undefined; node = RNode.directParent(node, idMap)) {
 		const vertex = RFunctionCall.is(node) ? graph.getVertex(node.info.id) : undefined;
 		if(DfgVertex.isFunctionCall(vertex) && vertex.classDecl?.instanceBindings !== undefined) {

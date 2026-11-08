@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import path from 'path';
 import type { DataflowInformation } from './info';
 import { appliedArguments } from './graph/applied-arguments';
@@ -35,7 +36,7 @@ import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from './graph/vertex';
 import { VertexType, DfgVertex } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
-import { hasEnvState, Identifier, type IdentifierReference } from './environments/identifier';
+import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference } from './environments/identifier';
 import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -309,7 +310,7 @@ function readFramesThroughEnvironment(graph: DataflowGraph): void {
 	if(ofTopLevel.length > 0) {
 		const frames = new Set(ofTopLevel);
 		/* per name, the accesses (`e$f`, `e[["f"]]`) of a value that is such a frame */
-		const fields = new DefaultMap<string, NodeId[]>(() => []);
+		const fields = new DefaultMap<BrandedIdentifier, NodeId[]>(() => []);
 		for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const access = DfgVertex.hasOrigin(call, BuiltInProcName.Access) ? idMap.get(id) : undefined;
 			const field = RAccess.is(access) && access.access.length === 1 ? RArgument.valueOf(access.access[0]) : undefined;
@@ -339,7 +340,7 @@ function readFramesThroughEnvironment(graph: DataflowGraph): void {
 				within.push(...vertex.subflow.graph);
 			}
 		}
-		const definitions: { id: NodeId, own: boolean, name: string | undefined }[] = [];
+		const definitions: { id: NodeId, own: boolean, name: BrandedIdentifier | undefined }[] = [];
 		for(const id of new Set(within)) {
 			const vertex = graph.getVertex(id);
 			const own = RNode.findEnclosing(id, idMap, RFunctionDefinition.is) === definition.id;
@@ -398,14 +399,14 @@ function definitionsReachedBy(node: NodeId, graph: DataflowGraph): ReadonlySet<N
 	});
 }
 
-function fileCallNames(index: BuiltInIndex): ReadonlySet<string> {
+function fileCallNames(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
 	return new Set(index.with(SemanticCallTag.File).map(Identifier.getName));
 }
 
 function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
 	const readers: { id: NodeId, resource: NodeId }[] = [];
 	const writers: { id: NodeId, resource: NodeId }[] = [];
-	const stated = new Map<string, (BuiltInFnInfo & { name: Identifier }) | undefined>();
+	const stated = new Map<BrandedIdentifier, (BuiltInFnInfo & { name: Identifier }) | undefined>();
 	const candidates = ctx.env.deriveFromIndex(fileCallNames);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(vertex.name !== undefined && !candidates.has(Identifier.getName(vertex.name))) {
@@ -670,7 +671,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		const cut = budget?.exhausted;
 		if(cut !== undefined) {
 			dataflowLogger.warn(`Dataflow analysis was cut short after ${cut.reached} ${cut.dimension} (budget ${cut.limit}); the graph is partial.`);
-			(df as { cutShort?: typeof cut }).cutShort = cut;
+			(df as Writable<typeof df>).cutShort = cut;
 		}
 		return df;
 	});
@@ -713,15 +714,15 @@ function extractDataFlowGraph<OtherInfo>(
 	readFramesThroughEnvironment(df.graph);
 	df.graph.statementOrder = dfData.statementOrder;
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
-	const escapedNames = new Set<string>();
+	const escapedNames = new Set<BrandedIdentifier>();
 	/* carried across the rounds, so a definition already folded in does not read as growth again */
-	const foldedIn = new Set<string>();
+	const foldedIn = new Set<BrandedIdentifier>();
 	const rounds = ctx.config.solver.transitiveSideEffectRounds ?? DefaultTransitiveSideEffectRounds;
 	/* a read of the options or graphics state nothing set reads the state R starts with, unless a write escaping a call replaces it */
 	const [initialState, open] = partitionArray(df.in, r => AmbientStateName.is(r.name));
 	for(let round = 0; round < rounds; round++) {
 		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx, foldedIn, initialState);
-		(df as { environment: REnvironmentInformation }).environment = environment;
+		(df as Writable<typeof df>).environment = environment;
 		for(const n of roundNames) {
 			escapedNames.add(n);
 		}
@@ -732,7 +733,7 @@ function extractDataFlowGraph<OtherInfo>(
 	}
 	separateMethodRegistrations(df.graph);
 	markCallsOfUnknownValues(df.graph, df.environment);
-	(df as { in: DataflowInformation['in'] }).in = open.concat(openReadsOfCalledFunctions(df.graph));
+	(df as Writable<typeof df>).in = open.concat(openReadsOfCalledFunctions(df.graph));
 	// resolve top-level reads that now see the escaped `<<-` definitions folded in above
 	if(escapedNames.size > 0) {
 		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);

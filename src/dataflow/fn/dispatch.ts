@@ -18,6 +18,7 @@ import { isValue } from '../eval/values/r-value';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { argForImpl, declaredClassesImpl } from './class-declaration';
 import { DotsParameterName } from '../../util/arg-matching';
+import type { BrandedIdentifier } from '../environments/identifier';
 import { s4GroupGenericsOf } from '../environments/group-generics';
 import { uniqueArray } from '../../util/collections/arrays';
 
@@ -130,7 +131,7 @@ function replacementOf(def: NodeId, graph: DataflowGraph): { readonly call: Node
 	if(targets.some(t => !NodeId.isBuiltIn(t))) {
 		return 'other';
 	}
-	const calls = (names: readonly string[]) => names.some(n => targets.includes(NodeId.toBuiltIn(n)));
+	const calls = (names: readonly BrandedIdentifier[]) => names.some(n => targets.includes(NodeId.toBuiltIn(n)));
 	return calls(ClassReplacements) ? { call, setsClass: true } : calls(AttributeKeepingReplacements) ? { call, setsClass: false } : 'other';
 }
 
@@ -266,7 +267,7 @@ export interface S4Method {
 	readonly definition?:  NodeId
 	/** the method's function definitions */
 	readonly functions:    readonly NodeId[]
-	readonly generic:      string
+	readonly generic:      BrandedIdentifier
 	readonly signature?:   readonly S4SignatureEntry[]
 }
 
@@ -279,7 +280,7 @@ export interface S4Hierarchy {
 	/** classes the program does not declare, whose superclasses (from base R or a package) are open */
 	readonly declared:   ReadonlySet<string>
 	/** per S3 class `setOldClass` registers, the calls registering it; `undefined` if one registers classes not known */
-	readonly oldClasses: ReadonlyMap<string, readonly NodeId[]> | undefined
+	readonly oldClasses: ReadonlyMap<BrandedIdentifier, readonly NodeId[]> | undefined
 }
 
 /** the virtual class every S3 class `setOldClass` registers extends last */
@@ -378,7 +379,7 @@ function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, o
 }
 
 /** The methods R may select among `methods` for arguments of the classes `actual` (one per dispatched formal, `missing` for an argument not given): every applicable method whose least possible distance is no more than the greatest possible one of the closest; ties are kept, as R would pick among them. */
-export function selectS4Methods(methods: readonly S4Method[], formals: readonly string[], actual: readonly string[], hierarchy: S4Hierarchy): S4Method[] {
+export function selectS4Methods(methods: readonly S4Method[], formals: readonly BrandedIdentifier[], actual: readonly BrandedIdentifier[], hierarchy: S4Hierarchy): S4Method[] {
 	const open = reachableThroughOpen(hierarchy);
 	const ranges: [S4Method, number, number, boolean][] = [];
 	for(const method of methods) {
@@ -388,7 +389,7 @@ export function selectS4Methods(methods: readonly S4Method[], formals: readonly 
 		let applies = true;
 		let surely = true;
 		for(let i = 0; i < formals.length && applies; i++) {
-			const range = distanceRange(actual[i], wanted[i], hierarchy, open);
+			const range = distanceRange(String(actual[i]), String(wanted[i]), hierarchy, open);
 			applies = range !== undefined;
 			low += range?.[0] ?? 0;
 			high += range?.[1] ?? 0;
@@ -404,8 +405,8 @@ export function selectS4Methods(methods: readonly S4Method[], formals: readonly 
 }
 
 /** The class a method's signature wants per dispatched formal, `ANY` where it states none; `undefined` if it names a formal not dispatched on. */
-export function signatureFor(method: Pick<S4Method, 'signature'>, formals: readonly string[]): string[] | undefined {
-	const wanted = formals.map(() => 'ANY');
+export function signatureFor(method: Pick<S4Method, 'signature'>, formals: readonly BrandedIdentifier[]): BrandedIdentifier[] | undefined {
+	const wanted = formals.map((): BrandedIdentifier => 'ANY');
 	let position = 0;
 	for(const { cls, name } of method.signature ?? []) {
 		const at = name === undefined ? position : formals.indexOf(name);
@@ -419,8 +420,8 @@ export function signatureFor(method: Pick<S4Method, 'signature'>, formals: reado
 }
 
 /** Every method `setMethod` registers in the graph, by the generic it is for. */
-export function s4MethodsOf(graph: DataflowGraph, linked: (ids: ReadonlySet<NodeId>) => readonly NodeId[]): Map<string, S4Method[]> {
-	const methods = new Map<string, S4Method[]>();
+export function s4MethodsOf(graph: DataflowGraph, linked: (ids: ReadonlySet<NodeId>) => readonly NodeId[]): Map<BrandedIdentifier, S4Method[]> {
+	const methods = new Map<BrandedIdentifier, S4Method[]>();
 	for(const [registration, { s4Method }] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(s4Method === undefined) {
 			continue;
@@ -433,7 +434,7 @@ export function s4MethodsOf(graph: DataflowGraph, linked: (ids: ReadonlySet<Node
 }
 
 /** The formals of the generic S4 dispatches on: the formals of the program's generic, or those all its methods share, without `...`. */
-export function s4DispatchFormals(generic: NodeId | undefined, methods: readonly S4Method[], idMap: AstIdMap): readonly string[] | undefined {
+export function s4DispatchFormals(generic: NodeId | undefined, methods: readonly S4Method[], idMap: AstIdMap): readonly BrandedIdentifier[] | undefined {
 	const formalsOf = (fn: NodeId) => {
 		const node = idMap.get(fn);
 		return RFunctionDefinition.is(node) ? node.parameters.map(p => p.special ? DotsParameterName : p.name.content).filter(n => n !== DotsParameterName) : undefined;
@@ -454,7 +455,7 @@ export function s4DispatchFormals(generic: NodeId | undefined, methods: readonly
 }
 
 /** The S4 methods of the program a call of `name` may reach: those of the generic and of the group generics it belongs to, `undefined` if any of them has a signature that does not resolve, so none can be ruled out. */
-export function s4CandidatesFor(name: string, methods: ReadonlyMap<string, readonly S4Method[]>): readonly S4Method[] | undefined {
+export function s4CandidatesFor(name: BrandedIdentifier, methods: ReadonlyMap<BrandedIdentifier, readonly S4Method[]>): readonly S4Method[] | undefined {
 	const candidates = [name, ...s4GroupGenericsOf(name)].flatMap(g => methods.get(g) ?? []);
 	return candidates.every(m => m.signature !== undefined) ? candidates : undefined;
 }
@@ -476,7 +477,7 @@ export function s4ActualClasses(bound: readonly (NodeId | undefined)[], info: Cl
 }
 
 /** The methods `callNextMethod()` within `method` may run: those R would select for the signature `method` is defined for, `method` aside. */
-export function nextS4Methods(method: S4Method, candidates: readonly S4Method[], formals: readonly string[], hierarchy: S4Hierarchy): S4Method[] {
+export function nextS4Methods(method: S4Method, candidates: readonly S4Method[], formals: readonly BrandedIdentifier[], hierarchy: S4Hierarchy): S4Method[] {
 	const own = signatureFor(method, formals);
 	if(own === undefined) {
 		return [...candidates];

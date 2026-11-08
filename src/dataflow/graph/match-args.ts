@@ -24,26 +24,29 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { signatureDbOf, type SignatureDb } from '../../project/sigdb/signature-db';
 import { OriginType } from '../origin/dfg-get-origin';
 import { Dataflow } from './df-helper';
-import { Identifier, PkgName } from '../environments/identifier';
+import { type BrandedIdentifier, Identifier, PkgName } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
 import type { ArgProps, FnSig  } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 
+/** The parameter each argument of a call binds. */
+export type ParameterOfArgument = ReadonlyMap<NodeId, NodeId>;
+
 /** the argument names in the shape {@link matchArgumentsToParameters} takes, unnamed arguments as `undefined` */
-function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefined)[] {
+function graphArgumentNames(args: readonly FunctionArgument[]): (BrandedIdentifier | undefined)[] {
 	return args.map(a => FunctionArgument.isNamed(a) ? a.name : undefined);
 }
 
 /** R's argument matching, as {@link matchArgumentsToParameters} implements it. */
 export const MatchArgs = {
 	/** Binds a call's AST `args` to the formal `paramNames`. */
-	toNames<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
+	toNames<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly BrandedIdentifier[]): ReadonlyMap<BrandedIdentifier, RArgument<Info>> {
 		return RFunctionCall.matchArgsToParams(args, paramNames);
 	},
 	/** Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. */
-	toSpec<Targets extends NodeId = string>(this: void, args: readonly FunctionArgument[], params: Record<string, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
+	toSpec<Targets extends NodeId | BrandedIdentifier = string>(this: void, args: readonly FunctionArgument[], params: Record<string, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
 		let spec = params as Record<string, Targets>;
 		if(Array.isArray(params)) {
 			spec = {};
@@ -133,7 +136,7 @@ export const MatchArgs = {
 		return args.some(a => dotsHandedOnBy(a, graph) !== undefined);
 	},
 	/** Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. */
-	toDefinition<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info>> | undefined {
+	toDefinition<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<BrandedIdentifier, RArgument<Info>> | undefined {
 		const names = formalsOf(call, graph, ctx);
 		return names === undefined ? undefined : MatchArgs.toNames(callArgumentsOf(call, graph), names);
 	},
@@ -149,7 +152,7 @@ export const MatchArgs = {
 } as const;
 
 /** The formals a call binds against, taken from the first of flowR's three sources that knows them: 1. */
-function formalsOf<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] | undefined {
+function formalsOf<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly BrandedIdentifier[] | undefined {
 	const origins = Dataflow.origin(graph, call.info.id);
 	if(origins === undefined) {
 		return undefined;
@@ -440,7 +443,7 @@ function callArgumentsOf<Info extends ParentInformation>(call: RFunctionCall<Inf
 		type:     RType.Argument,
 		lexeme:   piped.lexeme ?? '',
 		location: piped.location ?? SourceRange.invalid(),
-		info:     { ...piped.info, id: `${piped.info.id}-arg` },
+		info:     { ...piped.info, id: NodeId.argumentOf(piped.info.id) },
 		name:     undefined,
 		value:    piped
 	} as RArgument<Info>, ...call.arguments];

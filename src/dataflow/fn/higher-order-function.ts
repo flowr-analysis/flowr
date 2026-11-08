@@ -60,8 +60,7 @@ function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId
 	const found = new Set<NodeId>();
 	const seen = new Set<NodeId>();
 	const workingQueue: NodeId[] = [id];
-	while(workingQueue.length > 0) {
-		const current = workingQueue.pop() as NodeId;
+	for(let current = workingQueue.pop(); current !== undefined; current = workingQueue.pop()) {
 		if(seen.has(current) || NodeId.isBuiltIn(current)) {
 			continue;
 		}

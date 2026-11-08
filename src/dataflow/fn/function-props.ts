@@ -10,7 +10,7 @@ import { DfgVertex } from '../graph/vertex';
 import type { BuiltInFnInfo, StatedProps } from '../environments/built-in-props';
 import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
-import { Identifier } from '../environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { happensInEveryBranch } from '../info';
 import { strictnessOfEach } from './strict-function';
@@ -125,10 +125,10 @@ function propsOf(id: NodeId, state: LookupState): OwnProps {
 }
 
 /** the assignments binding in the frame they run in, which is a scope of the function's own */
-const FrameLocalBinders: ReadonlySet<string> = new Set(['<-', '=', '->', ':=', 'assign']);
+const FrameLocalBinders: ReadonlySet<BrandedIdentifier> = new Set(['<-', '=', '->', ':=', 'assign']);
 
 /** Whether the name is a replacement function binding in its own frame (`names(x) <- v`); the `<<-` twin does not. */
-function isFrameLocalReplacement(name: string): boolean {
+function isFrameLocalReplacement(name: BrandedIdentifier): boolean {
 	return name.endsWith('<-') && !name.endsWith('<<-');
 }
 

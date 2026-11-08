@@ -5,16 +5,15 @@ import type {
 	DataflowGraphVertexInfo
 } from './vertex';
 import { VertexType, DfgVertex } from './vertex';
-import type { REnvironmentInformation } from '../environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './edge';
-import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { isBuiltInProcName, bareProcName, BuiltInProcName } from '../environments/built-in-proc-name';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { GraphHelper } from './graph-helper';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { Identifier } from '../environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from './df-helper';
 import { isWithinArgumentOf, LinkedFunctionResolver } from '../internal/linker';
@@ -50,8 +49,7 @@ export function fallbackUntargetedCall(vtx: Pick<DataflowGraphVertexFunctionCall
 	const collected: Set<NodeId> = new Set();
 	const visited: Set<NodeId> = new Set();
 	const toVisit: NodeId[] = [vtx.id];
-	while(toVisit.length > 0) {
-		const currentId = toVisit.pop() as NodeId;
+	for(let currentId = toVisit.pop(); currentId !== undefined; currentId = toVisit.pop()) {
 		if(visited.has(currentId)) {
 			continue;
 		}
@@ -88,7 +86,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		return;
 	}
 	state.visited.add(vid);
-	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
+	result.addVertex(vtx, undefined, true);
 	processCds(vtx, graph, result, state);
 
 	let addedTarget = false;
@@ -106,9 +104,9 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	}
 	if(!addedBiTarget && vtx.origin !== 'unnamed') {
 		for(const origs of vtx.origin) {
-			if(origs.startsWith('builtin:')) {
+			if(isBuiltInProcName(origs)) {
 				addedTarget = true;
-				result.addEdge(vid, NodeId.toBuiltIn(origs.slice('builtin:'.length)), EdgeType.Calls);
+				result.addEdge(vid, NodeId.toBuiltIn(bareProcName(origs)), EdgeType.Calls);
 			}
 		}
 	}
@@ -161,7 +159,7 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 		return;
 	}
 	state.visited.add(vtx.id);
-	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
+	result.addVertex(vtx, undefined, true);
 	processCds(vtx, graph, result, state);
 
 	const exits = new Set(vtx.exitPoints);
@@ -183,8 +181,7 @@ function callerOfBodyDefinition(from: NodeId | undefined, to: NodeId): NodeId | 
 /** Follows the `Calls` edges from `seeds`, collecting everything they reach in `reached`. */
 function followCalls(graph: CallGraph, seeds: Iterable<NodeId>, reached: Set<NodeId>): void {
 	const toVisit = Array.from(seeds);
-	while(toVisit.length > 0) {
-		const current = toVisit.pop() as NodeId;
+	for(let current = toVisit.pop(); current !== undefined; current = toVisit.pop()) {
 		if(reached.has(current)) {
 			continue;
 		}
@@ -194,7 +191,7 @@ function followCalls(graph: CallGraph, seeds: Iterable<NodeId>, reached: Set<Nod
 }
 
 /** Whether `name` is a `<generic>.<class>` of a generic that is called, as `print.foo` is when `print` is. */
-function mayBeDispatchedTo(name: string, generics: ReadonlySet<string>): boolean {
+function mayBeDispatchedTo(name: BrandedIdentifier, generics: ReadonlySet<BrandedIdentifier>): boolean {
 	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
 		if(generics.has(name.slice(0, dot))) {
 			return true;
@@ -204,8 +201,8 @@ function mayBeDispatchedTo(name: string, generics: ReadonlySet<string>): boolean
 }
 
 /** The names the reached calls go by, which are the generics a method of the program may be dispatched to for. */
-function reachedCallNames(graph: CallGraph, reached: ReadonlySet<NodeId>): Set<string> {
-	const names = new Set<string>();
+function reachedCallNames(graph: CallGraph, reached: ReadonlySet<NodeId>): Set<BrandedIdentifier> {
+	const names = new Set<BrandedIdentifier>();
 	for(const id of reached) {
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionCall(vertex)) {
@@ -222,7 +219,7 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
 		return [];
 	}
 	const seeds: NodeId[] = [];
-	let generics: Set<string> | undefined;
+	let generics: Set<BrandedIdentifier> | undefined;
 	for(const [id] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		if(reached.has(id)) {
 			continue;
@@ -262,7 +259,7 @@ export const CallGraph = {
 			if(!vtx) {
 				continue;
 			}
-			result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
+			result.addVertex(vtx, undefined, true);
 			for(const tar of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
 				result.addEdge(id, tar, EdgeType.Calls);
 			}
@@ -279,8 +276,7 @@ export const CallGraph = {
 		const seen = new Set<NodeId>();
 		const toVisit: NodeId[] = [id];
 		let gotStart = 0;
-		while(toVisit.length > 0) {
-			const currentId = toVisit.pop() as NodeId;
+		for(let currentId = toVisit.pop(); currentId !== undefined; currentId = toVisit.pop()) {
 			if(currentId === id && gotStart++ > 0) {
 				return true;
 			}

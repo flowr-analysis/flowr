@@ -1,3 +1,4 @@
+import type { CallContext } from '../eval/resolve/alias-tracking';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -79,7 +80,7 @@ export const ClosureFrames = {
 		return DfgVertex.isFunctionCall(vertex) && vertex.environment !== undefined ? ClosureFrames.writesOf(vertex.name, vertex.environment, name, closure, graph) : NoWrites;
 	},
 	/** The call context `context` extended by the closures `call` runs whose frames some of their calls see written. */
-	contextOf(this: void, graph: DataflowGraph, call: NodeId, context: ReadonlyMap<NodeId, NodeId> | undefined): ReadonlyMap<NodeId, NodeId> | undefined {
+	contextOf(this: void, graph: DataflowGraph, call: NodeId, context: CallContext | undefined): ReadonlyMap<NodeId, NodeId> | undefined {
 		let extended: Map<NodeId, NodeId> | undefined;
 		for(const closure of Dataflow.targetsOf(graph, call, EdgeType.Calls)) {
 			if(isFramed(graph, closure)) {
@@ -104,7 +105,7 @@ export const ClosureFrames = {
 		return instances.length > 0 ? instances : undefined;
 	},
 	/** Which definitions the read `read` within the closure the context calls may read in that call: of the writes into the frames of its closure, only those into the frame of the closure this call runs, and none of the bindings the frame shadows once a write surely binds the name. */
-	readsInCall(this: void, read: NodeId, graph: DataflowGraph, idMap: AstIdMap, context: ReadonlyMap<NodeId, NodeId>): FrameReads | undefined {
+	readsInCall(this: void, read: NodeId, graph: DataflowGraph, idMap: AstIdMap, context: CallContext): FrameReads | undefined {
 		const node = idMap.get(read);
 		if(!RSymbol.is(node) || !DfgVertex.isUse(graph.getVertex(read)) || !context.keys().some(fn => isFramed(graph, fn))) {
 			return undefined;

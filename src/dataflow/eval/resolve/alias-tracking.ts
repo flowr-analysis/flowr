@@ -67,7 +67,7 @@ export interface ResolveInfo {
 	/** Context used for resolving */
 	ctx:           ReadOnlyFlowrAnalyzerContext;
 	/** If set, the ids that should not be considered during resolution (=&gt; top) */
-	blocked?:      Set<NodeId>;
+	blocked?:      Set<VisitKey>;
 	/** If set, resolves the parameters of the functions it names for one of their calls only, see {@link CallContext} */
 	callContext?:  CallContext;
 	/** The frames of calls the node is resolved in, innermost last, see {@link CallFrame} */
@@ -96,6 +96,9 @@ export interface CallFrame {
 
 /** The call each of some functions is resolved for, keyed by the id of the function definition: a parameter of such a function holds only what that call hands it, or its default when the call hands it nothing. */
 export type CallContext = ReadonlyMap<NodeId, NodeId>;
+
+/** What a walk has seen already: a node, or a node in one run of the loops around it. */
+export type VisitKey = NodeId | `${NodeId}@${string}`;
 
 /** the call the context resolves the function of the parameter named by `id` for, if `id` names a parameter at all */
 function contextCallOf(id: NodeId, idMap: AstIdMap, callContext: CallContext | undefined): NodeId | undefined {
@@ -208,7 +211,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @useInstead {@link Resolve.toValue}
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, ctx, resolve = ctx.config.solver.variables, blocked, callContext, frames, iterations, replacements }: ResolveInfo): ResolveResult {
-	blocked ??= new Set<NodeId>();
+	blocked ??= new Set<VisitKey>();
 
 	if(id === undefined) {
 		return Top;
@@ -217,7 +220,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	/* the same node in another run of a loop is another value */
-	const key = iterations === undefined || iterations.length === 0 ? node?.info.id : `${node?.info.id}@${iterations.map(i => `${i.loop}:${i.k}`).join('/')}` as NodeId;
+	const key: VisitKey | undefined = iterations === undefined || iterations.length === 0 ? node?.info.id : `${node?.info.id}@${iterations.map(i => `${i.loop}:${i.k}`).join('/')}`;
 	if(node === undefined || key === undefined || blocked.has(key)) {
 		return Top;
 	}
@@ -331,6 +334,13 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 	return setOf([...values]);
 }
 
+/** Whether a parameter's default is what the parameter holds. */
+enum ParameterDefault {
+	Applies = 'applies',
+	Overridden = 'overridden',
+	Unknown = 'unknown'
+}
+
 /** given an unknown alias, we have to clear all values in the environments */
 onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {
 	if(target) {
@@ -371,15 +381,15 @@ onReplacementOperator((args: ReplacementOperatorHandlerArgs) => {
 	}
 });
 
-function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): 'applies' | 'overridden' | 'unknown' {
+function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMap, graph: DataflowGraph): ParameterDefault {
 	const parameter = node === undefined ? undefined
 		: [node, ...RNode.iterateParents(node, idMap)].find(p => p.info.role === RoleInParent.ParameterDefaultValue)?.info.parent;
 	const bound = parameter === undefined ? undefined : idMap.get(parameter);
 	if(!RParameter.is(bound) || bound.info.parent === undefined) {
-		return 'applies';
+		return ParameterDefault.Applies;
 	}
 	const calls = Dataflow.sourcesOf(graph, bound.info.parent, EdgeType.Calls).length;
-	return calls === 0 ? 'unknown' : Dataflow.targetsOf(graph, bound.name.info.id, EdgeType.DefinedByOnCall).length >= calls ? 'overridden' : 'applies';
+	return calls === 0 ? ParameterDefault.Unknown : Dataflow.targetsOf(graph, bound.name.info.id, EdgeType.DefinedByOnCall).length >= calls ? ParameterDefault.Overridden : ParameterDefault.Applies;
 }
 
 /** The sequence a use of a `for` loop's variable runs over, `undefined` when `id` is no such use. */
@@ -1065,10 +1075,10 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			/* a call that hands back none of its arguments has no `Returns` edge to follow, yet the value solver may well know what it produces (`p <- file.path("data", "x.csv")`), so we fold it instead of giving up */
 			const node = idMap.get(id);
 			const state = parameterDefaultState(node, idMap, graph);
-			if(state === 'overridden') {
+			if(state === ParameterDefault.Overridden) {
 				continue;
 			}
-			const values = state === 'unknown' ? undefined : valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked, callContext, frames, iterations, replacements }));
+			const values = state === ParameterDefault.Unknown ? undefined : valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked, callContext, frames, iterations, replacements }));
 			if(values === undefined || values.elements.some(isTop)) {
 				return Top;
 			}
@@ -1092,9 +1102,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		const node = idMap.get(id);
 		if(node !== undefined) {
 			const state = parameterDefaultState(node, idMap, graph);
-			if(state === 'unknown') {
+			if(state === ParameterDefault.Unknown) {
 				return Top;
-			} else if(state === 'overridden') {
+			} else if(state === ParameterDefault.Overridden) {
 				continue;
 			}
 			values.add(valueFromRNodeConstant(node));

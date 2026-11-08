@@ -3,7 +3,7 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { Identifier } from '../environments/identifier';
+import type { BrandedIdentifier, Identifier } from '../environments/identifier';
 import type { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { Value } from '../eval/values/r-value';
 import type { ClassDeclaration } from '../fn/class-declaration';
@@ -103,13 +103,13 @@ export interface FoundOnCall {
 
 /** One entry of an S4 method signature: the class, and the formal it is for when the signature names it. */
 export interface S4SignatureEntry {
-	readonly cls:   string
-	readonly name?: string
+	readonly cls:   BrandedIdentifier
+	readonly name?: BrandedIdentifier
 }
 
 /** What a `setMethod` registers: the method of `generic` for `signature`, absent when the signature does not resolve. */
 export interface S4MethodRegistration {
-	readonly generic:    string
+	readonly generic:    BrandedIdentifier
 	readonly signature?: readonly S4SignatureEntry[]
 }
 

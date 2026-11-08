@@ -4,7 +4,7 @@ import { label } from '../../../_helper/label';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Parse value access', { concurrent: false }, withShell(shell => {
 	describe('Single bracket', () => {

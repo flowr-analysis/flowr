@@ -1,13 +1,6 @@
 import { ArgProp, type ArgProps, type FnSig } from '../built-in-props';
 
-/**
- * The kinds of arguments that are always evaluated, as most definitions state them: {@link ArgProp.Forced} together with what the argument is for.
- * Combine with further flags using `|`, and use the plain {@link ArgProp} for arguments that are evaluated lazily or never.
- * @example
- * ```ts
- * Forced.Value | ArgProp.Atomic // an evaluated value that must not be a function
- * ```
- */
+/** The kinds of arguments that are always evaluated, as most definitions state them: {@link ArgProp.Forced} together with what the argument is for. */
 export const Forced = {
 	Value:    ArgProp.Forced | ArgProp.Value,
 	Resource: ArgProp.Forced | ArgProp.Resource,
@@ -15,16 +8,7 @@ export const Forced = {
 	Handle:   ArgProp.Forced | ArgProp.Handle
 } as const;
 
-/**
- * A signature from the formals in the order R declares them, e.g. `sig({ x: Forced.Value, '...': Forced.Value })`.
- * Objects keep the insertion order of non-numeric keys, which every R formal name is, and cannot repeat a formal.
- * List all formals, including the ones the definition does not care about (with `0`), as the position of a formal
- * decides which unnamed argument of a call it matches. Write `'...'` where R's signature has the dots.
- * @example
- * ```ts
- * const signature = sig({ file: Forced.Resource, x: Forced.Value, append: Forced.Flag, '...': 0 });
- * ```
- */
+/** A signature from the formals in the order R declares them, e.g. `sig({ x: Forced.Value, '...': Forced.Value })`. */
 export function sig(formals: Readonly<Record<string, ArgProps>>): FnSig {
 	return Object.entries(formals);
 }

@@ -6,7 +6,7 @@ import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('for', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),

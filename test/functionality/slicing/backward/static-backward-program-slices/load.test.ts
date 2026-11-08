@@ -1,7 +1,7 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('load', { concurrent: false }, withShell(shell => {
 	/* in this case, we assume that it may have an impact! */

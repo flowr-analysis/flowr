@@ -9,7 +9,7 @@ import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { describe, assert, test } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {
 	return test(decorateLabelContext(name, ['slice']), async() => {

@@ -2,7 +2,7 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { describe } from 'vitest';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 
 describe('Context Assignments', { concurrent: false }, withShell(shell => {

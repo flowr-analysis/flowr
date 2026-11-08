@@ -12,7 +12,7 @@ import { Playground } from '../util/text/playground-link';
 import { highlightR, renderRToken, escapeHtml, type KnownNames } from '../util/text/r-highlight';
 import { DefaultMap } from '../util/collections/defaultmap';
 import { uniqueArray } from '../util/collections/arrays';
-import { BuiltInOperators } from '../dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../dataflow/environments/default-builtin-config/base-operators';
 
 const testSuites = Object.values(TestSuites);
 const maxSignatureTests = 3;

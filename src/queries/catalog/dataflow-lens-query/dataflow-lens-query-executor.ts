@@ -5,7 +5,7 @@ import { metaSince } from '../../query-meta';
 import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { escapeRegExp } from '../../../abstract-interpretation/data-frame/arguments';
-import { BuiltInOperators } from '../../../dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../dataflow/environments/default-builtin-config/base-operators';
 
 /**
  * The lens hides syntax: every operator R has, the native pipe (which {@link BuiltInOperators.byName} does not list), and the

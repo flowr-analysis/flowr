@@ -1,7 +1,7 @@
 import { assertSliced, assumeLoadedPackages, withShell, assertSliceMatchesR, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('eval', { concurrent: false }, withShell(shell => {
 	assertSliced(label('simple eval use', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),

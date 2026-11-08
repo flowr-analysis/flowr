@@ -9,7 +9,7 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { BuiltInOperators } from '../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 assumeLoadedPackages('SoDA');
 

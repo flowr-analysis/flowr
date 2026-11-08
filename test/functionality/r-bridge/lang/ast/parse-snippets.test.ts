@@ -4,7 +4,7 @@ import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Parse Larger Snippets', { concurrent: false }, withShell(shell => {
 	describe('if-then, assignments, symbols, and comparisons', () => {

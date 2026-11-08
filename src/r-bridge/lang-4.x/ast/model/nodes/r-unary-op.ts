@@ -1,7 +1,7 @@
 import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';
-import { BuiltInOperators, type OperatorFacts } from '../../../../../dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators, type OperatorFacts } from '../../../../../dataflow/environments/default-builtin-config/base-operators';
 
 /**
  * Unary operations like `+` and `-`

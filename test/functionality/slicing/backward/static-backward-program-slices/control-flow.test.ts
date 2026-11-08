@@ -4,7 +4,7 @@ import { label } from '../../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { describe } from 'vitest';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Control flow', { concurrent: false }, withShell(shell => {
 	describe('Branch Coverage', () => {

@@ -6,7 +6,7 @@ import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 /** operators for which the grouping/precedence shapes are pinned (the rest only gets the simple form and the associativity check) */
 const PrecedenceRepresentatives = new Set(['+', '^', '<-', '&&']);

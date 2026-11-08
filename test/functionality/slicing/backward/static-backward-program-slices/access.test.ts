@@ -2,7 +2,7 @@ import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 assumeLoadedPackages('magrittr');
 

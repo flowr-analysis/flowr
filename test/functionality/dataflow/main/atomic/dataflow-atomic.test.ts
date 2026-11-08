@@ -25,7 +25,7 @@ import { RString } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | object {
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};

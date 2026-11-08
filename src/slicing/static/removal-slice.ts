@@ -17,7 +17,7 @@ import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builti
 import { Identifier } from '../../dataflow/environments/identifier';
 import { ArgProp, type FnSig } from '../../dataflow/environments/built-in-props';
 import { type AmbientStateAccess, AmbientStateAccessType } from '../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
-import { OperatorUsedAs } from '../../dataflow/environments/default-builtin-config/operators';
+import { OperatorUsedAs } from '../../dataflow/environments/default-builtin-config/base-operators';
 
 /** What removing code for a set of criteria takes out of the program. */
 export interface RemovalSliceResult {

@@ -9,7 +9,7 @@ import type { RNode } from '../../../../model/model';
 import type { RUnaryOp } from '../../../../model/nodes/r-unary-op';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
-import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
 
 /**

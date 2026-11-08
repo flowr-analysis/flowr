@@ -4,7 +4,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('source', { concurrent: false }, withShell(shell => {
 	const addFiles = [

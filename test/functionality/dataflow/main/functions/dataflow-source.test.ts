@@ -9,7 +9,7 @@ import { FlowrConfig } from '../../../../../src/config';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('source', withTreeSitter(parser => {
 	const sources = {

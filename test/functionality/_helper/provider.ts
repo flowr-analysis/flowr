@@ -5,7 +5,7 @@
 import type { RNumberValue, RStringValue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { RNa, RNull } from '../../../src/r-bridge/lang-4.x/convert-values';
 import type { NamespaceIdentifier } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import { BuiltInOperators, OperatorArity, OperatorUsedAs } from '../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators, OperatorArity, OperatorUsedAs } from '../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	// the default block

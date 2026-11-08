@@ -14,7 +14,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument, RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { Identifier } from '../dataflow/environments/identifier';
-import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/operators';
+import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/base-operators';
 
 type Node = RNode<ParentInformation>;
 /** A node as the detectors see it, including the empty argument of `f(, x)`. */

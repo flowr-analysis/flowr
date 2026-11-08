@@ -1,7 +1,7 @@
 import { assertSlicedF, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 assumeLoadedPackages('data.table');
 

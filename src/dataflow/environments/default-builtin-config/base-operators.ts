@@ -1,4 +1,4 @@
-import { fn, pkg, base, utils } from './define';
+import { fn, pkg, base, utils } from './define-helpers';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import { PkgName } from '../pkg-name';
 import { BuiltInProcName } from '../built-in-proc-name';
@@ -7,11 +7,9 @@ import { ArgProp, CallProp } from '../built-in-props';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { RawRType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { SupportedFlowrCapabilityId } from '../../../r-bridge/data/get';
-import { SigAtomicBinOp, SigAtomicX, SigXTable, SigXY, sig, Forced } from './signatures';
+import { SigAtomicBinOp, SigAtomicX, SigXTable, SigXY, sig, Forced } from './shared-signatures';
 
-/**
- * The arity of an operator.
- */
+/** The arity of an operator. */
 export const enum OperatorArity {
 	Unary = 1,
 	Binary = 2,
@@ -29,26 +27,14 @@ export enum OperatorUsedAs {
 	Access     = 'access'
 }
 
-/**
- * What an operation computes, for operators that belong to one of these families.
- * Use {@link BuiltInOperators.ofCategory} to get the operators of a category instead of listing them.
- */
+/** What an operation computes, for operators that belong to one of these families. */
 export enum OperatorCategory {
 	Arithmetic = 'arithmetic',
 	Comparison = 'comparison',
 	Logical    = 'logical'
 }
 
-/**
- * What flowR knows about an operator as part of R's syntax, stated by the built-in definition of the operator
- * (see {@link BuiltInOperators}).
- * Operators without a category (`%in%`, `<-`, `~`, ...) belong to none of the {@link OperatorCategory}.
- * @example
- * ```ts
- * const facts = BuiltInOperators.get('->>') as OperatorFacts;
- * facts.usedAs === OperatorUsedAs.Assignment && facts.writtenAs === OperatorWrittenAs.Infix; // true
- * ```
- */
+/** What flowR knows about an operator as part of R's syntax, stated by the built-in definition of the operator (see {@link BuiltInOperators}). */
 export interface OperatorFacts {
 	readonly name:             string;
 	/** how the R parser names the token, `**` is `^` there */
@@ -74,10 +60,7 @@ const InComparison = { category: OperatorCategory.Comparison } as const;
 const InLogical = { category: OperatorCategory.Logical } as const;
 const Assigns = { usedAs: OperatorUsedAs.Assignment } as const;
 
-/**
- * The built-in definitions of R's operators, each stating the {@link OperatorFacts} of the names it defines.
- * This module stays free of the rest of the configuration, as the parser asks it while normalizing.
- */
+/** The built-in definitions of R's operators, each stating the {@link OperatorFacts} of the names it defines. */
 export const OperatorDefinitions = [
 	/* formula: operands are model terms/columns, not variables */
 	fn(base('~'), BuiltInProcName.DefaultReadAllArgs,
@@ -237,17 +220,7 @@ const inRAst = (ops: readonly string[]): ReadonlySet<string> => new Set(ops.map(
 
 /**
  * The operators of R, as the {@link OperatorDefinitions} state them.
- * Ask it instead of keeping own lists of operators, so that the parser, the clone detectors, and dataflow agree.
- * It only knows operators as written in R code, so `byName['**']` exists but names the token `^`, and access
- * operators like `$` are in the table of {@link RAccess.namedOperators}, not here. Importing it is cheap, as
- * the module does not load the rest of the built-in configuration.
  * @helper ast
- * @example
- * ```ts
- * BuiltInOperators.get('<<-')?.usedAs;                         // OperatorUsedAs.Assignment
- * BuiltInOperators.ofCategory(OperatorCategory.Comparison);    // ['==', '!=', '>', '>=', '<', '<=']
- * BuiltInOperators.inRAst.has(RawRType.LeftAssign);            // true, a token the parser names like an operator
- * ```
  */
 export const BuiltInOperators = {
 	name:        'BuiltInOperators',

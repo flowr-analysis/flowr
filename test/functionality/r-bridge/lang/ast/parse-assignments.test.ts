@@ -2,7 +2,7 @@ import { assertAst, withShell } from '../../../_helper/shell';
 import { bin, exprList, group, num, str, sym } from '../../../_helper/ast-builder';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 // the plain `x <op> 5` form for every assignment operator is pinned by the binary operator tests
 describe('Parse simple assignments', { concurrent: false }, withShell(shell => {

@@ -1,4 +1,4 @@
-import type { OperatorFacts, BuiltInOperators } from './default-builtin-config/operators';
+import type { OperatorFacts, BuiltInOperators } from './default-builtin-config/base-operators';
 import type { BuiltInProcessorMapper, ConfigOfBuiltInMappingName } from './built-in';
 import type { BuiltInEvalName } from './built-in-eval-name';
 import { BuiltIns } from './built-in';
@@ -45,10 +45,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 	readonly operators?:   Readonly<Record<string, OperatorFacts>>
 }
 
-/**
- * Define a built-in replacement (like `[` or `$`) and the processor to use.
- * This is a convenience for manually combined replacement function calls.
- */
+/** Define a built-in replacement (like `[` or `$`) and the processor to use. This is a convenience for manually combined replacement function calls. */
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
 	readonly type:     'replacement';
 	readonly suffixes: ('<<-' | '<-')[];
@@ -65,19 +62,23 @@ export type AnyBuiltInDefinition = BuiltInConstantDefinition<unknown> | AnyBuilt
  */
 export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }];
 
-/**
- * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.
- */
-export function getDefaultBuiltInDefinitions(): BuiltIns {
-	const builtIns = new BuiltIns();
-	for(const definition of DefaultBuiltinConfig) {
-		builtIns.registerBuiltInDefinition(definition);
-	}
-	return builtIns;
-}
-
 /** {@link DefaultBuiltinConfig} registered once; safe to share, as the environment adopts its maps copy-on-write. */
 let sharedDefaults: BuiltIns | undefined;
+
+function defaultBuiltIns(): BuiltIns {
+	if(sharedDefaults === undefined) {
+		sharedDefaults = new BuiltIns();
+		for(const definition of DefaultBuiltinConfig) {
+			sharedDefaults.registerBuiltInDefinition(definition);
+		}
+	}
+	return sharedDefaults;
+}
+
+/** Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}, as a copy the caller may change. */
+export function getDefaultBuiltInDefinitions(): BuiltIns {
+	return defaultBuiltIns().copy();
+}
 
 /** The registered built-ins together with the definition list they were registered from. */
 export interface ConfiguredBuiltIns {
@@ -85,14 +86,10 @@ export interface ConfiguredBuiltIns {
 	readonly definitions: BuiltInDefinitions;
 }
 
-/**
- * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions.
- * @param definitions  - the list of built-in definitions
- * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
- */
+/** Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions. */
 export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): ConfiguredBuiltIns {
 	if(loadDefaults && definitions.length === 0) {
-		return { builtIns: sharedDefaults ??= getDefaultBuiltInDefinitions(), definitions: DefaultBuiltinConfig };
+		return { builtIns: defaultBuiltIns(), definitions: DefaultBuiltinConfig };
 	}
 
 	const builtIns = loadDefaults ? getDefaultBuiltInDefinitions() : new BuiltIns();

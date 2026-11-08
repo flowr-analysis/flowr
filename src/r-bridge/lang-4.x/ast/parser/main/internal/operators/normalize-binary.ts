@@ -17,7 +17,7 @@ import { RSymbol } from '../../../../model/nodes/r-symbol';
 import type { RParameter } from '../../../../model/nodes/r-parameter';
 import type { RFunctionDefinition } from '../../../../model/nodes/r-function-definition';
 import type { BrandedIdentifier } from '../../../../../../../dataflow/environments/identifier';
-import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
 
 /**

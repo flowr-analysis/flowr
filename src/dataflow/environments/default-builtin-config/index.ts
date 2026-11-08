@@ -1,47 +1,36 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition, BuiltInReplacementDefinition } from '../built-in-config';
-import { FunctionSemantics } from '../../fn/function-semantics';
-import { OperatorDefinitions } from './operators';
-import { UnnamedFunctionCallPrefix } from '../../internal/process/functions/call/unnamed-call-handling';
+import { OperatorDefinitions } from './base-operators';
+import { UnnamedFunctionCallPrefix } from '../built-in-kinds';
 import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
-import type { FnSig, StatedProps } from '../built-in-props';
+import { ArgProps, CallProps, type FnSig, type StatedProps } from '../built-in-props';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
-import type { StatedSignature } from './shared';
-import { statedSignatureOf, markGenerics, markPrimitives } from './shared';
-import { BaseDefinitions } from './base';
-import { InteractiveDefinitions } from './interactive';
-import { LanguageDefinitions } from './language';
-import { TidyverseDefinitions } from './tidyverse';
-import { DataTableDefinitions } from './data-table';
-import { GraphicsDefinitions } from './graphics';
-import { ClassesDefinitions } from './classes';
-import { IoDefinitions } from './io';
-import { StatsDefinitions } from './stats';
-import { MediaDefinitions } from './media';
-import { UtilsDefinitions } from './utils';
-import { ToolingDefinitions } from './tooling';
-import { SpatialDefinitions } from './spatial';
-import { NetworkDefinitions } from './network';
-import { DatabaseDefinitions } from './database';
-import { WithrDefinitions } from './withr';
-import { ParallelDefinitions } from './parallel';
-import { MiscDefinitions } from './misc';
-import { TestingDefinitions } from './testing';
+import type { StatedSignature } from './shared-configs';
+import { statedSignatureOf, markGenerics, markPrimitives } from './shared-configs';
+import { BaseDefinitions } from './base-functions';
+import { InteractiveDefinitions } from './session-interactive';
+import { LanguageDefinitions } from './base-language';
+import { TidyverseDefinitions } from './package-tidyverse';
+import { DataTableDefinitions } from './package-data-table';
+import { GraphicsDefinitions } from './graphics-devices';
+import { ClassesDefinitions } from './object-systems';
+import { IoDefinitions } from './file-io';
+import { StatsDefinitions } from './statistics';
+import { MediaDefinitions } from './media-formats';
+import { UtilsDefinitions } from './package-utils';
+import { ToolingDefinitions } from './dev-tooling';
+import { SpatialDefinitions } from './package-spatial';
+import { NetworkDefinitions } from './network-access';
+import { DatabaseDefinitions } from './database-access';
+import { WithrDefinitions } from './package-withr';
+import { ParallelDefinitions } from './parallel-execution';
+import { MiscDefinitions } from './misc-packages';
+import { TestingDefinitions } from './unit-testing';
 
-export type { StatedSignature } from './shared';
-export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics } from './shared';
+export type { StatedSignature } from './shared-configs';
+export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics } from './shared-configs';
 
-/**
- * What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be
- * defined for several packages, so all of them are here; {@link statedSignatureOf} picks by package).
- * It walks all definitions each time, so compute it once and pass the map to {@link statedSignatureOf}. It also states
- * the defaults only unless you pass the definitions of your configuration.
- * @example
- * ```ts
- * const stated = statedSignatures();
- * statedSignatureOf(stated, 'nchar')?.params; // the formals as flowR declares them, e.g. 'x, type, ...'
- * ```
- */
+/** What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be defined for several packages, so all of them are here; {@link statedSignatureOf} picks by package). */
 export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig): Map<string, StatedSignature[]> {
 	const stated = new Map<string, StatedSignature[]>();
 	for(const definition of definitions) {
@@ -53,8 +42,8 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 			const entry = {
 				pkg,
 				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
-				props:  FunctionSemantics.call.props.labels(info),
-				args:   declared.length > 0 ? declared.map(([param, props]) => [param, FunctionSemantics.call.argument.words(props)] as const) : undefined
+				props:  CallProps.labels(info),
+				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined
 			};
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */
@@ -65,10 +54,7 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 }
 
 
-/**
- * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
- * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
- */
+/** Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig} is what {@link markGenerics} makes of them, and a test checks that this is all it changes. */
 export const WrittenBuiltinDefinitions = [
 	...OperatorDefinitions,
 	...LanguageDefinitions,

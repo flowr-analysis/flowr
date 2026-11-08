@@ -9,7 +9,7 @@ import { DfgVertex } from '../../graph/vertex';
 import { EdgeType } from '../../graph/edge';
 import { Dataflow } from '../../graph/df-helper';
 import { BuiltInProcName } from '../../environments/built-in-proc-name';
-import { BuiltInOperators, OperatorUsedAs } from '../../environments/default-builtin-config/operators';
+import { BuiltInOperators, OperatorUsedAs } from '../../environments/default-builtin-config/base-operators';
 import { Resolve } from '../../environments/resolve-helper';
 import { isValue, type Value } from '../values/r-value';
 import { setOf } from '../values/sets/set-constants';
@@ -22,11 +22,7 @@ const ElementReplacements: ReadonlySet<string> = new Set(['$<-', '$<<-', '[[<-',
 /** what a replacement reads its old value by, which a loop links the replacement to as well */
 const ElementAccesses: ReadonlySet<string> = new Set(['$', '[[']);
 
-/**
- * The assignment `x$a$b <- v` a replacement definition of `x` stems from: the accesses from `x` outwards and what the
- * outermost one is assigned. `undefined` unless every access is the built-in `$` or `[[` with one index, as a call
- * like `names(x$a) <- v` or a method of the program does something else to `x`.
- */
+/** The assignment `x$a$b <- v` a replacement definition of `x` stems from: the accesses from `x` outwards and what the outermost one is assigned. */
 interface ElementReplacement {
 	readonly accesses: readonly RAccess<ParentInformation>[]
 	readonly value:    NodeId
@@ -61,16 +57,7 @@ function replacesElement(access: NodeId, graph: DataflowGraph): boolean {
 	return called.some(c => c !== undefined && ElementReplacements.has(c)) && called.every(c => c !== undefined && (ElementReplacements.has(c) || ElementAccesses.has(c)));
 }
 
-/**
- * What the target of a replacement holds once it is done, given what it held before (`old`): `x$a$b <- v` reads
- * `x$a`, sets its `b` to `v`, and sets the `a` of `x` to the result. `undefined` for a replacement whose effect the value
- * solver does not know (`names(x) <- v`, `x[i] <- v`, an index it cannot tell, a target that is no list).
- * @example
- * ```ts
- * // l <- list(a = 1); l$a <- 5
- * replacedValue(idOfTheTargetL, [listFrom([{ name: 'a', value: one }])], info) // list(a = 5)
- * ```
- */
+/** What the target of a replacement holds once it is done, given what it held before (`old`): `x$a$b <- v` reads `x$a`, sets its `b` to `v`, and sets the `a` of `x` to the result. */
 export function replacedValue(target: NodeId, old: readonly Value[], info: ResolveInfo & { readonly graph: DataflowGraph, readonly idMap: AstIdMap }): Value | undefined {
 	const replacement = elementReplacementOf(target, info.graph, info.idMap);
 	if(replacement === undefined) {

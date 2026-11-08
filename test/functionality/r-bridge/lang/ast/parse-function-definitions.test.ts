@@ -8,7 +8,7 @@ import type { RComment } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 import type { RParameter } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 /** `function(...) { children }` starting at the beginning of the first line, with the braces at `open` and `close` */
 function fn(parameters: RParameter[], open: Pos, close: Pos, children: RNode[] = [], adToks?: RComment[]): RNode {

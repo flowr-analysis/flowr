@@ -32,7 +32,7 @@ import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-se
 import { Identifier } from '../dataflow/environments/identifier';
 import { type InlineWarning, sourcePathOf } from './inline/source-inline-map';
 import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
-import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/operators';
+import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/base-operators';
 
 /**
  * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally

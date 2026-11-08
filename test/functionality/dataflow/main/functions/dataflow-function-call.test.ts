@@ -18,7 +18,7 @@ import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ExitPointType } from '../../../../../src/dataflow/info';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Function Call', withTreeSitter(ts => {
 	describe('Calling previously defined functions', () => {

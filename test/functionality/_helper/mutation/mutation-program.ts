@@ -30,7 +30,7 @@ import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { BuiltInOperators } from '../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 export interface MutationTarget {
 	/** the program to mutate */

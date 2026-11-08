@@ -23,7 +23,7 @@ import { callIdentifierOf, isPlot } from './plot-objects';
 import { inputVariablesAt } from './data-flow';
 import { ExpectFunctionNames } from './function-info/test-functions';
 import type { FunctionInfo } from './function-info/function-info';
-import { OperatorUsedAs } from '../../../dataflow/environments/default-builtin-config/operators';
+import { OperatorUsedAs } from '../../../dataflow/environments/default-builtin-config/base-operators';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
 function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): RNode<ParentInformation> | undefined {

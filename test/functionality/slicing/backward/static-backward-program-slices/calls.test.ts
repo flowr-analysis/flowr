@@ -12,7 +12,7 @@ import { canReach } from '../../../../../src/control-flow/simple-visitor';
 import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../../../src/control-flow/control-flow-graph';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 assumeLoadedPackages('dplyr', 'magrittr', 'maps', 'plyr', 'inferference');
 

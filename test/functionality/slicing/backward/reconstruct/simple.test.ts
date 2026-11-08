@@ -3,7 +3,7 @@ import { label } from '../../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe } from 'vitest';
-import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/operators';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Simple', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {

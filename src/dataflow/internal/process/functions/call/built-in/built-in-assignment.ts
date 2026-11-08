@@ -422,12 +422,6 @@ function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined 
 	}
 }
 
-/** Returns `true` when the value of `sourceInfo` comes from a call to a `new.env`-family function. */
-function isEnvCreatorSource(sourceInfo: DataflowInformation, entryPoint: NodeId | undefined): boolean {
-	const vert = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
-	return DfgVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
-}
-
 /** When `e$x <- val` (or `e[["x"]] <- val`) and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that envState instead of redefining `e`; returns `undefined` when routing is not applicable. */
 function tryRouteFieldEnvAssign<OtherInfo>(
 	rootId:      NodeId,
@@ -642,7 +636,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			/* the frame of a closure, shared with the variable holding the closure */
 			envState = frame.envState;
 			envId = frame.envId;
-		} else if(isEnvCreatorSource(sourceArg, valueEntry)) {
+		} else if(valueEntry !== undefined && DfgVertex.hasOrigin(sourceArg.graph.getVertex(valueEntry), BuiltInProcName.NewEnv)) {
 			envState = createFreshEnvState(data, sourceArg);
 		} else if(stackEnv !== undefined) {
 			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env

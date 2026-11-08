@@ -57,11 +57,6 @@ function isNonEmptyRange<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>
 	return [vector.lhs, vector.rhs].some(side => alwaysHolds(side, data, v => v.type !== 'vector' && hasElement(v)));
 }
 
-/** whether a for-loop over `vector` certainly runs its body at least once */
-function iteratesAtLeastOnce<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>, entry: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	return isNonEmptyRange(vector, entry, data) || alwaysHolds(vector, data, hasElement);
-}
-
 /** Processes a for-loop call: `for(<variable> in <vector>) <body>` desugared as a call of `for` with the three as arguments. */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -85,7 +80,7 @@ export function processForLoop<OtherInfo>(
 	}
 
 	/* resolved before the loop variable is bound, as it may share the name of what the vector reads */
-	const nonEmpty = iteratesAtLeastOnce(vectorArg, vector, data);
+	const nonEmpty = isNonEmptyRange(vectorArg, vector, data) || alwaysHolds(vectorArg, data, hasElement);
 	const variable = processDataflowFor(variableArg, data);
 	let headEnvironments = REnvironment.overwrite(vector.environment, variable.environment);
 	/* only the vector's references and entry point are read past this, its graph is not */

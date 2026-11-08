@@ -51,11 +51,6 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 	return own.length > 0 && happensInEveryBranch(own.flatMap(t => t.cds ?? []));
 }
 
-/** Whether reading the variable defined at `id` calls a function, as for an active binding. */
-function callsOnRead(graph: DataflowGraph, id: NodeId): boolean {
-	return DfgVertex.isVariableDefinition(graph.getVertex(id)) && Dataflow.targetsOf(graph, id, EdgeType.Calls).length > 0;
-}
-
 /** @returns whether `read` sees a definition */
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: DefaultMap<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
 	const readName = Identifier.boundAs(read.name);
@@ -86,7 +81,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
-			if(!isFunc && read.name !== undefined && DfgVertex.isUse(nextGraph.getVertex(rid)) && callsOnRead(nextGraph, tid)) {
+			if(!isFunc && read.name !== undefined && DfgVertex.isUse(nextGraph.getVertex(rid)) && DfgVertex.isVariableDefinition(nextGraph.getVertex(tid)) && Dataflow.targetsOf(nextGraph, tid, EdgeType.Calls).length > 0) {
 				activeReads.push(read);
 			}
 		}
@@ -177,11 +172,6 @@ function errorPassesThrough(parent: RNode<ParentInformation>, child: NodeId, gra
 		return parent.vector.info.id === child;
 	}
 	return false;
-}
-
-/** Whether `node` is written within the call `call` (or the call is not part of the AST). */
-function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean {
-	return !idMap.has(call) || RNode.findEnclosing(node, idMap, n => n.info.id === call) !== undefined;
 }
 
 const PrintName = Identifier.make('print');
@@ -306,7 +296,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			if(envWrites.length > 0) {
 				[environment, inputEnvironment] = addEnvironmentWrites(envWrites, environment, inputEnvironment, functionCall, nextGraph);
 			}
-			const shadowing = localDefs.filter(d => isNotUndefined(d.name) && !writtenWithinCall(functionCall, d.nodeId, idMap));
+			const shadowing = localDefs.filter(d => isNotUndefined(d.name) && idMap.has(functionCall) && RNode.findEnclosing(d.nodeId, idMap, n => n.info.id === functionCall) === undefined);
 			if(shadowing.length > 0) {
 				environment = {
 					current: environment.current.removeAll(shadowing as { name: string }[]),

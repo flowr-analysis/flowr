@@ -117,7 +117,7 @@ export const Quoted = {
 					continue;
 				}
 				const promised = namesOnce();
-				const binding = boundBy(graph, id);
+				const binding = Dataflow.sourcesOf(graph, id, EdgeType.DefinedBy).find(target => DfgVertex.isVariableDefinition(graph.getVertex(target)));
 				const flow = binding === undefined ? undefined : cfgOnce();
 				const sites = flow === undefined || binding === undefined ? undefined : Deferred.forcedAt(graph, binding, flow, true);
 				/* the promise runs in `eval.env`, so whatever that environment holds may be what it reads */
@@ -143,7 +143,7 @@ export const Quoted = {
 					Deferred.link(graph, escaped, namesOnce(), idMap);
 					readAtForcingCalls(graph, id, escaped, closure, idMap);
 				}
-				sideEffects ??= callsWithSideEffects(graph);
+				sideEffects ??= new Set(graph.vertices(true).flatMap(([from]) => Dataflow.targetsOf(graph, from, EdgeType.SideEffectOnCall)));
 				const flow = sideEffects.has(id) ? cfgOnce() : undefined;
 				if(flow === undefined) {
 					continue;
@@ -194,11 +194,6 @@ function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph
 	const forces = sites.length > 0 ? { cfg, sites, binding: parameter, reach: reachOf(sites) } : undefined;
 	forcing.set(parameter, { version, reads, forces });
 	return forces;
-}
-
-/** The name a delaying call binds, which is the definition its reads have to go through. */
-function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
-	return Dataflow.sourcesOf(graph, id, EdgeType.DefinedBy).find(target => DfgVertex.isVariableDefinition(graph.getVertex(target)));
 }
 
 /** Every read of the delayed name takes the promised expression's value, so all of them get the link, not just whichever forces it first. */
@@ -313,10 +308,6 @@ function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierRe
 			}
 		}
 	}
-}
-
-function callsWithSideEffects(graph: DataflowGraph): ReadonlySet<NodeId> {
-	return new Set(graph.vertices(true).flatMap(([from]) => Dataflow.targetsOf(graph, from, EdgeType.SideEffectOnCall)));
 }
 
 /** Links a capture handed to an evaluating call, in that call's scope. */

@@ -266,12 +266,7 @@ export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined
 
 /** the values one element of a sequence may take: a vector contributes its elements, a set what its members do */
 function iteratedElements(value: Value): readonly Value[] {
-	if(value.type === 'vector' && isValue(value.elements)) {
-		return value.elements.flatMap(iteratedElements);
-	} else if(value.type === 'set' && isValue(value.elements)) {
-		return value.elements.flatMap(iteratedElements);
-	}
-	return [value];
+	return (value.type === 'vector' || value.type === 'set') && isValue(value.elements) ? value.elements.flatMap(iteratedElements) : [value];
 }
 
 /** Please use {@link resolveIdToValue} Uses the aliases that were tracked in the environments (by the {@link getAliases} function) to resolve a node to a value. */

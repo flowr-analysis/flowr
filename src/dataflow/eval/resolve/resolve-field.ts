@@ -82,16 +82,6 @@ function partialWrite(def: NodeId, idMap: AstIdMap): boolean {
 	return value === node && !RSymbol.is(target) && !(RAccess.is(target) && RSymbol.is(target.accessed));
 }
 
-/** Whether the node runs in more than one run of a loop. */
-function iterated(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
-	return graph.getVertex(id)?.cds?.some(cd => ControlDependency.isIterated(cd, idMap)) === true;
-}
-
-/** Whether something wrote somewhere flowR does not know, which may be into any environment. */
-function unknownWrites(graph: DataflowGraph): boolean {
-	return graph.unknownSideEffects.values().some(e => typeof e !== 'object');
-}
-
 /** What the lookup finds for the calls the walk is in, or for all calls it records, each made once at the top, so nothing a later run writes is missing; `undefined` if one of them may run more than once. */
 function foundAtCalls(records: readonly FoundOnCall[], { frames, callContext }: BuiltInEvalHandlerArgs, graph: DataflowGraph): readonly NodeId[] | undefined {
 	const inFrames = records.filter(r => frames?.some(f => f.call === r.call) || callContext?.values().some(c => c === r.call));
@@ -112,12 +102,13 @@ export function resolveAsField(args: BuiltInEvalHandlerArgs): Value | undefined 
 	}
 	const accessed = node.accessed;
 	const holders = RSymbol.is(accessed) ? Dataflow.targetsOf(graph, accessed.info.id, EdgeType.Reads | EdgeType.DefinedByOnCall) : [];
-	if(holders.length === 0 || unknownWrites(graph) || !holders.every(h => holdsValueOf({ nodeId: h }, graph, EnvironmentProducers) && writesTracked(h, graph))) {
+	/* something written somewhere flowR does not know may be into any environment */
+	if(holders.length === 0 || graph.unknownSideEffects.values().some(e => typeof e !== 'object') || !holders.every(h => holdsValueOf({ nodeId: h }, graph, EnvironmentProducers) && writesTracked(h, graph))) {
 		return Top;
 	}
 	/* the contents are those where the access is written, so a later run of a loop may see later writes */
 	const idMap = graph.idMap;
-	if(iterated(node.info.id, graph, idMap)) {
+	if(vertex.cds?.some(cd => ControlDependency.isIterated(cd, idMap))) {
 		return Top;
 	}
 	/* a binding of the function around the access is the one it saw where it is written, a free one the one at each call */

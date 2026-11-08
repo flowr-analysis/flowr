@@ -66,11 +66,6 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
-/** the replacement rules as patterns, compiled once rather than once per candidate path */
-function compileReplacements(replacements: readonly Record<string, string>[]): readonly (readonly [RegExp, string])[][] {
-	return replacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
-}
-
 function applyReplacements(path: string, replacements: readonly (readonly [RegExp, string])[][]): string[] {
 	return replacements.map(replacement => {
 		let result = path;
@@ -111,7 +106,7 @@ export function findSource(
 
 	let tryPaths = candidatePaths(seed, resolveSource?.dropPaths);
 	if(resolveSource?.applyReplacements) {
-		const r = compileReplacements(resolveSource.applyReplacements);
+		const r = resolveSource.applyReplacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
 		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 

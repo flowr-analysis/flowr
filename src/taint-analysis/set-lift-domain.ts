@@ -50,12 +50,14 @@ export class SetLiftDomain<
 		return this.reduce(this.value).isSubsetOf(this.reduce(other.value));
 	}
 
-	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): this {
-		throw new Error('Method not implemented.');
+	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
+		const union = this.reduce(this.value).union(this.reduce(other.value));
+		return this.create(union) as this;
 	}
 
-	protected meetValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): this {
-		throw new Error('Method not implemented.');
+	protected meetValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
+		const intersection = this.reduce(this.value).intersection(this.reduce(other.value));
+		return this.create(intersection) as this;
 	}
 
 	protected jsonify(): unknown {

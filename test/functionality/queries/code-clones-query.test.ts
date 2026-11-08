@@ -43,6 +43,6 @@ describe('Code Clones Query', withTreeSitter(parser => {
 		assert.strictEqual(parsed.rCode, 'x <- gst');
 	});
 	test('the schema rejects malformed indices', () => {
-		assert.isDefined(CodeClonesQueryDefinition.schema.validate({ type: 'code-clones', against: [{ format: 'flowr-clone-index', version: 2 }] }).error);
+		assert.isDefined(CodeClonesQueryDefinition.schema.validate({ type: 'code-clones', against: [{ format: 'flowr-clone-index', version: 1 }] }).error);
 	});
 }));

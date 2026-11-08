@@ -97,7 +97,7 @@ export const CodeClonesQueryDefinition = {
 		exportIndex: Joi.boolean().optional().description('Also return the clone index of the analyzed files, to search against it later.'),
 		against:     Joi.array().items(Joi.object({
 			format:      Joi.string().valid('flowr-clone-index').required(),
-			version:     Joi.number().valid(2).required(),
+			version:     Joi.number().valid(1).required(),
 			perspective: Joi.string().valid(...Object.values(ClonePerspective)).required(),
 			files:       Joi.array().items(Joi.object()).required()
 		}).unknown(false)).optional().description('Previously exported clone indices to search the analyzed files against. They must use the same perspective as the query.')

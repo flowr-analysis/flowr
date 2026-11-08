@@ -5,19 +5,25 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { CloneIndex, type SerializedCloneIndex } from '../../../src/clones/clone-index';
-import { cloneChildren, ClonePerspective, CloneTokenization, hashString, tokenize } from '../../../src/clones/clone-ast';
-import { greedyStringTiling, gstSimilarity, matchedTokens } from '../../../src/clones/algorithms/greedy-string-tiling';
+import { ClonePerspective, CloneTokenization, cloneTree, tokenize } from '../../../src/clones/clone-ast';
+import { greedyStringTiling, type GstMatch } from '../../../src/clones/algorithms/greedy-string-tiling';
 import { fingerprints, kgramHashes, winnow } from '../../../src/clones/algorithms/winnowing';
 import { baxterClones, treeSimilarity } from '../../../src/clones/algorithms/baxter-ast';
 import { CloneAlgorithm, type CloneDetectionConfig, CloneScope, DefaultCloneDetectionConfig, detectClones } from '../../../src/clones/clone-detector';
+
+const matchedTokens = (tiles: readonly GstMatch[]) => tiles.reduce((n, t) => n + t.length, 0);
 
 async function indexOf(parser: KnownParser, code: string, perspective: ClonePerspective = ClonePerspective.Syntax) {
 	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 	analyzer.addRequest(requestFromInput(code));
 	return CloneIndex.build(analyzer, { perspective });
 }
+async function treesOf(parser: KnownParser, code: string, perspective: ClonePerspective = ClonePerspective.Syntax) {
+	const index = await indexOf(parser, code, perspective);
+	return index.files.map(f => cloneTree(f, perspective));
+}
 async function exactTokens(parser: KnownParser, code: string, perspective: ClonePerspective) {
-	return tokenize((await indexOf(parser, code, perspective)).files[0], CloneTokenization.Exact);
+	return tokenize((await treesOf(parser, code, perspective))[0], CloneTokenization.Exact);
 }
 
 describe('Code clones', withTreeSitter(parser => {
@@ -54,11 +60,9 @@ describe('Code clones', withTreeSitter(parser => {
 			assert.notDeepEqual(kept, inlined);
 		});
 		test('rewritten nodes keep their provenance', async() => {
-			const index = await indexOf(parser, 'x |> f()', ClonePerspective.Canonical);
-			const ast = index.files[0];
+			const [tree] = await treesOf(parser, 'x |> f()', ClonePerspective.Canonical);
 			// the inserted argument stems from `x`, the call from `f()`
-			assert.strictEqual(ast.span[4 * 1], 1);
-			assert.include(ast.lex, hashString('x'));
+			assert.deepStrictEqual(tree.nodes.slice(1).map(n => n !== '<>' && n.lexeme), ['f', 'f', '', 'x']);
 		});
 	});
 
@@ -67,7 +71,6 @@ describe('Code clones', withTreeSitter(parser => {
 			const t = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 			const m = greedyStringTiling(t, t, 3);
 			assert.strictEqual(matchedTokens(m), 10);
-			assert.strictEqual(gstSimilarity(matchedTokens(m), 10, 10), 1);
 		});
 		test('a run of equal tokens matches', () => {
 			const t = [64, 64, 64, 64, 64, 64, 64, 1];
@@ -105,17 +108,16 @@ describe('Code clones', withTreeSitter(parser => {
 	describe('Baxter', () => {
 		test('pairs within an accepted clone are dropped, also with a third occurrence', async() => {
 			const body = 'y <- a + b * c - d / e';
-			const index = await indexOf(parser, `f <- function() {\n${body}\nz <- 1\n}\ng <- function() {\n${body}\nz <- 1\n}\n${body}`);
-			const pairs = baxterClones(index.files, { massThreshold: 5, similarityThreshold: 0.5 }).pairs;
-			const ast = index.files[0];
+			const trees = await treesOf(parser, `f <- function() {\n${body}\nz <- 1\n}\ng <- function() {\n${body}\nz <- 1\n}\n${body}`);
+			const pairs = baxterClones(trees, { massThreshold: 5, similarityThreshold: 0.5 }).pairs;
+			const ast = trees[0];
 			const covered = (p: { node: number }) => pairs.some(q => [q.a, q.b].some(m => m.node < p.node && p.node < m.node + ast.size[m.node]));
 			assert.isTrue(pairs.length > 0);
 			assert.isFalse(pairs.some(p => covered(p.a) || covered(p.b)));
 		});
 		test('similarity counts shared nodes', async() => {
-			const index = await indexOf(parser, 'f(a + b)\nf(a + c)');
-			const ast = index.files[0];
-			const [s1, s2] = [...cloneChildren(ast, 0)];
+			const [ast] = await treesOf(parser, 'f(a + b)\nf(a + c)');
+			const [s1, s2] = [1, 1 + ast.size[1]];
 			// 2S / (2S + L + R) with 5 of 6 nodes shared
 			assert.strictEqual(treeSimilarity(ast, s1, ast, s2), 5 / 6);
 		});

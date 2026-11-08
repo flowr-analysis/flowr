@@ -1151,7 +1151,7 @@ Before the detection, the query presents the code in one of three \`perspective\
 - \`canonical\` (the default) rewrites syntactic sugar and newer R features into one core form. Pipes become calls, \`\\(x)\` becomes \`function(x)\`, right and equal assignments become \`<-\`, \`(e)\` and \`{e}\` become \`e\`, \`x[["a"]]\` becomes \`x$a\`, \`T\` and \`F\` become \`TRUE\` and \`FALSE\`, and a tail \`return(e)\` becomes \`e\`. Every rewritten node keeps the id of the node it stems from, so all findings point to the original source.
 - \`dataflow\` additionally inlines temporaries that are used exactly once along the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, so \`t <- f(x)\` followed by \`g(t)\` looks like \`g(f(x))\`. It only inlines where this cannot change what the code computes, and it is the only perspective that needs the dataflow analysis.
 
-With \`exportIndex\`, the query also returns the clone index of the analyzed files (their flattened ASTs).
+With \`exportIndex\`, the query also returns the clone index of the analyzed files (their normalized ASTs).
 A later query can pass such indices as \`against\` to search new code in a corpus of pre-analyzed projects without analyzing them again.
 Use \`config\` to tune the thresholds of each algorithm, and \`maxPairs\` to limit the number of reported pairs, as \`n\` copies of the same function already form \`n(n-1)/2\` pairs.
 

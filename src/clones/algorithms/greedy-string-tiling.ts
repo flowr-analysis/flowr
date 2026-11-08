@@ -58,13 +58,3 @@ export function greedyStringTiling(left: ArrayLike<number>, right: ArrayLike<num
 	} while(max !== minimumMatchLength);
 	return tiles;
 }
-
-/** The number of tokens the tiles cover (on either side). */
-export function matchedTokens(matches: readonly GstMatch[]): number {
-	return matches.reduce((n, m) => n + m.length, 0);
-}
-
-/** JPlag's average similarity `2 * matched / (lengthA + lengthB)`. */
-export function gstSimilarity(matched: number, lengthA: number, lengthB: number): number {
-	return lengthA + lengthB === 0 ? 0 : 2 * matched / (lengthA + lengthB);
-}

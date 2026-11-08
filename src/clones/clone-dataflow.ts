@@ -1,9 +1,7 @@
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
-import { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
-import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { Identifier } from '../dataflow/environments/identifier';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
@@ -11,13 +9,12 @@ import { CallProp } from '../dataflow/environments/built-in-props';
 import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { REnvironmentInformation } from '../dataflow/environments/environment';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import type { AstIdMap, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { assignmentOperator, type InlinePlan } from './clone-ast';
+import { assignment, type InlinePlan } from './clone-ast';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
@@ -35,8 +32,8 @@ function statementWithin(node: RNodeWithParent, list: NodeId, idMap: AstIdMap): 
 	let current = node;
 	while(current.info.parent !== list) {
 		const parent = RNode.directParent(current, idMap);
-		if(parent === undefined || RFunctionDefinition.is(parent) || RWhileLoop.is(parent) || RRepeatLoop.is(parent)
-			|| (RForLoop.is(parent) && current !== parent.vector) || (RIfThenElse.is(parent) && current !== parent.condition)) {
+		if(parent === undefined || RFunctionDefinition.is(parent) || (RLoopConstructs.is(parent) && !(RForLoop.is(parent) && current === parent.vector))
+			|| (RIfThenElse.is(parent) && current !== parent.condition)) {
 			return undefined;
 		}
 		current = parent;
@@ -49,8 +46,7 @@ function namesOf(nodes: RNodeWithParent | readonly RNodeWithParent[], assigned: 
 	const names = new Set<string>();
 	let pure = true;
 	RNode.visitAst(nodes, n => {
-		const assign = RBinaryOp.is(n) ? assignmentOperator(n.operator) : undefined;
-		const symbol = assigned ? (assign && RBinaryOp.is(n) ? (assign.right ? n.rhs : n.lhs) : undefined) : n;
+		const symbol = assigned ? assignment(n)?.target : n;
 		if(RSymbol.is(symbol)) {
 			names.add(Identifier.getName(symbol.content));
 		}
@@ -67,31 +63,26 @@ function namesOf(nodes: RNodeWithParent | readonly RNodeWithParent[], assigned: 
  * `e` takes the place of the read, if nothing in between can change `e` (an impure `e` must be next to its use, a
  * pure one must not have its variables reassigned in between).
  */
-export function planInlining(graph: DataflowGraph, idMap: AstIdMap, environment?: REnvironmentInformation): InlinePlan {
+export function planInlining(root: RNodeWithParent, graph: DataflowGraph, idMap: AstIdMap, environment?: REnvironmentInformation): InlinePlan {
 	const replace = new Map<NodeId, RNodeWithParent>();
 	const drop = new Set<NodeId>();
-	for(const node of idMap.values()) {
-		const assign = RBinaryOp.is(node) ? assignmentOperator(node.operator) : undefined;
+	RNode.visitAst(root, node => {
+		const assign = assignment(node);
 		const list = RNode.directParent(node, idMap);
-		if(!RBinaryOp.is(node) || !assign || assign.super || !RExpressionList.is(list) || !DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.Assignment)) {
-			continue;
+		if(!assign || assign.super || !RExpressionList.is(list) || !DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.Assignment)) {
+			return;
 		}
-		const [target, value] = assign.right ? [node.rhs, node.lhs] : [node.lhs, node.rhs];
+		const { target, value } = assign;
 		const useId = RSymbol.is(target) && !RFunctionDefinition.is(value) ? singleUse(graph, target.info.id) : undefined;
 		const use = useId === undefined ? undefined : idMap.get(useId);
 		const statement = RSymbol.is(use) ? statementWithin(use, list.info.id, idMap) : undefined;
 		const from = list.children.indexOf(node), to = statement ? list.children.indexOf(statement) : -1;
 		const between = list.children.slice(from + 1, to);
-		if(!use || to <= from) {
-			continue;
-		} else if(between.length > 0) {
-			const reads = namesOf(value, false, graph, environment);
-			if(!reads.pure || [...namesOf(between, true, graph, environment).names].some(n => reads.names.has(n))) {
-				continue;
-			}
+		const reads = between.length > 0 ? namesOf(value, false, graph, environment) : undefined;
+		if(use && to > from && (!reads || reads.pure && ![...namesOf(between, true, graph, environment).names].some(n => reads.names.has(n)))) {
+			replace.set(use.info.id, value);
+			drop.add(node.info.id);
 		}
-		replace.set(use.info.id, value);
-		drop.add(node.info.id);
-	}
+	});
 	return { replace, drop };
 }

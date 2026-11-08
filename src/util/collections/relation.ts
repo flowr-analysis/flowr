@@ -11,6 +11,7 @@ const Empty = new Map<never, never>();
  * ```ts
  * Relation.fromPairs([['x', 1], ['x', 2]]); // x relates to 1 and 2
  * ```
+ * @helper values
  */
 export const Relation = {
 	name: 'Relation',

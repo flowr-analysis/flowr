@@ -7,11 +7,11 @@ const Empty = new Map<never, never>();
 
 /**
  * Helper functions for the {@link Relation}, which never change a given relation and share its sets, so do not change them either.
+ * @helper values
  * @example
  * ```ts
  * Relation.fromPairs([['x', 1], ['x', 2]]); // x relates to 1 and 2
  * ```
- * @helper values
  */
 export const Relation = {
 	name: 'Relation',

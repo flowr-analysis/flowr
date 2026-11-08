@@ -10,11 +10,11 @@ export interface Monoid<T> {
 
 /**
  * Helper functions for {@link Monoid}s.
+ * @helper values
  * @example
  * ```ts
  * Monoid.foldMap(Monoid.any, [1, 2], n => n > 1); // true
  * ```
- * @helper values
  */
 export const Monoid = {
 	name: 'Monoid',

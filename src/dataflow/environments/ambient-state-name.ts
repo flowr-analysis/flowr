@@ -90,7 +90,7 @@ export const AmbientStateName = {
 		return AmbientStateName.keyed(KeyedState.Option, key);
 	},
 	/** the pseudo variable of the entry `key` of a state, like `#env:PATH`; setting the entry replaces it */
-	keyed(this: void, state: KeyedState, key: string): AmbientStateName {
+	keyed(this: void, state: KeyedState, key: BrandedIdentifier): AmbientStateName {
 		const prefix = EntryPrefix[state];
 		return `#${state}:${prefix !== undefined && key.startsWith(prefix) ? key.slice(prefix.length) : key}`;
 	},

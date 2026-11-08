@@ -198,7 +198,7 @@ export const SourceRange = {
 	 * Checks if a given position (line, column) is contained within the range.
 	 * Omitting the column checks whether the line is covered at all.
 	 */
-	containsPosition(this: void, [sl, sc, el, ec]: SourceLocation, line: number, column?: number): boolean {
+	containsPosition(this: void, [sl, sc, el, ec]: SourceLocation, line: Line, column?: Column): boolean {
 		if(line < sl || line > el) {
 			return false;
 		} else if(column === undefined) {
@@ -538,7 +538,7 @@ export class SourceLocationView {
 	}
 
 	/** Whether the given position lies within this location; omitting the column checks the line alone. */
-	contains(line: number, column?: number): boolean {
+	contains(line: Line, column?: Column): boolean {
 		return SourceRange.containsPosition(this.raw, line, column);
 	}
 

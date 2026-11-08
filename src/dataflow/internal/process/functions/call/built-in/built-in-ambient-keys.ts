@@ -82,7 +82,7 @@ function flagValue<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data
 	return isTrue.every(Boolean) ? Ternary.Always : isTrue.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }
 
-function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'parameter' }, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] {
+function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'parameter' }, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly BrandedIdentifier[] {
 	const bound = MatchArgs.toNames(args, keys.signature);
 	const value = keys.names.map(n => bound.get(n)?.value).find(v => v !== undefined);
 	if(value === undefined) {
@@ -96,12 +96,12 @@ function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'paramete
 }
 
 /** The entries the call with the arguments `args` names, see {@link AmbientKeys}. */
-export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] {
+export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly BrandedIdentifier[] {
 	switch(keys.from) {
 		case 'constant':
 			return [keys.key];
 		case 'argument-names':
-			return args.flatMap(a => {
+			return args.flatMap((a): readonly BrandedIdentifier[] => {
 				if(a === EmptyArgument) {
 					return [];
 				} else if(a.name !== undefined) {
@@ -119,7 +119,7 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 }
 
 /** The pseudo variables a write to the given entries of `state` defines: the entries and what every write to the state adds to. No entry has an empty name. */
-export function keyedWrites(state: KeyedState, given: readonly string[]): AmbientStateName[] {
+export function keyedWrites(state: KeyedState, given: readonly BrandedIdentifier[]): AmbientStateName[] {
 	const keys = given.filter(k => k !== '');
 	return keys.length === 0 ? [] : [...new Set([...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.allOf(state)])];
 }

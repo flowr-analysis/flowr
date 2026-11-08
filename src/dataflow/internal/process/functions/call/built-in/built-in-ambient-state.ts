@@ -326,7 +326,7 @@ const GlobalEffectOptions: ReadonlySet<BrandedIdentifier> = new Set([
 const GlobalEffectEnv = /^(TZ|LANG|LANGUAGE|LC_\w+|R_\w+|TMPDIR|TEMP|TMP|HOME|PATH|SHELL|\w*_proxy|\w*_PROXY|no_proxy|NO_PROXY)$/;
 
 /** What reading the given entries of `state` reads: each entry and the writes we cannot name, all of the state if no entry is known. */
-function keyedReads(state: KeyedState, keys: readonly string[]): AmbientStateName[] {
+function keyedReads(state: KeyedState, keys: readonly BrandedIdentifier[]): AmbientStateName[] {
 	return keys.length === 0 || keys.includes(UnknownKey) ? [AmbientStateName.allOf(state)] : [...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.keyed(state, UnknownKey)];
 }
 

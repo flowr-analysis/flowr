@@ -1,9 +1,4 @@
-/**
- * Which methods a dispatching call reaches for the classes its arguments have, uniformly for S3 (`UseMethod`,
- * a built-in generic, `NextMethod`) and S4 (`standardGeneric`, `callNextMethod`): the class of a value is followed
- * through its value flow to where it is made (`structure(..., class = )`, `class<-`, `new("C")`, a constant), and
- * a call whose classes are not all known keeps every method, which is sound.
- */
+/** Which methods a dispatching call reaches for the classes its arguments have, uniformly for S3 (`UseMethod`, a built-in generic, `NextMethod`) and S4 (`standardGeneric`, `callNextMethod`): the class of a value is followed through its value flow to where it is made (`structure(..., class = )`, `class<-`, `new("C")`, a constant), and a call whose classes are not all known keeps every method, which is sound. */
 
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -51,16 +46,7 @@ const MaxProducers = 64;
 /** One step of the walk: the class a producer makes, the values the class comes from, or `undefined` if not known. */
 type FlowStep = ValueClass | { readonly from: readonly NodeId[], readonly keepsAttribute?: boolean } | undefined;
 
-/**
- * The class vectors the value at `id` may have, one per producer its value flow reaches, `undefined` unless all are known.
- * The walk follows reads, assignments, the arguments bound to a parameter at every call of its function, and what
- * the functions a call runs return.
- * @example
- * ```ts
- * // mk <- function() structure(list(), class = "z"); x <- mk(); f(x)
- * classesOfValue(idOfXInCall, info); // [{ source: ClassSource.Attribute, classes: ['z'] }]
- * ```
- */
+/** The class vectors the value at `id` may have, one per producer its value flow reaches, `undefined` unless all are known. */
 export function classesOfValue(id: NodeId, info: ClassFlowInfo): readonly ValueClass[] | undefined {
 	const found: ValueClass[] = [];
 	const seen = new Set<NodeId>();
@@ -154,10 +140,7 @@ function classChangeOf(def: NodeId, graph: DataflowGraph): NodeId | undefined {
 	return typeof replacement === 'object' && replacement.setsClass ? replacement.call : undefined;
 }
 
-/**
- * What the argument `bound` hands a function: its value, but for the target of a replacement call (`a` in
- * `lab(a) <- 1`), which the call defines anew, the value the target has before.
- */
+/** What the argument `bound` hands a function: its value, but for the target of a replacement call (`a` in `lab(a) <- 1`), which the call defines anew, the value the target has before. */
 function handedValueOf(bound: NodeId, graph: DataflowGraph): readonly NodeId[] {
 	if(!DfgVertex.isVariableDefinition(graph.getVertex(bound)) || !Dataflow.sourcesOf(graph, bound, EdgeType.Returns).some(c => DfgVertex.hasOrigin(graph.getVertex(c), BuiltInProcName.Replacement))) {
 		return [bound];
@@ -245,10 +228,7 @@ export function s3DispatchClassesOf(id: NodeId, info: ClassFlowInfo): readonly (
 	return classes?.every(c => c.source !== ClassSource.Instance) ? classes.map(c => c.classes) : undefined;
 }
 
-/**
- * The class S4 dispatch sees for a value: the class of an instance, or of a constant; for an S3 class vector, what
- * `s3Class` makes of it, `undefined` by default.
- */
+/** The class S4 dispatch sees for a value: the class of an instance, or of a constant; for an S3 class vector, what `s3Class` makes of it, `undefined` by default. */
 function s4ClassOf({ source, classes }: ValueClass, s3Class: (vector: readonly string[]) => string | undefined): string | undefined {
 	switch(source) {
 		case ClassSource.Instance:
@@ -260,14 +240,7 @@ function s4ClassOf({ source, classes }: ValueClass, s3Class: (vector: readonly s
 	}
 }
 
-/**
- * The S3 methods a dispatch on the class vectors `classes` may run, in each vector the method of a class or else that
- * of a later one, then the default, and for each such method what its `NextMethod()` may run: the methods of the
- * classes after its own in a vector it was run for.
- * @param classes  - the class vectors the dispatched object may have
- * @param methodOf - the class a method is for, `undefined` for a definition that is no method of the generic
- * @param methods  - the candidate method definitions
- */
+/** The S3 methods a dispatch on the class vectors `classes` may run, in each vector the method of a class or else that of a later one, then the default, and for each such method what its `NextMethod()` may run: the methods of the classes after its own in a vector it was run for. */
 export function s3Dispatch<T>(classes: readonly (readonly string[])[], methods: readonly T[], methodOf: (m: T) => string | undefined): { readonly runs: Set<T>, readonly next: Map<T, Set<T>> } {
 	const runs = new Set<T>();
 	const next = new Map<T, Set<T>>();
@@ -312,15 +285,7 @@ export interface S4Hierarchy {
 /** the virtual class every S3 class `setOldClass` registers extends last */
 const OldClass = 'oldClass';
 
-/**
- * The S4 class hierarchy the graph declares, with the superclasses `setClassUnion` and `setIs` give classes it does not
- * declare, and the S3 classes `setOldClass` registers, each extending the next of its vector.
- * @example
- * ```ts
- * // setClass("A"); setClass("B", contains = "A"); setOldClass(c("a", "b"))
- * s4HierarchyOf(graph).supers; // B -> [A], a -> [b], b -> [oldClass]
- * ```
- */
+/** The S4 class hierarchy the graph declares, with the superclasses `setClassUnion` and `setIs` give classes it does not declare, and the S3 classes `setOldClass` registers, each extending the next of its vector. */
 export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 	const classes = declaredClassesImpl(graph);
 	const supers = new Map<string, string[]>([...classes].map(([name, decl]) => [name, [...decl.contains]]));
@@ -394,10 +359,7 @@ function reachableThroughOpen(hierarchy: S4Hierarchy): ReadonlySet<string> {
 	return reachable;
 }
 
-/**
- * The range of distances R may see from the class `actual` of an argument to the class `wanted` of a signature, and whether
- * it surely matches; `undefined` if it never matches.
- */
+/** The range of distances R may see from the class `actual` of an argument to the class `wanted` of a signature, and whether it surely matches; `undefined` if it never matches. */
 function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, open: ReadonlySet<string>): [number, number, boolean] | undefined {
 	if(wanted === 'ANY') {
 		return [AnyDistance, AnyDistance, true];
@@ -415,11 +377,7 @@ function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, o
 	return [Math.min(known ?? AnyDistance, openAt + 1), known ?? AnyDistance - 1, known !== undefined];
 }
 
-/**
- * The methods R may select among `methods` for arguments of the classes `actual` (one per dispatched formal,
- * `missing` for an argument not given): every applicable method whose least possible distance is no more than the
- * greatest possible one of the closest; ties are kept, as R would pick among them.
- */
+/** The methods R may select among `methods` for arguments of the classes `actual` (one per dispatched formal, `missing` for an argument not given): every applicable method whose least possible distance is no more than the greatest possible one of the closest; ties are kept, as R would pick among them. */
 export function selectS4Methods(methods: readonly S4Method[], formals: readonly string[], actual: readonly string[], hierarchy: S4Hierarchy): S4Method[] {
 	const open = reachableThroughOpen(hierarchy);
 	const ranges: [S4Method, number, number, boolean][] = [];
@@ -495,25 +453,13 @@ export function s4DispatchFormals(generic: NodeId | undefined, methods: readonly
 	return first !== undefined && all.every(f => f !== undefined && f.length === first.length && f.every((n, i) => n === first[i])) ? first : undefined;
 }
 
-/**
- * The S4 methods of the program a call of `name` may reach: those of the generic and of the group generics it belongs
- * to, `undefined` if any of them has a signature that does not resolve, so none can be ruled out.
- */
+/** The S4 methods of the program a call of `name` may reach: those of the generic and of the group generics it belongs to, `undefined` if any of them has a signature that does not resolve, so none can be ruled out. */
 export function s4CandidatesFor(name: string, methods: ReadonlyMap<string, readonly S4Method[]>): readonly S4Method[] | undefined {
 	const candidates = [name, ...s4GroupGenericsOf(name)].flatMap(g => methods.get(g) ?? []);
 	return candidates.every(m => m.signature !== undefined) ? candidates : undefined;
 }
 
-/**
- * The classes an S4 call dispatches on, one tuple per combination the arguments may have, `undefined` unless all are known.
- * @param bound   - per dispatched formal, the argument the call binds to it, `undefined` for none
- * @param s3Class - the S4 class dispatch sees for an S3 class vector, `undefined` if not known
- * @example
- * ```ts
- * // p(new("A"), if(u) 1 else "x")
- * s4ActualClasses([idOfA, idOfIf], info, () => undefined); // [['A', 'numeric'], ['A', 'character']]
- * ```
- */
+/** The classes an S4 call dispatches on, one tuple per combination the arguments may have, `undefined` unless all are known. */
 export function s4ActualClasses(bound: readonly (NodeId | undefined)[], info: ClassFlowInfo, s3Class: (vector: readonly string[]) => string | undefined): string[][] | undefined {
 	let tuples: string[][] = [[]];
 	for(const arg of bound) {

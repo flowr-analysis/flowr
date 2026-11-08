@@ -63,11 +63,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 /** How a formal of `rm` contributes to the removal. */
 type RmFormalRole = 'names' | 'frame' | 'modifier';
 
-/**
- * The formals of `rm(..., list = character(), pos = -1, envir = as.environment(pos), inherits = FALSE)`.
- * All of them follow `...`, so R matches them by their exact name only and every other argument lands in
- * `...`, naming a variable to remove (in R 4.6, `rm(envi = "y")` removes `y` rather than picking an `envir`).
- */
+/** The formals of `rm(..., list = character(), pos = -1, envir = as.environment(pos), inherits = FALSE)`. */
 const RmFormals: Readonly<Record<string, RmFormalRole>> = {
 	list:     'names',
 	pos:      'frame',
@@ -75,11 +71,7 @@ const RmFormals: Readonly<Record<string, RmFormalRole>> = {
 	inherits: 'modifier'
 };
 
-/**
- * Whether a `pos`/`envir` value still names the frame the call happens in, so the removal stays local.
- * Mirrors R's defaults: `pos = -1`, and `envir = as.environment(pos)` for everything
- * {@link resolveNodeToStackEnv} can read (`environment()`, `globalenv()`, `.GlobalEnv`, ...).
- */
+/** Whether a `pos`/`envir` value still names the frame the call happens in, so the removal stays local. */
 function targetsCurrentFrame<OtherInfo>(
 	formal: RmFrameArg<OtherInfo>['formal'],
 	value:  RNode<OtherInfo & ParentInformation>,
@@ -133,12 +125,7 @@ function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<O
 	}
 }
 
-/**
- * Collects the removal targets of an `rm` call, following R's argument matching: everything but an exactly
- * named formal is swallowed by `...` and names a variable, `list=` is resolved separately, `inherits=` adds
- * nothing, and `pos=`/`envir=` are kept as the frame the removal is redirected to (`envir` wins, as R derives
- * its default from `pos`).
- */
+/** Collects the removal targets of an `rm` call, following R's argument matching: everything but an exactly named formal is swallowed by `...` and names a variable, `list=` is resolved separately, `inherits=` adds nothing, and `pos=`/`envir=` are kept as the frame the removal is redirected to (`envir` wins, as R derives its default from `pos`). */
 function collectRmTargets<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -187,11 +174,7 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly Cont
 	return kills;
 }
 
-/**
- * Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. The frame of a
- * closure (`environment(g)`) records the removal, as it binds more than what was written into it, and every variable
- * holding the closure sees it.
- */
+/** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
 	const closureFrame = envir.envDef.closureFrame === true;
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId), closureFrame);
@@ -214,11 +197,7 @@ function nonStandardArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgumen
 	return indices;
 }
 
-/**
- * Process an `rm` call, marking the removed variables as {@link KillReference|killed} so the removal is
- * carried to the enclosing scope even when it happens nested within a branch or block.
- * As in R, the names to remove are not evaluated, so `rm(x)` does not read `x`.
- */
+/** Process an `rm` call, marking the removed variables as {@link KillReference|killed} so the removal is carried to the enclosing scope even when it happens nested within a branch or block. */
 export function processRm<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

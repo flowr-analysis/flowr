@@ -78,41 +78,23 @@ export interface ResolveInfo {
 	replacements?: ReplacedValues;
 }
 
-/**
- * What each replacement (`l$a <- v`) holds in a run of a loop and frame, for the one resolution that walks it: its
- * value in run `k` is asked for by run `k + 1` both for the old value and for the value it assigns (`l$a <- l$a + 1`),
- * which would otherwise walk the earlier runs over and over. Dropped with the resolution, never kept.
- */
+/** What each replacement (`l$a <- v`) holds in a run of a loop and frame, for the one resolution that walks it: its value in run `k` is asked for by run `k + 1` both for the old value and for the value it assigns (`l$a <- l$a + 1`), which would otherwise walk the earlier runs over and over. */
 export type ReplacedValues = Map<string, Value | undefined>;
 
-/**
- * The `k`-th run of the body of the loop at `loop` (a `for`, `while`, or `repeat`), out of a number of runs the value walk knows. It
- * enters the last one when it follows a read after the loop into the body, and steps back one run whenever a read
- * in the body sees what the body defines only later on, in the run before.
- */
+/** The `k`-th run of the body of the loop at `loop` (a `for`, `while`, or `repeat`), out of a number of runs the value walk knows. */
 export interface LoopIteration {
 	readonly loop: NodeId
 	readonly k:    number
 }
 
-/**
- * A frame a run of the function `fn` makes when `call` calls it: a parameter of `fn` read in that frame holds what
- * `call` hands it. The value walk enters one when it follows a call into the function it returns from, and leaves
- * it again when it follows a parameter to its argument, or a free variable to what the scope of `fn` binds where
- * `call` runs, which is in the `runs` of the loops around `call`.
- */
+/** A frame a run of the function `fn` makes when `call` calls it: a parameter of `fn` read in that frame holds what `call` hands it. */
 export interface CallFrame {
 	readonly fn:    NodeId
 	readonly call:  NodeId
 	readonly runs?: readonly LoopIteration[]
 }
 
-/**
- * The call each of some functions is resolved for, keyed by the id of the function definition: a parameter of such a
- * function holds only what that call hands it, or its default when the call hands it nothing. Without one, a
- * parameter holds what any call of its function may hand it, which is what a value in the function body has to
- * expect. With one, `save <- function(n) write.csv(d, n)` writes `"a.csv"` for `save("a.csv")` and nothing else.
- */
+/** The call each of some functions is resolved for, keyed by the id of the function definition: a parameter of such a function holds only what that call hands it, or its default when the call hands it nothing. */
 export type CallContext = ReadonlyMap<NodeId, NodeId>;
 
 /** the call the context resolves the function of the parameter named by `id` for, if `id` names a parameter at all */
@@ -125,15 +107,7 @@ function contextCallOf(id: NodeId, idMap: AstIdMap, callContext: CallContext | u
 	return parameter?.info.parent === undefined ? undefined : callContext.get(parameter.info.parent);
 }
 
-/**
- * The call an argument value is handed to: the closest call around it, or the call a pipe feeds it into.
- * @example
- * ```ts
- * // f(g(1)) |> h()
- * callOfArgument(idOfGCall, idMap); // the id of `f(...)`
- * callOfArgument(idOfFCall, idMap); // the id of `h()`
- * ```
- */
+/** The call an argument value is handed to: the closest call around it, or the call a pipe feeds it into. */
 export function callOfArgument(value: NodeId, idMap: AstIdMap): NodeId | undefined {
 	for(const parent of RNode.iterateParents(idMap.get(value), idMap)) {
 		if(RFunctionCall.is(parent)) {
@@ -145,11 +119,7 @@ export function callOfArgument(value: NodeId, idMap: AstIdMap): NodeId | undefin
 	return undefined;
 }
 
-/**
- * Whether the walk may follow `edge` from the parameter `id` of a function the context resolves for `calls`, the call
- * running it and those handing on their dots to it: an argument only if one of them hands it, the default only if
- * none does.
- */
+/** Whether the walk may follow `edge` from the parameter `id` of a function the context resolves for `calls`, the call running it and those handing on their dots to it: an argument only if one of them hands it, the default only if none does. */
 function followsInCall(edges: ReadonlyMap<NodeId, DfEdge>, target: NodeId, edge: DfEdge, calls: readonly NodeId[], idMap: AstIdMap): boolean {
 	const handed = (t: NodeId, e: DfEdge) => DfEdge.isOnlyType(e, EdgeType.DefinedByOnCall) && calls.includes(callOfArgument(t, idMap) ?? '');
 	if(DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall)) {
@@ -211,19 +181,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	return definitions;
 }
 
-/**
- * Gets the definitions / aliases of a node
- *
- * This function is called by the built-in-assignment processor so that we can
- * track assignments inside the environment. The returned ids are stored in
- * the sourceIds value field of their InGraphIdentifierDefinition. This enables
- * us later, in the {@link trackAliasInEnvironments} function, to get all the
- * aliases of an identifier.
- * @param sourceIds   - node ids to get the definitions for
- * @param dataflow    - dataflow graph
- * @param environment - environment
- * @returns           node id of alias
- */
+/** Gets the definitions / aliases of a node This function is called by the built-in-assignment processor so that we can track assignments inside the environment. */
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: Set<NodeId> = new Set<NodeId>();
 
@@ -247,24 +205,6 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 
 /**
  * Evaluates the value of a node in the set domain.
- *
- * resolveIdToValue tries to resolve the value using the data it has been given.
- * If the environment is provided the approximation is more precise, as we can
- * track aliases in the environment.
- * Otherwise, the graph is used to try and resolve the nodes value.
- * If neither is provided the value cannot be resolved.
- *
- * This function is also used by the Resolve Value Query and the Dependency Query
- * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
- * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
- * @param  id          - The node id or node to resolve
- * @param  environment - The current environment used for name resolution
- * @param  graph       - The graph to resolve in
- * @param  idMap       - The id map to resolve the node if given as an id
- * @param  full        - Whether to track aliases on resolve
- * @param  resolve     - Variable resolve mode
- * @param  ctx         - Context used for clean environment
- * @param  blocked     - If set, the ids that should not be considered during resolution (=&gt;top)
  * @useInstead {@link Resolve.toValue}
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, ctx, resolve = ctx.config.solver.variables, blocked, callContext, frames, iterations, replacements }: ResolveInfo): ResolveResult {
@@ -334,16 +274,7 @@ function iteratedElements(value: Value): readonly Value[] {
 	return [value];
 }
 
-/**
- * Please use {@link resolveIdToValue}
- *
- * Uses the aliases that were tracked in the environments (by the
- * {@link getAliases} function) to resolve a node to a value.
- * The third argument is the {@link ResolveInfo} (ctx, idMap, ...) minus the environment, which is passed on its own.
- * @param identifier  - Identifier to resolve
- * @param environment - Environment to use
- * @returns           Value of Identifier or Top
- */
+/** Please use {@link resolveIdToValue} Uses the aliases that were tracked in the environments (by the {@link getAliases} function) to resolve a node to a value. */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, environment: REnvironmentInformation, { blocked, idMap, resolve = VariableResolve.Alias, ctx, graph, callContext }: Omit<ResolveInfo, 'environment'>): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
@@ -380,9 +311,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 					const beforeAttempt = blocked === undefined ? undefined : new Set(blocked);
 					let value = resolveNode({ resolve, node: definitionOfAlias, ctx, environment, graph, idMap, blocked, callContext });
 					if(isTop(value) && graph?.unknownSideEffects.size === 0) {
-						/* `x <- x + 1`: the environment holds only the definition we are resolving, so its own operand
-						 * finds nothing there, while the graph still knows which definition that operand reads. Only
-						 * when nothing unknown happened, as then the environment is right to give up */
+						/* `x <- x + 1`: the environment holds only the definition we are resolving, so its own operand finds nothing there, while the graph still knows which definition that operand reads. */
 						value = resolveNode({ resolve, node: definitionOfAlias, ctx, graph, idMap, blocked: beforeAttempt, callContext });
 					}
 					if(isTop(value)) {
@@ -458,11 +387,7 @@ function parameterDefaultState(node: RNodeWithParent | undefined, idMap: AstIdMa
 	return calls === 0 ? 'unknown' : Dataflow.targetsOf(graph, bound.name.info.id, EdgeType.DefinedByOnCall).length >= calls ? 'overridden' : 'applies';
 }
 
-/**
- * The sequence a use of a `for` loop's variable runs over, `undefined` when `id` is no such use. Every
- * definition it reads has to be that variable: once anything else writes the name (`i <- i + 1` in the body),
- * the sequence no longer states what the name holds.
- */
+/** The sequence a use of a `for` loop's variable runs over, `undefined` when `id` is no such use. */
 function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RNodeWithParent | undefined {
 	let sequence: RNodeWithParent | undefined;
 	for(const [target, edge] of graph.edgesFrom(id)) {
@@ -506,13 +431,7 @@ function finalBreakOf(loop: RNodeWithParent | undefined): RIfThenElse<ParentInfo
 	return RIfThenElse.is(last) && last.otherwise === undefined && last.then.children.length === 1 && RBreak.is(last.then.children[0]) ? last : undefined;
 }
 
-/**
- * The runs of the loops a value walk passes, see {@link LoopIteration}: a `for` over a sequence known in advance, or a
- * `while` or `repeat` whose exit condition the value walk can tell for each run, and whose runs no `break` or `next` cuts short,
- * runs its body a known number of times, so a read after the loop sees a definition the body surely makes from its last
- * run, and a read in the body (or the condition of a `while`, which runs before the body) sees the last one before it,
- * in the same run or the one before.
- */
+/** The runs of the loops a value walk passes, see {@link LoopIteration}: a `for` over a sequence known in advance, or a `while` or `repeat` whose exit condition the value walk can tell for each run, and whose runs no `break` or `next` cuts short, runs its body a known number of times, so a read after the loop sees a definition the body surely makes from its last run, and a read in the body (or the condition of a `while`, which runs before the body) sees the last one before it, in the same run or the one before. */
 class LoopRuns {
 	private readonly graph: DataflowGraph;
 	private readonly idMap: AstIdMap;
@@ -574,10 +493,7 @@ class LoopRuns {
 		return runs;
 	}
 
-	/**
-	 * The first run of the loop whose check of `condition` surely ends it, as the check is `exitsWhen`: that of a `while`
-	 * comes before the body of the run and sees what the run before left behind, that of a `repeat` at the end of the body.
-	 */
+	/** The first run of the loop whose check of `condition` surely ends it, as the check is `exitsWhen`: that of a `while` comes before the body of the run and sees what the run before left behind, that of a `repeat` at the end of the body. */
 	private runsUntil(condition: NodeId, loop: NodeId, exitsWhen: boolean): number | undefined {
 		for(let k = 1; k <= MaxUnrolledRuns + 1; k++) {
 			const values = valueSetGuard(resolveIdToValue(condition, { ...this.info, blocked: new Set(this.info.blocked), iterations: [{ loop, k }] }))?.elements;
@@ -631,13 +547,7 @@ class LoopRuns {
 		return loops;
 	}
 
-	/**
-	 * Where the replacement at `id`, which reads its target in the very vertex that defines it (so no edge says so), reads
-	 * what it wrote itself in the run of a loop before: `undefined` if no loop runs it again over a binding from before
-	 * that loop (`targets` are the bindings it reads), the loop that does with the runs of the run before if the walk is
-	 * in a later run of it (none in the first one) and whether a later definition of the body hides its own write, and
-	 * `null` if the walk cannot tell.
-	 */
+	/** Where the replacement at `id`, which reads its target in the very vertex that defines it (so no edge says so), reads what it wrote itself in the run of a loop before: `undefined` if no loop runs it again over a binding from before that loop (`targets` are the bindings it reads), the loop that does with the runs of the run before if the walk is in a later run of it (none in the first one) and whether a later definition of the body hides its own write, and `null` if the walk cannot tell. */
 	ownEarlierRun(id: NodeId, targets: readonly NodeId[], iterations: readonly LoopIteration[]): { readonly loop: NodeId, readonly shadowed: boolean, readonly before?: readonly LoopIteration[] } | undefined | null {
 		const within = (target: NodeId, loop: NodeId) => target === loop || RNode.iterateParents(this.idMap.get(target), this.idMap).some(p => p.info.id === loop);
 		const carried: NodeId[] = [];
@@ -717,10 +627,7 @@ class LoopRuns {
 		return assigns(to, from) ? RunOrder.After : assigns(from, to) ? RunOrder.Before : RunOrder.Unknown;
 	}
 
-	/**
-	 * Whether a loop that surely runs at least once, standing before the read `from` in a block that holds it, surely
-	 * redefines what `to`, made before the loop, defines, so the read no longer sees `to`.
-	 */
+	/** Whether a loop that surely runs at least once, standing before the read `from` in a block that holds it, surely redefines what `to`, made before the loop, defines, so the read no longer sees `to`. */
 	private redefinedByLoop(from: NodeId, to: NodeId, edges: ReadonlyMap<NodeId, DfEdge>): boolean {
 		for(const [t, e] of edges) {
 			if(t === to || !DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall) || this.graph.getVertex(t)?.cds?.some(cd => isCountedLoop(this.idMap.get(cd.id))) !== true
@@ -737,10 +644,7 @@ class LoopRuns {
 		return false;
 	}
 
-	/**
-	 * Whether another definition among the `edges` of the read `from` in run `k` of the loop surely runs after `to`
-	 * (made in run `toRun`, or before the loop if that is `undefined`) and before `from`, so the read no longer sees `to`.
-	 */
+	/** Whether another definition among the `edges` of the read `from` in run `k` of the loop surely runs after `to` (made in run `toRun`, or before the loop if that is `undefined`) and before `from`, so the read no longer sees `to`. */
 	private redefinedBetween(from: NodeId, to: NodeId, toRun: number | undefined, k: number, loop: NodeId, edges: ReadonlyMap<NodeId, DfEdge>): boolean {
 		for(const [t, e] of edges) {
 			if(t === to || !DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall) || !DfgVertex.isVariableDefinition(this.graph.getVertex(t))
@@ -756,11 +660,7 @@ class LoopRuns {
 		return false;
 	}
 
-	/**
-	 * The runs the walk is in once it follows the edge from `from` to `to`, `undefined` if no run lets it: a read in the
-	 * first run cannot see what its body only defines later on, nor any read a definition the body surely makes again
-	 * between the two.
-	 */
+	/** The runs the walk is in once it follows the edge from `from` to `to`, `undefined` if no run lets it: a read in the first run cannot see what its body only defines later on, nor any read a definition the body surely makes again between the two. */
 	along(from: NodeId, to: NodeId, edges: ReadonlyMap<NodeId, DfEdge>, iterations: readonly LoopIteration[]): readonly LoopIteration[] | undefined {
 		const top = iterations.at(-1);
 		if(top === undefined) {
@@ -804,11 +704,7 @@ class LoopRuns {
 	}
 }
 
-/**
- * Whether the `<<-` replacement at `id` may run again in a later call of its function, where it reads its own write
- * (no edge says so, the vertex reading the target is the one defining it). It does not if its function is defined at
- * the top level and every call of it is, outside of loops, where the target does not yet name what it wrote.
- */
+/** Whether the `<<-` replacement at `id` may run again in a later call of its function, where it reads its own write (no edge says so, the vertex reading the target is the one defining it). */
 function superReplacementRepeats(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
 	const fn = RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 	const replacement = idMap.get(id)?.info.parent;
@@ -858,10 +754,7 @@ function isParameterOf(id: NodeId, fn: NodeId, idMap: AstIdMap): boolean {
 	return node?.info.role === RoleInParent.ParameterName && node.info.parent !== undefined && idMap.get(node.info.parent)?.info.parent === fn;
 }
 
-/**
- * Whether the walk stays in the frame of `fn` when it moves to `target`: a node of the body of `fn` itself, whose
- * definitions a run of `fn` makes in its own frame, unless they go elsewhere (`<<-`, `assign`).
- */
+/** Whether the walk stays in the frame of `fn` when it moves to `target`: a node of the body of `fn` itself, whose definitions a run of `fn` makes in its own frame, unless they go elsewhere (`<<-`, `assign`). */
 function inSameFrame(target: NodeId, fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
 	if(RNode.strictlyEnclosingFunction(target, idMap) !== fn) {
 		return false;
@@ -872,11 +765,7 @@ function inSameFrame(target: NodeId, fn: NodeId, graph: DataflowGraph, idMap: As
 	return isParameterOf(target, fn, idMap) || (parent !== undefined && DfgVertex.hasOrigin(graph.getVertex(parent), BuiltInProcName.Assignment));
 }
 
-/**
- * The frames the walk is in once it follows the `Returns` edge of `call` to `target`: a new frame of the function
- * called, the same frame for what the call hands back of its own arguments, and none it knows otherwise.
- * A function already in a frame is called recursively, and its frames are no longer told apart.
- */
+/** The frames the walk is in once it follows the `Returns` edge of `call` to `target`: a new frame of the function called, the same frame for what the call hands back of its own arguments, and none it knows otherwise. */
 function framesIntoReturn(call: NodeId, target: NodeId, edges: ReadonlyMap<NodeId, DfEdge>, frames: readonly CallFrame[], runs: readonly LoopIteration[], idMap: AstIdMap): readonly CallFrame[] {
 	if(!edges.entries().some(([t, e]) => !NodeId.isBuiltIn(t) && DfEdge.includesType(e, EdgeType.Calls))) {
 		/* a built-in hands back what it was given in the frame it was called in */
@@ -902,11 +791,7 @@ function handingFrame(frames: readonly CallFrame[], argument: NodeId, idMap: Ast
 	return at < 0 ? frames.length - 1 : at;
 }
 
-/**
- * What the call binds a free variable of the function it calls to, if it binds any of the definitions the variable
- * is linked to on calls (`DefinedByOnCall`): read in the frame of that call, the variable sees those and none of
- * the ones other calls bind, such as the call creating the closure (`g <- f(); x <- 2; g()` reads `x` of `g()`).
- */
+/** What the call binds a free variable of the function it calls to, if it binds any of the definitions the variable is linked to on calls (`DefinedByOnCall`): read in the frame of that call, the variable sees those and none of the ones other calls bind, such as the call creating the closure (`g <- f(); x <- 2; g()` reads `x` of `g()`). */
 function boundByCall(id: NodeId, call: NodeId, edges: ReadonlyMap<NodeId, DfEdge>, graph: DataflowGraph): ReadonlySet<NodeId> | undefined {
 	let bound: Set<NodeId> | undefined;
 	for(const [target, edge] of edges) {
@@ -917,11 +802,7 @@ function boundByCall(id: NodeId, call: NodeId, edges: ReadonlyMap<NodeId, DfEdge
 	return id === call ? undefined : bound;
 }
 
-/**
- * Which of the definitions the lookup `vertex` finds it may hand back in the frames the walk is in: those the calls
- * of these frames find, and those no call states, see {@link DataflowGraphVertexFunctionCall#foundOnCall}.
- * `undefined` if no call of a frame states what it finds.
- */
+/** Which of the definitions the lookup `vertex` finds it may hand back in the frames the walk is in: those the calls of these frames find, and those no call states, see {@link DataflowGraphVertexFunctionCall#foundOnCall}. */
 function foundInFrames(vertex: DataflowGraphVertexFunctionCall, frames: readonly CallFrame[], callContext: CallContext | undefined): ((target: NodeId) => boolean) | undefined {
 	if(vertex.foundOnCall === undefined) {
 		return undefined;
@@ -963,10 +844,7 @@ function switchPick(args: readonly (RArgument<ParentInformation> | typeof EmptyA
 	return filled(picked) ? picked.info.id : null;
 }
 
-/**
- * The argument a call choosing one of its arguments by a value (`if`, `switch`) hands back, if that value is
- * known: `undefined` if it may hand back any of them, `null` if it hands back none (`NULL`) or fails.
- */
+/** The argument a call choosing one of its arguments by a value (`if`, `switch`) hands back, if that value is known: `undefined` if it may hand back any of them, `null` if it hands back none (`NULL`) or fails. */
 function chosenArguments(id: NodeId, vertex: DataflowGraphVertexFunctionCall, info: ResolveInfo): ReadonlySet<NodeId> | null | undefined {
 	const isIf = DfgVertex.hasOrigin(vertex, BuiltInProcName.IfThenElse);
 	if(!isIf && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Switch)) {
@@ -995,18 +873,7 @@ function chosenArguments(id: NodeId, vertex: DataflowGraphVertexFunctionCall, in
 	return picks.has(undefined) ? undefined : picks as ReadonlySet<NodeId>;
 }
 
-/**
- * Please use {@link resolveIdToValue}
- *
- * Tries to resolve the value of a node by traversing the dataflow graph
- * @param id      - node to resolve
- * @param ctx     - analysis context
- * @param graph   - dataflow graph
- * @param idMap   - idmap of dataflow graph
- * @param blocked - the ids already being resolved, so a cyclic definition stops
- * @param callContext - the calls to resolve parameters for, see {@link CallContext}
- * @returns       Value of node or Top/Bottom
- */
+/** Please use {@link resolveIdToValue} Tries to resolve the value of a node by traversing the dataflow graph */
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap, blocked?: Set<NodeId>, callContext?: CallContext, frames: readonly CallFrame[] = [], iterations: readonly LoopIteration[] = [], replacements?: ReplacedValues): ResolveResult {
 	if(!graph.get(id)) {
 		return Bottom;
@@ -1099,8 +966,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 				const next = top === undefined ? frames
 					: handing !== undefined ? frames.slice(0, handing)
 						: inSameFrame(targetId, top.fn, graph, idMap) ? frames : [];
-				/* a function reads what its scope binds when it is called, so leaving its frame that way, the read is where
-				 * the call is, or, through calls of further functions, where the call made in the scope of the target is */
+				/* a function reads what its scope binds when it is called, so leaving its frame that way, the read is where the call is, or, through calls of further functions, where the call made in the scope of the target is */
 				const leaving = top === undefined || ownParameter ? undefined : frameCalledBeside(frames, targetId, idMap) ?? top;
 				const runs = next === frames ? loops.along(id, targetId, outgoingEdges, iterations)
 					: handing !== undefined ? frames[handing].runs ?? []
@@ -1120,11 +986,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		if(!vertex) {
 			continue;
 		}
-		/* a definition in a loop may hold the value of any iteration, and the walk collects all of them; one that
-		 * depends on its own earlier value, like `x <- x + 1`, reaches itself again, is blocked, and stays unknown */
+		/* a definition in a loop may hold the value of any iteration, and the walk collects all of them; one that depends on its own earlier value, like `x <- x + 1`, reaches itself again, is blocked, and stays unknown */
 		const t = vertex.tag;
-		/* a replacement (`l$a <- v`) rebinds its target to what it was with a part changed, so the target holds
-		 * that change applied to the old value, which the target reads */
+		/* a replacement (`l$a <- v`) rebinds its target to what it was with a part changed, so the target holds that change applied to the old value, which the target reads */
 		if(t === VertexType.VariableDefinition && (vertex.par || idMap.get(id)?.info.role === RoleInParent.Accessed)) {
 			const key = `${id}@${iterations.map(i => `${i.loop}:${i.k}`).join('/')}|${frames.map(f => `${f.fn}@${f.call}`).join('/')}`;
 			const memo = callContext === undefined ? replacements ??= new Map<string, Value | undefined>() : undefined;
@@ -1153,8 +1017,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 
 		const isFn = t === VertexType.FunctionCall;
-		/* an access hands back a part of what it accesses, `x[[2]]` an element of `x`, so its `Returns` edge to `x`
-		 * says nothing about its value, which only the evaluation of the access knows */
+		/* an access hands back a part of what it accesses, `x[[2]]` an element of `x`, so its `Returns` edge to `x` says nothing about its value, which only the evaluation of the access knows */
 		if(isFn && RAccess.is(idMap.get(id))) {
 			const values = valueSetGuard(resolveIdToValue(id, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked: new Set(blocked), callContext, frames, iterations, replacements }));
 			if(values === undefined || values.elements.some(isTop)) {
@@ -1165,9 +1028,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 		const outgoingEdges = graph.edgesFrom(id);
 		if(isFn && callsBuiltInAndDefinition(outgoingEdges)) {
-			/* `if(u) toupper <- function(x) "z"`: the call may run the built-in just as well as the definition,
-			 * and what the two hand back has nothing to do with each other, so following the one we can walk
-			 * would state the value of a call that may never happen */
+			/* `if(u) toupper <- function(x) "z"`: the call may run the built-in just as well as the definition, and what the two hand back has nothing to do with each other, so following the one we can walk would state the value of a call that may never happen */
 			return Top;
 		}
 		let foundRetuns = false;
@@ -1206,8 +1067,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			follow(id, t === VertexType.VariableDefinition ? DefinitionValueFlowEdges : ValueFlowEdges, frames, iterations, enqueue);
 		}
 		if(isFn && !foundRetuns) {
-			/* a call that hands back none of its arguments has no `Returns` edge to follow, yet the value solver may
-			 * well know what it produces (`p <- file.path("data", "x.csv")`), so we fold it instead of giving up */
+			/* a call that hands back none of its arguments has no `Returns` edge to follow, yet the value solver may well know what it produces (`p <- file.path("data", "x.csv")`), so we fold it instead of giving up */
 			const node = idMap.get(id);
 			const state = parameterDefaultState(node, idMap, graph);
 			if(state === 'overridden') {
@@ -1249,12 +1109,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 }
 
 /**
- * Please use {@link resolveIdToValue}
- *
- * Resolve an Identifier to a constant, if the identifier is a constant
- * @param    name        - Identifier to resolve
- * @param    environment - Environment to use
- * @returns              Value of Constant or Top
+ * Please use {@link resolveIdToValue} Resolve an Identifier to a constant, if the identifier is a constant
  * @useInstead {@link Resolve.toConstants}
  */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {

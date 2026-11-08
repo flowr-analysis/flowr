@@ -21,9 +21,7 @@ export interface FrameReflectionOptions {
 }
 
 /**
- * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
- * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
- * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
+ * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none).
  * @useInstead {@link FunctionSemantics.frameReflection}
  */
 export function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, { known }: FrameReflectionOptions): ArgProps {

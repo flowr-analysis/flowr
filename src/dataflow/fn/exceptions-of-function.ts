@@ -24,11 +24,7 @@ export interface ExceptionPoint {
 /** The exceptions each function may raise, keyed by the id of its definition. */
 export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
 
-/**
- * Whether the vertex catches an error raised below it, which ends the walk. A construct declaring no condition
- * handler of its own (`try`) catches whatever arrives; one that matches handlers by condition class
- * (`tryCatch`) catches only what the names written for it say.
- */
+/** Whether the vertex catches an error raised below it, which ends the walk. */
 function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGraph, info: BuiltInLookup): boolean {
 	if(!DfgVertex.isFunctionCall(vertex) || !DfgVertex.hasOrigin(vertex, BuiltInProcName.Try)) {
 		return false;
@@ -41,12 +37,7 @@ function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGra
 	return RFunctionCall.is(node) && namesAnErrorHandler(node.arguments);
 }
 
-/**
- * Whether the call is written in the block of a construct catching what it raises, which keeps an error its
- * callee raises from reaching the function around it. Only the block is guarded, as a handler runs after the
- * error was raised, and the walk ends at the definition the call is written in, as a function defined in the
- * block is not run there.
- */
+/** Whether the call is written in the block of a construct catching what it raises, which keeps an error its callee raises from reaching the function around it. */
 function guarded(id: NodeId, graph: CallGraph, info: BuiltInLookup): boolean {
 	const idMap = graph.idMap;
 	let node = idMap?.get(id);
@@ -85,8 +76,7 @@ export interface FunctionExceptionsOptions {
 }
 
 /**
- * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
- * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
+ * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by flowR.
  * @useInstead {@link FunctionSemantics.exceptions}
  */
 export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {

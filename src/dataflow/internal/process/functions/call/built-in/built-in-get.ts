@@ -73,12 +73,7 @@ export function isComputedLookup(vertex: DataflowGraphVertexFunctionCall, graph:
 		&& !RString.is(graph.idMap?.get(name.nodeId)) && !graph.hasVertex(synthesizedTargetId(vertex.id, 0));
 }
 
-/**
- * Links a lookup whose name was not known where it is written (`f <- function(n) get(n)()`) to the definitions of
- * every name that reaches it, through the parameters of the calls linked so far, seen from where it is written
- * (`environment` holds the global names at the calls of the enclosing function).
- * Returns whether all names are known; only then the lookup no longer counts as an unknown side effect.
- */
+/** Links a lookup whose name was not known where it is written (`f <- function(n) get(n)()`) to the definitions of every name that reaches it, through the parameters of the calls linked so far, seen from where it is written (`environment` holds the global names at the calls of the enclosing function). */
 export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, runsOnceAt: RNode<ParentInformation> | undefined): boolean {
 	const name = vertex.args[0] as Exclude<FunctionArgument, typeof EmptyArgument>;
 	const info = Resolve.info(graph, ctx);
@@ -116,17 +111,7 @@ export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVe
 	return true;
 }
 
-/**
- * What `name` is bound to where the lookup `call` without an environment (`get(n)`) looks before the global names: the
- * frame of the function body it is in, then those of the functions it is defined in, each as it was when the closure
- * was created and as the body around it leaves it, as a closure may be called later. `definite` once a binding surely holds.
- * @example
- * ```ts
- * // mk <- function() { f <- function(n) get(n); k <- 5; f }: a call of f sees k <- 5
- * const { definitions, definite } = lexicalDefinitions('k', getCall, graph);
- * const all = definite ? definitions : [...definitions, ...Resolve.byName('k', globalAtCall) ?? []];
- * ```
- */
+/** What `name` is bound to where the lookup `call` without an environment (`get(n)`) looks before the global names: the frame of the function body it is in, then those of the functions it is defined in, each as it was when the closure was created and as the body around it leaves it, as a closure may be called later. */
 export function lexicalDefinitions(name: BrandedIdentifier, call: DataflowGraphVertexFunctionCall, graph: DataflowGraph): { readonly definitions: readonly IdentifierDefinition[], readonly definite: boolean } {
 	const definitions: IdentifierDefinition[] = [];
 	const left: Environment[] = [];
@@ -150,14 +135,7 @@ export function lexicalDefinitions(name: BrandedIdentifier, call: DataflowGraphV
 	return { definitions, definite: false };
 }
 
-/**
- * Processes a built-in 'get' function call.
- *
- * When an `envir` argument is present and resolves to a variable with a tracked environment
- * state (set up by `new.env()` + `assign(..., envir=...)`), the lookup is performed inside
- * that environment so that the correct definition is found and the returned {@link DataflowInformation}
- * contains the right read edges.
- */
+/** Processes a built-in 'get' function call. */
 export function processGet<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -188,8 +166,7 @@ export function processGet<OtherInfo>(
 	/* a computed name is an expression the call evaluates and reads */
 	const nameExpression = RString.is(retrieve) ? undefined : args[0];
 
-	/* resolve in the custom environment if one was found, else the global one.
-	 * Pass remaining original args (e.g. envir=e) so they appear as Use vertices in the graph. */
+	/* resolve in the custom environment if one was found, else the global one. */
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
 		args: [

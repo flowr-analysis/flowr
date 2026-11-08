@@ -1,17 +1,10 @@
-/**
- * R's group generics, kept apart from the builtin configuration so anything may ask about them without pulling
- * the whole dataflow setup in (the signature database does, and that would be a cycle).
- */
+/** R's group generics, kept apart from the builtin configuration so anything may ask about them without pulling the whole dataflow setup in (the signature database does, and that would be a cycle). */
 
 const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
 const Compare = ['==', '!=', '<', '<=', '>', '>='] as const;
 const Logic = ['&', '|'] as const;
 
-/**
- * R's group generics: a class claims every member of a group at once, with an `Ops.cls` (S3) or a
- * `setMethod('Arith', ...)` (S4), so a call to any member may dispatch to a method named after the group.
- * `Ops` is what S3 calls the union of the three S4 groups it splits into.
- */
+/** R's group generics: a class claims every member of a group at once, with an `Ops.cls` (S3) or a `setMethod('Arith', ...)` (S4), so a call to any member may dispatch to a method named after the group. */
 export const RGroupGenerics = {
 	Arith, Compare, Logic,
 	Ops:  [...Arith, ...Compare, ...Logic, '!'],
@@ -34,11 +27,7 @@ export type RGroupGeneric = keyof typeof RGroupGenerics;
 /** the S4 groups, i.e. {@link RGroupGenerics} without `Ops`, which only S3 knows */
 const S4Groups = ['Arith', 'Compare', 'Logic', 'Math', 'Math2', 'Summary', 'Complex', 'matrixOps'] as const;
 
-/**
- * Member name to its S4 group (`sin` to `Math`, `+` to `Arith`). `Ops` is left out so `+` answers `Arith`
- * rather than both. A package exporting such a name usually does so because it registered a method for one of
- * its classes, so the name says far less about the package than an ordinary export would.
- */
+/** Member name to its S4 group (`sin` to `Math`, `+` to `Arith`). */
 export const S4GroupOfMember: ReadonlyMap<string, string> = new Map(
 	S4Groups.flatMap(group => RGroupGenerics[group].map(member => [member as string, group as string])));
 
@@ -47,16 +36,7 @@ export function groupGenericOf(name: string): string | undefined {
 	return S4GroupOfMember.get(name);
 }
 
-/**
- * The S4 group generics whose methods a call of `name` may dispatch to, the nearest first (`+` to `Arith`, then `Ops`).
- * Empty for a name in no group. It tells which methods can be run, not whether any is defined.
- * @example
- * ```ts
- * s4GroupGenericsOf('+');   // ['Arith', 'Ops']
- * s4GroupGenericsOf('sum'); // ['Summary']
- * s4GroupGenericsOf('foo'); // []
- * ```
- */
+/** The S4 group generics whose methods a call of `name` may dispatch to, the nearest first (`+` to `Arith`, then `Ops`). */
 export function s4GroupGenericsOf(name: string): readonly string[] {
 	const group = S4GroupOfMember.get(name);
 	return group === undefined ? [] : group === 'Arith' || group === 'Compare' || group === 'Logic' ? [group, 'Ops'] : [group];
@@ -78,15 +58,7 @@ const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
 const S3GroupOfMember: ReadonlyMap<string, string> = new Map(
 	S3Groups.flatMap(group => (s3GroupGenericMembers(group) ?? []).map(member => [member, group as string])));
 
-/**
- * The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none.
- * An S3 method named after the name itself (`==.foo`) wins over the one of the group (`Ops.foo`) in R, so look for that first.
- * @example
- * ```ts
- * s3GroupGenericOf('==');   // 'Ops'
- * s3GroupGenericOf('foo');  // undefined
- * ```
- */
+/** The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none. */
 export function s3GroupGenericOf(name: string): string | undefined {
 	return S3GroupOfMember.get(name);
 }

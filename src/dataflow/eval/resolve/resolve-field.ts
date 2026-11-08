@@ -28,19 +28,7 @@ const ReadOf = EdgeType.Reads | EdgeType.DefinedByOnCall;
 /** the edges a copy or a parameter point to the read they hold the environment of with */
 const HandedTo = EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
-/**
- * Whether only what flowR tracks may write into the environment the variable definition `holder` holds: every read
- * of it, through copies and parameters it is handed to, is the environment of an access or of a call that looks up
- * or writes bindings in it (see {@link EnvironmentLookups}), or an argument of a function of the program, whose
- * writes are replayed or count as unknown side effects. Any other call may change it without flowR knowing.
- * @example
- * ```ts
- * // e <- new.env(); e$x <- 1; print(e$x) only writes what is tracked, foo(e) may write anything
- * if(holders.every(h => writesTracked(h, graph))) {
- *     // the tracked contents of e are all it holds
- * }
- * ```
- */
+/** Whether only what flowR tracks may write into the environment the variable definition `holder` holds: every read of it, through copies and parameters it is handed to, is the environment of an access or of a call that looks up or writes bindings in it (see {@link EnvironmentLookups}), or an argument of a function of the program, whose writes are replayed or count as unknown side effects. */
 export function writesTracked(holder: NodeId, graph: DataflowGraph): boolean {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -104,10 +92,7 @@ function unknownWrites(graph: DataflowGraph): boolean {
 	return graph.unknownSideEffects.values().some(e => typeof e !== 'object');
 }
 
-/**
- * What the lookup finds for the calls the walk is in, or for all calls it records, each made once at the top, so
- * nothing a later run writes is missing; `undefined` if one of them may run more than once.
- */
+/** What the lookup finds for the calls the walk is in, or for all calls it records, each made once at the top, so nothing a later run writes is missing; `undefined` if one of them may run more than once. */
 function foundAtCalls(records: readonly FoundOnCall[], { frames, callContext }: BuiltInEvalHandlerArgs, graph: DataflowGraph): readonly NodeId[] | undefined {
 	const inFrames = records.filter(r => frames?.some(f => f.call === r.call) || callContext?.values().some(c => c === r.call));
 	const used = inFrames.length > 0 ? inFrames : records;
@@ -117,17 +102,7 @@ function foundAtCalls(records: readonly FoundOnCall[], { frames, callContext }: 
 	return inFrames.length > 0 ? used.map(r => r.found).reduce((a, b) => a.filter(d => b.includes(d))) : used.flatMap(r => r.found);
 }
 
-/**
- * The value of `e$f` or `e[["f"]]` when `e` surely holds an environment whose contents flowR tracks, see
- * {@link DataflowGraphVertexFunctionCall#found}: what the definitions of `f` there hold, those a call binds for the
- * calls the walk is in, if `e` is bound by the calls of the function around the access. {@link Top} if anything
- * else may have written into `e`, and `undefined` if the access is no field of an environment flowR tracks.
- * @example
- * ```ts
- * // e <- new.env(); e$x <- 1; y <- e$x resolves y to 1
- * const value = resolveAsField(args) ?? Top;
- * ```
- */
+/** The value of `e$f` or `e[["f"]]` when `e` surely holds an environment whose contents flowR tracks, see {@link DataflowGraphVertexFunctionCall#found}: what the definitions of `f` there hold, those a call binds for the calls the walk is in, if `e` is bound by the calls of the function around the access. */
 export function resolveAsField(args: BuiltInEvalHandlerArgs): Value | undefined {
 	const { node, graph } = args;
 	const vertex = graph?.getVertex(node.info.id);

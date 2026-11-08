@@ -1,7 +1,5 @@
 /**
  * Argument processing shared by the call processors.
- * Importing the `Resolve` helper here pulls the evaluator in before the built-in configuration is
- * initialized, so this file keeps the direct import.
  * @lintIgnore use-instead
  */
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
@@ -80,20 +78,12 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	}
 }
 
-/**
- * Converts function arguments into function argument references for a function call vertex.
- * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
- * This function also works after the arguments were unpacked, e.g., by {@link tryUnpackNoNameArg}.
- * @see convertFnArgument
- */
+/** Converts function arguments into function argument references for a function call vertex. */
 export function convertFnArguments<OtherInfo>(args: readonly (typeof EmptyArgument | RNode<OtherInfo & ParentInformation>)[]): FunctionArgument[] {
 	return args.map(convertFnArgument);
 }
 
-/**
- * Transforms a function argument into a function argument reference for a function call vertex.
- * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
- */
+/** Transforms a function argument into a function argument reference for a function call vertex. */
 export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
 	if(RArgument.isEmpty(arg)) {
 		return EmptyArgument;
@@ -103,11 +93,7 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 	return { nodeId: arg.info.id, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument };
 }
 
-/**
- * Whether `arg` is the value the pipe handed to the call `functionRootId`, which {@link processNamedCall}
- * spliced into its arguments. The pipe processes and links that value itself, so processing it here again
- * would duplicate it.
- */
+/** Whether `arg` is the value the pipe handed to the call `functionRootId`, which {@link processNamedCall} spliced into its arguments. */
 export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	return data.pipedArgument?.rootId === functionRootId && data.pipedArgument.argument === arg;
 }
@@ -213,11 +199,7 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly link?:                 DataflowGraphVertexAstLink
 }
 
-/**
- * Patches a function call vertex into the given dataflow graph.
- * This is mostly useful for built-in processors that have custom argument processing.
- * Otherwise, rely on {@link processKnownFunctionCall} instead.
- */
+/** Patches a function call vertex into the given dataflow graph. */
 export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {

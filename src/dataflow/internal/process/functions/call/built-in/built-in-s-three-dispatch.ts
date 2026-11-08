@@ -29,11 +29,7 @@ interface S3DispatchConfig {
 		generic: string,
 		object:  string
 	},
-	/**
-	 * the call hands on to the next method of the dispatch running the function it is in (`NextMethod`): it continues along
-	 * the class vector of that dispatch, so neither the generic nor the object it names changes what runs (only in a function
-	 * called directly does it dispatch the generic it names)
-	 */
+	/** the call hands on to the next method of the dispatch running the function it is in (`NextMethod`): it continues along the class vector of that dispatch, so neither the generic nor the object it names changes what runs (only in a function called directly does it dispatch the generic it names) */
 	next?:         boolean
 	/** the call evaluates the formals of the function it is in to pick a method by their classes (`standardGeneric`) */
 	readsFormals?: boolean

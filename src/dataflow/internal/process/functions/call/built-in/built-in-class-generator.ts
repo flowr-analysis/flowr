@@ -38,11 +38,7 @@ export function processClassGenerator<OtherInfo>(
 	return info;
 }
 
-/**
- * The env an instance of a class generator's class carries: its `public`/`methods` and `fields`/`private` lists (via
- * {@link resolveListToEnvState}), or an empty one, as every R6 or reference class object is an environment, shared by
- * every variable holding it.
- */
+/** The env an instance of a class generator's class carries: its `public`/`methods` and `fields`/`private` lists (via {@link resolveListToEnvState}), or an empty one, as every R6 or reference class object is an environment, shared by every variable holding it. */
 export function resolveClassMethodsToEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>

@@ -12,13 +12,7 @@ interface Shared<V> {
 	readonly bottoms: number
 }
 
-/**
- * The mapping of a state, forked in time proportional to what changed since its entries were last laid out in one map
- * rather than to its size. Forks share that map and each keeps its own changes on top: the values of keys of the shared
- * map, the keys it removed, and the keys it added, in the order they were added. It keeps the iteration order of a
- * `Map` that was copied and changed the same way, and counts its Bottom entries, so a state learns it collapses
- * without looking at every entry.
- */
+/** The mapping of a state, forked in time proportional to what changed since its entries were last laid out in one map rather than to its size. */
 export class StateMap<V extends MaybeBottom> implements ReadonlyMap<NodeId, V> {
 	private shared:      Shared<V>;
 	private changed?:    Map<NodeId, V>;
@@ -77,11 +71,7 @@ export class StateMap<V extends MaybeBottom> implements ReadonlyMap<NodeId, V> {
 		yield* this.added?.keys() ?? [];
 	}
 
-	/**
-	 * This map with the entries of `other` written into it, `op` combining the values of a key both have, in the order
-	 * of a `Map` copied from this one. A value combined with itself must stay as it is, so `op` is not asked then, and
-	 * where both share their map (and this one removed nothing), only the keys either changed are looked at.
-	 */
+	/** This map with the entries of `other` written into it, `op` combining the values of a key both have, in the order of a `Map` copied from this one. */
 	public union(other: StateMap<V>, op: (a: V, b: V) => V): StateMap<V> {
 		const keys = this.sharesWith(other) && this.removed === undefined ? new Set([...this.changedKeys(), ...other.changedKeys()]) : other.keys();
 		const result = this.fork();

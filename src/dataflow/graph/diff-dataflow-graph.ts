@@ -1,6 +1,5 @@
 /**
- * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached
- * through the helper itself here; going through `Dataflow` would be a cycle.
+ * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached through the helper itself here; going through `Dataflow` would be a cycle.
  * @lintIgnore use-instead
  */
 import { FunctionArgument, type OutgoingEdges, UnknownSideEffect } from './graph';
@@ -21,10 +20,7 @@ import { DfgVertex } from './vertex';
 import { AmbientAccessRecord } from './ambient-access';
 
 
-/**
- * This is the underlying function to calculate the difference based on a given context.
- * Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs.
- */
+/** This is the underlying function to calculate the difference based on a given context. Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs. */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffAmbientAccess(ctx);
@@ -32,12 +28,7 @@ export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	GraphHelper.diff.outgoingEdges(ctx, diffEdges, ctx.config.compareControlFlow ? undefined : withoutControlFlow);
 }
 
-/**
- * Narrow a vertex' outgoing edges to their dataflow part, dropping the control flow the
- * {@link ControlFlowGraph} projects out of the very same graph.
- * Comparing control flow is the job of the control flow diff, so a dataflow comparison would only be
- * duplicating it (and would force every expected graph to spell the control flow out again).
- */
+/** Narrow a vertex' outgoing edges to their dataflow part, dropping the control flow the {@link ControlFlowGraph} projects out of the very same graph. */
 function withoutControlFlow(edges: OutgoingEdges): OutgoingEdges | undefined {
 	let result: OutgoingEdges | undefined = undefined;
 	for(const [target, edge] of edges) {
@@ -86,9 +77,7 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 	diffIdentifierReferences(a, b, ctx);
 }
 
-/**
- * Compares two function argument lists and reports differences.
- */
+/** Compares two function argument lists and reports differences. */
 export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === false || b === false) {
 		if(a !== b) {
@@ -125,9 +114,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 	}
 }
 
-/**
- * Compares the vertices of two dataflow graphs and reports differences.
- */
+/** Compares the vertices of two dataflow graphs and reports differences. */
 export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
 	const lVert = ctx.left.vertices(true).toArray();
@@ -347,9 +334,7 @@ function diffEdge(edge: DfEdge, otherEdge: DfEdge, ctx: GraphDiffContext, id: No
 	}
 }
 
-/**
- * Compares two sets of outgoing edges and reports differences.
- */
+/** Compares two sets of outgoing edges and reports differences. */
 export function diffEdges(ctx: GraphDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
 }

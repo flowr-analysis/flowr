@@ -66,10 +66,7 @@ import type { CallContext } from './eval/resolve/alias-tracking';
 import { NodeValue } from './eval/resolve/node-value';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
-/**
- * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
- * Maps every {@link RType} in the normalized AST to a processor.
- */
+/** The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}. Maps every {@link RType} in the normalized AST to a processor. */
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
 	[RType.String]:             processValue,
@@ -163,10 +160,7 @@ function tracksAnyEnvironment(environment: REnvironmentInformation): boolean {
 	return false;
 }
 
-/**
- * Collects, per parameter, the replacements (`x$f <- v`) and the side-effecting calls in the body of its function that write into it.
- * Every vertex is visited once, as nested functions would otherwise revisit the body of each enclosing one.
- */
+/** Collects, per parameter, the replacements (`x$f <- v`) and the side-effecting calls in the body of its function that write into it. */
 function writesOfParameters(graph: DataflowGraph, ownerOf: ReadonlyMap<NodeId, DataflowGraphVertexFunctionDefinition>, environment: REnvironmentInformation): DefaultMap<NodeId, NodeId[]> {
 	const written = new DefaultMap<NodeId, NodeId[]>(() => []);
 	const inBodyOf = (parameter: NodeId, node: NodeId) => ownerOf.get(parameter)?.subflow.graph.has(node) === true;
@@ -311,8 +305,7 @@ function readFramesThroughEnvironment(graph: DataflowGraph): void {
 			(creator === undefined ? ofTopLevel : ofClosures.get(creator)).push(id);
 		}
 	}
-	/* a function defined at the top hands out the global frame, which holds every definition made there, and a field of it
-	 * (`environment(g)$f`) is what the frame binds to that name */
+	/* a function defined at the top hands out the global frame, which holds every definition made there, and a field of it (`environment(g)$f`) is what the frame binds to that name */
 	if(ofTopLevel.length > 0) {
 		const frames = new Set(ofTopLevel);
 		/* per name, the accesses (`e$f`, `e[["f"]]`) of a value that is such a frame */
@@ -377,11 +370,7 @@ function normalizedPath(p: string): string {
 	return path.posix.normalize(p.replaceAll('\\', '/')).replace(/(?<=.)\/$/, '');
 }
 
-/**
- * Whether the paths may name one file, as they do when one of them is a directory holding the other:
- * `unzip(zipfile, exdir = "data")` and `file.copy(from, to = "out")` write into one, `list.files("data")` reads one. The working
- * directory holds every relative path.
- */
+/** Whether the paths may name one file, as they do when one of them is a directory holding the other: `unzip(zipfile, exdir = "data")` and `file.copy(from, to = "out")` write into one, `list.files("data")` reads one. */
 function sharesFile(a: string, b: string): boolean {
 	const [x, y] = [normalizedPath(a), normalizedPath(b)];
 	/* a `setwd` in between makes two paths with the same file name the same file (`f.txt`, then `../f.txt` from `sub`) */
@@ -525,12 +514,7 @@ interface FileWriteLevel {
 	readonly calls:      readonly { readonly call: NodeId, readonly paths: ReadonlySet<string> | undefined }[]
 }
 
-/**
- * The levels of calls that run the file write `writer`: the calls of the function holding it, then the calls of the
- * function holding such a call, and so on. Each call resolves the file for the calls leading to it ({@link CallContext}).
- * `undefined` unless the levels account for every call the write has an effect on (a recursive function, a call we
- * do not see through), as only then can the write leave it to the calls to tell which of them run it.
- */
+/** The levels of calls that run the file write `writer`: the calls of the function holding it, then the calls of the function holding such a call, and so on. */
 function fileWriteLevels(writer: NodeId, graph: DataflowGraph, idMap: AstIdMap, paths: (callContext: CallContext) => ReadonlySet<string> | undefined): FileWriteLevel[] | undefined {
 	const affected = new Set(Dataflow.targetsOf(graph, writer, EdgeType.SideEffectOnCall));
 	const first = RNode.findEnclosing(writer, idMap, RFunctionDefinition.is);
@@ -559,13 +543,7 @@ function fileWriteLevels(writer: NodeId, graph: DataflowGraph, idMap: AstIdMap, 
 	return covered.size === affected.size ? levels : undefined;
 }
 
-/**
- * A file written within a function is written at each of its calls, so whatever reads it reads the write in the body,
- * which in turn depends on every call ({@link EdgeType.SideEffectOnCall}). Where the calls name their files, as
- * `save <- function(n) writeLines("x", n)` does for `save("a.txt")` and `save("b.txt")`, a read reads the calls writing
- * the file it reads as well, so the write no longer needs to depend on all of them: a read of `a.txt` needs `save("a.txt")`
- * only. Through a function calling `save` in turn, the read reads the call within it and the calls of that function.
- */
+/** A file written within a function is written at each of its calls, so whatever reads it reads the write in the body, which in turn depends on every call ({@link EdgeType.SideEffectOnCall}). */
 function separateFileWritesPerCall(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -680,12 +658,7 @@ function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContex
 	}
 }
 
-/**
- * This is the main function to produce the dataflow graph from a given request and normalized AST.
- * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
- * (e.g., in the event of a `source` call).
- * For the actual, canonical fold entry point, see {@link processDataflowFor}.
- */
+/** This is the main function to produce the dataflow graph from a given request and normalized AST. */
 export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,

@@ -75,23 +75,15 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly resolveValue?:           boolean
 	/** the call reaches beyond what we can see even when the callee resolves, like `rlang::exec` */
 	readonly hasUnknownSideEffects?:  boolean
-	/**
-	 * Set for `do.call`: it is processed like the call it makes, so `do.call(f, list(1, b = 2))` is processed like
-	 * `f(1, b = 2)` and returns what `f` returns.
-	 */
+	/** Set for `do.call`: it is processed like the call it makes, so `do.call(f, list(1, b = 2))` is processed like `f(1, b = 2)` and returns what `f` returns. */
 	readonly isTheCall?:              boolean
-	/**
-	 * The formals of {@link BuiltInApplyConfiguration#sig} the function is folded over (`Reduce`): each of its
-	 * parameters gets what the call hands back so far, which is one of these or what the function returned.
-	 */
+	/** The formals of {@link BuiltInApplyConfiguration#sig} the function is folded over (`Reduce`): each of its parameters gets what the call hands back so far, which is one of these or what the function returned. */
 	readonly folds?:                  readonly string[]
 	/** the formals of the function the call stands for */
 	readonly sig?:                    FnSig
 }
 
-/**
- * Process an apply call like `vapply` or `mapply`.
- */
+/** Process an apply call like `vapply` or `mapply`. */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -233,11 +225,7 @@ export function processApply<OtherInfo>(
 	};
 }
 
-/**
- * Makes the node naming a function (`resolved`) the call of that function with `args`, as `do.call` does or evaluating
- * a constructed call (`eval(call("f", x))`); a computed name gets a call of its own (`functionId`) that reads it.
- * @returns the information with the call, and the id of the call
- */
+/** Makes the node naming a function (`resolved`) the call of that function with `args`, as `do.call` does or evaluating a constructed call (`eval(call("f", x))`); a computed name gets a call of its own (`functionId`) that reads it. */
 export function callNamedFunction<OtherInfo>(
 	information: DataflowInformation,
 	resolved: ResolvedFunctionArgument,

@@ -29,10 +29,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { Resolve } from '../../../../../environments/resolve-helper';
 
-/**
- * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
- * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.
- */
+/** Process a replacement function call like `<-`, `[[<-`, `$<-`, etc. These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`. */
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/** The last one has to be the value */
@@ -116,10 +113,7 @@ export function processReplacementFunction<OtherInfo>(
 	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
 	const targetNode = RArgument.valueOf(args[0]);
 	if(targetNode !== undefined && targetNode.info.id !== rootId) {
-		/*
-		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
-		 * (see the arguments of the call vertices), so the target is what this call continues from.
-		 */
+		/* `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced (see the arguments of the call vertices), so the target is what this call continues from. */
 		res.graph.addEdge(targetNode.info.id, rootId, EdgeType.FlowEdge);
 	}
 	res = { ...res, cfgEntry: cfgEntry ?? res.cfgEntry, cfgExit: rootId };

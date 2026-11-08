@@ -1,7 +1,4 @@
-/**
- * Well-known R package names used in {@link DefaultBuiltinConfig}.
- * Using a const enum keeps the string values inlined at compile time.
- */
+/** Well-known R package names used in {@link DefaultBuiltinConfig}. Using a const enum keeps the string values inlined at compile time. */
 export const enum PkgName {
 	/* R built-in / recommended packages */
 	Base        = 'base',

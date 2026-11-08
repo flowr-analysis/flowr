@@ -38,17 +38,7 @@ function tableAssignmentProcessor<OtherInfo>(
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.TableAssignment }).information;
 }
 
-/**
- * Processes different types of access operations.
- *
- * Example:
- * ```r
- * a[i]
- * a$foo
- * a[[i]]
- * a@foo
- * ```
- */
+/** Processes different types of access operations. e.g. `a[i] a$foo a[[i]] a@foo`. */
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -108,17 +98,7 @@ export function processAccess<OtherInfo>(
 
 	return {
 		...info,
-		/*
-		 * Keep active nodes in case of assignments etc.
-		 * We make them maybe as a kind of hack.
-		 * This way when using
-		 * ```ts
-		 * a[[1]] <- 3
-		 * a[[2]] <- 4
-		 * a
-		 * ```
-		 * the read for a will use both accesses as potential definitions and not just the last one!
-		 */
+		/* Keep active nodes in case of assignments etc. We make them maybe as a kind of hack. */
 		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
@@ -128,15 +108,7 @@ export function processAccess<OtherInfo>(
 	};
 }
 
-/**
- * Processes different types of number-based access operations.
- *
- * Example:
- * ```r
- * a[i]
- * a[[i]]
- * ```
- */
+/** Processes different types of number-based access operations. e.g. `a[i] a[[i]]`. */
 function processNumberBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -176,9 +148,7 @@ function processNumberBasedAccess<OtherInfo>(
 	return fnCall;
 }
 
-/**
- * Converts symbol arguments to string arguments within the specified range.
- */
+/** Converts symbol arguments to string arguments within the specified range. */
 export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = args.slice();
 	// if the argument is a symbol, we convert it to a string for this perspective
@@ -203,15 +173,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEm
 	return newArgs;
 }
 
-/**
- * Processes different types of string-based access operations.
- *
- * Example:
- * ```r
- * a$foo
- * a@foo
- * ```
- */
+/** Processes different types of string-based access operations. e.g. `a$foo a@foo`. */
 function processStringBasedAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

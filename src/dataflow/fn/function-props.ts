@@ -1,6 +1,5 @@
 /**
- * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
@@ -36,9 +35,7 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
 }
 
 /**
- * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the
- * function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal,
- * `Forced`/`Lazy` included. An unset bit reads as "nothing says so", never as "no".
+ * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal, `Forced`/`Lazy` included.
  * @useInstead {@link FunctionSemantics.props}
  */
 export function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {

@@ -42,10 +42,7 @@ import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../..
 import { internalGenericMethods, linkedFunctionIds } from '../../../../dispatch-linking';
 import { REnvironment } from '../../../../../environments/environment';
 
-/**
- * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
- * Only then the read is resolved here and must not bubble up as an ingoing reference.
- */
+/** Whether the definitions of this list among the `targets` of a read cover every branch, alone or together. */
 function coveredByListDefinitions(targets: readonly IdentifierDefinition[], listEnvironments: Set<NodeId>): boolean {
 	const own = targets.filter(t => listEnvironments.has(t.nodeId));
 	if(own.some(t => t.cds === undefined)) {
@@ -151,10 +148,7 @@ function foldFrameIntoParent({ current, level }: REnvironmentInformation): REnvi
 	return { current: parent, level: level - 1 };
 }
 
-/**
- * Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop`
- * written at that spot would have done, since we only learn a callee always throws after linking it here.
- */
+/** Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
 function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
 	for(let node = idMap.get(from); node !== undefined && node.info.id !== expression;) {
 		const parent = RNode.directParent(node, idMap);
@@ -192,10 +186,7 @@ function writtenWithinCall(call: NodeId, node: NodeId, idMap: AstIdMap): boolean
 
 const PrintName = Identifier.make('print');
 
-/**
- * Printing a visible top-level value dispatches to the `print` methods in scope, so the expression calls them:
- * those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known.
- */
+/** Printing a visible top-level value dispatches to the `print` methods in scope, so the expression calls them: those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known. */
 function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
 	/* printing runs what `print` dispatches to on its own, like `show` for an S4 object */
 	const internal = internalGenericMethods(info.ctx.env.builtInFunctionOf(PrintName)?.config?.dispatches ?? [], environment, graph);
@@ -227,10 +218,7 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 	return [{ functionCall: id, called, propagateExitPoints: [], alternatives: called.length > 1 }];
 }
 
-/**
- * Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run, with any that is
- * no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it.
- */
+/** Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run, with any that is no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it. */
 function printedBy(classes: readonly (readonly string[])[], found: readonly IdentifierDefinition[], graph: DataflowGraph): IdentifierDefinition[] {
 	const methodOf = (d: IdentifierDefinition) => d.name === undefined ? undefined : /^print\.(.+)$/.exec(Identifier.getName(d.name))?.[1];
 	const { runs, next } = s3Dispatch(classes, found, methodOf);
@@ -332,9 +320,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 	return inputEnvironment;
 }
 
-/**
- * Processes a list of expressions joining their dataflow graphs accordingly.
- */
+/** Processes a list of expressions joining their dataflow graphs accordingly. */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -479,11 +465,7 @@ export function processExpressionList<OtherInfo>(
 	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
 	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
 	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
-	/*
-	 * `{ break }` is entered and left by the jump within it, so its `{` is where that jump leaves the group:
-	 * whatever catches the jump continues from there instead of from within the group, which keeps the `{`
-	 * on the control flow rather than beside it as a vertex nothing leads away from.
-	 */
+	/* `{ break }` is entered and left by the jump within it, so its `{` is where that jump leaves the group: whatever catches the jump continues from there instead of from within the group, which keeps the `{` on the control flow rather than beside it as a vertex nothing leads away from. */
 	if(withGroup && !reachesEnd) {
 		for(let i = 0; i < exitPoints.length; i++) {
 			const exit = exitPoints[i];
@@ -498,8 +480,7 @@ export function processExpressionList<OtherInfo>(
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
-		/* at the top of the script, only a read of the options or graphics state nothing set reads the state R starts with,
-		   which a write escaping a higher-order call may still replace, see the extractor */
+		/* at the top of the script, only a read of the options or graphics state nothing set reads the state R starts with, which a write escaping a higher-order call may still replace, see the extractor */
 		in:                autoPrint ? ingoing.filter(r => !AmbientStateName.is(r.name) || initialState?.has(r) === true) : ingoing,
 		/* a definition that a still-effective removal undid is no longer visible to the outside */
 		out:               dropKilledWrites(out, killed),

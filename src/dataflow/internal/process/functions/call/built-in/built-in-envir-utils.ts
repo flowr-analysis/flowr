@@ -98,12 +98,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 	};
 }
 
-/**
- * The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature
- * database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. Lets a
- * built-in argument matcher use R's real signature (via {@link ReadOnlyFlowrAnalyzerDependenciesContext#signatureOf})
- * instead of a hardcoded formal list, while staying correct -- and graph-invariant -- when no signature is available.
- */
+/** The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. */
 export function signatureParamNames<OtherInfo>(
 	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	id:       Identifier,
@@ -125,12 +120,7 @@ export function pipedCall<OtherInfo>(
 	return { ...node.rhs, arguments: [lhsArg, ...node.rhs.arguments] };
 }
 
-/**
- * The constant string a name-position node denotes at construction time (string literal, aliased variable, or
- * a paste-like join of such); `undefined` if any part is dynamic or the fold is user-shadowed. Unwraps one
- * leading pipe (the value domain does not desugar those) and otherwise defers entirely to it -- the shadow
- * check, the paste-like fold and its numeric/logical coercion all live there, in {@link resolveAsStringFn}.
- */
+/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the fold is user-shadowed. */
 export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -144,10 +134,7 @@ export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | unde
 	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
 }
 
-/**
- * The environment to route into, if flowR can pin one down; `'ambiguous'` when the argument names a value whose
- * identity is out of reach at this point (e.g. a function parameter), so routing anywhere would be unsound.
- */
+/** The environment to route into, if flowR can pin one down; `'ambiguous'` when the argument names a value whose identity is out of reach at this point (e.g. a function parameter), so routing anywhere would be unsound. */
 export type EnvirArgRouting<OtherInfo> = EnvirResolution<OtherInfo> | 'ambiguous' | undefined;
 
 /** the environment `routing` pinned down, dropping the ambiguous marker. */
@@ -182,10 +169,7 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 	return resolveDefsToEnvirResolution(defs, node.info.id, data) ?? (defs === undefined ? undefined : 'ambiguous');
 }
 
-/**
- * `environment(fn)` names the frame the closure `fn` holds, tracked as the environment state of the variable holding
- * the closure: what is written into the frame is read by the closure once it is called (see {@link linkClosureFrameReads}).
- */
+/** `environment(fn)` names the frame the closure `fn` holds, tracked as the environment state of the variable holding the closure: what is written into the frame is read by the closure once it is called (see {@link linkClosureFrameReads}). */
 export function closureFrameResolution<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -212,10 +196,7 @@ function closureFrameHolder<OtherInfo>(
 	return fn === undefined || def?.name === undefined || NodeId.isBuiltIn(def.definedAt) ? undefined : { def: def as NamedInGraphIdentifierDefinition, call: node.info.id };
 }
 
-/**
- * A call of a closure whose frame was written (see {@link closureFrameResolution}) reads those writes wherever its
- * body reads a name it does not bind itself.
- */
+/** A call of a closure whose frame was written (see {@link closureFrameResolution}) reads those writes wherever its body reads a name it does not bind itself. */
 export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation, graph: DataflowGraph): void {
 	const vertex = graph.getVertex(call);
 	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
@@ -244,10 +225,7 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 	}
 }
 
-/**
- * A free variable of a function body names an environment bound only once the function is called: what the body
- * writes into it escapes the function like a `<<-` would, and the call adds it to the environment the name holds there.
- */
+/** A free variable of a function body names an environment bound only once the function is called: what the body writes into it escapes the function like a `<<-` would, and the call adds it to the environment the name holds there. */
 function freeEnvirResolution<OtherInfo>(
 	name:   Identifier,
 	nodeId: NodeId,
@@ -276,10 +254,7 @@ function stackEnvirResolution<OtherInfo>(
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: envState.current.globalEnv === true ? 'global' : 'base' };
 }
 
-/**
- * The slots `envir` falls back to (`envir = as.environment(pos)`), so an environment handed to one of them is the
- * target as well. They are tried after the envir formal itself.
- */
+/** The slots `envir` falls back to (`envir = as.environment(pos)`), so an environment handed to one of them is the target as well. */
 export const EnvirPositionFormals: readonly string[] = ['pos', 'where'];
 
 function envirArgOf<OtherInfo>(
@@ -318,11 +293,7 @@ export function resolveEnvirArgOrAmbiguous<OtherInfo>(
 	return arg === undefined ? undefined : resolveArgToEnvirOrAmbiguous(arg, data);
 }
 
-/**
- * Whether the call supplies an argument for any of `formals` at all, however it resolves. A `pos`/`where` that is
- * not an environment names a position on R's search path (`envir = as.environment(pos)`), which flowR does not
- * model: `assign("x", 2, 1)` writes the global environment, not the calling scope.
- */
+/** Whether the call supplies an argument for any of `formals` at all, however it resolves. */
 export function suppliesArg<OtherInfo>(
 	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	sig:     FnSig | undefined,
@@ -374,10 +345,7 @@ export function resolveFirstEnvirArg<OtherInfo>(
 	return undefined;
 }
 
-/**
- * Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down
- * (e.g. a parameter), so routing the writes anywhere would be a guess; reports whether it did.
- */
+/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess; reports whether it did. */
 export function unknownIfAmbiguous<OtherInfo>(
 	routing: EnvirArgRouting<OtherInfo>,
 	result:  DataflowInformation,
@@ -458,19 +426,13 @@ function routeWrittenToCustomEnv(
 	return { ...result, environment: rebindHolders(stripped, envDef, newEnvState, newDefAt) };
 }
 
-/**
- * The calls that look up bindings in an environment they are given, or write into it, see {@link readEnvironmentContents}.
- * Any other call gets the environment as a whole.
- */
+/** The calls that look up bindings in an environment they are given, or write into it, see {@link readEnvironmentContents}. */
 export const EnvironmentLookups: ReadonlySet<string> = new Set([
 	BuiltInProcName.Access, BuiltInProcName.Assignment, BuiltInProcName.Attach, BuiltInProcName.EnvContents, BuiltInProcName.Get,
 	BuiltInProcName.Local, BuiltInProcName.NewEnv, BuiltInProcName.Replacement, BuiltInProcName.Rm, BuiltInProcName.With
 ]);
 
-/**
- * An environment is changed in place, so a call given a variable holding a tracked environment reads everything
- * written into the environment so far, through the writes, unless the call only looks up bindings in it (see {@link EnvironmentLookups}).
- */
+/** An environment is changed in place, so a call given a variable holding a tracked environment reads everything written into the environment so far, through the writes, unless the call only looks up bindings in it (see {@link EnvironmentLookups}). */
 export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, holder: IdentifierDefinition): void {
 	const envState = (holder as InGraphIdentifierDefinition).envState;
 	/* a stack env or the frame of a function (`environment()`) holds variables the scoping links already */
@@ -490,34 +452,13 @@ export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, hold
 /** What creates an environment rather than another value: `new.env()`, `globalenv()` and its kin, and `list2env()`. */
 export const EnvironmentProducers: readonly BuiltInProcName[] = [BuiltInProcName.NewEnv, BuiltInProcName.StackEnv, BuiltInProcName.ListToEnv];
 
-/**
- * Whether the variable definition `holder` surely holds a value one of `origins` created, following plain copies
- * (`e2 <- e`) and replacements (`e$f <- v` keeps what `e` held). With {@link EnvironmentProducers} it holds an environment, which a replacement (`e$f <- v`) changes
- * for every holder, with `[BuiltInProcName.List]` it holds a list, which the replacement copies.
- * @example
- * ```ts
- * // reg <- new.env(): an environment, l <- list(h = 1): a list, x <- f(): neither is known
- * if(holders.every(h => holdsValueOf(h, graph, EnvironmentProducers))) {
- *     // the write reaches what the caller holds
- * }
- * ```
- */
+/** Whether the variable definition `holder` surely holds a value one of `origins` created, following plain copies (`e2 <- e`) and replacements (`e$f <- v` keeps what `e` held). */
 export function holdsValueOf(holder: Pick<IdentifierDefinition, 'nodeId'>, graph: DataflowGraph, origins: readonly BuiltInProcName[]): boolean {
 	const sources = Dataflow.valueSources(holder.nodeId, graph);
 	return sources !== undefined && sources.length > 0 && sources.every(v => origins.some(o => DfgVertex.hasOrigin(graph.getVertex(v), o)));
 }
 
-/**
- * Binds every other variable holding the same object as the variable `name` (copied from it by `y <- x`, see
- * {@link InGraphIdentifierDefinition#envId}) to the change in place `change` as well (`x[, a := 9L]`), which reaches all of them.
- * @returns the environment and the identity the changed variable keeps, to hand on to its new definition
- * @example
- * ```r
- * d <- data.table(a = 1:2)
- * e <- d
- * e[, a := 9L]   # rebinds d as well, so print(d$a) depends on it
- * ```
- */
+/** Binds every other variable holding the same object as the variable `name` (copied from it by `y <- x`, see {@link InGraphIdentifierDefinition#envId}) to the change in place `change` as well (`x[, a := 9L]`), which reaches all of them. */
 export function rebindAliases(environment: REnvironmentInformation, name: Identifier, change: NodeId, definedAt: NodeId): [REnvironmentInformation, NodeId | undefined] {
 	const changed = Resolve.byName(name, environment) as readonly Partial<InGraphIdentifierDefinition>[] | undefined;
 	const identities = new Set(changed?.map(d => d.envId ?? d.nodeId).filter(i => i !== undefined && !NodeId.isBuiltIn(i)));
@@ -547,12 +488,7 @@ export function rebindHolders(environment: REnvironmentInformation, envDef: Name
 	return environment;
 }
 
-/**
- * Adds the `writes` a called function made into environments its free variables name (see
- * {@link InGraphIdentifierDefinition#envWrites}) to the environments the caller binds these names to; a name still free
- * in a calling function body stays with the writes, so its own calls add them. Returns the callee's and the caller's
- * environment to merge.
- */
+/** Adds the `writes` a called function made into environments its free variables name (see {@link InGraphIdentifierDefinition#envWrites}) to the environments the caller binds these names to; a name still free in a calling function body stays with the writes, so its own calls add them. */
 export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], callee: REnvironmentInformation, caller: REnvironmentInformation, call: NodeId, graph: DataflowGraph): [REnvironmentInformation, REnvironmentInformation] {
 	for(const written of writes) {
 		if(!hasEnvState(written) || written.name === undefined) {
@@ -584,10 +520,7 @@ export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], ca
 	return [callee, caller];
 }
 
-/**
- * Routes writes into a real stack env's frame chain, the same way `<<-` reaches an outer scope.
- * Each write also gets a `Reads` edge back to `rootId`, so slicing does not drop the call that made it.
- */
+/** Routes writes into a real stack env's frame chain, the same way `<<-` reaches an outer scope. */
 export function routeWrittenToStackEnv(
 	result:    DataflowInformation,
 	into:      REnvironmentInformation,
@@ -603,10 +536,7 @@ export function routeWrittenToStackEnv(
 	return { ...result, environment };
 }
 
-/**
- * Routes writes under a resolved `envir=` to the real stack frame or a tracked custom env, and adds the
- * `Reads` edge from `rootId` to the envir argument.
- */
+/** Routes writes under a resolved `envir=` to the real stack frame or a tracked custom env, and adds the `Reads` edge from `rootId` to the envir argument. */
 export function routeWrittenToEnvir<OtherInfo>(
 	result:            DataflowInformation,
 	resolution:        EnvirResolution<OtherInfo>,
@@ -629,12 +559,7 @@ function clampAttachPosition(pos: number): number | undefined {
 	return Number.isFinite(pos) ? Math.max(DefaultAttachPosition, Math.trunc(pos)) : undefined;
 }
 
-/**
- * The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of
- * an existing entry (`pos = "package:base"`). Returns `undefined` when there is no such argument, its value is unknown
- * or ambiguous, or it names an entry that is not on the search path; callers then attach at {@link DefaultAttachPosition}
- * (as R does, which warns in the last case).
- */
+/** The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of an existing entry (`pos = "package:base"`). */
 export function resolveAttachPosition<OtherInfo>(
 	posId: NodeId | undefined,
 	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>

@@ -8,12 +8,6 @@ import { DfEdge, EdgeType } from '../graph/edge';
 /**
  * Program order of top-level code outside loops and quotes: it runs once, so its definitions are not there yet for the statements before.
  * @helper dataflow
- * @example
- * ```r
- * f <- function() y
- * f()      # runs once, before `y` is defined below
- * y <- 1
- * ```
  */
 export const ProgramOrder = {
 	name: 'ProgramOrder',
@@ -31,24 +25,11 @@ export const ProgramOrder = {
 	offset(this: void, definition: NodeId, statement: RNode<ParentInformation> | undefined, graph: DataflowGraph): number {
 		return graph.isRoot(definition) ? statementsAfter(definition, statement, graph) : 0;
 	},
-	/**
-	 * Whether the definition at `definition` is made only after `statement` ran: it sits in a later top-level statement,
-	 * which holds a nested one too, as the function it is nested in does not exist before.
-	 */
+	/** Whether the definition at `definition` is made only after `statement` ran: it sits in a later top-level statement, which holds a nested one too, as the function it is nested in does not exist before. */
 	definedLater(this: void, definition: NodeId, statement: RNode<ParentInformation> | undefined, graph: DataflowGraph): boolean {
 		return statementsAfter(definition, statement, graph) > 0;
 	},
-	/**
-	 * For code the program runs once after `statement`, which surely makes the definition `write`: what that code reads
-	 * no longer sees the definitions made before `statement`. With `readsEarlier`, the write reads them instead, as
-	 * where a `<<-` writes depends on whether the name was bound before.
-	 * @example
-	 * ```r
-	 * x <- 1
-	 * f(x <- 2)   # f surely forces its argument, so the print below reads only x <- 2
-	 * print(x)
-	 * ```
-	 */
+	/** For code the program runs once after `statement`, which surely makes the definition `write`: what that code reads no longer sees the definitions made before `statement`. */
 	replaceEarlier(this: void, write: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph, readsEarlier: boolean): void {
 		const before = (id: NodeId) => ProgramOrder.runsOnceAt(id, graph) !== undefined && ProgramOrder.offset(id, statement, graph) < 0;
 		for(const [reader, edge] of graph.edgesTo(write)) {

@@ -37,9 +37,7 @@ import { REnvironment, type REnvironmentInformation } from '../../../../../envir
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { SourceRange } from '../../../../../../util/range';
 
-/**
- * Process a built-in try-catch or similar handler.
- */
+/** Process a built-in try-catch or similar handler. */
 export function processTryCatch<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -57,9 +55,7 @@ export function processTryCatch<OtherInfo>(
 	const { blockArg, errorArg, finallyArg, otherHandlers } = matchHandlers(res.callArgs, config, res.information.graph);
 	const info = res.information;
 
-	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out:
-	   `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`.
-	   A construct declaring no handler parameter at all, as `try` does, catches whatever arrives. */
+	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out: `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`. */
 	const aborts = config.aborts ?? true;
 	const catchesError = aborts && (error === undefined || namesAnErrorHandler(args));
 	/* a handler of another class runs once something in the block signals such a condition, an exiting one leaves the block there */
@@ -146,26 +142,17 @@ export function processTryCatch<OtherInfo>(
 			}
 		}
 	}
-	/*
-	 * The rewritten exit points describe what the call passes on to its own callers; control flow still leaves
-	 * the construct on the call itself, whether the block completed or a handler took over. An error the block
-	 * raises is caught here as well, so it reaches the call rather than leaving it.
-	 */
+	/* The rewritten exit points describe what the call passes on to its own callers; control flow still leaves the construct on the call itself, whether the block completed or a handler took over. */
 	(info as { cfgExit?: NodeId }).cfgExit = rootId;
 	const entryOfArg = (of: ReadonlySet<NodeId>) => {
 		const arg = res.processedArguments.find(a => a !== undefined && of.has(a.entryPoint));
 		return arg && ControlFlow.entryOf(arg);
 	};
-	/*
-	 * An error the block raises lands on the handler when there is one, and the `finally` follows it, which the
-	 * arguments being in sequence already says. Without either, the error simply arrives at the call.
-	 * R runs `finally` whatever leaves the block, so a jump reaches it on its way out just as an error does.
-	 */
+	/* An error the block raises lands on the handler when there is one, and the `finally` follows it, which the arguments being in sequence already says. */
 	const cleanupEntry = entryOfArg(finallyArg);
 	const caughtAt = entryOfArg(errorArg) ?? cleanupEntry ?? rootId;
 	if(cleanupEntry !== undefined) {
-		/* and it leaves through the call, so whatever claims the jump links to where the cleanup ends, not to the
-		   jump itself, which would let control out without running it */
+		/* and it leaves through the call, so whatever claims the jump links to where the cleanup ends, not to the jump itself, which would let control out without running it */
 		(info.exitPoints as ExitPoint[]) = info.exitPoints.map(e => JumpExitPoints.includes(e.type) ? leaveThrough(e, rootId) : e);
 	}
 	for(const arg of res.processedArguments) {
@@ -201,11 +188,7 @@ export function processTryCatch<OtherInfo>(
 	};
 }
 
-/**
- * Links what a block catching errors may raise because a warning turns into one, where the `warn` option that does
- * so is only known after linking: `g(options, warn = 2)` sets it through the function `g` is handed. Every call of
- * the block written after such a write may then raise, so the construct's value reads it, and it reads the write.
- */
+/** Links what a block catching errors may raise because a warning turns into one, where the `warn` option that does so is only known after linking: `g(options, warn = 2)` sets it through the function `g` is handed. */
 export function linkLateWarningsAsErrors(graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap): void {
 	const writes = (Resolve.byName(AmbientStateName.warnsAsErrors, environment) ?? []).filter(d => DfgVertex.isFunctionCall(graph.getVertex(d.nodeId)));
 	if(writes.length === 0) {
@@ -237,12 +220,7 @@ export function linkLateWarningsAsErrors(graph: DataflowGraph, environment: REnv
 	}
 }
 
-/**
- * Links what a handler of a condition class other than an error changes outside its frame, which is a side effect on the call
- * running it, to every site of the block that may signal that class, as the handler runs only then. This waits for linking, as
- * the handler may be any expression evaluating to a function (`warning = h`, `hs$w`, `mk()`, a parameter) and the block may call
- * functions its construct does not see (a global one called in a function body).
- */
+/** Links what a handler of a condition class other than an error changes outside its frame, which is a side effect on the call running it, to every site of the block that may signal that class, as the handler runs only then. */
 export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, environment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
 	const idMap = data.completeAst.idMap;
 	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -274,10 +252,7 @@ export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, envir
 	}
 }
 
-/**
- * The top-level statements after the one holding `id`, which a call within a function body may run in any of
- * once the function is defined.
- */
+/** The top-level statements after the one holding `id`, which a call within a function body may run in any of once the function is defined. */
 function statementsAfter(id: NodeId, idMap: AstIdMap): RNode<ParentInformation>[] {
 	let node = idMap.get(id);
 	for(let parent = node && RNode.directParent(node, idMap); parent !== undefined && node !== undefined; parent = RNode.directParent(parent, idMap)) {
@@ -405,10 +380,7 @@ const CallTypes: ReadonlySet<RType> = new Set([RType.FunctionCall, RType.BinaryO
 /** the exits that leave the construct for a destination of their own, which `finally` still runs before */
 const JumpExitPoints: readonly ExitPointType[] = [ExitPointType.Break, ExitPointType.Next, ExitPointType.Return];
 
-/**
- * Links the handler `arg` of the construct `call` as called: a symbol becomes a call, an anonymous function gets a synthetic one,
- * and any other expression a synthetic call of whatever it evaluates to (`hs$w`, `mk()`), which the linker resolves.
- */
+/** Links the handler `arg` of the construct `call` as called: a symbol becomes a call, an anonymous function gets a synthetic one, and any other expression a synthetic call of whatever it evaluates to (`hs$w`, `mk()`), which the linker resolves. */
 function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>, cds: readonly ControlDependency[] | undefined): void {
 	const val = RArgument.valueOf(data.completeAst.idMap.get(arg));
 	if(val === undefined) {

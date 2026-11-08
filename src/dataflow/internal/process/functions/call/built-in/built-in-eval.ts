@@ -42,9 +42,7 @@ const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
 /** the formals of `eval(expr, envir, enclos)` */
 const EvalParameterNames = ['expr', 'envir', 'enclos'] as const;
 
-/**
- * Process a call to `eval()`, trying to resolve the code being evaluated if possible.
- */
+/** Process a call to `eval()`, trying to resolve the code being evaluated if possible. */
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -112,8 +110,7 @@ export function processEvalCall<OtherInfo>(
 
 	if(code) {
 		if(envirArg !== undefined) {
-			/* the code runs in another environment, so its definitions do not land in the current one and
-			 * pretending they do would produce wrong edges */
+			/* the code runs in another environment, so its definitions do not land in the current one and pretending they do would produce wrong edges */
 			handleUnknownSideEffect(information.graph, information.environment, rootId);
 		}
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId);
@@ -148,10 +145,7 @@ function evaluationOf(code: NodeId): string {
 	return `eval:${String(code)}`;
 }
 
-/**
- * The code `eval` runs, if it is written down: what a quoting call captures (`eval(quote(x <- 1))`), or what each
- * binding of a name captures (`q <- quote(x <- 1); eval(q)`).
- */
+/** The code `eval` runs, if it is written down: what a quoting call captures (`eval(quote(x <- 1))`), or what each binding of a name captures (`q <- quote(x <- 1); eval(q)`). */
 function quotedCodeOf<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly RNode<OtherInfo & ParentInformation>[] | undefined {
 	const val = pipedCall(node, data) ?? node;
 	const code = RSymbol.is(val)
@@ -160,10 +154,7 @@ function quotedCodeOf<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, dat
 	return code === undefined || code.length === 0 || code.some(isUndefined) ? undefined : code as RNode<OtherInfo & ParentInformation>[];
 }
 
-/**
- * The one expression a call to a built-in capturing code (`quote`, `bquote`, `expression`) holds on to, unless it is
- * being evaluated already; `substitute(expr, env)` replaces names before anything runs.
- */
+/** The one expression a call to a built-in capturing code (`quote`, `bquote`, `expression`) holds on to, unless it is being evaluated already; `substitute(expr, env)` replaces names before anything runs. */
 function capturedBy<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
 	if(!RFunctionCall.isNamed(node)) {
 		return undefined;
@@ -182,14 +173,7 @@ function boundValueOf<OtherInfo>(target: NodeId, data: DataflowProcessorInformat
 	return RBinaryOp.is(assignment) ? assignment.lhs.info.id === target ? assignment.rhs : assignment.lhs : undefined;
 }
 
-/**
- * Processes the code the quoted values `nodes` hold where the call `rootId` may evaluate it: `do.call(f, list(quote(n <- 5)))`
- * calls `f(n <- 5)`, so the code runs when `f` forces that argument, which is unknown here, hence it runs maybe.
- * @example
- * ```ts
- * information = evaluateQuotedArguments(listElements, rootId, information, data);
- * ```
- */
+/** Processes the code the quoted values `nodes` hold where the call `rootId` may evaluate it: `do.call(f, list(quote(n <- 5)))` calls `f(n <- 5)`, so the code runs when `f` forces that argument, which is unknown here, hence it runs maybe. */
 export function evaluateQuotedArguments<OtherInfo>(
 	nodes:       readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
 	rootId:      NodeId,
@@ -272,10 +256,7 @@ function escapeWritesToParentFrame<OtherInfo>(
 	information.out = [...information.out, ...written];
 }
 
-/**
- * The call a constructing call builds, the function it names and the arguments it hands over: `call("f", x)`, or
- * `as.call(list(as.name("f"), x))`, written there or bound once to a name.
- */
+/** The call a constructing call builds, the function it names and the arguments it hands over: `call("f", x)`, or `as.call(list(as.name("f"), x))`, written there or bound once to a name. */
 function constructedCallOf<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): { fn: ResolvedFunctionArgument, args: FunctionArgument[] } | undefined {
 	const val = pipedCall(node, data) ?? node;
 	if(RSymbol.is(val)) {

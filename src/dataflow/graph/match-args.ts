@@ -1,7 +1,5 @@
 /**
- * `FunctionSemantics.call` is the entry point these members are reached through, and it is built on this file, so the backing
- * functions are called directly here; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own
- * importers.
+ * `FunctionSemantics.call` is the entry point these members are reached through, and it is built on this file, so the backing functions are called directly here; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -38,41 +36,13 @@ function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefi
 	return args.map(a => FunctionArgument.isNamed(a) ? a.name : undefined);
 }
 
-/**
- * R's argument matching, as {@link matchArgumentsToParameters} implements it. Pick by what you hold:
- *
- * - {@link MatchArgs.toNames|toNames} - AST arguments and the formal names
- * - {@link MatchArgs.toSpec|toSpec} - graph arguments and the formals (a spec or a database signature)
- * - {@link MatchArgs.onCallAndLink|onCallAndLink} - as `toSpec`, and **adds the argument edges to the graph**
- * - {@link MatchArgs.toDefinition|toDefinition} - only the call, the formals are looked up for you
- * - {@link MatchArgs.findWithProps|findWithProps} - graph arguments and a built-in signature, keeping the ones used for given {@link ArgProp}s
- * @example
- * ```ts
- * MatchArgs.toNames(call.arguments, ['x', 'value']).get('value');
- * MatchArgs.toSpec(args, { file: 'fileId', '...': '...' }).get('fileId');
- * ```
- */
+/** R's argument matching, as {@link matchArgumentsToParameters} implements it. */
 export const MatchArgs = {
-	/**
-	 * Binds a call's AST `args` to the formal `paramNames`. An empty argument (`f(1, ,3)`) takes its formal but
-	 * never appears here. Arguments falling to `...` share that key, so only the last survives; use
-	 * {@link MatchArgs.toSpec} to keep them all.
-	 * @param args       - The arguments as they stand in the normalized AST.
-	 * @param paramNames - The formals of the called function, in order.
-	 * @returns          Per formal name the argument bound to it.
-	 * @see {@link RFunctionCall.matchArgsToParams} - the implementation, kept there to avoid a load-time import cycle.
-	 */
+	/** Binds a call's AST `args` to the formal `paramNames`. */
 	toNames<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
 		return RFunctionCall.matchArgsToParams(args, paramNames);
 	},
-	/**
-	 * Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a
-	 * function whose parameters are not in the AST at all. Name `'...'` in a specification unless the function
-	 * really has none, as that is what collects arguments finding no formal of their own.
-	 * @param args   - The arguments as the graph holds them, see {@link convertFnArguments}.
-	 * @param params - Formal name to the target it stands for, or a signature whose names are the targets.
-	 * @returns      Per target the ids bound to it.
-	 */
+	/** Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. */
 	toSpec<Targets extends NodeId = string>(this: void, args: readonly FunctionArgument[], params: Record<string, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
 		let spec = params as Record<string, Targets>;
 		if(Array.isArray(params)) {
@@ -99,17 +69,7 @@ export const MatchArgs = {
 		}
 		return maps;
 	},
-	/**
-	 * Binds a call's graph `args` to the `params` of the definition it calls **and mutates `graph`**, adding an
-	 * {@link EdgeType.DefinesOnCall} and a {@link EdgeType.DefinedByOnCall} edge per bound pair. It is the only
-	 * member here that writes anything. Dots handed on (`g(...)`) stand for the arguments each known call of the
-	 * function around hands to its dots (see {@link forwardedArguments}), and a dots parameter the body reads only by
-	 * position (`..2`, `...elt(2)`) binds each argument to the reads of its position (see {@link elementReadsOf}).
-	 * @param args   - The arguments as the graph holds them.
-	 * @param params - The parameters of the called definition, in order.
-	 * @param graph  - The graph the edges are added to.
-	 * @returns      The argument id to parameter id mapping the edges were drawn for.
-	 */
+	/** Binds a call's graph `args` to the `params` of the definition it calls **and mutates `graph`**, adding an {@link EdgeType.DefinesOnCall} and a {@link EdgeType.DefinedByOnCall} edge per bound pair. */
 	onCallAndLink(this: void, args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
 		const names = params.map(p => p?.special ? DotsParameterName : p?.name?.content);
 		const maps = new Map<NodeId, NodeId>();
@@ -128,15 +88,7 @@ export const MatchArgs = {
 		}
 		return maps;
 	},
-	/**
-	 * Leaves unforced what the known calls of a function hand to its dots that no read of the dots sees once they are
-	 * handed on, as R never evaluates it: with `f <- function(...) g(...)` and `g <- function(a, b) b`, `f(u, v)`
-	 * forces `v` only. Run it once every call is linked, see {@link seenThroughDots}.
-	 * @example
-	 * ```ts
-	 * MatchArgs.unforceUnreadDots(graph); // `f(u, v)` above no longer reads `u`
-	 * ```
-	 */
+	/** Leaves unforced what the known calls of a function hand to its dots that no read of the dots sees once they are handed on, as R never evaluates it: with `f <- function(...) g(...)` and `g <- function(a, b) b`, `f(u, v)` forces `v` only. */
 	unforceUnreadDots(this: void, graph: DataflowGraph): void {
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 			const definition = graph.idMap?.get(id);
@@ -176,46 +128,18 @@ export const MatchArgs = {
 			}
 		}
 	},
-	/**
-	 * Whether the call hands on the dots of the function it is in (`g(...)`), so that what it binds depends on the calls
-	 * of that function, see {@link MatchArgs.onCallAndLink}.
-	 * @example
-	 * ```ts
-	 * // `f <- function(...) g(...)`
-	 * MatchArgs.handsOnDots(argsOfTheCallToG, graph); // true
-	 * ```
-	 */
+	/** Whether the call hands on the dots of the function it is in (`g(...)`), so that what it binds depends on the calls of that function, see {@link MatchArgs.onCallAndLink}. */
 	handsOnDots(this: void, args: readonly FunctionArgument[], graph: DataflowGraph): boolean {
 		return args.some(a => dotsHandedOnBy(a, graph) !== undefined);
 	},
-	/**
-	 * Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them
-	 * from the {@link RFunctionDefinition} the call resolves to in user code, and from the database signature at
-	 * the version the analysis assumes otherwise (see {@link SignatureDb}). `undefined` when it resolves to
-	 * neither, so fall back to a hardcoded list then.
-	 *
-	 * `graph` is what says which definition a name reaches here, because scoping, shadowing and control flow
-	 * decide that and a name alone cannot. It therefore needs a finished graph rather than one under
-	 * construction, and it is what says which arguments the call has (see {@link callArgumentsOf}). Cost is one
-	 * {@link Dataflow.origin} lookup plus, for a package call, decoding that one function.
-	 * @param call  - The call whose arguments are to be bound.
-	 * @param graph - The finished graph the call was analyzed into.
-	 * @param ctx   - The analyzer context the database and the assumed versions come from.
-	 * @returns     Per formal name the argument bound to it, `undefined` if the formals could not be found.
-	 */
+	/** Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. */
 	toDefinition<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info>> | undefined {
 		const names = formalsOf(call, graph, ctx);
 		return names === undefined ? undefined : MatchArgs.toNames(callArgumentsOf(call, graph), names);
 	},
 	/** The formal names a call binds against, whichever of flowR's sources knows them; see {@link formalsOf}. */
 	formalsOf,
-	/**
-	 * Find all arguments of a function call that have a given argument property using the function signature.
-	 * @param args      - The function arguments as the graph holds them.
-	 * @param signature - The function signature whose names are the targets.
-	 * @param props     - The {@link ArgProp}s the function arguments should have.
-	 * @returns         The value ids of the matching arguments.
-	 */
+	/** Find all arguments of a function call that have a given argument property using the function signature. */
 	findWithProps(this: void, args: readonly FunctionArgument[], signature: FnSig, props: ArgProps): NodeId[] {
 		const bound = matchArgumentsToParameters(args.map(FunctionArgument.getName), signature.map(([param]) => param));
 		return args
@@ -224,23 +148,7 @@ export const MatchArgs = {
 	}
 } as const;
 
-/**
- * The formals a call binds against, taken from the first of flowR's three sources that knows them:
- *
- * 1. the {@link RFunctionDefinition} the call resolves to in user code, whose parameters are already in the
- *    AST, so the common case never looks anything up;
- * 2. the signature database at the version the analysis assumes (see {@link SignatureDb}), which records what
- *    the package really declares and is therefore the one to believe about a package function;
- * 3. the {@link BuiltInFnInfo#sig|signature} flowR's own {@link DefaultBuiltinConfig} states, which answers for
- *    everything the database has no entry for: a built-in of flowR's own, and every package function on a
- *    machine carrying no database. flowR states the parameters it models rather than all of them, so this is
- *    a prefix of R's formals -- enough to bind what it names, and never more than R would.
- *
- * `undefined` when the call resolves to none of them, so fall back to a hardcoded list then.
- * @param call  - The call whose formals are wanted.
- * @param graph - The finished graph the call was analyzed into.
- * @param ctx   - The analyzer context the database, the assumed versions and the built-ins come from.
- */
+/** The formals a call binds against, taken from the first of flowR's three sources that knows them: 1. */
 function formalsOf<Info extends ParentInformation>(this: void, call: RFunctionCall<Info>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] | undefined {
 	const origins = Dataflow.origin(graph, call.info.id);
 	if(origins === undefined) {
@@ -309,16 +217,7 @@ function definitionOfParameter(id: NodeId, graph: DataflowGraph): RFunctionDefin
 	return RFunctionDefinition.is(definition) ? definition : undefined;
 }
 
-/**
- * The argument lists `args` stands for once the dots it hands on (`g(...)`) are replaced, one per chain of known calls
- * handing them on, each with the arguments these calls hand to the dots in order and by their names. `undefined` if
- * `args` hands on no dots, or a function handing them on has a call flowR does not know the arguments of.
- * @example
- * ```ts
- * // `f <- function(...) g(...)` called as `f(b = 1, a = 3)`: `g(...)` binds as `g(b = 1, a = 3)`
- * forwardedArguments(argsOfTheCallToG, graph); // [[b = 1, a = 3]]
- * ```
- */
+/** The argument lists `args` stands for once the dots it hands on (`g(...)`) are replaced, one per chain of known calls handing them on, each with the arguments these calls hand to the dots in order and by their names. */
 function forwardedArguments(args: readonly FunctionArgument[], graph: DataflowGraph, seen: Set<NodeId> = new Set()): FunctionArgument[][] | undefined {
 	if(!args.some(a => dotsHandedOnBy(a, graph) !== undefined)) {
 		return undefined;
@@ -370,10 +269,7 @@ function handedToDots(dots: NodeId, graph: DataflowGraph, seen: Set<NodeId>): Fu
 	return callers.length === 0 || lists.length > MaxDotsExpansions ? undefined : lists;
 }
 
-/**
- * The reads of the dots parameter `dots` per position they read (`..2`, `...elt(2)`), `undefined` unless the body
- * reads the dots by position only.
- */
+/** The reads of the dots parameter `dots` per position they read (`..2`, `...elt(2)`), `undefined` unless the body reads the dots by position only. */
 function elementReadsOf(dots: NodeId, graph: DataflowGraph): ReadonlyMap<number, readonly NodeId[]> | undefined {
 	const byPosition = new Map<number, NodeId[]>();
 	for(const read of Dataflow.sourcesOf(graph, dots, EdgeType.Reads)) {
@@ -400,12 +296,7 @@ function callHandingOn(read: NodeId, dots: NodeId, graph: DataflowGraph): [call:
 	return at >= 0 && dotsHandedOnBy((call as DataflowGraphVertexFunctionCall).args[at], graph) === dots ? [call as DataflowGraphVertexFunctionCall, at] : undefined;
 }
 
-/**
- * Per argument of `args` handed to the dots parameter `dots`, whether a read of the dots sees it: one reading its
- * position (`..2`, `...elt(2)`), or one handing the dots on (`g(...)`) to definitions that read the parameter the
- * argument binds to there, or see it through their own dots. `undefined` if the dots are read in any other way or
- * handed on to anything else, for every argument may be seen then.
- */
+/** Per argument of `args` handed to the dots parameter `dots`, whether a read of the dots sees it: one reading its position (`..2`, `...elt(2)`), or one handing the dots on (`g(...)`) to definitions that read the parameter the argument binds to there, or see it through their own dots. */
 function seenThroughDots(dots: NodeId, args: readonly FunctionArgument[], graph: DataflowGraph, visiting: Set<NodeId>): boolean[] | undefined {
 	if(visiting.has(dots)) {
 		return undefined;
@@ -471,10 +362,7 @@ function positionReadBy(node: RNode<ParentInformation> | undefined): number | un
 	return position !== undefined && Number.isInteger(position) && position > 0 ? position : undefined;
 }
 
-/**
- * Binds `args` to `params` named `names`, see {@link MatchArgs.onCallAndLink}. Dots handed on that stand for nothing
- * known may fill any parameter no other argument takes.
- */
+/** Binds `args` to `params` named `names`, see {@link MatchArgs.onCallAndLink}. */
 function linkArguments(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], names: readonly (string | undefined)[], graph: DataflowGraph, maps: Map<NodeId, NodeId>): void {
 	const unknown = handedOnDotsOf(args, graph);
 	const known = unknown.length === 0 ? args : args.filter(a => !unknown.includes(FunctionArgument.getId(a) ?? ''));

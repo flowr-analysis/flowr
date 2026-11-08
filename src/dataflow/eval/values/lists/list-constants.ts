@@ -3,13 +3,7 @@ import { type Value, type ValueList, type ValueListElement, type ValueNull, isVa
 /** The `NULL` that a missing element of a list reads as. */
 export const ValueNullConstant: ValueNull = { type: 'null' };
 
-/**
- * A list of the given elements, in their order.
- * @example
- * ```ts
- * listFrom([{ name: 'a', value: intervalFrom(1, 1) }]) // list(a = 1)
- * ```
- */
+/** A list of the given elements, in their order. */
 export function listFrom(elements: readonly ValueListElement[]): ValueList {
 	return { type: 'list', elements };
 }
@@ -22,14 +16,7 @@ function elementsOf(container: Value): readonly ValueListElement[] | undefined {
 	return container.type === 'list' ? container.elements : container.type === 'null' ? [] : undefined;
 }
 
-/**
- * The element of the list `name` names, as `l$name` (`exact = false`) and `l[["name"]]` read it: an exact match first,
- * for `$` else the one element whose name starts with `name`, and `NULL` if there is none.
- * @example
- * ```ts
- * listField(listFrom([{ name: 'abc', value: one }]), 'a', false) // one, as `list(abc = 1)$a` is 1
- * ```
- */
+/** The element of the list `name` names, as `l$name` (`exact = false`) and `l[["name"]]` read it: an exact match first, for `$` else the one element whose name starts with `name`, and `NULL` if there is none. */
 export function listField(list: ValueList, name: string, exact: boolean): Value {
 	const match = list.elements.find(e => e.name === name);
 	if(match !== undefined || exact) {
@@ -49,15 +36,7 @@ function mayBeNull(value: Value): boolean {
 	return !isValue(value) || value.type === 'null' || (value.type === 'set' && (!isValue(value.elements) || value.elements.some(mayBeNull)));
 }
 
-/**
- * The list after `l$name <- value` or `l[[key]] <- value`, with `key` a name or a position: assigning matches names
- * exactly, `NULL` removes the element, a position past the end pads with `NULL`. `undefined` if the container is no
- * list (nor `NULL`, which turns into one) or the value may be `NULL` without surely being so.
- * @example
- * ```ts
- * withListElement(listFrom([{ name: 'a', value: one }]), 'a', five) // list(a = 5)
- * ```
- */
+/** The list after `l$name <- value` or `l[[key]] <- value`, with `key` a name or a position: assigning matches names exactly, `NULL` removes the element, a position past the end pads with `NULL`. */
 export function withListElement(container: Value, key: string | number, value: Value): ValueList | undefined {
 	const elements = elementsOf(container);
 	if(elements === undefined) {

@@ -85,10 +85,7 @@ export interface AssignmentConfiguration {
 	readonly readTarget?:          boolean
 	readonly mayHaveMoreArgs?:     boolean
 	readonly modesForFn?:          DataflowGraphVertexFunctionDefinition['mode']
-	/**
-	 * Name of the arg selecting the target env (e.g. `'envir'` for `assign`); if it resolves to a tracked
-	 * {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
-	 */
+	/** Name of the arg selecting the target env (e.g. `'envir'` for `assign`); if it resolves to a tracked {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope. */
 	readonly environmentArg?:      string
 	/** the formals of the call, so a positional {@link AssignmentConfiguration#environmentArg} is found at the slot it really has */
 	readonly sig?:                 FnSig
@@ -133,8 +130,7 @@ function tryReplacement<OtherInfo>(
 	const resolved = Resolve.byNameAndType(functionName.content, data.environment, ReferenceType.Function) ?? [];
 	const builtIn = resolved.length === 1 && resolved[0].type === ReferenceType.BuiltInFunction ? resolved[0] : undefined;
 
-	/* every replacement function rebinds its target, no matter whether we ship a built-in for it or the user wrote
-	 * it; a user-defined one is only ever bound under its `<-` name, the `<<-` form stays in the configuration */
+	/* every replacement function rebinds its target, no matter whether we ship a built-in for it or the user wrote it; a user-defined one is only ever bound under its `<-` name, the `<<-` form stays in the configuration */
 	const name = builtIn ? functionName.content : Identifier.mapName(functionName.content, n => superAssignment ? n.slice(0, -'<<-'.length) + '<-' : n);
 
 	const replacementConfig = builtIn ? builtIn.config : {
@@ -153,8 +149,7 @@ function tryReplacement<OtherInfo>(
 		markAsOnlyBuiltIn(info.graph, functionName.info.id);
 		return info;
 	}
-	/* the replacement marks its callee as an S3 prefix, which only ever resolves to `name.<class>`; a user-defined
-	 * replacement is bound under the plain name, so we read that first to link the call to its definition */
+	/* the replacement marks its callee as an S3 prefix, which only ever resolves to `name.<class>`; a user-defined replacement is bound under the plain name, so we read that first to link the call to its definition */
 	return {
 		...info,
 		in: [{ nodeId: functionName.info.id, name, cds: data.cds, type: ReferenceType.Function }, ...info.in]
@@ -233,10 +228,7 @@ function processMaskedNamePair<OtherInfo>(
 	return information;
 }
 
-/**
- * Processes an assignment `<target> <- <source>` as the function call \`&lt;-\` `(<target>, <source>)`,
- * including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`).
- */
+/** Processes an assignment `<target> <- <source>` as the function call \`&lt;-\` `(<target>, <source>)`, including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`). */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
@@ -331,8 +323,7 @@ function processAssignmentTarget<OtherInfo>(
 	if(type === RType.Symbol && !config.targetVariable) {
 		return assignToSymbol();
 	} else if(config.targetVariable && (type === RType.Symbol || type === RType.FunctionCall)) {
-		/* the target expression (`assign(x, v)` / `assign(paste0("cfg_", k), v)`) resolving to a constant name defines that name, keeping
-		 * the reads that produced it; a dynamic name falls through to the unknown-target handling below */
+		/* the target expression (`assign(x, v)` / `assign(paste0("cfg_", k), v)`) resolving to a constant name defines that name, keeping the reads that produced it; a dynamic name falls through to the unknown-target handling below */
 		const resolvedName = resolveConstantString(target, data);
 		if(resolvedName !== undefined) {
 			return assignToSymbol(resolvedName + (config.targetSuffix ?? ''));
@@ -415,12 +406,7 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
 	}
 }
 
-/**
- * The node an assignment takes its value from, following the {@link EdgeType.Returns} edges of the graph.
- * A block hands back its last expression and a grouping what it wraps, so `e <- { new.env() }` creates an
- * environment just like `e <- new.env()` does. `undefined` whenever more than one node may produce the value,
- * as a branch or a loop does, since the assignment then has no single source to speak of.
- */
+/** The node an assignment takes its value from, following the {@link EdgeType.Returns} edges of the graph. */
 function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined {
 	const seen = new Set<NodeId>();
 	let id = sourceInfo.entryPoint;
@@ -436,19 +422,13 @@ function valueEntryPointOf(sourceInfo: DataflowInformation): NodeId | undefined 
 	}
 }
 
-/**
- * Returns `true` when the value of `sourceInfo` comes from a call to a `new.env`-family function.
- * Used by {@link processAssignmentToSymbol} to attach an initial {@link InGraphIdentifierDefinition#envState}.
- */
+/** Returns `true` when the value of `sourceInfo` comes from a call to a `new.env`-family function. */
 function isEnvCreatorSource(sourceInfo: DataflowInformation, entryPoint: NodeId | undefined): boolean {
 	const vert = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
 	return DfgVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
-/**
- * When `e$x <- val` (or `e[["x"]] <- val`) and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that
- * envState instead of redefining `e`; returns `undefined` when routing is not applicable.
- */
+/** When `e$x <- val` (or `e[["x"]] <- val`) and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that envState instead of redefining `e`; returns `undefined` when routing is not applicable. */
 function tryRouteFieldEnvAssign<OtherInfo>(
 	rootId:      NodeId,
 	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -507,12 +487,7 @@ function tryRouteFieldEnvAssign<OtherInfo>(
 	return { ...normalResult, environment: rebindHolders(environment, updatedEnvDef, newEnvState, rootId) };
 }
 
-/**
- * When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked
- * {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible.
- * An `envir=` that names a value we cannot pin down (e.g. a parameter) is not a "no envir" call: routing the
- * write into the local scope would be a guess, so the call becomes an unknown side effect instead.
- */
+/** When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible. */
 function tryRouteToCustomEnv<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -557,10 +532,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 	readonly information:              DataflowInformation
 }
 
-/**
- * Models a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: `x` is both
- * **read** (its value comes from outside) and **defined** by the call; unlike {@link markAsAssignment} we keep the read edge.
- */
+/** Models a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: `x` is both **read** (its value comes from outside) and **defined** by the call; unlike {@link markAsAssignment} we keep the read edge. */
 export function processDefineArgument<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

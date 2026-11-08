@@ -14,9 +14,7 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNull, type RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { getScalarFromInteger } from './scalar/scalar-constants';
 
-/**
- * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
- */
+/** Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`. */
 export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Bottom | undefined {
 	return bottomTopGuardOf(a);
 }
@@ -30,12 +28,7 @@ export function bottomTopGuardOf(a: readonly Lift<unknown>[]): typeof Top | type
 	}
 }
 
-/**
- * Returns a value set, if a is not bottom or top, otherwise undefined.
- * Useful when working with values returned by {@link Resolve.toValue}
- * @param a - value set to check
- * @returns value set if a is not top or bottom
- */
+/** Returns a value set, if a is not bottom or top, otherwise undefined. Useful when working with values returned by {@link Resolve.toValue} */
 export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | undefined {
 	return (isBottom(a) || isTop(a)) ? undefined : a;
 }
@@ -45,22 +38,13 @@ export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | u
  */
 export function soleValue(this: void, set: ValueSet<Value[]> | undefined): Value | undefined;
 export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type: T): Extract<Value, { type: T }> | undefined;
-/**
- * The one value a set holds, `undefined` unless it holds exactly one, optionally of the given kind.
- * @param set  - the set to take the value from
- * @param type - the kind the value has to have, any kind if unset
- * @returns    the sole value, `undefined` if the set holds another number of them or another kind
- */
+/** The one value a set holds, `undefined` unless it holds exactly one, optionally of the given kind. */
 export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type?: T): Value | undefined {
 	const only = set?.elements.length === 1 ? set.elements[0] : undefined;
 	return only !== undefined && (type === undefined || only.type === type) ? only : undefined;
 }
 
-/**
- * Constructs an Abstract Value from a normal TS value
- * @param a - ts value
- * @returns abstract value
- */
+/** Constructs an Abstract Value from a normal TS value */
 export function valueFromTsValue(a: unknown): Value {
 	if(a === Top || a === Bottom) {
 		/* what a definition states outright, as `NA` does: R has a value there, flowR has no way to hold it */
@@ -82,20 +66,13 @@ export function valueFromTsValue(a: unknown): Value {
 	return Top;
 }
 
-/**
- * The interval a number literal stands for. A complex literal keeps its flag, so that nothing folds `2i` as
- * the real number its lexeme starts with.
- */
+/** The interval a number literal stands for. A complex literal keeps its flag, so that nothing folds `2i` as the real number its lexeme starts with. */
 export function valueFromRNumber(value: RNumberValue): ValueInterval {
 	const scalar = getScalarFromInteger(value.num, !value.complexNumber && Number.isInteger(value.num), value.complexNumber);
 	return intervalFromValues(scalar, scalar);
 }
 
-/**
- * Converts a constant from an RNode into an abstract value
- * @param a - RNode constant
- * @returns abstract value
- */
+/** Converts a constant from an RNode into an abstract value */
 export function valueFromRNodeConstant(a: RNodeWithParent): Value {
 	if(RString.is(a)) {
 		return RValue.ofStringLiteral(a.content) ?? Top;

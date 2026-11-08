@@ -62,13 +62,7 @@ function iteratesAtLeastOnce<OtherInfo>(vector: RNode<OtherInfo & ParentInformat
 	return isNonEmptyRange(vector, entry, data) || alwaysHolds(vector, data, hasElement);
 }
 
-/**
- * Processes a for-loop call: `for(<variable> in <vector>) <body>`
- * desugared as:
- * ```r
- * `for`(<variable>, <vector>, <body>)
- * ```
- */
+/** Processes a for-loop call: `for(<variable> in <vector>) <body>` desugared as a call of `for` with the three as arguments. */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

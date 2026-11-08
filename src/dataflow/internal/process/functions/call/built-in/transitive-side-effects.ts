@@ -40,9 +40,6 @@ import { isBaseRPackage } from '../../../../../../util/r-base-packages';
 
 /**
  * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
- * @param    graph - the fully linked dataflow graph
- * @param    own   - the effects a single function definition produces itself (its contribution to the summary)
- * @returns        a map from each function-definition vertex to its transitive-effect summary
  * @useInstead {@link Dataflow.sideEffects.callGraphSummaries}
  */
 export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => Iterable<T>): Map<NodeId, ReadonlySet<T>> {
@@ -60,13 +57,7 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 	return new Map(graph.verticesOfType(VertexType.FunctionDefinition).map(([id]) => [id, summaries.of(id)]));
 }
 
-/**
- * A promise reads the state at the point it is forced, which is wherever the callee first needs it: after the call
- * wrote what the promise reads (`g <- function(b) { x <<- 1; b }; g(x)`), after another argument did (`f(n, n <- 4)`),
- * or, once a closure captured its parameter, after the call returned (`mk <- function(a) function() a`). So a read
- * within an argument of a call of a closure may see what the call, the other arguments, and, for a promise outliving
- * the call, what the code after the call writes.
- */
+/** A promise reads the state at the point it is forced, which is wherever the callee first needs it: after the call wrote what the promise reads (`g <- function(b) { x <<- 1; b }; g(x)`), after another argument did (`f(n, n <- 4)`), or, once a closure captured its parameter, after the call returned (`mk <- function(a) function() a`). */
 export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx: FlowrAnalyzerContext): void {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -147,10 +138,7 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	}
 }
 
-/**
- * Whether the branches of `fn` a node stands under are taken in the frame `call` makes: a parameter holds what that
- * call hands it, so a condition on it may be constant there. {@link Ternary#Never} if one surely is not.
- */
+/** Whether the branches of `fn` a node stands under are taken in the frame `call` makes: a parameter holds what that call hands it, so a condition on it may be constant there. */
 function branchesTakenIn(conditions: readonly ControlDependency[], fn: NodeId, call: NodeId, graph: DataflowGraph, ctx: FlowrAnalyzerContext): Ternary {
 	let result = Ternary.Always;
 	for(const cd of conditions) {
@@ -168,10 +156,7 @@ function branchesTakenIn(conditions: readonly ControlDependency[], fn: NodeId, c
 	return result;
 }
 
-/**
- * Whether every reference to the definition is a call of it among `calls`: it is bound to names (`f <- function...`)
- * only these calls read, so no other way leads into it.
- */
+/** Whether every reference to the definition is a call of it among `calls`: it is bound to names (`f <- function...`) only these calls read, so no other way leads into it. */
 function onlyCalledBy(fn: NodeId, calls: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
 	const binds = (source: NodeId) => DfgVertex.hasOrigin(graph.getVertex(source), BuiltInProcName.Assignment);
 	const holders: NodeId[] = [];
@@ -187,12 +172,7 @@ function onlyCalledBy(fn: NodeId, calls: ReadonlySet<NodeId>, graph: DataflowGra
 	return holders.every(holder => graph.edgesTo(holder).entries().every(([source, edge]) => DfEdge.isOnlyControlFlow(edge) || binds(source) || calls.has(source)));
 }
 
-/**
- * Settles what a function writes beyond its frame (`<<-`) under branches of its own, once the calls passing the
- * write on are linked: bound to what a call hands it, a parameter may make a branch constant
- * (`f <- function(go) if(go) n <<- 5; f(FALSE)`). A write no call can make is read by nobody. A write that a call the
- * program runs once surely makes replaces, for the code the program runs once after that call, what came before it.
- */
+/** Settles what a function writes beyond its frame (`<<-`) under branches of its own, once the calls passing the write on are linked: bound to what a call hands it, a parameter may make a branch constant (`f <- function(go) if(go) n <<- 5; f(FALSE)`). */
 export function settleConditionalWritesOfCalls(this: void, graph: DataflowGraph, ctx: FlowrAnalyzerContext): void {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -234,10 +214,7 @@ export function settleConditionalWritesOfCalls(this: void, graph: DataflowGraph,
 /** How many calls deep {@link PromiseOrder} follows a promise handed on, or a callee that writes. */
 const MaxPromiseHandOn = 4;
 
-/**
- * When a promise is forced relative to the writes of the call it is handed to: `f <- function(a) { x <<- 2; a }`
- * forces `a` only once `x` is replaced, so `f(x)` never sees what `x` held before the call.
- */
+/** When a promise is forced relative to the writes of the call it is handed to: `f <- function(a) { x <<- 2; a }` forces `a` only once `x` is replaced, so `f(x)` never sees what `x` held before the call. */
 class PromiseOrder {
 	private readonly graph: DataflowGraph;
 	private readonly idMap: AstIdMap;
@@ -292,11 +269,7 @@ class PromiseOrder {
 			});
 	}
 
-	/**
-	 * Whether running the statement of the top-level closure `fn` surely replaces the global `name`: `name <<- v`, a
-	 * call of a top-level closure surely doing so, or, for the call the promise came from, forcing another of its
-	 * arguments that assigns `name` (`f(n, n <- 4)`).
-	 */
+	/** Whether running the statement of the top-level closure `fn` surely replaces the global `name`: `name <<- v`, a call of a top-level closure surely doing so, or, for the call the promise came from, forcing another of its arguments that assigns `name` (`f(n, n <- 4)`). */
 	private surelyWrites(statement: RNode<ParentInformation>, name: string, fn: NodeId, call: NodeId, depth: number): boolean {
 		const id = statement.info.id;
 		if(this.assigns(id, name, BuiltInProcName.SuperAssignment)) {
@@ -319,11 +292,7 @@ class PromiseOrder {
 		return at >= 0 && !definition.exitPoints.some(e => e.type === ExitPointType.Return && this.statementIndex(e.nodeId, statements) < at);
 	}
 
-	/**
-	 * Whether the top-level closure `fn` surely replaces the global `name` before anything forces the promise `call`
-	 * binds to its parameter `param`: every read of the parameter follows a statement surely writing `name`, or
-	 * hands the promise on to a callee for which the same holds.
-	 */
+	/** Whether the top-level closure `fn` surely replaces the global `name` before anything forces the promise `call` binds to its parameter `param`: every read of the parameter follows a statement surely writing `name`, or hands the promise on to a callee for which the same holds. */
 	private writtenBeforeForced(fn: NodeId, param: NodeId, name: string, call: NodeId, depth = 0): boolean {
 		const reads = Dataflow.sourcesOf(this.graph, param, EdgeType.Reads);
 		const statements = this.statementsOf(fn);
@@ -350,10 +319,7 @@ class PromiseOrder {
 		});
 	}
 
-	/**
-	 * Drops what a read in an argument of the top-level call `call` sees of the definitions the program made before the
-	 * call, when the call replaces the name before it forces the promise.
-	 */
+	/** Drops what a read in an argument of the top-level call `call` sees of the definitions the program made before the call, when the call replaces the name before it forces the promise. */
 	settle(call: NodeId, argument: NodeId, read: NodeId, name: string): void {
 		const fn = this.topLevelTarget(call);
 		const statement = fn === undefined || !this.graph.isRoot(read) ? undefined : ProgramOrder.runsOnceAt(call, this.graph);
@@ -378,11 +344,7 @@ class PromiseOrder {
 		}
 	}
 
-	/**
-	 * Drops what a read in the default of `param` cannot see: the default is evaluated once, in the frame of `fn`, by
-	 * the statement first forcing it, so it sees neither what later statements define, nor, once a statement before
-	 * surely redefines the name, the parameter it names or what came before (`function(a, b = a) { a <- 10; b }`).
-	 */
+	/** Drops what a read in the default of `param` cannot see: the default is evaluated once, in the frame of `fn`, by the statement first forcing it, so it sees neither what later statements define, nor, once a statement before surely redefines the name, the parameter it names or what came before (`function(a, b = a) { a <- 10; b }`). */
 	settleDefault(fn: NodeId, param: NodeId, read: NodeId, name: string): void {
 		const seen = Dataflow.targetsOf(this.graph, read, EdgeType.Reads);
 		if(seen.length < 2) {
@@ -410,13 +372,7 @@ class PromiseOrder {
 	}
 }
 
-/**
- * For a call of a package function flowR has no body for (not one of R's own packages, whose functions the built-in
- * configuration states): `false` if it is none, else the arguments whose promises may be forced after the call
- * returned. Its promises are forced in an order flowR does not know, so each may see what the others write, and a
- * promise the signature does not state forced may be kept by a function the call hands back, which then forces it
- * when it is called: `g <- purrr::partial(f, x); x <- 5; g()` reads the later `x`.
- */
+/** For a call of a package function flowR has no body for (not one of R's own packages, whose functions the built-in configuration states): `false` if it is none, else the arguments whose promises may be forced after the call returned. */
 function keptPromisesOfPackageCall(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, ctx: FlowrAnalyzerContext): ReadonlySet<NodeId> | false {
 	const info = call.name === undefined ? undefined : ctx.functionInfo(call.name);
 	const pkg = info?.package ?? (call.name === undefined ? undefined : Identifier.getNamespace(call.name));
@@ -435,10 +391,7 @@ function keptPromisesOfPackageCall(graph: DataflowGraph, call: DataflowGraphVert
 	}).map(a => a.nodeId));
 }
 
-/**
- * Whether the value of `call` may be called after it returned: it is a function, or it flows (through variables,
- * returns, and reads) to where a call takes its function from, as `g` in `g <- f(); g()`.
- */
+/** Whether the value of `call` may be called after it returned: it is a function, or it flows (through variables, returns, and reads) to where a call takes its function from, as `g` in `g <- f(); g()`. */
 function handsBackCalledValue(graph: DataflowGraph, call: NodeId): boolean {
 	if(Dataflow.targetsOf(graph, call, EdgeType.Returns).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
 		return true;
@@ -459,10 +412,7 @@ function handsBackCalledValue(graph: DataflowGraph, call: NodeId): boolean {
 	return false;
 }
 
-/**
- * Whether the promise bound to a parameter may be forced after its call returned: its function does not surely force
- * it, and a closure within the function reads it or it is handed on to a parameter whose promise may.
- */
+/** Whether the promise bound to a parameter may be forced after its call returned: its function does not surely force it, and a closure within the function reads it or it is handed on to a parameter whose promise may. */
 function promiseOutlivesCall(graph: DataflowGraph, idMap: AstIdMap, forcing: (holder: NodeId, inner: NodeId) => Ternary): (parameter: NodeId) => boolean {
 	const ownerOf = new Map<NodeId, NodeId>();
 	for(const [id, definition] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -506,15 +456,9 @@ function definitionsAfter(graph: DataflowGraph, idMap: AstIdMap): (call: NodeId,
 	};
 }
 
-/**
- * Links every materialized package-export vertex back to the `library()`/`use()` call that loaded it,
- * reading the loading call from the export binding's `definedAt` in the (final, authoritative) environment.
- * Only vertices created on demand (exports actually referenced) get an edge, keeping the graph small.
- */
+/** Links every materialized package-export vertex back to the `library()`/`use()` call that loaded it, reading the loading call from the export binding's `definedAt` in the (final, authoritative) environment. */
 export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
-	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the
-	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or something points
-	 * to it, called or read as a value (`g <- select`). Both are read off the graph once here instead of per export binding. */
+	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or something points to it, called or read as a value (`g <- select`). */
 	const called = new Set<NodeId>(graph.vertices(true).map(([id]) => id).filter(NodeId.isBuiltIn));
 	for(const [, outgoing] of graph.edges()) {
 		for(const target of outgoing.keys()) {
@@ -540,8 +484,7 @@ export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environme
 			}
 		}
 	}
-	/* the loader targets are `library()` call ids, never export ids, so the edges added here never make a further
-	 * export qualify -- the lazy checks this replaces could not have observed one either */
+	/* the loader targets are `library()` call ids, never export ids, so the edges added here never make a further export qualify -- the lazy checks this replaces could not have observed one either */
 	for(const [id, loadedAt] of loaders) {
 		/* an export only read as a value (`g <- select`) has no vertex yet, which a slice could not pass */
 		attachExportVertex(graph, id, environment, ctx);
@@ -574,11 +517,7 @@ function escapeTargetFrames(fdef: DataflowGraphVertexFunctionDefinition): Genera
 	return REnvironment.frames(fdef.subflow.environment.current.parent);
 }
 
-/**
- * The non-built-in definitions a function body lets escape to an outer scope (e.g. a `<<-` super-assignment),
- * as a callback for {@link computeCallGraphSummaries}. Nested definitions share their outer frames, and a frame is
- * dominated by the built-ins it holds, so filtering each frame once per pass saves the bulk of the work.
- */
+/** The non-built-in definitions a function body lets escape to an outer scope (e.g. a `<<-` super-assignment), as a callback for {@link computeCallGraphSummaries}. */
 function escapedDefinitions(this: void, graph: DataflowGraph, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>): (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => readonly NodeId[] {
 	const perFrame = new Map<MemoryView, readonly NodeId[]>();
 	/* the function an exit hook runs in folds the hook's writes into its final environment in the order R runs the hooks */
@@ -595,8 +534,7 @@ function escapedDefinitions(this: void, graph: DataflowGraph, hidden: ReadonlyMa
 				escaped = [];
 				perFrame.set(e.memory, escaped);
 			} else if(escaped === undefined) {
-				/* a package frame holds thousands of entries and keeps none of them, so this walks them in place
-				 * rather than through a spread/flatMap/filter/map chain that allocates an array per step */
+				/* a package frame holds thousands of entries and keeps none of them, so this walks them in place rather than through a spread/flatMap/filter/map chain that allocates an array per step */
 				const collected: NodeId[] = [];
 				for(const ds of e.memory.values()) {
 					for(const d of ds) {
@@ -634,11 +572,7 @@ function propagateTransitiveDefinitions(graph: DataflowGraph, environment: REnvi
 	}
 }
 
-/**
- * Attaches packages transitively loaded by top-level calls to `environment`.
- * `g <- function() library(A); f <- function() g(); f()` makes `A` available after `f()`.
- * @returns the enriched environment and whether it grew (so the caller can re-link and re-run to a fixpoint).
- */
+/** Attaches packages transitively loaded by top-level calls to `environment`. */
 function propagateTransitivePackages(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): { environment: REnvironmentInformation, grew: boolean } {
 	const summary = computeCallGraphSummaries(graph, ownLibraryCalls);
 	/* package to its loading `library()` call and, unless a call reaching it surely runs, the cds of one that may */
@@ -737,10 +671,7 @@ function linkHiddenReads(graph: DataflowGraph, reads: ReadonlyMap<NodeId, readon
 	}
 }
 
-/**
- * Maps each definition escaping into the global frame to its full (name-carrying) definitions, one node may define several names
- * (`options(digits = 3)`); a write from a function defined within another one may be caught by that function's frame instead.
- */
+/** Maps each definition escaping into the global frame to its full (name-carrying) definitions, one node may define several names (`options(digits = 3)`); a write from a function defined within another one may be caught by that function's frame instead. */
 function escapedDefinitionMap(graph: DataflowGraph, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>): Map<NodeId, NamedDefinition[]> {
 	const map = new Map<NodeId, NamedDefinition[]>(hidden.entries().map(([id, defs]) => [id, [...defs]]));
 	const definitionsOf = new DefaultMap<NodeId, NamedDefinition[]>(() => [], map);
@@ -762,11 +693,7 @@ function escapedDefinitionMap(graph: DataflowGraph, hidden: ReadonlyMap<NodeId, 
 	return map;
 }
 
-/**
- * Folds the `<<-` definitions that escape transitively from top-level calls into `environment`.
- * `f <- function() x <<- 1; g <- function() f(); g(); print(x)` makes `x` resolvable.
- * @returns the enriched environment and whether it grew (so the extractor can re-resolve open reads and re-run).
- */
+/** Folds the `<<-` definitions that escape transitively from top-level calls into `environment`. */
 function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, defined: Set<string>, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>, summary: ReadonlyMap<NodeId, ReadonlySet<NodeId>>, open: readonly IdentifierReference[]): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
 	const defs = escapedDefinitionMap(graph, hidden);
 	const names = new Set<string>();
@@ -781,9 +708,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 			for(const def of (summary.get(target) ?? []).values().flatMap(nodeId => defs.get(nodeId) ?? [])) {
 				const nodeId = def.nodeId;
 				names.add(def.name);
-				/* a name may hold several definitions while a lookup answers with one, so asking the environment
-				 * would call every shadowed one missing and define it again on every round; what this fixpoint
-				 * has already folded in is what says whether there is anything left to add */
+				/* a name may hold several definitions while a lookup answers with one, so asking the environment would call every shadowed one missing and define it again on every round; what this fixpoint has already folded in is what says whether there is anything left to add */
 				const key = `${def.name}\u0000${String(nodeId)}`;
 				if(defined.has(key)) {
 					continue;
@@ -801,10 +726,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 	return { environment, grew, names };
 }
 
-/**
- * A read that may run after `call` and sees a definition the call may replace (or nothing, as with the `open` reads) may see `def`
- * instead, as with a callee only the call binds: `g <- function(f) f(); x <- 1; g(function() x <<- 2); print(x)`, or `g(runif)`.
- */
+/** A read that may run after `call` and sees a definition the call may replace (or nothing, as with the `open` reads) may see `def` instead, as with a callee only the call binds: `g <- function(f) f(); x <- 1; g(function() x <<- 2); print(x)`, or `g(runif)`. */
 function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[], definitionsNamed: (name: string) => readonly NodeId[]): void {
 	const before = graph.getVertex(call)?.environment;
 	const visible = before === undefined ? definitionsNamed(def.name) : Resolve.byName(def.name, before)?.map(d => d.nodeId) ?? [];
@@ -861,14 +783,7 @@ export interface AmbientAccess {
 export interface AmbientAccessOptions {
 	/** whether to add what the functions called by the code access as well, defaults to true */
 	readonly includeCallees?: boolean
-	/**
-	 * What {@link ambientAccessOfFunctions} answered for the same graph, to reuse when asking for several scopes.
-	 * @example
-	 * ```ts
-	 * const functions = ambientAccessOfFunctions(info);
-	 * const perFile = ast.files.map(f => ambientAccessOf(info, f.root, { functions }));
-	 * ```
-	 */
+	/** What {@link ambientAccessOfFunctions} answered for the same graph, to reuse when asking for several scopes. */
 	readonly functions?:      ReadonlyMap<NodeId, AmbientAccess>
 }
 
@@ -906,11 +821,7 @@ function drawsOn(graph: DataflowGraph, id: NodeId, environment: REnvironmentInfo
 }
 
 /**
- * What each function accesses when it is called: the pseudo variables it reads and changes (see {@link AmbientStateName}), the global
- * variables it binds and the drawing calls it makes, together with what the functions it calls access.
- * Reads and writes confined to the function's own frame (`withr::local_options`) are left out.
- * @param from - see {@link AmbientSource}
- * @returns      per function-definition vertex what it may access, which is empty for a function accessing nothing
+ * What each function accesses when it is called: the pseudo variables it reads and changes (see {@link AmbientStateName}), the global variables it binds and the drawing calls it makes, together with what the functions it calls access.
  * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
  */
 export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<NodeId, AmbientAccess> {
@@ -964,10 +875,7 @@ function addSourcedFiles(graph: DataflowGraph, ids: Set<NodeId>): void {
 	}
 }
 
-/**
- * The code to ask {@link ambientAccessOf} for: a whole project (all files), a node with all the code it spans (a file root,
- * a block, a statement), the id of such a node, or exactly the given ids.
- */
+/** The code to ask {@link ambientAccessOf} for: a whole project (all files), a node with all the code it spans (a file root, a block, a statement), the id of such a node, or exactly the given ids. */
 export type AmbientScope = RProject<ParentInformation> | RNode<ParentInformation> | NodeId | Iterable<NodeId>;
 
 function idsOfScope(graph: DataflowGraph, scope: AmbientScope): Set<NodeId> {
@@ -983,21 +891,8 @@ function idsOfScope(graph: DataflowGraph, scope: AmbientScope): Set<NodeId> {
 }
 
 /**
- * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls in `scope` and,
- * unless turned off, what the functions they call access. The calls within a function definition in `scope` only count if called.
- * @param from  - see {@link AmbientSource}
- * @param scope - see {@link AmbientScope}
- * @param opts  - see {@link AmbientAccessOptions}
+ * What running the given code reads and writes of the global state, see {@link AmbientAccess}: the calls in `scope` and, unless turned off, what the functions they call access.
  * @useInstead {@link Dataflow.sideEffects.ambientAccess}
- * @example
- * ```ts
- * const { ast } = await analyzer.normalize();
- * const info = await analyzer.dataflow();
- * const all = ambientAccessOf(info, ast);                // every file of the project
- * const first = ambientAccessOf(info, ast.files[0].root); // one file
- * const stmt = ambientAccessOf(info, SlicingCriterion.parse('3^', ast.idMap)); // the statement on line 3
- * ```
- * A scope only counts what runs: a function defined but never called in it adds nothing, a `source`d file adds its top level.
  */
 export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientScope, opts?: AmbientAccessOptions): AmbientAccess {
 	const [graph, environment] = graphOf(from);
@@ -1058,13 +953,7 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientS
 }
 
 /**
- * The global state each function may leave changed when it is called, as the names of the pseudo variables it changes
- * (see {@link AmbientStateName}): `#option:digits` for `options(digits = 3)`, `#env:PATH` for `Sys.setenv(PATH = "")`, or `#sink`,
- * and the global variables it binds.
- * A function reports what its callees report as well, so with `a01 <- function() options(digits = 3)` and `a22 <- function() a01()`,
- * both set `#option:digits`. What a function only changes within its own frame (`withr::local_options`) is left out.
- * @param info - see {@link AmbientSource}
- * @returns      per function-definition vertex what it may change, which is empty for a function changing nothing
+ * The global state each function may leave changed when it is called, as the names of the pseudo variables it changes (see {@link AmbientStateName}): `#option:digits` for `options(digits = 3)`, `#env:PATH` for `Sys.setenv(PATH = "")`, or `#sink`, and the global variables it binds.
  * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
  */
 export function ambientWritesOfFunctions(this: void, info: AmbientSource): Map<NodeId, FunctionAmbientWrites> {
@@ -1073,7 +962,6 @@ export function ambientWritesOfFunctions(this: void, info: AmbientSource): Map<N
 
 /**
  * Propagates every function's escaped side effects (attached packages and `<<-` definitions) to its transitive callers.
- * @returns  the enriched top-level environment and whether it grew (so the extractor can re-link and re-run to a fixpoint).
  * @useInstead {@link Dataflow.sideEffects.propagateTransitive}
  */
 export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, defined: Set<string> = new Set(), open: readonly IdentifierReference[] = []): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {

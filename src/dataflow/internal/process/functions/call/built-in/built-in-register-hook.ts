@@ -29,9 +29,7 @@ export interface RegisterHookConfig {
 	}
 }
 
-/**
- * Process a hook such as `on.exit`
- */
+/** Process a hook such as `on.exit` */
 export function processRegisterHook<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

@@ -13,11 +13,7 @@ import { withAppliedCds } from './reference-to-maybe';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
 
-/**
- * Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional
- * one only revives it in its branch, and a wholesale (`all`/`unknown`) removal stays but spares the names written
- * after it.
- */
+/** Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional one only revives it in its branch, and a wholesale (`all`/`unknown`) removal stays but spares the names written after it. */
 export function cancelRevivedKills(kills: readonly KillReference[], writes: readonly IdentifierReference[]): KillReference[] {
 	const written = new Set<BrandedIdentifier>();
 	const writtenMaybe = new Map<BrandedIdentifier, ControlDependency[]>();
@@ -150,10 +146,7 @@ export function removalsOf(name: Identifier, env: REnvironmentInformation): read
 	return nodes ?? NoRemovals;
 }
 
-/**
- * A read of `name` that still sees a definition depends on the calls that may have removed it, so a slice of the read keeps
- * the `rm(name)` that might have run. Call it after you resolved the read, with the environment the read was resolved in.
- */
+/** A read of `name` that still sees a definition depends on the calls that may have removed it, so a slice of the read keeps the `rm(name)` that might have run. */
 export function readRemovals(graph: DataflowGraph, read: NodeId, name: Identifier | undefined, env: REnvironmentInformation): void {
 	if(name === undefined) {
 		return;
@@ -217,13 +210,7 @@ function applyNamedKill(env: Environment, name: Identifier, refs: readonly Ident
 	}
 }
 
-/**
- * Applies the given {@link KillReference|kills} to a copy of `env`. `named` kills remove (or, when conditional,
- * weaken to maybe) a single definition; `all` kills clear the current frame; `unknown` kills weaken every
- * in-scope definition to maybe. Returns `env` unchanged when there is nothing to apply.
- * With `mark`, a named removal is recorded even if the frame does not bind the name (see {@link removalsOf}), for a
- * frame flowR knows only the writes into, like that of a closure (`rm("v", envir = environment(g))`).
- */
+/** Applies the given {@link KillReference|kills} to a copy of `env`. */
 export function applyKills(env: REnvironmentInformation, kills: readonly KillReference[] | undefined, mark = false): REnvironmentInformation {
 	if(!kills || kills.length === 0) {
 		return env;
@@ -233,11 +220,7 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 	return { current, level: env.level };
 }
 
-/**
- * {@link applyKills} on the global frame, as a removal with `envir = .GlobalEnv` within a function does. The removal is
- * marked even if the frame does not bind the name yet, as the function may only be called once it does.
- * Use it only for kills a function performs on the global frame, as the kills of the current frame go through {@link applyKills}.
- */
+/** {@link applyKills} on the global frame, as a removal with `envir = .GlobalEnv` within a function does. */
 export function applyGlobalKills(env: REnvironmentInformation, kills: readonly KillReference[]): REnvironmentInformation {
 	const current = env.current.clone(true);
 	let global = current;
@@ -278,11 +261,7 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 	});
 }
 
-/**
- * Drops the writes that a still-effective removal undid: a definite `named` kill takes out its own name and a
- * definite wholesale kill takes out every name it did not spare. Conditional and `unknown` kills leave the (now
- * maybe) definition in place, as it may still be visible afterwards.
- */
+/** Drops the writes that a still-effective removal undid: a definite `named` kill takes out its own name and a definite wholesale kill takes out every name it did not spare. */
 export function dropKilledWrites(out: readonly IdentifierReference[], kills: readonly KillReference[] | undefined): readonly IdentifierReference[] {
 	if(!kills?.length || out.length === 0) {
 		return out;

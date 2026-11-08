@@ -111,11 +111,7 @@ export function processLocal<OtherInfo>(
 	return baseResult;
 }
 
-/**
- * Evaluates `expr` in the environment `envir` pins down, or in a fresh frame on top of the current one, as `local`
- * and `eval(expr, envir)` do. The search path is global, so what `expr` attaches stays, and of a fresh frame only
- * what escaped it (e.g., via `<<-`) remains.
- */
+/** Evaluates `expr` in the environment `envir` pins down, or in a fresh frame on top of the current one, as `local` and `eval(expr, envir)` do. */
 export function evaluateInEnvir<OtherInfo>(
 	expr: RNode<OtherInfo & ParentInformation>,
 	envir: EnvirResolution<OtherInfo> | undefined,

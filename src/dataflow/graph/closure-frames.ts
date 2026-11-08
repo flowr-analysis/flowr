@@ -43,15 +43,9 @@ export interface FrameReads {
 
 const NoWrites: FrameWrites = { ids: new Set(), writers: new Set(), definite: false, entries: [] };
 
-/**
- * The frame a closure holds (`environment(g)`) is the one the call creating it ran in, so writes into it reach only the
- * calls of that very closure: they are tracked on the variables holding it (see {@link InGraphIdentifierDefinition#closureFrame}).
- */
+/** The frame a closure holds (`environment(g)`) is the one the call creating it ran in, so writes into it reach only the calls of that very closure: they are tracked on the variables holding it (see {@link InGraphIdentifierDefinition#closureFrame}). */
 export const ClosureFrames = {
-	/**
-	 * What the frames of the closures `holder` holds in `environment` bind to `name`. A frame of the closure `closure`
-	 * that `name` was removed from (`rm("v", envir = environment(g))`) binds what the frames around it bind, see {@link boundAround}.
-	 */
+	/** What the frames of the closures `holder` holds in `environment` bind to `name`. */
 	writesOf(this: void, holder: Identifier, environment: REnvironmentInformation, name: BrandedIdentifier, closure: NodeId, graph: DataflowGraph): FrameWrites {
 		const holders = Resolve.byName(holder, environment) ?? [];
 		const ids = new Set<NodeId>();
@@ -94,10 +88,7 @@ export const ClosureFrames = {
 		}
 		return extended;
 	},
-	/**
-	 * The calls that created what the bindings `call` reads hold, one per binding, `undefined` if a binding may hold
-	 * anything else: two calls with different instances run closures with different frames.
-	 */
+	/** The calls that created what the bindings `call` reads hold, one per binding, `undefined` if a binding may hold anything else: two calls with different instances run closures with different frames. */
 	instancesOf(this: void, graph: DataflowGraph, call: NodeId): NodeId[] | undefined {
 		const instances: NodeId[] = [];
 		for(const [binding, edge] of graph.edgesFrom(call)) {
@@ -112,11 +103,7 @@ export const ClosureFrames = {
 		}
 		return instances.length > 0 ? instances : undefined;
 	},
-	/**
-	 * Which definitions the read `read` within the closure the context calls may read in that call: of the writes into
-	 * the frames of its closure, only those into the frame of the closure this call runs, and none of the bindings the
-	 * frame shadows once a write surely binds the name. `undefined` if the context names no call of a closure around it.
-	 */
+	/** Which definitions the read `read` within the closure the context calls may read in that call: of the writes into the frames of its closure, only those into the frame of the closure this call runs, and none of the bindings the frame shadows once a write surely binds the name. */
 	readsInCall(this: void, read: NodeId, graph: DataflowGraph, idMap: AstIdMap, context: ReadonlyMap<NodeId, NodeId>): FrameReads | undefined {
 		const node = idMap.get(read);
 		if(!RSymbol.is(node) || !DfgVertex.isUse(graph.getVertex(read)) || !context.keys().some(fn => isFramed(graph, fn))) {
@@ -170,22 +157,13 @@ export const ClosureFrames = {
 	}
 } as const;
 
-/**
- * The call that created what `id` holds: the call a variable is defined by, through accesses of what holds it
- * (`g <- o$get` with `o <- mk()` holds what `mk()` created), `undefined` if that is not one call.
- */
+/** The call that created what `id` holds: the call a variable is defined by, through accesses of what holds it (`g <- o$get` with `o <- mk()` holds what `mk()` created), `undefined` if that is not one call. */
 function creatorOf(graph: DataflowGraph, id: NodeId): NodeId | undefined {
 	const sources = Dataflow.valueSources(id, graph, { throughAccess: true });
 	return sources?.length === 1 && DfgVertex.isFunctionCall(graph.getVertex(sources[0])) ? sources[0] : undefined;
 }
 
-/**
- * The writes the read `read` in the closure `closure` that `call` runs may see but which do not reach it: a write
- * into its frame (`assign("v", 4, envir = environment(g))`), a super assignment of a closure created by the same call
- * (`set <- function() v <<- 5`), and what the scope binds itself, each replaced by a later one that surely writes the
- * frame before `call` (ordered by the top-level calls making them), and the super assignments only closures created by
- * other calls make, which write other frames.
- */
+/** The writes the read `read` in the closure `closure` that `call` runs may see but which do not reach it: a write into its frame (`assign("v", 4, envir = environment(g))`), a super assignment of a closure created by the same call (`set <- function() v <<- 5`), and what the scope binds itself, each replaced by a later one that surely writes the frame before `call` (ordered by the top-level calls making them), and the super assignments only closures created by other calls make, which write other frames. */
 function overwrittenBefore(read: NodeId, call: NodeId, closure: NodeId, own: FrameWrites, graph: DataflowGraph, idMap: AstIdMap): ReadonlySet<NodeId> {
 	const at = ProgramOrder.runsOnceAt(call, graph);
 	const instances = ClosureFrames.instancesOf(graph, call);
@@ -249,10 +227,7 @@ function overwrittenBefore(read: NodeId, call: NodeId, closure: NodeId, own: Fra
 	return elsewhere;
 }
 
-/**
- * What the frames around the frame of `closure` bind to `name` once `environment` calls it: those of the functions around
- * the one that made the frame as it left them, and the global frame as it is at the call.
- */
+/** What the frames around the frame of `closure` bind to `name` once `environment` calls it: those of the functions around the one that made the frame as it left them, and the global frame as it is at the call. */
 function boundAround(closure: NodeId, graph: DataflowGraph, environment: REnvironmentInformation, name: BrandedIdentifier): readonly IdentifierDefinition[] | undefined {
 	const maker = graph.idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(closure, graph.idMap);
 	const made = maker === undefined ? undefined : graph.getVertex(maker);

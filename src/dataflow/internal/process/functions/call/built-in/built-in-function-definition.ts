@@ -48,9 +48,7 @@ import { DotsParameterName } from '../../../../../../util/arg-matching';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
 
-/**
- * Process a function definition, i.e., `function(a, b) { ... }`
- */
+/** Process a function definition, i.e., `function(a, b) { ... }` */
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -307,10 +305,7 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 	return REnvironment.overwrite(baseEnvironment, callerEnvironment);
 }
 
-/**
- * Whether the dispatch takes its object from the first formal, which is what R does unless the call names
- * the object itself (`UseMethod("f", y)`), in which case that argument carries the read already.
- */
+/** Whether the dispatch takes its object from the first formal, which is what R does unless the call names the object itself (`UseMethod("f", y)`), in which case that argument carries the read already. */
 function dispatchesOnFirstParameter<Info>(id: NodeId, idMap: AstIdMap<Info & ParentInformation>): boolean {
 	const enclosing = RNode.findEnclosing(id, idMap, RFunctionCall.is);
 	const call = enclosing === undefined ? undefined : idMap.get(enclosing);
@@ -336,11 +331,7 @@ function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[]
 	}
 }
 
-/**
- * Resolves `refs` (open reads of a nested definition or call) against `environment`;
- * `onResolved` handles each resolved reference and says whether it should stay in the returned "still open" list.
- * The names a method sees its instance by (`self`) stay open, as only a call on an instance binds them, whatever the enclosing frames hold.
- */
+/** Resolves `refs` (open reads of a nested definition or call) against `environment`; `onResolved` handles each resolved reference and says whether it should stay in the returned "still open" list. */
 function resolveIngoingRefs(
 	refs: readonly IdentifierReference[],
 	environment: REnvironmentInformation,
@@ -358,11 +349,7 @@ function resolveIngoingRefs(
 	});
 }
 
-/**
- * Links the free variables of the functions defined in `graph` to their definitions in `outEnvironment`, the scope
- * the functions were defined in. Call it before that scope is popped, at the end of a function body or of `local`.
- * Reads that `outEnvironment` does not define are added to `openReads`.
- */
+/** Links the free variables of the functions defined in `graph` to their definitions in `outEnvironment`, the scope the functions were defined in. */
 export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironment: REnvironmentInformation, openReads: IdentifierReference[]) {
 	const open = new Set(openReads.map(r => r.nodeId));
 	const settled = new Set<NodeId>();
@@ -417,11 +404,7 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 	}
 }
 
-/**
- * Whether an enclosing scope binds the name of a call within a closure before the closure exists, see
- * {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out,
- * whatever the end of the script binds there.
- */
+/** Whether an enclosing scope binds the name of a call within a closure before the closure exists, see {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out, whatever the end of the script binds there. */
 export function callBoundInScope(call: NodeId, graph: DataflowGraph): boolean {
 	return !graph.isRoot(call) && Dataflow.targetsOf(graph, call, EdgeType.Reads).some(r => boundBeforeClosure(r, call, graph));
 }
@@ -430,12 +413,7 @@ function boundCallTargets(call: NodeId, graph: DataflowGraph): NodeId[] | undefi
 	return callBoundInScope(call, graph) ? [...getAllLinkedFunctionDefinitions(new Set(Dataflow.targetsOf(graph, call, EdgeType.Reads)), graph)[0]].map(d => d.id) : undefined;
 }
 
-/**
- * Whether the local definition `def` is made before the closure holding the read `read` is created, on every way
- * there: `h <- function() 2; g <- function() h()` binds `h` in the scope before `g` exists, so no call of `g`
- * looks past the scope for it. The definition has to be a statement of its own in a block that holds the closure
- * in a later statement.
- */
+/** Whether the local definition `def` is made before the closure holding the read `read` is created, on every way there: `h <- function() 2; g <- function() h()` binds `h` in the scope before `g` exists, so no call of `g` looks past the scope for it. */
 function boundBeforeClosure(def: NodeId, read: NodeId, graph: DataflowGraph): boolean {
 	const idMap = graph.idMap;
 	const node = idMap?.get(def);
@@ -472,10 +450,7 @@ interface NamesOfInterest {
 	readonly generics:  ReadonlySet<string>
 }
 
-/**
- * The names the analyzed code binds that a built-in also goes by, so a call that resolved to only that built-in
- * may still land on one of them: a body looks its callee up when it runs, not when it is written.
- */
+/** The names the analyzed code binds that a built-in also goes by, so a call that resolved to only that built-in may still land on one of them: a body looks its callee up when it runs, not when it is written. */
 function namesShadowingBuiltIns(environment: REnvironmentInformation, graph: DataflowGraph): NamesOfInterest {
 	const shadowing = new Set<string>();
 	const generics = new Set<string>();
@@ -486,8 +461,7 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation, graph: Dat
 		}
 	};
 	for(const env of REnvironment.frames(environment.current)) {
-		/* an attached package may shadow a built-in a function body bound to before it was attached; its keys
-		 * suffice, building the definitions of every export would be costly */
+		/* an attached package may shadow a built-in a function body bound to before it was attached; its keys suffice, building the definitions of every export would be costly */
 		if(env.t === EnvType.Namespace) {
 			for(const identifier of env.memory.keys()) {
 				shadowing.add(Identifier.getName(identifier));
@@ -525,11 +499,7 @@ function dispatchesOnClass(name: Identifier, environment: REnvironmentInformatio
 	return props === undefined ? Resolve.byNameAndType(name, environment, ReferenceType.Function) === undefined : CallProps.hasAny(props, CallProp.Generic);
 }
 
-/**
- * Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, returning their definition vertices and the
- * dispatched objects. Unless {@link dispatchedS3Methods} knows the class, every such method counts,
- * same as the {@link BuiltInProcName.S3Dispatch} path.
- */
+/** Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, returning their definition vertices and the dispatched objects. */
 function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): { readonly methods: readonly NodeId[], readonly objects?: readonly NodeId[] } {
 	const defs = s3MethodPrefixesOf(name).flatMap(prefix => Resolve.byNameAndType(prefix, environment, ReferenceType.S3MethodPrefix) ?? [])
 		.filter(d => !NodeId.isBuiltIn(d.nodeId) && !ProgramOrder.definedLater(d.nodeId, statement, graph));
@@ -574,10 +544,7 @@ function dispatchedArgumentsOf(call: DataflowGraphVertexFunctionCall, node: RNod
 	return uniqueArray(closure ? bound : [first.nodeId, ...bound ?? []]);
 }
 
-/**
- * The `methods` a call dispatches to per known class of its dispatch object (then `default`), stopping for a top-level call at one surely bound before it
- * unless a method may `NextMethod()`, with the objects dispatched on; without methods if a class is unknown, `undefined` if the objects are.
- */
+/** The `methods` a call dispatches to per known class of its dispatch object (then `default`), stopping for a top-level call at one surely bound before it unless a method may `NextMethod()`, with the objects dispatched on; without methods if a class is unknown, `undefined` if the objects are. */
 function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifier, methods: readonly IdentifierDefinition[], graph: DataflowGraph, environment: REnvironmentInformation, statement: RNode<ParentInformation> | undefined, ctx: FlowrAnalyzerContext, infoOf: DatabaseInfoOf): { readonly methods?: IdentifierDefinition[], readonly objects: readonly NodeId[] } | undefined {
 	const node = graph.idMap?.get(call.id);
 	const first = call.args[0];
@@ -646,10 +613,7 @@ function dispatchedObjectOf(vertex: DataflowGraphVertexFunctionCall, graph: Data
 	return rebound ? undefined : first.nodeId;
 }
 
-/**
- * What the dispatch of `vertex` among `targets` rules out, S3 on the objects `s3Objects` and S4 on the classes of its arguments.
- * @param info - how the classes are found, by default for any call of the function holding `vertex`
- */
+/** What the dispatch of `vertex` among `targets` rules out, S3 on the objects `s3Objects` and S4 on the classes of its arguments. */
 function narrowedDispatchOf(narrower: DispatchNarrower, vertex: DataflowGraphVertexFunctionCall, s3Objects: readonly NodeId[] | undefined, targets: ReadonlySet<NodeId>, definedLater: (definition: NodeId) => boolean, info?: ClassFlowInfo): NarrowedDispatch | undefined {
 	const name = Identifier.getName(vertex.name);
 	const s3 = s3Objects === undefined ? undefined : narrower.s3(s3Objects, s3MethodPrefixesOf(vertex.name), targets, info);
@@ -660,10 +624,7 @@ function narrowedDispatchOf(narrower: DispatchNarrower, vertex: DataflowGraphVer
 	return { excluded: new Set([...s3.excluded, ...s4.excluded]), next: new Map([...s3.next, ...s4.next]), reads: s4.reads };
 }
 
-/**
- * Links each next-method call to what it may run: the methods `next` names for the method it is in, and the methods
- * those run in turn, or else every target of the dispatching call.
- */
+/** Links each next-method call to what it may run: the methods `next` names for the method it is in, and the methods those run in turn, or else every target of the dispatching call. */
 function linkNextMethods(graph: DataflowGraph, collected: ReadonlyMap<NodeId, NodeId>, targets: ReadonlySet<NodeId>, next: ReadonlyMap<NodeId, readonly NodeId[]> | undefined): void {
 	const todo = [...collected];
 	const visited = new Set(collected.values());
@@ -699,10 +660,7 @@ function linkNextMethods(graph: DataflowGraph, collected: ReadonlyMap<NodeId, No
 	}
 }
 
-/**
- * A function called directly rather than by a dispatch has no dispatch to continue, so a `NextMethod("f")` within it
- * dispatches the generic it names on the class of the first argument, running the methods after its own.
- */
+/** A function called directly rather than by a dispatch has no dispatch to continue, so a `NextMethod("f")` within it dispatches the generic it names on the class of the first argument, running the methods after its own. */
 function linkNamedNextMethods(graph: DataflowGraph, fn: NodeId, nextCalls: readonly NodeId[], environment: REnvironmentInformation, narrower: DispatchNarrower, ctx: FlowrAnalyzerContext): void {
 	const definition = graph.idMap?.get(fn);
 	const first = RFunctionDefinition.is(definition) ? definition.parameters[0]?.name.info.id : undefined;
@@ -720,11 +678,7 @@ function linkNamedNextMethods(graph: DataflowGraph, fn: NodeId, nextCalls: reado
 	}
 }
 
-/**
- * Per context of the dispatch `dispatch` running the method `owner`, the methods the next-method call `next` within it
- * reaches that it cannot run there: those not after `owner` in the class vectors of that context. The method runs
- * when the dispatch or one of the next-method calls `collected` of the methods it runs runs it.
- */
+/** Per context of the dispatch `dispatch` running the method `owner`, the methods the next-method call `next` within it reaches that it cannot run there: those not after `owner` in the class vectors of that context. */
 function nextMethodsPerCall(next: NodeId, owner: NodeId, dispatch: NodeId, contexts: readonly DispatchContext[], collected: ReadonlyMap<NodeId, NodeId>, graph: DataflowGraph): CallRuledOut[] | undefined {
 	const reached = Dataflow.targetsOf(graph, next, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
 	const within = ruledOutPerCall(contexts, narrowed => {
@@ -838,8 +792,7 @@ export function updateNestedFunctionCalls(
 		const collectedNextMethods = new Map<NodeId, NodeId>();
 		let treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
 		if(treatAsS3 && !graph.isRoot(id)) {
-			/* a body dispatches where it is called, which may see a method the end of the script has replaced,
-			 * or one a function calling it defines in its own frame, which only the lookup by name reaches */
+			/* a body dispatches where it is called, which may see a method the end of the script has replaced, or one a function calling it defines in its own frame, which only the lookup by name reaches */
 			rootDefinitions ??= Dataflow.definitionsByName(graph);
 			const prefix = Identifier.getName(name) + '.';
 			for(const [defined, ids] of rootDefinitions.entries()) {
@@ -1141,11 +1094,7 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 	return byName;
 }
 
-/**
- * Links a parameter default read (e.g. `function(a=b)`) to the body writes of the same name it could see as a promise:
- * the default is evaluated where the parameter is first forced, after any of them. Which ones it surely sees is
- * settled once the reads of the parameter are known, see {@link linkPromisesToWritesOfCall}.
- */
+/** Links a parameter default read (e.g. `function(a=b)`) to the body writes of the same name it could see as a promise: the default is evaluated where the parameter is first forced, after any of them. */
 function linkParameterReadToBodyWrites(graph: DataflowGraph, read: IdentifierReference, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): boolean {
 	const writes = read.name === undefined ? undefined : writesByName.get(read.name);
 	if(writes === undefined) {

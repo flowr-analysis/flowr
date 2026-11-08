@@ -33,21 +33,14 @@ function normalizeReference<T extends { nodeId: NodeId, cds?: readonly ControlDe
 	return { ...ref, nodeId: NodeId.normalize(ref.nodeId), cds: normalizeCds(ref.cds) };
 }
 
-/**
- * Creates an empty dataflow graph.
- * Should only be used in tests and documentation.
- */
+/** Creates an empty dataflow graph. Should only be used in tests and documentation. */
 export function emptyGraph(this: void, cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(cleanEnv, idMap);
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
 
-/**
- * This DataflowGraphBuilder extends {@link DataflowGraph} with builder methods to
- * easily and compactly add vertices and edges to a dataflow graph. Its usage thus
- * simplifies writing tests for dataflow graphs.
- */
+/** This DataflowGraphBuilder extends {@link DataflowGraph} with builder methods to easily and compactly add vertices and edges to a dataflow graph. */
 export class DataflowGraphBuilder<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
 > extends DataflowGraph {
@@ -63,15 +56,7 @@ export class DataflowGraphBuilder<
 		return this;
 	}
 
-	/**
-	 * Adds a **vertex** for a **function definition** (V1).
-	 * @param id         - AST node ID
-	 * @param subflow    - Subflow data graph for the defined function.
-	 * @param exitPoints - Node IDs for exit point vertices.
-	 * @param info       - Additional/optional properties.
-	 * @param asRoot     - should the vertex be part of the root vertex set of the graph
-	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
-	 */
+	/** Adds a **vertex** for a **function definition** (V1). */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
 		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: readonly ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
@@ -98,15 +83,7 @@ export class DataflowGraphBuilder<
 		}, asRoot);
 	}
 
-	/**
-	 * Adds a **vertex** for a **function call** (V2).
-	 * @param id     - AST node ID
-	 * @param name   - Function name
-	 * @param args   - Function arguments; may be empty
-	 * @param info   - Additional/optional properties.
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
-	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
-	 */
+	/** Adds a **vertex** for a **function call** (V2). */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: {
 			returns?:            readonly NodeId[],
@@ -169,10 +146,7 @@ export class DataflowGraphBuilder<
 		}
 	}
 
-	/**
-	 * States that R prints the top-level values `ids` by an implicit `print`, which reads the printing options, or every
-	 * option for a value a method may print (`dispatched`), see {@link autoPrintReads}.
-	 */
+	/** States that R prints the top-level values `ids` by an implicit `print`, which reads the printing options, or every option for a value a method may print (`dispatched`), see {@link autoPrintReads}. */
 	public autoPrints(ids: readonly NodeId[], dispatched = false): this {
 		for(const id of ids) {
 			this.recordAmbientAccess(id, { reads: autoPrintReads(dispatched) });
@@ -180,14 +154,7 @@ export class DataflowGraphBuilder<
 		return this;
 	}
 
-	/**
-	 * Adds a **vertex** for a **variable definition** (V4).
-	 * @param id     - AST node ID
-	 * @param name   - Variable name
-	 * @param info   - Additional/optional properties.
-	 * @param asRoot - Should the vertex be part of the root vertex set of the graph
-	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
-	 */
+	/** Adds a **vertex** for a **variable definition** (V4). */
 	public defineVariable(id: NodeId, name?: string,
 		info?: { cds?: readonly ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
@@ -204,14 +171,7 @@ export class DataflowGraphBuilder<
 		return this;
 	}
 
-	/**
-	 * Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests.
-	 * @param id     - AST node id
-	 * @param name   - Variable name
-	 * @param info   - Additional/optional properties; i.e., scope, when, or environment.
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
-	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
-	 */
+	/** Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests. */
 	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv(deepMergeObject({
 			tag:         VertexType.Use,
@@ -226,13 +186,7 @@ export class DataflowGraphBuilder<
 	}
 
 
-	/**
-	 * Adds a **vertex** for a **constant value** (V6).
-	 * @param id      - AST node ID
-	 * @param options - Additional/optional properties;
-	 * @param asRoot  - should the vertex be part of the root vertex set of the graph
-	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
-	 */
+	/** Adds a **vertex** for a **constant value** (V6). */
 	public constant(id: NodeId, options?: { cds?: readonly ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
@@ -252,85 +206,52 @@ export class DataflowGraphBuilder<
 		return this.addEdge(NodeId.normalize(from), NodeId.normalize(to as NodeId), type);
 	}
 
-	/**
-	 * Adds a **read edge**.
-	 * @param from - NodeId of the source vertex
-	 * @param to   - Either a single or multiple target ids.
-	 *               If you pass multiple this will construct a single edge for each of them.
-	 */
+	/** Adds a **read edge**. */
 	public reads(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Reads);
 	}
 
-	/**
-	 * Adds a **defined-by edge** with from as defined variable, and to
-	 * as a variable/function contributing to its definition.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **defined-by edge** with from as defined variable, and to as a variable/function contributing to its definition. */
 	public definedBy(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinedBy);
 	}
 
-	/**
-	 * Adds a **call edge** with from as caller, and to as callee.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **call edge** with from as caller, and to as callee. */
 	public calls(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Calls);
 	}
 
-	/**
-	 * Adds a **return edge** with from as function, and to as exit point.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **return edge** with from as function, and to as exit point. */
 	public returns(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Returns);
 	}
 
-	/**
-	 * Adds a **defines-on-call edge** with from as variable, and to as its definition
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **defines-on-call edge** with from as variable, and to as its definition */
 	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinesOnCall);
 	}
 
-	/**
-	 * Adds a **defined-by-on-call edge** with from as definition, and to as variable.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **defined-by-on-call edge** with from as definition, and to as variable. */
 	public definedByOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinedByOnCall);
 	}
 
-	/**
-	 * Adds an **argument edge** with from as function call, and to as argument.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds an **argument edge** with from as function call, and to as argument. */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Argument);
 	}
 
-	/**
-	 * Adds a **non-standard evaluation edge** with from as vertex, and to as vertex.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **non-standard evaluation edge** with from as vertex, and to as vertex. */
 	public nse(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.NonStandardEvaluation);
 	}
 
-	/**
-	 * Adds a **side-effect-on-call edge** with from as vertex, and to as vertex.
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
+	/** Adds a **side-effect-on-call edge** with from as vertex, and to as vertex. */
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall);
 	}
 
-	/**
-	 * explicitly overwrite the root ids of the graph,
-	 * this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags.
-	 */
+	/** explicitly overwrite the root ids of the graph, this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags. */
 	public overwriteRootIds(ids: readonly NodeId[]) {
 		this.rootVertices = new Set(ids.map(NodeId.normalize));
 		return this;

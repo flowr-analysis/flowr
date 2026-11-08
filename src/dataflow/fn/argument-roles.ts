@@ -1,6 +1,5 @@
 /**
- * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
@@ -40,8 +39,7 @@ export interface ArgumentRolesOptions {
 }
 
 /**
- * What each definition in `ids` does with its formals, as {@link ArgProps}. A formal is {@link ArgProp.Alias}
- * only when the result is *always* that formal; every other bit is what the calls in the body state for it.
+ * What each definition in `ids` does with its formals, as {@link ArgProps}.
  * @useInstead {@link FunctionSemantics.argumentRoles}
  */
 export function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
@@ -67,10 +65,7 @@ export interface LookupState {
 /** @see {@link LookupState}; also how far a value is followed back, for the walks that need to know. */
 interface RoleState extends LookupState {
 	readonly maxDepth:   number
-	/**
-	 * What {@link rolesOfCall} answered for a call, as the walks ask the same calls over and over and matching
-	 * arguments to formals is the expensive part. Lives for the one run and is dropped with it.
-	 */
+	/** What {@link rolesOfCall} answered for a call, as the walks ask the same calls over and over and matching arguments to formals is the expensive part. */
 	readonly args:       Map<NodeId, ArgumentProps>
 	/** what {@link identityFrom} found per node and depth, for the walks that may reuse it; lives for the one run as well */
 	readonly identities: Map<NodeId, Identity[]>
@@ -110,11 +105,7 @@ function identityOf(nodes: readonly NodeId[], state: RoleState): Set<NodeId> {
 	return intersect(nodes.map(node => identityFrom(node, state, 0, new Set()).found));
 }
 
-/**
- * What {@link identityFrom} found for a node at a depth. The walk stops at the nodes it is already on (`open`), so
- * what it finds depends on which of the nodes it asked about were, and nothing else: the answer holds for every
- * walk that has the same of them open.
- */
+/** What {@link identityFrom} found for a node at a depth. */
 interface Identity {
 	readonly found:   ReadonlySet<NodeId>
 	/** the nodes the walk asked whether they are open */
@@ -186,10 +177,7 @@ function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
 	return sets.length === 0 ? new Set() : sets.slice(1).reduce<Set<NodeId>>((acc, s) => acc.intersection(s), new Set(sets[0]));
 }
 
-/**
- * The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes.
- * An access (`x$a`, `pkg::name`) draws a `Returns` edge too, but hands back a part, so nothing follows through one.
- */
+/** The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes. */
 function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
@@ -275,10 +263,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 		.map(([target]) => target);
 }
 
-/**
- * Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not
- * identity). An argument a call never evaluates has no origin to follow (`quote(x)`), so its written name answers.
- */
+/** Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not identity). */
 function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): Set<NodeId> {
 	const found = new Set<NodeId>([node]);
 	const queue: [NodeId, number][] = [[node, 0]];
@@ -302,10 +287,7 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: 
 	return found;
 }
 
-/**
- * The formal parameter a symbol argument names. In `f <- function(x) quote(x)` the `x` of `quote` is never evaluated,
- * so no edge links it to the formal `x`, and its name is all there is to go by.
- */
+/** The formal parameter a symbol argument names. */
 function writtenFormal(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): NodeId | undefined {
 	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
 	return name === undefined ? undefined : byName.get(name);

@@ -24,27 +24,13 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import { ClosureRefs } from '../../../../linker';
 
 interface BuiltInPurrrFormulaConfiguration {
-	/**
-	 * Maps the created variable/variable to bind in the formula, to the argument that produces it.
-	 * For example:
-	 * ```ts
-	 * {
-	 * '.x': { index: 0, name: '.x' },
-	 * '.y': { index: 1, name: '.y' }
-	 * }
-	 * ```
-	 */
+	/** Maps the created variable/variable to bind in the formula, to the argument that produces it. */
 	args:       Record<string, { index: number, name: string }>,
-	/**
-	 * This represents the special argument that represents the formula.
-	 * We map all additional arguments that are not in `ignore` to this list.
-	 */
+	/** This represents the special argument that represents the formula. We map all additional arguments that are not in `ignore` to this list. */
 	'.f':       { index: number; name: string };
 	/** arguments to additionally ignore when mapping the formulae */
 	ignore?:    string[];
-	/**
-	 * if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return
-	 */
+	/** if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return */
 	returnArg?: string;
 }
 
@@ -85,9 +71,7 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 	}
 }
 
-/**
- * Support for R's purr formula: `map(df, ~ .x + 1)`.
- */
+/** Support for R's purr formula: `map(df, ~ .x + 1)`. */
 export function processPurrrFormula<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

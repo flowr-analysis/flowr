@@ -1,7 +1,4 @@
-/**
- * The names of all value-solver handlers a built-in function may declare with
- * {@link BuiltInFunctionDefinition#evalHandler}, see {@link BuiltInEvalHandlerMapper} for the implementations.
- */
+/** The names of all value-solver handlers a built-in function may declare with {@link BuiltInFunctionDefinition#evalHandler}, see {@link BuiltInEvalHandlerMapper} for the implementations. */
 export enum BuiltInEvalName {
 	/** `c(...)`, see {@link resolveAsVector} */
 	Vector = 'eval:vector',

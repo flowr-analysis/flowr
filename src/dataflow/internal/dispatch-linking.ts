@@ -49,16 +49,7 @@ export interface DispatchContext {
 	readonly within?:   readonly DispatchContext[]
 }
 
-/**
- * What `excludedOf` rules out per context of `contexts` beyond what the contexts around it rule out (`above`), the
- * contexts that rule out nothing more left out.
- * @example
- * ```ts
- * // f <- function(x) UseMethod("f"); g <- function(v) f(v); g(a); g(b)
- * ruledOutPerCall(narrower.perCall(dispatch, targets, shared, decide), n => [...n?.excluded ?? []]);
- * // [{ call: idOfFInG, methods: [], within: [{ call: idOfGa, methods: [idOfFb] }, { call: idOfGb, methods: [idOfFa] }] }]
- * ```
- */
+/** What `excludedOf` rules out per context of `contexts` beyond what the contexts around it rule out (`above`), the contexts that rule out nothing more left out. */
 export function ruledOutPerCall(contexts: readonly DispatchContext[], excludedOf: (narrowed: NarrowedDispatch | undefined) => readonly NodeId[], above: ReadonlySet<NodeId> = new Set()): CallRuledOut[] | undefined {
 	const ruledOut: CallRuledOut[] = [];
 	for(const { call, narrowed, within } of contexts) {
@@ -114,12 +105,7 @@ export class DispatchNarrower {
 		return false;
 	}
 
-	/**
-	 * The methods among `targets` the S4 dispatch of `call` (a call of `name`) cannot run for the classes of its arguments,
-	 * and the methods `callNextMethod()` in each method may run, `undefined` if nothing can be narrowed. An instantiation
-	 * (`new("C")`) runs the methods of the initializer it reaches for a new object of the class it creates.
-	 * @param info - how the classes of the arguments are found, by default for any call of the function holding `call`
-	 */
+	/** The methods among `targets` the S4 dispatch of `call` (a call of `name`) cannot run for the classes of its arguments, and the methods `callNextMethod()` in each method may run, `undefined` if nothing can be narrowed. */
 	public s4(call: DataflowGraphVertexFunctionCall, name: string, targets: ReadonlySet<NodeId>, registeredLater: (registration: NodeId) => boolean, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
 		const { methods, byFunction, hierarchy } = this.s4Info();
 		const created = call.instantiates;
@@ -169,10 +155,7 @@ export class DispatchNarrower {
 		return { excluded: new Set(all.flatMap(m => m.functions).filter(fn => !selected.has(fn) && targets.has(fn))), next, reads: uniqueArray(reads) };
 	}
 
-	/**
-	 * Whether `setMethod` surely sets another of `candidates` for the signature of `method` after it and before every run
-	 * of `call`, which replaces `method` for good: R keeps one method per signature.
-	 */
+	/** Whether `setMethod` surely sets another of `candidates` for the signature of `method` after it and before every run of `call`, which replaces `method` for good: R keeps one method per signature. */
 	private replacedBefore(method: S4Method, candidates: readonly S4Method[], formals: readonly string[], call: NodeId): boolean {
 		const own = signatureFor(method, formals)?.join(',');
 		const at = ProgramOrder.runsOnceAt(method.registration, this.graph);
@@ -190,11 +173,7 @@ export class DispatchNarrower {
 		return generics.length <= 1 ? s4DispatchFormals(generics[0], candidates, this.info.idMap) : undefined;
 	}
 
-	/**
-	 * The `setOldClass` call registering the S3 class `cls` if S4 dispatch surely sees it: the only registration of `cls`,
-	 * run once before any of `methods` is set. R keeps the method it picked for a class until a method of the generic is
-	 * set, which may well have been picked before the registration.
-	 */
+	/** The `setOldClass` call registering the S3 class `cls` if S4 dispatch surely sees it: the only registration of `cls`, run once before any of `methods` is set. */
 	private oldClassRegistration(cls: string | undefined, methods: readonly S4Method[]): NodeId | undefined {
 		const registrations = cls === undefined ? undefined : this.s4Info().hierarchy.oldClasses?.get(cls);
 		const registration = registrations?.length === 1 ? registrations[0] : undefined;
@@ -205,11 +184,7 @@ export class DispatchNarrower {
 		return methods.every(m => ProgramOrder.offset(m.registration, at, this.graph) > 0) ? registration : undefined;
 	}
 
-	/**
-	 * The `<prefix>.<class>` methods among `targets` an S3 dispatch on the objects `objects` cannot run, and what `NextMethod()`
-	 * in each method it runs may run, `undefined` if the class of an object is not known.
-	 * @param info - how the classes of the objects are found, by default for any call of the function holding the dispatch
-	 */
+	/** The `<prefix>.<class>` methods among `targets` an S3 dispatch on the objects `objects` cannot run, and what `NextMethod()` in each method it runs may run, `undefined` if the class of an object is not known. */
 	public s3(objects: readonly NodeId[], prefixes: readonly string[], targets: ReadonlySet<NodeId>, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
 		const perObject = objects.map(o => s3DispatchClassesOf(o, info));
 		if(perObject.length === 0 || !perObject.every(isNotUndefined)) {
@@ -222,19 +197,7 @@ export class DispatchNarrower {
 		return { excluded: new Set(methods.filter(m => !runs.has(m))), next: new Map(next.entries().map(([m, after]) => [m, [...after, ...others]])) };
 	}
 
-	/**
-	 * Per call of the function holding the dispatch `call`, how `decide` narrows the dispatch for the classes the context
-	 * of that call gives, and where that leaves more than one of `targets` beyond what `shared` rules out for every call,
-	 * per call of the function holding that call in turn, up to a few calls deep. Only for a function the program calls
-	 * by name alone and never hands on are all its calls known.
-	 * @example
-	 * ```r
-	 * f <- function(x) UseMethod("f")
-	 * g <- function(v) f(v)
-	 * g(structure(1, class = "a")) # f(v) in the context of this call rules out f.b
-	 * g(structure(1, class = "b")) # and of this one f.a
-	 * ```
-	 */
+	/** Per call of the function holding the dispatch `call`, how `decide` narrows the dispatch for the classes the context of that call gives, and where that leaves more than one of `targets` beyond what `shared` rules out for every call, per call of the function holding that call in turn, up to a few calls deep. */
 	public perCall(call: NodeId, targets: ReadonlySet<NodeId>, shared: NarrowedDispatch | undefined, decide: (info: ClassFlowInfo) => NarrowedDispatch | undefined): DispatchContext[] | undefined {
 		const methods = [...targets].filter(t => DfgVertex.isFunctionDefinition(this.graph.getVertex(t)) && !shared?.excluded.has(t));
 		return methods.length < 2 ? undefined : this.contextsOf(call, new Map(), methods, decide, { left: MaxDispatchContexts });
@@ -261,23 +224,13 @@ export class DispatchNarrower {
 	}
 }
 
-/**
- * Whether the function `fn` hands on to the next method, with `NextMethod()` or `callNextMethod()`.
- * @example
- * ```ts
- * // f.a <- function(x) NextMethod()
- * callsNextMethod(idOfTheFunction, graph); // true
- * ```
- */
+/** Whether the function `fn` hands on to the next method, with `NextMethod()` or `callNextMethod()`. */
 export function callsNextMethod(fn: NodeId, graph: DataflowGraph): boolean {
 	const vertex = graph.getVertex(fn);
 	return DfgVertex.isFunctionDefinition(vertex) && Dataflow.callsIn(vertex, graph).some(([, c]) => DfgVertex.hasOrigin(c, BuiltInProcName.S3DispatchNext));
 }
 
-/**
- * Whether the function `fn` is bound to names (through assignments, `f <- g <- function...` as well) that only
- * `callers` read, so that they are all the ways it runs.
- */
+/** Whether the function `fn` is bound to names (through assignments, `f <- g <- function...` as well) that only `callers` read, so that they are all the ways it runs. */
 function calledByNameOnly(fn: NodeId, callers: readonly NodeId[], graph: DataflowGraph): boolean {
 	const seen = new Set<NodeId>([fn]);
 	const todo = [fn];
@@ -301,16 +254,7 @@ function calledByNameOnly(fn: NodeId, callers: readonly NodeId[], graph: Dataflo
 /** how many calls deep {@link runsOnlyAfter} follows the calls of the function holding a call */
 const MaxOrderDepth = 3;
 
-/**
- * Whether every run of `call` comes after the top-level `statement`, which runs once: `call` runs once after it, or it
- * is in a function that only calls by name run, each of which only after the statement.
- * @example
- * ```r
- * setMethod("val", "A", function(o) k) # statement
- * use <- function(o) val(o)            # the call `val(o)` runs only after it
- * use(new("A"))
- * ```
- */
+/** Whether every run of `call` comes after the top-level `statement`, which runs once: `call` runs once after it, or it is in a function that only calls by name run, each of which only after the statement. */
 export function runsOnlyAfter(call: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph, depth = 0): boolean {
 	const at = ProgramOrder.runsOnceAt(call, graph);
 	if(at !== undefined) {
@@ -373,10 +317,7 @@ export function linkedFunctionIds(ids: ReadonlySet<NodeId>, graph: DataflowGraph
 }
 
 
-/**
- * The methods `environment` binds for the generics a built-in dispatches to on its own (see `dispatches` of a built-in):
- * every `<generic>.<class>` and every function `setMethod` registers for one, whatever the class, as it may be that of a part.
- */
+/** The methods `environment` binds for the generics a built-in dispatches to on its own (see `dispatches` of a built-in): every `<generic>.<class>` and every function `setMethod` registers for one, whatever the class, as it may be that of a part. */
 export function internalGenericMethods(generics: readonly string[], environment: REnvironmentInformation, graph: DataflowGraph): IdentifierDefinition[] {
 	return generics.flatMap(g => [
 		...Resolve.byNameAndType(g, environment, ReferenceType.S3MethodPrefix) ?? [],
@@ -390,15 +331,7 @@ export function internalGenericMethods(generics: readonly string[], environment:
 /** the edges by which a call reaches a definition registering a method, by name or as what a generic hands on */
 const RegistrationEdges = EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.Calls;
 
-/**
- * Per target, the edges from `call` only its link to the method definitions `excluded` needs: the call and the returns of
- * them, the reads of the definitions registering only them, and what only their bodies read on the call.
- * @example
- * ```ts
- * // f <- function(x) UseMethod("f"); f.a <- function(x) k; f.b <- function(x) j
- * methodOnlyEdges(graph, idOfDispatch, new Set([idOfFb])); // f.b, its exit point `j`, the definition `f.b <-`
- * ```
- */
+/** Per target, the edges from `call` only its link to the method definitions `excluded` needs: the call and the returns of them, the reads of the definitions registering only them, and what only their bodies read on the call. */
 export function methodOnlyEdges(graph: DataflowGraph, call: NodeId, excluded: ReadonlySet<NodeId>): Map<NodeId, EdgeType> {
 	const only = new Map<NodeId, EdgeType>();
 	const add = (target: NodeId, types: EdgeType) => only.set(target, (only.get(target) ?? 0) | types);
@@ -427,10 +360,7 @@ export function methodOnlyEdges(graph: DataflowGraph, call: NodeId, excluded: Re
 	return only;
 }
 
-/**
- * Removes what linking `call` to the method definitions `excluded` added: the edges {@link methodOnlyEdges} names and
- * the arguments bound to the parameters of the methods.
- */
+/** Removes what linking `call` to the method definitions `excluded` added: the edges {@link methodOnlyEdges} names and the arguments bound to the parameters of the methods. */
 export function unlinkExcludedMethods(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, excluded: ReadonlySet<NodeId>): void {
 	const id = call.id;
 	for(const [target, types] of methodOnlyEdges(graph, id, excluded)) {

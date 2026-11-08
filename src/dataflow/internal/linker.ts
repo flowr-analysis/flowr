@@ -41,9 +41,7 @@ export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 const ValueFlowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 const FCallLinkReadBits = EdgeType.Reads | EdgeType.Calls | EdgeType.DefinedByOnCall;
 
-/**
- * Find all reads within the graph that do not reference a local definition in the graph.
- */
+/** Find all reads within the graph that do not reference a local definition in the graph. */
 export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<NodeId> = new Set()): IdentifierReference[] {
 	const defs = new Set<NodeId>();
 	for(const tag of [VertexType.VariableDefinition, VertexType.FunctionDefinition]) {
@@ -52,8 +50,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 		}
 	}
 	const nonLocalReads: IdentifierReference[] = [];
-	/* the tag already says what the reference is, so no vertex has to be fetched to decide; the target of a replacement
-	 * (`x$a <- v`) reads the binding it replaces as well */
+	/* the tag already says what the reference is, so no vertex has to be fetched to decide; the target of a replacement (`x$a <- v`) reads the binding it replaces as well */
 	for(const [tag, type] of [[VertexType.Use, ReferenceType.Variable], [VertexType.FunctionCall, ReferenceType.Function], [VertexType.VariableDefinition, ReferenceType.Unknown]] as const) {
 		for(const [nodeId, vertex] of graph.verticesOfType(tag)) {
 			if(ignores.has(nodeId) || (DfgVertex.isVariableDefinition(vertex) && !vertex.par)) {
@@ -81,9 +78,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 	return nonLocalReads;
 }
 
-/**
- * Produces a map from names to all identifier references sharing that name.
- */
+/** Produces a map from names to all identifier references sharing that name. */
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
 	const nameIdShares = new DefaultMap<Identifier, IdentifierReference[]>(() => []);
 	for(const reference of references) {
@@ -104,11 +99,7 @@ function environmentsOfCallee(info: DataflowGraphVertexFunctionCall, environment
 /** how many vertices the walk for the holders of an instance visits before it settles for what it found */
 const MaxInstanceFlow = 64;
 
-/**
- * The definitions holding the instance a method call `receiver$m(...)` runs a method on: every variable the value of
- * the receiver flows through (aliases, the parameters it is bound to, what called functions return) and the
- * containers it is a field of, as the environment of the call knows them, with the tracked state they carry.
- */
+/** The definitions holding the instance a method call `receiver$m(...)` runs a method on: every variable the value of the receiver flows through (aliases, the parameters it is bound to, what called functions return) and the containers it is a field of, as the environment of the call knows them, with the tracked state they carry. */
 function instanceHolders(receiver: NodeId, graph: DataflowGraph, environment: REnvironmentInformation, idMap: AstIdMap): IdentifierDefinition[] {
 	const holders: IdentifierDefinition[] = [];
 	const seen = new Set<NodeId>();
@@ -152,11 +143,7 @@ function instanceOfMethodCall(graph: DataflowGraph, fn: NodeId, info: DataflowGr
 	return holders?.length ? { bindings: bindings as readonly string[], holders } : undefined;
 }
 
-/**
- * Links the reads of the names a method sees its instance by (`self`, `private`, `.self`) to the definitions holding
- * the instance the call runs the method on. R encloses the methods by the object, so these names never reach the
- * frames the method is defined in.
- */
+/** Links the reads of the names a method sees its instance by (`self`, `private`, `.self`) to the definitions holding the instance the call runs the method on. */
 export function linkInstanceReads(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, fn: Pick<DataflowGraphVertexFunctionDefinition, 'id' | 'subflow'>, environment: REnvironmentInformation, idMap: AstIdMap): void {
 	const bindings = fn.subflow.in.length === 0 ? undefined : instanceBindingsOfMethod(fn.id, graph, idMap);
 	const reads = bindings === undefined ? [] : fn.subflow.in.filter(r => r.name !== undefined && bindings.includes(Identifier.getName(r.name)));
@@ -190,17 +177,7 @@ function outermostClosureOf(id: NodeId, fn: NodeId, idMap: AstIdMap): NodeId | u
 	return undefined;
 }
 
-/**
- * Which free reads of the function `fn` are in a closure it makes without calling it: such a closure reads its free
- * variables where it is called, which links them there (or, if nothing calls it, at the end of its scope), so a call of
- * `fn` does not read them.
- * @example
- * ```ts
- * // f <- function() function() x; g <- f(); x <- 2; g()
- * const whereCalled = readsOfUncalledClosures(fId, fVertex.subflow, graph, idMap);
- * whereCalled(xId); // true, `g()` reads `x`, `f()` does not
- * ```
- */
+/** Which free reads of the function `fn` are in a closure it makes without calling it: such a closure reads its free variables where it is called, which links them there (or, if nothing calls it, at the end of its scope), so a call of `fn` does not read them. */
 export function readsOfUncalledClosures(fn: NodeId, subflow: DataflowFunctionFlowInformation, graph: DataflowGraph, idMap: AstIdMap): (read: NodeId) => boolean {
 	let called: Set<NodeId> | undefined;
 	return read => {
@@ -220,10 +197,7 @@ export function readsOfUncalledClosures(fn: NodeId, subflow: DataflowFunctionFlo
 	};
 }
 
-/**
- * Links the free variables of the function `fnId` the call `info` runs to their definitions where the function was
- * defined, as the environment of the call sees them.
- */
+/** Links the free variables of the function `fnId` the call `info` runs to their definitions where the function was defined, as the environment of the call sees them. */
 function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunctionDefinition['subflow'], fnId: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap): void {
 	const id = info.id;
 	const environment = info.environment;
@@ -282,9 +256,7 @@ function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunct
 	}
 }
 
-/**
- * Links a function call with a single target function definition.
- */
+/** Links a function call with a single target function definition. */
 export function linkFunctionCallWithSingleTarget(
 	graph: DataflowGraph,
 	{ subflow: fnSubflow, exitPoints, id: fnId, params, envOps }: DataflowGraphVertexFunctionDefinition,
@@ -330,11 +302,7 @@ export function linkFunctionCallWithSingleTarget(
 	return exitPoints.filter(e => doesExitPointPropagateCalls(e.type));
 }
 
-/**
- * A call reads everything written into an environment it hands to a parameter (see {@link readEnvironmentContents}),
- * unless the body only writes into what the parameter holds, by writes each call replays (see {@link DeferredEnvOp}):
- * `register <- function(env, f) env$h <- f` reads nothing of `env`, so one call does not read what another stored.
- */
+/** A call reads everything written into an environment it hands to a parameter (see {@link readEnvironmentContents}), unless the body only writes into what the parameter holds, by writes each call replays (see {@link DeferredEnvOp}): `register <- function(env, f) env$h <- f` reads nothing of `env`, so one call does not read what another stored. */
 function readArgumentContents(graph: DataflowGraph, call: NodeId, environment: REnvironmentInformation, argToParam: ReadonlyMap<NodeId, NodeId>, envOps: readonly DeferredEnvOp[] | undefined, idMap: AstIdMap): void {
 	const written = new Set(envOps?.filter(o => o.kind === EnvOpKind.Define || o.kind === EnvOpKind.Replace).map(o => o.envir));
 	for(const [arg, param] of argToParam) {
@@ -396,13 +364,7 @@ export type CalledFunctions = {
 	alternatives?:       boolean
 };
 
-/**
- * Whether the call `info` may get its function from `target`, which it has the edge `e` to. An unnamed call reads
- * the expression that gives its function. A named call that only reads another call reads state that call wrote,
- * like the options, unless that call binds the name. No call binds a name that resolves to nothing (`unbound`),
- * and a call processed by default (`options()`, `par()`) binds no name at all. What lies within an argument the call
- * reads only when forcing it.
- */
+/** Whether the call `info` may get its function from `target`, which it has the edge `e` to. */
 function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, target: NodeId, e: DfEdge, unbound = false): boolean {
 	if(DfEdge.includesType(e, EdgeType.Calls | EdgeType.DefinedByOnCall)) {
 		return true;
@@ -414,16 +376,7 @@ function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunc
 		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default)));
 }
 
-/**
- * Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function.
- * It needs the id map of the graph and answers `false` without one, and it walks up the AST from `target`, so ask it
- * for the few reads a call has, not for every vertex.
- * @example
- * ```ts
- * // for `f(x)`, the read of `x` is within an argument of the call to `f`
- * isWithinArgumentOf(graph, callIdOfF, readIdOfX); // true
- * ```
- */
+/** Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function. */
 export function isWithinArgumentOf(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
@@ -460,10 +413,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	return { functionCall: id, called: [...functionDefs], propagateExitPoints, calledBuiltIns };
 }
 
-/**
- * Returns the called functions within `graph` (ideally a superset of `thisGraph`, the graph searched for calls), which
- * can be used to merge the environments with the call; also links the corresponding arguments.
- */
+/** Returns the called functions within `graph` (ideally a superset of `thisGraph`, the graph searched for calls), which can be used to merge the environments with the call; also links the corresponding arguments. */
 export function linkFunctionCalls(
 	graph: DataflowGraph,
 	idMap: AstIdMap,
@@ -487,9 +437,7 @@ export function linkFunctionCalls(
 }
 
 /**
- * convenience function returning all known call targets, as well as the name source which defines them
- * Over-approximates for calls through reads and aliases (all functions the read may evaluate to are returned).
- * @param resolver - shares the walk with the other calls it resolves targets for, as long as the graph does not change
+ * convenience function returning all known call targets, as well as the name source which defines them Over-approximates for calls through reads and aliases (all functions the read may evaluate to are returned).
  * @useInstead {@link Dataflow.callTargetsOf}
  */
 export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
@@ -524,11 +472,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	return [...all];
 }
 
-/**
- * Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved
- * the accessed objects (first layer of reads/returns/calls/...). For call targets, use {@link Dataflow.callTargetsOf} instead.
- * @see {@link LinkedFunctionResolver} - to find them for many sets of reads over the same graph
- */
+/** Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved the accessed objects (first layer of reads/returns/calls/...). */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph
@@ -569,11 +513,7 @@ export function getAllLinkedFunctionDefinitions(
 	return [result, builtIns];
 }
 
-/**
- * One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to
- * from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition.
- * `call` is the call whose return led into the current body, so a parameter it binds holds only what it passes.
- */
+/** One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition. */
 function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void): NodeId | undefined {
 	if(NodeId.isBuiltIn(id)) {
 		return id;
@@ -590,8 +530,7 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 	}
 	const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
 	const isSkipType = DfgVertex.isFunctionCall(vertex);
-	/* a replacement keeps its target what it was (`environment(f) <- e` leaves `f` the same function), unless the call
-	 * is to what it put into a part of it, so the walk goes on to the binding it replaces only */
+	/* a replacement keeps its target what it was (`environment(f) <- e` leaves `f` the same function), unless the call is to what it put into a part of it, so the walk goes on to the binding it replaces only */
 	const replaces = DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess;
 	let hasReturnEdge = false;
 	let followTargets: [NodeId, boolean][] | undefined;
@@ -620,10 +559,7 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 	return undefined;
 }
 
-/**
- * A string where a function is wanted names the function (`match.fun`, `do.call` and the apply family look it up),
- * which is resolved where the string is written, by the environment of the call it is passed to.
- */
+/** A string where a function is wanted names the function (`match.fun`, `do.call` and the apply family look it up), which is resolved where the string is written, by the environment of the call it is passed to. */
 function functionsNamedBy(graph: DataflowGraph, id: NodeId): NodeId[] {
 	const idMap = graph.idMap;
 	const node = idMap?.get(id);
@@ -642,10 +578,7 @@ function functionsNamedBy(graph: DataflowGraph, id: NodeId): NodeId[] {
 /** The function definitions each call (of the walk) runs, whose parameters it binds. */
 type CallScopes = Map<NodeId, ReadonlySet<NodeId>>;
 
-/**
- * The call that restricts what `target` may hold: a call binds only the parameters of the functions it runs, so once
- * the walk leaves their bodies (to a global, say), the call restricts nothing any more.
- */
+/** The call that restricts what `target` may hold: a call binds only the parameters of the functions it runs, so once the walk leaves their bodies (to a global, say), the call restricts nothing any more. */
 function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undefined, target: NodeId): NodeId | undefined {
 	const idMap = graph.idMap;
 	if(call === undefined || idMap === undefined) {
@@ -668,23 +601,7 @@ function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undef
 type Reached = ReadonlySet<NodeId>;
 const ReachesNothing: Reached = new Set();
 
-/**
- * Finds the function definitions and built-ins that reads may evaluate to (see {@link getAllLinkedFunctionDefinitions}).
- * It remembers what each state of the walk reaches, so the walks of many calls over the same, unchanged graph (those of
- * {@link CallGraph.compute}) share their work instead of walking the same bodies once per call.
- *
- * A state is a vertex, whether an access led to it, and the call whose return led into its body, as a parameter that
- * call binds holds only what the call passes. All states of a strongly connected component reach the same.
- *
- * Keep in mind that a resolver is only valid for the graph state it was created for (it caches what it found, and
- * adding edges afterwards makes its answers stale), that it trades memory for time (one entry per state it walked),
- * and that it is not needed for a single call, where {@link Dataflow.callTargetsOf} does without. Drop it once you are done.
- * @example
- * ```ts
- * const resolver = new LinkedFunctionResolver(graph);
- * const [definitions, builtIns] = resolver.resolve(new Set([readId]));
- * ```
- */
+/** Finds the function definitions and built-ins that reads may evaluate to (see {@link getAllLinkedFunctionDefinitions}). */
 export class LinkedFunctionResolver {
 	private readonly graph:     DataflowGraph;
 	/** the number of each state, by whether an access led to it, its vertex, and its call */
@@ -700,10 +617,7 @@ export class LinkedFunctionResolver {
 		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), ReachesNothing, unionOfSets);
 	}
 
-	/**
-	 * The function definitions and built-ins the reads with the given ids may evaluate to.
-	 * Reads that lead to no function contribute nothing, and the result may hold the same definition for several reads.
-	 */
+	/** The function definitions and built-ins the reads with the given ids may evaluate to. */
 	public resolve(reads: ReadonlySet<NodeId>): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
 		const definitions = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 		const builtIns = new Set<BuiltIn>();
@@ -747,8 +661,7 @@ export class LinkedFunctionResolver {
 }
 
 /**
- * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
- * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
+ * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and hands back what stays unresolved.
  * @useInstead {@link FunctionSemantics.call.quoted.evaluateIn}
  */
 export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): readonly IdentifierReference[] {
@@ -788,11 +701,7 @@ export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, defi
 	}
 }
 
-/**
- * Links a set of read variables to definitions in `environmentInformation`; each reference that cannot be linked (or
- * links to built-ins only) is added to `givenInputs` (marked maybe if `maybeForRemaining`), and the extended list is returned.
- * @param alsoFrom - a node that reads every definition found as well
- */
+/** Links a set of read variables to definitions in `environmentInformation`; each reference that cannot be linked (or links to built-ins only) is added to `givenInputs` (marked maybe if `maybeForRemaining`), and the extended list is returned. */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean, alsoFrom?: NodeId): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
 		const probableTarget = bodyInput.name ? Resolve.byNameAndType(Identifier.boundAs(bodyInput.name), scopeOf(bodyInput, environmentInformation), bodyInput.type) : undefined;
@@ -817,11 +726,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 	return givenInputs;
 }
 
-/**
- * A loop variable read before its within-loop redefinition gets a maybe marker to that def (e.g. `x_2` may read the
- * prior iteration's `x_1` in `for(...) { x_1 <- x_2 + 1 }`); with `environment`, this uses all defs live at loop exit,
- * which the calls in the loop see as well (see {@link linkLoopCarriedCalls}).
- */
+/** A loop variable read before its within-loop redefinition gets a maybe marker to that def (e.g. `x_2` may read the prior iteration's `x_1` in `for(...) { x_1 <- x_2 + 1 }`); with `environment`, this uses all defs live at loop exit, which the calls in the loop see as well (see {@link linkLoopCarriedCalls}). */
 export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[], environment?: REnvironmentInformation): void {
 	if(environment !== undefined) {
 		const outgoingIds = new Set(outgoing.map(o => o.nodeId));
@@ -856,13 +761,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 }
 
-/**
- * A call in a loop runs again after the rest of the body ran, so it sees what the body leaves behind as well (`environment`),
- * and so do the free variables of the closures it calls: in `f <- function() x; for(i in 1:2) { y <- f(); x <- 2 }` the
- * second call of `f` reads `x <- 2`. A name the body (`made`) surely binds anew before the call is not carried over:
- * in `for(i in 1:2) { x <- 1; y <- f(); x <- 2 }` every call of `f` reads `x <- 1`.
- * Calls within the functions the loop defines run in frames of their own and are left alone.
- */
+/** A call in a loop runs again after the rest of the body ran, so it sees what the body leaves behind as well (`environment`), and so do the free variables of the closures it calls: in `f <- function() x; for(i in 1:2) { y <- f(); x <- 2 }` the second call of `f` reads `x <- 2`. */
 function linkLoopCarriedCalls(graph: DataflowGraph, environment: REnvironmentInformation, made: ReadonlySet<NodeId>, names: ReadonlySet<BrandedIdentifier | undefined>): void {
 	const idMap = graph.idMap;
 	for(const [id, info] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -879,10 +778,7 @@ function linkLoopCarriedCalls(graph: DataflowGraph, environment: REnvironmentInf
 	}
 }
 
-/**
- * What `exit` carries into the next run for the call `info`, without the `names` the body (`made`) surely binds anew
- * before the call: a binding the call sees that the body makes in an earlier statement, under no condition the call is not under as well.
- */
+/** What `exit` carries into the next run for the call `info`, without the `names` the body (`made`) surely binds anew before the call: a binding the call sees that the body makes in an earlier statement, under no condition the call is not under as well. */
 function carriedTo(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, atCall: REnvironmentInformation, exit: REnvironmentInformation, made: ReadonlySet<NodeId>, names: ReadonlySet<BrandedIdentifier | undefined>, idMap: AstIdMap): REnvironmentInformation {
 	let carried: Environment | undefined;
 	const call = idMap.get(info.id);
@@ -896,12 +792,7 @@ function carriedTo(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, 
 	return carried === undefined ? exit : { current: carried, level: exit.level };
 }
 
-/**
- * A call in a loop runs again, so what its callee writes reaches the reads of the loop before the call as well:
- * in `ch <- function() g <<- 2; for(i in 1:2) { s <- g; ch() }` the second `s <- g` reads `g <<- 2`. The loop is linked
- * before the calls to functions made outside of it are resolved, so their writes `written` are carried over here, to the
- * reads in the same frame and the free reads of the functions called there.
- */
+/** A call in a loop runs again, so what its callee writes reaches the reads of the loop before the call as well: in `ch <- function() g <<- 2; for(i in 1:2) { s <- g; ch() }` the second `s <- g` reads `g <<- 2`. */
 export function linkWritesCarriedByLoop(graph: DataflowGraph, call: NodeId, written: readonly IdentifierDefinition[], idMap: AstIdMap): void {
 	let loop: RNode<ParentInformation> | undefined;
 	for(let node = idMap.get(call); node !== undefined && !RFunctionDefinition.is(node); node = RNode.directParent(node, idMap)) {
@@ -951,9 +842,7 @@ function addControlDependency(holder: { cds?: readonly ControlDependency[] | und
 	return true;
 }
 
-/**
- * Reapplies the loop exit points' control dependencies to the given identifier references.
- */
+/** Reapplies the loop exit points' control dependencies to the given identifier references. */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[], graph: DataflowGraph): void {
 	const exitCds = exits.flatMap(e => e.cds?.map(negateControlDependency))
 		.filter(isNotUndefined)
@@ -982,10 +871,7 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
  */
 export const ClosureRefs = {
 	name: 'ClosureRefs',
-	/**
-	 * Resolves the open ingoing references of a definition called anonymously at `callId` against `environment`,
-	 * links what resolves, and leaves only the references that stay open.
-	 */
+	/** Resolves the open ingoing references of a definition called anonymously at `callId` against `environment`, links what resolves, and leaves only the references that stay open. */
 	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
 		definition.subflow.in = linkInputs(definition.subflow.in, environment, [], graph, false, callId);
 	}
@@ -1002,15 +888,7 @@ export function accessedFieldName(fieldNode: RNode<ParentInformation> | undefine
 		? String(fieldNode.content.num) : undefined;
 }
 
-/**
- * Adds the definitions `found` to what the lookup `lookup` finds where it is written, or when `call` runs it, see
- * {@link DataflowGraphVertexFunctionCall#found} and {@link DataflowGraphVertexFunctionCall#foundOnCall}.
- * @example
- * ```ts
- * // reg$h within a body, bound to what reg holds at the call `call` of that body
- * recordFound(graph, access, fieldDefs.map(d => d.nodeId), call);
- * ```
- */
+/** Adds the definitions `found` to what the lookup `lookup` finds where it is written, or when `call` runs it, see {@link DataflowGraphVertexFunctionCall#found} and {@link DataflowGraphVertexFunctionCall#foundOnCall}. */
 export function recordFound(graph: DataflowGraph, lookup: NodeId, found: readonly NodeId[], call?: NodeId): void {
 	const vertex = graph.getVertex(lookup);
 	if(found.length === 0 || !DfgVertex.isFunctionCall(vertex)) {
@@ -1024,10 +902,7 @@ export function recordFound(graph: DataflowGraph, lookup: NodeId, found: readonl
 	vertex.foundOnCall = [...vertex.foundOnCall?.filter(f => f !== known) ?? [], entry];
 }
 
-/**
- * Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns,
- * and so may be a field of unknown kind, like the `read.csv` of `assign("f", read.csv, envir = e)`.
- */
+/** Links the access at `accessId` to the `fieldDefs` it reaches; a function held in a field is what the access returns, and so may be a field of unknown kind, like the `read.csv` of `assign("f", read.csv, envir = e)`. */
 export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs: readonly IdentifierDefinition[] | undefined, returnsFunctions: boolean, call?: NodeId): void {
 	recordFound(graph, accessId, fieldDefs?.map(d => d.nodeId).filter(d => !NodeId.isBuiltIn(d)) ?? [], call);
 	for(const fd of fieldDefs ?? []) {
@@ -1064,10 +939,7 @@ function fieldAssignmentOf(readId: NodeId, idMap: AstIdMap): NodeId | undefined 
 	return RBinaryOp.is(assign) && assign.lhs.info.id === target.info.id && /^(<<?-|=)$/.test(assign.operator) ? access.info.id : undefined;
 }
 
-/**
- * An access `x$f` written where `x` was still open reads the field of whatever `x` is bound to once that binding is
- * known, so binding the read at `readId` to a definition holding `envState` links the access to that field.
- */
+/** An access `x$f` written where `x` was still open reads the field of whatever `x` is bound to once that binding is known, so binding the read at `readId` to a definition holding `envState` links the access to that field. */
 export function bindAccessedField(graph: DataflowGraph, readId: NodeId, envState: REnvironmentInformation, idMap: AstIdMap, call?: NodeId): void {
 	const read = idMap.get(readId);
 	const access = read === undefined ? undefined : RNode.directParent(read, idMap);

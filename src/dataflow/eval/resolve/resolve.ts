@@ -34,11 +34,7 @@ import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op'
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { resolveAsField } from './resolve-field';
 
-/**
- * The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the
- * {@link BuiltInIdentifierDefinition#processor} a call resolves to; `undefined` if the name is shadowed
- * by a user definition or its built-in declares no handler.
- */
+/** The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the {@link BuiltInIdentifierDefinition#processor} a call resolves to; `undefined` if the name is shadowed by a user definition or its built-in declares no handler. */
 function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
 	/* without an environment the search path is unknown, so what a package states about the name has its say */
 	const defs = environment ? Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction) : ctx.env.builtInDefinitionsOf(name);
@@ -61,10 +57,7 @@ export function onlyLiterals(node: RNode<ParentInformation>): boolean {
 				: RNumber.is(node) || RString.is(node) || RLogical.is(node);
 }
 
-/**
- * The name of the built-in the given node folds through, `undefined` if it is no call to one or if it may just
- * as well resolve to something else (a user redefinition, a conditional one, ...), which must not be folded.
- */
+/** The name of the built-in the given node folds through, `undefined` if it is no call to one or if it may just as well resolve to something else (a user redefinition, a conditional one, ...), which must not be folded. */
 function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): Identifier | undefined {
 	if(!EvalNodeTypes.includes(node.type)) {
 		return undefined;
@@ -82,8 +75,7 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 	}
 	let name: Identifier | undefined;
 	if(graph.isQuoted(node.info.id)) {
-		/* a quoted call reached here is evaluated where the expression is (`eval`, a delayed binding), so what it calls
-		 * is what it is linked to */
+		/* a quoted call reached here is evaluated where the expression is (`eval`, a delayed binding), so what it calls is what it is linked to */
 		const [target, ...others] = Dataflow.targetsOf(graph, node.info.id, EdgeType.Calls);
 		return target !== undefined && others.length === 0 && NodeId.isBuiltIn(target) ? NodeId.fromBuiltIn(target) : undefined;
 	}
@@ -107,11 +99,7 @@ function evalNameOf({ node, graph, environment, ctx }: BuiltInEvalHandlerArgs): 
 	return name;
 }
 
-/**
- * Converts an RNode to its Value, either directly for a constant or by handing the node to the
- * {@link BuiltInEvalHandler} its built-in declares, which may resolve further nodes recursively.
- * Helper of {@link Resolve.toValue}; use that instead to resolve the value of an identifier or node.
- */
+/** Converts an RNode to its Value, either directly for a constant or by handing the node to the {@link BuiltInEvalHandler} its built-in declares, which may resolve further nodes recursively. */
 export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
 	const { node, environment, ctx } = args;
 	const nt = node.type;
@@ -145,10 +133,7 @@ export function asOneValue(result: ResolveResult): Value {
 	return isValue(result) && result.elements.length === 1 ? result.elements[0] : result;
 }
 
-/**
- * Resolves `list(...)` to a {@link ValueList} of what each argument holds, an argument flowR does not know keeps its
- * place and name; helper of {@link resolveNode}.
- */
+/** Resolves `list(...)` to a {@link ValueList} of what each argument holds, an argument flowR does not know keeps its place and name; helper of {@link resolveNode}. */
 export function resolveAsList(args: BuiltInEvalHandlerArgs): ValueList | typeof Top {
 	const node = args.node;
 	if(!RFunctionCall.is(node)) {
@@ -165,10 +150,7 @@ export function resolveAsList(args: BuiltInEvalHandlerArgs): ValueList | typeof 
 	return listFrom(elements);
 }
 
-/**
- * The name or position `key` names an element of a list by, `undefined` if it may be several or none of them; `$`
- * takes its field as a name.
- */
+/** The name or position `key` names an element of a list by, `undefined` if it may be several or none of them; `$` takes its field as a name. */
 export function accessKeyOf(access: RAccess<ParentInformation>, key: RNode<ParentInformation>, info: ResolveInfo): string | number | undefined {
 	if(access.operator === '$') {
 		return RString.is(key) ? key.content.str : RSymbol.is(key) ? Identifier.getName(key.content) : undefined;
@@ -184,12 +166,7 @@ export function listElementOf(list: ValueList, key: string | number, operator: s
 	return typeof key === 'number' ? listElementAt(list, key) : listField(list, key, operator !== '$');
 }
 
-/**
- * Resolves `x[[i]]` to the element of `x` at position `i`, so `c("a", "b")[[2]]` is `"b"`. Where `i` is not known,
- * as a loop counter often is not, it is any of the elements. A field of an environment (`e$f`, `e[["f"]]`) is what
- * the environment binds it to, see {@link resolveAsField}; of a list, `x$name` and `x[["name"]]` are the element the
- * name matches; helper of {@link resolveNode}.
- */
+/** Resolves `x[[i]]` to the element of `x` at position `i`, so `c("a", "b")[[2]]` is `"b"`. */
 export function resolveAsElement(args: BuiltInEvalHandlerArgs): Value {
 	const field = resolveAsField(args);
 	if(field !== undefined) {
@@ -231,18 +208,10 @@ export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<Val
 	return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
 }
 
-/**
- * How many elements of a sequence are worth naming one by one. `1:148066` is a loop bound rather than a set of
- * indices anything asks about, and holding one object per element costs more than the precision is worth, so
- * a longer sequence resolves to {@link Top} instead.
- */
+/** How many elements of a sequence are worth naming one by one. */
 const MaxSequenceLength = 4096;
 
-/**
- * The elements `from:to` runs over, counting down whenever `to` is the smaller one, and stopping before it
- * would pass `to` (`1:3.5` ends at `3`). `undefined` for a bound that names no position to count from or to,
- * and for a sequence longer than {@link MaxSequenceLength}.
- */
+/** The elements `from:to` runs over, counting down whenever `to` is the smaller one, and stopping before it would pass `to` (`1:3.5` ends at `3`). */
 function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] | undefined {
 	if(!Number.isFinite(start.num) || !Number.isFinite(end.num)) {
 		return undefined;

@@ -63,10 +63,7 @@ function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: D
 	return node.arguments.flatMap(arg => classNamesOf(RArgument.valueOf(arg), data));
 }
 
-/**
- * The signature an argument of `setMethod` states, with the formal each class is for where it names one:
- * `"A"`, `c("A", "B")`, `signature(e1 = "A")`, or a variable holding such strings; `undefined` if any part does not resolve.
- */
+/** The signature an argument of `setMethod` states, with the formal each class is for where it names one: `"A"`, `c("A", "B")`, `signature(e1 = "A")`, or a variable holding such strings; `undefined` if any part does not resolve. */
 function signatureOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): S4SignatureEntry[] | undefined {
 	if(node === undefined) {
 		return [];
@@ -174,17 +171,7 @@ function registeredClasses(call: DataflowGraphVertexFunctionCall, graph: Dataflo
 	return formals === undefined ? undefined : signatureFor(call.s4Method, formals)?.join(',');
 }
 
-/**
- * Drops what a `setMethod` reads of the methods registered before it for other signatures: it reads the generic by
- * name, which finds them as well, yet R keeps them apart. A registration it replaces (the same signature) stays a
- * dependency unless it replaces that one for good, before every call that sees it; so does one replacing the generic (`setGeneric`).
- * @example
- * ```r
- * setGeneric("f", function(o) standardGeneric("f"))
- * setMethod("f", "A", function(o) 1)
- * setMethod("f", "B", function(o) 2) # depends on setGeneric, not on the method for "A"
- * ```
- */
+/** Drops what a `setMethod` reads of the methods registered before it for other signatures: it reads the generic by name, which finds them as well, yet R keeps them apart. */
 export function separateMethodRegistrations(graph: DataflowGraph): void {
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const classes = registeredClasses(vertex, graph);
@@ -202,10 +189,7 @@ export function separateMethodRegistrations(graph: DataflowGraph): void {
 	}
 }
 
-/**
- * Whether the registration `id` surely runs, once, and every call that sees the generic it defines runs after it, so
- * that no call can see the method it replaces through it.
- */
+/** Whether the registration `id` surely runs, once, and every call that sees the generic it defines runs after it, so that no call can see the method it replaces through it. */
 function replacesForGood(id: NodeId, graph: DataflowGraph): boolean {
 	const at = ProgramOrder.runsOnceAt(id, graph);
 	if(at === undefined || (graph.getVertex(id)?.cds ?? []).length > 0) {
@@ -215,12 +199,7 @@ function replacesForGood(id: NodeId, graph: DataflowGraph): boolean {
 	return defined.length > 0 && defined.every(d => Dataflow.sourcesOf(graph, d, EdgeType.Reads).every(reader => DfgVertex.isFunctionCall(graph.getVertex(reader)) && runsOnlyAfter(reader, at, graph)));
 }
 
-/**
- * Links every instantiation to the validity functions of the class it creates and of the superclasses of that,
- * all of which R runs on the new object, to those of every class if the class is unknown; done once the graph
- * knows every class declaration. An instantiation within a function, which runs whenever that is called, may
- * run every method of its initializer the program registers.
- */
+/** Links every instantiation to the validity functions of the class it creates and of the superclasses of that, all of which R runs on the new object, to those of every class if the class is unknown; done once the graph knows every class declaration. */
 export function linkInstantiations(graph: DataflowGraph): void {
 	const instantiations = graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => v.instantiates !== undefined).toArray();
 	if(instantiations.length === 0) {

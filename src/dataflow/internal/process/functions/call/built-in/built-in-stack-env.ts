@@ -27,11 +27,7 @@ function stackEnvKind(name: string): StackEnvKind | undefined {
 	return (StackEnvBuiltins as Readonly<Record<string, StackEnvKind>>)[name];
 }
 
-/**
- * Processes the env-returning builtins (`globalenv`/`baseenv`/`emptyenv`), tagging the call with the
- * {@link BuiltInProcName.StackEnv} origin so an assignment (`e <- globalenv()`) attaches the stack env as the
- * variable's `envState`. Direct forms (`globalenv()$x`, `.GlobalEnv`) go through {@link resolveNodeToStackEnv}.
- */
+/** Processes the env-returning builtins (`globalenv`/`baseenv`/`emptyenv`), tagging the call with the {@link BuiltInProcName.StackEnv} origin so an assignment (`e <- globalenv()`) attaches the stack env as the variable's `envState`. */
 export function processStackEnv<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -74,11 +70,7 @@ function namesDirectCaller<Info>(node: RNode<Info> | undefined): boolean {
 	return rest.length === 0 && (n === undefined || (RNumber.is(value) && value.content.num === 1));
 }
 
-/**
- * The stack environment an AST `node` denotes directly: a `.GlobalEnv`/`.BaseEnv` symbol, a
- * `globalenv()`/`baseenv()`/`emptyenv()` call, the current env via `environment()`, the parent via `parent.env(e)`,
- * or a named search-path entry via `as.environment("package:x")`. Returns `undefined` otherwise.
- */
+/** The stack environment an AST `node` denotes directly: a `.GlobalEnv`/`.BaseEnv` symbol, a `globalenv()`/`baseenv()`/`emptyenv()` call, the current env via `environment()`, the parent via `parent.env(e)`, or a named search-path entry via `as.environment("package:x")`. */
 export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data: StackEnvContext): REnvironmentInformation | undefined {
 	const kind = stackEnvKindOf(node, data);
 	if(kind === undefined) {
@@ -118,10 +110,7 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	return undefined;
 }
 
-/**
- * The stack environment `sourceInfo`'s value comes from (`e <- globalenv()`, `e <- environment()`), or `undefined`.
- * @param entryPoint - the node the value comes from, if that is not the entry point of `sourceInfo` itself
- */
+/** The stack environment `sourceInfo`'s value comes from (`e <- globalenv()`, `e <- environment()`), or `undefined`. */
 export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext, entryPoint: NodeId | undefined = sourceInfo.entryPoint): REnvironmentInformation | undefined {
 	const vertex = entryPoint === undefined ? undefined : sourceInfo.graph.getVertex(entryPoint);
 	if(!DfgVertex.isFunctionCall(vertex) || vertex.name === undefined) {
@@ -137,10 +126,7 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
 		: undefined;
 }
 
-/**
- * Whether a `$`/`[[` on the stack env `node` denotes reads through the enclosing scopes.
- * Only the rlang pronoun `.env` does: it names the surrounding scope, while `$` on a real environment stays in its frame.
- */
+/** Whether a `$`/`[[` on the stack env `node` denotes reads through the enclosing scopes. */
 export function stackEnvInheritsFields<Info>(node: RNode<Info> | undefined): boolean {
 	return RSymbol.is(node) && Identifier.getName(node.content) === EnvPronoun;
 }

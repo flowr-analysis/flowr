@@ -25,7 +25,7 @@ export interface MermaidGraph {
 	markStyle:           MermaidMarkStyle
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
 	presentEdges:        Set<string>
-	presentVertices:     Set<string>
+	presentVertices:     Set<NodeId>
 	// keep for sub-flows
 	rootGraph:           DataflowGraph
 	/** if given, the dataflow graph will only focus on the "important" parts */

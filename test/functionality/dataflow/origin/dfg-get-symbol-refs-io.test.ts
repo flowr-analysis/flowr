@@ -35,9 +35,8 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 					assert.fail('Could not find node in ast');
 				}
 
-				const range = node.info.fullRange as SourceRange;
-				range[3] = range[1] + (node.lexeme as string).length - 1;
-				return range;
+				const [sl, sc, el] = node.info.fullRange as SourceRange;
+				return [sl, sc, el, sc + (node.lexeme as string).length - 1];
 			})
 			.sort((a, b) => a[0] === b[0] ? b[1] - a[1] : b[0] - a[0]);
 

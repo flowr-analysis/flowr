@@ -21,12 +21,12 @@ export const DotsParameterName = '...';
  * is an unnamed one: it takes its formal like any other, the caller just has nothing to bind to it.
  * @returns for every argument (by index) the index of the parameter it binds to, `undefined` if it stays unbound
  */
-export function matchArgumentsToParameters(
-	argNames: readonly (string | undefined)[],
-	paramNames: readonly (string | undefined)[]
+export function matchArgumentsToParameters<A extends string, P extends string>(
+	argNames: readonly (A | undefined)[],
+	paramNames: readonly (P | undefined)[]
 ): readonly (number | undefined)[] {
 	const bound: (number | undefined)[] = Array.from(argNames, () => undefined);
-	const names = paramNames.map(p => p ?? '');
+	const names: string[] = paramNames.map(p => p ?? '');
 	const dots = names.indexOf(DotsParameterName);
 	const taken = new Set<number>();
 	const take = (arg: number, param: number): void => {

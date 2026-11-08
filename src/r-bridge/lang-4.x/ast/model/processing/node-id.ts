@@ -19,7 +19,9 @@ export type NodeId<T extends string | number = string | number> = T & { __brand?
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
-function startsNumeric(id: string): boolean {
+const ArgumentSuffix = '-arg';
+
+function startsNumeric<S extends string>(id: S): boolean {
 	const c = id.charCodeAt(0);
 	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
@@ -42,6 +44,14 @@ export const NodeId = {
 	compare(this: void, a: NodeId, b: NodeId): number {
 		const [x, y] = [NodeId.normalize(a), NodeId.normalize(b)];
 		return typeof x === 'number' && typeof y === 'number' ? x - y : compareByCodeUnit(String(x), String(y));
+	},
+	/** The id of the argument flowR wraps around a node handed over without one, like the left side of `x |> f()`. */
+	argumentOf(this: void, id: NodeId): NodeId {
+		return `${id}${ArgumentSuffix}`;
+	},
+	/** The node an argument of {@link NodeId.argumentOf} wraps, `undefined` for any other id. */
+	wrappedByArgument(this: void, id: NodeId): NodeId | undefined {
+		return typeof id === 'string' && id.endsWith(ArgumentSuffix) ? id.slice(0, -ArgumentSuffix.length) : undefined;
 	},
 	/**
 	 * Normalizes a node id by converting numeric strings to numbers.

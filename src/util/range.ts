@@ -28,7 +28,7 @@ export type SourcePosition = [
  * @see {@link SourceRange.format} and related utility functions for working with source ranges.
  * @see {@link SourceRange.view} if you prefer property access (`range.startLine`) over these functions.
  */
-export type SourceRange = [
+export type SourceRange = readonly [
 	/** inclusive start position */
 	startLine:   number,
 	startColumn: number,
@@ -42,7 +42,7 @@ export type SourceRange = [
  * @see {@link SourceLocation.format} and related utility functions for working with source locations.
  * @see {@link SourceLocation.view} if you prefer property access (`loc.startLine`, `loc.file`) over these functions.
  */
-export type SourceLocation = [...r: SourceRange, f?: string];
+export type SourceLocation = readonly [...r: SourceRange, f?: string];
 
 /**
  * Anything that denotes a place in the source: a plain tuple ({@link SourceRange} or {@link SourceLocation})
@@ -150,10 +150,11 @@ export const SourceRange = {
 	merge(this: void, rs: readonly (SourceLocation | undefined)[]): SourceRange {
 		const rsSafe: SourceLocation[] = rs.filter(isNotUndefined);
 		guard(rsSafe.length > 0, 'Cannot merge no ranges');
-		return rsSafe.reduce<SourceRange>(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => [
-			...(sl < nsl || (sl === nsl && sc < nsc) ? [sl, sc] : [nsl, nsc]),
-			...(el > nel || (el === nel && ec > nec) ? [el, ec] : [nel, nec])
-		] as SourceRange, [rsSafe[0][0], rsSafe[0][1], rsSafe[0][2], rsSafe[0][3]]);
+		return rsSafe.reduce<SourceRange>(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => {
+			const keepStart = sl < nsl || (sl === nsl && sc < nsc);
+			const keepEnd = el > nel || (el === nel && ec > nec);
+			return [keepStart ? sl : nsl, keepStart ? sc : nsc, keepEnd ? el : nel, keepEnd ? ec : nec];
+		}, [rsSafe[0][0], rsSafe[0][1], rsSafe[0][2], rsSafe[0][3]]);
 	},
 	/**
 	 * @returns true iff `r1` starts and ends before `r2` starts (i.e., if `r1` and `r2` do not overlap and `r1` comes before `r2`
@@ -356,6 +357,10 @@ export const SourceLocation = {
 	getEndColumn:   SourceRange.getEndColumn,
 	/** @see {@link SourceRange.isValid} */
 	isValid:        SourceRange.isValid,
+	/** Whether `x` is a location rather than, for example, the node it is the location of. */
+	is(this: void, x: unknown): x is SourceLocation {
+		return Array.isArray(x);
+	},
 	/**
 	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
 	 */

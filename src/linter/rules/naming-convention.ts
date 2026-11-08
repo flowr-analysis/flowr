@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -22,7 +23,7 @@ export enum CasingConvention {
 }
 
 export interface NamingConventionResult extends LintingResult {
-	name:           string,
+	name:           BrandedIdentifier,
 	detectedCasing: CasingConvention
 }
 
@@ -47,18 +48,18 @@ export interface NamingConventionMetadata extends MergeableRecord {
 	numBreak: number;
 }
 
-function containsAlpha(s: string): boolean {
+function containsAlpha(s: BrandedIdentifier): boolean {
 	return /[A-Za-z]/.test(s);
 }
 
-function withoutPrefix(identifier: string, ignorePrefix: string | undefined): string {
+function withoutPrefix(identifier: BrandedIdentifier, ignorePrefix: string | undefined): string {
 	return ignorePrefix ? identifier.replace(new RegExp(`^(${ignorePrefix})`), '') : identifier;
 }
 
 /**
  * Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct.
  */
-export function detectPotentialCasings(identifier: string, ignorePrefix?: string): CasingConvention[] {
+export function detectPotentialCasings(identifier: BrandedIdentifier, ignorePrefix?: string): CasingConvention[] {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
 		return [];
 	}
@@ -100,7 +101,7 @@ export function detectPotentialCasings(identifier: string, ignorePrefix?: string
  * Attempts to detect the possible casing conventions used in the given identifier and returns the first result.
  * The function {@link detectPotentialCasings} is generally preferred, as it returns all potential casings and not just the first one.
  */
-export function detectCasing(identifier: string, ignorePrefix?:  string): CasingConvention {
+export function detectCasing(identifier: BrandedIdentifier, ignorePrefix?:  string): CasingConvention {
 	return detectPotentialCasings(identifier, ignorePrefix)[0] ?? CasingConvention.Unknown;
 }
 
@@ -127,7 +128,7 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 /**
  * Attempts to fix the casing of the given identifier to match the provided convention.
  */
-export function fixCasing(identifier: string, convention: CasingConvention, ignorePrefix?: string): string | undefined {
+export function fixCasing(identifier: BrandedIdentifier, convention: CasingConvention, ignorePrefix?: string): BrandedIdentifier | undefined {
 	if(!containsAlpha(identifier)) {
 		return undefined;
 	}
@@ -157,7 +158,7 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 /**
  * Creates quick fixes for renaming all references to the given node to match the provided replacement.
  */
-export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
+export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: BrandedIdentifier, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
 	const refs = Dataflow.refsToSymbol(graph, nodeId);
 	const idMap = graph.idMap;
 	if(refs === undefined || idMap === undefined) {
@@ -216,7 +217,7 @@ export const NAMING_CONVENTION = {
 		/* a name that reads as several conventions, like a single word, says nothing about which one is in use */
 		const unambiguous = symbols.filter(s => detectPotentialCasings(s.name, config.ignorePrefix).length === 1);
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(unambiguous) : config.caseing;
-		const taken = new Set(dataflow.graph.vertices(true).map(([id]) => {
+		const taken = new Set<BrandedIdentifier | undefined>(dataflow.graph.vertices(true).map(([id]) => {
 			const lexeme = NodeId.recoverName(id, dataflow.graph.idMap);
 			return lexeme === undefined ? undefined : RString.splitQuotes(lexeme).content;
 		}));

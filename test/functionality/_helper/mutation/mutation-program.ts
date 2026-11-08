@@ -15,7 +15,7 @@ import { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-sym
 import { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RAccess } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { SourceRange } from '../../../../src/util/range';
+import { SourceLocation, SourceRange } from '../../../../src/util/range';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { callFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import { ArgProp, CallProp, ImpureProps, SemanticCallTag, type BuiltInFnInfo } from '../../../../src/dataflow/environments/built-in-props';
@@ -406,7 +406,7 @@ export class Rewrite {
 
 	/** replaces the code `node` (or the range) spans */
 	replace(at: RNode<ParentInformation> | SourceRange, text: string): this {
-		const [sl, sc, el, ec] = Array.isArray(at) ? at : this.program.span(at);
+		const [sl, sc, el, ec] = SourceLocation.is(at) ? at : this.program.span(at);
 		this.edits.push({ from: this.program.offset(sl, sc), to: this.program.offset(el, ec) + 1, text });
 		return this;
 	}

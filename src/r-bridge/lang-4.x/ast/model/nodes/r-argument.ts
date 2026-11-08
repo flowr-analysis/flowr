@@ -92,7 +92,7 @@ export const RArgument = {
 	/**
 	 * The non-empty argument with exactly the given `name`, `undefined` if there is none.
 	 */
-	findNamed<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], name: string): RArgument<Info> | undefined {
+	findNamed<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], name: BrandedIdentifier): RArgument<Info> | undefined {
 
 		return args.find((a): a is RArgument<Info> => a !== EmptyArgument && a.name?.content === name);
 	},

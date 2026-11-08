@@ -187,7 +187,7 @@ export function processAssignmentLike<OtherInfo>(
 		handleUnknownSideEffect(info.graph, info.environment, rootId);
 		return info;
 	}
-	return processAssignment<OtherInfo>(name, normalizedArgs, rootId, data, {
+	return assignOrdered<OtherInfo>(name, normalizedArgs, rootId, data, {
 		...config,
 		mayHaveMoreArgs: true,
 		targetSuffix:    cls === undefined ? config.targetSuffix : `.${cls}`,
@@ -228,10 +228,31 @@ function processMaskedNamePair<OtherInfo>(
 	return information;
 }
 
+/** The arguments of a call naming what it assigns by its signature, like `assign("f", envir = e, value = v)`, with the target and source first, as an operator has them. */
+function targetAndSourceFirst<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], { targetVariable, sig }: AssignmentConfiguration): readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] {
+	if(!targetVariable || sig === undefined || args.every(a => RArgument.isEmpty(a) || a.name === undefined)) {
+		return args;
+	}
+	const formals = sig.map(([formal]) => formal);
+	const bound = FunctionSemantics.call.match.toNames(args, formals);
+	const [target, source] = [bound.get(formals[0]), bound.get(formals[1])];
+	return target === undefined || source === undefined ? args : [target, source, ...args.filter(a => a !== target && a !== source)];
+}
+
 /** Processes an assignment `<target> <- <source>` as the function call \`&lt;-\` `(<target>, <source>)`, including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`). */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation {
+	return assignOrdered(name, targetAndSourceFirst(args, config), rootId, data, config);
+}
+
+function assignOrdered<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

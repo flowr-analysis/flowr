@@ -891,13 +891,18 @@ export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs
 }
 
 /** The call writing a field into the environment the symbol `readId` holds: `x$f <- v` (its replacement call) or `assign("f", v, envir = x)`. */
+const AssignFormals: readonly BrandedIdentifier[] = ['x', 'value', 'pos', 'envir', 'inherits', 'immediate'];
+
 function fieldAssignmentOf(readId: NodeId, idMap: AstIdMap): NodeId | undefined {
 	const read = idMap.get(readId);
 	const access = read === undefined ? undefined : RNode.directParent(read, idMap);
 	/* `assign("f", v, envir = x)` writes into `x` as well */
 	const call = access === undefined ? undefined : RNode.directParent(access, idMap);
-	if(RFunctionCall.isNamed(call, 'assign') && call.arguments.indexOf(access as never) >= 2) {
-		return call.info.id;
+	if(RFunctionCall.isNamed(call, 'assign')) {
+		const bound = FunctionSemantics.call.match.toNames(call.arguments, AssignFormals);
+		if(access === bound.get('envir') || access === bound.get('pos')) {
+			return call.info.id;
+		}
 	}
 	if(!RAccess.is(access) || access.accessed.info.id !== readId) {
 		return undefined;

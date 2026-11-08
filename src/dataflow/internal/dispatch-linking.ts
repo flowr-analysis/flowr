@@ -97,19 +97,15 @@ export class DispatchNarrower {
 			return false;
 		}
 		const { byFunction } = this.s4Info();
-		for(const target of targets) {
-			if(byFunction.has(target)) {
-				return true;
-			}
-		}
-		return false;
+		return Iterator.from(targets).some(target => byFunction.has(target));
 	}
 
 	/** The methods among `targets` the S4 dispatch of `call` (a call of `name`) cannot run for the classes of its arguments, and the methods `callNextMethod()` in each method may run, `undefined` if nothing can be narrowed. */
 	public s4(call: DataflowGraphVertexFunctionCall, name: string, targets: ReadonlySet<NodeId>, registeredLater: (registration: NodeId) => boolean, info: ClassFlowInfo = this.info): NarrowedDispatch | undefined {
 		const { methods, byFunction, hierarchy } = this.s4Info();
 		const created = call.instantiates;
-		const generic = created === undefined ? name : genericOf(targets, byFunction);
+		const generics = created === undefined ? undefined : new Set([...targets].flatMap(t => byFunction.get(t) ?? []).map(m => m.generic));
+		const generic = generics === undefined ? name : generics.size === 1 ? [...generics][0] : undefined;
 		/* only the methods registered where the call runs compete, one registered after a call at the top level does not */
 		const all = generic === undefined ? undefined : s4CandidatesFor(generic, methods);
 		const candidates = all?.filter(m => !registeredLater(m.registration) && m.functions.some(f => targets.has(f)));
@@ -141,7 +137,7 @@ export class DispatchNarrower {
 			return registration === undefined ? undefined : vector[0];
 		};
 		const bound = created === undefined ? boundArguments(call, formals, this.info.idMap) : undefined;
-		const tuples = created !== undefined ? instantiated(created) : bound === undefined ? undefined : s4ActualClasses(bound, info, s3Class);
+		const tuples = created !== undefined ? (created.length === 1 ? [[created[0]]] : undefined) : bound === undefined ? undefined : s4ActualClasses(bound, info, s3Class);
 		if(tuples === undefined) {
 			return { excluded: new Set(), next };
 		}
@@ -265,12 +261,6 @@ export function runsOnlyAfter(call: NodeId, statement: RNode<ParentInformation>,
 	return fn !== undefined && callers.length > 0 && calledByNameOnly(fn, callers, graph) && callers.every(c => runsOnlyAfter(c, statement, graph, depth + 1));
 }
 
-/** The one generic the S4 methods among `targets` belong to, `undefined` unless there is exactly one. */
-function genericOf(targets: ReadonlySet<NodeId>, byFunction: ReadonlyMap<NodeId, readonly S4Method[]>): string | undefined {
-	const generics = new Set([...targets].flatMap(t => byFunction.get(t) ?? []).map(m => m.generic));
-	return generics.size === 1 ? [...generics][0] : undefined;
-}
-
 /** The first formal the functions of `methods` share, which an instantiation hands the new object. */
 function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly string[] | undefined {
 	const firsts = new Set(methods.flatMap(m => m.functions).map(fn => {
@@ -279,11 +269,6 @@ function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly 
 	}));
 	const first = firsts.size === 1 ? [...firsts][0] : undefined;
 	return first === undefined || first === DotsParameterName ? undefined : [first];
-}
-
-/** The class tuple an instantiation dispatches its initializer on: the one class it creates, `undefined` if that is not known. */
-function instantiated(created: readonly string[]): string[][] | undefined {
-	return created.length === 1 ? [[created[0]]] : undefined;
 }
 
 /** The class the function `fn` is the S3 method of, for one of the generics `prefixes`, `undefined` unless every name it is bound to says the same. */
@@ -315,7 +300,6 @@ function boundArguments(call: DataflowGraphVertexFunctionCall, formals: readonly
 export function linkedFunctionIds(ids: ReadonlySet<NodeId>, graph: DataflowGraph): NodeId[] {
 	return getAllLinkedFunctionDefinitions(ids, graph)[0].values().map(d => d.id).toArray();
 }
-
 
 /** The methods `environment` binds for the generics a built-in dispatches to on its own (see `dispatches` of a built-in): every `<generic>.<class>` and every function `setMethod` registers for one, whatever the class, as it may be that of a part. */
 export function internalGenericMethods(generics: readonly string[], environment: REnvironmentInformation, graph: DataflowGraph): IdentifierDefinition[] {

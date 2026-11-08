@@ -6,7 +6,7 @@ import { Package } from '../../../../../src/project/plugins/package-version-plug
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
-import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { type BrandedNamespace, Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 const randomPlaceholder1Callable = ['test1', 'test2'];
 const randomPlaceholder2Callable = ['test1', 'test2', 'test3'];
@@ -93,7 +93,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		addPackages(analyzer, namespacePackage('zoo', 'export(index)', ['index']));
 		analyzer.addRequest('index(x)');
 		const df = await analyzer.dataflow();
-		let resolved: string | undefined;
+		let resolved: BrandedNamespace | undefined;
 		for(const [id, vtx] of df.graph.verticesOfType(VertexType.FunctionCall)) {
 			if(Identifier.getName(vtx.name) === 'index') {
 				const qualified = Dataflow.qualify(id, df.graph, true);

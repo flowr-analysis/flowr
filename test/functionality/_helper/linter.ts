@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../src/dataflow/environments/identifier';
 import {
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
@@ -45,7 +46,7 @@ export function controlledSigDb(pkgs: Record<string, readonly string[]>): Packag
 export function controlledSigDb(pkg: string, exports: readonly string[]): PackageSignatureSource;
 export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PackageSignatureSource {
 	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
-	const view = (pkg: string): LibraryExports | undefined => pkg in pkgs
+	const view = (pkg: BrandedNamespace): LibraryExports | undefined => pkg in pkgs
 		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], s3Classes: [], s4Classes: [], cran: true }
 		: undefined;
 	return {

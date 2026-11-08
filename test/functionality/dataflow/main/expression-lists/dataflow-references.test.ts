@@ -2,12 +2,12 @@ import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
 import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
-import type { IdentifierReference } from '../../../../../src/dataflow/environments/identifier';
+import type { BrandedIdentifier, IdentifierReference } from '../../../../../src/dataflow/environments/identifier';
 import { Identifier, isReferenceType, ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import type { KillReference } from '../../../../../src/dataflow/info';
 
 /** the variable-like references, as the sets also carry the called functions */
-function variableNames(references: readonly IdentifierReference[]): string[] {
+function variableNames(references: readonly IdentifierReference[]): BrandedIdentifier[] {
 	const names = new Set(references
 		.filter(r => r.name !== undefined && isReferenceType(r.type, ReferenceType.Unknown | ReferenceType.Variable))
 		.map(r => Identifier.getName(r.name as Identifier)));

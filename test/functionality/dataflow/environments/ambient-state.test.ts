@@ -8,7 +8,7 @@ import { AmbientStateName, KeyedState } from '../../../../src/dataflow/environme
 import { RBinaryOp } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../src/dataflow/environments/identifier';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
@@ -167,7 +167,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 describe('Ambient access of code', withTreeSitter(ts => {
 	type Selector = 'file' | 'first' | 'second' | 'block';
-	interface Shown { reads: string[], writes: string[], assumed: string[], variables: string[], draws: number }
+	interface Shown { reads: string[], writes: string[], assumed: string[], variables: BrandedIdentifier[], draws: number }
 
 	async function run(code: string, drawing = false) {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {

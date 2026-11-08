@@ -7,7 +7,7 @@ import {
 } from '../../../src/project/sigdb/manifest';
 
 describe('sigdb manifest date', () => {
-	const scopes: SigDbScope[] = ['base', 'current', 'full', 'history' as SigDbScope];
+	const scopes: SigDbScope[] = ['base', 'current', 'full', 'history'];
 
 	for(const scope of scopes) {
 		/* the sigdb is generated, not shipped by the repository, so a fresh checkout (e.g. the ci) has none */

@@ -16,7 +16,7 @@ import { RAccess } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-acc
 import { RArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RParameter } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../src/dataflow/environments/identifier';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../../src/util/r-base-packages';
 import type { SourceRange } from '../../../../src/util/range';
 import { MutationProgram, Rewrite, type MutationTarget, type SimpleAssignment } from './mutation-program';
@@ -204,8 +204,8 @@ const NotRenameable: ReadonlySet<string> = new Set(['T', 'F']);
  * `$` or `@` field, a package, a name a string spells out or an attached package exports, as a renaming must leave those be.
  */
 function renameableNames(program: MutationProgram): string[] {
-	const bound = new Set<string>();
-	const unsafe = new Set<string>();
+	const bound = new Set<BrandedIdentifier>();
+	const unsafe = new Set<BrandedIdentifier>();
 	for(const node of program.nodes()) {
 		if(MutationProgram.isAssignment(node)) {
 			const target = node.operator === '->' || node.operator === '->>' ? node.rhs : node.lhs;

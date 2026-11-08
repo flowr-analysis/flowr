@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-08, 14:25:27 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-08, 15:21:58 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L152"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids).">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -188,12 +188,12 @@ class DataflowGraphVertexInfo{
     <<type>>
 }
 style DataflowGraphVertexInfo opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L186" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph."
+click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L194" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph."
 class DataflowGraphVertexArgument{
     <<type>>
 }
 style DataflowGraphVertexArgument opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L183" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
+click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L191" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
 class DataflowGraphVertexUse{
     <<interface>>
     tag#58; VertexType.Use
@@ -242,7 +242,7 @@ class DataflowGraphVertexFunctionCall{
     newEnvParent#58; REnvironmentInformation
     classDecl#58; ClassDeclaration
     instantiates#58; #123;#125;
-    initializer#58; string
+    initializer#58; BrandedIdentifier
     s4Method#58; S4MethodRegistration
     ruledOut#58; #123;#125;
     ruledOutAt#58; #123;#125;
@@ -433,7 +433,7 @@ contributed to the vertex. Mermaid rejects some characters in an id, so a space 
 
 <h3 id="vtx-location">Location</h3>
 
-The second line also indicates the compressed <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L31"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> of the vertex (directly before the [id](#vtx-id)) in the format `startLine.startCharacter - endLine.endCharacter`. If the range reads `1.7`,
+The second line also indicates the compressed <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L36"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> of the vertex (directly before the [id](#vtx-id)) in the format `startLine.startCharacter - endLine.endCharacter`. If the range reads `1.7`,
 this is short for `1.7-1.7`, likewise, `1.7-9` is short for `1.7-1.9`. So, `1.7-9` describes something starting
 in the first line at the seventh character and ending in the first line at the ninth character.
 
@@ -1176,9 +1176,9 @@ and it should not be relied on as it may under-approximate the actual calling ta
        /** For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`, `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and whether it can be instantiated. */
        classDecl?:    ClassDeclaration
        /** For an S4 instantiation (`new("P")`): the classes it creates an instance of, whose validity functions it runs */
-       instantiates?: readonly string[]
+       instantiates?: readonly ClassName[]
        /** For an S4 instantiation: the generic whose methods initialize the new object (`initialize`) */
-       initializer?:  string
+       initializer?:  BrandedIdentifier
        /** For a `setMethod`: the generic it adds a method to and the signature the method is registered for */
        s4Method?:     S4MethodRegistration
        /** The method definitions the dispatch of the call rules out for the classes its arguments have, which a lookup by name still finds */
@@ -1485,7 +1485,7 @@ For more information on the types of references, please consult the implementati
 > global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
 > as any code that is not part of the analysis could cause the semantics to change. 
 > However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no [`calls`](#calls) edge attached to a call.
-> If you want to check the resolve targets, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L66"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.">resolveByName</span></code></a>.
+> If you want to check the resolve targets, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L69"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.">resolveByName</span></code></a>.
 > 
 > 
 > </details>
@@ -1982,7 +1982,7 @@ For more information on the types of references, please consult the implementati
 > Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L114"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none).">callTargetsOf</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
 > the following target ids: { `built-in:*`, `built-in:<-`, `4` }.
 > This way we know that the call may refer to the built-in assignment operator or to the multiplication.
-> Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L66"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
+> Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L69"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
 > { `4`, `built-in:<-` } (however, the latter will not trace aliases).
 > 
 > 	
@@ -2739,7 +2739,7 @@ The vertex object in the dataflow graph stores multiple things, including all ex
        /** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
        environment?:    REnvironmentInformation
        /** If the function is a (potential) S3/S4/S7 dispatch Please note that flowR may create these flags *on use* (e.g. `s3` as otherwise any func with a `.` would be considered S3). */
-       mode?:           ('s3' | 's4' | 's7')[];
+       mode?:           FunctionDispatch[];
        /** If this function statically returns a tracked environment, stores the envState it returns. */
        returnEnvState?: REnvironmentInformation
        /** The calls of the body whose environment operation depends on the call of the function, see {@link DeferredEnvOp}. */
@@ -3333,7 +3333,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > A [`reads`](#reads) edge is not a transitive closure and only links the "directly read" definition(s).
 > Our abstract domains resolving transitive [`reads`](#reads) edges (and for that matter, following [`returns`](#returns) as well)
 > are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L114"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none).">callTargetsOf</span></code></a>,
-> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L244"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
+> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L247"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
 > Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L93"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 > 
 > 

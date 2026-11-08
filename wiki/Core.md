@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-08, 14:25:27 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-08, 15:21:58 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -151,16 +151,16 @@ automatically selects the correct pipeline based on the engine used.
 
 ### Understanding Pipeline Steps
 
-Everything that complies to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L70"><code><span title="Defines what is to be known of a single step in a pipeline. It wraps around a single processor function, providing additional information. Steps will be executed synchronously, in-sequence, based on their dependencies .">IPipelineStep</span></code></a> interface can be used as a step in a pipeline, with the most important definition being the
+Everything that complies to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L75"><code><span title="Defines what is to be known of a single step in a pipeline. It wraps around a single processor function, providing additional information. Steps will be executed synchronously, in-sequence, based on their dependencies .">IPipelineStep</span></code></a> interface can be used as a step in a pipeline, with the most important definition being the
 `processor` function, which refers to the actual work performed by the step.
 For example, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/20-dataflow.ts#L32"><code>STATIC_DATAFLOW</code></a> step ultimately relies on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L663"><code><span title="This is the main function to produce the dataflow graph from a given request and normalized AST.">produceDataFlowGraph</span></code></a> function to create a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
 using the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of the program.
 
 ### Shape of a Pipeline Step
 
-Using code, you can provide an arbitrary pipeline step to the executor, as long as it implements the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L70"><code><span title="Defines what is to be known of a single step in a pipeline. It wraps around a single processor function, providing additional information. Steps will be executed synchronously, in-sequence, based on their dependencies .">IPipelineStep</span></code></a> interface:
+Using code, you can provide an arbitrary pipeline step to the executor, as long as it implements the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L75"><code><span title="Defines what is to be known of a single step in a pipeline. It wraps around a single processor function, providing additional information. Steps will be executed synchronously, in-sequence, based on their dependencies .">IPipelineStep</span></code></a> interface:
 
- * **[IPipelineStep](https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L70)**   
+ * **[IPipelineStep](https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L75)**   
    Defines what is to be known of a single step in a pipeline.
    It wraps around a single
    <code>processor</code>
@@ -168,7 +168,7 @@ Using code, you can provide an arbitrary pipeline step to the executor, as long 
    Steps will be executed synchronously, in-sequence, based on their
    <code>dependencies</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L70">src/core/steps/pipeline-step.ts#L70</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L75">src/core/steps/pipeline-step.ts#L75</a></summary>
    
    ```ts
    /**
@@ -198,7 +198,7 @@ Using code, you can provide an arbitrary pipeline step to the executor, as long 
         * Input configuration required to perform the respective steps.
         * Required inputs of dependencies do not have to, but can be repeated.
         * <p>
-        * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
+        * Use {@link requires} to indicate that the value is required but not provided.
         */
        readonly requiredInput: object
    }
@@ -248,7 +248,7 @@ Let's have a look at the definition of the pipeline:
 We can see that it relies on three steps:
 
 1. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/00-parse.ts#L8">PARSE_WITH_R_SHELL_STEP</a>** ([parsing](#parsing)): Uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> to parse the input program.\
-   _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/parser.ts#L97"><span title="Takes an input program and parses it using the given parser.">parseRequests</span></a> function._
+   _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/parser.ts#L104"><span title="Takes an input program and parses it using the given parser.">parseRequests</span></a> function._
 2. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/10-normalize.ts#L35">NORMALIZE</a>** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)).\
    _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L64">normalize</a> function._
 3. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/20-dataflow.ts#L32">STATIC_DATAFLOW</a>** ([dataflow](#dataflow-graph-generation)): Produces the actual [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) from the normalized AST.\

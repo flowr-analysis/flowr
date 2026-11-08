@@ -10,7 +10,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType, type BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -64,7 +64,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 type RmFormalRole = 'names' | 'frame' | 'modifier';
 
 /** The formals of `rm(..., list = character(), pos = -1, envir = as.environment(pos), inherits = FALSE)`. */
-const RmFormals: Readonly<Record<string, RmFormalRole>> = {
+const RmFormals: Readonly<Record<BrandedIdentifier, RmFormalRole>> = {
 	list:     'names',
 	pos:      'frame',
 	envir:    'frame',

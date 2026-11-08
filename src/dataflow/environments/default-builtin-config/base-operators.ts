@@ -215,7 +215,7 @@ export const OperatorDefinitions = [
 	),
 ] as const satisfies AnyBuiltInDefinition[];
 
-const byName: Readonly<Record<string, OperatorFacts>> = Object.fromEntries(OperatorDefinitions.flatMap(d => Object.entries(d.operators ?? {})));
+const byName: Readonly<Record<BrandedIdentifier, OperatorFacts>> = Object.fromEntries(OperatorDefinitions.flatMap(d => Object.entries(d.operators ?? {})));
 const names: readonly BrandedIdentifier[] = Object.keys(byName);
 const inRAst = (ops: readonly BrandedIdentifier[]): ReadonlySet<BrandedIdentifier> => new Set(ops.map(op => byName[op].stringUsedInRAst));
 

@@ -25,11 +25,11 @@ import { ClosureRefs } from '../../../../linker';
 
 interface BuiltInPurrrFormulaConfiguration {
 	/** Maps the created variable/variable to bind in the formula, to the argument that produces it. */
-	args:       Record<string, { index: number, name: BrandedIdentifier }>,
+	args:       Record<BrandedIdentifier, { index: number, name: BrandedIdentifier }>,
 	/** This represents the special argument that represents the formula. We map all additional arguments that are not in `ignore` to this list. */
 	'.f':       { index: number; name: BrandedIdentifier };
 	/** arguments to additionally ignore when mapping the formulae */
-	ignore?:    string[];
+	ignore?:    BrandedIdentifier[];
 	/** if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return */
 	returnArg?: string;
 }
@@ -81,7 +81,7 @@ export function processPurrrFormula<OtherInfo>(
 ): DataflowInformation {
 	const { information, callArgs } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.PurrrFormula });
 
-	const params: Record<string, BrandedIdentifier> = {};
+	const params: Record<BrandedIdentifier, BrandedIdentifier> = {};
 	for(const key of Object.keys(config.args)) {
 		params[config.args[key].name] = config.args[key].name;
 	}

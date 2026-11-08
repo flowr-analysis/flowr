@@ -34,7 +34,7 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 }
 
 /** digests plain strings and primitives as one string, which spares {@link objectHash} a reflective walk (and works in the browser, where `crypto` is stubbed) */
-function digest(parts: readonly (string | number | boolean | undefined)[]): Fingerprint {
+function digest(parts: readonly unknown[]): Fingerprint {
 	return objectHash(JSON.stringify(parts), HashOptions);
 }
 

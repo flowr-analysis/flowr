@@ -250,7 +250,7 @@ export const GgPlotImplicitAddons = ['geom_count', 'geom_bin_2d', 'geom_spoke', 
 	'scale_fill_gdocs', 'scale_color_hc', 'scale_color_gdocs', 'scale_color_canva', 'scale_color_gradient_tableau', 'scale_fill_solarized',
 	'scale_fill_continuous_tableau', 'scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'] as const;
 export const PlotFunctionsWithAddParam: Set<BrandedIdentifier> = new Set(['map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot']);
-export const GraphicsPlotAddons = ['points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
+export const GraphicsPlotAddons: BrandedIdentifier[] = ['points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage', 'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines'];
 export const GgPlotAddons = ['ggdraw', 'last_plot'];
 export const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);

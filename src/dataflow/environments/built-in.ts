@@ -140,7 +140,7 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	/** the call reads the dots of the function it is called in, like `...elt(2)` */
 	readonly readsDots?:           boolean,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
-	readonly treatAsFnCall?:       Record<string, readonly BrandedIdentifier[]>,
+	readonly treatAsFnCall?:       Record<BrandedIdentifier, readonly BrandedIdentifier[]>,
 	/** Mark the given arguments as {@link EdgeType.NonStandardEvaluation|non-standard-evaluated}, like `quote`. */
 	readonly markArgsAsNSE?:       NseArguments | readonly number[],
 	/** Mark the given arguments as evaluated in a data mask, like `subset`: their symbols may name columns of the data instead of variables, while everything else in them is evaluated in the caller's frame as usual. */

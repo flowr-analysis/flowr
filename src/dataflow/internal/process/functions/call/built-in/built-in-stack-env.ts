@@ -24,7 +24,7 @@ const EnvPronoun = '.env';
 
 /** The stack env kind a builtin/constant `name` denotes, or `undefined`. */
 function stackEnvKind(name: BrandedIdentifier): StackEnvKind | undefined {
-	return (StackEnvBuiltins as Readonly<Record<string, StackEnvKind>>)[name];
+	return (StackEnvBuiltins as Readonly<Record<BrandedIdentifier, StackEnvKind>>)[name];
 }
 
 /** Processes the env-returning builtins (`globalenv`/`baseenv`/`emptyenv`), tagging the call with the {@link BuiltInProcName.StackEnv} origin so an assignment (`e <- globalenv()`) attaches the stack env as the variable's `envState`. */

@@ -209,7 +209,7 @@ function handedTo(parameter: NodeId, { fn, via, graph, idMap }: Run): NodeId[] {
 	if(!DfgVertex.isFunctionCall(call)) {
 		return [];
 	}
-	const formals: Record<string, NodeId> = {};
+	const formals: Record<BrandedIdentifier, NodeId> = {};
 	for(const p of Object.keys(fn.params)) {
 		const name = idMap.get(NodeId.normalize(p));
 		if(RSymbol.is(name)) {

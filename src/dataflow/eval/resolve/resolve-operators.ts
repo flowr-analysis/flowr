@@ -31,7 +31,7 @@ function asLogical(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): boolean
 }
 
 /** the operands of a binary operator and its entry in `ops`, with R presenting the `%.%` ones as an infix call */
-function binary<T>(node: RNodeWithParent, ops: Record<string, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
+function binary<T>(node: RNodeWithParent, ops: Record<BrandedIdentifier, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
 	let name: BrandedIdentifier, lhs: RNodeWithParent | undefined, rhs: RNodeWithParent | undefined;
 	if(RBinaryOp.is(node)) {
 		[name, lhs, rhs] = [node.operator, node.lhs, node.rhs];

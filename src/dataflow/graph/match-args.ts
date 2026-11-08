@@ -46,8 +46,8 @@ export const MatchArgs = {
 		return RFunctionCall.matchArgsToParams(args, paramNames);
 	},
 	/** Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. */
-	toSpec<Targets extends NodeId | BrandedIdentifier = string>(this: void, args: readonly FunctionArgument[], params: Record<string, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
-		let spec = params as Record<string, Targets>;
+	toSpec<Targets extends NodeId | BrandedIdentifier = string>(this: void, args: readonly FunctionArgument[], params: Record<BrandedIdentifier, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
+		let spec = params as Record<BrandedIdentifier, Targets>;
 		if(Array.isArray(params)) {
 			spec = {};
 			for(const p of params as readonly SigParameter[]) {
@@ -286,7 +286,7 @@ function elementReadsOf(dots: NodeId, graph: DataflowGraph): ReadonlyMap<number,
 }
 
 /** The names of the parameters as {@link matchArgumentsToParameters} takes them. */
-function parameterNames(params: readonly RParameter<ParentInformation>[]): (string | undefined)[] {
+function parameterNames(params: readonly RParameter<ParentInformation>[]): (BrandedIdentifier | undefined)[] {
 	return params.map(p => p?.special ? DotsParameterName : p?.name?.content);
 }
 
@@ -366,7 +366,7 @@ function positionReadBy(node: RNode<ParentInformation> | undefined): number | un
 }
 
 /** Binds `args` to `params` named `names`, see {@link MatchArgs.onCallAndLink}. */
-function linkArguments(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], names: readonly (string | undefined)[], graph: DataflowGraph, maps: Map<NodeId, NodeId>): void {
+function linkArguments(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], names: readonly (BrandedIdentifier | undefined)[], graph: DataflowGraph, maps: Map<NodeId, NodeId>): void {
 	const unknown = handedOnDotsOf(args, graph);
 	const known = unknown.length === 0 ? args : args.filter(a => !unknown.includes(FunctionArgument.getId(a) ?? ''));
 	const matched = matchArgumentsToParameters(graphArgumentNames(known), names);

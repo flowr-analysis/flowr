@@ -65,7 +65,7 @@ export const Identifier = {
 		return id.length === 2 || (id.length === 3 && typeof id[2] === 'boolean');
 	},
 	/** Parse an identifier from its string representation, Please note, that in R if one writes `"pkg::a"` this refers to a symbol named `pkg::a` and NOT to the namespaced identifier `a` in package `pkg`. */
-	parse(this: void, str: string): Identifier {
+	parse(this: void, str: BrandedIdentifier): Identifier {
 		const at = namespaceSeparatorAt(str);
 		if(at < 0) {
 			return str;
@@ -248,7 +248,7 @@ function rawIdentifier(of: IdentifierLike): Identifier {
 }
 
 /** The index of the `::` separating namespace from name, skipping backtick-quoted spans; `-1` if there is none. */
-function namespaceSeparatorAt(str: string): number {
+function namespaceSeparatorAt(str: BrandedIdentifier): number {
 	let quoted = false;
 	for(let i = 0; i < str.length; i++) {
 		if(str[i] === '`') {

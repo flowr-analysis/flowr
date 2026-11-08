@@ -38,7 +38,7 @@ export function processRegisterHook<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RegisterHookConfig
 ): DataflowInformation {
-	const params = {
+	const params: Record<BrandedIdentifier, string> = {
 		[config.args.expr.name]: 'expr',
 	};
 	if(config.args.add) {

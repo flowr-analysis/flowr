@@ -49,12 +49,7 @@ import { DefaultMap, memoize } from '../../../../../../util/collections/defaultm
 import { Dataflow } from '../../../../../graph/df-helper';
 
 /** Process a function definition, i.e., `function(a, b) { ... }` */
-export function processFunctionDefinition<OtherInfo>(
-	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): DataflowInformation {
+export function processFunctionDefinition<OtherInfo>(name: RSymbol<OtherInfo & ParentInformation>, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${Identifier.toString(name.content)} does not have an argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -267,12 +262,7 @@ export function processFunctionDefinition<OtherInfo>(
 }
 
 /** The tracked environment state returned at `nodeId`: a fresh `new.env()`, a list or class generator of methods, or a variable holding one. */
-function envStateReturnedAt<OtherInfo>(
-	nodeId: NodeId,
-	graph: DataflowGraph,
-	outEnvironment: REnvironmentInformation,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): REnvironmentInformation | undefined {
+function envStateReturnedAt<OtherInfo>(nodeId: NodeId, graph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): REnvironmentInformation | undefined {
 	const vertex = graph.getVertex(nodeId);
 	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.NewEnv)) {
 		return createFreshEnvState(data, { graph, entryPoint: nodeId });
@@ -282,15 +272,9 @@ function envStateReturnedAt<OtherInfo>(
 		return undefined;
 	}
 	const environment = { environment: outEnvironment };
-	const fromList = DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? resolveListToEnvState(node, environment) : undefined;
-	if(fromList) {
-		return fromList;
-	}
-	const fromClass = DfgVertex.hasOrigin(vertex, BuiltInProcName.ClassGenerator) ? resolveClassMethodsToEnvState(node, environment) : undefined;
-	if(fromClass) {
-		return fromClass;
-	}
-	return RSymbol.is(node) ? Resolve.byNameAndType(node.content, outEnvironment, ReferenceType.Variable)?.find(hasEnvState)?.envState : undefined;
+	return (DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? resolveListToEnvState(node, environment) : undefined)
+		?? (DfgVertex.hasOrigin(vertex, BuiltInProcName.ClassGenerator) ? resolveClassMethodsToEnvState(node, environment) : undefined)
+		?? (RSymbol.is(node) ? Resolve.byNameAndType(node.content, outEnvironment, ReferenceType.Variable)?.find(hasEnvState)?.envState : undefined);
 }
 
 /** Retrieve the active environment when entering a function definition or call. */
@@ -332,12 +316,7 @@ function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[]
 }
 
 /** Resolves `refs` (open reads of a nested definition or call) against `environment`; `onResolved` handles each resolved reference and says whether it should stay in the returned "still open" list. */
-function resolveIngoingRefs(
-	refs: readonly IdentifierReference[],
-	environment: REnvironmentInformation,
-	onResolved: (ingoing: IdentifierReference, resolved: readonly IdentifierReference[]) => boolean,
-	method?: { readonly fn: NodeId, readonly graph: DataflowGraph }
-): IdentifierReference[] {
+function resolveIngoingRefs(refs: readonly IdentifierReference[], environment: REnvironmentInformation, onResolved: (ingoing: IdentifierReference, resolved: readonly IdentifierReference[]) => boolean, method?: { readonly fn: NodeId, readonly graph: DataflowGraph }): IdentifierReference[] {
 	let instance: readonly string[] | undefined | null = null;
 	return refs.filter(ingoing => {
 		instance ??= method?.graph.idMap === undefined ? undefined : instanceBindingsOfMethod(method.fn, method.graph, method.graph.idMap);
@@ -407,10 +386,6 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 /** Whether an enclosing scope binds the name of a call within a closure before the closure exists, see {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out, whatever the end of the script binds there. */
 export function callBoundInScope(call: NodeId, graph: DataflowGraph): boolean {
 	return !graph.isRoot(call) && Dataflow.targetsOf(graph, call, EdgeType.Reads).some(r => boundBeforeClosure(r, call, graph));
-}
-
-function boundCallTargets(call: NodeId, graph: DataflowGraph): NodeId[] | undefined {
-	return callBoundInScope(call, graph) ? [...getAllLinkedFunctionDefinitions(new Set(Dataflow.targetsOf(graph, call, EdgeType.Reads)), graph)[0]].map(d => d.id) : undefined;
 }
 
 /** Whether the local definition `def` is made before the closure holding the read `read` is created, on every way there: `h <- function() 2; g <- function() h()` binds `h` in the scope before `g` exists, so no call of `g` looks past the scope for it. */
@@ -695,11 +670,7 @@ function nextMethodsPerCall(next: NodeId, owner: NodeId, dispatch: NodeId, conte
  * Update the closure links of all nested function calls, done once at the end of the script.
  * @lintIgnore vertex-has-origin
  */
-export function updateNestedFunctionCalls(
-	graph: DataflowGraph,
-	outEnvironment: REnvironmentInformation,
-	ctx: FlowrAnalyzerContext
-) {
+export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironmentInformation, ctx: FlowrAnalyzerContext) {
 	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment, graph);
 	let rootDefinitions: DefaultMap<string, NodeId[]> | undefined;
 	const calls = graph.verticesOfType(VertexType.FunctionCall).toArray();
@@ -775,7 +746,7 @@ export function updateNestedFunctionCalls(
 		/* the dispatch is decided anew, from every method the name may reach */
 		delete (vertex as { ruledOut?: unknown }).ruledOut;
 		delete (vertex as { ruledOutAt?: unknown }).ruledOutAt;
-		const targets = new Set(boundCallTargets(id, graph) ?? Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
+		const targets = new Set(callBoundInScope(id, graph) ? linkedFunctionIds(new Set(Dataflow.targetsOf(graph, id, EdgeType.Reads)), graph) : Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a dispatch depends on the classes of its arguments, so it waits for the value flow to be linked */
 		const dispatches = origin.includes(BuiltInProcName.S3Dispatch) || narrower.reachesS4Method(targets) || mayDispatch && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf);
 		if(dispatches && !deferred.has(id)) {
@@ -981,13 +952,7 @@ export function updateNestedFunctionCalls(
 }
 
 /** Resolves each global read of a nested call where the enclosing function is called. */
-function linkLiftedReads(
-	graph: DataflowGraph,
-	lifted: [NodeId, IdentifierReference, NodeId][],
-	enclosingOf: (id: NodeId) => NodeId | undefined,
-	environmentAt: (call: NodeId) => REnvironmentInformation,
-	runsOnceAt: (call: NodeId) => RNode<ParentInformation> | undefined
-): void {
+function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierReference, NodeId][], enclosingOf: (id: NodeId) => NodeId | undefined, environmentAt: (call: NodeId) => REnvironmentInformation, runsOnceAt: (call: NodeId) => RNode<ParentInformation> | undefined): void {
 	/* the top-level calls that run a definition, through the calls of the functions that enclose its calls */
 	const topLevelCallsOf = memoize((start: NodeId) => {
 		const calls = new Set<NodeId>();

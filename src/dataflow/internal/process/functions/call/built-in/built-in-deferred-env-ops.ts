@@ -307,7 +307,7 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 		}
 		const names = op.names.map(n => namesAt(n, run, ctx));
 		const at = envAtCall(op.envir, environment, run);
-		if(at === undefined || names.some(n => n === undefined || n.length === 0) || (op.kind === EnvOpKind.Replace && at !== StackEnvKind.CallerFrame && !writesEnvironment(at, graph))) {
+		if(at === undefined || names.some(n => n === undefined || n.length === 0) || (op.kind === EnvOpKind.Replace && at !== StackEnvKind.CallerFrame && (typeof at !== 'object' || !at.holders.every(h => h.closureFrame === true || holdsValueOf(h, graph, EnvironmentProducers))))) {
 			continue;
 		}
 		const all = [...op.literals, ...names.flat() as string[]];
@@ -389,11 +389,6 @@ export function replayedAt(write: NodeId, fn: DataflowGraphVertexFunctionDefinit
 	}
 	const value = valueAt(op.value, { fn, via: call, direct: true, graph, idMap: graph.idMap });
 	return Dataflow.hasEdge(graph, value, call, EdgeType.SideEffectOnCall);
-}
-
-/** Whether a replacement into `at` writes into an environment: the frame of a closure, or what every holder surely holds as one. */
-function writesEnvironment(at: EnvAtCall, graph: DataflowGraph): boolean {
-	return typeof at === 'object' && at.holders.every(h => h.closureFrame === true || holdsValueOf(h, graph, EnvironmentProducers));
 }
 
 /** What a definition of the value `vertex` binds, as an assignment does: a function, a value, or what a read, call, or other definition hands on. */

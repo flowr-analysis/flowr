@@ -50,23 +50,11 @@ export interface EnvirResolution<OtherInfo> {
 }
 
 
-function resolveDefsToEnvirResolution<OtherInfo>(
-	defs:   readonly IdentifierDefinition[] | undefined,
-	nodeId: NodeId,
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirArgRouting<OtherInfo> {
+function resolveDefsToEnvirResolution<OtherInfo>(defs: readonly IdentifierDefinition[] | undefined, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirArgRouting<OtherInfo> {
 	if(!defs || defs.length === 0) {
 		return undefined;
 	}
 	const inDefs = defs as readonly InGraphIdentifierDefinition[];
-	if(inDefs.length === 1) {
-		const envState = inDefs[0].envState;
-		if(!envState) {
-			return undefined;
-		}
-		const envDef = inDefs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
-		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: stackKindOf(envState) };
-	}
 	if(!inDefs.every(hasEnvState)) {
 		return undefined;
 	}
@@ -86,33 +74,17 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 			}
 		}
 	}
-	const envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation } = {
-		...(inDefs[0] as NamedInGraphIdentifierDefinition),
-		envState: mergedEnvState
-	};
-	return {
-		envirData:   { ...data, environment: mergedEnvState },
-		envDef,
-		envirNodeId: nodeId,
-		stack
-	};
+	return { envirData: { ...data, environment: mergedEnvState }, envDef: { ...inDefs[0] as NamedInGraphIdentifierDefinition, envState: mergedEnvState }, envirNodeId: nodeId, stack };
 }
 
 /** The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. */
-export function signatureParamNames<OtherInfo>(
-	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	id:       Identifier,
-	fallback: readonly string[]
-): readonly string[] {
+export function signatureParamNames<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, id: Identifier, fallback: readonly string[]): readonly string[] {
 	const names = data.ctx.deps.signatures().parametersOf(id) ?? [];
 	return names.length > 0 ? names : fallback;
 }
 
 /** desugars `lhs |> rhs(...)` one level to `rhs(lhs, ...)`, for literal-shape inspection */
-export function pipedCall<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): RFunctionCall<OtherInfo & ParentInformation> & { named: true } | undefined {
+export function pipedCall<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RFunctionCall<OtherInfo & ParentInformation> & { named: true } | undefined {
 	if(!RPipe.is(node) || !RFunctionCall.isNamed(node.rhs)) {
 		return undefined;
 	}
@@ -121,10 +93,7 @@ export function pipedCall<OtherInfo>(
 }
 
 /** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the fold is user-shadowed. */
-export function resolveConstantString<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): string | undefined {
+export function resolveConstantString<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string | undefined {
 	const piped = pipedCall(node, data);
 	return NodeValue.singleStringOf(piped ?? node, data);
 }
@@ -143,10 +112,7 @@ export function envirOf<OtherInfo>(routing: EnvirArgRouting<OtherInfo>): EnvirRe
 }
 
 /** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirArgRouting}. */
-export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
-	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirArgRouting<OtherInfo> {
+export function resolveArgToEnvirOrAmbiguous<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirArgRouting<OtherInfo> {
 	if(RArgument.isEmpty(arg)) {
 		return undefined;
 	}
@@ -170,30 +136,18 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(
 }
 
 /** `environment(fn)` names the frame the closure `fn` holds, tracked as the environment state of the variable holding the closure: what is written into the frame is read by the closure once it is called (see {@link linkClosureFrameReads}). */
-export function closureFrameResolution<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation> | undefined,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirResolution<OtherInfo> | undefined {
-	const holder = closureFrameHolder(node, data);
-	if(holder === undefined) {
-		return undefined;
-	}
-	const envDef = { ...holder.def, envState: holder.def.envState ?? REnvironment.pushLocal(data.environment), envId: holder.def.envId ?? holder.def.nodeId, closureFrame: true } as const;
-	return { envirData: { ...data, environment: envDef.envState }, envDef, envirNodeId: holder.call };
-}
-
-/** The single variable holding the closure `fn` of an `environment(fn)` call. */
-function closureFrameHolder<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation> | undefined,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): { readonly def: NamedInGraphIdentifierDefinition, readonly call: NodeId } | undefined {
+export function closureFrameResolution<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
 	if(!RFunctionCall.isNamed(node, 'environment') || node.arguments.length !== 1 || !Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function)) {
 		return undefined;
 	}
 	const fn = RArgument.valueOf(node.arguments[0]);
 	const defs = RSymbol.is(fn) ? Resolve.byName(fn.content, data.environment) : undefined;
-	const def = defs?.length === 1 ? defs[0] as InGraphIdentifierDefinition : undefined;
-	return fn === undefined || def?.name === undefined || NodeId.isBuiltIn(def.definedAt) ? undefined : { def: def as NamedInGraphIdentifierDefinition, call: node.info.id };
+	const def = defs?.length === 1 ? defs[0] as NamedInGraphIdentifierDefinition : undefined;
+	if(def?.name === undefined || NodeId.isBuiltIn(def.definedAt)) {
+		return undefined;
+	}
+	const envDef = { ...def, envState: def.envState ?? REnvironment.pushLocal(data.environment), envId: def.envId ?? def.nodeId, closureFrame: true } as const;
+	return { envirData: { ...data, environment: envDef.envState }, envDef, envirNodeId: node.info.id };
 }
 
 /** A call of a closure whose frame was written (see {@link closureFrameResolution}) reads those writes wherever its body reads a name it does not bind itself. */
@@ -226,42 +180,23 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 }
 
 /** A free variable of a function body names an environment bound only once the function is called: what the body writes into it escapes the function like a `<<-` would, and the call adds it to the environment the name holds there. */
-function freeEnvirResolution<OtherInfo>(
-	name:   Identifier,
-	nodeId: NodeId,
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirResolution<OtherInfo> {
+function freeEnvirResolution<OtherInfo>(name: Identifier, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> {
 	const envState = REnvironment.pushLocal(data.environment);
 	const envDef = { name, nodeId, type: ReferenceType.Variable, definedAt: nodeId, cds: data.cds, envState, envWrites: true } as const;
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId };
 }
 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
-function stackEnvirResolution<OtherInfo>(
-	envState: REnvironmentInformation,
-	nodeId:   NodeId,
-	lexeme:   string,
-	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirResolution<OtherInfo> {
+function stackEnvirResolution<OtherInfo>(envState: REnvironmentInformation, nodeId: NodeId, lexeme: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
-	const envDef = {
-		name:      lexeme,
-		nodeId,
-		type:      ReferenceType.Variable,
-		definedAt: nodeId,
-		envState,
-	} as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+	const envDef = { name: lexeme, nodeId, type: ReferenceType.Variable, definedAt: nodeId, envState } as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: envState.current.globalEnv === true ? 'global' : 'base' };
 }
 
 /** The slots `envir` falls back to (`envir = as.environment(pos)`), so an environment handed to one of them is the target as well. */
 export const EnvirPositionFormals: readonly string[] = ['pos', 'where'];
 
-function envirArgOf<OtherInfo>(
-	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	bound:  BoundFormals<OtherInfo> | undefined,
-	formal: string
-): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
+function envirArgOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], bound: BoundFormals<OtherInfo> | undefined, formal: string): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
 	if(bound !== undefined) {
 		return bound.get(formal);
 	}
@@ -275,38 +210,23 @@ function envirArgOf<OtherInfo>(
 
 type BoundFormals<OtherInfo> = ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>;
 
-function bindFormals<OtherInfo>(
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	sig:  FnSig | undefined
-): BoundFormals<OtherInfo> | undefined {
+function bindFormals<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], sig: FnSig | undefined): BoundFormals<OtherInfo> | undefined {
 	return sig === undefined ? undefined : MatchArgs.toNames(args, FnSig.layout(sig).names);
 }
 
 /** Resolves the argument bound to `formal` (default `'envir'`) to an {@link EnvirArgRouting}. */
-export function resolveEnvirArgOrAmbiguous<OtherInfo>(
-	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	sig:    FnSig | undefined,
-	formal = 'envir'
-): EnvirArgRouting<OtherInfo> {
+export function resolveEnvirArgOrAmbiguous<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sig: FnSig | undefined, formal = 'envir'): EnvirArgRouting<OtherInfo> {
 	const arg = envirArgOf(args, bindFormals(args, sig), formal);
 	return arg === undefined ? undefined : resolveArgToEnvirOrAmbiguous(arg, data);
 }
 
 /** Whether the call supplies an argument for any of `formals` at all, however it resolves. */
-export function suppliesArg<OtherInfo>(
-	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	sig:     FnSig | undefined,
-	formals: readonly string[]
-): boolean {
+export function suppliesArg<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], sig: FnSig | undefined, formals: readonly string[]): boolean {
 	const bound = bindFormals(args, sig);
 	return formals.some(formal => envirArgOf(args, bound, formal) !== undefined);
 }
 
-function globalPositionOf<OtherInfo>(
-	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): EnvirResolution<OtherInfo> | undefined {
+function globalPositionOf<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
 	const node = RArgument.valueOf(arg);
 	const value = node === undefined ? undefined : NodeValue.soleOf(node.info.id, data);
 	if(node === undefined || value === undefined || RValue.numberOf(value) !== 1) {
@@ -316,21 +236,12 @@ function globalPositionOf<OtherInfo>(
 }
 
 /** The environment the argument `arg` given for `formal` names, where a position formal may name the global environment by its number. */
-export function resolveEnvirOrPosition<OtherInfo>(
-	arg:    PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
-	formal: string,
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
-): EnvirResolution<OtherInfo> | undefined {
+export function resolveEnvirOrPosition<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, formal: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
 	return envirOf(resolveArgToEnvirOrAmbiguous(arg, data)) ?? (EnvirPositionFormals.includes(formal) ? globalPositionOf(arg, data) : undefined);
 }
 
 /** The first of `formals` whose argument resolves to a tracked environment; ambiguity is left to the caller. */
-export function resolveFirstEnvirArg<OtherInfo>(
-	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	data:    DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	sig:     FnSig | undefined,
-	formals: readonly string[]
-): EnvirResolution<OtherInfo> | undefined {
+export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sig: FnSig | undefined, formals: readonly string[]): EnvirResolution<OtherInfo> | undefined {
 	const bound = bindFormals(args, sig);
 	for(const formal of formals) {
 		const arg = envirArgOf(args, bound, formal);
@@ -346,11 +257,7 @@ export function resolveFirstEnvirArg<OtherInfo>(
 }
 
 /** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess; reports whether it did. */
-export function unknownIfAmbiguous<OtherInfo>(
-	routing: EnvirArgRouting<OtherInfo>,
-	result:  DataflowInformation,
-	rootId:  NodeId
-): boolean {
+export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId): boolean {
 	if(routing !== 'ambiguous') {
 		return false;
 	}
@@ -359,11 +266,7 @@ export function unknownIfAmbiguous<OtherInfo>(
 }
 
 /** Resolves a symbol by name to an {@link EnvirResolution} when it holds a tracked environment. */
-export function resolveSymbolToEnvir<OtherInfo>(
-	symbolName: Identifier,
-	nodeId:     NodeId,
-	data:       DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): EnvirResolution<OtherInfo> | undefined {
+export function resolveSymbolToEnvir<OtherInfo>(symbolName: Identifier, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
 	return envirOf(resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data));
 }
 
@@ -375,13 +278,9 @@ function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): 
 	);
 }
 
-function holdersOf(
-	environment: REnvironmentInformation,
-	envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }
-): readonly (NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation })[] {
+function holdersOf(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }): readonly (NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation })[] {
 	const holders = [envDef];
-	let env: Environment | undefined = environment.current;
-	while(env !== undefined && !env.builtInEnv) {
+	for(let env: Environment | undefined = environment.current; env !== undefined && !env.builtInEnv; env = env.globalEnv ? undefined : env.parent) {
 		for(const defs of env.memory.values()) {
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				/* a copy (`g <- e`) holds the same environment object, even once one of them saw a write, as does the variable it was copied from */
@@ -390,21 +289,11 @@ function holdersOf(
 				}
 			}
 		}
-		if(env.globalEnv) {
-			break;
-		}
-		env = env.parent;
 	}
 	return holders;
 }
 
-function routeWrittenToCustomEnv(
-	result:            DataflowInformation,
-	envDef:            NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },
-	newDefAt:          NodeId,
-	callerEnvironment: REnvironmentInformation,
-	definedAt?:        NodeId
-): DataflowInformation {
+function routeWrittenToCustomEnv(result: DataflowInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, newDefAt: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
 	const written = writtenDefinitionsOf(result, definedAt);
 
 	let newEnvState = envDef.envState;
@@ -521,12 +410,7 @@ export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], ca
 }
 
 /** Routes writes into a real stack env's frame chain, the same way `<<-` reaches an outer scope. */
-export function routeWrittenToStackEnv(
-	result:    DataflowInformation,
-	into:      REnvironmentInformation,
-	rootId:    NodeId,
-	definedAt?: NodeId
-): DataflowInformation {
+export function routeWrittenToStackEnv(result: DataflowInformation, into: REnvironmentInformation, rootId: NodeId, definedAt?: NodeId): DataflowInformation {
 	const written = writtenDefinitionsOf(result, definedAt);
 	let environment = into;
 	for(const w of written) {
@@ -537,13 +421,7 @@ export function routeWrittenToStackEnv(
 }
 
 /** Routes writes under a resolved `envir=` to the real stack frame or a tracked custom env, and adds the `Reads` edge from `rootId` to the envir argument. */
-export function routeWrittenToEnvir<OtherInfo>(
-	result:            DataflowInformation,
-	resolution:        EnvirResolution<OtherInfo>,
-	rootId:            NodeId,
-	callerEnvironment: REnvironmentInformation,
-	definedAt?:        NodeId
-): DataflowInformation {
+export function routeWrittenToEnvir<OtherInfo>(result: DataflowInformation, resolution: EnvirResolution<OtherInfo>, rootId: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
 	let routed: DataflowInformation;
 	if(resolution.stack !== undefined) {
 		routed = resolution.stack === 'global' ? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt) : result;
@@ -554,35 +432,15 @@ export function routeWrittenToEnvir<OtherInfo>(
 	return routed;
 }
 
-/** A `search()` position must be an integer and may never displace the global environment (R rejects `pos = 1`). */
-function clampAttachPosition(pos: number): number | undefined {
-	return Number.isFinite(pos) ? Math.max(DefaultAttachPosition, Math.trunc(pos)) : undefined;
-}
-
 /** The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of an existing entry (`pos = "package:base"`). */
-export function resolveAttachPosition<OtherInfo>(
-	posId: NodeId | undefined,
-	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
-): number | undefined {
-	if(posId === undefined) {
-		return undefined;
+export function resolveAttachPosition<OtherInfo>(posId: NodeId | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): number | undefined {
+	const element = posId === undefined ? undefined : NodeValue.soleOf(posId, data);
+	const asNumber = element === undefined ? undefined : RValue.numberOf(element);
+	const asString = element === undefined || asNumber !== undefined ? undefined : RValue.stringOf(element);
+	const position = asNumber ?? (asString === undefined ? undefined : REnvironment.searchPosition(data.environment.current, asString));
+	if(position === undefined && asString !== undefined) {
+		dataflowLogger.warn(`search-path entry '${asString}' does not exist, attaching at the default position`);
 	}
-	const element = NodeValue.soleOf(posId, data);
-	if(element === undefined) {
-		return undefined;
-	}
-	const asNumber = RValue.numberOf(element);
-	if(asNumber !== undefined) {
-		return clampAttachPosition(asNumber);
-	}
-	const asString = RValue.stringOf(element);
-	if(asString !== undefined) {
-		const found = REnvironment.searchPosition(data.environment.current, asString);
-		if(found === undefined) {
-			dataflowLogger.warn(`search-path entry '${asString}' does not exist, attaching at the default position`);
-			return undefined;
-		}
-		return clampAttachPosition(found);
-	}
-	return undefined;
+	/* it must be an integer and may never displace the global environment (R rejects `pos = 1`) */
+	return position !== undefined && Number.isFinite(position) ? Math.max(DefaultAttachPosition, Math.trunc(position)) : undefined;
 }

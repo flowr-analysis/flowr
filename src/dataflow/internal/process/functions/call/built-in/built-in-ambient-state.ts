@@ -15,7 +15,7 @@ import { RConstant, RLoopConstructs, RNode } from '../../../../../../r-bridge/la
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RUnaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RValue, type Value } from '../../../../../eval/values/r-value';
+import { RValue } from '../../../../../eval/values/r-value';
 import { MatchArgs } from '../../../../../graph/match-args';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -116,13 +116,7 @@ export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId
 }
 
 /** Adds the reads and writes of the ambient state to what a call does, see {@link AmbientStateName}. */
-function withAccess<OtherInfo>(
-	res: DataflowInformation,
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	reads: readonly string[],
-	writes: readonly (string | AmbientWrite)[] = []
-): DataflowInformation {
+function withAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, reads: readonly string[], writes: readonly (string | AmbientWrite)[] = []): DataflowInformation {
 	if(reads.length === 0 && writes.length === 0) {
 		return res;
 	}
@@ -371,13 +365,7 @@ export function drawingWritesDevice(config: FlowrConfig): boolean {
 }
 
 /** Wires the {@link AmbientStateAccess} of a call into its dataflow information: reads become unknown references, writes define the pseudo variable globally. */
-export function applyAmbientStateAccess<OtherInfo>(
-	res: DataflowInformation,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] | UnknownArguments,
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	access: AmbientStateAccess | readonly AmbientStateAccess[]
-): DataflowInformation {
+export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] | UnknownArguments, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, access: AmbientStateAccess | readonly AmbientStateAccess[]): DataflowInformation {
 	if(!('type' in access)) {
 		return access.reduce((r, a) => applyAmbientStateAccess(r, args, rootId, data, a), res);
 	} else if(args === UnknownArguments) {
@@ -820,12 +808,7 @@ export function readsOfHiddenBuiltIn(target: IdentifierDefinition): string[] {
 	return hiddenAccess(target).flatMap(a => unknownArgumentAccess(a, false).reads);
 }
 
-function setOptions<OtherInfo>(
-	res: DataflowInformation,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): DataflowInformation {
+function setOptions<OtherInfo>(res: DataflowInformation, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const queried: string[] = [];
 	const written: string[] = [];
 	let warnsAsErrors = false;
@@ -839,7 +822,7 @@ function setOptions<OtherInfo>(
 			const key = Identifier.getName(arg.name.content);
 			written.push(AmbientStateName.option(key));
 			global ||= GlobalEffectOptions.has(key);
-			warnsAsErrors ||= key === 'warn' && !NodeValue.setOf(arg.value?.info.id, data)?.elements.every(belowTwo);
+			warnsAsErrors ||= key === 'warn' && !NodeValue.setOf(arg.value?.info.id, data)?.elements.every(value => value.type === 'logical' || (RValue.numberOf(value) ?? 2) < 2);
 		} else if(RString.is(arg.value)) {
 			queried.push(arg.value.content.str);
 		} else {
@@ -944,13 +927,7 @@ export interface AmbientScope {
 }
 
 /** The processor for an {@link AmbientScope}. */
-export function processAmbientScope<OtherInfo>(
-	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	scope: AmbientScope
-): DataflowInformation {
+export function processAmbientScope<OtherInfo>(name: RSymbol<OtherInfo & ParentInformation>, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, scope: AmbientScope): DataflowInformation {
 	const bound = MatchArgs.toNames(args, scope.params);
 	const code = scope.code === undefined ? undefined : bound.get(scope.code);
 	const codeIndex = code === undefined ? -1 : args.findIndex(a => a !== EmptyArgument && a.info.id === code.info.id);
@@ -1117,11 +1094,6 @@ export function applyAmbientStateOfCalledBuiltIns<OtherInfo>(res: DataflowInform
 		}
 	}
 	return res;
-}
-
-/** whether R reads the value as a `warn` level below 2, so warnings stay warnings */
-function belowTwo(value: Value): boolean {
-	return value.type === 'logical' || (RValue.numberOf(value) ?? 2) < 2;
 }
 
 /** The writes that may set `warn` to 2 or more before or within what turns `before` into `after`. */

@@ -1,5 +1,6 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../../../dataflow/environments/identifier';
 import type { CallNameTypes, LinkTo } from '../../call-context-query/call-context-query-format';
+import type { ResolveMode } from '../../../../dataflow/eval/resolve/resolve-argument';
 
 /** when to read the argument value from a linked function */
 export enum DependencyInfoLinkConstraint {
@@ -18,7 +19,7 @@ export interface FunctionArgInfo {
 	/** the index if the argument can be positional, unnamed in case of something like `...`, if the argument must be given with the name, please leave undefined */
 	argIdx?:       number | 'unnamed'
 	argName?:      BrandedIdentifier
-	resolveValue?: boolean | 'library'
+	resolveValue?: ResolveMode
 }
 
 /** Describes a function that may create a dependency */

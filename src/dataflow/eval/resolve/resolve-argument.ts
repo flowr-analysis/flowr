@@ -26,8 +26,13 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { appliedArguments } from '../../graph/applied-arguments';
 import type { CallContext } from './alias-tracking';
 
+/** Which argument a value is read from: by index, all unnamed ones, or `undefined` for all. */
+export type ArgumentPosition = number | 'unnamed' | undefined;
+/** How the value of an argument is read: as it stands, resolved along the dataflow, or as a package name that may be given bare. */
+export type ResolveMode = boolean | 'library';
+
 /** The index of the argument of `vertex` that binds the formal `argumentName`, R's matching when the formals are known and the `argumentIndex`-th unnamed argument otherwise. */
-export function boundArgumentIndex<Idx extends number | 'unnamed' | undefined>(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argumentIndex: Idx, argumentName: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext, formals?: readonly BrandedIdentifier[]): Idx | number {
+export function boundArgumentIndex<Idx extends ArgumentPosition>(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argumentIndex: Idx, argumentName: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext, formals?: readonly BrandedIdentifier[]): Idx | number {
 	/* an exact name binds its formal whatever else the call does, so this needs no formals */
 	const exact = vertex.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
 	if(exact >= 0) {
@@ -55,9 +60,9 @@ export function getArgumentStringValue(
 	variableResolve: VariableResolve,
 	graph: DataflowGraph,
 	vertex: DataflowGraphVertexFunctionCall,
-	argumentIndex: number | 'unnamed' | undefined,
+	argumentIndex: ArgumentPosition,
 	argumentName: BrandedIdentifier | undefined,
-	resolveValue: boolean | 'library' | undefined,
+	resolveValue: ResolveMode | undefined,
 	ctx: ReadOnlyFlowrAnalyzerContext,
 	formals?: readonly BrandedIdentifier[],
 	callContext?: CallContext,
@@ -71,9 +76,9 @@ function argumentStringValues(
 	variableResolve: VariableResolve,
 	graph: DataflowGraph,
 	vertex: DataflowGraphVertexFunctionCall,
-	argumentIndex: number | 'unnamed' | undefined,
+	argumentIndex: ArgumentPosition,
 	argumentName: BrandedIdentifier | undefined,
-	resolveValue: boolean | 'library' | undefined,
+	resolveValue: ResolveMode | undefined,
 	ctx: ReadOnlyFlowrAnalyzerContext,
 	formals: readonly BrandedIdentifier[] | undefined,
 	callContext: CallContext | undefined,
@@ -109,7 +114,7 @@ function argumentStringValues(
 }
 
 /** The values of the argument `ref` passes to `vertex`, falling back to the resource a call it reads from opens, and to {@link Unknown}. */
-function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, ref: NodeId | undefined, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext, formals: readonly BrandedIdentifier[] | undefined, callContext: CallContext | undefined, opening: ReadonlySet<NodeId>, opened: OpenedResources | undefined): Set<string | undefined> | undefined {
+function argumentValues(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, ref: NodeId | undefined, resolveValue: ResolveMode | undefined, ctx: ReadOnlyFlowrAnalyzerContext, formals: readonly BrandedIdentifier[] | undefined, callContext: CallContext | undefined, opening: ReadonlySet<NodeId>, opened: OpenedResources | undefined): Set<string | undefined> | undefined {
 	const valueNode = ref === undefined ? undefined : RArgument.valueOf(graph.idMap?.get(ref));
 	if(valueNode === undefined) {
 		return undefined;
@@ -167,7 +172,7 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	return hasTrue && hasFalse ? 'maybe' : hasTrue;
 }
 
-function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext, formals: readonly BrandedIdentifier[] | undefined, callContext: CallContext | undefined): string[] | undefined {
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, resolveValue: ResolveMode | undefined, ctx: ReadOnlyFlowrAnalyzerContext, formals: readonly BrandedIdentifier[] | undefined, callContext: CallContext | undefined): string[] | undefined {
 	let full = !!resolveValue;
 	if(resolveValue === 'library' && hasCharacterOnly(variableResolve, graph, vertex, ctx, formals) === false) {
 		if(RSymbol.is(argument)) {

@@ -8,7 +8,7 @@ import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
-import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
+import { getArgumentStringValue, type ResolveMode } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
@@ -127,7 +127,7 @@ export function hasArgumentValue(
 	fnVertex: DataflowGraphVertexFunctionCall,
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	dataflow: DataflowGraph,
-	resolveValue: boolean | 'library' | undefined,
+	resolveValue: ResolveMode | undefined,
 	argName?: BrandedIdentifier,
 	argIdx?: number | 'unnamed'): Ternary {
 	const args = getArgumentStringValue(

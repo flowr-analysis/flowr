@@ -199,11 +199,11 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 }
 
 /**
- * Gets the search generator function for the given name
+ * Runs the search generator described by the given node
  */
-export function getGenerator<Name extends GeneratorNames>(name: Name): typeof generators[Name] {
-	if(!generators[name]) {
-		throw new Error(`Unknown generator: ${name}`);
+export function runGenerator(node: FlowrSearchGeneratorNode, input: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
+	if(!generators[node.name]) {
+		throw new Error(`Unknown generator: ${node.name}`);
 	}
-	return generators[name];
+	return (generators[node.name] as (input: ReadonlyFlowrAnalysisProvider, args: typeof node.args) => Promise<FlowrSearchElements<ParentInformation>>)(input, node.args);
 }

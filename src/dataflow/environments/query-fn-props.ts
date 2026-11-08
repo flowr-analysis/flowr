@@ -9,7 +9,7 @@ import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { REnvironmentInformation } from './environment';
 import { REnvironment } from './environment';
-import type { BrandedIdentifier, IdentifierDefinition } from './identifier';
+import type { BrandedIdentifier, IdentifierDefinition, BrandedNamespace } from './identifier';
 import { Identifier, PkgName, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
@@ -73,7 +73,7 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 		if(d.type !== ReferenceType.BuiltInFunction) {
 			continue;
 		}
-		const info = d.config as BuiltInFnInfo | undefined;
+		const info: BuiltInFnInfo | undefined = d.config;
 		sig ??= info?.sig;
 		stated = FunctionSemantics.call.props.join(stated, info);
 		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
@@ -109,13 +109,13 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
 export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identifier) => BuiltInFnInfo | undefined {
 	const environment = ctx?.env.makeCleanEnv();
 	/* keyed by namespace and name, as `stats::filter` and `dplyr::filter` are not the same function */
-	const known = new Map<string | undefined, Map<string, BuiltInFnInfo | undefined>>();
+	const known = new Map<BrandedNamespace | undefined, Map<BrandedIdentifier, BuiltInFnInfo | undefined>>();
 	return name => {
 		const namespace = Identifier.getNamespace(name);
 		const key = Identifier.getName(name);
 		let bucket = known.get(namespace);
 		if(bucket === undefined) {
-			bucket = new Map<string, BuiltInFnInfo | undefined>();
+			bucket = new Map<BrandedIdentifier, BuiltInFnInfo | undefined>();
 			known.set(namespace, bucket);
 		}
 		if(!bucket.has(key)) {
@@ -156,13 +156,13 @@ export function quotedForWorker(id: NodeId, graph: DataflowGraph, index: BuiltIn
 }
 
 /** What the signature database implies for a package function: what its own entry states (see {@link fnInfoFromSignature}) plus the {@link PropagatedProps} of everything it calls, transitively. */
-export function inferFnProps(src: PackageSignatureSource, pkg: string, name: string, version?: string): BuiltInFnInfo | undefined {
+export function inferFnProps(src: PackageSignatureSource, pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): BuiltInFnInfo | undefined {
 	const fn = src.functionByName(pkg, name, version);
 	return fn === undefined ? undefined : propsOfSignature(src, fn, pkg, version);
 }
 
 /** {@link inferFnProps} for an already decoded entry, so a lookup that found one does not repeat it. */
-function propsOfSignature(src: PackageSignatureSource, fn: DecodedFunction, pkg: string, version?: string): BuiltInFnInfo {
+function propsOfSignature(src: PackageSignatureSource, fn: DecodedFunction, pkg: BrandedNamespace, version?: string): BuiltInFnInfo {
 	const own = fnInfoFromSignature(fn);
 	const known = BuiltInIndex.default();
 	let props = own;
@@ -177,11 +177,11 @@ export interface FnInfo extends BuiltInFnInfo {
 	/** the identifier the answer is for, with the namespace filled in when an unqualified ask resolved to a package */
 	readonly name:       Identifier
 	/** the package the answer is for, `undefined` when the name resolves to no package at all */
-	readonly package?:   string
+	readonly package?:   BrandedNamespace
 	/** the package version the answer is for, i.e. the one the analysis assumes; see {@link SignatureDb.versionOf} */
 	readonly version?:   string
 	/** the formal names in order, empty when neither source declares any */
-	readonly parameters: readonly string[]
+	readonly parameters: readonly BrandedIdentifier[]
 	/** whether flowR's own built-in definitions state anything about the name */
 	readonly builtIn:    boolean
 	/** whether flowR's value solver can fold a call of it to a constant */
@@ -222,7 +222,7 @@ export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, vers
 }
 
 /** The package {@link fnInfo} answers `name` for and the signature database entry it finds there, without the props of everything the entry calls, for a caller after the formals or the entry alone. */
-export function fnEntry(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): { readonly pkg?: string, readonly qualified: Identifier, readonly entry?: DecodedFunction } {
+export function fnEntry(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): { readonly pkg?: BrandedNamespace, readonly qualified: Identifier, readonly entry?: DecodedFunction } {
 	const db = signatureDbOf(ctx.deps);
 	const available = db.available();
 	const [bare, namespace, internal] = Identifier.toArray(name);
@@ -239,10 +239,10 @@ function nonEmpty<T extends { readonly length: number }>(of: T | undefined): T |
 }
 
 /** The package an unqualified `name` is answered for. */
-function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): string | undefined {
-	let best: string | undefined;
+function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
+	let best: BrandedNamespace | undefined;
 	let bestRank = Number.MAX_SAFE_INTEGER;
-	let pulled: ReadonlySet<string> | undefined;
+	let pulled: ReadonlySet<BrandedNamespace> | undefined;
 	for(const pkg of ctx.deps.packagesExporting(name)) {
 		const attached = pkg === PkgName.Base || AttachedBasePackageSet.has(pkg);
 		if(!attached) {
@@ -290,7 +290,7 @@ export interface BuiltInParam {
 	readonly call:  Identifier
 	/** the position it is declared at; a `...` parameter covers every position from here on */
 	readonly index: number
-	readonly name:  string
+	readonly name:  BrandedIdentifier
 	readonly props: ArgProps
 }
 
@@ -301,7 +301,7 @@ function entryOfDefinition(definition: BuiltInDefinition): readonly IndexedEntry
 	if(definition.type === 'constant') {
 		return [];
 	}
-	const info = definition.config as BuiltInFnInfo | undefined;
+	const info: BuiltInFnInfo | undefined = definition.config;
 	const foldable = definition.type === 'function' && definition.evalHandler !== undefined;
 	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable, overrides: definition.overrides }));
 }
@@ -316,7 +316,7 @@ function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 				if(d.type !== ReferenceType.BuiltInFunction) {
 					continue;
 				}
-				const info = d.config as BuiltInFnInfo | undefined;
+				const info: BuiltInFnInfo | undefined = d.config;
 				const namespace = (d.name === undefined ? undefined : Identifier.getNamespace(d.name)) ?? pkg;
 				const name = namespace === undefined ? d.name ?? registered : Identifier.make(registered, namespace);
 				out.push({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
@@ -358,16 +358,16 @@ export class BuiltInIndex {
 	/** every built-in the index knows, one entry per namespace and name */
 	public readonly entries: readonly BuiltInEntry[];
 	/** the entry an unqualified name resolves to, the one R's default search path would find */
-	private readonly byName = new Map<string, BuiltInEntry>();
+	private readonly byName = new Map<BrandedIdentifier, BuiltInEntry>();
 	/** namespace to name to entry, so a qualified name is two lookups and no string built to ask */
-	private readonly byNamespace = new Map<string, Map<string, BuiltInEntry>>();
+	private readonly byNamespace = new Map<BrandedNamespace, Map<BrandedIdentifier, BuiltInEntry>>();
 	private readonly cache = new Map<string, readonly Identifier[]>();
 	public readonly derived = new Map<unknown, unknown>();
 
 	private constructor(definitions: readonly IndexedEntry[]) {
-		const unqualified = new Map<string, BuiltInEntry>();
+		const unqualified = new Map<BrandedIdentifier, BuiltInEntry>();
 		/* where each name was first seen, so the entries keep the order the definitions come in */
-		const order: [Map<string, BuiltInEntry>, string][] = [];
+		const order: [Map<BrandedIdentifier, BuiltInEntry>, BrandedIdentifier][] = [];
 		for(const e of definitions) {
 			const name = Identifier.getName(e.name);
 			const namespace = Identifier.getNamespace(e.name);
@@ -375,7 +375,7 @@ export class BuiltInIndex {
 			if(namespace !== undefined) {
 				const inNamespace = this.byNamespace.get(namespace);
 				if(inNamespace === undefined) {
-					bucket = new Map<string, BuiltInEntry>();
+					bucket = new Map<BrandedIdentifier, BuiltInEntry>();
 					this.byNamespace.set(namespace, bucket);
 				} else {
 					bucket = inNamespace;

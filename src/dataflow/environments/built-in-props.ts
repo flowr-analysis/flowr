@@ -1,6 +1,9 @@
+import type { AmbientScope, AmbientStateAccess } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
 import { Ternary } from '../../util/logic';
+import type { BrandedIdentifier } from './identifier';
 
 /** What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault} lead, being the two bits the signature database can also state). */
 export enum ArgProp {
@@ -345,7 +348,7 @@ export const CallProps = {
 } as const;
 
 /** The formals of a built-in, in the order they are declared in, each with what its argument is used for. */
-export type FnSig = [name: string, props: ArgProps][];
+export type FnSig = [name: BrandedIdentifier, props: ArgProps][];
 
 /** The signature of a call that evaluates every argument and states nothing else, which is all that is known about a callee flowR cannot resolve. */
 const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
@@ -439,20 +442,27 @@ export const ArgProps = {
 
 /** Semantics of a built-in that hold no matter which processor handles the call. */
 export interface BuiltInFnInfo extends StatedProps {
+	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientStateAccess} */
+	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[]
+	/** the call changes that state for a scope only, see {@link AmbientScope} */
+	readonly scope?:                 AmbientScope
+	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
+	/** The condition classes a call signals when every argument it is handed is a constant, like `simpleError`, `error`, and `condition` for `stop("x")`. */
+	readonly signals?:               readonly string[]
 	/** the parameters and what each of their arguments is used for */
-	readonly sig?:             FnSig
+	readonly sig?:                   FnSig
 	/** keep the environment on the call vertex, for a later pass to look names up in */
-	readonly keepEnvironment?: boolean
+	readonly keepEnvironment?:       boolean
 	/** What this call lets the function around it reach about its own formals without naming one of them, e.g. `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}. */
-	readonly frame?:           ArgProps
+	readonly frame?:                 ArgProps
 	/** the generics the call may dispatch to on (parts of) its arguments, like `as.character` for `paste` or `format` for the columns `print` shows of a data frame; any method of them may run */
-	readonly dispatches?:      string[]
+	readonly dispatches?:            string[]
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
 export interface SigLayout {
 	/** the declared parameter names, in order */
-	readonly names: readonly string[]
+	readonly names: readonly BrandedIdentifier[]
 	/** the props of each declared parameter, in order */
 	readonly props: readonly ArgProps[]
 	/** the position of the `...` parameter, `-1` if there is none */
@@ -491,7 +501,7 @@ function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProp
 }
 
 /** The parameter each argument fills, matched as R does: an argument naming a parameter exactly fills it, the unnamed ones fill the parameters left in order up to `...`, which takes everything else. */
-function argumentSlots(this: void, { names, rest }: SigLayout, argNames: readonly (string | undefined)[]): number[] {
+function argumentSlots(this: void, { names, rest }: SigLayout, argNames: readonly (BrandedIdentifier | undefined)[]): number[] {
 	const named = argNames.map(n => n === undefined ? -1 : names.indexOf(n));
 	const taken = new Set(named.filter(at => at >= 0 && at !== rest));
 	let next = 0;
@@ -549,7 +559,7 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
-export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
+export const DispatchCallees: ReadonlySet<BrandedIdentifier> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
 
 /** The part of a {@link BuiltInFnInfo} the signature database already knows: the parameter names in order with the {@link ArgProp} bits stored for each, plus the {@link SigDbProps} properties; everything else is dropped. */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {

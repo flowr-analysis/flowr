@@ -1,3 +1,5 @@
+import type { Writable } from 'ts-essentials';
+import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -17,7 +19,7 @@ import { Dataflow } from '../../../../../graph/df-helper';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type InGraphReferenceType, type NamedInGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
+import { type EnvHolderDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type InGraphReferenceType, type NamedInGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { applyGlobalKills, applyKills } from '../../../../../environments/apply-kill';
 import type { KillReference } from '../../../../../info';
@@ -63,15 +65,15 @@ export function deferredEnvOps<OtherInfo>(roots: Iterable<NodeId>, graph: Datafl
 		}
 		const defs = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t)) ? undefined : Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function);
 		const builtIn = defs?.length === 1 && defs[0].type === ReferenceType.BuiltInFunction ? defs[0] : undefined;
-		if(builtIn?.processorName === BuiltInProcName.Local) {
-			const evaluated = evaluatedDefinitions(node, builtIn.config as LocalFunctionConfiguration, graph, data.completeAst.idMap, data.environment);
+		if(builtIn?.processorName === BuiltInProcName.Local && builtIn.config !== undefined) {
+			const evaluated = evaluatedDefinitions(node, builtIn.config, graph, data.completeAst.idMap, data.environment);
 			if(evaluated.length > 0) {
 				(ops ??= []).push(...evaluated);
 			}
 			continue;
 		}
 		const kind = builtIn?.processorName === undefined ? undefined : OpOfProcessor[builtIn.processorName];
-		const config = builtIn?.config as { sig?: readonly (readonly [string, number])[], targetVariable?: boolean, returnsValue?: boolean } | undefined;
+		const config: (BuiltInFnInfo & { readonly targetVariable?: boolean, readonly returnsValue?: boolean }) | undefined = builtIn?.config;
 		if(kind === undefined || config?.sig === undefined || (kind === EnvOpKind.Define && config.targetVariable !== true)) {
 			continue;
 		}
@@ -134,9 +136,9 @@ function replacementOf(id: NodeId, node: RNode<ParentInformation> | undefined, g
 }
 
 /** the assignments a replacement rebinds its target in the frame of the body with */
-const ReplacedBy: ReadonlySet<string> = new Set(['<-', '=']);
+const ReplacedBy: ReadonlySet<BrandedIdentifier> = new Set(['<-', '=']);
 /** the accesses naming a single variable of an environment */
-const FieldAccess: ReadonlySet<string> = new Set(['$', '[[']);
+const FieldAccess: ReadonlySet<BrandedIdentifier> = new Set(['$', '[[']);
 
 /** Whether `id` reads a parameter, which holds what the call hands over (the body cannot know the environment it may hold). */
 function heldByParameter(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
@@ -181,7 +183,7 @@ function literalName(node: RNode<ParentInformation> | undefined): string | undef
 }
 
 /** Where an operation of a body works once a call runs it: the variables holding the environment there, or a frame of the caller. */
-type EnvAtCall = { readonly holders: readonly (NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation })[] } | StackEnvKind.Global | StackEnvKind.CallerFrame;
+type EnvAtCall = { readonly holders: readonly (EnvHolderDefinition)[] } | StackEnvKind.Global | StackEnvKind.CallerFrame;
 
 /** How the call `via` of the function `fn` runs it, `direct` if `via` is the call being linked rather than one in a function it calls. */
 interface Run {
@@ -260,7 +262,7 @@ function envAtCall(envir: NodeId, environment: REnvironmentInformation, run: Run
 	if(holders === undefined || holders.length === 0 || !holders.every(h => hasEnvState(h) && h.name !== undefined && (h as InGraphIdentifierDefinition).closureFrame !== true)) {
 		return undefined;
 	}
-	return { holders: holders as (NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation })[] };
+	return { holders: holders as (EnvHolderDefinition)[] };
 }
 
 /** Each function the calls `calls` run on the way to `fn`, the last one calling `fn`, with the call running it. */
@@ -339,7 +341,7 @@ function changeInPlaceAt(op: DeferredEnvOp, run: Run, call: NodeId, environment:
 	return REnvironment.define({ name: handed.content, nodeId: op.id, definedAt: call, type: ReferenceType.Variable, cds: [] }, false, rebound);
 }
 
-function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly string[], at: EnvAtCall, environment: REnvironmentInformation, cds: IdentifierDefinition['cds'], call: NodeId, graph: DataflowGraph): REnvironmentInformation {
+function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly BrandedIdentifier[], at: EnvAtCall, environment: REnvironmentInformation, cds: IdentifierDefinition['cds'], call: NodeId, graph: DataflowGraph): REnvironmentInformation {
 	const update = (state: REnvironmentInformation, global: boolean, closureFrame = false): REnvironmentInformation => {
 		switch(op.kind) {
 			case EnvOpKind.Define:
@@ -443,7 +445,7 @@ function handOnToCallers(op: DeferredEnvOp, fn: NodeId, graph: DataflowGraph, ct
 	if(!DfgVertex.isFunctionDefinition(definition) || definition.envOps?.some(o => o.id === op.id && o.generations === op.generations)) {
 		return;
 	}
-	(definition as { envOps?: readonly DeferredEnvOp[] }).envOps = [...definition.envOps ?? [], op];
+	(definition as Writable<typeof definition>).envOps = [...definition.envOps ?? [], op];
 	for(const caller of Dataflow.sourcesOf(graph, fn, EdgeType.Calls)) {
 		linkCallerFrameWrites(caller, definition, graph, ctx);
 	}

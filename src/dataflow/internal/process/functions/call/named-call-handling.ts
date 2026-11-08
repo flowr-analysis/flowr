@@ -16,8 +16,8 @@ import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { baseRExportOwner, isBaseRPackage } from '../../../../../util/r-base-packages';
-import type { IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import type { BuiltInIdentifierDefinition } from '../../../../environments/built-in';
+import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import type { AttachedBuiltIn } from '../../../../environments/built-in';
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
@@ -53,7 +53,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 function builtInBehindExport<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	definition: IdentifierDefinition
-): BuiltInIdentifierDefinition | undefined {
+): AttachedBuiltIn | undefined {
 	if(definition.type !== ReferenceType.Function || definition.name === undefined || !NodeId.isBuiltIn(definition.nodeId)
 		|| Identifier.getNamespace(definition.name) === undefined) {
 		return undefined;
@@ -63,8 +63,7 @@ function builtInBehindExport<OtherInfo>(
 		return known;
 	}
 	/* an alias binds the export under a name no built-in lookup finds, but attaching it carried what the configuration states about the exported name along */
-	const attached = definition as unknown as Partial<BuiltInIdentifierDefinition>;
-	return typeof attached.processor === 'function' ? attached as BuiltInIdentifierDefinition : undefined;
+	return 'processor' in definition ? definition : undefined;
 }
 
 /** Marks the given function call node as only calling built-in functions. */
@@ -98,13 +97,13 @@ function rewrittenByReplacement<OtherInfo>(definition: IdentifierDefinition, dat
 	return RFunctionCall.is(node) || (RBinaryOp.is(node) && RFunctionCall.is(node.lhs));
 }
 
-const bindingFrames = new WeakMap<AstIdMap, ReadonlyMap<string, ReadonlySet<NodeId | undefined>>>();
+const bindingFrames = new WeakMap<AstIdMap, ReadonlyMap<BrandedIdentifier, ReadonlySet<NodeId | undefined>>>();
 
 /** for each name the program binds, the functions binding it (`undefined` for the global frame or a `<<-`) */
-function framesBinding(idMap: AstIdMap): ReadonlyMap<string, ReadonlySet<NodeId | undefined>> {
+function framesBinding(idMap: AstIdMap): ReadonlyMap<BrandedIdentifier, ReadonlySet<NodeId | undefined>> {
 	let frames = bindingFrames.get(idMap);
 	if(frames === undefined) {
-		const found = new Map<string, Set<NodeId | undefined>>();
+		const found = new Map<BrandedIdentifier, Set<NodeId | undefined>>();
 		for(const node of idMap.values()) {
 			const target = RBinaryOp.is(node) && BuiltInOperators.byName[node.operator]?.usedAs === OperatorUsedAs.Assignment ? (node.operator.startsWith('-') ? node.rhs : node.lhs)
 				: RParameter.is(node) ? node.name : undefined;
@@ -121,7 +120,7 @@ function framesBinding(idMap: AstIdMap): ReadonlyMap<string, ReadonlySet<NodeId 
 }
 
 /** whether the program binds `name` in a frame enclosing the function the call is in, which a built-in found there leaves out */
-function mayBeShadowed(name: string, call: NodeId, idMap: AstIdMap): boolean {
+function mayBeShadowed(name: BrandedIdentifier, call: NodeId, idMap: AstIdMap): boolean {
 	const frames = framesBinding(idMap).get(name);
 	if(frames === undefined || RExpressionList.isImplicit(idMap.get(call))) {
 		return false;
@@ -157,7 +156,7 @@ export function processNamedCall<OtherInfo>(
 	let information: DataflowInformation | undefined;
 	let builtIn = false;
 	/* a set, because an export and the built-in behind it are two ways to the same definition */
-	const toRun = new Set<BuiltInIdentifierDefinition>();
+	const toRun = new Set<AttachedBuiltIn>();
 	/* within a function, a call may still resolve to a user function where the function is called, so only the top level knows an unresolved call goes to a function we cannot see */
 	let unknownBody = resolved.length === 0 && data.environment.level === 0;
 	for(const resolvedFunction of resolved) {
@@ -189,8 +188,8 @@ export function processNamedCall<OtherInfo>(
 		alternatives.push(own.processor(name, args, rootId, data));
 		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
 		/* unless flowR states how it accesses the state, as for `withr::with_options`, or the export is a method the primitive dispatches to (lubridate's `rep`) */
-		packageFn ||= pkg !== undefined && !(own.config !== undefined && ('ambient' in own.config || 'scope' in own.config)) && !isBaseRPackage(String(pkg))
-			&& !InternalGenerics.has(Identifier.getName(own.name as Identifier));
+		packageFn ||= pkg !== undefined && own.config?.ambient === undefined && own.config?.scope === undefined && !isBaseRPackage(String(pkg))
+			&& !(own.name !== undefined && InternalGenerics.has(Identifier.getName(own.name)));
 	}
 	if(defaultProcessor && !shadowable) {
 		processDefault();

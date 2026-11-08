@@ -63,7 +63,10 @@ export function scopeOf(ref: Pick<IdentifierReference, 'global'>, env: REnvironm
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  * @useInstead {@link Resolve.byNameAndType}
  */
-export function resolveByName(id: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
+export function resolveByName(id: Identifier | undefined, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
+	if(id === undefined) {
+		return undefined;
+	}
 	if(target === ReferenceType.Unknown) {
 		return resolveByNameAnyType(id, environment);
 	}
@@ -71,11 +74,11 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	return found === undefined && target === ReferenceType.NonFunction ? ownDefinitions(id, environment) : found;
 }
 
-function tailCacheOf(env: Environment, target: ReferenceType): Map<string, readonly IdentifierDefinition[] | undefined> {
+function tailCacheOf(env: Environment, target: ReferenceType): Map<BrandedIdentifier, readonly IdentifierDefinition[] | undefined> {
 	env.tailCache ??= new Map();
 	let memo = env.tailCache.get(target);
 	if(memo === undefined) {
-		env.tailCache.set(target, memo = new Map<string, readonly IdentifierDefinition[] | undefined>());
+		env.tailCache.set(target, memo = new Map<BrandedIdentifier, readonly IdentifierDefinition[] | undefined>());
 	}
 	return memo;
 }
@@ -172,7 +175,10 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
  * The more performant version of {@link resolveByName} when the target type is unknown.
  * @useInstead {@link Resolve.byName}
  */
-export function resolveByNameAnyType(id: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
+export function resolveByNameAnyType(id: Identifier | undefined, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
+	if(id === undefined) {
+		return undefined;
+	}
 	let current: Environment = environment.current;
 	/* only cache plain names: namespaced ids are arrays (no stable map key) and must not answer plain lookups */
 	if(typeof id === 'string') {

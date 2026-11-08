@@ -1,5 +1,5 @@
 import type { OperatorFacts, BuiltInOperators } from './default-builtin-config/base-operators';
-import type { BuiltInProcessorMapper, ConfigOfBuiltInMappingName } from './built-in';
+import type { ConfigOfProcessor, BuiltInProcessorMapper } from './built-in';
 import type { BuiltInEvalName } from './built-in-eval-name';
 import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
@@ -27,9 +27,6 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 	/** The constant value to define */
 	readonly value: Value;
 }
-
-/** The config a processor accepts, `unknown` for the ones taking none (they still carry {@link BuiltInFnInfo}). */
-type ConfigOfProcessor<P extends keyof typeof BuiltInProcessorMapper> = ConfigOfBuiltInMappingName<P> extends undefined ? unknown : ConfigOfBuiltInMappingName<P>;
 
 /**
  * Define a built-in function (like `print` or `c`) and the processor to use.

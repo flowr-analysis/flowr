@@ -18,7 +18,7 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { NamedInGraphIdentifierDefinition, BrandedIdentifier } from '../../../../../environments/identifier';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -34,9 +34,9 @@ import { evaluatesCapturedCode } from './built-in-ambient-state';
 import { callNamedFunction, resolveFunctionArgument, type ResolvedFunctionArgument } from './built-in-apply';
 import type { FunctionArgument } from '../../../../../graph/graph';
 
-const SymbolConstructors: ReadonlySet<string> = new Set(['as.name', 'as.symbol']);
-const PasteFunctions: ReadonlySet<string> = new Set(['paste', 'paste0']);
-const StringParsers: ReadonlySet<string> = new Set(['str2lang', 'str2expression']);
+const SymbolConstructors: ReadonlySet<BrandedIdentifier> = new Set(['as.name', 'as.symbol']);
+const PasteFunctions: ReadonlySet<BrandedIdentifier> = new Set(['paste', 'paste0']);
+const StringParsers: ReadonlySet<BrandedIdentifier> = new Set(['str2lang', 'str2expression']);
 const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
 
 /** the formals of `eval(expr, envir, enclos)` */
@@ -161,7 +161,7 @@ function capturedBy<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | unde
 	}
 	const defs = Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function);
 	const target = defs?.length === 1 && defs[0].type === ReferenceType.BuiltInFunction ? defs[0] : undefined;
-	const index = target?.processorName === BuiltInProcName.Quote ? (target.config as { quoteArgumentsWithIndex?: number } | undefined)?.quoteArgumentsWithIndex
+	const index = target?.processorName === BuiltInProcName.Quote ? target.config?.quoteArgumentsWithIndex
 		: target !== undefined && CapturingCalls.has(Identifier.getName(node.functionName.content)) ? 0 : undefined;
 	const code = index === undefined || node.arguments.length !== index + 1 ? undefined : RArgument.valueOf(node.arguments[index]);
 	return code === undefined || data.referenceChain.includes(evaluationOf(code.info.id)) ? undefined : code;
@@ -234,7 +234,7 @@ function escapeWritesToParentFrame<OtherInfo>(
 	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation
 ): void {
-	const written: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+	const written: (NamedInGraphIdentifierDefinition)[] = [];
 	RNode.visitAst<OtherInfo & ParentInformation>(expr, inner => {
 		if(!RSymbol.is(inner) || !DfgVertex.isVariableDefinition(information.graph.getVertex(inner.info.id))) {
 			return false;

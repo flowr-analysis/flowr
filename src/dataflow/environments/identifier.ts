@@ -1,4 +1,5 @@
-import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
+import type { AmbientStateName } from './ambient-state-name';
+import type { AttachedBuiltIn, BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
 import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
@@ -329,6 +330,19 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly returnsEnvState?: REnvironmentInformation
 	/** Whether {@link value} names the sequence this identifier iterates over rather than what it holds, as a `for` loop's variable does: it takes one element of that sequence at a time. */
 	readonly iterated?:        boolean
+	/** The ambient state reading this identifier may change, as forcing a promise (`delayedAssign`) whose code writes it does. */
+	readonly forces?:          readonly AmbientStateName[]
+	/** Whether the ambient state is only assumed written, by a body flowR cannot see. */
+	readonly assumed?:         true
+	/** For a registered finalizer, the variable holding the object it is registered for. */
+	readonly holder?:          BrandedIdentifier
+	/** For a registered finalizer, the ambient state running it writes. */
+	readonly writes?:          readonly AmbientStateName[]
+}
+
+/** Whether a definition stems from the analyzed code rather than from a built-in. */
+export function isInGraphDefinition(definition: IdentifierDefinition): definition is InGraphIdentifierDefinition {
+	return !NodeId.isBuiltIn(definition.definedAt);
 }
 
 /** Whether a definition holds a tracked environment, i.e. carries an {@link InGraphIdentifierDefinition#envState}. */
@@ -337,7 +351,13 @@ export function hasEnvState(definition: IdentifierDefinition | undefined): defin
 }
 
 /** A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`. */
-export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier };
+export type NamedInGraphIdentifierDefinition<Name extends Identifier = Identifier> = InGraphIdentifierDefinition & { readonly name: Name };
+
+/** A named definition known to hold a tracked environment, which every variable aliasing that environment shares. */
+export type EnvHolderDefinition = NamedInGraphIdentifierDefinition & { readonly envState: REnvironmentInformation };
+
+/** The nodes that bind or read each name. */
+export type NodesByName = ReadonlyMap<BrandedIdentifier, readonly NodeId[]>;
 
 /** Stores the definition of an identifier within an {@link IEnvironment}. */
-export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant;
+export type IdentifierDefinition = InGraphIdentifierDefinition | (InGraphIdentifierDefinition & AttachedBuiltIn) | BuiltInIdentifierDefinition | BuiltInIdentifierConstant;

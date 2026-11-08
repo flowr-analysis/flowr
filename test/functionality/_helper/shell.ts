@@ -45,7 +45,7 @@ import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/ut
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
-import { FlowrConfig } from '../../../src/config';
+import { type WritableFlowrConfig, FlowrConfig } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -56,7 +56,6 @@ import type { FlowrFileProvider } from '../../../src/project/context/flowr-file'
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
-import type { DeepWritable } from 'ts-essentials';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -219,7 +218,7 @@ export function assumedPackagesOf(config: Pick<TestConfiguration, 'assumeLoaded'
 }
 
 /** Applies the packages a test runs with to `builder`. Pass what {@link assumedPackagesOf} returned at collection time. */
-export function applyAssumedPackages<B extends { amendConfig(f: (c: DeepWritable<FlowrConfig>) => void): B }>(
+export function applyAssumedPackages<B extends { amendConfig(f: (c: WritableFlowrConfig) => void): B }>(
 	builder: B, assumed: readonly string[]
 ): B {
 	return assumed.length === 0 ? builder : builder.amendConfig(c => {

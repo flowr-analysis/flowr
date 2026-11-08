@@ -1,22 +1,4 @@
-/*
- * AST-based clone detection after Baxter, Yahin, Moura, Sant'Anna, and Bier.
- * "Clone Detection Using Abstract Syntax Trees", ICSM 1998 (the CloneDR basic algorithm):
- * ```
- * 1. Clones = {}
- * 2. For each subtree i:
- *      If mass(i) >= MassThreshold Then hash i to bucket
- * 3. For each subtree i and j in the same bucket
- *      If CompareTree(i,j) > SimilarityThreshold Then {
- *        For each subtree s of i: If IsMember(Clones,s) Then RemoveClonePair(Clones,s)
- *        For each subtree s of j: If IsMember(Clones,s) Then RemoveClonePair(Clones,s)
- *        AddClonePair(Clones,i,j)
- *      }
- * ```
- * with `Similarity = 2*S / (2*S + L + R)`, where S is the number of shared nodes and L and R the number of nodes
- * only in the first and only in the second tree. The hash function ignores identifier names (here: all leaf lexemes),
- * so that near-miss clones which differ only in identifiers or constants land in the same bucket.
- */
-import { type CloneAst, CloneNodeKind, cloneLabel, hashString, mixHash } from '../clone-ast';
+import { type CloneAst, cloneChildren, mixHash } from '../clone-ast';
 
 /** A subtree: the file (index into the ASTs) and its preorder index. */
 export interface SubtreeRef {
@@ -31,143 +13,84 @@ export interface BaxterPair {
 }
 
 export interface BaxterConfig {
-	/** minimal number of AST nodes (mass) of a subtree to be considered */
+	/** the minimal number of nodes (mass) of a subtree */
 	readonly massThreshold:       number;
-	/** pairs need a similarity strictly above this value (the paper uses `>`) */
+	/** pairs need a similarity strictly above this value */
 	readonly similarityThreshold: number;
 }
 
-function isLeafKind(k: number): boolean {
-	return k === CloneNodeKind.Symbol || k === CloneNodeKind.Number || k === CloneNodeKind.String || k === CloneNodeKind.Logical
-		|| k === CloneNodeKind.Parameter || k === CloneNodeKind.Argument;
-}
-
-/** The structural hash of every subtree, ignoring leaf lexemes, computed bottom-up. */
+/** The structural hash of every subtree, which ignores the lexemes of leaves. */
 export function structuralHashes(ast: CloneAst): Int32Array {
-	const n = ast.kind.length;
-	const h = new Int32Array(n);
-	const labels = new Map<string, number>();
-	for(let i = n - 1; i >= 0; i--) {
-		const label = cloneLabel(ast, i);
-		let v = labels.get(label);
-		if(v === undefined) {
-			v = hashString(label);
-			labels.set(label, v);
+	const h = new Int32Array(ast.token.length);
+	for(let i = h.length - 1; i >= 0; i--) {
+		h[i] = ast.token[i];
+		for(const c of cloneChildren(ast, i)) {
+			h[i] = mixHash(h[i], h[c]);
 		}
-		const end = i + ast.size[i];
-		let arity = 0;
-		for(let c = i + 1; c < end; c += ast.size[c]) {
-			v = mixHash(v, h[c]);
-			arity++;
-		}
-		h[i] = mixHash(v, arity);
 	}
 	return h;
 }
 
-/**
- * CompareTree: walks both trees in parallel, matching children by position. Nodes with equal labels are shared
- * (leaves additionally need equal lexemes); a label mismatch makes both whole subtrees unshared.
- * Returns the number of shared nodes S.
- */
+/** Baxter's CompareTree: the number of shared nodes, matching children by position and leaves by lexeme. */
 export function sharedNodes(a: CloneAst, i: number, b: CloneAst, j: number): number {
-	if(a.kind[i] !== b.kind[j] || a.op[i] !== b.op[j]) {
+	if(a.token[i] !== b.token[j]) {
 		return 0;
 	}
-	let shared = isLeafKind(a.kind[i]) && a.lex[i] !== b.lex[j] ? 0 : 1;
-	const ae = i + a.size[i], be = j + b.size[j];
-	let ci = i + 1, cj = j + 1;
-	while(ci < ae && cj < be) {
+	let shared = a.lex[i] === b.lex[j] ? 1 : 0;
+	for(let ci = i + 1, cj = j + 1; ci < i + a.size[i] && cj < j + b.size[j]; ci += a.size[ci], cj += b.size[cj]) {
 		shared += sharedNodes(a, ci, b, cj);
-		ci += a.size[ci];
-		cj += b.size[cj];
 	}
 	return shared;
 }
 
-/**
- * Baxter's similarity `2S / (2S + L + R)` of two subtrees, 1 for subtrees equal in structure and leaves.
- * @example
- * ```ts
- * treeSimilarity(ast, ast.functions[0].node, ast, ast.functions[1].node); // two function definitions of one file
- * ```
- */
+/** Baxter's similarity `2S / (2S + L + R)` of two subtrees. */
 export function treeSimilarity(a: CloneAst, i: number, b: CloneAst, j: number): number {
 	const s = sharedNodes(a, i, b, j);
-	const l = a.size[i] - s, r = b.size[j] - s;
-	return 2 * s / (2 * s + l + r);
-}
-
-/** whether `inner` lies within the subtree of `outer` (both in the same file) */
-function within(asts: readonly CloneAst[], inner: SubtreeRef, outer: SubtreeRef): boolean {
-	return inner.file === outer.file && inner.node >= outer.node && inner.node < outer.node + asts[outer.file].size[outer.node];
+	return 2 * s / (a.size[i] + b.size[j]);
 }
 
 /**
- * Runs the basic algorithm over all subtrees of all `asts`. The paper removes every pair one of whose members is a
- * subtree of a member of a pair it adds. Processing the buckets in order of decreasing mass makes that a filter: a
- * pair is skipped if one of its members lies strictly within a member of a pair added before (the pairs added before
- * are at least as large, so with any order the final set is the same). Pairs of a subtree with its own ancestor are
- * skipped, as they are no clones but containment.
- * This works on any list of files, so unlike the token-based detectors it finds clones of all sizes at once, and it
- * only reports a pair if both subtrees have the same structure hash (so a clone needs the same shape, differing in leaves only).
- * Raise `massThreshold` to ignore small subtrees, which otherwise dominate the results.
+ * The basic algorithm of Baxter et al., "Clone Detection Using Abstract Syntax Trees" (ICSM 1998): subtrees of at
+ * least `massThreshold` nodes are bucketed by {@link structuralHashes} and compared within their bucket. Buckets are
+ * processed by decreasing mass, so a pair is skipped if a member lies within a member of a pair accepted before
+ * (the paper removes such pairs afterwards). Roots of files and pairs of a subtree with its ancestor are skipped.
  * @example
  * ```ts
  * const { pairs } = baxterClones(index.files, { massThreshold: 30, similarityThreshold: 0.9 });
- * for(const { a, b, similarity } of pairs) {
- *   console.log(index.files[a.file].file, a.node, index.files[b.file].file, b.node, similarity);
- * }
  * ```
  */
 export function baxterClones(asts: readonly CloneAst[], config: BaxterConfig): { readonly pairs: BaxterPair[], readonly subtrees: number, readonly comparisons: number } {
 	const buckets = new Map<number, SubtreeRef[]>();
-	let subtrees = 0;
-	let comparisons = 0;
-	for(let f = 0; f < asts.length; f++) {
-		const ast = asts[f];
-		const hashes = structuralHashes(ast);
-		for(let i = 0; i < ast.kind.length; i++) {
-			if(ast.size[i] < config.massThreshold || ast.kind[i] === CloneNodeKind.ExpressionList && ast.parent[i] < 0) {
-				continue;
-			}
+	let subtrees = 0, comparisons = 0;
+	asts.forEach((ast, file) => structuralHashes(ast).forEach((h, node) => {
+		if(node > 0 && ast.size[node] >= config.massThreshold) {
 			subtrees++;
-			let b = buckets.get(hashes[i]);
-			if(b === undefined) {
-				b = [];
-				buckets.set(hashes[i], b);
+			const bucket = buckets.get(h);
+			if(bucket) {
+				bucket.push({ file, node });
+			} else {
+				buckets.set(h, [{ file, node }]);
 			}
-			b.push({ file: f, node: i });
 		}
-	}
-	const ordered = [...buckets.values()].filter(b => b.length > 1);
-	const massOf = (b: readonly SubtreeRef[]) => asts[b[0].file].size[b[0].node];
-	ordered.sort((x, y) => massOf(y) - massOf(x));
-
-	const covered = asts.map(a => new Uint8Array(a.kind.length));
-	const cover = (r: SubtreeRef) => covered[r.file].fill(1, r.node + 1, r.node + asts[r.file].size[r.node]);
-	const accepted: BaxterPair[] = [];
-	for(const bucket of ordered) {
-		const before = accepted.length;
-		for(let x = 0; x < bucket.length; x++) {
-			const i = bucket[x];
-			for(let y = x + 1; y < bucket.length; y++) {
-				const j = bucket[y];
-				if(covered[i.file][i.node] || covered[j.file][j.node] || within(asts, i, j) || within(asts, j, i)) {
-					continue;
-				}
+	}));
+	const mass = (r: SubtreeRef) => asts[r.file].size[r.node];
+	const within = (inner: SubtreeRef, outer: SubtreeRef) => inner.file === outer.file && inner.node >= outer.node && inner.node < outer.node + mass(outer);
+	const covered = asts.map(a => new Uint8Array(a.token.length));
+	const pairs: BaxterPair[] = [];
+	for(const bucket of [...buckets.values()].filter(b => b.length > 1).sort((x, y) => mass(y[0]) - mass(x[0]))) {
+		const before = pairs.length;
+		bucket.forEach((i, x) => bucket.slice(x + 1).forEach(j => {
+			if(!covered[i.file][i.node] && !covered[j.file][j.node] && !within(i, j) && !within(j, i)) {
 				comparisons++;
 				const similarity = treeSimilarity(asts[i.file], i.node, asts[j.file], j.node);
 				if(similarity > config.similarityThreshold) {
-					accepted.push({ a: i, b: j, similarity });
+					pairs.push({ a: i, b: j, similarity });
 				}
 			}
-		}
-		/* the pairs of one bucket all have the same mass, so none of them lies within another */
-		for(const p of accepted.slice(before)) {
-			cover(p.a);
-			cover(p.b);
+		}));
+		for(const r of pairs.slice(before).flatMap(p => [p.a, p.b])) {
+			covered[r.file].fill(1, r.node + 1, r.node + mass(r));
 		}
 	}
-	return { pairs: accepted, subtrees, comparisons };
+	return { pairs, subtrees, comparisons };
 }

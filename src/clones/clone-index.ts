@@ -1,57 +1,24 @@
-import type { CloneAlgorithm, CloneFragment, detectClones } from './clone-detector';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
-import { buildCloneAst, type CloneAst, type CloneFunction, ClonePerspective } from './clone-ast';
+import { buildCloneAst, type CloneAst, ClonePerspective } from './clone-ast';
 import { planInlining } from './clone-dataflow';
-import { buildPdg, type Pdg } from './algorithms/similar';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 /**
- * Everything the clone detectors need from an analyzed project: the flat ASTs of all files and, if requested,
- * the program dependence graph of every function (SimilaR). Building it is the only step that needs the parser and
- * the dataflow analysis; detection then works on the index alone, so an index can be built once, stored with
- * {@link CloneIndex.serialize}, and searched again later (e.g., new code against a corpus of pre-analyzed projects).
+ * The flat ASTs of all analyzed files, all the clone detectors need. Build it once, store it with
+ * {@link CloneIndex.serialize}, and search new code against it later.
  */
 export interface CloneIndex {
 	readonly perspective: ClonePerspective;
 	readonly files:       readonly CloneAst[];
-	/** `pdgs[f][k]` is the PDG of `files[f].functions[k]`, present if the index was built with PDGs */
-	readonly pdgs?:       readonly (readonly Pdg[])[];
 }
 
 export interface CloneIndexOptions {
 	readonly perspective: ClonePerspective;
-	/** build the program dependence graphs of all functions (needs the dataflow graph) */
-	readonly pdgs:        boolean;
 }
 
-/** The serialized (JSON) form of a {@link CloneIndex}. */
-export interface SerializedCloneIndex {
-	readonly format:      'flowr-clone-index';
-	readonly version:     1;
-	readonly perspective: ClonePerspective;
-	readonly files:       readonly SerializedCloneAst[];
-	readonly pdgs?:       readonly (readonly SerializedPdg[])[];
-}
-
-interface SerializedCloneAst {
-	readonly file:      string;
-	readonly kind:      readonly number[];
-	readonly op:        readonly string[];
-	readonly lex:       readonly number[];
-	readonly text:      readonly string[];
-	readonly size:      readonly number[];
-	readonly parent:    readonly number[];
-	readonly id:        readonly NodeId[];
-	readonly span:      readonly number[];
-	readonly functions: readonly CloneFunction[];
-}
-
-interface SerializedPdg {
-	readonly color: readonly number[];
-	readonly node:  readonly number[];
-	readonly edges: readonly number[];
+/** The JSON form of a {@link CloneIndex}. */
+export interface SerializedCloneIndex extends CloneIndex {
+	readonly format:  'flowr-clone-index';
+	readonly version: 2;
 }
 
 /**
@@ -61,105 +28,36 @@ interface SerializedPdg {
 export const CloneIndex = {
 	name: 'CloneIndex',
 	/**
-	 * Builds the index of all files the analyzer knows. The dataflow analysis only runs if the perspective is
-	 * `dataflow` or PDGs are requested, so index with `syntax` or `canonical` and `pdgs: false` if you only want the
-	 * token- and tree-based detectors, which skips the most expensive step.
-	 * Keep in mind that:
-	 * - the index is a snapshot, so build a new one after you changed the requests of the analyzer
-	 * - {@link ClonePerspective.Dataflow} and `pdgs: true` need the dataflow graph of the whole project
-	 * - the {@link ClonePerspective.Syntax} perspective is the one to use if you want JPlag-compatible token strings
-	 * - an index built without PDGs cannot be searched with {@link CloneAlgorithm.Similar}
-	 * @see {@link CloneIndex.serialize} - to store the index
-	 * @see {@link detectClones} - to search it
+	 * Indexes all files of the analyzer; only the {@link ClonePerspective.Dataflow} perspective runs the dataflow analysis.
 	 * @example
 	 * ```ts
-	 * analyzer.addRequest(requestFromInput('f <- function(x) x + 1'));
-	 * const index = await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical, pdgs: false });
-	 * const { pairs } = detectClones(index, DefaultCloneDetectionConfig); // gst, function level
+	 * const index = await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical });
+	 * const { pairs } = detectClones(index, DefaultCloneDetectionConfig);
 	 * ```
 	 */
-	async build(this: void, analyzer: ReadonlyFlowrAnalysisProvider, options: CloneIndexOptions): Promise<CloneIndex> {
+	async build(this: void, analyzer: ReadonlyFlowrAnalysisProvider, { perspective }: CloneIndexOptions): Promise<CloneIndex> {
 		const normalized = await analyzer.normalize();
-		const needsDataflow = options.perspective === ClonePerspective.Dataflow || options.pdgs;
-		const dataflow = needsDataflow ? await analyzer.dataflow() : undefined;
-		const graph = dataflow?.graph;
-		const inline = options.perspective === ClonePerspective.Dataflow && graph ? planInlining(graph, normalized.idMap, dataflow?.environment) : undefined;
-		const files = normalized.ast.files.map((f, i) => buildCloneAst(f.root, f.filePath ?? `<input ${i}>`, options.perspective, inline, options.perspective === ClonePerspective.Dataflow ? graph : undefined));
-		if(!options.pdgs || !graph) {
-			return { perspective: options.perspective, files };
-		}
-		const pdgs = files.map(ast => ast.functions.map(fn => {
-			const def = normalized.idMap.get(ast.id[fn.node]);
-			return buildPdg(def as RFunctionDefinition<ParentInformation>, ast, graph, dataflow?.environment);
-		}));
-		return { perspective: options.perspective, files, pdgs };
+		const dataflow = perspective === ClonePerspective.Dataflow ? await analyzer.dataflow() : undefined;
+		const inline = dataflow && planInlining(dataflow.graph, normalized.idMap, dataflow.environment);
+		const files = normalized.ast.files.map((f, i) => buildCloneAst(f.root, f.filePath ?? `<input ${i}>`, perspective, inline, dataflow?.graph));
+		return { perspective, files };
 	},
-	/**
-	 * The JSON-compatible form of the index, with the typed arrays of the ASTs and PDGs turned into plain arrays.
-	 * It carries a format tag and a version, which {@link CloneIndex.deserialize} checks.
-	 * Keep in mind that the node ids in the index belong to the analysis that built it, which is why
-	 * fragments found in a stored index are marked {@link CloneFragment.external}.
-	 * @example
-	 * ```ts
-	 * const stored = JSON.stringify(CloneIndex.serialize(index));
-	 * const restored = CloneIndex.deserialize(JSON.parse(stored) as SerializedCloneIndex);
-	 * ```
-	 */
+	/** The JSON form of the index; its node ids belong to the analysis that built it. */
 	serialize(this: void, index: CloneIndex): SerializedCloneIndex {
-		return {
-			format:      'flowr-clone-index',
-			version:     1,
-			perspective: index.perspective,
-			files:       index.files.map(f => ({
-				file:      f.file,
-				kind:      Array.from(f.kind),
-				op:        f.op,
-				lex:       Array.from(f.lex),
-				text:      f.text,
-				size:      Array.from(f.size),
-				parent:    Array.from(f.parent),
-				id:        f.id,
-				span:      Array.from(f.span),
-				functions: f.functions
-			})),
-			pdgs: index.pdgs?.map(ps => ps.map(p => ({ color: Array.from(p.color), node: Array.from(p.node), edges: Array.from(p.edges) })))
-		};
+		return { format: 'flowr-clone-index', version: 2, perspective: index.perspective, files: index.files };
 	},
 	/**
-	 * The inverse of {@link CloneIndex.serialize}. It only checks the format tag, the version, and that there is a
-	 * known perspective and a list of files, so pass nothing you did not get from `serialize` (or the `index` of a
-	 * `code-clones` query with `exportIndex`), as it throws on a different format or version.
-	 * Search against the result with the `against` parameter of {@link detectClones}, and only with an index of the
-	 * same {@link ClonePerspective} as the code you search with.
+	 * The inverse of {@link CloneIndex.serialize}, throws on another format or version.
 	 * @example
 	 * ```ts
 	 * const corpus = CloneIndex.deserialize(JSON.parse(stored) as SerializedCloneIndex);
-	 * const { pairs } = detectClones(index, DefaultCloneDetectionConfig, corpus); // only clones between index and corpus
+	 * detectClones(index, DefaultCloneDetectionConfig, corpus); // only clones between index and corpus
 	 * ```
 	 */
 	deserialize(this: void, data: SerializedCloneIndex): CloneIndex {
-		if(data.format !== 'flowr-clone-index' || data.version !== 1) {
-			throw new Error(`unsupported clone index format ${String(data.format)} version ${String(data.version)}`);
+		if(data.format !== 'flowr-clone-index' || data.version !== 2 || !Object.values(ClonePerspective).includes(data.perspective) || !Array.isArray(data.files)) {
+			throw new Error(`unsupported clone index (format ${String(data.format)}, version ${String(data.version)})`);
 		}
-		const files = data.files;
-		if(typeof (files as { length?: unknown } | undefined)?.length !== 'number' || !Object.values(ClonePerspective).includes(data.perspective)) {
-			throw new Error('malformed clone index: it needs a known perspective and an array of files');
-		}
-		return {
-			perspective: data.perspective,
-			files:       files.map(f => ({
-				file:      f.file,
-				kind:      Uint8Array.from(f.kind),
-				op:        f.op,
-				lex:       Int32Array.from(f.lex),
-				text:      f.text,
-				size:      Int32Array.from(f.size),
-				parent:    Int32Array.from(f.parent),
-				id:        f.id,
-				span:      Int32Array.from(f.span),
-				functions: f.functions
-			})),
-			pdgs: data.pdgs?.map(ps => ps.map(p => ({ color: Uint8Array.from(p.color), node: Int32Array.from(p.node), edges: Int32Array.from(p.edges) })))
-		};
+		return { perspective: data.perspective, files: data.files };
 	}
 } as const;

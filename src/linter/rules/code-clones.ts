@@ -2,7 +2,7 @@ import { LintingResultCertainty, type LintingResult, type LintingRule, prettyPri
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { CloneAlgorithm, type CloneDetectionConfig, type CloneDetectionStats, type CloneFragment, DefaultCloneDetectionConfig, detectClones } from '../../clones/clone-detector';
+import { type CloneAlgorithm, type CloneDetectionConfig, type CloneDetectionStats, type CloneFragment, DefaultCloneDetectionConfig, detectClones } from '../../clones/clone-detector';
 import { CloneIndex } from '../../clones/clone-index';
 import { ClonePerspective } from '../../clones/clone-ast';
 
@@ -30,11 +30,10 @@ function describe(f: CloneFragment): string {
 /**
  * Reports each code clone pair once, located at its first fragment, with the other fragment in the result.
  * It is best-effort and off by default, as it indexes the whole project.
- * Keep in mind that algorithms and thresholds trade precision for recall (a pair is reported once per algorithm that finds it),
- * and that `similar` needs the dataflow analysis for the program dependence graphs.
+ * A pair is reported once per algorithm that finds it.
  * @example
  * ```ts
- * const lint = await executeLintingRule('code-clones', analyzer, { algorithms: [CloneAlgorithm.Similar], similar: { threshold: 0.9 } });
+ * const lint = await executeLintingRule('code-clones', analyzer, { algorithms: [CloneAlgorithm.Baxter], baxter: { similarityThreshold: 0.8 } });
  * if('results' in lint) {
  *   lint.results.map(r => `${SourceLocation.format(r.loc)} ~ ${SourceLocation.format(r.clone.loc)}`);
  * }
@@ -45,7 +44,7 @@ export const CODE_CLONES = {
 	processSearchResult: async(_elements, config, analyzer) => {
 		/* configured algorithms are merged into the (empty) default list, so an empty list means the default */
 		const algorithms = config.algorithms.length > 0 ? config.algorithms : DefaultCloneDetectionConfig.algorithms;
-		const index = await CloneIndex.build(analyzer, { perspective: config.perspective, pdgs: algorithms.includes(CloneAlgorithm.Similar) });
+		const index = await CloneIndex.build(analyzer, { perspective: config.perspective });
 		const { pairs, stats } = detectClones(index, { ...config, algorithms });
 		const results: CodeClonesResult[] = pairs.map(p => ({
 			certainty:  LintingResultCertainty.Uncertain,
@@ -62,7 +61,7 @@ export const CODE_CLONES = {
 	),
 	info: {
 		name:            'Code Clones',
-		description:     'Finds duplicated code (code clones) with a configurable selection of AST, token, fingerprint, and dependence-graph based algorithms.',
+		description:     'Finds duplicated code (code clones) with a configurable selection of AST, token, and fingerprint based algorithms.',
 		tags:            [LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Experimental],
 		certainty:       LintingRuleCertainty.BestEffort,
 		activeByDefault: false,

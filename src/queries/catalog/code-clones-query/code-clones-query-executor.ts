@@ -1,6 +1,6 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { CodeClonesQuery, CodeClonesQueryResult } from './code-clones-query-format';
-import { CloneAlgorithm, type CloneDetectionConfig, DefaultCloneDetectionConfig, detectClones } from '../../../clones/clone-detector';
+import { type CloneDetectionConfig, DefaultCloneDetectionConfig, detectClones } from '../../../clones/clone-detector';
 import { CloneIndex } from '../../../clones/clone-index';
 import { ClonePerspective } from '../../../clones/clone-ast';
 import { deepMergeObject } from '../../../util/objects';
@@ -25,11 +25,8 @@ export async function executeCodeClonesQuery({ analyzer }: BasicQueryData, queri
 	if(mismatch) {
 		throw new Error(`the code-clones query uses the ${perspective} perspective, but an index to search against was built with ${mismatch.perspective}`);
 	}
-	const index = await CloneIndex.build(analyzer, {
-		perspective,
-		pdgs: algorithms.includes(CloneAlgorithm.Similar) || query.exportIndex === true
-	});
-	const corpus = against.length > 0 ? { perspective: index.perspective, files: against.flatMap(a => a.files), pdgs: against.flatMap(a => a.files.map((_, i) => a.pdgs?.[i] ?? [])) } : undefined;
+	const index = await CloneIndex.build(analyzer, { perspective });
+	const corpus = against.length > 0 ? { perspective, files: against.flatMap(a => a.files) } : undefined;
 	const { pairs, stats } = detectClones(index, config, corpus);
 	return {
 		...metaSince(start),

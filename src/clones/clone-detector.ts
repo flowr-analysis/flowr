@@ -1,27 +1,23 @@
-import { uniqueArray } from '../util/collections/arrays';
 import type { MergeableRecord } from '../util/objects';
+import { uniqueArray } from '../util/collections/arrays';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { SourceLocation, SourceRange } from '../util/range';
-import { type CloneAst, CloneNodeKind } from './clone-ast';
+import { SourceRange, type SourceLocation } from '../util/range';
+import { type CloneAst, CloneTokenization, tokenize } from './clone-ast';
 import type { CloneIndex } from './clone-index';
-import { CloneTokenization, type CloneTokens, FileEndToken, tokenize } from './clone-tokens';
-import { greedyStringTiling, gstSequence, type GstSequence, gstSimilarity, matchedTokens } from './algorithms/greedy-string-tiling';
+import { greedyStringTiling, gstSimilarity, matchedTokens } from './algorithms/greedy-string-tiling';
 import { fingerprints, kgramHashes } from './algorithms/winnowing';
-import { baxterClones } from './algorithms/baxter-ast';
-import { type Pdg, similarCompare, similarSizeBound } from './algorithms/similar';
+import { baxterClones, type SubtreeRef as Unit } from './algorithms/baxter-ast';
 
 /**
  * The supported detectors:
  * - `baxter`: AST subtree hashing and comparison (Baxter et al., ICSM 1998)
- * - `gst`: Greedy String Tiling over token strings, ported from JPlag (Prechelt et al., 2002)
+ * - `gst`: Greedy String Tiling over token strings, as in JPlag (Prechelt et al., 2002)
  * - `winnowing`: k-gram fingerprinting as in MOSS (Schleimer et al., SIGMOD 2003)
- * - `similar`: program dependence graph comparison of SimilaR (Bartoszuk and Gagolewski, The R Journal 2020)
  */
 export enum CloneAlgorithm {
 	Baxter    = 'baxter',
 	Gst       = 'gst',
-	Winnowing = 'winnowing',
-	Similar   = 'similar'
+	Winnowing = 'winnowing'
 }
 
 /** Compare functions with each other, or whole files. */
@@ -30,37 +26,31 @@ export enum CloneUnit {
 	File     = 'file'
 }
 
-/** Which pairs may be reported. */
+/** Which pairs may be reported: any two fragments, or only fragments in different files. */
 export enum CloneScope {
-	/** any two fragments, also within one file */
 	All       = 'all',
-	/** only fragments in different files */
 	CrossFile = 'cross-file'
 }
 
-export interface GstConfig extends MergeableRecord {
-	readonly tokens:             CloneTokenization;
-	/** JPlag's `minimumTokenMatch`, 8 in JPlag's R module */
-	readonly minimumMatchLength: number;
-	/** JPlag's average similarity a pair needs to be reported, greater than 0 (units sharing no tile are never compared) */
-	readonly threshold:          number;
-	readonly unit:               CloneUnit;
+interface TokenConfig extends MergeableRecord {
+	readonly tokens:    CloneTokenization;
+	/** the similarity a pair needs */
+	readonly threshold: number;
+	readonly unit:      CloneUnit;
 }
 
-export interface WinnowingConfig extends MergeableRecord {
-	readonly tokens:               CloneTokenization;
-	/** noise threshold: the k-gram length */
+export interface GstConfig extends TokenConfig {
+	/** JPlag's `minimumTokenMatch` */
+	readonly minimumMatchLength: number;
+}
+
+export interface WinnowingConfig extends TokenConfig {
+	/** the noise threshold: the k-gram length */
 	readonly k:                    number;
-	/** guarantee threshold: every shared run of at least `t` tokens is found */
+	/** the guarantee threshold: every shared run of at least `t` tokens is found */
 	readonly t:                    number;
-	/** the Dice coefficient of the two fingerprint sets a pair needs */
-	readonly threshold:            number;
-	/**
-	 * fingerprints found in more units than this are ignored (MOSS's `-m`, which defaults to 10 there); a function
-	 * with more copies than this shares only ignored fingerprints with them, so we default to a higher limit
-	 */
+	/** fingerprints found in more units than this are ignored (MOSS's `-m`) */
 	readonly maxDocumentFrequency: number;
-	readonly unit:                 CloneUnit;
 }
 
 export interface BaxterDetectionConfig extends MergeableRecord {
@@ -68,49 +58,30 @@ export interface BaxterDetectionConfig extends MergeableRecord {
 	readonly similarityThreshold: number;
 }
 
-export interface SimilarConfig extends MergeableRecord {
-	/** number of relabeling iterations `h`, 3 in the paper */
-	readonly iterations:      number;
-	/** the symmetric similarity mu a pair needs */
-	readonly threshold:       number;
-	/** functions with fewer PDG vertices are skipped */
-	readonly minimumVertices: number;
-}
-
 export interface CloneDetectionConfig extends MergeableRecord {
 	readonly algorithms: readonly CloneAlgorithm[];
 	readonly scope:      CloneScope;
-	/** report at most this many pairs per algorithm (the most similar ones), `0` for no limit; `n` copies of one function are `n(n-1)/2` pairs */
+	/** report at most this many pairs per algorithm (the most similar ones), `0` for no limit */
 	readonly maxPairs:   number;
 	readonly gst:        GstConfig;
 	readonly winnowing:  WinnowingConfig;
 	readonly baxter:     BaxterDetectionConfig;
-	readonly similar:    SimilarConfig;
 }
 
 /**
- * The configuration {@link detectClones} falls back to: only `gst` on functions, with JPlag's token set and minimum
- * match length. Override single fields by spreading, as the nested configurations are not merged for you here
- * (the `code-clones` query does merge them).
- * Keep in mind that the thresholds of the algorithms are not comparable: `0.8` means a different amount of
- * similarity for `gst` (matched tokens), `winnowing` (shared fingerprints), and `similar` (graph labels).
+ * The configuration {@link detectClones} falls back to: `gst` on functions. The thresholds of the algorithms are not comparable.
  * @example
  * ```ts
- * const config: CloneDetectionConfig = {
- *   ...DefaultCloneDetectionConfig,
- *   algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing],
- *   gst:        { ...DefaultCloneDetectionConfig.gst, threshold: 0.9 }
- * };
+ * const config = { ...DefaultCloneDetectionConfig, gst: { ...DefaultCloneDetectionConfig.gst, threshold: 0.9 } };
  * ```
  */
 export const DefaultCloneDetectionConfig: CloneDetectionConfig = {
 	algorithms: [CloneAlgorithm.Gst],
 	scope:      CloneScope.All,
 	maxPairs:   1000,
-	gst:        { tokens: CloneTokenization.Jplag, minimumMatchLength: 8, threshold: 0.8, unit: CloneUnit.Function },
+	gst:        { tokens: CloneTokenization.Normalized, minimumMatchLength: 8, threshold: 0.8, unit: CloneUnit.Function },
 	winnowing:  { tokens: CloneTokenization.Normalized, k: 5, t: 8, threshold: 0.6, maxDocumentFrequency: 50, unit: CloneUnit.Function },
-	baxter:     { massThreshold: 30, similarityThreshold: 0.9 },
-	similar:    { iterations: 3, threshold: 0.8, minimumVertices: 5 }
+	baxter:     { massThreshold: 30, similarityThreshold: 0.9 }
 };
 
 /** One side of a clone. */
@@ -127,21 +98,21 @@ export interface CloneFragment {
 /** Two fragments an algorithm found to be clones. */
 export interface ClonePair {
 	readonly algorithm:    CloneAlgorithm;
-	/** the algorithm's symmetric similarity in [0, 1] */
+	/** the symmetric similarity in [0, 1] */
 	readonly similarity:   number;
-	/** how much of `a` is found in `b` and vice versa, for algorithms that have an asymmetric measure */
+	/** how much of `a` is found in `b` and vice versa */
 	readonly containment?: readonly [aInB: number, bInA: number];
 	readonly a:            CloneFragment;
 	readonly b:            CloneFragment;
-	/** the matched regions (tiles/passages) of token-based algorithms */
+	/** the matched regions of the token-based algorithms */
 	readonly matches?:     readonly { readonly a: SourceRange, readonly b: SourceRange }[];
 }
 
 export interface CloneDetectionStats extends MergeableRecord {
 	readonly files:       number;
-	/** compared units (or subtrees for `baxter`) per algorithm */
+	/** compared units (subtrees for `baxter`) per algorithm */
 	readonly units:       Partial<Record<CloneAlgorithm, number>>;
-	/** pairs that passed all lossless filters and were compared in full */
+	/** pairs that passed the lossless filters and were compared in full */
 	readonly comparisons: Partial<Record<CloneAlgorithm, number>>;
 	readonly timing:      Partial<Record<CloneAlgorithm, number>>;
 }
@@ -151,136 +122,83 @@ export interface CloneDetectionResult {
 	readonly stats: CloneDetectionStats;
 }
 
-/** A comparable unit: a function or a whole file. */
-interface Unit {
-	readonly file:      number;
-	readonly node:      number;
-	/** 0 for the analyzed index, 1 for the `against` index */
-	readonly side:      number;
-	readonly function?: number;
-}
-
-/** an index with an `against` index appended; `side` tells them apart */
+/** the analyzed files followed by those of `against`, from index `own` on */
 interface Corpus {
-	readonly asts:  readonly CloneAst[];
-	readonly pdgs:  readonly (readonly Pdg[] | undefined)[];
-	readonly side:  readonly number[];
-	readonly cross: boolean;
+	readonly asts:   readonly CloneAst[];
+	readonly own:    number;
+	readonly config: CloneDetectionConfig;
+	readonly stats:  { units: number, comparisons: number };
 }
 
-function corpus(index: CloneIndex, against: CloneIndex | undefined): Corpus {
-	const asts = against ? [...index.files, ...against.files] : index.files;
-	const pdgs = [...index.files.map((_, i) => index.pdgs?.[i]), ...against?.files.map((_, i) => against.pdgs?.[i]) ?? []];
-	const side = asts.map((_, i) => i < index.files.length ? 0 : 1);
-	return { asts, pdgs, side, cross: against !== undefined };
-}
+/** matched runs of two token strings: start in a, start in b, length in a, length in b */
+type Run = readonly [number, number, number, number];
 
 function units(c: Corpus, unit: CloneUnit): Unit[] {
-	const out: Unit[] = [];
-	for(let f = 0; f < c.asts.length; f++) {
-		const ast = c.asts[f];
-		if(unit === CloneUnit.File) {
-			if(ast.kind.length > 0) {
-				out.push({ file: f, node: 0, side: c.side[f] });
-			}
-		} else {
-			ast.functions.forEach((fn, k) => out.push({ file: f, node: fn.node, side: c.side[f], function: k }));
-		}
-	}
-	return out;
+	return c.asts.flatMap((ast, file) => unit === CloneUnit.File ? [{ file, node: 0 }] : ast.functions.map(f => ({ file, node: f.node })));
 }
 
-/** whether the pair may be reported at all: scope, sides, and no containment of one fragment in the other */
-function admissible(c: Corpus, config: CloneDetectionConfig, a: Unit, b: Unit): boolean {
-	if(c.cross && a.side === b.side) {
+/** whether the pair may be reported: scope, sides, and neither fragment within the other */
+function admissible(c: Corpus, a: Unit, b: Unit): boolean {
+	if(c.own < c.asts.length && (a.file < c.own) === (b.file < c.own)) {
 		return false;
-	}
-	if(a.file !== b.file) {
+	} else if(a.file !== b.file) {
 		return true;
 	}
-	if(config.scope === CloneScope.CrossFile) {
-		return false;
-	}
 	const size = c.asts[a.file].size;
-	return !(a.node <= b.node && b.node < a.node + size[a.node]) && !(b.node <= a.node && a.node < b.node + size[b.node]);
+	return c.config.scope !== CloneScope.CrossFile && (a.node + size[a.node] <= b.node || b.node + size[b.node] <= a.node);
 }
 
-function location(ast: CloneAst, node: number): SourceLocation {
-	const s = ast.span, p = 4 * node;
-	return [s[p], s[p + 1], s[p + 2], s[p + 3], ast.file];
+function fragment(c: Corpus, { file, node }: Unit): CloneFragment {
+	const ast = c.asts[file], s = ast.span, p = 4 * node;
+	const name = ast.functions.find(f => f.node === node)?.name;
+	return { file: ast.file, id: ast.id[node], loc: [s[p], s[p + 1], s[p + 2], s[p + 3], ast.file], ...(name ? { name } : {}), ...(file >= c.own ? { external: true } : {}) };
 }
 
-function fragment(c: Corpus, file: number, node: number): CloneFragment {
-	const ast = c.asts[file];
-	const name = ast.kind[node] === CloneNodeKind.FunctionDefinition ? ast.functions.find(f => f.node === node)?.name : undefined;
-	return { file: ast.file, id: ast.id[node], loc: location(ast, node), ...(name ? { name } : {}), ...(c.side[file] === 1 ? { external: true } : {}) };
+/** the source covered by the nodes `[from, to)`: whole subtrees within it, the start of all others */
+function range(ast: CloneAst, from: number, to: number): SourceRange {
+	const s = ast.span, rs: SourceRange[] = [];
+	for(let n = from; n < to; n++) {
+		const p = 4 * n;
+		if(s[p] !== 0) {
+			rs.push(n + ast.size[n] <= to ? [s[p], s[p + 1], s[p + 2], s[p + 3]] : [s[p], s[p + 1], s[p], s[p + 1]]);
+		}
+	}
+	return rs.length > 0 ? SourceRange.merge(rs) : SourceRange.invalid();
+}
+
+function pair(c: Corpus, algorithm: CloneAlgorithm, a: Unit, b: Unit, similarity: number, containment: readonly [number, number], runs: readonly Run[]): ClonePair {
+	const [x, y] = [c.asts[a.file], c.asts[b.file]];
+	const matches = runs.map(([i, j, la, lb]) => ({ a: range(x, a.node + i, a.node + i + la), b: range(y, b.node + j, b.node + j + lb) }));
+	return { algorithm, similarity, containment, a: fragment(c, a), b: fragment(c, b), matches };
 }
 
 /**
- * The source range covered by the tokens `[from, from + length)`: a token stands for the start of its node, an exit
- * token for its end, and a leaf token for the whole leaf.
+ * Calls `visit(i, j)`, `i < j`, once per admissible pair of units sharing a key, unless the lengths alone rule out the
+ * threshold (the similarity is at most `2 min(li, lj) / (li + lj)`).
  */
-function tokenRange(ast: CloneAst, tokens: CloneTokens, from: number, length: number): SourceRange {
-	const s = ast.span;
-	let sl = 0, sc = 0, el = 0, ec = 0;
-	for(let t = from; t < from + length; t++) {
-		const node = tokens.nodes[t];
-		const p = 4 * node;
-		if(s[p] === 0) {
-			continue;
-		}
-		const exit = tokens.exits[t] === 1;
-		const [bl, bc] = exit ? [s[p + 2], s[p + 3]] : [s[p], s[p + 1]];
-		const [fl, fc] = exit || ast.size[node] === 1 ? [s[p + 2], s[p + 3]] : [s[p], s[p + 1]];
-		if(sl === 0 || bl < sl || (bl === sl && bc < sc)) {
-			sl = bl;
-			sc = bc;
-		}
-		if(fl > el || (fl === el && fc > ec)) {
-			el = fl;
-			ec = fc;
-		}
-	}
-	return [sl, sc, el, ec];
-}
-
-function limitPairs(pairs: ClonePair[], max: number): ClonePair[] {
-	if(max <= 0 || pairs.length <= max) {
-		return pairs;
-	}
-	return pairs.sort((x, y) => y.similarity - x.similarity).slice(0, max);
-}
-
-/**
- * Candidate pairs `(i, j)`, `i < j`, of units sharing at least one key, each pair once.
- * `keys[u]` are the (deduplicated or not) keys of unit `u`; keys in more than `maxFrequency` units are skipped.
- */
-function sharedKeyCandidates(keys: readonly ArrayLike<number>[], maxFrequency: number, visit: (i: number, j: number) => void): void {
+function candidates(c: Corpus, us: readonly Unit[], keys: readonly ArrayLike<number>[], lengths: readonly number[], threshold: number, visit: (i: number, j: number) => void): void {
 	const postings = new Map<number, number[]>();
 	for(let u = 0; u < keys.length; u++) {
-		const ks = keys[u];
-		for(let x = 0; x < ks.length; x++) {
-			let p = postings.get(ks[x]);
+		for(let x = 0; x < keys[u].length; x++) {
+			const p = postings.get(keys[u][x]);
 			if(p === undefined) {
-				p = [];
-				postings.set(ks[x], p);
-			}
-			if(p[p.length - 1] !== u) {
+				postings.set(keys[u][x], [u]);
+			} else if(p[p.length - 1] !== u) {
 				p.push(u);
 			}
 		}
 	}
 	const seen = new Int32Array(keys.length).fill(-1);
+	c.stats.units = us.length;
 	for(let i = 0; i < keys.length; i++) {
-		const ks = keys[i];
-		for(let x = 0; x < ks.length; x++) {
-			const p = postings.get(ks[x]);
-			if(p === undefined || p.length > maxFrequency) {
-				continue;
-			}
-			for(const j of p) {
-				if(j > i && seen[j] !== i) {
-					seen[j] = i;
+		for(let x = 0; x < keys[i].length; x++) {
+			for(const j of postings.get(keys[i][x]) ?? []) {
+				if(j <= i || seen[j] === i) {
+					continue;
+				}
+				seen[j] = i;
+				if(2 * Math.min(lengths[i], lengths[j]) / (lengths[i] + lengths[j]) >= threshold && admissible(c, us[i], us[j])) {
+					c.stats.comparisons++;
 					visit(i, j);
 				}
 			}
@@ -288,214 +206,101 @@ function sharedKeyCandidates(keys: readonly ArrayLike<number>[], maxFrequency: n
 	}
 }
 
-function detectGst(c: Corpus, config: CloneDetectionConfig, stats: { units: number, comparisons: number }): ClonePair[] {
-	const cfg = config.gst;
+function detectGst(c: Corpus): ClonePair[] {
+	const cfg = c.config.gst;
 	const us = units(c, cfg.unit);
 	const tokens = us.map(u => tokenize(c.asts[u.file], cfg.tokens, u.node));
-	const k = Math.max(1, cfg.minimumMatchLength);
-	// lossless prefilter: a tile of >= k tokens shares at least one k-gram
-	const grams = tokens.map(t => kgramHashes(t.values, k));
-	const seqs = new Array<GstSequence | undefined>(us.length);
-	stats.units = us.length;
 	const pairs: ClonePair[] = [];
-	sharedKeyCandidates(grams, Number.POSITIVE_INFINITY, (i, j) => {
-		const ni = tokens[i].values.length, nj = tokens[j].values.length;
-		if(2 * Math.min(ni, nj) / (ni + nj) < cfg.threshold || !admissible(c, config, us[i], us[j])) {
-			return;
+	// a tile of at least `minimumMatchLength` tokens shares a k-gram
+	candidates(c, us, tokens.map(t => kgramHashes(t, cfg.minimumMatchLength)), tokens.map(t => t.length), cfg.threshold, (i, j) => {
+		const [l, r] = tokens[j].length < tokens[i].length ? [j, i] : [i, j];
+		const tiles = greedyStringTiling(tokens[l], tokens[r], cfg.minimumMatchLength);
+		const matched = matchedTokens(tiles);
+		const similarity = gstSimilarity(matched, tokens[l].length, tokens[r].length);
+		if(similarity >= cfg.threshold) {
+			pairs.push(pair(c, CloneAlgorithm.Gst, us[l], us[r], similarity, [matched / tokens[l].length, matched / tokens[r].length], tiles.map(t => [t.left, t.right, t.length, t.length])));
 		}
-		stats.comparisons++;
-		seqs[i] ??= gstSequence(tokens[i].values, FileEndToken);
-		seqs[j] ??= gstSequence(tokens[j].values, FileEndToken);
-		// JPlag puts the submission with fewer tokens first (ties: by name)
-		const swap = nj < ni || (nj === ni && j < i);
-		const [l, r] = swap ? [j, i] : [i, j];
-		const matches = greedyStringTiling(seqs[l] as GstSequence, seqs[r] as GstSequence, cfg.minimumMatchLength);
-		const matched = matchedTokens(matches);
-		const similarity = gstSimilarity(matched, ni, nj);
-		if(similarity < cfg.threshold) {
-			return;
-		}
-		const al = c.asts[us[l].file], ar = c.asts[us[r].file];
-		pairs.push({
-			algorithm:   CloneAlgorithm.Gst,
-			similarity,
-			containment: [matched / tokens[l].values.length, matched / tokens[r].values.length],
-			a:           fragment(c, us[l].file, us[l].node),
-			b:           fragment(c, us[r].file, us[r].node),
-			matches:     matches.map(m => ({ a: tokenRange(al, tokens[l], m.left, m.length), b: tokenRange(ar, tokens[r], m.right, m.length) }))
-		});
 	});
 	return pairs;
 }
 
-function detectWinnowing(c: Corpus, config: CloneDetectionConfig, stats: { units: number, comparisons: number }): ClonePair[] {
-	const cfg = config.winnowing;
+function detectWinnowing(c: Corpus): ClonePair[] {
+	const cfg = c.config.winnowing;
 	const us = units(c, cfg.unit);
-	const tokens = us.map(u => tokenize(c.asts[u.file], cfg.tokens, u.node));
-	const all = tokens.map(t => fingerprints(t.values, cfg.k, cfg.t));
-	// like MOSS's `-m`, fingerprints found in too many units are ignored entirely, for candidates and scores alike
+	const all = us.map(u => fingerprints(tokenize(c.asts[u.file], cfg.tokens, u.node), cfg.k, cfg.t));
 	const frequency = new Map<number, number>();
-	for(const ps of all) {
-		for(const h of uniqueArray(ps.map(p => p.hash))) {
-			frequency.set(h, (frequency.get(h) ?? 0) + 1);
-		}
-	}
+	const sets = all.map(ps => new Set(ps.map(p => p.hash)));
+	sets.forEach(s => s.forEach(h => frequency.set(h, (frequency.get(h) ?? 0) + 1)));
 	const prints = all.map(ps => ps.filter(p => (frequency.get(p.hash) ?? 0) <= cfg.maxDocumentFrequency));
-	const sets = prints.map(ps => uniqueArray(ps.map(p => p.hash)).sort((x, y) => x - y));
-	stats.units = us.length;
+	const keys = prints.map(ps => uniqueArray(ps.map(p => p.hash)));
 	const pairs: ClonePair[] = [];
-	sharedKeyCandidates(sets, Number.POSITIVE_INFINITY, (i, j) => {
-		const si = sets[i], sj = sets[j];
-		if(si.length === 0 || sj.length === 0 || 2 * Math.min(si.length, sj.length) / (si.length + sj.length) < cfg.threshold || !admissible(c, config, us[i], us[j])) {
-			return;
-		}
-		stats.comparisons++;
-		const shared = new Set<number>();
-		for(let x = 0, y = 0; x < si.length && y < sj.length;) {
-			if(si[x] === sj[y]) {
-				shared.add(si[x]);
-				x++;
-				y++;
-			} else if(si[x] < sj[y]) {
-				x++;
-			} else {
-				y++;
-			}
-		}
-		const similarity = 2 * shared.size / (si.length + sj.length);
+	candidates(c, us, keys, keys.map(k => k.length), cfg.threshold, (i, j) => {
+		const inJ = new Map<number, number>();
+		prints[j].forEach(p => inJ.has(p.hash) || inJ.set(p.hash, p.position));
+		const shared = keys[i].filter(h => inJ.has(h)).length;
+		const similarity = 2 * shared / (keys[i].length + keys[j].length);
 		if(similarity < cfg.threshold) {
 			return;
 		}
-		pairs.push({
-			algorithm:   CloneAlgorithm.Winnowing,
-			similarity,
-			containment: [shared.size / si.length, shared.size / sj.length],
-			a:           fragment(c, us[i].file, us[i].node),
-			b:           fragment(c, us[j].file, us[j].node),
-			matches:     passages(c, us[i], us[j], tokens[i], tokens[j], prints[i], prints[j], shared, cfg.k)
-		});
-	});
-	return pairs;
-}
-
-/** MOSS-style passages: the k-grams of shared fingerprints, merged where they touch on both sides */
-function passages(c: Corpus, a: Unit, b: Unit, na: CloneTokens, nb: CloneTokens, pa: readonly { hash: number, position: number }[], pb: readonly { hash: number, position: number }[], shared: ReadonlySet<number>, k: number): { a: SourceRange, b: SourceRange }[] {
-	const firstInB = new Map<number, number>();
-	for(const p of pb) {
-		if(shared.has(p.hash) && !firstInB.has(p.hash)) {
-			firstInB.set(p.hash, p.position);
-		}
-	}
-	const runs: [number, number, number, number][] = [];
-	for(const p of pa) {
-		const q = firstInB.get(p.hash);
-		if(q === undefined) {
-			continue;
-		}
-		const last = runs[runs.length - 1];
-		if(last && p.position <= last[1] && q >= last[2] && q <= last[3]) {
-			last[1] = Math.max(last[1], p.position + k);
-			last[3] = Math.max(last[3], q + k);
-		} else {
-			runs.push([p.position, p.position + k, q, q + k]);
-		}
-	}
-	const aa = c.asts[a.file], ab = c.asts[b.file];
-	return runs.map(([as, ae, bs, be]) => ({ a: tokenRange(aa, na, as, ae - as), b: tokenRange(ab, nb, bs, be - bs) }));
-}
-
-function detectBaxter(c: Corpus, config: CloneDetectionConfig, stats: { units: number, comparisons: number }): ClonePair[] {
-	const found = baxterClones(c.asts, config.baxter);
-	stats.units = found.subtrees;
-	stats.comparisons = found.comparisons;
-	const pairs: ClonePair[] = [];
-	for(const p of found.pairs) {
-		const a: Unit = { file: p.a.file, node: p.a.node, side: c.side[p.a.file] };
-		const b: Unit = { file: p.b.file, node: p.b.node, side: c.side[p.b.file] };
-		if(admissible(c, config, a, b)) {
-			pairs.push({ algorithm: CloneAlgorithm.Baxter, similarity: p.similarity, a: fragment(c, a.file, a.node), b: fragment(c, b.file, b.node) });
-		}
-	}
-	return pairs;
-}
-
-function detectSimilar(c: Corpus, config: CloneDetectionConfig, stats: { units: number, comparisons: number }): ClonePair[] {
-	const cfg = config.similar;
-	const us = units(c, CloneUnit.Function).filter(u => {
-		const pdg = c.pdgs[u.file]?.[u.function as number];
-		return pdg !== undefined && pdg.color.length >= cfg.minimumVertices;
-	});
-	const pdgOf = (u: Unit) => (c.pdgs[u.file] as readonly Pdg[])[u.function as number];
-	stats.units = us.length;
-	// sorted by size, so the size bound lets us stop early
-	us.sort((x, y) => pdgOf(x).color.length - pdgOf(y).color.length);
-	const pairs: ClonePair[] = [];
-	for(let i = 0; i < us.length; i++) {
-		const f = pdgOf(us[i]);
-		for(let j = i + 1; j < us.length; j++) {
-			const g = pdgOf(us[j]);
-			if(similarSizeBound(f, g) < cfg.threshold) {
-				break;
-			}
-			if(!admissible(c, config, us[i], us[j])) {
+		// MOSS-style passages: the k-grams of shared fingerprints, merged where they touch on both sides
+		const runs: [number, number, number, number][] = [];
+		for(const p of prints[i]) {
+			const q = inJ.get(p.hash);
+			const last = runs.at(-1);
+			if(q === undefined) {
 				continue;
-			}
-			stats.comparisons++;
-			const r = similarCompare(f, g, cfg.iterations);
-			if(r.symmetric >= cfg.threshold) {
-				pairs.push({
-					algorithm:   CloneAlgorithm.Similar,
-					similarity:  r.symmetric,
-					containment: [r.fInG, r.gInF],
-					a:           fragment(c, us[i].file, us[i].node),
-					b:           fragment(c, us[j].file, us[j].node)
-				});
+			} else if(last && p.position <= last[0] + last[2] && q >= last[1] && q <= last[1] + last[3]) {
+				last[2] = Math.max(last[2], p.position + cfg.k - last[0]);
+				last[3] = Math.max(last[3], q + cfg.k - last[1]);
+			} else {
+				runs.push([p.position, q, cfg.k, cfg.k]);
 			}
 		}
-	}
+		pairs.push(pair(c, CloneAlgorithm.Winnowing, us[i], us[j], similarity, [shared / keys[i].length, shared / keys[j].length], runs));
+	});
 	return pairs;
 }
 
-const Detectors: Record<CloneAlgorithm, (c: Corpus, config: CloneDetectionConfig, stats: { units: number, comparisons: number }) => ClonePair[]> = {
+function detectBaxter(c: Corpus): ClonePair[] {
+	const found = baxterClones(c.asts, c.config.baxter);
+	c.stats.units = found.subtrees;
+	c.stats.comparisons = found.comparisons;
+	return found.pairs.filter(p => admissible(c, p.a, p.b)).map(p => ({ algorithm: CloneAlgorithm.Baxter, similarity: p.similarity, a: fragment(c, p.a), b: fragment(c, p.b) }));
+}
+
+const Detectors: Record<CloneAlgorithm, (c: Corpus) => ClonePair[]> = {
 	[CloneAlgorithm.Baxter]:    detectBaxter,
 	[CloneAlgorithm.Gst]:       detectGst,
-	[CloneAlgorithm.Winnowing]: detectWinnowing,
-	[CloneAlgorithm.Similar]:   detectSimilar
+	[CloneAlgorithm.Winnowing]: detectWinnowing
 };
 
 /**
- * Runs the configured algorithms on the index. With `against`, only pairs with one fragment from `index` and one
- * from `against` are compared, which is how new code is searched in a corpus of pre-analyzed projects.
- * Keep in mind that:
- * - each algorithm reports at most {@link CloneDetectionConfig.maxPairs} pairs, the most similar ones, so a result
- *   with exactly that many pairs is likely cut off (`n` copies of one function are `n(n-1)/2` pairs)
- * - an algorithm that does not fit the index is silent, so {@link CloneAlgorithm.Similar} finds nothing in an index built
- *   without PDGs (`pdgs: false`), see {@link CloneDetectionStats#units} for how many units it compared
- * - the detection itself needs no parser or dataflow analysis, and the ids of fragments marked `external` belong to
- *   the analysis of `against`
+ * Runs the configured algorithms on the index. With `against`, only pairs of a fragment of `index` and one of
+ * `against` (whose fragments are marked `external`) are reported. Each algorithm reports at most `maxPairs` pairs.
  * @param index   - the code to check, built with {@link CloneIndex.build}
  * @param config  - see {@link DefaultCloneDetectionConfig}
- * @param against - an index of the same {@link ClonePerspective} to search `index` in, e.g., from {@link CloneIndex.deserialize}
+ * @param against - an index of the same perspective to search `index` in, e.g., from {@link CloneIndex.deserialize}
  * @example
  * ```ts
- * const index = await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical, pdgs: false });
- * const { pairs, stats } = detectClones(index, { ...DefaultCloneDetectionConfig, scope: CloneScope.CrossFile });
- * for(const { a, b, similarity } of pairs) {
- *   console.log(`${a.name ?? a.id} in ${a.file} is ${(similarity * 100).toFixed(0)}% a clone of ${b.name ?? b.id} in ${b.file}`);
- * }
+ * const { pairs } = detectClones(await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical }), DefaultCloneDetectionConfig);
  * ```
  */
 export function detectClones(index: CloneIndex, config: CloneDetectionConfig, against?: CloneIndex): CloneDetectionResult {
-	const c = corpus(index, against);
+	const asts = [...index.files, ...against?.files ?? []];
 	const pairs: ClonePair[] = [];
-	const result: { units: Partial<Record<CloneAlgorithm, number>>, comparisons: Partial<Record<CloneAlgorithm, number>>, timing: Partial<Record<CloneAlgorithm, number>> } = { units: {}, comparisons: {}, timing: {} };
+	const stats: CloneDetectionStats = { files: asts.length, units: {}, comparisons: {}, timing: {} };
 	for(const algorithm of new Set(config.algorithms)) {
+		const detector = Detectors[algorithm] as ((c: Corpus) => ClonePair[]) | undefined;
+		if(detector === undefined) {
+			throw new Error(`unknown clone detection algorithm ${String(algorithm)}, use one of ${Object.values(CloneAlgorithm).join(', ')}`);
+		}
 		const start = performance.now();
-		const stats = { units: 0, comparisons: 0 };
-		pairs.push(...limitPairs(Detectors[algorithm](c, config, stats), config.maxPairs));
-		result.units[algorithm] = stats.units;
-		result.comparisons[algorithm] = stats.comparisons;
-		result.timing[algorithm] = performance.now() - start;
+		const c: Corpus = { asts, own: against ? index.files.length : asts.length, config, stats: { units: 0, comparisons: 0 } };
+		const found = detector(c);
+		pairs.push(...config.maxPairs > 0 && found.length > config.maxPairs ? found.sort((x, y) => y.similarity - x.similarity).slice(0, config.maxPairs) : found);
+		stats.units[algorithm] = c.stats.units;
+		stats.comparisons[algorithm] = c.stats.comparisons;
+		stats.timing[algorithm] = performance.now() - start;
 	}
-	return { pairs, stats: { files: c.asts.length, ...result } };
+	return { pairs, stats };
 }

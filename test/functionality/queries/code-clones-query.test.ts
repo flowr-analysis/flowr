@@ -19,8 +19,8 @@ describe('Code Clones Query', withTreeSitter(parser => {
 		return result['code-clones'];
 	}
 	test('finds the clone pair', async() => {
-		const r = await run(`${a}\n${b}`, { algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Similar] });
-		assert.deepStrictEqual(r.pairs.map(p => p.algorithm).sort(), [CloneAlgorithm.Gst, CloneAlgorithm.Similar]);
+		const r = await run(`${a}\n${b}`, { algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing] });
+		assert.deepStrictEqual(r.pairs.map(p => p.algorithm).sort(), [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing]);
 	});
 	test('an exported index can be searched against', async() => {
 		const index = (await run(a, { exportIndex: true })).index as SerializedCloneIndex;
@@ -38,11 +38,11 @@ describe('Code Clones Query', withTreeSitter(parser => {
 		assert.lengthOf((await run(b, { against: [index] })).pairs, 1);
 	});
 	test('the line parser only takes leading algorithm names', () => {
-		const parsed = CodeClonesQueryDefinition.fromLine({} as ReplOutput, ['gst', 'similar', 'x', '<-', 'gst'], FlowrConfig.default());
-		assert.deepStrictEqual(parsed.query, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Similar] }]);
+		const parsed = CodeClonesQueryDefinition.fromLine({} as ReplOutput, ['gst', 'baxter', 'x', '<-', 'gst'], FlowrConfig.default());
+		assert.deepStrictEqual(parsed.query, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Baxter] }]);
 		assert.strictEqual(parsed.rCode, 'x <- gst');
 	});
 	test('the schema rejects malformed indices', () => {
-		assert.isDefined(CodeClonesQueryDefinition.schema.validate({ type: 'code-clones', against: [{ format: 'flowr-clone-index', version: 1 }] }).error);
+		assert.isDefined(CodeClonesQueryDefinition.schema.validate({ type: 'code-clones', against: [{ format: 'flowr-clone-index', version: 2 }] }).error);
 	});
 }));

@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import Joi from 'joi';
 import { queryHeader } from '../../query-print';
@@ -19,7 +20,7 @@ export interface FunctionInfoQuery extends BaseQueryFormat {
 	/** the bare function/symbol name to look up */
 	readonly name:      string;
 	/** restrict the package list to these names; every exporting package when omitted */
-	readonly packages?: readonly string[];
+	readonly packages?: readonly BrandedNamespace[];
 }
 
 /** what the signature database states about `name` in one exporting package */

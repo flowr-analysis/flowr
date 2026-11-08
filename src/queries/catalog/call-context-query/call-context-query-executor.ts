@@ -24,7 +24,7 @@ import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { identifyLinkToRelation } from './identify-link-to-relation';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { quotedForWorker } from '../../../dataflow/environments/query-fn-props';
 import { ArrayQueue } from '../../../util/collections/queue';
@@ -55,7 +55,7 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 	return 'linkTo' in query && query.linkTo !== undefined;
 }
 
-export type PromotedCallTest = (t: string) => boolean;
+export type PromotedCallTest = (t: BrandedIdentifier) => boolean;
 
 /**
  * Convert a name to a predicate that checks whether an input conforms to this name.
@@ -63,21 +63,21 @@ export type PromotedCallTest = (t: string) => boolean;
  */
 export function promoteCallName(callName: CallNameTypes, exact = false): PromotedCallTest {
 	if(Array.isArray(callName)) {
-		const s = new Set<string>(callName);
-		return (t: string) => s.has(t);
+		const s = new Set<BrandedIdentifier>(callName);
+		return (t: BrandedIdentifier) => s.has(t);
 	} else if(typeof callName === 'string' && exact) {
-		return (t: string) => t === callName;
+		return (t: BrandedIdentifier) => t === callName;
 	}
 	const source = typeof callName === 'string' ? callName : exact ? '^' + callName.source + '$' : callName.source;
 	let r: RegExp | undefined;
-	return (t: string) => (r ??= new RegExp(source)).test(t);
+	return (t: BrandedIdentifier) => (r ??= new RegExp(source)).test(t);
 }
 
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
 	callName:    PromotedCallTest,
 	/** names the query matches exactly (if any), allowing map-based lookup instead of per-vertex predicate checks */
-	exactNames?: readonly string[],
+	exactNames?: readonly BrandedIdentifier[],
 	/** position in the original query list, keeps result order stable */
 	idx:         number,
 	fileFilter?: FileFilter<PromotedCallTest>,
@@ -86,7 +86,7 @@ type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'
 export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: PromotedCallTest };
 
 /** string arrays always match exactly, plain strings only if the query requests an exact match */
-function exactNamesOf(callName: CallNameTypes, exact: boolean | undefined): readonly string[] | undefined {
+function exactNamesOf(callName: CallNameTypes, exact: boolean | undefined): readonly BrandedIdentifier[] | undefined {
 	if(Array.isArray(callName)) {
 		return callName;
 	}
@@ -269,7 +269,7 @@ function doesFilepathMatch(file: string | undefined, filter: FileFilter<Promoted
  * signature database: base R's export owner, then any package the loaded sources record as exporting `name`.
  * Only meaningful once the version plugins are initialized (see {@link primeSigDbForNamespaceFilter}).
  */
-function bareCallOwnedBy(name: string, target: string, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+function bareCallOwnedBy(name: BrandedIdentifier, target: BrandedNamespace, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
 	return baseRExportOwner(name) === target || deps.packagesExporting(name).includes(target);
 }
 
@@ -329,7 +329,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	}
 	const calls = cfg ? new Map(dataflow.graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>) : undefined;
 	/* index exact-name queries so each name costs one map lookup instead of a predicate check per query */
-	const byName = new Map<string, PromotedQuery[]>();
+	const byName = new Map<BrandedIdentifier, PromotedQuery[]>();
 	const patterns: PromotedQuery[] = [];
 	for(const query of promotedQueries) {
 		if(query.exactNames) {
@@ -345,7 +345,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			patterns.push(query);
 		}
 	}
-	const queriesFor = (name: string): readonly PromotedQuery[] => {
+	const queriesFor = (name: BrandedIdentifier): readonly PromotedQuery[] => {
 		const exact = byName.get(name) ?? [];
 		return patterns.length === 0 ? exact : [...exact, ...patterns.filter(q => q.callName(name))];
 	};

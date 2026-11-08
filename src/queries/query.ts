@@ -5,7 +5,7 @@ import {
 } from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryFormat, BaseQueryMeta, BaseQueryResult, BasicQueryData } from './base-query-format';
 import { getGuardIssueUrl, guard } from '../util/assert';
-import { SupportedVirtualQueries, type SupportedVirtualQueryTypes, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
+import { SupportedVirtualQueries, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import { type DataflowQuery, DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import { type IdMapQuery, IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
@@ -271,13 +271,12 @@ function groupQueriesByType(queries: Queries): Map<SupportedQueryTypes, Query[]>
 		}
 	}
 	for(const query of queries) {
-		const virtual = SupportedVirtualQueries[query.type as SupportedVirtualQueryTypes];
-		if(virtual) {
-			for(const subQuery of virtual(query as never)) {
+		if(query.type === 'compound') {
+			for(const subQuery of SupportedVirtualQueries[query.type](query)) {
 				add(subQuery);
 			}
 		} else {
-			add(query as Query);
+			add(query);
 		}
 	}
 	return grouped;

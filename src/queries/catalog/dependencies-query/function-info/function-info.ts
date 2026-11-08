@@ -1,3 +1,4 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../../../dataflow/environments/identifier';
 import type { CallNameTypes, LinkTo } from '../../call-context-query/call-context-query-format';
 
 /** when to read the argument value from a linked function */
@@ -16,16 +17,16 @@ export type DependencyInfoLinkAttachedInfo = DependencyInfoLink['attachLinkInfo'
 export interface FunctionArgInfo {
 	/** the index if the argument can be positional, unnamed in case of something like `...`, if the argument must be given with the name, please leave undefined */
 	argIdx?:       number | 'unnamed'
-	argName?:      string
+	argName?:      BrandedIdentifier
 	resolveValue?: boolean | 'library'
 }
 
 /** Describes a function that may create a dependency */
 export interface FunctionInfo extends FunctionArgInfo {
 	/** Which package does the function belong to */
-	package?:            string
+	package?:            BrandedNamespace
 	/** The name of the function */
-	name:                string
+	name:                BrandedIdentifier
 	/** links to other function calls to get the dependency from there (e.g., with `sink` for `print`) */
 	linkTo?:             DependencyInfoLink[]
 	/** default value for the argument if no binding value is found, please be aware, that categories can define global defaults, these are overwritten by the per-function defaults */

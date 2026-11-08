@@ -1,7 +1,7 @@
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../dataflow/environments/identifier';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -16,7 +16,7 @@ import { isPlot } from './plot-objects';
 /** The variable an assignment stores a result in. */
 export interface AssignmentTarget {
 	readonly id:   NodeId
-	readonly name: string
+	readonly name: BrandedIdentifier
 }
 
 /**
@@ -27,7 +27,7 @@ export interface FlowMemo {
 	readonly roles:       Map<NodeId, [NodeId, number][]>
 	readonly plots:       Map<NodeId, boolean>
 	readonly assignments: Map<NodeId, AssignmentTarget | undefined>
-	readonly inputs:      Map<NodeId, ReadonlySet<string>>
+	readonly inputs:      Map<NodeId, ReadonlySet<BrandedIdentifier>>
 }
 
 /** A fresh {@link FlowMemo}, to be dropped with the query run it serves. */
@@ -93,7 +93,7 @@ function escapesEvaluation(dataflow: DataflowInformation, id: NodeId): boolean {
 }
 
 /** the variables the value `id` is computed from, in the order they are met; see {@link inputVariablesOf} */
-function variablesOf(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, seen: Set<NodeId>, memo: FlowMemo | undefined): ReadonlySet<string> {
+function variablesOf(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, seen: Set<NodeId>, memo: FlowMemo | undefined): ReadonlySet<BrandedIdentifier> {
 	const known = memo?.inputs.get(id);
 	if(known !== undefined) {
 		return known;
@@ -102,7 +102,7 @@ function variablesOf(dataflow: DataflowInformation, ast: NormalizedAst, id: Node
 		return EmptyNames;
 	}
 	seen.add(id);
-	const into = new Set<string>();
+	const into = new Set<BrandedIdentifier>();
 	const vertex = dataflow.graph.getVertex(id);
 	if(DfgVertex.isUse(vertex)) {
 		const name = nameOf(ast, id);
@@ -124,7 +124,7 @@ function variablesOf(dataflow: DataflowInformation, ast: NormalizedAst, id: Node
 	return into;
 }
 
-const EmptyNames: ReadonlySet<string> = new Set();
+const EmptyNames: ReadonlySet<BrandedIdentifier> = new Set();
 
 /**
  * The variables the result of a call is computed from, resolved through the dataflow graph: the variables read
@@ -132,8 +132,8 @@ const EmptyNames: ReadonlySet<string> = new Set();
  * input (the file of `write.csv`, a flag, a callee), nor is what a call quotes or looks up in a data mask (`x` in
  * `filter(df, x > 1)`), or a use that only names a function.
  */
-export function inputVariablesOf(dataflow: DataflowInformation, ast: NormalizedAst, call: DataflowGraphVertexFunctionCall, memo?: FlowMemo): string[] {
-	const into = new Set<string>();
+export function inputVariablesOf(dataflow: DataflowInformation, ast: NormalizedAst, call: DataflowGraphVertexFunctionCall, memo?: FlowMemo): BrandedIdentifier[] {
+	const into = new Set<BrandedIdentifier>();
 	const seen = new Set<NodeId>([call.id]);
 	for(const [arg, roles] of argumentRoles(dataflow, call, memo)) {
 		if(carriesData(roles)) {
@@ -146,7 +146,7 @@ export function inputVariablesOf(dataflow: DataflowInformation, ast: NormalizedA
 }
 
 /** The variables the value `id` is computed from: those of {@link inputVariablesOf} for a call, the variable itself for a use. */
-export function inputVariablesAt(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, memo?: FlowMemo): string[] {
+export function inputVariablesAt(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, memo?: FlowMemo): BrandedIdentifier[] {
 	const vertex = dataflow.graph.getVertex(id);
 	return DfgVertex.isFunctionCall(vertex) ? inputVariablesOf(dataflow, ast, vertex, memo) : [...variablesOf(dataflow, ast, id, new Set(), memo)];
 }

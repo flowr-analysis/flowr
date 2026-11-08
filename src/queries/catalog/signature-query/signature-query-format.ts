@@ -11,6 +11,7 @@ import type { FlowrConfig } from '../../../config';
 import { parseSpec, problemsOf } from '../../../project/sigdb/spec-query';
 import { executeSignatureQuery, signatureQueryCompleter } from './signature-query-executor';
 import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackages, pushSummary } from './signature-query-render';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /**
  * Default of {@link SignatureQuery.callGraphMaxNodes}: how many nodes a rendered call graph may hold.
@@ -63,7 +64,7 @@ export interface SignatureQuery extends BaseQueryFormat {
 
 /** one parameter of a function signature */
 export interface SignatureParameterView {
-	readonly name:     string;
+	readonly name:     BrandedIdentifier;
 	/** bitfield of {@link ArgProp}: what the database states about the parameter, `0` when it states nothing */
 	readonly props:    ArgProps;
 	readonly default?: string;
@@ -71,13 +72,13 @@ export interface SignatureParameterView {
 
 /** the detailed view of a single function within a package */
 export interface SignatureFunctionView {
-	readonly name:       string;
-	readonly package:    string;
+	readonly name:       BrandedIdentifier;
+	readonly package:    BrandedNamespace;
 	readonly version?:   string;
 	readonly exported:   boolean;
 	readonly properties: readonly string[];
 	readonly parameters: readonly SignatureParameterView[];
-	readonly callees:    readonly string[];
+	readonly callees:    readonly BrandedIdentifier[];
 	readonly file?:      string;
 	readonly line?:      number;
 	/** deep link to the definition on the read-only GitHub mirror of the sources (CRAN, or R's own for a base package) */
@@ -89,9 +90,9 @@ export interface SignatureFunctionView {
 	/** whether the function looks like an S3 generic (has `<generic>.<class>` dispatch targets in the same package) */
 	readonly s3generic?: boolean;
 	/** the `<generic>.<class>` dispatch targets found in the same package */
-	readonly s3methods?: readonly string[];
+	readonly s3methods?: readonly BrandedIdentifier[];
 	/** when the function is an S3 method, the generic it dispatches for (`print.rema` is `print` in `base`, class `rema`); lazily computed */
-	readonly s3method?:  { readonly generic: string, readonly class: string, readonly package: string };
+	readonly s3method?:  { readonly generic: BrandedIdentifier, readonly class: string, readonly package: BrandedNamespace };
 	/**
 	 * The S4 group generic the name belongs to (`sin` is in `Math`, `+` in `Arith`). `viaGroup` says the view was
 	 * answered by the package's entry for the group rather than by one for the name itself: a
@@ -101,7 +102,7 @@ export interface SignatureFunctionView {
 	 * `members` lists every name the group entry answers for, present whenever the entry found is the group
 	 * itself, with `Ops` flattened to its operators (see {@link groupGenericMembers}).
 	 */
-	readonly s4group?:   { readonly group: string, readonly viaGroup?: boolean, readonly members?: readonly string[] };
+	readonly s4group?:   { readonly group: BrandedIdentifier, readonly viaGroup?: boolean, readonly members?: readonly BrandedIdentifier[] };
 	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
 	readonly callGraph?: string;
 	/** what flowR itself states about the function, from the built-in environment of the analysis */
@@ -123,23 +124,23 @@ export interface SignatureFlowrView {
 	/** the {@link CallProp}/{@link SemanticCallTag} names the built-in definition carries, like `pure` or `reads` */
 	readonly props:       readonly string[];
 	/** the {@link ArgProp} names of every parameter flowR declares, in order; a parameter it says nothing about has no roles */
-	readonly args?:       readonly { readonly name: string, readonly roles: readonly string[] }[];
+	readonly args?:       readonly { readonly name: BrandedIdentifier, readonly roles: readonly string[] }[];
 	/** the parameter handed back as the result ({@link ArgProp.Alias}), which is what draws the `Returns` edge */
-	readonly returns?:    string;
+	readonly returns?:    BrandedIdentifier;
 	/** flowR's own parameter names, only present when they disagree with the ones the database records */
-	readonly parameters?: readonly string[];
+	readonly parameters?: readonly BrandedIdentifier[];
 }
 
 /** one declared dependency of a package */
 export interface SignatureDependencyView {
 	readonly type:        string;
-	readonly name:        string;
+	readonly name:        BrandedNamespace;
 	readonly constraint?: string;
 }
 
 /** the full view of a package as stored in the signature database */
 export interface SignaturePackageView {
-	readonly name:          string;
+	readonly name:          BrandedNamespace;
 	readonly version:       string;
 	/** the version the analyzer resolved the package to, if it differs from {@link version} */
 	readonly resolved?:     string;
@@ -165,14 +166,14 @@ export interface SignaturePackageView {
 	 * and theirs in turn, so that {@link exportsTotal} is not mistaken for everything `library(<name>)` brings into
 	 * scope. Only what the database states; the analysis itself answers with `Dataflow.library.attaches`.
 	 */
-	readonly attaches?:     readonly string[];
+	readonly attaches?:     readonly BrandedNamespace[];
 	readonly functions:     readonly SignatureFunctionView[];
 }
 
 /** a compact hit from a wildcard function search */
 export interface SignatureMatchView {
-	readonly package:            string;
-	readonly name:               string;
+	readonly package:            BrandedNamespace;
+	readonly name:               BrandedIdentifier;
 	readonly exported:           boolean;
 	readonly version?:           string;
 	readonly file?:              string;
@@ -183,9 +184,9 @@ export interface SignatureMatchView {
 	/** link to the `.Rd` help source at the queried version, see {@link SignatureFunctionView.manUrl} */
 	readonly manUrl?:            string;
 	/** a preview of the function's parameters (the ones a parameter/required filter matched first), when such a filter is active */
-	readonly parameters?:        readonly string[];
+	readonly parameters?:        readonly BrandedIdentifier[];
 	/** the subset of {@link parameters} that the `--param` filter actually matched, so the renderer can highlight them */
-	readonly matchedParameters?: readonly string[];
+	readonly matchedParameters?: readonly BrandedIdentifier[];
 	/**
 	 * whether the hit comes from flowR's built-in configuration instead of a signature database, which is what
 	 * a search falls back to when no database records the name (see {@link SignatureFunctionView.flowrOnly}).
@@ -196,7 +197,7 @@ export interface SignatureMatchView {
 
 /** a hit from a wildcard package search */
 export interface SignaturePackageMatch {
-	readonly name:      string;
+	readonly name:      BrandedNamespace;
 	readonly base:      boolean;
 	readonly cran:      boolean;
 	readonly latest?:   string;

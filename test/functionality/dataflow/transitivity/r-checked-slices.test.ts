@@ -209,7 +209,11 @@ const groups: Readonly<Record<string, readonly TransitivityCase[]>> = {
 		{ name: 'get of a random global name in a function', code: 'a <- 4\nf <- function() get(sample(c("a"), 1))\nprint(f())' },
 		{ name: 'get0 of a random name', code: 'v1 <- 5\nprint(get0(sample(c("v1"), 1)))' },
 		{ name: 'get of a random name from an environment', code: 'e <- new.env()\nassign("v", 6, envir = e)\nprint(get(sample(c("v"), 1), envir = e))' },
-		{ name: 'mget of a random name from an environment', code: 'e <- new.env()\nassign("v", 7, envir = e)\nprint(unlist(mget(sample(c("v"), 1), envir = e)))' }
+		{ name: 'mget of a random name from an environment', code: 'e <- new.env()\nassign("v", 7, envir = e)\nprint(unlist(mget(sample(c("v"), 1), envir = e)))' },
+		{ name: 'get of a runtime name, called', code: 'k <- 3\nh <- function() k\nprint(get(sample(c("h"), 1))())' },
+		{ name: 'get of a runtime name, called through an alias', code: 'k <- 3\nh <- function() k\nf <- get(sample(c("h"), 1))\nprint(f())' },
+		{ name: 'get of a runtime name, called with a side effect', code: 'n <- 0\nh <- function() n <<- 5\nget(sample(c("h"), 1))()\nprint(n)' },
+		{ name: 'get of a runtime name, called in a function', code: 'k <- 3\nh <- function() k\nf <- function() get(sample(c("h"), 1))()\nprint(f())' }
 	],
 	'Writes into the frames of callers': [
 		{ name: 'parent.frame(2)', code: 'f <- function() g()\ng <- function() assign("y", 5, envir = parent.frame(2))\nh <- function() { y <- 1; f(); y }\nprint(h())' },

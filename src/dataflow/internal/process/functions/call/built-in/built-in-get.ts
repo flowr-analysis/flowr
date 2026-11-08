@@ -3,7 +3,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -82,10 +82,15 @@ export function linkComputedLookup(graph: DataflowGraph, vertex: DataflowGraphVe
 		/* a name only known at runtime may be that of any variable the lookup sees */
 		const idMap = graph.idMap;
 		const around = idMap === undefined ? new Set<NodeId>() : new Set(RNode.iterateParents(idMap.get(vertex.id), idMap).map(p => p.info.id));
+		/* only `get(n)()` calls what it finds, so only then the call may run each function it sees; following every lookup that far makes every program one call graph */
+		const node = idMap?.get(vertex.id);
+		const parent = node && idMap ? RNode.directParent(node, idMap) : undefined;
+		const called = RFunctionCall.isUnnamed(parent) && parent.calledFunction === node;
 		for(const [def] of graph.verticesOfType(VertexType.VariableDefinition)) {
 			const fn = idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(def, idMap);
 			if((fn === undefined || around.has(fn)) && !ProgramOrder.definedLater(def, runsOnceAt, graph)) {
-				graph.addEdge(vertex.id, def, EdgeType.Returns | EdgeType.Reads);
+				const runs = called && Dataflow.valueSources(def, graph)?.some(o => DfgVertex.isFunctionDefinition(graph.getVertex(o)));
+				graph.addEdge(vertex.id, def, runs ? EdgeType.Returns | EdgeType.Reads : EdgeType.Reads);
 			}
 		}
 		return false;

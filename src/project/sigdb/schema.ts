@@ -202,7 +202,7 @@ export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>
 export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
 
 /** Every package the database knows, mapped from its name to its {@link SigDbPkgMeta}. */
-export type SigDbPkgMetaIndex = Record<string, SigDbPkgMeta>;
+export type SigDbPkgMetaIndex = Record<BrandedNamespace, SigDbPkgMeta>;
 
 /**
  * Temporal tier of a bundle's packages:
@@ -246,7 +246,7 @@ export interface SigDb {
 	/** unique per-package blobs */
 	blobs:     PkgBlob[];
 	/** package name to its index into {@link SigDb.blobs} */
-	pkgs:      Record<string, number>;
+	pkgs:      Record<BrandedNamespace, number>;
 	/** package name to its {@link SigDbPkgMeta} */
 	meta:      SigDbPkgMetaIndex;
 }

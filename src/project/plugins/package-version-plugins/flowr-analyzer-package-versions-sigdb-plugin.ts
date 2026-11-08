@@ -21,6 +21,8 @@ import { uniqueArray } from '../../../util/collections/arrays';
 import { RReexports } from '../../../data/r-reexports.generated';
 import { SecureMode } from '../../../util/secure-mode';
 
+const Reexports: Readonly<Record<BrandedNamespace, (typeof RReexports)[string]>> = RReexports;
+
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
 
@@ -518,7 +520,7 @@ export function packageFromExports(name: BrandedNamespace, info: Pick<LibraryExp
 
 /** the re-exports R reports for `pkg`, see {@link RReexports} */
 function knownReexports(pkg: BrandedNamespace): ReadonlyMap<BrandedIdentifier, BrandedNamespace> | undefined {
-	const known = Object.hasOwn(RReexports, pkg) ? RReexports[pkg] : undefined;
+	const known = Object.hasOwn(Reexports, pkg) ? Reexports[pkg] : undefined;
 	return known === undefined ? undefined : new Map(Object.entries(known.reexports));
 }
 

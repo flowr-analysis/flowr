@@ -101,7 +101,7 @@ export function baseRExportOwner(name: BrandedIdentifier): BrandedNamespace | un
 /** whether `name` is an R-core / base package at the assumed R version (see {@link baseRPackages}). */
 export function isBaseRPackage(name: BrandedNamespace, rVersion?: string): boolean {
 	// the store is `as const`, so it carries no string index signature; read it as a record for the dynamic lookup
-	const range = (RBasePackageStore.packages as Record<string, readonly [first: string, last: string] | undefined>)[name];
+	const range = (RBasePackageStore.packages as Record<BrandedNamespace, readonly [first: string, last: string] | undefined>)[name];
 	if(range === undefined) {
 		return false;
 	}

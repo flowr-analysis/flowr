@@ -46,8 +46,8 @@ export interface NamespaceInfo {
 }
 
 export interface NamespaceFormat {
-	current:               NamespaceInfo;
-	[packageName: string]: NamespaceInfo;
+	current:                         NamespaceInfo;
+	[packageName: BrandedNamespace]: NamespaceInfo;
 }
 
 /**

@@ -198,7 +198,7 @@ function projectS3Classes(deps: ReadOnlyFlowrAnalyzerDependenciesContext): Set<s
 }
 
 /** builtins whose string-literal argument names an S3/S4 class in use, and which slot carries it */
-const ClassUsageArgs: Record<string, { readonly positional?: number, readonly named?: string }> = {
+const ClassUsageArgs: Record<BrandedIdentifier, { readonly positional?: number, readonly named?: string }> = {
 	inherits:  { positional: 1, named: 'what' },
 	is:        { positional: 1, named: 'class2' },
 	as:        { positional: 1, named: 'Class' },
@@ -692,7 +692,7 @@ export interface VersionSpaceOptions {
 
 /** a target's sigdb package key, merged source, and memoized signature resolver */
 interface PackageResolution {
-	readonly key:         string;
+	readonly key:         BrandedNamespace;
 	readonly src:         PackageSignatureSource | undefined;
 	readonly getFn:       FnResolver;
 	/** the package's release timeline, ascending */
@@ -1093,7 +1093,7 @@ export function survivingEntries(space: VersionSpace, name: BrandedNamespace, tr
 }
 
 /** the sigdb package a target's version history is drawn from: `R` reuses `base` (their releases coincide), everything else is itself */
-export function timelinePackageKey(name: BrandedNamespace, sources: readonly PackageSignatureSource[]): string {
+export function timelinePackageKey(name: BrandedNamespace, sources: readonly PackageSignatureSource[]): BrandedNamespace {
 	return name === 'R' && !sources.some(s => s.has(name)) ? 'base' : name;
 }
 

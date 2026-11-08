@@ -45,7 +45,7 @@ export interface GuessExplodeOptions {
 	/** iterate each dependency's versions newest-first (default) or oldest-first */
 	readonly order?:  'newest' | 'oldest';
 	/** a version to prefer per dependency when it survives the constraints (package name to version) */
-	readonly prefer?: Readonly<Record<string, VersionString>>;
+	readonly prefer?: Readonly<Record<BrandedNamespace, VersionString>>;
 	/** cap the number of combinations considered; the ones that cannot be loaded together are skipped, not returned */
 	readonly limit?:  number;
 }

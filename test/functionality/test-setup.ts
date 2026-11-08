@@ -8,7 +8,11 @@ import { TheGlobalLabelMap } from './_helper/label';
 import fs from 'fs';
 import { jsonReplacer } from '../../src/util/json';
 import { GlobalSummaryFile } from './summary-def';
+import { ensureTestTmp } from '../test-tmp.mjs';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+
+// another run's teardown or a tmp cleaner may have removed the folder since the global setup
+ensureTestTmp();
 
 // the tests use controlled package information; do not let the shipped CRAN signature database leak in
 process.env.FLOWR_DISABLE_DEFAULT_SIGDB ??= '1';

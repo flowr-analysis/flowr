@@ -77,7 +77,7 @@ describe('taint-analysis evaluation', () => {
 			line:         '3',
 			nodeId:       8,
 			functionName: 'someunknown',
-			args:         [ { value: 'argOfUnmapped' } ],
+			args:         [{ value: 'argOfUnmapped' }],
 		});
 
 		// the locally-defined function call carries its local definition target(s),
@@ -85,8 +85,8 @@ describe('taint-analysis evaluation', () => {
 			line:         '6',
 			nodeId:       32,
 			functionName: 'myLocal',
-			args:         [ { taint: 'File Input' } ],
-			localTargets: [ 26 ],
+			args:         [{ taint: 'File Input' }],
+			localTargets: [26],
 		});
 
 		// calls resolving to library/built-in functions carry no local targets
@@ -156,7 +156,8 @@ describe('taint-analysis evaluation', () => {
 
 		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inFor')), [{ construct: 'for', when: true }]);
 		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inWhile')), [{ construct: 'while', when: true }]);
-		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inRepeat')), [{ construct: 'repeat' }, { construct: 'if', when: true }]);
+		/* a later iteration only runs if the previous one did not break */
+		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inRepeat')), [{ construct: 'repeat' }, { construct: 'if', when: false, byIteration: true }]);
 
 		// the `stopifnot` cd points at the condition expression, i.e., the `is.numeric` call
 		const condition = findUnmappedCall(sec, 'is.unsorted');

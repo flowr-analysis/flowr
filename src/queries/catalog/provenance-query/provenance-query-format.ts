@@ -1,13 +1,10 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { singleCriterionLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { queryHeader } from '../../query-print';
+import type { QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { executeProvenanceQuery } from './provenance-query-executor';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
@@ -34,29 +31,13 @@ export function fdefBoundaryParser(argument: string): boolean {
 	return argument[endBracket + 1] === 'f';
 }
 
-function provenanceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'provenance'> {
-	const criterion = sliceCriteriaParser(line[0]);
-	const stopFdef = fdefBoundaryParser(line[0]);
-	if(!criterion || criterion.length !== 1) {
-		output.stderr(output.formatter.format('Invalid provenance query format, a single slicing criterion must be given in the form "(criterion1)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
-	}
-
-	return { query: [{
-		type:         'provenance',
-		criterion:    criterion[0],
-		restrictFdef: stopFdef
-	}], rCode: queryLineCode(line) } ;
-}
-
 export const ProvenanceQueryDefinition = {
 	title:           'Provenance Query',
 	executor:        executeProvenanceQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'provenance'>['provenance'];
 		const df = await analyzer.dataflow();
-		result.push(`Query: ${bold('provenance', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('provenance', formatter, out['.meta'].timing));
 		for(const [key, obj] of Object.entries(out.results)) {
 			result.push(`   ╰ Provenance for ${key}`);
 			const dfg = Dataflow.reduceGraph(df.graph, new Set(obj));
@@ -64,7 +45,7 @@ export const ProvenanceQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine:  provenanceQueryLineParser,
+	fromLine:  singleCriterionLineParser('provenance', 'provenance', line => ({ restrictFdef: fdefBoundaryParser(line[0]) })),
 	completer: criteriaQueryCompleter,
 	syntax:    '@provenance (<criterion>)[f] <code | file://path>',
 	schema:    Joi.object({

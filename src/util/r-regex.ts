@@ -41,6 +41,11 @@ const PosixClassMap = {
 } as const;
 const posixClassRegex = /\[:([a-z]+):]/g;
 
+/** a posix class {@link PosixClassMap} does not know, which JavaScript would read as a plain bracket expression */
+const unknownPosixClass = new RegExp(String.raw`\[:(?!(?:${Object.keys(PosixClassMap).join('|')}):\])`);
+/** an escape of a letter or digit, which R and JavaScript read differently (`\<`, `\d`, a back reference) */
+const divergentEscape = /\\[^.^$*+?()[\]{}|\\/-]/;
+
 /** the flags R accepts inside the pattern (`(?i)foo`), which JavaScript only takes next to it */
 const inlineFlags = /^\(\?([imsx]+)\)/;
 /** what a pattern JavaScript cannot compile falls back to, so one bad pattern matches nothing rather than throwing */
@@ -71,4 +76,17 @@ export function parseRRegexPattern(pattern: string): RegExp {
 		log.warn(`R pattern ${JSON.stringify(pattern)} is no JavaScript regex, treating it as matching nothing: ${(e as Error).message}`);
 		return matchesNothing;
 	}
+}
+
+/**
+ * As {@link parseRRegexPattern}, but only where the JavaScript regex matches what R matches: `undefined` for a pattern
+ * with an escape or a group (`(?...)`) the two read differently, a posix class there is no translation for, or one
+ * JavaScript cannot compile.
+ */
+export function parseRRegexPatternExactly(pattern: string): RegExp | undefined {
+	if(divergentEscape.test(pattern) || pattern.includes('(?') || unknownPosixClass.test(pattern)) {
+		return undefined;
+	}
+	const regex = parseRRegexPattern(pattern);
+	return regex === matchesNothing ? undefined : regex;
 }

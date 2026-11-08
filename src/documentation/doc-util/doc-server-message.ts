@@ -5,7 +5,7 @@ import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/r
 import { type FakeServer, type FakeSocket, withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
 import { guard } from '../../util/assert';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ServerMessageDescription {
@@ -73,7 +73,7 @@ export interface MessagePingPongDocumentationArguments {
 function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '', open = false): string {
 	const bold: (s: string) => string = open ? s => `<b>${s}</b>` : s => s;
 	return `
-<li> ${bold( '<code>' + msg.type + `</code> (${type})`)}
+<li> ${bold('<code>' + msg.type + `</code> (${type})`)}
 <details${open ? ' open' : ''}> 
 
 <summary> Show Details </summary>
@@ -153,7 +153,7 @@ ${
 	explainPingPong(messages, response)
 }
 
-The complete round-trip took ${printAsMs(end - start)} (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip${docTook(end - start)} covers validating the messages as well as starting and stopping the internal mock server.
 
 </details>
 `;

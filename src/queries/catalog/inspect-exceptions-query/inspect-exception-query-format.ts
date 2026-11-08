@@ -1,12 +1,10 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
+import type { QueryResults, SupportedQuery } from '../../query';
 import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
@@ -19,7 +17,7 @@ import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 export interface InspectExceptionQuery extends BaseQueryFormat {
 	readonly type:    'inspect-exception';
 	/** If given, only function definitions that match one of the given slicing criteria are considered. */
-	readonly filter?: SlicingCriterion[];
+	readonly filter?: readonly SlicingCriterion[];
 }
 
 export interface InspectExceptionQueryResult extends BaseQueryResult {
@@ -30,17 +28,6 @@ export interface InspectExceptionQueryResult extends BaseQueryResult {
 	readonly exceptions: ExceptionsByFunction;
 }
 
-function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-exception'> {
-	const criteria = sliceCriteriaParser(line[0]);
-	return {
-		query: {
-			type:   'inspect-exception',
-			filter: criteria
-		},
-		rCode: queryLineCode(line, criteria ? 1 : 0)
-	};
-}
-
 export const InspectExceptionQueryDefinition = {
 	title:           'Inspect Exceptions of Functions Query',
 	executor:        executeExceptionQuery,
@@ -48,22 +35,19 @@ export const InspectExceptionQueryDefinition = {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];
 		result.push(`Query: ${bold('inspect-exception', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		const n = await processed.normalize();
-		function getLoc(r: NodeId): SourceLocation | undefined {
+		function locationOf(r: NodeId): SourceLocation | undefined {
 			const node = n.idMap.get(NodeId.normalize(r));
-			return node ? SourceLocation.fromNode(node) : undefined;
-		}
-		function getLexeme(r: NodeId): string {
-			return n.idMap.get(NodeId.normalize(r))?.lexeme ?? String(r);
+			return SourceLocation.fromNode(node);
 		}
 		for(const [r, v] of Object.entries(out.exceptions)) {
-			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
+			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(locationOf(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
 			for(const { id: ex, cds } of v) {
-				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${getLexeme(ex)}" (${SourceLocation.format(getLoc(ex))}, cds: ${cds?.map(c => c.when + ':' + SourceLocation.format(getLoc(c.id))).join(', ') ?? 'none'})`);
+				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${NodeId.recoverName(NodeId.normalize(ex), n.idMap) ?? String(ex)}" (${SourceLocation.format(locationOf(ex))}, cds: ${cds?.map(c => c.when + ':' + SourceLocation.format(locationOf(c.id))).join(', ') ?? 'none'})`);
 			}
 		}
 		return true;
 	},
-	fromLine:  inspectExceptionLineParser,
+	fromLine:  filterLineParser('inspect-exception'),
 	completer: criteriaQueryCompleter,
 	syntax:    '@inspect-exception [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({

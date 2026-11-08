@@ -1,7 +1,9 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { ControlDependency, DataflowInformation } from './info';
+import type { ControlDependency } from './info';
+import { DataflowInformation } from './info';
+import { activeDataflowBudget } from '../gas';
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -9,6 +11,7 @@ import type {
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -36,7 +39,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
-	readonly cds:                  ControlDependency[] | undefined
+	readonly cds:                  readonly ControlDependency[] | undefined
 	/**
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
@@ -58,6 +61,14 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * processing (and recursing into) that node again. This allows to separate arg wrappers from their content!
 	 */
 	readonly precomputedValue?:    { readonly nodeId: NodeId, readonly info: DataflowInformation }
+	/**
+	 * The piped value for a placeholder-less pipe rhs, scoped by the rhs `rootId`.
+	 * {@link processNamedCall} splices it into that call's arguments, so every processor sees it as a normal
+	 * positional argument; the pipe processed it already, so {@link processAllArguments} skips it.
+	 */
+	readonly pipedArgument?:       { readonly rootId: NodeId, readonly argument: RArgument<OtherInfo & ParentInformation> }
+	/** Where the top-level statements of every file start and end running, see {@link DataflowGraph#statementOrder} */
+	readonly statementOrder?:      Map<NodeId, [start: number, end: number]>
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;
@@ -87,6 +98,10 @@ export function processDataflowFor<OtherInfo>(
 	current: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	/* a used-up budget prunes the subtree: the fold stops here, and what was built so far stays the result */
+	if(activeDataflowBudget !== undefined && activeDataflowBudget.step()) {
+		return DataflowInformation.initialize(current.info.id, data);
+	}
 	return (
 		data.processors[current.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof current>
 	)(current, data);

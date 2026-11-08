@@ -3,7 +3,7 @@ import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder
 import { EdgeType } from '../../../../src/dataflow/graph/edge';
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { label } from '../../_helper/label';
-import { withTreeSitter, assertDataflow } from '../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
@@ -11,8 +11,10 @@ import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
+assumeLoadedPackages('SoDA');
+
 describe('eval', { concurrent: false }, withTreeSitter(tr => {
-	assertDataflow(label('simple eval use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+	assertDataflow(label('simple eval use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'built-in-parsing', 'newlines']),
 		tr, 'a <- "1+1"\nx <- "1"\nb <- "3"\nz <- eval(parse(text=x))', emptyGraph()
 			.defineVariable('2@x')
 			.defineVariable('4@z')
@@ -25,14 +27,14 @@ describe('eval', { concurrent: false }, withTreeSitter(tr => {
 			resolveIdsAsCriterion: true,
 			context:               'dataflow'
 		});
-	assertDataflow(label('simple eval use - from 2 variables', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+	assertDataflow(label('simple eval use - from 2 variables', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'built-in-parsing', 'newlines']),
 		tr, 'x <- 1\ny <- 1\na <- 2\nz <- eval(parse(text="x+y"))', emptyGraph()
 			.definedBy('4@z', '4@eval')
-			.addEdge(17, 'eval::17:4:6-2', EdgeType.Returns)
-			.addEdge('eval::17:4:6-2', 'eval::17:4:6-0', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('eval::17:4:6-2', 'eval::17:4:6-1', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('eval::17:4:6-0', '1@x', EdgeType.Reads)
-			.addEdge('eval::17:4:6-1', '2@y', EdgeType.Reads),
+			.addEdge(17, 'eval::17-2', EdgeType.Returns)
+			.addEdge('eval::17-2', 'eval::17-0', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('eval::17-2', 'eval::17-1', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('eval::17-0', '1@x', EdgeType.Reads)
+			.addEdge('eval::17-1', '2@y', EdgeType.Reads),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
@@ -91,11 +93,11 @@ describe('evalText', { concurrent: false }, withTreeSitter(tr => {
 	assertDataflow(label('simple evalText use  - from 2 variables', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		tr, 'x <- 1\ny <- 1\na <- 2\nz <- evalText("x+y")', emptyGraph()
 			.definedBy('4@z', '4@evalText')
-			.addEdge(13, 'evalText::13:4:6-2', EdgeType.Returns)
-			.addEdge('evalText::13:4:6-2', 'evalText::13:4:6-0', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('evalText::13:4:6-2', 'evalText::13:4:6-1', EdgeType.Reads | EdgeType.Argument)
-			.addEdge('evalText::13:4:6-0', '1@x', EdgeType.Reads)
-			.addEdge('evalText::13:4:6-1', '2@y', EdgeType.Reads),
+			.addEdge(13, 'evalText::13-2', EdgeType.Returns)
+			.addEdge('evalText::13-2', 'evalText::13-0', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('evalText::13-2', 'evalText::13-1', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('evalText::13-0', '1@x', EdgeType.Reads)
+			.addEdge('evalText::13-1', '2@y', EdgeType.Reads),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,

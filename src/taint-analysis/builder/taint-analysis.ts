@@ -8,7 +8,6 @@ import type { AnyPredefinedTaintAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
 import type { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
-import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { ArgTaintProjector, TaintCallNode, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
@@ -195,10 +194,10 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 				provenance,
 			};
 
-			const visitor = def.createVisitor(baseConfig, this.categories);
-			visitor.start();
+			const interpreter = def.createVisitor(baseConfig, this.categories);
+			interpreter.start();
 
-			const endState = visitor.getEndState();
+			const endState = def.resultState(interpreter);
 			const report = def.msg;
 			const idMap = baseConfig.normalizedAst.idMap;
 			const findings: TaintFinding[] = report === undefined ? [] : endState.getBottomNodes().map(nodeId => {
@@ -211,7 +210,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 
 			// If the report message is a constant string, save it only once
 			const msg = typeof report === 'string' ? report : undefined;
-			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, msg, findings, provenance });
+			results.set(def.name, { domains: endState, msg, findings, provenance });
 		}
 		return results;
 	}

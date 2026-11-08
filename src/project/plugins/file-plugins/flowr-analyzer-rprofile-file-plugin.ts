@@ -3,7 +3,7 @@ import { SemVer } from 'semver';
 import type { PathLike } from 'fs';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
-import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { RPath } from '../../../util/files';
 
 /** `Rprofile.site` is the site-wide, `.Rprofile` the user/project profile. */
 export const RprofileFilePattern = /^(\.Rprofile|Rprofile\.site)$/i;
@@ -28,11 +28,11 @@ export class FlowrAnalyzerRprofileFilePlugin extends FlowrAnalyzerPatternFilePlu
 	}
 
 	public override applies(file: PathLike): boolean {
-		return super.applies(file) || this.environPattern.test(platformBasename(file.toString()));
+		return super.applies(file) || this.environPattern.test(RPath.basename(file.toString()));
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): [FlowrFileProvider, true] {
-		if(this.environPattern.test(platformBasename(file.path()))) {
+		if(this.environPattern.test(RPath.basename(file.path()))) {
 			file.assignRole(FileRole.Environment);
 		} else {
 			file.assignRole(FileRole.Startup);

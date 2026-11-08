@@ -1,3 +1,4 @@
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RUnaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { EmptyArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -5,10 +6,9 @@ import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/no
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../environments/identifier';
 import { DataMaskingFunctionNames } from '../../../../environments/data-masking-functions';
-import { NoEdges, type DataflowGraph } from '../../../../graph/graph';
-import { type DataflowGraphVertexInfo, FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../../../../graph/vertex';
+import type { DataflowGraph } from '../../../../graph/graph';
+import { type DataflowGraphVertexInfo, DfgVertex } from '../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
-import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */
 export enum Unquote {
@@ -23,11 +23,11 @@ export enum Unquote {
 /** `!!x` parses as `!(!x)`, so peel the run of `!` to reach the operand. */
 function unquotedOperandOf<Info>(node: RNode<Info>, style: Unquote): RNode<Info> | undefined {
 	if(style === Unquote.Bquote) {
-		if(!RFunctionCall.isNamed(node) || Identifier.getName(node.functionName.content) !== '.' || node.arguments.length !== 1) {
+		if(!RFunctionCall.isNamed(node, '.') || node.arguments.length !== 1) {
 			return undefined;
 		}
 		const arg = node.arguments[0];
-		return RArgument.isEmpty(arg) ? undefined : arg.value;
+		return RArgument.valueOf(arg);
 	}
 	if(!isNegation(node) || !isNegation(node.operand)) {
 		return undefined;
@@ -54,13 +54,13 @@ function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
 		return true;
 	}
 	const vertex = graph.getVertex(id);
-	if(FunctionDefinitionVertex.is(vertex)) {
+	if(DfgVertex.isFunctionDefinition(vertex)) {
 		return true;
-	} else if(!VariableDefinitionVertex.is(vertex)) {
+	} else if(!DfgVertex.isVariableDefinition(vertex)) {
 		return false;
 	}
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && FunctionDefinitionVertex.is(graph.getVertex(target))) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isFunctionDefinition(graph.getVertex(target))) {
 			return true;
 		}
 	}
@@ -74,7 +74,7 @@ function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
  */
 function readsOnlyFunctions(graph: DataflowGraph, id: NodeId): boolean {
 	let reads = false;
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads)) {
 			continue;
 		} else if(!definesAFunction(graph, target)) {
@@ -96,7 +96,6 @@ export interface MaskingCall {
 
 /** The parts of a call R does not evaluate the standard way. */
 export const Nse = {
-	name: 'Nse',
 	/** The ids an {@link Unquote} escape hands back to standard evaluation, the markers themselves excluded. */
 	unquoted<Info extends ParentInformation>(this: void, root: RNode<Info> | undefined, style: Unquote): ReadonlySet<NodeId> | undefined {
 		if(root === undefined || style === Unquote.None) {
@@ -138,7 +137,7 @@ export const Nse = {
 	/** Drops the non-standard-evaluation mark from the outgoing edges of `id` that `which` accepts, and reports them. */
 	unmark(this: void, graph: DataflowGraph, id: NodeId, which: (target: NodeId) => boolean = () => true): NodeId[] {
 		const dropped: NodeId[] = [];
-		for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+		for(const [target, edge] of graph.edgesFrom(id)) {
 			if(DfEdge.includesType(edge, EdgeType.NonStandardEvaluation) && which(target)) {
 				graph.removeEdgeType(id, target, EdgeType.NonStandardEvaluation);
 				dropped.push(target);
@@ -149,12 +148,12 @@ export const Nse = {
 
 	/** Whether the vertex is a name a data mask may supply, which is every name appearing in the mask. */
 	maskCandidate(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
-		return UseVertex.is(vertex);
+		return DfgVertex.isUse(vertex);
 	},
 
 	/** Whether `id` is a name the data mask supplies, i.e. a use the caller does not bind itself. */
 	suppliedByMask(this: void, graph: DataflowGraph, id: NodeId, vertex: DataflowGraphVertexInfo | undefined = graph.getVertex(id)): boolean {
-		return UseVertex.is(vertex) && !graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads));
+		return DfgVertex.isUse(vertex) && !graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.Reads));
 	},
 
 	/**
@@ -163,9 +162,9 @@ export const Nse = {
 	 * is complete and that one while a call is still being processed.
 	 */
 	maskedName(this: void, graph: DataflowGraph, id: NodeId): boolean {
-		for(const [source, edge] of graph.ingoingEdges(id) ?? NoEdges) {
+		for(const [source, edge] of graph.edgesTo(id)) {
 			const call = DfEdge.includesType(edge, EdgeType.NonStandardEvaluation) ? graph.getVertex(source) : undefined;
-			if(FunctionCallVertex.is(call) && call.name !== undefined && DataMaskingFunctionNames.has(Identifier.getName(call.name))) {
+			if(DfgVertex.isFunctionCall(call) && call.name !== undefined && DataMaskingFunctionNames.has(Identifier.getName(call.name))) {
 				return true;
 			}
 		}
@@ -182,13 +181,13 @@ export const Nse = {
 		const links: [from: NodeId, to: NodeId][] = [];
 		for(const { id, bound } of calls) {
 			const call = graph.getVertex(id);
-			const data = FunctionCallVertex.is(call) ? call.args.find(a => a !== EmptyArgument) : undefined;
+			const data = DfgVertex.isFunctionCall(call) ? call.args.find(a => a !== EmptyArgument) : undefined;
 			if(data === undefined) {
 				continue;
 			}
 			/* what is still marked are the names the data supplies, the unmarked ones mean the binding too */
 			const masked = new Set(bound);
-			for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+			for(const [target, edge] of graph.edgesFrom(id)) {
 				if(DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 					masked.add(target);
 				}
@@ -200,7 +199,7 @@ export const Nse = {
 			for(const target of masked) {
 				/* a function of that name is not what the mask means, so the column takes its place */
 				if(readsOnlyFunctions(graph, target)) {
-					for(const [definition, edge] of graph.outgoingEdges(target) ?? NoEdges) {
+					for(const [definition, edge] of graph.edgesFrom(target)) {
 						if(DfEdge.includesType(edge, EdgeType.Reads)) {
 							graph.removeEdgeType(target, definition, EdgeType.Reads);
 						}

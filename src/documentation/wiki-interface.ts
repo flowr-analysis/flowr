@@ -1,3 +1,4 @@
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RShell } from '../r-bridge/shell';
 import { linkToQueryOfName } from './doc-util/doc-query';
 import { FlowrGithubBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
@@ -6,7 +7,7 @@ import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllServerMessages } from './data/server/doc-data-server-messages';
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
-import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
+import { fileProtocol } from '../r-bridge/retriever';
 import { watchProtocol } from '../cli/repl/path-input';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
@@ -30,7 +31,7 @@ async function explainServer(parser: KnownParser, ctx: GeneralDocContext): Promi
 	documentAllServerMessages(ctx);
 
 	return `
-As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
+As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
 Currently, every connection is handled by the same underlying \`${RShell.name}\` - so the server is not designed to handle many clients at a time.
 Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary number of&nbsp;${RShell.name} sessions on the target machine).
 
@@ -71,7 +72,7 @@ ${codeBlock('shell', 'nc 127.0.0.1 1042')}
 
 Within the started session, type the following message (as a single line) and press enter to see the response:
 
-${codeBlock('json', removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
+${codeBlock('json', RString.unquote(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
 
 </details>
 </li>
@@ -89,7 +90,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect(('127.0.0.1', 1042))
     print(s.recv(4096))  # for the hello message
 
-    s.send(b'${removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
+    s.send(b'${RString.unquote(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
 
     print(s.recv(65536))  # for the response (please use a more sophisticated mechanism)
 `)}
@@ -110,7 +111,7 @@ async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise
 > Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
 
 Although primarily meant for users to explore,
-there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error
+there is nothing which forbids calling _flowR_ as a subprocess to use standard-in, -output, and -error
 for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
@@ -226,6 +227,10 @@ function explainConfigFile(ctx: GeneralDocContext): string {
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file.
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory).
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
+A \`${defaultConfigFile}\` found this way belongs to the analyzed project, so flowR ignores its options that decide what flowR executes or loads
+(${FlowrConfig.securitySensitivePaths().filter(p => p[0] !== 'specializeConfig').map(p => `\`${p.join('.')}\``).join(', ')}),
+unless you pass ${getCliLongOptionOf('flowr', 'trust-config')}.
+To analyze code you do not trust, use the secure mode (${getCliLongOptionOf('flowr', 'secure')}, see the [security policy](https://github.com/flowr-analysis/flowr/blob/main/.github/SECURITY.md)).
 To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` ${ctx.linkPage('wiki/Query API', 'Query')}.
 Within the REPL this works by running the following:
 

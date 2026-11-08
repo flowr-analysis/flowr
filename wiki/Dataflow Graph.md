@@ -1,9 +1,8 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-08-25, 08:35:41 UTC (v2.14.4, R v4.5.0), please do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-06, 11:26:10 UTC (v2.17.2, R v4.6.1), do not edit directly._
 
-
-This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L283"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a>).
-If you are interested in which features we support and which features are still to be worked on, please refer to our [Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) page.
-In case you want to manually build such a graph (e.g., for testing), you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L46"><code><span title="This DataflowGraphBuilder extends DataflowGraph with builder methods to easily and compactly add vertices and edges to a dataflow graph. Its usage thus simplifies writing tests for dataflow graphs.">DataflowGraphBuilder</span></code></a>.
+This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
+If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
+In case you want to manually build such a graph (e.g., for testing), you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L50"><code><span title="This DataflowGraphBuilder extends DataflowGraph with builder methods to easily and compactly add vertices and edges to a dataflow graph. Its usage thus simplifies writing tests for dataflow graphs.">DataflowGraphBuilder</span></code></a>.
 In summary, we discuss the following topics in this wiki page:
 
 - [Reading the Visualization](#reading-the-visualization)
@@ -17,7 +16,7 @@ In summary, we discuss the following topics in this wiki page:
 - [Working with the Dataflow Graph](#dfg-working)
 	- [Matching Arguments to Parameters](#dfg-matching-arguments)
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a>) returned by _flowR_ 
+Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L273"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a>) returned by _flowR_ 
 contains things besides the graph, like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
@@ -28,7 +27,7 @@ Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-
 > There is also a simplified version available with <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the simplified dataflow graph (aliases: :ds*, :dfs*)">`:dataflowsimple*`</span> that does not show everything but is easier to read.
 > For small graphs, you can also use <span title="Description (Repl Command): Returns an ASCII representation of the dataflow graph (aliases: :df!)">`:dataflowascii`</span> to print the graph as ASCII art.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L795"><code><span title="Constructs a dataflow graph instance from the given JSON data and returns the result. This can be useful for data sent by the flowR server when analyzing it further.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L761"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
 >
 > Also, check out the [flowr-analysis/sample-analyzer-df-diff](https://github.com/flowr-analysis/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -40,12 +39,7 @@ y <- x + 1
 y
 ```
 
-
 With this code, the corresponding dataflow graph looks like this:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -56,9 +50,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.6* (**id: 4**)`"])
     5{{"`*#91;RNumber#93;* **1**
@@ -66,9 +60,9 @@ flowchart LR
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.6-10* (**id: 6**)
     arg: (4, 5)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3["`*#91;RSymbol#93;* **y**
       *2.1* (**id: 3**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -82,7 +76,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -95,23 +89,20 @@ flowchart LR
     6 -->|"reads, arg"| 5
     6 -.->|"flow"| 3
     linkStyle 12 stroke:gray,color:gray;
-    6 -.->|"reads, calls"| built-in:_
+    6 -.->|"reads, calls"| built-in:_43_
     linkStyle 13 stroke:gray;
     3 -->|"defined-by, flow"| 7
     3 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 3
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 18 stroke:gray;
     7 -.->|"flow"| 8
     linkStyle 19 stroke:gray,color:gray;
     8 -->|"reads"| 3
 ```
 
-	
-(The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
+(The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G&nbsp;=&nbsp;(V,&nbsp;E), 
 differentiating between 5 types of vertices&nbsp;V and
@@ -120,12 +111,7 @@ Two of these edge types carry the control flow rather than the data: the [Contro
 Additionally, every vertex lists the [control dependencies](#branches) it runs under, which is the same
 information a control edge carries, collected for the whole path that leads to the vertex.
 
-
 <details><summary>Simplified Version of the graph</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -135,18 +121,18 @@ flowchart LR
 *RSymbol*`"]
     2[["`base#58;#58;**#60;#45;** (L. 1)
 *RBinaryOp*`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`**x** (L. 2)
 *RSymbol*`"])
     5{{"`**1** (L. 2)
 *RNumber*`"}}
     6[["`base#58;#58;**#43;** (L. 2)
 *RBinaryOp*`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3["`**y** (L. 2)
 *RSymbol*`"]
     7[["`base#58;#58;**#60;#45;** (L. 2)
@@ -157,26 +143,23 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 4 stroke:gray;
     4 -->|"reads"| 0
     6 -->|"reads, arg"| 4
     6 -->|"reads, arg"| 5
-    6 -.->|"reads, calls"| built-in:_
+    6 -.->|"reads, calls"| built-in:_43_
     linkStyle 8 stroke:gray;
     3 -->|"defined-by, flow"| 7
     3 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 3
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 13 stroke:gray;
     8 -->|"reads"| 3
 ```
 
-	
-(The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
+(The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 </details>
 
@@ -187,7 +170,6 @@ The following vertices types exist:
 1. [`FunctionCall`](#fcall-vertex)
 1. [`VariableDefinition`](#vdef-vertex)
 1. [`FunctionDefinition`](#fdef-vertex)
-
 
 <details><summary>Class Diagram</summary>
 
@@ -206,16 +188,17 @@ class DataflowGraphVertexInfo{
     <<type>>
 }
 style DataflowGraphVertexInfo opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L185" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph. See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
+click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L193" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph. See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
 class DataflowGraphVertexArgument{
     <<type>>
 }
 style DataflowGraphVertexArgument opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L177" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
+click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L185" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
 class DataflowGraphVertexUse{
     <<interface>>
     tag#58; VertexType.Use
     environment#58; undefined
+    constantFallback#58; true
 }
 click DataflowGraphVertexUse href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L82" "Arguments required to construct a vertex which represents the usage of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexBase{
@@ -234,7 +217,7 @@ class DataflowGraphVertexVariableDefinition{
     par#58; true
     source#58; #123;#125;
 }
-click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L130" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
+click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L138" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionDefinition{
     <<interface>>
     tag#58; VertexType.FunctionDefinition
@@ -245,7 +228,7 @@ class DataflowGraphVertexFunctionDefinition{
     mode#58; #123;#125;
     returnEnvState#58; REnvironmentInformation
 }
-click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L144" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
+click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L152" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionCall{
     <<interface>>
     tag#58; VertexType.FunctionCall
@@ -255,8 +238,9 @@ class DataflowGraphVertexFunctionCall{
     environment#58; REnvironmentInformation
     origin#58; #123;#125; | #34;unnamed#34;
     newEnvParent#58; REnvironmentInformation
+    classDecl#58; ClassDeclaration
 }
-click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L94" "Arguments required to construct a vertex which represents the call to a function in the; #60;code#62;dataflow graph#60;/code#62;; . This describes all kinds of function calls, including calls to built#45;ins and control#45;flow structures such as #96;if#96; or #96;for#96; (they are treated as function calls in R)."
+click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95" "Arguments required to construct a vertex which represents the call to a function in the; #60;code#62;dataflow graph#60;/code#62;; . This describes all kinds of function calls, including calls to built#45;ins and control#45;flow structures such as #96;if#96; or #96;for#96; (they are treated as function calls in R)."
 class DataflowGraphVertexValue{
     <<interface>>
     tag#58; VertexType.Value
@@ -277,11 +261,10 @@ DataflowGraphVertexValue .. DataflowGraphVertexArgument
 DataflowGraphVertexBase <|-- DataflowGraphVertexValue
 ```
 
-
 </details>
 
 The following edges types exist, internally we use bitmasks to represent multiple types in a compact form, so you 
-should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L109"><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></a> object and its methods to work with them:
+should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L110"><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></a> object and its methods to work with them:
 
 1. [`Reads` (1)](#1-reads-edge)
 1. [`DefinedBy` (2)](#2-definedby-edge)
@@ -294,7 +277,6 @@ should use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/da
 1. [`NonStandardEvaluation` (256)](#9-nonstandardevaluation-edge)
 1. [`FlowEdge` (4096)](#10-flowedge-edge)
 1. [`ControlEdge` (8192)](#11-controledge-edge)
-
 
 <details><summary>Class Diagram</summary>
 
@@ -326,9 +308,7 @@ class EdgeType{
 click EdgeType href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L27" "Represents the relationship between the source and the target vertex in the dataflow graph. The actual value is represented as a bitmask, so please refer to; #60;code#62;DfEdge#60;/code#62;; for helpful functions."
 ```
 
-
 </details>
-
 
 From an implementation perspective all of these types are represented by respective interfaces, see [`./src/dataflow/graph/vertex.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts) and [`./src/dataflow/graph/edge.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts).
 
@@ -337,13 +317,13 @@ The following sections present details on the different types of vertices and ed
 > [!NOTE]
 > Every dataflow vertex holds an `id` which links it to the respective node in the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 > So if you want more information about the respective vertex, you can usually access more information
-> using the <code><a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L283"><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></a>::idMap</code> linked to the dataflow graph:
+> using the <code><a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></a>::idMap</code> linked to the dataflow graph:
 > 
 > ```ts
 > const node = graph.idMap.get(id);
 > ```
 > 
-> In case you just need the name (`lexeme`) of the respective vertex, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L453"><code><span title="A helper function to retrieve the lexeme of a given node, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a> can help you out:
+> In case you just need the name (`lexeme`) of the respective vertex, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L465"><code><span title="The code a given node spans, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a> can help you out:
 > 
 > ```ts
 > const name = RNode.lexeme(graph.idMap?.get(id));
@@ -362,10 +342,6 @@ The following sections present details on the different types of vertices and ed
 Before we dive into the details of the different vertices and edges, let's briefly talk about how to read the visualizations.
 For this, let's have a look at a very simple graph, created for the number `42`:
 
-
-
-
-
 ```mermaid
 flowchart LR
     0{{"`*#91;RNumber#93;* **42**
@@ -373,16 +349,12 @@ flowchart LR
    %% No edges found for 0
 ```
 
-	
-(The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
+(The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 <h3 id="vtx-shape">Vertex Shape</h3>
 
 The _shape_ of the vertex tells you the type of the vertex in the dataflow graph using the following scheme (the types are 
 explained in more detail in the following sections):
-
 
 ```mermaid
 flowchart TD
@@ -397,29 +369,24 @@ flowchart TD
    fdef-->fbox
 ```
 
-
 <h3 id="vtx-synt-type">Syntactic Types</h3>
 
 Within the shape, in square brackets, you can find the syntactic type of the vertex
 which is linked to the node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 For more information on valid types and what to do with them, please refer to the [normalized AST wiki page](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
-and the corresponding helper objects (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L20"><code><span title="Helper for working with RNumber AST nodes.">RNumber</span></code></a>).
+and the corresponding helper objects (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L21"><code><span title="Helper for working with RNumber AST nodes.">RNumber</span></code></a>).
 
 <h3 id="vtx-lexeme">Lexeme</h3>
 
 Also in the first line, next to the [syntactic type](#vtx-synt-type), you can find the lexeme of the vertex (if it has one, e.g., for a variable definition or use).
 This usually represents the textual source string of the respective vertex, and is also linked to the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST).
 For a clearer hierarchy, the lexeme is rendered in **bold** while the [syntactic type](#vtx-synt-type) is de-emphasized in _italics_ (mermaid markdown labels do not support a per-token font color, so a true gray tone would require styling the whole node). Only the token the source actually wrote is bold: when a call is shown with a package-qualified name that flowR *added* (e.g. the code wrote `acf` but it is displayed as `stats::acf`), the added `stats::` prefix stays non-bold, whereas a namespace written verbatim in the source is part of the lexeme and is bold as a whole.
-You can access the lexeme too with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L453"><code><span title="A helper function to retrieve the lexeme of a given node, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a>.
+You can access the lexeme too with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L465"><code><span title="The code a given node spans, if available. If the fullLexeme is available, it will be returned, otherwise the lexeme will be returned.">RNode::<b>lexeme</b></span></code></a>.
 
 <h3 id="vtx-id">Vertex Id</h3>
 
-In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L27"><code>NodeId</code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold**. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
+In the second line, you will usually find the id (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L36"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form `*location* (**id: <id>**)` with the id in **bold**. This id links the vertex to the respective node in the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (and all other perspectives created by flowR).
 To give you an example, have a look at the following graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -446,27 +413,25 @@ if`"]
     linkStyle 5 stroke:gray;
 ```
 
-	
-(The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
+(The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 The `3+` tells you that `a` has a [control dependency](#branches) on the vertex with id `3`, the `if`,
 which only triggers when the condition is `true`; a `-` suffix marks the `false` case.
 
 Other vertices are named by their id too: `v: <id>` is the value of a definition, `links: <id>` the AST vertices that
 contributed to the vertex. Mermaid rejects some characters in an id, so a space or a bracket shows as `_`
-(see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L68"><code><span title="Escapes a string or number to be used as a mermaid node id.">Mermaid::<b>escapeId</b></span></code></a>); a path keeps its `/` and `.`.
+(see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/mermaid/mermaid.ts#L73"><code><span title="Escapes a string or number to be used as a mermaid node id.">Mermaid::<b>escapeId</b></span></code></a>); a path keeps its `/` and `.`.
 
 <h3 id="vtx-location">Location</h3>
 
-The second line also indicates the compressed <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L67"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element.">SourceRange</span></code></a> of the vertex (directly before the [id](#vtx-id)) in the format `startLine.startCharacter - endLine.endCharacter`. If the range reads `1.7`,
+The second line also indicates the compressed <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L31"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> of the vertex (directly before the [id](#vtx-id)) in the format `startLine.startCharacter - endLine.endCharacter`. If the range reads `1.7`,
 this is short for `1.7-1.7`, likewise, `1.7-9` is short for `1.7-1.9`. So, `1.7-9` describes something starting
 in the first line at the seventh character and ending in the first line at the ninth character.
 
 <h3 id="vtx-additional-info">Arguments and Additional Information</h3>
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
-As you can see with the `if` example above alongside the [vertex id](#vtx-id),
+As in the `if` example above, alongside the [vertex id](#vtx-id),
 these vertices also have an additional line (prefixed with `arg:`) which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 
@@ -478,17 +443,11 @@ the mermaid graph layouting fumbles the order.
 1. [`VariableDefinition`](#vdef-vertex)
 1. [`FunctionDefinition`](#fdef-vertex)
 
-
 <a id='value-vertex'> </a>
 <a id='value-vertex'> </a>
 ### 1) Value Vertex
 
 Type: `value` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -497,28 +456,21 @@ flowchart LR
    %% No edges found for 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 42
 ```
 
-
-
 </details>
 
-
-
-
 Describes a constant value (numbers, booleans/logicals, strings, ...).
-In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
+The respective vertex is more or less a dummy vertex.
 
  * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L71)**   
    Marker vertex for a value in the dataflow of the program.
@@ -529,12 +481,12 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
    :
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L71">src/dataflow/graph/vertex.ts#L71</a></summary>
    
-   
    ```ts
    /**
     * Marker vertex for a value in the dataflow of the program.
     * For user-code constants (numbers, strings, logicals) the value is recovered by looking up the
     * {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}:
+    * @see {@link ValueVertex.is} - to check if a vertex is a value vertex
     * @example
     * ```ts
     * const node = graph.idMap.get(value.id)
@@ -542,7 +494,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
     *
     * For built-in constants whose id is not in the {@link AstIdMap} (e.g. `T` resolving to `built-in:T`),
     * the abstract {@link Value} is stored directly in the {@link DataflowGraphVertexValue#value|value} field.
-    * @see {@link ValueVertex.is} - to check if a vertex is a value vertex
     */
    export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
        readonly tag:          VertexType.Value
@@ -551,7 +502,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
        readonly value?:       Value
    }
    ```
-   
    
    </details>
    
@@ -562,7 +512,6 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -589,7 +538,7 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -598,12 +547,9 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
      }
      ```
      
-     
      </details>
      
-
     </details>
-
 
 > [!NOTE]
 > 
@@ -612,17 +558,12 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
 > and ask for the value associated with it.
 > 				
 
-
 Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
 For example, an access operation like `df$column` will treat the column name as a constant value.
-
 
 <details><summary>Example: Semantics Create a Value</summary>
 
 In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).
-
-
-
 
 ```mermaid
 flowchart LR
@@ -633,54 +574,39 @@ flowchart LR
     3[["`*#91;RAccess#93;* base#58;#58;**$**
       *1.1-9* (**id: 3**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_36_["`Built-In:
 $`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_36_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 3
     linkStyle 1 stroke:gray,color:gray;
     3 -->|"reads, returns, arg"| 0
     3 -->|"reads, arg"| 1
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_36_
     linkStyle 4 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 df$column
 ```
 
-
-
 </details>
-
-
 
 </details>
 		
-
-
-	
-
 <a id='use-vertex'> </a>
 <a id='use-vertex'> </a>
 ### 2) Use Vertex
 
 Type: `use` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -689,27 +615,19 @@ flowchart LR
    %% No edges found for 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x
 ```
 
-
-
 </details>
 
-
-
-
-		
 Describes symbol/variable references which are read (or potentially read at a given position).
 Similar to the [value vertex](#value-vertex) described above, this is more a marker vertex as 
 you can see from the implementation.
@@ -720,7 +638,6 @@ you can see from the implementation.
    .
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L82">src/dataflow/graph/vertex.ts#L82</a></summary>
    
-   
    ```ts
    /**
     * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
@@ -730,9 +647,9 @@ you can see from the implementation.
        readonly tag:          VertexType.Use
        /** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
        readonly environment?: undefined
+       constantFallback?:     true
    }
    ```
-   
    
    </details>
    
@@ -743,7 +660,6 @@ you can see from the implementation.
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -770,7 +686,7 @@ you can see from the implementation.
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -779,12 +695,9 @@ you can see from the implementation.
      }
      ```
      
-     
      </details>
      
-
     </details>
-
 
 > [!NOTE]
 > 
@@ -799,67 +712,52 @@ you can see from the implementation.
 > 
 > 				
 
-
 Most often, you will see the _use_ vertex whenever a variable is read.
 However, similar to the [value vertex](#value-vertex), the _use_ vertex can also be the result of language semantics.
 Consider a case, in which we refer to a variable with a string, as in `get("x")`.
-
 
 <details><summary>Example: Semantics Create a Symbol</summary>
 
 In the following graph, the original type printed by mermaid is still `RString` (from the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a variable use! If you are unsure what `get` does, refer to the [documentation](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/get). Please note, that the lexeme being printed as `"x"` may be misleading (after all it is recovered from the AST), the quotes are not part of the reference.
 
-
-
-
 ```mermaid
 flowchart LR
-    1(["`*#91;RString#93;* **#34;x#34;**
-      *1.5-7* (**id: 1**)`"])
+    3-get-name(["`*#91;RSymbol#93;* **#34;x#34;**
+      *1.5-7* (**id: 3-get-name**)`"])
     3[["`*#91;RFunctionCall#93;* base#58;#58;**get**
       *1.1-8* (**id: 3**)
-    arg: (1)`"]]
+    arg: (3#45;get#45;name)`"]]
     built-in:get["`Built-In:
 get`"]
     style built-in:get stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    1 -.->|"flow"| 3
+    3-get-name -.->|"flow"| 3
     linkStyle 0 stroke:gray,color:gray;
-    3 -->|"reads, returns, arg"| 1
+    3 -->|"reads, returns, arg"| 3-get-name
     3 -.->|"reads, calls"| built-in:get
     linkStyle 2 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 get("x")
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 But now to the interesting stuff: how do we actually know which values are read by the respective variable use?
 This usually involves a [variable definition](#variable-definition-vertex) and a [reads edge](#reads-edge) linking the two.
 
-
 <details><summary>Example: Reads Edge Identifying a Single Definition</summary>
 
 In the following graph, the `x` is read from the definition `x <- 1`.
-
-
-
 
 ```mermaid
 flowchart LR
@@ -870,9 +768,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**)`"])
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -887,7 +785,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -899,36 +797,25 @@ print`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
-
 
 ```r
 x <- 1
 print(x)
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 In general, there may be many such edges, identifying every possible definition of the variable.
 
-
 <details><summary>Example: Reads Edge Identifying Multiple Definitions (conditional)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -939,9 +826,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **u**
       *2.4* (**id: 3**)`"])
     5{{"`*#91;RNumber#93;* **2**
@@ -971,7 +858,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -985,7 +872,7 @@ print`"]
     4 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 4
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 14 stroke:gray;
     6 -.->|"flow"| 8
     linkStyle 15 stroke:gray,color:gray;
@@ -1006,14 +893,12 @@ print`"]
     linkStyle 24 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered unknown side effects (with ids: 12 (linked)) during the analysis.
-
 
 ```r
 x <- 1
@@ -1021,19 +906,11 @@ if(u) x <- 2
 print(x)
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Reads Edge Identifying Multiple Definitions (loop)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1044,9 +921,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3["`*#91;RSymbol#93;* **i**
       *2.5* (**id: 3**, v: 4)`"]
     4(["`*#91;RSymbol#93;* **v**
@@ -1078,7 +955,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -1095,7 +972,7 @@ print`"]
     5 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 5
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 16 stroke:gray;
     7 -.->|"flow"| 3
     linkStyle 17 stroke:gray,color:gray;
@@ -1117,14 +994,12 @@ print`"]
     linkStyle 27 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
-
 
 ```r
 x <- 1
@@ -1132,19 +1007,11 @@ for(i in v) x <- 2
 print(x)
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Reads Edge Identifying Multiple Definitions (side-effect)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1163,18 +1030,18 @@ subgraph "flow-5" [function 5]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.17-23* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-23* (**id: 6**)
     arg: (0, 5)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     8{{"`*#91;RNumber#93;* **2**
       *2.6* (**id: 8**)`"}}
     7["`*#91;RSymbol#93;* **x**
@@ -1212,7 +1079,7 @@ print`"]
     1 -->|"side-effect-on-call"| 12
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
-    3 -.->|"reads, calls"| built-in:__-
+    3 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 6 stroke:gray;
 5 -.-|function| flow-5
 
@@ -1222,7 +1089,7 @@ print`"]
     0 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 0
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 13 stroke:gray;
     6 -.->|"flow"| 8
     linkStyle 14 stroke:gray,color:gray;
@@ -1232,7 +1099,7 @@ print`"]
     7 -->|"defined-by"| 8
     9 -->|"reads, arg"| 8
     9 -->|"returns, arg"| 7
-    9 -.->|"reads, calls"| built-in:_-
+    9 -.->|"reads, calls"| built-in:_60_-
     linkStyle 20 stroke:gray;
     9 -.->|"flow"| 10
     linkStyle 21 stroke:gray,color:gray;
@@ -1262,14 +1129,12 @@ print`"]
     linkStyle 36 stroke:gray;
 ```
 
-	
 <details open>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
-
 
 ```r
 f <- function() x <<- 2
@@ -1278,38 +1143,22 @@ if(u) f()
 print(x)
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 > [!IMPORTANT]
 > 
 > 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 > 	as there are some edge-cases that require special attention.
-> 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L70"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
+> 	In general, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (which is also available as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L64"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function explained below in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) will help you to get the information you need.
 > 	
-
-
-
-
-
-	
 
 <a id='function-call-vertex'> </a>
 <a id='fcall-vertex'> </a>
 ### 3) Function Call Vertex
 
 Type: `fcall` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -1318,44 +1167,36 @@ flowchart LR
    %% No edges found for 1
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 foo()
 ```
 
-
-
 </details>
-
-
-
 
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
 In general the vertex provides you with information about
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
 
-Whenever flowR can determine which package a call resolves to &mdash; via a loaded `library()`/`::`, or via the always-available base-R packages taken from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. `acf` is shown as `stats::acf`). To obtain this qualified identifier programmatically, prefer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L89"><code><span title="The qualified identifier of the call with the given id, or undefined if it does not resolve to a package export and is not itself already namespaced (with purrr loaded, a map() call yields Identifier.make('map', 'purrr'); an explicit pkg::fn() call yields pkg::fn unchanged). This is the compact form of Identifier.toQualified , reconstructing both the origins and the call's name from the graph.">Dataflow::<b>qualify</b></span></code></a> which, given only a call's id and its graph, reconstructs the `pkg::fn` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of `Identifier.toQualified` (see the `origin` property below and the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) for where the base-R knowledge comes from).
-The graph caches what it resolved, with and without the base-R step, and drops the cache whenever it changes, so asking twice costs a map lookup. If you want the qualified name of every call, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L98"><code><span title="The qualified name of every call of the graph, undefined for the calls that do not qualify. Prefer this over asking call by call: it resolves each call once for both qualifyBaseR variants.">Dataflow::<b>qualifyAll</b></span></code></a>: it walks the call vertices once and pays the (expensive) origin resolution once per call instead of once per ask.
+Whenever flowR can determine which package a call resolves to &mdash; via a loaded `library()`/`::`, or via the always-available base-R packages taken from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. `acf` is shown as `stats::acf`). To obtain this qualified identifier programmatically, prefer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L78"><code><span title="The qualified identifier of the call with the given id, or undefined if it does not resolve to a package export and is not itself already namespaced (with purrr loaded, a map() call yields Identifier.make('map', 'purrr'); an explicit pkg::fn() call yields pkg::fn unchanged). This is the compact form of Identifier.toQualified , reconstructing both the origins and the call's name from the graph.">Dataflow::<b>qualify</b></span></code></a> which, given only a call's id and its graph, reconstructs the `pkg::fn` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of `Identifier.toQualified` (see the `origin` property below and the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) for where the base-R knowledge comes from).
+The graph caches what it resolved, with and without the base-R step, and drops the cache whenever it changes, so asking twice costs a map lookup. If you want the qualified name of every call, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L87"><code><span title="The qualified name of every call of the graph, undefined for the calls that do not qualify. Prefer this over asking call by call: it resolves each call once for both qualifyBaseR variants.">Dataflow::<b>qualifyAll</b></span></code></a>: it walks the call vertices once and pays the (expensive) origin resolution once per call instead of once per ask.
 
 However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
 	 
- * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L94)**   
+ * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95)**   
    Arguments required to construct a vertex which represents the call to a function in the
    <code>dataflow graph</code>
    .
    This describes all kinds of function calls, including calls to built-ins and control-flow structures such as `if` or `for` (they are
    treated as function calls in R).
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L94">src/dataflow/graph/vertex.ts#L94</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95">src/dataflow/graph/vertex.ts#L95</a></summary>
    
    ```ts
    /**
@@ -1391,9 +1232,15 @@ and it should not be relied on as it may under-approximate the actual calling ta
         * argument can be statically resolved (tracked env variable or `emptyenv()`-family call).
         */
        newEnvParent?: REnvironmentInformation
+       /**
+        * For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`,
+        * `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and
+        * whether it can be instantiated. Filled from the {@link ClassDeclarationConfig} the built-in declares,
+        * so no argument's meaning is guessed. See {@link declaredClassesImpl} to collect these across a graph.
+        */
+       classDecl?:    ClassDeclaration
    }
    ```
-   
    
    </details>
    
@@ -1404,7 +1251,6 @@ and it should not be relied on as it may under-approximate the actual calling ta
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -1431,7 +1277,7 @@ and it should not be relied on as it may under-approximate the actual calling ta
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -1440,68 +1286,49 @@ and it should not be relied on as it may under-approximate the actual calling ta
      }
      ```
      
-     
      </details>
      
-
     </details>
 
 The related function argument references are defined like this:
- * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L64)   
+ * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L40)   
    Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
    See the
    <code>FunctionArgument</code>
    helper functions to check for the specific types.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L64">src/dataflow/graph/graph.ts#L64</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L40">src/dataflow/graph/graph.ts#L40</a></summary>
    
    ```ts
    /**
     * Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
     * See the {@link FunctionArgument} helper functions to check for the specific types.
-    * @see {@link FunctionArgument.isNamed|`FunctionArgument.isNamed`} - to check for named arguments
-    * @see {@link FunctionArgument.isPositional|`FunctionArgument.isPositional`} - to check for positional arguments
-    * @see {@link FunctionArgument.isEmpty|`FunctionArgument.isEmpty`} - to check for empty arguments
     */
    export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
    ```
-   
    
    </details>
    
     <details><summary>View more (NamedFunctionArgument, PositionalFunctionArgument)</summary>
 
-   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L40)**   
-     A reference with a name, e.g. `a` and `b` in the following function call:
-     
-     ```r
-     foo(a = 3, b = 2)
-     ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L40">src/dataflow/graph/graph.ts#L40</a></summary>
-     
+   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L26)**   
+     A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see
+     <code>PositionalFunctionArgument</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L26">src/dataflow/graph/graph.ts#L26</a></summary>
      
      ```ts
-     /**
-      * A reference with a name, e.g. `a` and `b` in the following function call:
-      *
-      * ```r
-      * foo(a = 3, b = 2)
-      * ```
-      * @see #isNamedArgument
-      * @see PositionalFunctionArgument
-      */
+     /** A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see {@link PositionalFunctionArgument}. */
      export interface NamedFunctionArgument extends IdentifierReference {
          readonly name:    string
          readonly valueId: NodeId | undefined
      }
      ```
      
-     
      </details>
      
       <details><summary>View more (IdentifierReference)</summary>
 
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L442)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L646)**   
        An identifier reference points to a variable like `a` in `b <- a`.
        Without any surrounding code, `a` will produce the identifier reference `a`.
        Similarly, `b` will create a reference (although it will be an
@@ -1520,8 +1347,7 @@ The related function argument references are defined like this:
        or
        <code>unknown (`unknownReferences`)</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L442">src/dataflow/environments/identifier.ts#L442</a></summary>
-       
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L646">src/dataflow/environments/identifier.ts#L646</a></summary>
        
        ```ts
        /**
@@ -1551,69 +1377,49 @@ The related function argument references are defined like this:
             * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
             * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
             */
-           cds?:            ControlDependency[] | undefined
+           cds?:            readonly ControlDependency[] | undefined
        }
        ```
        
-       
        </details>
        
-
       </details>
-   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L53)**   
-     A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
-     
-     ```r
-     foo(3, 2)
-     ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L53">src/dataflow/graph/graph.ts#L53</a></summary>
-     
+   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L32)**   
+     A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see
+     <code>NamedFunctionArgument</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L32">src/dataflow/graph/graph.ts#L32</a></summary>
      
      ```ts
-     /**
-      * A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
-      *
-      * ```r
-      * foo(3, 2)
-      * ```
-      * @see NamedFunctionArgument
-      */
+     /** A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see {@link NamedFunctionArgument}. */
      export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
          readonly name?: undefined
      }
      ```
      
-     
      </details>
      
-
     </details>
 
 There is another element of potential interest to you, the `origin` property which records how flowR created the respective function call.
-These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L348"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
+These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L406"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
 The entry `function` signals that flowR used a processor for a user-defined function defined within the source code, `unnamed` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin (see the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of `:=` to that of the `table:assign`. 
 
-
 <details><summary>Example: Simple Function Call (unresolved)</summary>
 
-
 To get a better understanding, let's look at a simple function call without any known call target, like `foo(x,3,y=3,)`:
-
-
-
-
 
 ```mermaid
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
-      *1.5* (**id: 1**)`"])
+      *1.5* (**id: 1**, 8+)`"])
     3{{"`*#91;RNumber#93;* **3**
-      *1.7* (**id: 3**)`"}}
+      *1.7* (**id: 3**, 8+)`"}}
     6{{"`*#91;RNumber#93;* **3**
-      *1.11* (**id: 6**)`"}}
+      *1.11* (**id: 6**, 8+)`"}}
     7(["`*#91;RArgument#93;* **y**
-      *1.9* (**id: 7**)`"])
+      *1.9* (**id: 7**, 8+)`"])
     8[["`*#91;RFunctionCall#93;* **foo**
       *1.1-13* (**id: 8**)
     arg: (1, 3, y (7), #91;empty#93;)`"]]
@@ -1631,27 +1437,20 @@ flowchart LR
     8 -->|"arg"| 7
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 foo(x,3,y=3,)
 ```
 
-
-
 </details>
 
-
-
 In this case, we have a function call vertex with id `8` and the following arguments:
-
 
 ```json
 [
@@ -1673,9 +1472,7 @@ In this case, we have a function call vertex with id `8` and the following argum
 ]
 ```
 
-
-Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
-as the `type` of these references is a bit-mask, encoding one of the following reference types:
+This is hard to read in this form, as the `type` of these references is a bit-mask, encoding one of the following reference types:
 
 | Value | Reference Type |
 |------:|----------------|
@@ -1694,7 +1491,7 @@ as the `type` of these references is a bit-mask, encoding one of the following r
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L383)**   
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L587)**   
    Each reference has exactly one reference type, stored as the respective number.
    However, when checking, we may want to allow for one of several types,
    allowing the combination of the respective bitmasks.
@@ -1704,8 +1501,7 @@ For more information on the types of references, please consult the implementati
    .
    In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
    while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L383">src/dataflow/environments/identifier.ts#L383</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L587">src/dataflow/environments/identifier.ts#L587</a></summary>
    
    ```ts
    /**
@@ -1749,13 +1545,9 @@ For more information on the types of references, please consult the implementati
    }
    ```
    
-   
    </details>
    
-	
-
 </details>
-
 
 > [!NOTE]
 > 
@@ -1784,16 +1576,16 @@ For more information on the types of references, please consult the implementati
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-6* (**id: 2**)
 >     arg: (0, 1)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     1 -.->|"flow"| 0
 >     linkStyle 0 stroke:gray,color:gray;
 >     0 -->|"defined-by, flow"| 2
 >     0 -->|"defined-by"| 1
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
->     2 -.->|"reads, calls"| built-in:_-
+>     2 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 5 stroke:gray;
 > ```
 > 
@@ -1802,7 +1594,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1820,7 +1612,7 @@ For more information on the types of references, please consult the implementati
 > global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
 > as any code that is not part of the analysis could cause the semantics to change. 
 > However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no [`calls`](#calls) edge attached to a call.
-> If you want to check the resolve targets, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L64"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>.
+> If you want to check the resolve targets, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L78"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>.
 > 
 > 
 > </details>
@@ -1853,9 +1645,9 @@ For more information on the types of references, please consult the implementati
 >     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-19* (**id: 4**)
 >     arg: (0, 3)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     %% Environment of 6 [level: 0]:
 >     %% Built-in
 >     %% 1----------------------------------------
@@ -1870,7 +1662,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 3
 >     4 -->|"reads, arg"| 3
 >     4 -->|"returns, arg"| 0
->     4 -.->|"reads, calls"| built-in:_-
+>     4 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 6 stroke:gray;
 >     4 -.->|"flow"| 6
 >     linkStyle 7 stroke:gray,color:gray;
@@ -1887,7 +1679,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1932,9 +1724,9 @@ For more information on the types of references, please consult the implementati
 >     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-17* (**id: 4**)
 >     arg: (0, 3)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     6(["`*#91;RSymbol#93;* **f**
 >       *2.6* (**id: 6**)`"])
 >     5["`*#91;RSymbol#93;* **g**
@@ -1958,7 +1750,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 3
 >     4 -->|"reads, arg"| 3
 >     4 -->|"returns, arg"| 0
->     4 -.->|"reads, calls"| built-in:_-
+>     4 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 6 stroke:gray;
 >     4 -.->|"flow"| 6
 >     linkStyle 7 stroke:gray,color:gray;
@@ -1969,7 +1761,7 @@ For more information on the types of references, please consult the implementati
 >     5 -->|"defined-by"| 6
 >     7 -->|"reads, arg"| 6
 >     7 -->|"returns, arg"| 5
->     7 -.->|"reads, calls"| built-in:_-
+>     7 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 14 stroke:gray;
 >     7 -.->|"flow"| 9
 >     linkStyle 15 stroke:gray,color:gray;
@@ -1985,7 +1777,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2050,9 +1842,9 @@ For more information on the types of references, please consult the implementati
 >     18[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
 >       *1.17* (**id: 18**)
 >     arg: (9, 16, 17)`"]]
->     built-in:_["`Built-In:
+>     built-in:_123_["`Built-In:
 > #123;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 3 stroke:purple,stroke-width:4px; 
 >     style 10 stroke:purple,stroke-width:4px; 
 >     style 17 stroke:purple,stroke-width:4px; 
@@ -2062,9 +1854,9 @@ For more information on the types of references, please consult the implementati
 >     20[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-5.1* (**id: 20**)
 >     arg: (0, 19)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     %% Environment of 22 [level: 0]:
 >     %% Built-in
 >     %% 1----------------------------------------
@@ -2106,7 +1898,7 @@ For more information on the types of references, please consult the implementati
 >     18 -->|"arg"| 9
 >     18 -->|"arg"| 16
 >     18 -->|"returns, arg"| 17
->     18 -.->|"reads, calls"| built-in:_
+>     18 -.->|"reads, calls"| built-in:_123_
 >     linkStyle 22 stroke:gray;
 >     18 -->|"returns"| 7
 >     18 -->|"returns"| 14
@@ -2118,7 +1910,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 19
 >     20 -->|"reads, arg"| 19
 >     20 -->|"returns, arg"| 0
->     20 -.->|"reads, calls"| built-in:_-
+>     20 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 31 stroke:gray;
 >     20 -.->|"flow"| 22
 >     linkStyle 32 stroke:gray,color:gray;
@@ -2134,7 +1926,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2190,7 +1982,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">Dataflow Graph of the R Code</summary>
 > 
-> The analysis required _1.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2204,16 +1996,16 @@ For more information on the types of references, please consult the implementati
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-6* (**id: 2**)
 >     arg: (0, 1)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     3(["`*#91;RSymbol#93;* **u**
 >       *2.4* (**id: 3**)`"])
 >     5(["`*#91;RSymbol#93;* **#96;#42;#96;**
 >       *2.15-17* (**id: 5**, 8+)`"])
->     built-in:_["`Built-In:
+>     built-in:_42_["`Built-In:
 > #42;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_42_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     4["`*#91;RSymbol#93;* **#96;#60;#45;#96;**
 >       *2.7-10* (**id: 4**, 8+, v: 5)`"]
 >     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -2243,7 +2035,7 @@ For more information on the types of references, please consult the implementati
 >     0 -->|"defined-by"| 1
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
->     2 -.->|"reads, calls"| built-in:_-
+>     2 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 5 stroke:gray;
 >     2 -.->|"flow"| 3
 >     linkStyle 6 stroke:gray,color:gray;
@@ -2253,13 +2045,13 @@ For more information on the types of references, please consult the implementati
 >     linkStyle 8 stroke:gray,color:gray;
 >     5 -.->|"flow"| 4
 >     linkStyle 9 stroke:gray,color:gray;
->     5 -.->|"reads"| built-in:_
+>     5 -.->|"reads"| built-in:_42_
 >     linkStyle 10 stroke:gray;
 >     4 -->|"defined-by, flow"| 6
 >     4 -->|"defined-by"| 5
 >     6 -->|"reads, arg"| 5
 >     6 -->|"returns, arg"| 4
->     6 -.->|"reads, calls"| built-in:_-
+>     6 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 15 stroke:gray;
 >     6 -.->|"flow"| 8
 >     linkStyle 16 stroke:gray,color:gray;
@@ -2281,9 +2073,9 @@ For more information on the types of references, please consult the implementati
 >     11 -->|"reads, arg"| 10
 >     11 -->|"returns, arg"| 9
 >     11 -->|"reads"| 4
->     11 -.->|"reads, calls"| built-in:_-
+>     11 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 29 stroke:gray;
->     11 -.->|"calls"| built-in:_
+>     11 -.->|"calls"| built-in:_42_
 >     linkStyle 30 stroke:gray;
 > ```
 > 
@@ -2298,7 +2090,7 @@ For more information on the types of references, please consult the implementati
 > operator to mean multiplication, while with `u <- FALSE` causes `x` to be assigned to `3`.
 > In short: the last line may either refer to a definition or to a use of `x`, and we are not fully equipped to visualize this (this causes a warning).
 > First of all how can you spot that something weird is happening? Well, this definition has a [`reads`](#reads) and a [`defined-by`](#defined-by) edge,
-> but this of course does not apply to the general case.
+> but this does not apply to the general case.
 > 
 > For starters, let's have a look at the environment of the call to `<-` in the last line:
 > 
@@ -2309,15 +2101,15 @@ For more information on the types of references, please consult the implementati
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (1510 entries)_
+> _Built-in Environment (799 entries)_
 > 
 > </details>
 > 
 > Great, you should see a definition of `<-` which is constraint by the [control dependency](#branches) to the `if`.
-> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L271"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
+> Hence, trying to re-resolve the call using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L190"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a> (defined in [`./src/dataflow/internal/linker.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts)) with the id `11` of the call as starting point will present you with
 > the following target ids: { `built-in:*`, `built-in:<-`, `4` }.
 > This way we know that the call may refer to the built-in assignment operator or to the multiplication.
-> Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L64"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
+> Similarly, trying to resolve the name with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L78"><code><span title="Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules. If the type you want to reference is unknown, please use resolveByNameAnyType instead.">resolveByName</span></code></a>` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
 > { `4`, `built-in:<-` } (however, the latter will not trace aliases).
 > 
 > 	
@@ -2327,18 +2119,13 @@ For more information on the types of references, please consult the implementati
 > </details>
 > 
 > 
-> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L271"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a> function to find all possible definitions of a function call,
+> Similar to finding the definitions read by a variable use, please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L190"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a> function to find all possible definitions of a function call,
 > as explained in the [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working) section.
-
 
 Function calls are the most complicated mechanism in R as essentially everything is a function call.
 Even **control structures** like `if(p) a else b` are desugared into function calls (e.g., as `` `if`(p, a, b) ``).
 
 <details><summary>Example: <code>if</code> as a Function Call</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2369,24 +2156,18 @@ if`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 if(p) a else b
 ```
 
-
-
 </details>
-
-
 
 </details>
 
@@ -2394,10 +2175,6 @@ Similarly, you should be aware of calls to **anonymous functions**, which may ap
 directly calling the return of another function call: `foo()()`.
 
 <details><summary>Example: Anonymous Function Call (given directly)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2413,53 +2190,43 @@ end
     5[["`*#91;RExpressionList#93;* base#58;#58;**(**
       *1.1* (**id: 5**)
     arg: (4)`"]]
-    built-in:_["`Built-In:
+    built-in:_40_["`Built-In:
 (`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_40_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6[["`*#91;RFunctionCall#93;* **(function() 1)**
       *1.1-16* (**id: 6**)`"]]
 4 -.-|function| flow-4
 
     4 -.->|"flow"| 5
     linkStyle 1 stroke:gray,color:gray;
+    5 -->|"reads"| 2
     5 -->|"returns, arg"| 4
     5 -.->|"flow"| 6
-    linkStyle 3 stroke:gray,color:gray;
-    5 -.->|"reads, calls"| built-in:_
-    linkStyle 4 stroke:gray;
+    linkStyle 4 stroke:gray,color:gray;
+    5 -.->|"reads, calls"| built-in:_40_
+    linkStyle 5 stroke:gray;
     6 -->|"reads"| 5
     6 -->|"returns"| 2
     6 -->|"calls"| 4
-    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 (function() 1)()
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 <details><summary>Example: Anonymous Function Call (given indirectly)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2492,9 +2259,9 @@ end
     9[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-38* (**id: 9**)
     arg: (0, 8)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 11 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -2511,60 +2278,54 @@ end
 
     4 -.->|"flow"| 6
     linkStyle 1 stroke:gray,color:gray;
+    6 -->|"reads"| 2
     6 -->|"returns, arg"| 4
     6 -.->|"reads, calls"| built-in:return
-    linkStyle 3 stroke:gray;
+    linkStyle 4 stroke:gray;
 8 -.-|function| flow-8
 
     8 -.->|"flow"| 0
-    linkStyle 5 stroke:gray,color:gray;
+    linkStyle 6 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 9
     0 -->|"defined-by"| 8
     9 -->|"reads, arg"| 8
     9 -->|"returns, arg"| 0
-    9 -.->|"reads, calls"| built-in:_-
-    linkStyle 10 stroke:gray;
+    9 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 11 stroke:gray;
     9 -.->|"flow"| 11
-    linkStyle 11 stroke:gray,color:gray;
-    11 -.->|"flow"| 12
     linkStyle 12 stroke:gray,color:gray;
+    11 -.->|"flow"| 12
+    linkStyle 13 stroke:gray,color:gray;
     11 -->|"reads"| 0
     11 -->|"returns"| 6
     11 -->|"calls"| 8
     12 -->|"reads"| 11
     12 -->|"returns"| 2
     12 -->|"calls"| 4
-    linkStyle 18 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    linkStyle 19 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 foo <- function() return(function() 3)
 foo()()
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 > [!NOTE]
 > Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
 > 
 > Unnamed functions have an array of signatures which you can use to identify them. 
-> But in short: the `origin` attribute of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L94"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> is `unnamed`.
+> But in short: the `origin` attribute of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> is `unnamed`.
 > Please be aware that unnamed functions still have a `name` property to give it a unique identifier that can be used for debugging and reference.
 > This name _always_ starts with `unnamed-fc-`.
 > 
@@ -2573,15 +2334,10 @@ foo()()
 > To know which function is called, please rely on the [`calls`](#calls) edge.
 > 	
 
-
 Another interesting case is a function with **side effects**, most prominently with the super-assignment `<<-`.
 In this case, you may encounter the [`side-effect-on-call`](#side-effect-on-call) as exemplified below.
 
 <details><summary>Example: Function Call with a Side-Effect</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2600,18 +2356,18 @@ subgraph "flow-5" [function 5]
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.17-23* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 5)`"]
     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-23* (**id: 6**)
     arg: (0, 5)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 8 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -2626,7 +2382,7 @@ end
     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
-    3 -.->|"reads, calls"| built-in:__-
+    3 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 6 stroke:gray;
 5 -.-|function| flow-5
 
@@ -2636,7 +2392,7 @@ end
     0 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 0
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 13 stroke:gray;
     6 -.->|"flow"| 8
     linkStyle 14 stroke:gray,color:gray;
@@ -2645,43 +2401,27 @@ end
     8 -->|"calls"| 5
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function() x <<- 3
  f()
 ```
 
-
-
 </details>
-
-
 
 </details>
  
-
-
-
-	
-
 <a id='variable-definition-vertex'> </a>
 <a id='vdef-vertex'> </a>
 ### 4) Variable Definition Vertex
 
 Type: `vdef` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2692,47 +2432,35 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <- 1
 ```
 
-
-
 </details>
-
-
-
 
 Defined variables most commonly occur in the context of an assignment, for example, with the `<-` operator as shown above.
 
-
 <details><summary>Example: Super Definition (<code><<-</code>)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2743,48 +2471,41 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.1-7* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:__-
+    2 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <<- 1
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 The implementation is relatively sparse and similar to the other marker vertices:
 
- * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L130)**   
+ * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L138)**   
    Arguments required to construct a vertex which represents the definition of a variable in the
    <code>dataflow graph</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L130">src/dataflow/graph/vertex.ts#L130</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L138">src/dataflow/graph/vertex.ts#L138</a></summary>
    
    ```ts
    /**
@@ -2802,7 +2523,6 @@ The implementation is relatively sparse and similar to the other marker vertices
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowGraphVertexBase)</summary>
@@ -2812,7 +2532,6 @@ The implementation is relatively sparse and similar to the other marker vertices
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -2839,7 +2558,7 @@ The implementation is relatively sparse and similar to the other marker vertices
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -2848,21 +2567,14 @@ The implementation is relatively sparse and similar to the other marker vertices
      }
      ```
      
-     
      </details>
      
-
     </details>
 Of only interest is `par`, which signals that the definitions is partial (e.g., in the case of `x[a] <- 1`).
 
-Of course, there are not just operators that define variables, but also functions, like `assign`.
-
+Functions can define variables too, like `assign`.
 
 <details><summary>Example: Using <code>assign</code></summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2891,37 +2603,27 @@ assign`"]
     6 -->|"reads"| 1
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 assign("x", 1)
 x
 ```
 
-
-
 </details>
 
-
-The example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable `x` (without the quotes) as you can see with the [`reads`](#reads) edge.
+The example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable `x` (without the quotes), as the [`reads`](#reads) edge shows.
 
 </details>
 
 Please be aware, that the name of the symbol defined may differ from what you read in the program as R allows the assignments to strings, escaped names, and more:
 
-
 <details><summary>Example: Assigning with an Escaped Name</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2932,9 +2634,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-8* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
     1 -.->|"flow"| 0
@@ -2943,40 +2645,30 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
     3 -->|"reads"| 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 `x` <- 1
 x
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Assigning with a String</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -2987,9 +2679,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-8* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
     1 -.->|"flow"| 0
@@ -2998,44 +2690,32 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
     3 -->|"reads"| 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 "x" <- 1
 x
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 Definitions may be constrained by conditionals (_flowR_ takes care of calculating the dominating front for you).
 
-
 <details><summary>Conditional Assignments</summary>
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -3046,9 +2726,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **u**
       *2.4* (**id: 3**)`"])
     5{{"`*#91;RNumber#93;* **1**
@@ -3079,7 +2759,7 @@ if`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -3093,7 +2773,7 @@ if`"]
     4 -->|"defined-by"| 5
     6 -->|"reads, arg"| 5
     6 -->|"returns, arg"| 4
-    6 -.->|"reads, calls"| built-in:_-
+    6 -.->|"reads, calls"| built-in:_60_-
     linkStyle 14 stroke:gray;
     6 -.->|"flow"| 12
     linkStyle 15 stroke:gray,color:gray;
@@ -3103,7 +2783,7 @@ if`"]
     8 -->|"defined-by"| 9
     10 -->|"reads, arg"| 9
     10 -->|"returns, arg"| 8
-    10 -.->|"reads, calls"| built-in:_-
+    10 -.->|"reads, calls"| built-in:_60_-
     linkStyle 21 stroke:gray;
     10 -.->|"flow"| 12
     linkStyle 22 stroke:gray,color:gray;
@@ -3118,14 +2798,12 @@ if`"]
     13 -->|"reads"| 8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <- 0
@@ -3133,11 +2811,7 @@ if(u) x <- 1 else x <- 2
 x
 ```
 
-
-
 </details>
-
-
 
 In this case, the definition of `x` is constrained by the conditional, which is reflected in the environment at the end of the analysis:
 
@@ -3147,30 +2821,19 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (1510 entries)_
+_Built-in Environment (799 entries)_
 
 </details>
 
-As you can see, _flowR_ is able to recognize that the initial definition of `x` has no influence on the final value of the variable.
+_flowR_ recognizes that the initial definition of `x` has no influence on the final value of the variable.
 		
-
 </details>
-
-
-
-
-	
 
 <a id='function-definition-vertex'> </a>
 <a id='fdef-vertex'> </a>
 ### 5) Function Definition Vertex
 
 Type: `fdef` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -3187,35 +2850,27 @@ end
 2 -.-|function| flow-2
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 function() 1
 ```
 
-
-
 </details>
-
-
-
 
 Defining a function does do a lot of things:  1) it creates a new scope,  2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body,  3) it may access the enclosing environments and the callstack.
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
- * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L144)**   
+ * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L152)**   
    Arguments required to construct a vertex which represents the definition of a function in the
    <code>dataflow graph</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L144">src/dataflow/graph/vertex.ts#L144</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L152">src/dataflow/graph/vertex.ts#L152</a></summary>
    
    ```ts
    /**
@@ -3253,7 +2908,6 @@ The vertex object in the dataflow graph stores multiple things, including all ex
    }
    ```
    
-   
    </details>
    
     <details><summary>View more (DataflowGraphVertexBase)</summary>
@@ -3263,7 +2917,6 @@ The vertex object in the dataflow graph stores multiple things, including all ex
      <code>dataflow graph</code>
      .
      <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L28">src/dataflow/graph/vertex.ts#L28</a></summary>
-     
      
      ```ts
      /**
@@ -3290,7 +2943,7 @@ The vertex object in the dataflow graph stores multiple things, including all ex
          /**
           * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
-         cds:          ControlDependency[] | undefined
+         cds:          readonly ControlDependency[] | undefined
          /**
           * Describes the collection of AST vertices that contributed to this vertex.
           * For example, this is useful with replacement operators, telling you which assignment operator caused them
@@ -3299,21 +2952,18 @@ The vertex object in the dataflow graph stores multiple things, including all ex
      }
      ```
      
-     
      </details>
      
-
     </details>
 The subflow is defined like this:
- * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L29)   
+ * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L23)   
    Describes the information we store per function body.
    The
    <code>DataflowInformation#exitPoints</code>
    this type omits are stored within the enclosing
    <code>DataflowGraphVertexFunctionDefinition</code>
    vertex.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L29">src/dataflow/graph/graph.ts#L29</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L23">src/dataflow/graph/graph.ts#L23</a></summary>
    
    ```ts
    /**
@@ -3323,13 +2973,11 @@ The subflow is defined like this:
    export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
    ```
    
-   
    </details>
    
     <details><summary>View more (Omit, DataflowInformation, 'graph' | 'exitPoints')</summary>
 
-
-   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225)**   
+   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L234)**   
      The dataflow information is one of the fundamental structures we have in the dataflow analysis.
      It is continuously updated during the dataflow analysis
      and holds its current state for the respective subtree processed.
@@ -3338,8 +2986,7 @@ The subflow is defined like this:
      You may initialize a new dataflow information with
      <code>DataflowInformation.initialize</code>
      .
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225">src/dataflow/info.ts#L225</a></summary>
-     
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L234">src/dataflow/info.ts#L234</a></summary>
      
      ```ts
      /**
@@ -3380,18 +3027,21 @@ The subflow is defined like this:
           * @see {@link KillReference}
           */
          kill?:             readonly KillReference[]
+         /**
+          * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+          * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+          */
+         cutShort?:         DataflowBudgetExhaustion
      }
      ```
-     
      
      </details>
      
       <details><summary>View more (DataflowCfgInformation)</summary>
 
-     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188)**   
+     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L197)**   
        The control flow information for the current DataflowInformation.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188">src/dataflow/info.ts#L188</a></summary>
-       
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L197">src/dataflow/info.ts#L197</a></summary>
        
        ```ts
        /** The control flow information for the current DataflowInformation. */
@@ -3423,20 +3073,16 @@ The subflow is defined like this:
        }
        ```
        
-       
        </details>
        
-
       </details>
-
 
     </details>
 And if you are interested in the exit points, they are defined like this:
- * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L129)**   
+ * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L138)**   
    An exit point describes the position which ends the current control flow structure.
    This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L129">src/dataflow/info.ts#L129</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L138">src/dataflow/info.ts#L138</a></summary>
    
    ```ts
    /**
@@ -3452,22 +3098,21 @@ And if you are interested in the exit points, they are defined like this:
        readonly type:   ExitPointType,
        /** The id of the node which causes the exit point! */
        readonly nodeId: NodeId,
+       /** The jump this exit stands for, when {@link ExitPoint#nodeId|nodeId} is a construct it leaves through */
+       readonly jump?:  NodeId,
        /**
         * Control dependencies which influence if the exit point triggers
         * (e.g., if the `return` is contained within an `if` statement).
         * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
         */
-       readonly cds?:   ControlDependency[]
+       readonly cds?:   readonly ControlDependency[]
    }
    ```
    
-   
    </details>
    
-
 Whenever we visualize a function definition, we use a dedicated node to represent the anonymous function object,
 and a subgraph (usually with the name `"function <id>"`) to encompass the body of the function (they are linked with a dotted line).
-
 
 > [!NOTE]
 > 
@@ -3509,15 +3154,15 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.19-35* (**id: 7**)
 >     arg: (3, 6)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     8[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
 >       *1.17* (**id: 8**)
 >     arg: (7)`"]]
->     built-in:_["`Built-In:
+>     built-in:_123_["`Built-In:
 > #123;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 7 stroke:purple,stroke-width:4px; 
 >     style 8 stroke:purple,stroke-width:4px; 
 > end
@@ -3526,9 +3171,9 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-37* (**id: 10**)
 >     arg: (0, 9)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 > 6 -.-|function| flow-6
 > 
 >     6 -.->|"flow"| 3
@@ -3537,12 +3182,12 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     3 -->|"defined-by"| 6
 >     7 -->|"reads, arg"| 6
 >     7 -->|"returns, arg"| 3
->     7 -.->|"reads, calls"| built-in:_-
+>     7 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 6 stroke:gray;
 >     7 -.->|"flow"| 8
 >     linkStyle 7 stroke:gray,color:gray;
 >     8 -->|"returns, arg"| 7
->     8 -.->|"reads, calls"| built-in:_
+>     8 -.->|"reads, calls"| built-in:_123_
 >     linkStyle 9 stroke:gray;
 > 9 -.-|function| flow-9
 > 
@@ -3552,7 +3197,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     0 -->|"defined-by"| 9
 >     10 -->|"reads, arg"| 9
 >     10 -->|"returns, arg"| 0
->     10 -.->|"reads, calls"| built-in:_-
+>     10 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 16 stroke:gray;
 > ```
 > 
@@ -3561,7 +3206,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -3575,7 +3220,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > 
 > 
-> As you can see, the vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
+> The vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
 > 
 > | Id | Vertex Ids in Subflow |
 > |---:|-----------------------|
@@ -3611,7 +3256,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     3["`*#91;RSymbol#93;* **y**
 >       *1.18-22* (**id: 3**, v: 4)`"]
 >     4{{"`*#91;RNumber#93;* **3**
->       *1.22* (**id: 4**)`"}}
+>       *1.22* (**id: 4**, 3+)`"}}
 >     6(["`*#91;RSymbol#93;* **x**
 >       *1.25* (**id: 6**)`"])
 >     7(["`*#91;RSymbol#93;* **y**
@@ -3619,9 +3264,9 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     8[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
 >       *1.25-29* (**id: 8**)
 >     arg: (6, 7)`"]]
->     built-in:_["`Built-In:
+>     built-in:_43_["`Built-In:
 > #43;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     style 8 stroke:purple,stroke-width:4px; 
 > end
 >     0["`*#91;RSymbol#93;* **f**
@@ -3629,9 +3274,9 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-29* (**id: 11**)
 >     arg: (0, 10)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     1 -.->|"flow"| 4
 >     linkStyle 0 stroke:gray,color:gray;
 >     3 -->|"defined-by"| 4
@@ -3647,7 +3292,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     linkStyle 7 stroke:gray,color:gray;
 >     8 -->|"reads, arg"| 6
 >     8 -->|"reads, arg"| 7
->     8 -.->|"reads, calls"| built-in:_
+>     8 -.->|"reads, calls"| built-in:_43_
 >     linkStyle 10 stroke:gray;
 > 10 -.-|function| flow-10
 > 
@@ -3657,7 +3302,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 >     0 -->|"defined-by"| 10
 >     11 -->|"reads, arg"| 10
 >     11 -->|"returns, arg"| 0
->     11 -.->|"reads, calls"| built-in:_-
+>     11 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 17 stroke:gray;
 > ```
 > 
@@ -3666,7 +3311,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -3681,7 +3326,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > 
 > The function definition we are interested in has the id `10`. Looking at the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of the code,
-> we can get the parameters simply be requesting the `parameters` property of the function definition (yielding the names: [`x`, `y`]):
+> we can get the parameters by requesting the `parameters` property of the function definition (yielding the names: [`x`, `y`]):
 > 
 > 
 > 
@@ -3729,7 +3374,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > ```
 > 	
-> (The analysis required _0.8 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis ran (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 	
@@ -3737,11 +3382,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > </details>
 > 				
 
-
 Last but not least, please keep in mind that R offers another way of writing anonymous functions (using the backslash): 
-
-
-
 
 ```r
 \(x) x + 1
@@ -3751,10 +3392,8 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -3771,9 +3410,9 @@ subgraph "flow-6" [function 6]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.6-10* (**id: 4**)
     arg: (2, 3)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 4 stroke:purple,stroke-width:4px; 
 end
    %% No edges found for 6
@@ -3786,24 +3425,14 @@ end
     linkStyle 3 stroke:gray,color:gray;
     4 -->|"reads, arg"| 2
     4 -->|"reads, arg"| 3
-    4 -.->|"reads, calls"| built-in:_
+    4 -.->|"reads, calls"| built-in:_43_
     linkStyle 6 stroke:gray;
 6 -.-|function| flow-6
 ```
 
-	
-
-
 </details>
 
-
-
 Besides this being a theoretically "shorter" way of defining a function, this behaves similarly to the use of `function`. 
-
-
-
-
-	
 
 <h2 id="edges">Edges</h2>
 
@@ -3826,11 +3455,6 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 
 Type: `1` (this is the bit-flag value, e.g., when looking at the serialization)
 
-
-
-
-
-
 ```mermaid
 flowchart LR
     1{{"`*#91;RNumber#93;* **2**
@@ -3840,9 +3464,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4(["`*#91;RSymbol#93;* **x**
       *2.7* (**id: 4**)`"])
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -3857,7 +3481,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -3870,37 +3494,29 @@ print`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
-
 
 ```r
 x <- 2
 print(x)
 ```
 
-
-
 </details>
 
-
-
-
 Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) reads whatever is defined by the target vertex (usually a [variable definition](#variable-definition-vertex)).
-
 
 > [!NOTE]
 > 
 > A [`reads`](#reads) edge is not a transitive closure and only links the "directly read" definition(s).
 > Our abstract domains resolving transitive [`reads`](#reads) edges (and for that matter, following [`returns`](#returns) as well)
-> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L271"><code><span title="convenience function returning all known call targets, as well as the name source which defines them">getAllFunctionCallTargets</span></code></a>,
-> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L236"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
-> Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
+> are currently tailored to what we need in _flowR_. Hence, we offer a function like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L190"><code><span title="All known targets of a call, as well as the name sources which define them (empty if there are none). Prefer this over Dataflow.calleeIdsOf if the call may go through a read, an alias, or a built-in.">callTargetsOf</span></code></a>,
+> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-by-name.ts#L259"><code><span title="Checks whether the given identifier name resolves to a built-in constant with the given value.">resolvesToBuiltInConstant</span></code></a> which do this for specific cases.
+> Refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> for a more general solution, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
 > 
 > 
 > <details><summary>Example: Multi-Level Reads</summary>
@@ -3918,9 +3534,9 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.1-6* (**id: 2**)
 >     arg: (0, 1)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     4(["`*#91;RSymbol#93;* **x**
 >       *2.6* (**id: 4**)`"])
 >     3["`*#91;RSymbol#93;* **y**
@@ -3942,7 +3558,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     0 -->|"defined-by"| 1
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
->     2 -.->|"reads, calls"| built-in:_-
+>     2 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 5 stroke:gray;
 >     2 -.->|"flow"| 4
 >     linkStyle 6 stroke:gray,color:gray;
@@ -3954,7 +3570,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     3 -->|"defined-by"| 4
 >     5 -->|"reads, arg"| 4
 >     5 -->|"returns, arg"| 3
->     5 -.->|"reads, calls"| built-in:_-
+>     5 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 13 stroke:gray;
 >     5 -.->|"flow"| 7
 >     linkStyle 14 stroke:gray,color:gray;
@@ -3973,7 +3589,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
 > We encountered unknown side effects (with ids: 9 (linked)) during the analysis.
 > 
 > 
@@ -4013,17 +3629,17 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     5[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
 >       *1.18-22* (**id: 5**, 8+)
 >     arg: (3, 4)`"]]
->     built-in:_["`Built-In:
+>     built-in:_43_["`Built-In:
 > #43;`"]
->     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     2["`*#91;RSymbol#93;* **x**
 >       *1.13* (**id: 2**, 8+, v: 5)`"]
 >     6[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
 >       *1.13-22* (**id: 6**, 8+)
 >     arg: (2, 5)`"]]
->     built-in:_-["`Built-In:
+>     built-in:_60_-["`Built-In:
 > #60;#45;`"]
->     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 >     8[["`*#91;RForLoop#93;* base#58;#58;**for**
 >       *1.1-22* (**id: 8**)
 >     arg: (0, 1, 6)`"]]
@@ -4047,13 +3663,13 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     5 -->|"reads, arg"| 4
 >     5 -.->|"flow"| 2
 >     linkStyle 9 stroke:gray,color:gray;
->     5 -.->|"reads, calls"| built-in:_
+>     5 -.->|"reads, calls"| built-in:_43_
 >     linkStyle 10 stroke:gray;
 >     2 -->|"defined-by, flow"| 6
 >     2 -->|"defined-by"| 5
 >     6 -->|"reads, arg"| 5
 >     6 -->|"returns, arg"| 2
->     6 -.->|"reads, calls"| built-in:_-
+>     6 -.->|"reads, calls"| built-in:_60_-
 >     linkStyle 15 stroke:gray;
 >     6 -.->|"flow"| 0
 >     linkStyle 16 stroke:gray,color:gray;
@@ -4069,7 +3685,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -4086,24 +3702,16 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > </details>
 > 				
 
-
 Reads edges may point to built-in definitions as well, to signal that something relates to a built-in element of flowR.
-Their targets are not part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L283"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a> but only markers to signal that the respective definition is a built-in.
+Their targets are not part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a> but only markers to signal that the respective definition is a built-in.
 
- 
 Please refer to the explanation of the respective vertices for more information.
-
-
 
 <details>
 
 <summary>Additional Cases</summary>
 
 #### Reads Edge (Call)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4113,25 +3721,25 @@ flowchart LR
 subgraph "flow-4" [function 4]
     3[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.19* (**id: 3**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-20* (**id: 5**)
     arg: (0, 4)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 7 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`*#91;RFunctionCall#93;* **foo**
       *2.1-5* (**id: 7**)`"]]
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_123_
     linkStyle 0 stroke:gray;
 4 -.-|function| flow-4
 
@@ -4141,7 +3749,7 @@ end
     0 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 0
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     5 -.->|"flow"| 7
     linkStyle 8 stroke:gray,color:gray;
@@ -4150,32 +3758,22 @@ end
     7 -->|"calls"| 4
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 foo <- function() {}
 foo()
 ```
 
-
-
 </details>
-
-
 
 Named calls are resolved too, linking to the symbol that holds the anonymous function definition (indirectly or directly)
 #### Reads Edge (Parameter)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4188,12 +3786,12 @@ subgraph "flow-9" [function 9]
     3["`*#91;RSymbol#93;* **y**
       *1.18-20* (**id: 3**, v: 4)`"]
     4(["`*#91;RSymbol#93;* **x**
-      *1.20* (**id: 4**)`"])
+      *1.20* (**id: 4**, 3+)`"])
     8[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.23* (**id: 8**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     style 8 stroke:purple,stroke-width:4px; 
 end
     0["`*#91;RSymbol#93;* **f**
@@ -4201,9 +3799,9 @@ end
     10[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-24* (**id: 10**)
     arg: (0, 9)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 4
     linkStyle 0 stroke:gray,color:gray;
     3 -->|"defined-by"| 4
@@ -4213,7 +3811,7 @@ end
     linkStyle 3 stroke:gray,color:gray;
     4 -->|"reads"| 1
     linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    8 -.->|"reads, calls"| built-in:_
+    8 -.->|"reads, calls"| built-in:_123_
     linkStyle 5 stroke:gray;
 9 -.-|function| flow-9
 
@@ -4223,31 +3821,24 @@ end
     0 -->|"defined-by"| 9
     10 -->|"reads, arg"| 9
     10 -->|"returns, arg"| 0
-    10 -.->|"reads, calls"| built-in:_-
+    10 -.->|"reads, calls"| built-in:_60_-
     linkStyle 12 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function(x, y=x) {}
 ```
 
-
-
 </details>
 
-
-
 Parameters can read from each other as well.
-
 
 </details>
 	
@@ -4258,11 +3849,6 @@ Parameters can read from each other as well.
 
 Type: `2` (this is the bit-flag value, e.g., when looking at the serialization)
 
-
-
-
-
-
 ```mermaid
 flowchart LR
     1(["`*#91;RSymbol#93;* **y**
@@ -4272,9 +3858,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
@@ -4283,37 +3869,26 @@ flowchart LR
     linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <- y
 ```
 
-
-
 </details>
-
-
-
 
 The source vertex is usually a [`variable definition`](#variable-definition-vertex) linking the defined symbol to the entry point of the resulting side.
 
 <details><summary>In general, this does not have to be the right hand side of the operator.</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4324,54 +3899,41 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* **#45;#62;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:-_["`Built-In:
+    built-in:-_62_["`Built-In:
 #45;#62;`"]
-    style built-in:-_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:-_62_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -->|"defined-by, flow"| 2
     1 -->|"defined-by"| 0
     2 -->|"reads, arg"| 0
     2 -->|"returns, arg"| 1
-    2 -.->|"reads, calls"| built-in:-_
+    2 -.->|"reads, calls"| built-in:-_62_
     linkStyle 5 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 3 -> x
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 However, nested definitions can carry it (in the nested case, `x` is defined by the return value of <code>\`<-\`(y, z)</code>). Additionally, we link the assignment function.
-
-
-
 
 <details>
 
 <summary>Additional Cases</summary>
 
 #### DefinedBy Edge (Nested)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4382,9 +3944,9 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.6-11* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -4399,7 +3961,7 @@ flowchart LR
     3 -->|"returns, arg"| 1
     3 -.->|"flow"| 0
     linkStyle 5 stroke:gray,color:gray;
-    3 -.->|"reads, calls"| built-in:_-
+    3 -.->|"reads, calls"| built-in:_60_-
     linkStyle 6 stroke:gray;
     0 -->|"defined-by, flow"| 4
     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
@@ -4407,35 +3969,25 @@ flowchart LR
     linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 11 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <- y <- z
 ```
 
-
-
 </details>
-
-
 
 Nested definitions can carry the [`defined-by`](#defined-by) edge as well.
 #### DefinedBy Edge (Expression)
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4446,17 +3998,17 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.6-10* (**id: 3**)
     arg: (1, 2)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 3)`"]
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-10* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 2
     linkStyle 0 stroke:gray,color:gray;
     2 -.->|"flow"| 3
@@ -4465,38 +4017,31 @@ flowchart LR
     3 -->|"reads, arg"| 2
     3 -.->|"flow"| 0
     linkStyle 4 stroke:gray,color:gray;
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_43_
     linkStyle 5 stroke:gray;
     0 -->|"defined-by, flow"| 4
     0 -->|"defined-by"| 3
     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <- y + z
 ```
 
-
-
 </details>
 
-
-
 Here, we define by the result of the `+` expression.
-
 
 </details>
 	
@@ -4507,11 +4052,6 @@ Here, we define by the result of the `+` expression.
 
 Type: `4` (this is the bit-flag value, e.g., when looking at the serialization)
 
-
-
-
-
-
 ```mermaid
 flowchart LR
     4["`*#91;RFunctionDefinition#93;* **function**
@@ -4520,25 +4060,25 @@ flowchart LR
 subgraph "flow-4" [function 4]
     3[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.19* (**id: 3**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **foo**
       *1.1-3* (**id: 0**, v: 4)`"]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-20* (**id: 5**)
     arg: (0, 4)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 7 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`*#91;RFunctionCall#93;* **foo**
       *2.1-5* (**id: 7**)`"]]
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_123_
     linkStyle 0 stroke:gray;
 4 -.-|function| flow-4
 
@@ -4548,7 +4088,7 @@ end
     0 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 0
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     5 -.->|"flow"| 7
     linkStyle 8 stroke:gray,color:gray;
@@ -4557,44 +4097,30 @@ end
     linkStyle 10 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 foo <- function() {}
 foo()
 ```
 
-
-
 </details>
 
-
-
 Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
-		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
-		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L340"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
+		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
+		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L350"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
 		
-
-
-	
 <a id='returns'></a>
 <a id='returns-edge'> </a>
 <a id='8-vertex'> </a>
 ### 4) Returns Edge
 
 Type: `8` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4612,9 +4138,9 @@ end
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-19* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 6 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -4630,7 +4156,7 @@ end
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
     linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 6 stroke:gray;
     4 -.->|"flow"| 6
     linkStyle 7 stroke:gray,color:gray;
@@ -4640,37 +4166,26 @@ end
     6 -->|"calls"| 3
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6->1, 4->0}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6->1, 4->0}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 foo <- function() x
 foo()
 ```
 
-
-
 </details>
 
-
-
 Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
-As you can see in the example, this happens for user-defined functions (like `foo`) as well as for built-in functions (like `<-`).
+This happens for user-defined functions (like `foo`) as well as for built-in functions (like `<-`).
 However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
 For contrast, compare this to a use of, for example, `+`:
 		
-
 <details><summary>Example: No returns edge for +</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4681,54 +4196,44 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     0 -.->|"flow"| 1
     linkStyle 0 stroke:gray,color:gray;
     1 -.->|"flow"| 2
     linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
-    2 -.->|"reads, calls"| built-in:_
+    2 -.->|"reads, calls"| built-in:_43_
     linkStyle 4 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 1 + 1
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 Here, we do not get a [`returns`](#returns) edge as this function call creates a new value based on its arguments.
-In these scenarios you should rely on the `args` property of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L94"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> 
+In these scenarios you should rely on the `args` property of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L95"><code><span title="Arguments required to construct a vertex which represents the call to a function in the dataflow graph . This describes all kinds of function calls, including calls to built-ins and control-flow structures such as if or for (they are treated as function calls in R).">DataflowGraphVertexFunctionCall</span></code></a> 
 and use the arguments to calculate what you need to know. Alternatively, you can track the [`arg`](#arg) edges.
 
 In general, the [`returns`](#returns) edge already does most of the heavy lifting for you, by respecting control flow influences and
 (as long as flowR is able to detect it) dead code.
 
-
 <details><summary>Example: Tricky Returns</summary>
 
 We show the _simplified_ DFG for simplicity and highlight all [`returns`](#returns) edges involved in tracking the return of a call to `f` (as [`returns`](#returns) are never transitive and must hence be followed):
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4747,9 +4252,9 @@ return`"]
     style built-in:return stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     11[["`base#58;#58;**#123;**
 *RExpressionList*`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     12{{"`**42** (L. 1)
 *RNumber*`"}}
     14[["`base#58;#58;**if** (L. 1)
@@ -4766,9 +4271,9 @@ end
 *RSymbol*`"]
     17[["`base#58;#58;**#60;#45;** (L. 1)
 *RBinaryOp*`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     19[["`**f** (L. 2)
 *RFunctionCall*`"]]
     9 -->|"returns, arg"| 7
@@ -4777,7 +4282,7 @@ end
     linkStyle 1 stroke:gray;
     11 -->|"returns, arg"| 9
     linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    11 -.->|"reads, calls"| built-in:_
+    11 -.->|"reads, calls"| built-in:_123_
     linkStyle 3 stroke:gray;
     14 -->|"returns, arg"| 11
     linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
@@ -4788,7 +4293,7 @@ end
     linkStyle 7 stroke:gray;
     15 -->|"returns, arg"| 14
     linkStyle 8 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    15 -.->|"reads, calls"| built-in:_
+    15 -.->|"reads, calls"| built-in:_123_
     linkStyle 9 stroke:gray;
     15 -->|"returns"| 9
 16 -.-|function| flow-16
@@ -4797,7 +4302,7 @@ end
     0 -->|"defined-by"| 16
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 0
-    17 -.->|"reads, calls"| built-in:_-
+    17 -.->|"reads, calls"| built-in:_60_-
     linkStyle 16 stroke:gray;
     19 -->|"reads"| 0
     19 -->|"returns"| 9
@@ -4805,31 +4310,24 @@ end
     19 -->|"calls"| 16
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the (simplified) Dataflow Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function() { if(u) { return(3); 2 } else 42 }
 f()
 ```
 
-
-
 </details>
-
-
 
  Note, that the `2` should be completely absent of the dataflow graph (recognized as dead code).
 
 </details>
 <br/>
-
 
 > [!NOTE]
 > You might find it an inconvenience that there is no [`returns`](#returns) edge for _every_ function call. 
@@ -4839,21 +4337,12 @@ f()
 > but also the exit points of _all_ function calls. 
 > 
 
-		
-
-
-	
 <a id='def-on-call'></a>
 <a id='definesoncall-edge'> </a>
 <a id='16-vertex'> </a>
 ### 5) DefinesOnCall Edge
 
 Type: `16` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -4865,22 +4354,22 @@ subgraph "flow-6" [function 6]
       *1.15* (**id: 1**, v: )`"]
     5[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.18* (**id: 5**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-19* (**id: 7**)
     arg: (0, 6)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10{{"`*#91;RNumber#93;* **1**
-      *2.5* (**id: 10**)`"}}
+      *2.5* (**id: 10**, 12+)`"}}
     11(["`*#91;RArgument#93;* **x**
-      *2.3* (**id: 11**)`"])
+      *2.3* (**id: 11**, 12+)`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -4892,7 +4381,7 @@ end
     linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 11
     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_123_
     linkStyle 2 stroke:gray;
 6 -.-|function| flow-6
 
@@ -4902,7 +4391,7 @@ end
     0 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 0
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 9 stroke:gray;
     7 -.->|"flow"| 10
     linkStyle 10 stroke:gray,color:gray;
@@ -4918,25 +4407,19 @@ end
     12 -->|"calls"| 6
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function(x) {}
 f(x=1)
 ```
 
-
-
 </details>
-
-
 
 *This edge is usually joined with [`def-by-on-call`](#def-by-on-call)!*
 
@@ -4947,9 +4430,6 @@ f(x=1)
  Consider the following scenario in which we first define a function which returns the value of a variable named `x` and then define `x`
  only after we defined the function:
    
-
-
-
 ```r
 f <- function() x
 x <- 3
@@ -4960,10 +4440,8 @@ f()
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
 We encountered no unknown side effects during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -4979,9 +4457,9 @@ end
     4[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-17* (**id: 4**)
     arg: (0, 3)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6{{"`*#91;RNumber#93;* **3**
       *2.6* (**id: 6**)`"}}
     5["`*#91;RSymbol#93;* **x**
@@ -5006,7 +4484,7 @@ end
     0 -->|"defined-by"| 3
     4 -->|"reads, arg"| 3
     4 -->|"returns, arg"| 0
-    4 -.->|"reads, calls"| built-in:_-
+    4 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     4 -.->|"flow"| 6
     linkStyle 8 stroke:gray,color:gray;
@@ -5016,7 +4494,7 @@ end
     5 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 5
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 14 stroke:gray;
     7 -.->|"flow"| 9
     linkStyle 15 stroke:gray,color:gray;
@@ -5027,32 +4505,19 @@ end
     9 -->|"calls"| 3
 ```
 
-	
-
-
 </details>
-
-
 
  The final call evaluates to `3` (similar to if we defined `x` before the function definition).
  Within a dataflow graph you can see this with two edges. The `x` within the function body will have a [`def-by-on-call`](#def-by-on-call) 
  to every definition it _may_ refer to. In turn, each call vertex calling the function which encloses the use of `x` will have a
  [`def-on-call`](#def-on-call) edge to the definition(s) it causes to be active within the function body. 
  
-
-
-	
 <a id='def-by-on-call'></a>
 <a id='definedbyoncall-edge'> </a>
 <a id='32-vertex'> </a>
 ### 6) DefinedByOnCall Edge
 
 Type: `32` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5064,22 +4529,22 @@ subgraph "flow-6" [function 6]
       *1.15* (**id: 1**, v: )`"]
     5[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.18* (**id: 5**)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 6)`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-19* (**id: 7**)
     arg: (0, 6)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10{{"`*#91;RNumber#93;* **1**
-      *2.5* (**id: 10**)`"}}
+      *2.5* (**id: 10**, 12+)`"}}
     11(["`*#91;RArgument#93;* **x**
-      *2.3* (**id: 11**)`"])
+      *2.3* (**id: 11**, 12+)`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -5091,7 +4556,7 @@ end
     linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 11
     linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_123_
     linkStyle 2 stroke:gray;
 6 -.-|function| flow-6
 
@@ -5101,7 +4566,7 @@ end
     0 -->|"defined-by"| 6
     7 -->|"reads, arg"| 6
     7 -->|"returns, arg"| 0
-    7 -.->|"reads, calls"| built-in:_-
+    7 -.->|"reads, calls"| built-in:_60_-
     linkStyle 9 stroke:gray;
     7 -.->|"flow"| 10
     linkStyle 10 stroke:gray,color:gray;
@@ -5117,32 +4582,24 @@ end
     12 -->|"calls"| 6
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function(x) {}
 f(x=1)
 ```
 
-
-
 </details>
-
-
 
 *This edge is usually joined with [`def-on-call`](#def-on-call)!*
 
  This represents the other part of the [`def-on-call`](#def-on-call) edge (e.g., links the parameter to the argument). Please look there for further documentation.
 
-
-	
 <a id='arg'></a>
 <a id='argument-edge'> </a>
 <a id='64-vertex'> </a>
@@ -5150,18 +4607,13 @@ f(x=1)
 
 Type: `64` (this is the bit-flag value, e.g., when looking at the serialization)
 
-
-
-
-
-
 ```mermaid
 flowchart LR
     1(["`*#91;RSymbol#93;* **x**
-      *1.3* (**id: 1**)`"])
+      *1.3* (**id: 1**, 5+)`"])
     3(["`*#91;RSymbol#93;* **y**
-      *1.5* (**id: 3**)`"])
-    5[["`*#91;RFunctionCall#93;* base#58;#58;**f**
+      *1.5* (**id: 3**, 5+)`"])
+    5[["`*#91;RFunctionCall#93;* **f**
       *1.1-6* (**id: 5**)
     arg: (1, 3)`"]]
     1 -.->|"flow"| 3
@@ -5174,43 +4626,29 @@ flowchart LR
     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f(x,y)
 ```
 
-
-
 </details>
-
-
 
 Links a [function call](#function-call-vertex) to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
 		
 The exception to this is the [function definition](#function-definition-vertex) which does no longer hold these argument relationships (as they are not implicit in the structure).
 		
-
-
-	
 <a id='side-effect-on-call'></a>
 <a id='sideeffectoncall-edge'> </a>
 <a id='128-vertex'> </a>
 ### 8) SideEffectOnCall Edge
 
 Type: `128` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5229,24 +4667,24 @@ subgraph "flow-7" [function 7]
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#60;#45;**
       *1.19-25* (**id: 5**)
     arg: (3, 4)`"]]
-    built-in:__-["`Built-In:
+    built-in:_60__60_-["`Built-In:
 #60;#60;#45;`"]
-    style built-in:__- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60__60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     6[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.17* (**id: 6**)
     arg: (5)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 7)`"]
     8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-27* (**id: 8**)
     arg: (0, 7)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 10 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -5261,12 +4699,12 @@ end
     linkStyle 3 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:__-
+    5 -.->|"reads, calls"| built-in:_60__60_-
     linkStyle 6 stroke:gray;
     5 -.->|"flow"| 6
     linkStyle 7 stroke:gray,color:gray;
     6 -->|"returns, arg"| 5
-    6 -.->|"reads, calls"| built-in:_
+    6 -.->|"reads, calls"| built-in:_123_
     linkStyle 9 stroke:gray;
 7 -.-|function| flow-7
 
@@ -5276,7 +4714,7 @@ end
     0 -->|"defined-by"| 7
     8 -->|"reads, arg"| 7
     8 -->|"returns, arg"| 0
-    8 -.->|"reads, calls"| built-in:_-
+    8 -.->|"reads, calls"| built-in:_60_-
     linkStyle 16 stroke:gray;
     8 -.->|"flow"| 10
     linkStyle 17 stroke:gray,color:gray;
@@ -5285,41 +4723,28 @@ end
     10 -->|"calls"| 7
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function() { x <<- 2 }
 f()
 ```
 
-
-
 </details>
-
-
 
 Links a global side effect to an affected function call (e.g., a super definition within the function body)
 
-
-	
 <a id='non-standard-evaluation'></a>
 <a id='nonstandardevaluation-edge'> </a>
 <a id='256-vertex'> </a>
 ### 9) NonStandardEvaluation Edge
 
 Type: `256` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5339,28 +4764,20 @@ quote`"]
     linkStyle 2 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 quote(x)
 ```
 
-
-
 </details>
 
-
-
-
 Marks cases in which R's non-standard evaluation mechanisms cause the default semantics to deviate (see the case below for multiple vertices)
-
 
 > [!NOTE]
 > 
@@ -5415,7 +4832,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -5467,7 +4884,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
+> The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -5484,23 +4901,16 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > </details>
 > 
 > Three helpers decide what such a mark means once the graph is complete:
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L41"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L79"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L58"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L103"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know. A capture reaches the eval that forces it, a promise reaches the bindings it may be forced against, and a masked name the caller binds after all loses its mark.">Quoted::<b>finalize</b></span></code></a>),
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/nse.ts#L98"><code><span title="The parts of a call R does not evaluate the standard way.">Nse</span></code></a> models the escapes a quoting function offers (rlang's `!!` and `bquote`'s `.(x)`), and
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L78"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L83"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.  Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so: a name it reads may read any definition of that name, and a name it writes may be read by any use of it. Tha...">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
 > 				
-
-
-
 
 <details>
 
 <summary>Additional Case</summary>
 
 #### Complete Expressions
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5535,27 +4945,20 @@ quote`"]
     linkStyle 8 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 quote(x + y)
 ```
 
-
-
 </details>
 
-
-
 This works, even if we have a larger expression in `quote`.
-
 
 </details>
 	
@@ -5566,11 +4969,6 @@ This works, even if we have a larger expression in `quote`.
 
 Type: `4096` (this is the bit-flag value, e.g., when looking at the serialization)
 
-
-
-
-
-
 ```mermaid
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
@@ -5580,9 +4978,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4{{"`*#91;RNumber#93;* **2**
       *2.6* (**id: 4**)`"}}
     3["`*#91;RSymbol#93;* **y**
@@ -5596,7 +4994,7 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -5606,49 +5004,34 @@ flowchart LR
     3 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 12 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 x <- 1
 y <- 2
 ```
 
-
-
 </details>
-
-
-
 
 Marks that the source is evaluated before the target, which is what the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on.
 The dataflow analysis records the control flow while it walks the program, so these edges (together with the
 [`branches-to`](#branches-to) edges) already carry the program's control flow and no separate extraction is needed.
 		
-
-
-	
 <a id='branches-to'></a>
 <a id='controldependency-edge'> </a>
 <a id='8192-vertex'> </a>
 ### 11) ControlDependency Edge
 
 Type: `8192` (this is the bit-flag value, e.g., when looking at the serialization)
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5679,46 +5062,31 @@ if`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 if(u) 1 else 2
 ```
 
-
-
 </details>
-
-
-
 
 The counterpart of the [`flows-to`](#flows-to) edge for everything that only happens under a condition:
 the edge names the vertex that decides (e.g. an `if`) and whether it is the branch taken when that decision holds.
 		
-
-
-	
-
 <h2 id="branches">Branches</h2>
 
-A <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L21"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> names the node that decides whether something is evaluated, together with a
+A <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L20"><code><span title="A control dependency links a vertex to the control flow element which may have an influence on its execution. Within if(p) a else b, a and b have a control dependency on the if (which in turn decides based on p).">ControlDependency</span></code></a> names the node that decides whether something is evaluated, together with a
 `when` flag for the outcome it takes, e.g. `{ id: <the if>, when: true }`.
 
 Each vertex lists the ones it runs under in its `cds`, and the control flow puts the very same objects on its
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L61"><code><span title="Like EdgeType.FlowEdge , pointing the way execution goes, but only taken when the condition the edge names evaluates to the value it names (e.g. one branch of an if-else).">EdgeType::<b>ControlEdge</b></span></code></a> edges, so the two never drift apart.
 
 As an example, consider the following dataflow graph:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5749,24 +5117,18 @@ if`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 if(p) a else b
 ```
 
-
-
 </details>
-
-
 
 Control flow is drawn dashed and gray, and such an edge reads `branch` (it is a `branches-to` edge, called
 `branch on ... if T` in the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)).
@@ -5776,12 +5138,7 @@ Both `a` and `b` therefore depend on the `if` and not on the result of the condi
 general linkage point (and harmonizes with other control structures, especially those which are user-defined).
 See the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) for the view these edges make up.
 
-
 <details><summary>Example: Multiple Vertices (Assignment)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5794,9 +5151,9 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.7-12* (**id: 3**, 5+)
     arg: (1, 2)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-12* (**id: 5**)
     arg: (0, 3, #91;empty#93;)`"]]
@@ -5813,7 +5170,7 @@ if`"]
     1 -->|"defined-by"| 2
     3 -->|"reads, arg"| 2
     3 -->|"returns, arg"| 1
-    3 -.->|"reads, calls"| built-in:_-
+    3 -.->|"reads, calls"| built-in:_60_-
     linkStyle 7 stroke:gray;
     3 -.->|"flow"| 5
     linkStyle 8 stroke:gray,color:gray;
@@ -5823,32 +5180,22 @@ if`"]
     linkStyle 11 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 if(p) a <- 1
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Multiple Vertices (Arithmetic Expression)</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5861,9 +5208,9 @@ flowchart LR
     3[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.7-11* (**id: 3**, 5+)
     arg: (1, 2)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5[["`*#91;RIfThenElse#93;* base#58;#58;**if**
       *1.1-11* (**id: 5**)
     arg: (0, 3, #91;empty#93;)`"]]
@@ -5880,7 +5227,7 @@ if`"]
     linkStyle 3 stroke:gray,color:gray;
     3 -->|"reads, arg"| 1
     3 -->|"reads, arg"| 2
-    3 -.->|"reads, calls"| built-in:_
+    3 -.->|"reads, calls"| built-in:_43_
     linkStyle 6 stroke:gray;
     3 -.->|"flow"| 5
     linkStyle 7 stroke:gray,color:gray;
@@ -5890,32 +5237,22 @@ if`"]
     linkStyle 10 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 if(p) 3 + 2
 ```
 
-
-
 </details>
-
-
 
 </details>
 
 <details><summary>Example: Nested Conditionals</summary>
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -5936,9 +5273,9 @@ if`"]
     9[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.7* (**id: 9**, 12+)
     arg: (8)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     10(["`*#91;RSymbol#93;* **c**
       *1.31* (**id: 10**, 12-)`"])
     built-in:c["`Built-In:
@@ -5967,7 +5304,7 @@ c`"]
     8 -.->|"flow"| 9
     linkStyle 10 stroke:gray,color:gray;
     9 -->|"returns, arg"| 8
-    9 -.->|"reads, calls"| built-in:_
+    9 -.->|"reads, calls"| built-in:_123_
     linkStyle 12 stroke:gray;
     9 -.->|"flow"| 12
     linkStyle 13 stroke:gray,color:gray;
@@ -5982,33 +5319,25 @@ c`"]
     linkStyle 19 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 if(x) { if(y) a else b } else c
 ```
 
-
-
 </details>
 
-
-
 </details>
-
 
 <h2 id="dataflow-information">Dataflow Information</h2>
 
 Using _flowR's_ code interface (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case `x <- 1; x + 1`) as follows:
-
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -6017,13 +5346,9 @@ const result = await analyzer.dataflow();
 analyzer.close();
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L906">src/documentation/wiki-dataflow-graph.ts#L906</a></i>
-
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L899">src/documentation/wiki-dataflow-graph.ts#L899</a></i>
 
 The call returns the dataflow _information_, with the graph in `result.graph`, which looks like this:
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6034,9 +5359,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     3(["`*#91;RSymbol#93;* **x**
       *2.1* (**id: 3**)`"])
     4{{"`*#91;RNumber#93;* **1**
@@ -6044,16 +5369,16 @@ flowchart LR
     5[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.1-5* (**id: 5**)
     arg: (3, 4)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 0
     linkStyle 0 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 3
     linkStyle 6 stroke:gray,color:gray;
@@ -6064,11 +5389,9 @@ flowchart LR
     linkStyle 9 stroke:gray,color:gray;
     5 -->|"reads, arg"| 3
     5 -->|"reads, arg"| 4
-    5 -.->|"reads, calls"| built-in:_
+    5 -.->|"reads, calls"| built-in:_43_
     linkStyle 12 stroke:gray;
 ```
-
-	
 
 However, the dataflow information contains more, quite a lot of information in fact.
 
@@ -6079,15 +5402,14 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":4044,"parent":{"id":0,"builtInEnv":true,"memory":[["NULL",[{"type":64,"definedAt":"built-in:NULL","value":null,"name":["NULL","base"],"nodeId":"built-in:NULL"}]],["NA",[{"type":64,"definedAt":"built-in:NA","value":null,"name":["NA","base"],"nodeId":"built-in:NA"}]],["NA_integer_",[{"type":64,"definedAt":"built-in:NA_integer_","value":null,"name":["NA_integer_","base"],"nodeId":"built-in:NA_integer_"}]],["NA_real_",[{"type":64,"definedAt":"built-in:NA_real_","value":null,"name":["NA_real_","base"],"nodeId":"built-in:NA_real_"}]],["NA_complex_",[{"type":64,"definedAt":"built-in:NA_complex_","value":null,"name":["NA_complex_","base"],"nodeId":"built-in:NA_complex_"}]],["NA_character_",[{"type":64,"definedAt":"built-in:NA_character_","value":null,"name":["NA_character_","base"],"nodeId":"built-in:NA_character_"}]],["NaN",[{"type":64,"definedAt":"built-in:NaN","value":null,"name":["NaN","base"],"nodeId":"built-in:NaN"}]],[".GlobalEnv",[{"type":64,"definedAt":"built-in:.GlobalEnv","value":null,"name":[".GlobalEnv","base"],"nodeId":"built-in:.GlobalEnv"}]],[".BaseNamespaceEnv",[{"type":64,"definedAt":"built-in:.BaseNamespaceEnv","value":null,"name":[".BaseNamespaceEnv","base"],"nodeId":"built-in:.BaseNamespaceEnv"}]],[".BaseEnv",[{"type":64,"definedAt":"built-in:.BaseEnv","value":null,"name":[".BaseEnv","base"],"nodeId":"built-in:.BaseEnv"}]],["TRUE",[{"type":64,"definedAt":"built-in:TRUE","value":true,"name":["TRUE","base"],"nodeId":"built-in:TRUE"}]],["T",[{"type":64,"definedAt":"built-in:T","value":true,"name":["T","base"],"nodeId":"built-in:T"}]],["FALSE",[{"type":64,"definedAt":"built-in:FALSE","value":false,"name":["FALSE","base"],"nodeId":"built-in:FALSE"}]],["F",[{"type":64,"definedAt":"built-in:F","value":false,"name":["F","base"],"nodeId":"built-in:F"}]],["Inf",[{"type":64,"definedAt":"built-in:Inf","value":null,"name":["Inf","base"],"nodeId":"built-in:Inf"}]],["-Inf",[{"type":64,"definedAt":"built-in:-Inf","value":null,"name":["-Inf","base"],"nodeId":"built-in:-Inf"}]],["pi",[{"type":64,"definedAt":"built-in:pi","value":3.141592653589793,"name":["pi","base"],"nodeId":"built-in:pi"}]],["LETTERS",[{"type":64,"definedAt":"built-in:LETTERS","value":["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"],"name":["LETTERS","base"],"nodeId":"built-in:LETTERS"}]],["letters",[{"type":64,"definedAt":"built-in:letters","value":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"],"name":["letters","base"],"nodeId":"built-in:letters"}]],["month.abb",[{"type":64,"definedAt":"built-in:month.abb","value":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"name":["month.abb","base"],"nodeId":"built-in:month.abb"}]],["month.name",[{"type":64,"definedAt":"built-in:month.name","value":["January","February","March","April","May","June","July","August","September","October","November","December"],"name":["month.name","base"],"nodeId":"built-in:month.name"}]],["~",[{"type":128,"definedAt":"built-in:~","config":{"markArgsAsMasked":"all"},"name":["~","base"],"nodeId":"built-in:~"}]],["filter",[{"type":128,"definedAt":"built-in:filter","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".by",2],[".preserve",8]]},"name":["filter","dplyr"],"nodeId":"built-in:filter"}]],["subset",[{"type":128,"definedAt":"built-in:subset","config":{"markArgsAsMasked":"all-but-first","props":17,"sig":[["x",2],["...",2]]},"name":["subset","base"],"nodeId":"built-in:subset"}]],["transform",[{"type":128,"definedAt":"built-in:transform","config":{"markArgsAsMasked":"all-but-first","props":17,"sig":[["x",2],["...",2]]},"name":["transform","base"],"nodeId":"built-in:transform"}]],["filter_out",[{"type":128,"definedAt":"built-in:filter_out","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["filter_out","janitor"],"nodeId":"built-in:filter_out"}]],["mutate",[{"type":128,"definedAt":"built-in:mutate","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2]]},"name":["mutate","dplyr"],"nodeId":"built-in:mutate"}]],["transmute",[{"type":128,"definedAt":"built-in:transmute","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"],"sig":[[".data",2],["...",2]]},"name":["transmute","dplyr"],"nodeId":"built-in:transmute"}]],["summarise",[{"type":128,"definedAt":"built-in:summarise","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".by",2],[".groups",8]]},"name":["summarise","dplyr"],"nodeId":"built-in:summarise"}]],["summarize",[{"type":128,"definedAt":"built-in:summarize","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".by",2],[".groups",8]]},"name":["summarize","dplyr"],"nodeId":"built-in:summarize"}]],["arrange",[{"type":128,"definedAt":"built-in:arrange","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".by_group",8]]},"name":["arrange","dplyr"],"nodeId":"built-in:arrange"}]],["group_by",[{"type":128,"definedAt":"built-in:group_by","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".add",8],[".drop",8]]},"name":["group_by","dplyr"],"nodeId":"built-in:group_by"}]],["distinct",[{"type":128,"definedAt":"built-in:distinct","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".keep_all",8]]},"name":["distinct","dplyr"],"nodeId":"built-in:distinct"}]],["count",[{"type":128,"definedAt":"built-in:count","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[["x",2],["...",2],["wt",2],["sort",8],["name",2]]},"name":["count","dplyr"],"nodeId":"built-in:count"}]],["tally",[{"type":128,"definedAt":"built-in:tally","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["tally","dplyr"],"nodeId":"built-in:tally"}]],["reframe",[{"type":128,"definedAt":"built-in:reframe","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["reframe","dplyr"],"nodeId":"built-in:reframe"}]],["slice",[{"type":128,"definedAt":"built-in:slice","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".by",2],[".preserve",8]]},"name":["slice","dplyr"],"nodeId":"built-in:slice"}]],["slice_head",[{"type":128,"definedAt":"built-in:slice_head","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_head","dplyr"],"nodeId":"built-in:slice_head"}]],["slice_tail",[{"type":128,"definedAt":"built-in:slice_tail","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_tail","dplyr"],"nodeId":"built-in:slice_tail"}]],["slice_min",[{"type":128,"definedAt":"built-in:slice_min","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_min","dplyr"],"nodeId":"built-in:slice_min"}]],["slice_max",[{"type":128,"definedAt":"built-in:slice_max","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["slice_max","dplyr"],"nodeId":"built-in:slice_max"}]],["slice_sample",[{"type":128,"definedAt":"built-in:slice_sample","config":{"markArgsAsMasked":"all-but-first","tags":["random"]},"name":["slice_sample","dplyr"],"nodeId":"built-in:slice_sample"}]],["pull",[{"type":128,"definedAt":"built-in:pull","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["var",2],["name",2],["...",2]]},"name":["pull","dplyr"],"nodeId":"built-in:pull"}]],["rename",[{"type":128,"definedAt":"built-in:rename","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2]]},"name":["rename","dplyr"],"nodeId":"built-in:rename"}]],["relocate",[{"type":128,"definedAt":"built-in:relocate","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2],[".before",2],[".after",2]]},"name":["relocate","dplyr"],"nodeId":"built-in:relocate"}]],["select",[{"type":128,"definedAt":"built-in:select","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2]]},"name":["select","dplyr"],"nodeId":"built-in:select"}]],["group_split",[{"type":128,"definedAt":"built-in:group_split","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["group_split","dplyr"],"nodeId":"built-in:group_split"}]],["add_count",[{"type":128,"definedAt":"built-in:add_count","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["add_count","dplyr"],"nodeId":"built-in:add_count"}]],["add_tally",[{"type":128,"definedAt":"built-in:add_tally","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["add_tally","dplyr"],"nodeId":"built-in:add_tally"}]],["nest_by",[{"type":128,"definedAt":"built-in:nest_by","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["nest_by","dplyr"],"nodeId":"built-in:nest_by"}]],["rowwise",[{"type":128,"definedAt":"built-in:rowwise","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["rowwise","dplyr"],"nodeId":"built-in:rowwise"}]],["with_groups",[{"type":128,"definedAt":"built-in:with_groups","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["with_groups","dplyr"],"nodeId":"built-in:with_groups"}]],["pivot_longer",[{"type":128,"definedAt":"built-in:pivot_longer","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[["data",2],["cols",2],["...",2],["names_to",2],["values_to",2]]},"name":["pivot_longer","tidyr"],"nodeId":"built-in:pivot_longer"}]],["pivot_wider",[{"type":128,"definedAt":"built-in:pivot_wider","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[["data",2],["...",2],["names_from",2],["values_from",2]]},"name":["pivot_wider","tidyr"],"nodeId":"built-in:pivot_wider"}]],["gather",[{"type":128,"definedAt":"built-in:gather","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["gather","tidyr"],"nodeId":"built-in:gather"}]],["spread",[{"type":128,"definedAt":"built-in:spread","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["spread","tidyr"],"nodeId":"built-in:spread"}]],["separate",[{"type":128,"definedAt":"built-in:separate","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"],"sig":[["data",2],["col",2],["into",2],["sep",2],["remove",8],["convert",8]]},"name":["separate","tidyr"],"nodeId":"built-in:separate"}]],["separate_rows",[{"type":128,"definedAt":"built-in:separate_rows","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["separate_rows","tidyr"],"nodeId":"built-in:separate_rows"}]],["separate_wider_delim",[{"type":128,"definedAt":"built-in:separate_wider_delim","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_wider_delim","tidyr"],"nodeId":"built-in:separate_wider_delim"}]],["separate_wider_regex",[{"type":128,"definedAt":"built-in:separate_wider_regex","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_wider_regex","tidyr"],"nodeId":"built-in:separate_wider_regex"}]],["separate_wider_position",[{"type":128,"definedAt":"built-in:separate_wider_position","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_wider_position","tidyr"],"nodeId":"built-in:separate_wider_position"}]],["unite",[{"type":128,"definedAt":"built-in:unite","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[["data",2],["col",2],["...",2],["sep",2],["remove",8]]},"name":["unite","tidyr"],"nodeId":"built-in:unite"}]],["extract",[{"type":128,"definedAt":"built-in:extract","config":{"markArgsAsMasked":"all-but-first","props":1,"tags":["deprecated"]},"name":["extract","tidyr"],"nodeId":"built-in:extract"}]],["nest",[{"type":128,"definedAt":"built-in:nest","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[[".data",2],["...",2]]},"name":["nest","tidyr"],"nodeId":"built-in:nest"}]],["unnest",[{"type":128,"definedAt":"built-in:unnest","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unnest","tidyr"],"nodeId":"built-in:unnest"}]],["unnest_longer",[{"type":128,"definedAt":"built-in:unnest_longer","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unnest_longer","tidyr"],"nodeId":"built-in:unnest_longer"}]],["unnest_wider",[{"type":128,"definedAt":"built-in:unnest_wider","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unnest_wider","tidyr"],"nodeId":"built-in:unnest_wider"}]],["hoist",[{"type":128,"definedAt":"built-in:hoist","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["hoist","tidyr"],"nodeId":"built-in:hoist"}]],["chop",[{"type":128,"definedAt":"built-in:chop","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["chop","tidyr"],"nodeId":"built-in:chop"}]],["unchop",[{"type":128,"definedAt":"built-in:unchop","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unchop","tidyr"],"nodeId":"built-in:unchop"}]],["pack",[{"type":128,"definedAt":"built-in:pack","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["pack","tidyr"],"nodeId":"built-in:pack"}]],["unpack",[{"type":128,"definedAt":"built-in:unpack","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["unpack","tidyr"],"nodeId":"built-in:unpack"}]],["drop_na",[{"type":128,"definedAt":"built-in:drop_na","config":{"markArgsAsMasked":"all-but-first","props":1,"sig":[["data",2],["...",2]]},"name":["drop_na","tidyr"],"nodeId":"built-in:drop_na"}]],["fill",[{"type":128,"definedAt":"built-in:fill","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["fill","tidyr"],"nodeId":"built-in:fill"}]],["replace_na",[{"type":128,"definedAt":"built-in:replace_na","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["replace_na","tidyr"],"nodeId":"built-in:replace_na"}]],["complete",[{"type":128,"definedAt":"built-in:complete","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["complete","tidyr"],"nodeId":"built-in:complete"}]],["expand",[{"type":128,"definedAt":"built-in:expand","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["expand","tidyr"],"nodeId":"built-in:expand"}]],["uncount",[{"type":128,"definedAt":"built-in:uncount","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["uncount","tidyr"],"nodeId":"built-in:uncount"}]],["separate_longer_delim",[{"type":128,"definedAt":"built-in:separate_longer_delim","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_longer_delim","tidyr"],"nodeId":"built-in:separate_longer_delim"}]],["separate_longer_position",[{"type":128,"definedAt":"built-in:separate_longer_position","config":{"markArgsAsMasked":"all-but-first","props":1},"name":["separate_longer_position","tidyr"],"nodeId":"built-in:separate_longer_position"}]],["aes",[{"type":128,"definedAt":"built-in:aes","config":{"markArgsAsMasked":"all"},"name":["aes","ggplot2"],"nodeId":"built-in:aes"}]],["vars",[{"type":128,"definedAt":"built-in:vars","config":{"tags":["deprecated"]},"name":["vars","dplyr"],"nodeId":"built-in:vars"}]],["join_by",[{"type":128,"definedAt":"built-in:join_by","config":{"markArgsAsMasked":"all"},"name":["join_by","dplyr"],"nodeId":"built-in:join_by"}]],["tibble",[{"type":128,"definedAt":"built-in:tibble","config":{"markArgsAsMasked":"all"},"name":["tibble","tibble"],"nodeId":"built-in:tibble"}]],["tribble",[{"type":128,"definedAt":"built-in:tribble","config":{"markArgsAsMasked":"all"},"name":["tribble","tibble"],"nodeId":"built-in:tribble"}]],["+",[{"type":128,"definedAt":"built-in:+","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["+","base"],"nodeId":"built-in:+"}]],["-",[{"type":128,"definedAt":"built-in:-","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["-","base"],"nodeId":"built-in:-"}]],["*",[{"type":128,"definedAt":"built-in:*","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["*","base"],"nodeId":"built-in:*"}]],["/",[{"type":128,"definedAt":"built-in:/","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["/","base"],"nodeId":"built-in:/"}]],["^",[{"type":128,"definedAt":"built-in:^","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["^","base"],"nodeId":"built-in:^"}]],["%%",[{"type":128,"definedAt":"built-in:%%","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["%%","base"],"nodeId":"built-in:%%"}]],["%/%",[{"type":128,"definedAt":"built-in:%/%","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["%/%","base"],"nodeId":"built-in:%/%"}]],["**",[{"type":128,"definedAt":"built-in:**","config":{"props":1,"sig":[["e1",2050],["e2",2050]]},"name":["**","base"],"nodeId":"built-in:**"}]],["==",[{"type":128,"definedAt":"built-in:==","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["==","base"],"nodeId":"built-in:=="}]],["!=",[{"type":128,"definedAt":"built-in:!=","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["!=","base"],"nodeId":"built-in:!="}]],[">",[{"type":128,"definedAt":"built-in:>","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":[">","base"],"nodeId":"built-in:>"}]],["<",[{"type":128,"definedAt":"built-in:<","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["<","base"],"nodeId":"built-in:<"}]],[">=",[{"type":128,"definedAt":"built-in:>=","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":[">=","base"],"nodeId":"built-in:>="}]],["<=",[{"type":128,"definedAt":"built-in:<=","config":{"props":17,"sig":[["e1",2050],["e2",2050]]},"name":["<=","base"],"nodeId":"built-in:<="}]],["%*%",[{"type":128,"definedAt":"built-in:%*%","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["%*%","base"],"nodeId":"built-in:%*%"}]],["%in%",[{"type":128,"definedAt":"built-in:%in%","config":{"props":1,"sig":[["x",2],["table",2]]},"name":["%in%","base"],"nodeId":"built-in:%in%"}]],[":",[{"type":128,"definedAt":"built-in::","config":{"props":1,"sig":[["from",2050],["to",2050]]},"name":[":","base"],"nodeId":"built-in::"}]],["!",[{"type":128,"definedAt":"built-in:!","config":{"props":17,"sig":[["x",2050]]},"name":["!","base"],"nodeId":"built-in:!"}]],["?",[{"type":128,"definedAt":"built-in:?","config":{"sig":[["e1",128],["e2",128]]},"name":["?","utils"],"nodeId":"built-in:?"}]],["length",[{"type":128,"definedAt":"built-in:length","config":{"props":17,"tags":["narrows-args"],"sig":[["x",4]]},"name":["length","base"],"nodeId":"built-in:length"}]],["dim",[{"type":128,"definedAt":"built-in:dim","config":{"props":17,"tags":["narrows-args"],"sig":[["x",4]]},"name":["dim","base"],"nodeId":"built-in:dim"}]],["is.matrix",[{"type":128,"definedAt":"built-in:is.matrix","config":{"props":17,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.matrix","base"],"nodeId":"built-in:is.matrix"}]],["is.numeric",[{"type":128,"definedAt":"built-in:is.numeric","config":{"props":17,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.numeric","base"],"nodeId":"built-in:is.numeric"}]],["lengths",[{"type":128,"definedAt":"built-in:lengths","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4],["use.names",8]]},"name":["lengths","base"],"nodeId":"built-in:lengths"}]],["nrow",[{"type":128,"definedAt":"built-in:nrow","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["nrow","base"],"nodeId":"built-in:nrow"}]],["ncol",[{"type":128,"definedAt":"built-in:ncol","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["ncol","base"],"nodeId":"built-in:ncol"}]],["NROW",[{"type":128,"definedAt":"built-in:NROW","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["NROW","base"],"nodeId":"built-in:NROW"}]],["NCOL",[{"type":128,"definedAt":"built-in:NCOL","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["NCOL","base"],"nodeId":"built-in:NCOL"}]],["is.null",[{"type":128,"definedAt":"built-in:is.null","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.null","base"],"nodeId":"built-in:is.null"}]],["is.factor",[{"type":128,"definedAt":"built-in:is.factor","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.factor","base"],"nodeId":"built-in:is.factor"}]],["is.vector",[{"type":128,"definedAt":"built-in:is.vector","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.vector","base"],"nodeId":"built-in:is.vector"}]],["is.data.frame",[{"type":128,"definedAt":"built-in:is.data.frame","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.data.frame","base"],"nodeId":"built-in:is.data.frame"}]],["is.character",[{"type":128,"definedAt":"built-in:is.character","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.character","base"],"nodeId":"built-in:is.character"}]],["is.logical",[{"type":128,"definedAt":"built-in:is.logical","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.logical","base"],"nodeId":"built-in:is.logical"}]],["is.function",[{"type":128,"definedAt":"built-in:is.function","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.function","base"],"nodeId":"built-in:is.function"}]],["is.list",[{"type":128,"definedAt":"built-in:is.list","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4]]},"name":["is.list","base"],"nodeId":"built-in:is.list"}]],["dimnames",[{"type":128,"definedAt":"built-in:dimnames","config":{"props":17,"sig":[["x",4]]},"name":["dimnames","base"],"nodeId":"built-in:dimnames"}]],["names",[{"type":128,"definedAt":"built-in:names","config":{"props":17,"sig":[["x",4]]},"name":["names","base"],"nodeId":"built-in:names"}]],["rownames",[{"type":128,"definedAt":"built-in:rownames","config":{"props":1,"sig":[["x",4]]},"name":["rownames","base"],"nodeId":"built-in:rownames"}]],["colnames",[{"type":128,"definedAt":"built-in:colnames","config":{"props":1,"sig":[["x",4]]},"name":["colnames","base"],"nodeId":"built-in:colnames"}]],["class",[{"type":128,"definedAt":"built-in:class","config":{"props":1,"sig":[["x",4]]},"name":["class","base"],"nodeId":"built-in:class"}]],["nchar",[{"type":128,"definedAt":"built-in:nchar","config":{"props":1,"tags":["narrows-args"],"sig":[["x",4],["type",2],["allowNA",8],["keepNA",8]]},"name":["nchar","base"],"nodeId":"built-in:nchar"}]],["missing",[{"type":128,"definedAt":"built-in:missing","config":{"props":1,"sig":[["x",512]]},"name":["missing","base"],"nodeId":"built-in:missing"}]],["sum",[{"type":128,"definedAt":"built-in:sum","config":{"props":17,"sig":[["...",2]]},"name":["sum","base"],"nodeId":"built-in:sum"}]],["prod",[{"type":128,"definedAt":"built-in:prod","config":{"props":17,"sig":[["...",2]]},"name":["prod","base"],"nodeId":"built-in:prod"}]],["min",[{"type":128,"definedAt":"built-in:min","config":{"props":17,"sig":[["...",2]]},"name":["min","base"],"nodeId":"built-in:min"}]],["max",[{"type":128,"definedAt":"built-in:max","config":{"props":17,"sig":[["...",2]]},"name":["max","base"],"nodeId":"built-in:max"}]],["range",[{"type":128,"definedAt":"built-in:range","config":{"props":17,"sig":[["...",2]]},"name":["range","base"],"nodeId":"built-in:range"}]],["cbind",[{"type":128,"definedAt":"built-in:cbind","config":{"props":17,"sig":[["...",2]]},"name":["cbind","base"],"nodeId":"built-in:cbind"}]],["rbind",[{"type":128,"definedAt":"built-in:rbind","config":{"props":17,"sig":[["...",2]]},"name":["rbind","base"],"nodeId":"built-in:rbind"}]],["pmin",[{"type":128,"definedAt":"built-in:pmin","config":{"props":1,"sig":[["...",2]]},"name":["pmin","base"],"nodeId":"built-in:pmin"}]],["pmax",[{"type":128,"definedAt":"built-in:pmax","config":{"props":1,"sig":[["...",2]]},"name":["pmax","base"],"nodeId":"built-in:pmax"}]],["data.frame",[{"type":128,"definedAt":"built-in:data.frame","config":{"props":1,"sig":[["...",2]]},"name":["data.frame","base"],"nodeId":"built-in:data.frame"}]],["order",[{"type":128,"definedAt":"built-in:order","config":{"props":1,"sig":[["...",2]]},"name":["order","base"],"nodeId":"built-in:order"}]],["any",[{"type":128,"definedAt":"built-in:any","config":{"props":1,"sig":[["...",2]]},"name":["any","base"],"nodeId":"built-in:any"}]],["paste",[{"type":128,"definedAt":"built-in:paste","config":{"props":1,"sig":[["...",2],["sep",2]]},"name":["paste","base"],"nodeId":"built-in:paste"}]],["paste0",[{"type":128,"definedAt":"built-in:paste0","config":{"props":1,"sig":[["...",2],["sep",2]]},"name":["paste0","base"],"nodeId":"built-in:paste0"}]],["file.path",[{"type":128,"definedAt":"built-in:file.path","config":{"props":1,"sig":[["...",2],["fsep",2]]},"name":["file.path","base"],"nodeId":"built-in:file.path"}]],["here",[{"type":128,"definedAt":"built-in:here","config":{"libFn":true,"props":1,"sig":[["...",2]]},"name":["here","here"],"nodeId":"built-in:here"}]],["mean",[{"type":128,"definedAt":"built-in:mean","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["mean","base"],"nodeId":"built-in:mean"}]],["cumsum",[{"type":128,"definedAt":"built-in:cumsum","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["cumsum","base"],"nodeId":"built-in:cumsum"}]],["cumprod",[{"type":128,"definedAt":"built-in:cumprod","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["cumprod","base"],"nodeId":"built-in:cumprod"}]],["cummax",[{"type":128,"definedAt":"built-in:cummax","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["cummax","base"],"nodeId":"built-in:cummax"}]],["cummin",[{"type":128,"definedAt":"built-in:cummin","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["cummin","base"],"nodeId":"built-in:cummin"}]],["diff",[{"type":128,"definedAt":"built-in:diff","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["diff","base"],"nodeId":"built-in:diff"}]],["sort",[{"type":128,"definedAt":"built-in:sort","config":{"props":17,"sig":[["x",2],["decreasing",8],["...",2]]},"name":["sort","base"],"nodeId":"built-in:sort"}]],["rev",[{"type":128,"definedAt":"built-in:rev","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["rev","base"],"nodeId":"built-in:rev"}]],["unique",[{"type":128,"definedAt":"built-in:unique","config":{"props":17,"sig":[["x",2],["incomparables",2],["...",2]]},"name":["unique","base"],"nodeId":"built-in:unique"}]],["duplicated",[{"type":128,"definedAt":"built-in:duplicated","config":{"props":17,"sig":[["x",2],["incomparables",2],["...",2]]},"name":["duplicated","base"],"nodeId":"built-in:duplicated"}]],["t",[{"type":128,"definedAt":"built-in:t","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["t","base"],"nodeId":"built-in:t"}]],["as.character",[{"type":128,"definedAt":"built-in:as.character","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.character","base"],"nodeId":"built-in:as.character"}]],["as.integer",[{"type":128,"definedAt":"built-in:as.integer","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.integer","base"],"nodeId":"built-in:as.integer"}]],["as.logical",[{"type":128,"definedAt":"built-in:as.logical","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.logical","base"],"nodeId":"built-in:as.logical"}]],["as.numeric",[{"type":128,"definedAt":"built-in:as.numeric","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.numeric","base"],"nodeId":"built-in:as.numeric"}]],["as.matrix",[{"type":128,"definedAt":"built-in:as.matrix","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.matrix","base"],"nodeId":"built-in:as.matrix"}]],["as.data.frame",[{"type":128,"definedAt":"built-in:as.data.frame","config":{"props":17,"sig":[["x",2],["row.names",2],["optional",8],["...",2]]},"name":["as.data.frame","base"],"nodeId":"built-in:as.data.frame"}]],["as.raw",[{"type":128,"definedAt":"built-in:as.raw","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.raw","base"],"nodeId":"built-in:as.raw"}]],["as.list",[{"type":128,"definedAt":"built-in:as.list","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.list","base"],"nodeId":"built-in:as.list"}]],["as.array",[{"type":128,"definedAt":"built-in:as.array","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.array","base"],"nodeId":"built-in:as.array"}]],["as.double",[{"type":128,"definedAt":"built-in:as.double","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.double","base"],"nodeId":"built-in:as.double"}]],["as.complex",[{"type":128,"definedAt":"built-in:as.complex","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["as.complex","base"],"nodeId":"built-in:as.complex"}]],["head",[{"type":128,"definedAt":"built-in:head","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["head","utils"],"nodeId":"built-in:head"}]],["tail",[{"type":128,"definedAt":"built-in:tail","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["tail","utils"],"nodeId":"built-in:tail"}]],["median",[{"type":128,"definedAt":"built-in:median","config":{"props":17,"sig":[["x",2],["na.rm",8],["...",2]]},"name":["median","stats"],"nodeId":"built-in:median"}]],["quantile",[{"type":128,"definedAt":"built-in:quantile","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["quantile","stats"],"nodeId":"built-in:quantile"}]],["as.factor",[{"type":128,"definedAt":"built-in:as.factor","config":{"props":1,"sig":[["x",2],["...",2]]},"name":["as.factor","base"],"nodeId":"built-in:as.factor"}]],["factor",[{"type":128,"definedAt":"built-in:factor","config":{"props":1,"sig":[["x",2],["...",2]]},"name":["factor","base"],"nodeId":"built-in:factor"}]],["var",[{"type":128,"definedAt":"built-in:var","config":{"props":1,"sig":[["x",2],["...",2]]},"name":["var","stats"],"nodeId":"built-in:var"}]],["sd",[{"type":128,"definedAt":"built-in:sd","config":{"props":1,"sig":[["x",2],["...",2]]},"name":["sd","stats"],"nodeId":"built-in:sd"}]],["is.na",[{"type":128,"definedAt":"built-in:is.na","config":{"props":17,"tags":["narrows-args"],"sig":[["x",2]]},"name":["is.na","base"],"nodeId":"built-in:is.na"}]],["is.finite",[{"type":128,"definedAt":"built-in:is.finite","config":{"props":17,"tags":["narrows-args"],"sig":[["x",2]]},"name":["is.finite","base"],"nodeId":"built-in:is.finite"}]],["is.infinite",[{"type":128,"definedAt":"built-in:is.infinite","config":{"props":17,"tags":["narrows-args"],"sig":[["x",2]]},"name":["is.infinite","base"],"nodeId":"built-in:is.infinite"}]],["is.nan",[{"type":128,"definedAt":"built-in:is.nan","config":{"props":17,"tags":["narrows-args"],"sig":[["x",2]]},"name":["is.nan","base"],"nodeId":"built-in:is.nan"}]],["nzchar",[{"type":128,"definedAt":"built-in:nzchar","config":{"props":1,"tags":["narrows-args"],"sig":[["x",2]]},"name":["nzchar","base"],"nodeId":"built-in:nzchar"}]],["sqrt",[{"type":128,"definedAt":"built-in:sqrt","config":{"props":17,"sig":[["x",2]]},"name":["sqrt","base"],"nodeId":"built-in:sqrt"}]],["abs",[{"type":128,"definedAt":"built-in:abs","config":{"props":17,"sig":[["x",2]]},"name":["abs","base"],"nodeId":"built-in:abs"}]],["floor",[{"type":128,"definedAt":"built-in:floor","config":{"props":17,"sig":[["x",2]]},"name":["floor","base"],"nodeId":"built-in:floor"}]],["ceiling",[{"type":128,"definedAt":"built-in:ceiling","config":{"props":17,"sig":[["x",2]]},"name":["ceiling","base"],"nodeId":"built-in:ceiling"}]],["trunc",[{"type":128,"definedAt":"built-in:trunc","config":{"props":17,"sig":[["x",2]]},"name":["trunc","base"],"nodeId":"built-in:trunc"}]],["exp",[{"type":128,"definedAt":"built-in:exp","config":{"props":17,"sig":[["x",2]]},"name":["exp","base"],"nodeId":"built-in:exp"}]],["sign",[{"type":128,"definedAt":"built-in:sign","config":{"props":1,"sig":[["x",2]]},"name":["sign","base"],"nodeId":"built-in:sign"}]],["expm1",[{"type":128,"definedAt":"built-in:expm1","config":{"props":1,"sig":[["x",2]]},"name":["expm1","base"],"nodeId":"built-in:expm1"}]],["log2",[{"type":128,"definedAt":"built-in:log2","config":{"props":1,"sig":[["x",2]]},"name":["log2","base"],"nodeId":"built-in:log2"}]],["log10",[{"type":128,"definedAt":"built-in:log10","config":{"props":1,"sig":[["x",2]]},"name":["log10","base"],"nodeId":"built-in:log10"}]],["log1p",[{"type":128,"definedAt":"built-in:log1p","config":{"props":1,"sig":[["x",2]]},"name":["log1p","base"],"nodeId":"built-in:log1p"}]],["sin",[{"type":128,"definedAt":"built-in:sin","config":{"props":1,"sig":[["x",2]]},"name":["sin","base"],"nodeId":"built-in:sin"}]],["cos",[{"type":128,"definedAt":"built-in:cos","config":{"props":1,"sig":[["x",2]]},"name":["cos","base"],"nodeId":"built-in:cos"}]],["tan",[{"type":128,"definedAt":"built-in:tan","config":{"props":1,"sig":[["x",2]]},"name":["tan","base"],"nodeId":"built-in:tan"}]],["asin",[{"type":128,"definedAt":"built-in:asin","config":{"props":1,"sig":[["x",2]]},"name":["asin","base"],"nodeId":"built-in:asin"}]],["acos",[{"type":128,"definedAt":"built-in:acos","config":{"props":1,"sig":[["x",2]]},"name":["acos","base"],"nodeId":"built-in:acos"}]],["atan",[{"type":128,"definedAt":"built-in:atan","config":{"props":1,"sig":[["x",2]]},"name":["atan","base"],"nodeId":"built-in:atan"}]],["sinh",[{"type":128,"definedAt":"built-in:sinh","config":{"props":1,"sig":[["x",2]]},"name":["sinh","base"],"nodeId":"built-in:sinh"}]],["cosh",[{"type":128,"definedAt":"built-in:cosh","config":{"props":1,"sig":[["x",2]]},"name":["cosh","base"],"nodeId":"built-in:cosh"}]],["tanh",[{"type":128,"definedAt":"built-in:tanh","config":{"props":1,"sig":[["x",2]]},"name":["tanh","base"],"nodeId":"built-in:tanh"}]],["asinh",[{"type":128,"definedAt":"built-in:asinh","config":{"props":1,"sig":[["x",2]]},"name":["asinh","base"],"nodeId":"built-in:asinh"}]],["acosh",[{"type":128,"definedAt":"built-in:acosh","config":{"props":1,"sig":[["x",2]]},"name":["acosh","base"],"nodeId":"built-in:acosh"}]],["atanh",[{"type":128,"definedAt":"built-in:atanh","config":{"props":1,"sig":[["x",2]]},"name":["atanh","base"],"nodeId":"built-in:atanh"}]],["round",[{"type":128,"definedAt":"built-in:round","config":{"props":17,"sig":[["x",2],["digits",2]]},"name":["round","base"],"nodeId":"built-in:round"}]],["signif",[{"type":128,"definedAt":"built-in:signif","config":{"props":17,"sig":[["x",2],["digits",2]]},"name":["signif","base"],"nodeId":"built-in:signif"}]],["log",[{"type":128,"definedAt":"built-in:log","config":{"props":17,"sig":[["x",2],["base",2]]},"name":["log","base"],"nodeId":"built-in:log"}]],["tolower",[{"type":128,"definedAt":"built-in:tolower","config":{"props":1,"sig":[["x",2]]},"name":["tolower","base"],"nodeId":"built-in:tolower"}]],["toupper",[{"type":128,"definedAt":"built-in:toupper","config":{"props":1,"sig":[["x",2]]},"name":["toupper","base"],"nodeId":"built-in:toupper"}]],["trimws",[{"type":128,"definedAt":"built-in:trimws","config":{"props":1,"sig":[["x",2],["which",8],["whitespace",2]]},"name":["trimws","base"],"nodeId":"built-in:trimws"}]],["basename",[{"type":128,"definedAt":"built-in:basename","config":{"props":1,"sig":[["path",2]]},"name":["basename","base"],"nodeId":"built-in:basename"}]],["dirname",[{"type":128,"definedAt":"built-in:dirname","config":{"props":1,"sig":[["path",2]]},"name":["dirname","base"],"nodeId":"built-in:dirname"}]],["Re",[{"type":128,"definedAt":"built-in:Re","config":{"props":1,"sig":[["z",2]]},"name":["Re","base"],"nodeId":"built-in:Re"}]],["Im",[{"type":128,"definedAt":"built-in:Im","config":{"props":1,"sig":[["z",2]]},"name":["Im","base"],"nodeId":"built-in:Im"}]],["Mod",[{"type":128,"definedAt":"built-in:Mod","config":{"props":1,"sig":[["z",2]]},"name":["Mod","base"],"nodeId":"built-in:Mod"}]],["Arg",[{"type":128,"definedAt":"built-in:Arg","config":{"props":1,"sig":[["z",2]]},"name":["Arg","base"],"nodeId":"built-in:Arg"}]],["Conj",[{"type":128,"definedAt":"built-in:Conj","config":{"props":1,"sig":[["z",2]]},"name":["Conj","base"],"nodeId":"built-in:Conj"}]],["numeric",[{"type":128,"definedAt":"built-in:numeric","config":{"props":1,"sig":[["length",2]]},"name":["numeric","base"],"nodeId":"built-in:numeric"}]],["character",[{"type":128,"definedAt":"built-in:character","config":{"props":1,"sig":[["length",2]]},"name":["character","base"],"nodeId":"built-in:character"}]],["logical",[{"type":128,"definedAt":"built-in:logical","config":{"props":1,"sig":[["length",2]]},"name":["logical","base"],"nodeId":"built-in:logical"}]],["integer",[{"type":128,"definedAt":"built-in:integer","config":{"props":1,"sig":[["length",2]]},"name":["integer","base"],"nodeId":"built-in:integer"}]],["double",[{"type":128,"definedAt":"built-in:double","config":{"props":1,"sig":[["length",2]]},"name":["double","base"],"nodeId":"built-in:double"}]],["raw",[{"type":128,"definedAt":"built-in:raw","config":{"props":1,"sig":[["length",2]]},"name":["raw","base"],"nodeId":"built-in:raw"}]],["na.omit",[{"type":128,"definedAt":"built-in:na.omit","config":{"props":17,"sig":[["object",2],["...",2]]},"name":["na.omit","stats"],"nodeId":"built-in:na.omit"}]],["xor",[{"type":128,"definedAt":"built-in:xor","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["xor","base"],"nodeId":"built-in:xor"}]],["crossprod",[{"type":128,"definedAt":"built-in:crossprod","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["crossprod","base"],"nodeId":"built-in:crossprod"}]],["tcrossprod",[{"type":128,"definedAt":"built-in:tcrossprod","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["tcrossprod","base"],"nodeId":"built-in:tcrossprod"}]],["intersect",[{"type":128,"definedAt":"built-in:intersect","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["intersect","base"],"nodeId":"built-in:intersect"}]],["union",[{"type":128,"definedAt":"built-in:union","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["union","base"],"nodeId":"built-in:union"}]],["setdiff",[{"type":128,"definedAt":"built-in:setdiff","config":{"props":1,"sig":[["x",2],["y",2]]},"name":["setdiff","base"],"nodeId":"built-in:setdiff"}]],["match",[{"type":128,"definedAt":"built-in:match","config":{"props":1,"sig":[["x",2],["table",2],["nomatch",2],["incomparables",2]]},"name":["match","base"],"nodeId":"built-in:match"}]],["pmatch",[{"type":128,"definedAt":"built-in:pmatch","config":{"props":1,"tags":["narrows-args"],"sig":[["x",2],["table",2]]},"name":["pmatch","base"],"nodeId":"built-in:pmatch"}]],["charmatch",[{"type":128,"definedAt":"built-in:charmatch","config":{"props":1,"tags":["narrows-args"],"sig":[["x",2],["table",2]]},"name":["charmatch","base"],"nodeId":"built-in:charmatch"}]],["is.element",[{"type":128,"definedAt":"built-in:is.element","config":{"props":1,"tags":["narrows-args"],"sig":[["el",2],["set",2]]},"name":["is.element","base"],"nodeId":"built-in:is.element"}]],["match.arg",[{"type":128,"definedAt":"built-in:match.arg","config":{"props":1,"tags":["narrows-args"],"sig":[["arg",2],["choices",1024]]},"name":["match.arg","base"],"nodeId":"built-in:match.arg"}]],["atan2",[{"type":128,"definedAt":"built-in:atan2","config":{"props":1,"sig":[["y",2],["x",2]]},"name":["atan2","base"],"nodeId":"built-in:atan2"}]],["bitwAnd",[{"type":128,"definedAt":"built-in:bitwAnd","config":{"props":1,"sig":[["a",2],["b",2]]},"name":["bitwAnd","base"],"nodeId":"built-in:bitwAnd"}]],["bitwOr",[{"type":128,"definedAt":"built-in:bitwOr","config":{"props":1,"sig":[["a",2],["b",2]]},"name":["bitwOr","base"],"nodeId":"built-in:bitwOr"}]],["bitwXor",[{"type":128,"definedAt":"built-in:bitwXor","config":{"props":1,"sig":[["a",2],["b",2]]},"name":["bitwXor","base"],"nodeId":"built-in:bitwXor"}]],["bitwShiftL",[{"type":128,"definedAt":"built-in:bitwShiftL","config":{"props":1,"sig":[["a",2],["n",2]]},"name":["bitwShiftL","base"],"nodeId":"built-in:bitwShiftL"}]],["bitwShiftR",[{"type":128,"definedAt":"built-in:bitwShiftR","config":{"props":1,"sig":[["a",2],["n",2]]},"name":["bitwShiftR","base"],"nodeId":"built-in:bitwShiftR"}]],["bitwNot",[{"type":128,"definedAt":"built-in:bitwNot","config":{"props":1,"sig":[["a",2]]},"name":["bitwNot","base"],"nodeId":"built-in:bitwNot"}]],["grepl",[{"type":128,"definedAt":"built-in:grepl","config":{"props":1,"sig":[["pattern",2],["x",2],["ignore.case",8],["perl",8],["fixed",8],["useBytes",8]]},"name":["grepl","base"],"nodeId":"built-in:grepl"}]],["startsWith",[{"type":128,"definedAt":"built-in:startsWith","config":{"props":1,"tags":["narrows-args"],"sig":[["x",2],["prefix",2]]},"name":["startsWith","base"],"nodeId":"built-in:startsWith"}]],["endsWith",[{"type":128,"definedAt":"built-in:endsWith","config":{"props":1,"tags":["narrows-args"],"sig":[["x",2],["suffix",2]]},"name":["endsWith","base"],"nodeId":"built-in:endsWith"}]],["seq",[{"type":128,"definedAt":"built-in:seq","config":{"props":17},"name":["seq","base"],"nodeId":"built-in:seq"}]],["solve",[{"type":128,"definedAt":"built-in:solve","config":{"props":17},"name":["solve","base"],"nodeId":"built-in:solve"}]],["aperm",[{"type":128,"definedAt":"built-in:aperm","config":{"props":17},"name":["aperm","base"],"nodeId":"built-in:aperm"}]],["format",[{"type":128,"definedAt":"built-in:format","config":{"props":17,"sig":[["x",2],["...",2]]},"name":["format","base"],"nodeId":"built-in:format"}]],["rep",[{"type":128,"definedAt":"built-in:rep","config":{"props":1},"name":["rep","base"],"nodeId":"built-in:rep"}]],["rep.int",[{"type":128,"definedAt":"built-in:rep.int","config":{"props":1},"name":["rep.int","base"],"nodeId":"built-in:rep.int"}]],["seq.int",[{"type":128,"definedAt":"built-in:seq.int","config":{"props":1},"name":["seq.int","base"],"nodeId":"built-in:seq.int"}]],["append",[{"type":128,"definedAt":"built-in:append","config":{"props":1},"name":["append","base"],"nodeId":"built-in:append"}]],["complex",[{"type":128,"definedAt":"built-in:complex","config":{"props":1},"name":["complex","base"],"nodeId":"built-in:complex"}]],["matrix",[{"type":128,"definedAt":"built-in:matrix","config":{"props":1,"sig":[["data",2],["nrow",2],["ncol",2],["byrow",8],["dimnames",2]]},"name":["matrix","base"],"nodeId":"built-in:matrix"}]],["array",[{"type":128,"definedAt":"built-in:array","config":{"props":1},"name":["array","base"],"nodeId":"built-in:array"}]],["table",[{"type":128,"definedAt":"built-in:table","config":{"props":1},"name":["table","base"],"nodeId":"built-in:table"}]],["prop.table",[{"type":128,"definedAt":"built-in:prop.table","config":{"props":1},"name":["prop.table","base"],"nodeId":"built-in:prop.table"}]],["colSums",[{"type":128,"definedAt":"built-in:colSums","config":{"props":1},"name":["colSums","base"],"nodeId":"built-in:colSums"}]],["rowSums",[{"type":128,"definedAt":"built-in:rowSums","config":{"props":1},"name":["rowSums","base"],"nodeId":"built-in:rowSums"}]],["colMeans",[{"type":128,"definedAt":"built-in:colMeans","config":{"props":1},"name":["colMeans","base"],"nodeId":"built-in:colMeans"}]],["rowMeans",[{"type":128,"definedAt":"built-in:rowMeans","config":{"props":1},"name":["rowMeans","base"],"nodeId":"built-in:rowMeans"}]],["det",[{"type":128,"definedAt":"built-in:det","config":{"props":1},"name":["det","base"],"nodeId":"built-in:det"}]],["eigen",[{"type":128,"definedAt":"built-in:eigen","config":{"props":1},"name":["eigen","base"],"nodeId":"built-in:eigen"}]],["grep",[{"type":128,"definedAt":"built-in:grep","config":{"props":1,"sig":[["pattern",2],["x",2],["ignore.case",8],["perl",8],["value",8],["fixed",8],["useBytes",8],["invert",8]]},"name":["grep","base"],"nodeId":"built-in:grep"}]],["sub",[{"type":128,"definedAt":"built-in:sub","config":{"props":1,"sig":[["pattern",2],["replacement",2],["x",2],["ignore.case",8],["perl",8],["fixed",8],["useBytes",8]]},"name":["sub","base"],"nodeId":"built-in:sub"}]],["gsub",[{"type":128,"definedAt":"built-in:gsub","config":{"props":1,"sig":[["pattern",2],["replacement",2],["x",2],["ignore.case",8],["perl",8],["fixed",8],["useBytes",8]]},"name":["gsub","base"],"nodeId":"built-in:gsub"}]],["substr",[{"type":128,"definedAt":"built-in:substr","config":{"props":1,"sig":[["x",2],["start",2],["stop",2]]},"name":["substr","base"],"nodeId":"built-in:substr"}]],["substring",[{"type":128,"definedAt":"built-in:substring","config":{"props":1,"sig":[["text",2],["first",2],["last",2]]},"name":["substring","base"],"nodeId":"built-in:substring"}]],["strsplit",[{"type":128,"definedAt":"built-in:strsplit","config":{"props":1,"sig":[["x",2],["split",2],["fixed",8],["perl",8],["useBytes",8]]},"name":["strsplit","base"],"nodeId":"built-in:strsplit"}]],["strrep",[{"type":128,"definedAt":"built-in:strrep","config":{"props":1},"name":["strrep","base"],"nodeId":"built-in:strrep"}]],["chartr",[{"type":128,"definedAt":"built-in:chartr","config":{"props":1},"name":["chartr","base"],"nodeId":"built-in:chartr"}]],["strtoi",[{"type":128,"definedAt":"built-in:strtoi","config":{"props":1,"sig":[["x",2],["base",2]]},"name":["strtoi","base"],"nodeId":"built-in:strtoi"}]],["regexpr",[{"type":128,"definedAt":"built-in:regexpr","config":{"props":1},"name":["regexpr","base"],"nodeId":"built-in:regexpr"}]],["gregexpr",[{"type":128,"definedAt":"built-in:gregexpr","config":{"props":1},"name":["gregexpr","base"],"nodeId":"built-in:gregexpr"}]],["regexec",[{"type":128,"definedAt":"built-in:regexec","config":{"props":1},"name":["regexec","base"],"nodeId":"built-in:regexec"}]],["sprintf",[{"type":128,"definedAt":"built-in:sprintf","config":{"props":1,"sig":[["fmt",2],["...",2]]},"name":["sprintf","base"],"nodeId":"built-in:sprintf"}]],["formatC",[{"type":128,"definedAt":"built-in:formatC","config":{"props":1},"name":["formatC","base"],"nodeId":"built-in:formatC"}]],["regmatches",[{"type":128,"definedAt":"built-in:regmatches","config":{"props":1},"name":["regmatches","base"],"nodeId":"built-in:regmatches"}]],["cor",[{"type":128,"definedAt":"built-in:cor","config":{"props":1},"name":["cor","stats"],"nodeId":"built-in:cor"}]],["cov",[{"type":128,"definedAt":"built-in:cov","config":{"props":1},"name":["cov","stats"],"nodeId":"built-in:cov"}]],["xtabs",[{"type":128,"definedAt":"built-in:xtabs","config":{"props":1},"name":["xtabs","stats"],"nodeId":"built-in:xtabs"}]],["anova",[{"type":128,"definedAt":"built-in:anova","config":{"props":17,"tags":["statistics"]},"name":["anova","stats"],"nodeId":"built-in:anova"}]],["ansari.test",[{"type":128,"definedAt":"built-in:ansari.test","config":{"props":17,"tags":["statistics"]},"name":["ansari.test","stats"],"nodeId":"built-in:ansari.test"}]],["bartlett.test",[{"type":128,"definedAt":"built-in:bartlett.test","config":{"props":17,"tags":["statistics"]},"name":["bartlett.test","stats"],"nodeId":"built-in:bartlett.test"}]],["cor.test",[{"type":128,"definedAt":"built-in:cor.test","config":{"props":17,"tags":["statistics"]},"name":["cor.test","stats"],"nodeId":"built-in:cor.test"}]],["fligner.test",[{"type":128,"definedAt":"built-in:fligner.test","config":{"props":17,"tags":["statistics"]},"name":["fligner.test","stats"],"nodeId":"built-in:fligner.test"}]],["friedman.test",[{"type":128,"definedAt":"built-in:friedman.test","config":{"props":17,"tags":["statistics"]},"name":["friedman.test","stats"],"nodeId":"built-in:friedman.test"}]],["kruskal.test",[{"type":128,"definedAt":"built-in:kruskal.test","config":{"props":17,"tags":["statistics"]},"name":["kruskal.test","stats"],"nodeId":"built-in:kruskal.test"}]],["ks.test",[{"type":128,"definedAt":"built-in:ks.test","config":{"props":17,"tags":["statistics"]},"name":["ks.test","stats"],"nodeId":"built-in:ks.test"}]],["mauchly.test",[{"type":128,"definedAt":"built-in:mauchly.test","config":{"props":17,"tags":["statistics"]},"name":["mauchly.test","stats"],"nodeId":"built-in:mauchly.test"}]],["mood.test",[{"type":128,"definedAt":"built-in:mood.test","config":{"props":17,"tags":["statistics"]},"name":["mood.test","stats"],"nodeId":"built-in:mood.test"}]],["quade.test",[{"type":128,"definedAt":"built-in:quade.test","config":{"props":17,"tags":["statistics"]},"name":["quade.test","stats"],"nodeId":"built-in:quade.test"}]],["t.test",[{"type":128,"definedAt":"built-in:t.test","config":{"props":17,"tags":["statistics"]},"name":["t.test","stats"],"nodeId":"built-in:t.test"}]],["TukeyHSD",[{"type":128,"definedAt":"built-in:TukeyHSD","config":{"props":17,"tags":["statistics"]},"name":["TukeyHSD","stats"],"nodeId":"built-in:TukeyHSD"}]],["var.test",[{"type":128,"definedAt":"built-in:var.test","config":{"props":17,"tags":["statistics"]},"name":["var.test","stats"],"nodeId":"built-in:var.test"}]],["wilcox.test",[{"type":128,"definedAt":"built-in:wilcox.test","config":{"props":17,"tags":["statistics"]},"name":["wilcox.test","stats"],"nodeId":"built-in:wilcox.test"}]],["aov",[{"type":128,"definedAt":"built-in:aov","config":{"props":1,"tags":["statistics"]},"name":["aov","stats"],"nodeId":"built-in:aov"}]],["binom.test",[{"type":128,"definedAt":"built-in:binom.test","config":{"props":1,"tags":["statistics"]},"name":["binom.test","stats"],"nodeId":"built-in:binom.test"}]],["Box.test",[{"type":128,"definedAt":"built-in:Box.test","config":{"props":1,"tags":["statistics"]},"name":["Box.test","stats"],"nodeId":"built-in:Box.test"}]],["chisq.test",[{"type":128,"definedAt":"built-in:chisq.test","config":{"props":1,"tags":["statistics"]},"name":["chisq.test","stats"],"nodeId":"built-in:chisq.test"}]],["fisher.test",[{"type":128,"definedAt":"built-in:fisher.test","config":{"props":1,"tags":["statistics"]},"name":["fisher.test","stats"],"nodeId":"built-in:fisher.test"}]],["manova",[{"type":128,"definedAt":"built-in:manova","config":{"props":1,"tags":["statistics"]},"name":["manova","stats"],"nodeId":"built-in:manova"}]],["mantelhaen.test",[{"type":128,"definedAt":"built-in:mantelhaen.test","config":{"props":1,"tags":["statistics"]},"name":["mantelhaen.test","stats"],"nodeId":"built-in:mantelhaen.test"}]],["mcnemar.test",[{"type":128,"definedAt":"built-in:mcnemar.test","config":{"props":1,"tags":["statistics"]},"name":["mcnemar.test","stats"],"nodeId":"built-in:mcnemar.test"}]],["oneway.test",[{"type":128,"definedAt":"built-in:oneway.test","config":{"props":1,"tags":["statistics"]},"name":["oneway.test","stats"],"nodeId":"built-in:oneway.test"}]],["pairwise.prop.test",[{"type":128,"definedAt":"built-in:pairwise.prop.test","config":{"props":1,"tags":["statistics"]},"name":["pairwise.prop.test","stats"],"nodeId":"built-in:pairwise.prop.test"}]],["pairwise.t.test",[{"type":128,"definedAt":"built-in:pairwise.t.test","config":{"props":1,"tags":["statistics"]},"name":["pairwise.t.test","stats"],"nodeId":"built-in:pairwise.t.test"}]],["pairwise.wilcox.test",[{"type":128,"definedAt":"built-in:pairwise.wilcox.test","config":{"props":1,"tags":["statistics"]},"name":["pairwise.wilcox.test","stats"],"nodeId":"built-in:pairwise.wilcox.test"}]],["poisson.test",[{"type":128,"definedAt":"built-in:poisson.test","config":{"props":1,"tags":["statistics"]},"name":["poisson.test","stats"],"nodeId":"built-in:poisson.test"}]],["PP.test",[{"type":128,"definedAt":"built-in:PP.test","config":{"props":1,"tags":["statistics"]},"name":["PP.test","stats"],"nodeId":"built-in:PP.test"}]],["prop.test",[{"type":128,"definedAt":"built-in:prop.test","config":{"props":1,"tags":["statistics"]},"name":["prop.test","stats"],"nodeId":"built-in:prop.test"}]],["prop.trend.test",[{"type":128,"definedAt":"built-in:prop.trend.test","config":{"props":1,"tags":["statistics"]},"name":["prop.trend.test","stats"],"nodeId":"built-in:prop.trend.test"}]],["shapiro.test",[{"type":128,"definedAt":"built-in:shapiro.test","config":{"props":1,"tags":["statistics"]},"name":["shapiro.test","stats"],"nodeId":"built-in:shapiro.test"}]],["Anova",[{"type":128,"definedAt":"built-in:Anova","config":{"props":1,"tags":["statistics"]},"name":["Anova","car"],"nodeId":"built-in:Anova"}]],["durbinWatsonTest",[{"type":128,"definedAt":"built-in:durbinWatsonTest","config":{"props":1,"tags":["statistics"]},"name":["durbinWatsonTest","car"],"nodeId":"built-in:durbinWatsonTest"}]],["leveneTest",[{"type":128,"definedAt":"built-in:leveneTest","config":{"props":1,"tags":["statistics"]},"name":["leveneTest","car"],"nodeId":"built-in:leveneTest"}]],["linearHypothesis",[{"type":128,"definedAt":"built-in:linearHypothesis","config":{"props":1,"tags":["statistics"]},"name":["linearHypothesis","car"],"nodeId":"built-in:linearHypothesis"}]],["ncvTest",[{"type":128,"definedAt":"built-in:ncvTest","config":{"props":1,"tags":["statistics"]},"name":["ncvTest","car"],"nodeId":"built-in:ncvTest"}]],["outlierTest",[{"type":128,"definedAt":"built-in:outlierTest","config":{"props":1,"tags":["statistics"]},"name":["outlierTest","car"],"nodeId":"built-in:outlierTest"}]],["bgtest",[{"type":128,"definedAt":"built-in:bgtest","config":{"props":1,"tags":["statistics"]},"name":["bgtest","lmtest"],"nodeId":"built-in:bgtest"}]],["bptest",[{"type":128,"definedAt":"built-in:bptest","config":{"props":1,"tags":["statistics"]},"name":["bptest","lmtest"],"nodeId":"built-in:bptest"}]],["coeftest",[{"type":128,"definedAt":"built-in:coeftest","config":{"props":1,"tags":["statistics"]},"name":["coeftest","lmtest"],"nodeId":"built-in:coeftest"}]],["dwtest",[{"type":128,"definedAt":"built-in:dwtest","config":{"props":1,"tags":["statistics"]},"name":["dwtest","lmtest"],"nodeId":"built-in:dwtest"}]],["gqtest",[{"type":128,"definedAt":"built-in:gqtest","config":{"props":1,"tags":["statistics"]},"name":["gqtest","lmtest"],"nodeId":"built-in:gqtest"}]],["lrtest",[{"type":128,"definedAt":"built-in:lrtest","config":{"props":1,"tags":["statistics"]},"name":["lrtest","lmtest"],"nodeId":"built-in:lrtest"}]],["raintest",[{"type":128,"definedAt":"built-in:raintest","config":{"props":1,"tags":["statistics"]},"name":["raintest","lmtest"],"nodeId":"built-in:raintest"}]],["resettest",[{"type":128,"definedAt":"built-in:resettest","config":{"props":1,"tags":["statistics"]},"name":["resettest","lmtest"],"nodeId":"built-in:resettest"}]],["waldtest",[{"type":128,"definedAt":"built-in:waldtest","config":{"props":1,"tags":["statistics"]},"name":["waldtest","lmtest"],"nodeId":"built-in:waldtest"}]],["ad.test",[{"type":128,"definedAt":"built-in:ad.test","config":{"props":1,"tags":["statistics"]},"name":["ad.test","nortest"],"nodeId":"built-in:ad.test"}]],["cvm.test",[{"type":128,"definedAt":"built-in:cvm.test","config":{"props":1,"tags":["statistics"]},"name":["cvm.test","nortest"],"nodeId":"built-in:cvm.test"}]],["lillie.test",[{"type":128,"definedAt":"built-in:lillie.test","config":{"props":1,"tags":["statistics"]},"name":["lillie.test","nortest"],"nodeId":"built-in:lillie.test"}]],["pearson.test",[{"type":128,"definedAt":"built-in:pearson.test","config":{"props":1,"tags":["statistics"]},"name":["pearson.test","nortest"],"nodeId":"built-in:pearson.test"}]],["sf.test",[{"type":128,"definedAt":"built-in:sf.test","config":{"props":1,"tags":["statistics"]},"name":["sf.test","nortest"],"nodeId":"built-in:sf.test"}]],["adf.test",[{"type":128,"definedAt":"built-in:adf.test","config":{"props":1,"tags":["statistics"]},"name":["adf.test","tseries"],"nodeId":"built-in:adf.test"}]],["jarque.bera.test",[{"type":128,"definedAt":"built-in:jarque.bera.test","config":{"props":1,"tags":["statistics"]},"name":["jarque.bera.test","tseries"],"nodeId":"built-in:jarque.bera.test"}]],["kpss.test",[{"type":128,"definedAt":"built-in:kpss.test","config":{"props":1,"tags":["statistics"]},"name":["kpss.test","tseries"],"nodeId":"built-in:kpss.test"}]],["pp.test",[{"type":128,"definedAt":"built-in:pp.test","config":{"props":1,"tags":["statistics"]},"name":["pp.test","tseries"],"nodeId":"built-in:pp.test"}]],["runs.test",[{"type":128,"definedAt":"built-in:runs.test","config":{"props":1,"tags":["statistics"]},"name":["runs.test","tseries"],"nodeId":"built-in:runs.test"}]],["white.test",[{"type":128,"definedAt":"built-in:white.test","config":{"props":1,"tags":["statistics"]},"name":["white.test","tseries"],"nodeId":"built-in:white.test"}]],["anova_test",[{"type":128,"definedAt":"built-in:anova_test","config":{"props":1,"tags":["statistics"]},"name":["anova_test","rstatix"],"nodeId":"built-in:anova_test"}]],["chisq_test",[{"type":128,"definedAt":"built-in:chisq_test","config":{"props":1,"tags":["statistics"]},"name":["chisq_test","rstatix"],"nodeId":"built-in:chisq_test"}]],["cor_test",[{"type":128,"definedAt":"built-in:cor_test","config":{"props":1,"tags":["statistics"]},"name":["cor_test","rstatix"],"nodeId":"built-in:cor_test"}]],["kruskal_test",[{"type":128,"definedAt":"built-in:kruskal_test","config":{"props":1,"tags":["statistics"]},"name":["kruskal_test","rstatix"],"nodeId":"built-in:kruskal_test"}]],["shapiro_test",[{"type":128,"definedAt":"built-in:shapiro_test","config":{"props":1,"tags":["statistics"]},"name":["shapiro_test","rstatix"],"nodeId":"built-in:shapiro_test"}]],["t_test",[{"type":128,"definedAt":"built-in:t_test","config":{"props":1,"tags":["statistics"]},"name":["t_test","rstatix"],"nodeId":"built-in:t_test"}]],["wilcox_test",[{"type":128,"definedAt":"built-in:wilcox_test","config":{"props":1,"tags":["statistics"]},"name":["wilcox_test","rstatix"],"nodeId":"built-in:wilcox_test"}]],["glht",[{"type":128,"definedAt":"built-in:glht","config":{"props":1,"tags":["statistics"]},"name":["glht","multcomp"],"nodeId":"built-in:glht"}]],["which",[{"type":128,"definedAt":"built-in:which","config":{"props":1,"tags":["narrows-args"]},"name":["which","base"],"nodeId":"built-in:which"}]],["which.max",[{"type":128,"definedAt":"built-in:which.max","config":{"props":1,"tags":["narrows-args"]},"name":["which.max","base"],"nodeId":"built-in:which.max"}]],["which.min",[{"type":128,"definedAt":"built-in:which.min","config":{"props":1,"tags":["narrows-args"]},"name":["which.min","base"],"nodeId":"built-in:which.min"}]],["seq_len",[{"type":128,"definedAt":"built-in:seq_len","config":{"props":1,"tags":["narrows-args"]},"name":["seq_len","base"],"nodeId":"built-in:seq_len"}]],["seq_along",[{"type":128,"definedAt":"built-in:seq_along","config":{"props":1,"tags":["narrows-args"]},"name":["seq_along","base"],"nodeId":"built-in:seq_along"}]],["png",[{"type":128,"definedAt":"built-in:png","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["png","grDevices"],"nodeId":"built-in:png"}]],["jpeg",[{"type":128,"definedAt":"built-in:jpeg","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["jpeg","grDevices"],"nodeId":"built-in:jpeg"}]],["bmp",[{"type":128,"definedAt":"built-in:bmp","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["bmp","grDevices"],"nodeId":"built-in:bmp"}]],["tiff",[{"type":128,"definedAt":"built-in:tiff","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["tiff","grDevices"],"nodeId":"built-in:tiff"}]],["svg",[{"type":128,"definedAt":"built-in:svg","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["svg","grDevices"],"nodeId":"built-in:svg"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in:cairo_pdf","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["cairo_pdf","grDevices"],"nodeId":"built-in:cairo_pdf"}]],["raster_pdf",[{"type":128,"definedAt":"built-in:raster_pdf","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["raster_pdf","rasterpdf"],"nodeId":"built-in:raster_pdf"}]],["agg_png",[{"type":128,"definedAt":"built-in:agg_png","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["agg_png","ragg"],"nodeId":"built-in:agg_png"}]],["agg_jpeg",[{"type":128,"definedAt":"built-in:agg_jpeg","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["agg_jpeg","ragg"],"nodeId":"built-in:agg_jpeg"}]],["agg_tiff",[{"type":128,"definedAt":"built-in:agg_tiff","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["agg_tiff","ragg"],"nodeId":"built-in:agg_tiff"}]],["agg_ppm",[{"type":128,"definedAt":"built-in:agg_ppm","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["agg_ppm","ragg"],"nodeId":"built-in:agg_ppm"}]],["agg_webp",[{"type":128,"definedAt":"built-in:agg_webp","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["filename",16],["width",2],["height",2],["...",2]]},"name":["agg_webp","ragg"],"nodeId":"built-in:agg_webp"}]],["pdf",[{"type":128,"definedAt":"built-in:pdf","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",16],["type",2],["height",2],["width",2],["...",2]]},"name":["pdf","grDevices"],"nodeId":"built-in:pdf"}]],["postscript",[{"type":128,"definedAt":"built-in:postscript","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",16],["type",2],["height",2],["width",2],["...",2]]},"name":["postscript","grDevices"],"nodeId":"built-in:postscript"}]],["xfig",[{"type":128,"definedAt":"built-in:xfig","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",16],["type",2],["height",2],["width",2],["...",2]]},"name":["xfig","grDevices"],"nodeId":"built-in:xfig"}]],["bitmap",[{"type":128,"definedAt":"built-in:bitmap","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",16],["type",2],["height",2],["width",2],["...",2]]},"name":["bitmap","grDevices"],"nodeId":"built-in:bitmap"}]],["pictex",[{"type":128,"definedAt":"built-in:pictex","config":{"props":8,"tags":["draws-graphics","file","writes"],"sig":[["file",16],["type",2],["height",2],["width",2],["...",2]]},"name":["pictex","grDevices"],"nodeId":"built-in:pictex"}]],["X11",[{"type":128,"definedAt":"built-in:X11","config":{"tags":["draws-graphics"]},"name":["X11","grDevices"],"nodeId":"built-in:X11"}]],["windows",[{"type":128,"definedAt":"built-in:windows","config":{"tags":["draws-graphics"]},"name":["windows","grDevices"],"nodeId":"built-in:windows"}]],["quartz",[{"type":128,"definedAt":"built-in:quartz","config":{"tags":["draws-graphics"]},"name":["quartz","grDevices"],"nodeId":"built-in:quartz"}]],["dev.new",[{"type":128,"definedAt":"built-in:dev.new","config":{"tags":["draws-graphics"]},"name":["dev.new","grDevices"],"nodeId":"built-in:dev.new"}]],["trellis.device",[{"type":128,"definedAt":"built-in:trellis.device","config":{"tags":["draws-graphics"]},"name":["trellis.device","lattice"],"nodeId":"built-in:trellis.device"}]],["image_graph",[{"type":128,"definedAt":"built-in:image_graph","config":{"tags":["draws-graphics"]},"name":["image_graph","magick"],"nodeId":"built-in:image_graph"}]],["image_draw",[{"type":128,"definedAt":"built-in:image_draw","config":{"tags":["draws-graphics"]},"name":["image_draw","magick"],"nodeId":"built-in:image_draw"}]],["read.csv",[{"type":128,"definedAt":"built-in:read.csv","config":{"tags":["file","reads"],"sig":[["file",16],["header",8],["sep",2],["quote",2],["dec",2],["fill",8],["comment.char",2],["...",2]]},"name":["read.csv","utils"],"nodeId":"built-in:read.csv"}]],["scan",[{"type":128,"definedAt":"built-in:scan","config":{"tags":["file","reads","asks-user"],"sig":[["file",16]]},"name":["scan","base"],"nodeId":"built-in:scan"}]],["file",[{"type":128,"definedAt":"built-in:file","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",16]]},"name":["file","base"],"nodeId":"built-in:file"}]],["gzfile",[{"type":128,"definedAt":"built-in:gzfile","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",16]]},"name":["gzfile","base"],"nodeId":"built-in:gzfile"}]],["bzfile",[{"type":128,"definedAt":"built-in:bzfile","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",16]]},"name":["bzfile","base"],"nodeId":"built-in:bzfile"}]],["xzfile",[{"type":128,"definedAt":"built-in:xzfile","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",16]]},"name":["xzfile","base"],"nodeId":"built-in:xzfile"}]],["unz",[{"type":128,"definedAt":"built-in:unz","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",16]]},"name":["unz","base"],"nodeId":"built-in:unz"}]],["fifo",[{"type":128,"definedAt":"built-in:fifo","config":{"tags":["opens-handle","file","reads","writes"],"sig":[["description",16]]},"name":["fifo","base"],"nodeId":"built-in:fifo"}]],["url",[{"type":128,"definedAt":"built-in:url","config":{"tags":["opens-handle","network","reads"],"sig":[["description",16]]},"name":["url","base"],"nodeId":"built-in:url"}]],["socketConnection",[{"type":128,"definedAt":"built-in:socketConnection","config":{"tags":["opens-handle","network","reads"],"sig":[["host",16]]},"name":["socketConnection","base"],"nodeId":"built-in:socketConnection"}]],["serverSocket",[{"type":128,"definedAt":"built-in:serverSocket","config":{"tags":["opens-handle","network","reads"],"sig":[["host",16]]},"name":["serverSocket","base"],"nodeId":"built-in:serverSocket"}]],["textConnection",[{"type":128,"definedAt":"built-in:textConnection","config":{"tags":["opens-handle"],"sig":[["object",2]]},"name":["textConnection","base"],"nodeId":"built-in:textConnection"}]],["rawConnection",[{"type":128,"definedAt":"built-in:rawConnection","config":{"tags":["opens-handle"],"sig":[["object",2]]},"name":["rawConnection","base"],"nodeId":"built-in:rawConnection"}]],["dbConnect",[{"type":128,"definedAt":"built-in:dbConnect","config":{"libFn":true,"tags":["opens-handle","database"]},"name":["dbConnect","DBI"],"nodeId":"built-in:dbConnect"}]],["close",[{"type":128,"definedAt":"built-in:close","config":{"props":24,"tags":["closes-handle"],"sig":[["con",4096],["...",2]]},"name":["close","base"],"nodeId":"built-in:close"}]],["closeAllConnections",[{"type":128,"definedAt":"built-in:closeAllConnections","config":{"props":8,"tags":["closes-handle"]},"name":["closeAllConnections","base"],"nodeId":"built-in:closeAllConnections"}]],["dbDisconnect",[{"type":128,"definedAt":"built-in:dbDisconnect","config":{"libFn":true,"props":8,"tags":["closes-handle","database"],"sig":[["conn",4096],["...",2]]},"name":["dbDisconnect","DBI"],"nodeId":"built-in:dbDisconnect"}]],["local_connection",[{"type":128,"definedAt":"built-in:local_connection","config":{"libFn":true,"tags":["closes-handle"],"sig":[["con",4096],[".local_envir",32]]},"name":["local_connection","withr"],"nodeId":"built-in:local_connection"}]],["with_connection",[{"type":128,"definedAt":"built-in:with_connection","config":{"libFn":true,"props":2,"tags":["closes-handle"],"sig":[["con",4096],["code",66]]},"name":["with_connection","withr"],"nodeId":"built-in:with_connection"}]],["readLines",[{"type":128,"definedAt":"built-in:readLines","config":{"tags":["file","reads"],"sig":[["con",16],["n",2],["ok",8],["warn",8],["encoding",2],["skipNul",8]]},"name":["readLines","base"],"nodeId":"built-in:readLines"}]],["readBin",[{"type":128,"definedAt":"built-in:readBin","config":{"tags":["file","reads"],"sig":[["con",16]]},"name":["readBin","base"],"nodeId":"built-in:readBin"}]],["readChar",[{"type":128,"definedAt":"built-in:readChar","config":{"tags":["file","reads"],"sig":[["con",16]]},"name":["readChar","base"],"nodeId":"built-in:readChar"}]],["readRDS",[{"type":128,"definedAt":"built-in:readRDS","config":{"tags":["file","reads"],"sig":[["file",16]]},"name":["readRDS","base"],"nodeId":"built-in:readRDS"}]],["writeLines",[{"type":128,"definedAt":"built-in:writeLines","config":{"props":8,"tags":["file","writes"],"sig":[["text",2],["con",16],["sep",2],["useBytes",8]]},"name":["writeLines","base"],"nodeId":"built-in:writeLines"}]],["writeBin",[{"type":128,"definedAt":"built-in:writeBin","config":{"props":8,"tags":["file","writes"],"sig":[["object",2],["con",16]]},"name":["writeBin","base"],"nodeId":"built-in:writeBin"}]],["writeChar",[{"type":128,"definedAt":"built-in:writeChar","config":{"props":8,"tags":["file","writes"],"sig":[["object",2],["con",16]]},"name":["writeChar","base"],"nodeId":"built-in:writeChar"}]],["saveRDS",[{"type":128,"definedAt":"built-in:saveRDS","config":{"props":8,"tags":["file","writes"],"sig":[["object",2],["file",16]]},"name":["saveRDS","base"],"nodeId":"built-in:saveRDS"}]],["save",[{"type":128,"definedAt":"built-in:save","config":{"props":8,"tags":["file","writes"],"sig":[["...",2],["list",2],["file",16]]},"name":["save","base"],"nodeId":"built-in:save"}]],["save.image",[{"type":128,"definedAt":"built-in:save.image","config":{"props":8,"tags":["file","writes"],"sig":[["file",16]]},"name":["save.image","base"],"nodeId":"built-in:save.image"}]],["dput",[{"type":128,"definedAt":"built-in:dput","config":{"props":8,"tags":["file","writes","prints"],"sig":[["x",2],["file",16]]},"name":["dput","base"],"nodeId":"built-in:dput"}]],["write",[{"type":128,"definedAt":"built-in:write","config":{"props":8,"tags":["file","writes","prints"],"sig":[["x",2],["file",16]]},"name":["write","base"],"nodeId":"built-in:write"}]],["write.dcf",[{"type":128,"definedAt":"built-in:write.dcf","config":{"props":8,"tags":["file","writes"],"sig":[["x",2],["file",16]]},"name":["write.dcf","base"],"nodeId":"built-in:write.dcf"}]],["write.table",[{"type":128,"definedAt":"built-in:write.table","config":{"props":8,"tags":["file","writes"],"sig":[["x",2],["file",16],["append",8],["quote",8],["sep",2]]},"name":["write.table","utils"],"nodeId":"built-in:write.table"}]],["write.csv",[{"type":128,"definedAt":"built-in:write.csv","config":{"props":8,"tags":["file","writes"],"sig":[["x",2],["file",16]]},"name":["write.csv","utils"],"nodeId":"built-in:write.csv"}]],["write.csv2",[{"type":128,"definedAt":"built-in:write.csv2","config":{"props":8,"tags":["file","writes"],"sig":[["x",2],["file",16]]},"name":["write.csv2","utils"],"nodeId":"built-in:write.csv2"}]],["read.table",[{"type":128,"definedAt":"built-in:read.table","config":{"tags":["file","reads"],"sig":[["file",16]]},"name":["read.table","utils"],"nodeId":"built-in:read.table"}]],["read.delim",[{"type":128,"definedAt":"built-in:read.delim","config":{"tags":["file","reads"],"sig":[["file",16]]},"name":["read.delim","utils"],"nodeId":"built-in:read.delim"}]],["read.csv2",[{"type":128,"definedAt":"built-in:read.csv2","config":{"tags":["file","reads"],"sig":[["file",16]]},"name":["read.csv2","utils"],"nodeId":"built-in:read.csv2"}]],["read.delim2",[{"type":128,"definedAt":"built-in:read.delim2","config":{"tags":["file","reads"],"sig":[["file",16]]},"name":["read.delim2","utils"],"nodeId":"built-in:read.delim2"}]],["download.file",[{"type":128,"definedAt":"built-in:download.file","config":{"tags":["network","file","writes"],"sig":[["url",16],["destfile",16],["method",2],["quiet",8],["mode",2],["cacheOK",8],["extra",2],["headers",2],["...",2]]},"name":["download.file","utils"],"nodeId":"built-in:download.file"}]],["jitter",[{"type":128,"definedAt":"built-in:jitter","config":{"tags":["random"]},"name":["jitter","stats"],"nodeId":"built-in:jitter"}]],["simulate",[{"type":128,"definedAt":"built-in:simulate","config":{"tags":["random"],"props":16},"name":["simulate","stats"],"nodeId":"built-in:simulate"}]],["sample",[{"type":128,"definedAt":"built-in:sample","config":{"tags":["random"]},"name":["sample","base"],"nodeId":"built-in:sample"}]],["sample.int",[{"type":128,"definedAt":"built-in:sample.int","config":{"tags":["random"]},"name":["sample.int","base"],"nodeId":"built-in:sample.int"}]],["runif",[{"type":128,"definedAt":"built-in:runif","config":{"tags":["random"]},"name":["runif","stats"],"nodeId":"built-in:runif"}]],["rnorm",[{"type":128,"definedAt":"built-in:rnorm","config":{"tags":["random"]},"name":["rnorm","stats"],"nodeId":"built-in:rnorm"}]],["rbinom",[{"type":128,"definedAt":"built-in:rbinom","config":{"tags":["random"]},"name":["rbinom","stats"],"nodeId":"built-in:rbinom"}]],["rpois",[{"type":128,"definedAt":"built-in:rpois","config":{"tags":["random"]},"name":["rpois","stats"],"nodeId":"built-in:rpois"}]],["rexp",[{"type":128,"definedAt":"built-in:rexp","config":{"tags":["random"]},"name":["rexp","stats"],"nodeId":"built-in:rexp"}]],["rgamma",[{"type":128,"definedAt":"built-in:rgamma","config":{"tags":["random"]},"name":["rgamma","stats"],"nodeId":"built-in:rgamma"}]],["rbeta",[{"type":128,"definedAt":"built-in:rbeta","config":{"tags":["random"]},"name":["rbeta","stats"],"nodeId":"built-in:rbeta"}]],["rcauchy",[{"type":128,"definedAt":"built-in:rcauchy","config":{"tags":["random"]},"name":["rcauchy","stats"],"nodeId":"built-in:rcauchy"}]],["rchisq",[{"type":128,"definedAt":"built-in:rchisq","config":{"tags":["random"]},"name":["rchisq","stats"],"nodeId":"built-in:rchisq"}]],["rgeom",[{"type":128,"definedAt":"built-in:rgeom","config":{"tags":["random"]},"name":["rgeom","stats"],"nodeId":"built-in:rgeom"}]],["rhyper",[{"type":128,"definedAt":"built-in:rhyper","config":{"tags":["random"]},"name":["rhyper","stats"],"nodeId":"built-in:rhyper"}]],["rlnorm",[{"type":128,"definedAt":"built-in:rlnorm","config":{"tags":["random"]},"name":["rlnorm","stats"],"nodeId":"built-in:rlnorm"}]],["rlogis",[{"type":128,"definedAt":"built-in:rlogis","config":{"tags":["random"]},"name":["rlogis","stats"],"nodeId":"built-in:rlogis"}]],["rmultinom",[{"type":128,"definedAt":"built-in:rmultinom","config":{"tags":["random"]},"name":["rmultinom","stats"],"nodeId":"built-in:rmultinom"}]],["rnbinom",[{"type":128,"definedAt":"built-in:rnbinom","config":{"tags":["random"]},"name":["rnbinom","stats"],"nodeId":"built-in:rnbinom"}]],["rsignrank",[{"type":128,"definedAt":"built-in:rsignrank","config":{"tags":["random"]},"name":["rsignrank","stats"],"nodeId":"built-in:rsignrank"}]],["rt",[{"type":128,"definedAt":"built-in:rt","config":{"tags":["random"]},"name":["rt","stats"],"nodeId":"built-in:rt"}]],["rf",[{"type":128,"definedAt":"built-in:rf","config":{"tags":["random"]},"name":["rf","stats"],"nodeId":"built-in:rf"}]],["rweibull",[{"type":128,"definedAt":"built-in:rweibull","config":{"tags":["random"]},"name":["rweibull","stats"],"nodeId":"built-in:rweibull"}]],["rwilcox",[{"type":128,"definedAt":"built-in:rwilcox","config":{"tags":["random"]},"name":["rwilcox","stats"],"nodeId":"built-in:rwilcox"}]],["arima.sim",[{"type":128,"definedAt":"built-in:arima.sim","config":{"tags":["random"]},"name":["arima.sim","stats"],"nodeId":"built-in:arima.sim"}]],["kmeans",[{"type":128,"definedAt":"built-in:kmeans","config":{"tags":["random"]},"name":["kmeans","stats"],"nodeId":"built-in:kmeans"}]],["expression",[{"type":128,"definedAt":"built-in:expression","config":{"props":2048},"name":["expression","base"],"nodeId":"built-in:expression"}]],["rm",[{"type":128,"definedAt":"built-in:rm","config":{"props":72},"name":["rm","base"],"nodeId":"built-in:rm"}]],["options",[{"type":128,"definedAt":"built-in:options","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":776},"name":["options","base"],"nodeId":"built-in:options"}]],["Sys.setenv",[{"type":128,"definedAt":"built-in:Sys.setenv","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":520},"name":["Sys.setenv","base"],"nodeId":"built-in:Sys.setenv"}]],["Sys.unsetenv",[{"type":128,"definedAt":"built-in:Sys.unsetenv","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":520},"name":["Sys.unsetenv","base"],"nodeId":"built-in:Sys.unsetenv"}]],["Sys.setlocale",[{"type":128,"definedAt":"built-in:Sys.setlocale","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":520},"name":["Sys.setlocale","base"],"nodeId":"built-in:Sys.setlocale"}]],["Sys.putenv",[{"type":128,"definedAt":"built-in:Sys.putenv","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":520},"name":["Sys.putenv","base"],"nodeId":"built-in:Sys.putenv"}]],["Sys.setLanguage",[{"type":128,"definedAt":"built-in:Sys.setLanguage","config":{"hasUnknownSideEffects":true,"forceArgs":"all","props":520},"name":["Sys.setLanguage","base"],"nodeId":"built-in:Sys.setLanguage"}]],["mapply",[{"type":128,"definedAt":"built-in:mapply","config":{"indexOfFunction":0,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["FUN",256],["...",2]]},"name":["mapply","base"],"nodeId":"built-in:mapply"}]],["Mapply",[{"type":128,"definedAt":"built-in:Mapply","config":{"indexOfFunction":0,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["FUN",256],["...",2]]},"name":["Mapply","functools"],"nodeId":"built-in:Mapply"}]],["lapply",[{"type":128,"definedAt":"built-in:lapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["FUN",256],["...",2]]},"name":["lapply","base"],"nodeId":"built-in:lapply"}]],["sapply",[{"type":128,"definedAt":"built-in:sapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["FUN",256],["...",2]]},"name":["sapply","base"],"nodeId":"built-in:sapply"}]],["vapply",[{"type":128,"definedAt":"built-in:vapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2,"sig":[["X",2],["FUN",256],["FUN.VALUE",4],["...",2]]},"name":["vapply","base"],"nodeId":"built-in:vapply"}]],["Lapply",[{"type":128,"definedAt":"built-in:Lapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Lapply","functools"],"nodeId":"built-in:Lapply"}]],["Sapply",[{"type":128,"definedAt":"built-in:Sapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Sapply","functools"],"nodeId":"built-in:Sapply"}]],["Vapply",[{"type":128,"definedAt":"built-in:Vapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Vapply","functools"],"nodeId":"built-in:Vapply"}]],["apply",[{"type":128,"definedAt":"built-in:apply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["apply","base"],"nodeId":"built-in:apply"}]],["tapply",[{"type":128,"definedAt":"built-in:tapply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["tapply","base"],"nodeId":"built-in:tapply"}]],["Tapply",[{"type":128,"definedAt":"built-in:Tapply","config":{"indexOfFunction":2,"nameOfFunctionArgument":"FUN","unquoteFunction":true,"props":2},"name":["Tapply","functools"],"nodeId":"built-in:Tapply"}]],["Map",[{"type":128,"definedAt":"built-in:Map","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256],["...",2]]},"name":["Map","base"],"nodeId":"built-in:Map"}]],["Filter",[{"type":128,"definedAt":"built-in:Filter","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256],["x",2]]},"name":["Filter","base"],"nodeId":"built-in:Filter"}]],["Find",[{"type":128,"definedAt":"built-in:Find","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256],["x",2],["right",8],["nomatch",2]]},"name":["Find","base"],"nodeId":"built-in:Find"}]],["Position",[{"type":128,"definedAt":"built-in:Position","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256],["x",2],["right",8],["nomatch",2]]},"name":["Position","base"],"nodeId":"built-in:Position"}]],["Reduce",[{"type":128,"definedAt":"built-in:Reduce","config":{"indexOfFunction":0,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2,"sig":[["f",256]]},"name":["Reduce","base"],"nodeId":"built-in:Reduce"}]],["rapply",[{"type":128,"definedAt":"built-in:rapply","config":{"indexOfFunction":1,"nameOfFunctionArgument":"f","unquoteFunction":true,"props":2},"name":["rapply","base"],"nodeId":"built-in:rapply"}]],["print",[{"type":128,"definedAt":"built-in:print","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":24,"tags":["prints"],"sig":[["x",65],["...",66]]},"name":["print","base"],"nodeId":"built-in:print"}]],["message",[{"type":128,"definedAt":"built-in:message","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":8,"tags":["prints"],"sig":[["...",65]]},"name":["message","base"],"nodeId":"built-in:message"}]],["warning",[{"type":128,"definedAt":"built-in:warning","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":8,"tags":["prints"],"sig":[["...",65]]},"name":["warning","base"],"nodeId":"built-in:warning"}]],["warn",[{"type":128,"definedAt":"built-in:warn","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":8,"tags":["prints"],"sig":[["...",65]]},"name":["warn","R.utils"],"nodeId":"built-in:warn"}]],["info",[{"type":128,"definedAt":"built-in:info","config":{"forceArgs":"all","keepArgumentOut":true,"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":8,"tags":["prints"],"sig":[["...",65]]},"name":["info","msgr"],"nodeId":"built-in:info"}]],["invisible",[{"type":128,"definedAt":"built-in:invisible","config":{"forceArgs":"all","keepArgumentOut":true,"props":9,"sig":[["x",65]]},"name":["invisible","base"],"nodeId":"built-in:invisible"}]],["force",[{"type":128,"definedAt":"built-in:force","config":{"forceArgs":"all","keepArgumentOut":true,"props":1,"sig":[["x",65]]},"name":["force","base"],"nodeId":"built-in:force"}]],["identity",[{"type":128,"definedAt":"built-in:identity","config":{"forceArgs":"all","keepArgumentOut":true,"props":1,"sig":[["x",65]]},"name":["identity","base"],"nodeId":"built-in:identity"}]],["plot",[{"type":128,"definedAt":"built-in:plot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["plot","base",false],"nodeId":"built-in:plot"}]],["image",[{"type":128,"definedAt":"built-in:image","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["image","graphics",false],"nodeId":"built-in:image"}]],["boxplot",[{"type":128,"definedAt":"built-in:boxplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["boxplot","graphics",false],"nodeId":"built-in:boxplot"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in:sunflowerplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["sunflowerplot","graphics",false],"nodeId":"built-in:sunflowerplot"}]],["barplot",[{"type":128,"definedAt":"built-in:barplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["barplot","graphics",false],"nodeId":"built-in:barplot"}]],["hist",[{"type":128,"definedAt":"built-in:hist","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["hist","graphics",false],"nodeId":"built-in:hist"}]],["density",[{"type":128,"definedAt":"built-in:density","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["density","stats",false],"nodeId":"built-in:density"}]],["contour",[{"type":128,"definedAt":"built-in:contour","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["contour","graphics",false],"nodeId":"built-in:contour"}]],["persp",[{"type":128,"definedAt":"built-in:persp","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["persp","graphics",false],"nodeId":"built-in:persp"}]],["mosaicplot",[{"type":128,"definedAt":"built-in:mosaicplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["mosaicplot","graphics",false],"nodeId":"built-in:mosaicplot"}]],["stripchart",[{"type":128,"definedAt":"built-in:stripchart","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["stripchart","graphics",false],"nodeId":"built-in:stripchart"}]],["spineplot",[{"type":128,"definedAt":"built-in:spineplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["spineplot","graphics",false],"nodeId":"built-in:spineplot"}]],["pairs",[{"type":128,"definedAt":"built-in:pairs","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["pairs","graphics",false],"nodeId":"built-in:pairs"}]],["plot.new",[{"type":128,"definedAt":"built-in:plot.new","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plot.new","graphics",false],"nodeId":"built-in:plot.new"}]],["xspline",[{"type":128,"definedAt":"built-in:xspline","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["xspline","graphics",false],"nodeId":"built-in:xspline"}]],["map",[{"type":128,"definedAt":"built-in:map","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map","purrr"],"nodeId":"built-in:map"}]],["curve",[{"type":128,"definedAt":"built-in:curve","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["curve","graphics",false],"nodeId":"built-in:curve"}]],["dotchart",[{"type":128,"definedAt":"built-in:dotchart","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["dotchart","graphics",false],"nodeId":"built-in:dotchart"}]],["matplot",[{"type":128,"definedAt":"built-in:matplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["matplot","graphics",false],"nodeId":"built-in:matplot"}]],["stem",[{"type":128,"definedAt":"built-in:stem","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["stem","graphics",false],"nodeId":"built-in:stem"}]],["smoothScatter",[{"type":128,"definedAt":"built-in:smoothScatter","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["smoothScatter","graphics",false],"nodeId":"built-in:smoothScatter"}]],["XYPlot",[{"type":128,"definedAt":"built-in:XYPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"XYPlot","nodeId":"built-in:XYPlot"}]],["xyplot",[{"type":128,"definedAt":"built-in:xyplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["xyplot","lattice",false],"nodeId":"built-in:xyplot"}]],["stripplot",[{"type":128,"definedAt":"built-in:stripplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["stripplot","lattice",false],"nodeId":"built-in:stripplot"}]],["bwplot",[{"type":128,"definedAt":"built-in:bwplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["bwplot","lattice",false],"nodeId":"built-in:bwplot"}]],["dotPlot",[{"type":128,"definedAt":"built-in:dotPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"dotPlot","nodeId":"built-in:dotPlot"}]],["dotplot",[{"type":128,"definedAt":"built-in:dotplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["dotplot","lattice",false],"nodeId":"built-in:dotplot"}]],["histPlot",[{"type":128,"definedAt":"built-in:histPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"histPlot","nodeId":"built-in:histPlot"}]],["densityPlot",[{"type":128,"definedAt":"built-in:densityPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"densityPlot","nodeId":"built-in:densityPlot"}]],["qPlot",[{"type":128,"definedAt":"built-in:qPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"qPlot","nodeId":"built-in:qPlot"}]],["qqplot",[{"type":128,"definedAt":"built-in:qqplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["qqplot","stats",false],"nodeId":"built-in:qqplot"}]],["qqPlot",[{"type":128,"definedAt":"built-in:qqPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"qqPlot","nodeId":"built-in:qqPlot"}]],["boxPlot",[{"type":128,"definedAt":"built-in:boxPlot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"boxPlot","nodeId":"built-in:boxPlot"}]],["bxp",[{"type":128,"definedAt":"built-in:bxp","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["bxp","graphics",false],"nodeId":"built-in:bxp"}]],["assocplot",[{"type":128,"definedAt":"built-in:assocplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["assocplot","graphics",false],"nodeId":"built-in:assocplot"}]],["fourfoldplot",[{"type":128,"definedAt":"built-in:fourfoldplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fourfoldplot","graphics",false],"nodeId":"built-in:fourfoldplot"}]],["plot.xy",[{"type":128,"definedAt":"built-in:plot.xy","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plot.xy","graphics",false],"nodeId":"built-in:plot.xy"}]],["plot.formula",[{"type":128,"definedAt":"built-in:plot.formula","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plot.formula","graphics",false],"nodeId":"built-in:plot.formula"}]],["plot.default",[{"type":128,"definedAt":"built-in:plot.default","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plot.default","graphics",false],"nodeId":"built-in:plot.default"}]],["plot.design",[{"type":128,"definedAt":"built-in:plot.design","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plot.design","graphics",false],"nodeId":"built-in:plot.design"}]],["stars",[{"type":128,"definedAt":"built-in:stars","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["stars","graphics",false],"nodeId":"built-in:stars"}]],["cotabplot",[{"type":128,"definedAt":"built-in:cotabplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"cotabplot","nodeId":"built-in:cotabplot"}]],["pheatmap",[{"type":128,"definedAt":"built-in:pheatmap","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["pheatmap","pheatmap",false],"nodeId":"built-in:pheatmap"}]],["Plotranges",[{"type":128,"definedAt":"built-in:Plotranges","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"Plotranges","nodeId":"built-in:Plotranges"}]],["regressogram",[{"type":128,"definedAt":"built-in:regressogram","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"regressogram","nodeId":"built-in:regressogram"}]],["bootcurve",[{"type":128,"definedAt":"built-in:bootcurve","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"bootcurve","nodeId":"built-in:bootcurve"}]],["meanplot",[{"type":128,"definedAt":"built-in:meanplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"meanplot","nodeId":"built-in:meanplot"}]],["vioplot",[{"type":128,"definedAt":"built-in:vioplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["vioplot","vioplot",false],"nodeId":"built-in:vioplot"}]],["copolot",[{"type":128,"definedAt":"built-in:copolot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"copolot","nodeId":"built-in:copolot"}]],["histogram",[{"type":128,"definedAt":"built-in:histogram","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["histogram","lattice",false],"nodeId":"built-in:histogram"}]],["splom",[{"type":128,"definedAt":"built-in:splom","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["splom","lattice",false],"nodeId":"built-in:splom"}]],["leaflet",[{"type":128,"definedAt":"built-in:leaflet","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["leaflet","leaflet",false],"nodeId":"built-in:leaflet"}]],["tm_shape",[{"type":128,"definedAt":"built-in:tm_shape","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["tm_shape","tmap",false],"nodeId":"built-in:tm_shape"}]],["plot_ly",[{"type":128,"definedAt":"built-in:plot_ly","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plot_ly","plotly",false],"nodeId":"built-in:plot_ly"}]],["plotProfLik",[{"type":128,"definedAt":"built-in:plotProfLik","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"plotProfLik","nodeId":"built-in:plotProfLik"}]],["plotSimulatedResiduals",[{"type":128,"definedAt":"built-in:plotSimulatedResiduals","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plotSimulatedResiduals","DHARMa",false],"nodeId":"built-in:plotSimulatedResiduals"}]],["plotmeans",[{"type":128,"definedAt":"built-in:plotmeans","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"plotmeans","nodeId":"built-in:plotmeans"}]],["overplot",[{"type":128,"definedAt":"built-in:overplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"overplot","nodeId":"built-in:overplot"}]],["residplot",[{"type":128,"definedAt":"built-in:residplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"residplot","nodeId":"built-in:residplot"}]],["heatmap.2",[{"type":128,"definedAt":"built-in:heatmap.2","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["heatmap.2","gplots",false],"nodeId":"built-in:heatmap.2"}]],["lmplot2",[{"type":128,"definedAt":"built-in:lmplot2","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"lmplot2","nodeId":"built-in:lmplot2"}]],["sinkplot",[{"type":128,"definedAt":"built-in:sinkplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"sinkplot","nodeId":"built-in:sinkplot"}]],["textplot",[{"type":128,"definedAt":"built-in:textplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["textplot","gplots",false],"nodeId":"built-in:textplot"}]],["boxplot2",[{"type":128,"definedAt":"built-in:boxplot2","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["boxplot2","gplots",false],"nodeId":"built-in:boxplot2"}]],["profLikCI",[{"type":128,"definedAt":"built-in:profLikCI","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"profLikCI","nodeId":"built-in:profLikCI"}]],["tinyplot",[{"type":128,"definedAt":"built-in:tinyplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["tinyplot","tinyplot",false],"nodeId":"built-in:tinyplot"}]],["plt",[{"type":128,"definedAt":"built-in:plt","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plt","tinyplot",false],"nodeId":"built-in:plt"}]],["ggplot",[{"type":128,"definedAt":"built-in:ggplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggplot","ggplot2",false],"nodeId":"built-in:ggplot"}]],["ggplotly",[{"type":128,"definedAt":"built-in:ggplotly","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggplotly","plotly",false],"nodeId":"built-in:ggplotly"}]],["ggMarginal",[{"type":128,"definedAt":"built-in:ggMarginal","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggMarginal","ggExtra",false],"nodeId":"built-in:ggMarginal"}]],["ggcorrplot",[{"type":128,"definedAt":"built-in:ggcorrplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggcorrplot","ggcorrplot",false],"nodeId":"built-in:ggcorrplot"}]],["ggseasonplot",[{"type":128,"definedAt":"built-in:ggseasonplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggseasonplot","forecast",false],"nodeId":"built-in:ggseasonplot"}]],["ggdendrogram",[{"type":128,"definedAt":"built-in:ggdendrogram","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggdendrogram","ggdendro",false],"nodeId":"built-in:ggdendrogram"}]],["qmap",[{"type":128,"definedAt":"built-in:qmap","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["qmap","ggmap",false],"nodeId":"built-in:qmap"}]],["qplot",[{"type":128,"definedAt":"built-in:qplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["deprecated","draws-graphics"]},"name":["qplot","ggplot2"],"nodeId":"built-in:qplot"}]],["quickplot",[{"type":128,"definedAt":"built-in:quickplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["quickplot","ggplot2",false],"nodeId":"built-in:quickplot"}]],["autoplot",[{"type":128,"definedAt":"built-in:autoplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["autoplot","ggplot2",false],"nodeId":"built-in:autoplot"}]],["grid.arrange",[{"type":128,"definedAt":"built-in:grid.arrange","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["grid.arrange","gridExtra",false],"nodeId":"built-in:grid.arrange"}]],["fviz_pca_biplot",[{"type":128,"definedAt":"built-in:fviz_pca_biplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_pca_biplot","factoextra",false],"nodeId":"built-in:fviz_pca_biplot"}]],["fviz_pca",[{"type":128,"definedAt":"built-in:fviz_pca","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_pca","factoextra",false],"nodeId":"built-in:fviz_pca"}]],["fviz_pca_ind",[{"type":128,"definedAt":"built-in:fviz_pca_ind","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_pca_ind","factoextra",false],"nodeId":"built-in:fviz_pca_ind"}]],["fviz_pca_var",[{"type":128,"definedAt":"built-in:fviz_pca_var","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_pca_var","factoextra",false],"nodeId":"built-in:fviz_pca_var"}]],["fviz_screeplot",[{"type":128,"definedAt":"built-in:fviz_screeplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_screeplot","factoextra",false],"nodeId":"built-in:fviz_screeplot"}]],["fviz_mca_biplot",[{"type":128,"definedAt":"built-in:fviz_mca_biplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_mca_biplot","factoextra",false],"nodeId":"built-in:fviz_mca_biplot"}]],["fviz_mca",[{"type":128,"definedAt":"built-in:fviz_mca","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_mca","factoextra",false],"nodeId":"built-in:fviz_mca"}]],["fviz_mca_ind",[{"type":128,"definedAt":"built-in:fviz_mca_ind","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_mca_ind","factoextra",false],"nodeId":"built-in:fviz_mca_ind"}]],["fviz_mca_var",[{"type":128,"definedAt":"built-in:fviz_mca_var","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_mca_var","factoextra",false],"nodeId":"built-in:fviz_mca_var"}]],["fviz_cluster",[{"type":128,"definedAt":"built-in:fviz_cluster","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_cluster","factoextra",false],"nodeId":"built-in:fviz_cluster"}]],["fviz_dend",[{"type":128,"definedAt":"built-in:fviz_dend","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["fviz_dend","factoextra",false],"nodeId":"built-in:fviz_dend"}]],["ggsurvplot",[{"type":128,"definedAt":"built-in:ggsurvplot","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["ggsurvplot","survminer",false],"nodeId":"built-in:ggsurvplot"}]],["points",[{"type":128,"definedAt":"built-in:points","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["points","graphics",false],"nodeId":"built-in:points"}]],["lines",[{"type":128,"definedAt":"built-in:lines","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["lines","graphics",false],"nodeId":"built-in:lines"}]],["text",[{"type":128,"definedAt":"built-in:text","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["text","graphics",false],"nodeId":"built-in:text"}]],["qqnorm",[{"type":128,"definedAt":"built-in:qqnorm","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"],"props":16},"name":["qqnorm","stats",false],"nodeId":"built-in:qqnorm"}]],["abline",[{"type":128,"definedAt":"built-in:abline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["abline","graphics",false],"nodeId":"built-in:abline"}]],["mtext",[{"type":128,"definedAt":"built-in:mtext","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["mtext","graphics",false],"nodeId":"built-in:mtext"}]],["legend",[{"type":128,"definedAt":"built-in:legend","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["legend","graphics",false],"nodeId":"built-in:legend"}]],["title",[{"type":128,"definedAt":"built-in:title","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["title","graphics",false],"nodeId":"built-in:title"}]],["axis",[{"type":128,"definedAt":"built-in:axis","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["axis","graphics",false],"nodeId":"built-in:axis"}]],["polygon",[{"type":128,"definedAt":"built-in:polygon","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["polygon","graphics",false],"nodeId":"built-in:polygon"}]],["polypath",[{"type":128,"definedAt":"built-in:polypath","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["polypath","graphics",false],"nodeId":"built-in:polypath"}]],["pie",[{"type":128,"definedAt":"built-in:pie","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["pie","graphics",false],"nodeId":"built-in:pie"}]],["rect",[{"type":128,"definedAt":"built-in:rect","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["rect","graphics",false],"nodeId":"built-in:rect"}]],["segments",[{"type":128,"definedAt":"built-in:segments","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["segments","graphics",false],"nodeId":"built-in:segments"}]],["arrows",[{"type":128,"definedAt":"built-in:arrows","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["arrows","graphics",false],"nodeId":"built-in:arrows"}]],["symbols",[{"type":128,"definedAt":"built-in:symbols","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["symbols","graphics",false],"nodeId":"built-in:symbols"}]],["qqline",[{"type":128,"definedAt":"built-in:qqline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["qqline","stats",false],"nodeId":"built-in:qqline"}]],["rasterImage",[{"type":128,"definedAt":"built-in:rasterImage","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["rasterImage","graphics",false],"nodeId":"built-in:rasterImage"}]],["tiplabels",[{"type":128,"definedAt":"built-in:tiplabels","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"tiplabels","nodeId":"built-in:tiplabels"}]],["rug",[{"type":128,"definedAt":"built-in:rug","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["rug","graphics",false],"nodeId":"built-in:rug"}]],["grid",[{"type":128,"definedAt":"built-in:grid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["grid","graphics",false],"nodeId":"built-in:grid"}]],["box",[{"type":128,"definedAt":"built-in:box","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["box","graphics",false],"nodeId":"built-in:box"}]],["clip",[{"type":128,"definedAt":"built-in:clip","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["clip","graphics",false],"nodeId":"built-in:clip"}]],["matpoints",[{"type":128,"definedAt":"built-in:matpoints","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["matpoints","graphics",false],"nodeId":"built-in:matpoints"}]],["matlines",[{"type":128,"definedAt":"built-in:matlines","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["matlines","graphics",false],"nodeId":"built-in:matlines"}]],["geom_count",[{"type":128,"definedAt":"built-in:geom_count","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_count","nodeId":"built-in:geom_count"}]],["geom_bin_2d",[{"type":128,"definedAt":"built-in:geom_bin_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_bin_2d","nodeId":"built-in:geom_bin_2d"}]],["geom_spoke",[{"type":128,"definedAt":"built-in:geom_spoke","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_spoke","nodeId":"built-in:geom_spoke"}]],["geom_tile",[{"type":128,"definedAt":"built-in:geom_tile","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_tile","nodeId":"built-in:geom_tile"}]],["geom_rect",[{"type":128,"definedAt":"built-in:geom_rect","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_rect","nodeId":"built-in:geom_rect"}]],["geom_function",[{"type":128,"definedAt":"built-in:geom_function","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_function","nodeId":"built-in:geom_function"}]],["geom_crossbar",[{"type":128,"definedAt":"built-in:geom_crossbar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_crossbar","nodeId":"built-in:geom_crossbar"}]],["geom_density2d",[{"type":128,"definedAt":"built-in:geom_density2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_density2d","nodeId":"built-in:geom_density2d"}]],["geom_abline",[{"type":128,"definedAt":"built-in:geom_abline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_abline","nodeId":"built-in:geom_abline"}]],["geom_errorbar",[{"type":128,"definedAt":"built-in:geom_errorbar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_errorbar","nodeId":"built-in:geom_errorbar"}]],["geom_errorbarh",[{"type":128,"definedAt":"built-in:geom_errorbarh","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_errorbarh","nodeId":"built-in:geom_errorbarh"}]],["geom_jitter",[{"type":128,"definedAt":"built-in:geom_jitter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_jitter","nodeId":"built-in:geom_jitter"}]],["geom_line",[{"type":128,"definedAt":"built-in:geom_line","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_line","nodeId":"built-in:geom_line"}]],["geom_density",[{"type":128,"definedAt":"built-in:geom_density","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_density","nodeId":"built-in:geom_density"}]],["geom_quantile",[{"type":128,"definedAt":"built-in:geom_quantile","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_quantile","nodeId":"built-in:geom_quantile"}]],["geom_qq",[{"type":128,"definedAt":"built-in:geom_qq","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_qq","nodeId":"built-in:geom_qq"}]],["geom_qq_line",[{"type":128,"definedAt":"built-in:geom_qq_line","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_qq_line","nodeId":"built-in:geom_qq_line"}]],["geom_segment",[{"type":128,"definedAt":"built-in:geom_segment","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_segment","nodeId":"built-in:geom_segment"}]],["geom_label",[{"type":128,"definedAt":"built-in:geom_label","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_label","nodeId":"built-in:geom_label"}]],["geom_density_2d",[{"type":128,"definedAt":"built-in:geom_density_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_density_2d","nodeId":"built-in:geom_density_2d"}]],["geom_violin",[{"type":128,"definedAt":"built-in:geom_violin","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_violin","nodeId":"built-in:geom_violin"}]],["geom_contour",[{"type":128,"definedAt":"built-in:geom_contour","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_contour","nodeId":"built-in:geom_contour"}]],["geom_boxplot",[{"type":128,"definedAt":"built-in:geom_boxplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_boxplot","nodeId":"built-in:geom_boxplot"}]],["geom_col",[{"type":128,"definedAt":"built-in:geom_col","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_col","nodeId":"built-in:geom_col"}]],["geom_blank",[{"type":128,"definedAt":"built-in:geom_blank","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_blank","nodeId":"built-in:geom_blank"}]],["geom_histogram",[{"type":128,"definedAt":"built-in:geom_histogram","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_histogram","nodeId":"built-in:geom_histogram"}]],["geom_hline",[{"type":128,"definedAt":"built-in:geom_hline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_hline","nodeId":"built-in:geom_hline"}]],["geom_area",[{"type":128,"definedAt":"built-in:geom_area","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_area","nodeId":"built-in:geom_area"}]],["geom_sf_text",[{"type":128,"definedAt":"built-in:geom_sf_text","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_sf_text","nodeId":"built-in:geom_sf_text"}]],["geom_smooth",[{"type":128,"definedAt":"built-in:geom_smooth","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_smooth","nodeId":"built-in:geom_smooth"}]],["geom_text",[{"type":128,"definedAt":"built-in:geom_text","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_text","nodeId":"built-in:geom_text"}]],["geom_density2d_filled",[{"type":128,"definedAt":"built-in:geom_density2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_density2d_filled","nodeId":"built-in:geom_density2d_filled"}]],["geom_ribbon",[{"type":128,"definedAt":"built-in:geom_ribbon","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_ribbon","nodeId":"built-in:geom_ribbon"}]],["geom_sf",[{"type":128,"definedAt":"built-in:geom_sf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_sf","nodeId":"built-in:geom_sf"}]],["geom_dotplot",[{"type":128,"definedAt":"built-in:geom_dotplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_dotplot","nodeId":"built-in:geom_dotplot"}]],["geom_freqpoly",[{"type":128,"definedAt":"built-in:geom_freqpoly","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_freqpoly","nodeId":"built-in:geom_freqpoly"}]],["geom_step",[{"type":128,"definedAt":"built-in:geom_step","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_step","nodeId":"built-in:geom_step"}]],["geom_map",[{"type":128,"definedAt":"built-in:geom_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_map","nodeId":"built-in:geom_map"}]],["geom_bin2d",[{"type":128,"definedAt":"built-in:geom_bin2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_bin2d","nodeId":"built-in:geom_bin2d"}]],["geom_rug",[{"type":128,"definedAt":"built-in:geom_rug","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_rug","nodeId":"built-in:geom_rug"}]],["geom_raster",[{"type":128,"definedAt":"built-in:geom_raster","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_raster","nodeId":"built-in:geom_raster"}]],["geom_pointrange",[{"type":128,"definedAt":"built-in:geom_pointrange","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_pointrange","nodeId":"built-in:geom_pointrange"}]],["geom_point",[{"type":128,"definedAt":"built-in:geom_point","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_point","nodeId":"built-in:geom_point"}]],["geom_hex",[{"type":128,"definedAt":"built-in:geom_hex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_hex","nodeId":"built-in:geom_hex"}]],["geom_contour_filled",[{"type":128,"definedAt":"built-in:geom_contour_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_contour_filled","nodeId":"built-in:geom_contour_filled"}]],["geom_bar",[{"type":128,"definedAt":"built-in:geom_bar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_bar","nodeId":"built-in:geom_bar"}]],["geom_vline",[{"type":128,"definedAt":"built-in:geom_vline","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_vline","nodeId":"built-in:geom_vline"}]],["geom_linerange",[{"type":128,"definedAt":"built-in:geom_linerange","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_linerange","nodeId":"built-in:geom_linerange"}]],["geom_curve",[{"type":128,"definedAt":"built-in:geom_curve","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_curve","nodeId":"built-in:geom_curve"}]],["geom_path",[{"type":128,"definedAt":"built-in:geom_path","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_path","nodeId":"built-in:geom_path"}]],["geom_polygon",[{"type":128,"definedAt":"built-in:geom_polygon","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_polygon","nodeId":"built-in:geom_polygon"}]],["geom_sf_label",[{"type":128,"definedAt":"built-in:geom_sf_label","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_sf_label","nodeId":"built-in:geom_sf_label"}]],["geom_density_2d_filled",[{"type":128,"definedAt":"built-in:geom_density_2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_density_2d_filled","nodeId":"built-in:geom_density_2d_filled"}]],["geom_dumbbell",[{"type":128,"definedAt":"built-in:geom_dumbbell","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_dumbbell","nodeId":"built-in:geom_dumbbell"}]],["geom_encircle",[{"type":128,"definedAt":"built-in:geom_encircle","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"geom_encircle","nodeId":"built-in:geom_encircle"}]],["stat_count",[{"type":128,"definedAt":"built-in:stat_count","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_count","nodeId":"built-in:stat_count"}]],["stat_density",[{"type":128,"definedAt":"built-in:stat_density","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_density","nodeId":"built-in:stat_density"}]],["stat_bin_hex",[{"type":128,"definedAt":"built-in:stat_bin_hex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_bin_hex","nodeId":"built-in:stat_bin_hex"}]],["stat_bin_2d",[{"type":128,"definedAt":"built-in:stat_bin_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_bin_2d","nodeId":"built-in:stat_bin_2d"}]],["stat_summary_bin",[{"type":128,"definedAt":"built-in:stat_summary_bin","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_summary_bin","nodeId":"built-in:stat_summary_bin"}]],["stat_identity",[{"type":128,"definedAt":"built-in:stat_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_identity","nodeId":"built-in:stat_identity"}]],["stat_qq",[{"type":128,"definedAt":"built-in:stat_qq","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_qq","nodeId":"built-in:stat_qq"}]],["stat_binhex",[{"type":128,"definedAt":"built-in:stat_binhex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_binhex","nodeId":"built-in:stat_binhex"}]],["stat_boxplot",[{"type":128,"definedAt":"built-in:stat_boxplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_boxplot","nodeId":"built-in:stat_boxplot"}]],["stat_function",[{"type":128,"definedAt":"built-in:stat_function","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_function","nodeId":"built-in:stat_function"}]],["stat_align",[{"type":128,"definedAt":"built-in:stat_align","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_align","nodeId":"built-in:stat_align"}]],["stat_contour_filled",[{"type":128,"definedAt":"built-in:stat_contour_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_contour_filled","nodeId":"built-in:stat_contour_filled"}]],["stat_summary_2d",[{"type":128,"definedAt":"built-in:stat_summary_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_summary_2d","nodeId":"built-in:stat_summary_2d"}]],["stat_qq_line",[{"type":128,"definedAt":"built-in:stat_qq_line","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_qq_line","nodeId":"built-in:stat_qq_line"}]],["stat_contour",[{"type":128,"definedAt":"built-in:stat_contour","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_contour","nodeId":"built-in:stat_contour"}]],["stat_ydensity",[{"type":128,"definedAt":"built-in:stat_ydensity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_ydensity","nodeId":"built-in:stat_ydensity"}]],["stat_summary_hex",[{"type":128,"definedAt":"built-in:stat_summary_hex","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_summary_hex","nodeId":"built-in:stat_summary_hex"}]],["stat_summary2d",[{"type":128,"definedAt":"built-in:stat_summary2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_summary2d","nodeId":"built-in:stat_summary2d"}]],["stat_sf_coordinates",[{"type":128,"definedAt":"built-in:stat_sf_coordinates","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_sf_coordinates","nodeId":"built-in:stat_sf_coordinates"}]],["stat_density_2d_filled",[{"type":128,"definedAt":"built-in:stat_density_2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_density_2d_filled","nodeId":"built-in:stat_density_2d_filled"}]],["stat_smooth",[{"type":128,"definedAt":"built-in:stat_smooth","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_smooth","nodeId":"built-in:stat_smooth"}]],["stat_density2d",[{"type":128,"definedAt":"built-in:stat_density2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_density2d","nodeId":"built-in:stat_density2d"}]],["stat_ecdf",[{"type":128,"definedAt":"built-in:stat_ecdf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_ecdf","nodeId":"built-in:stat_ecdf"}]],["stat_sf",[{"type":128,"definedAt":"built-in:stat_sf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_sf","nodeId":"built-in:stat_sf"}]],["stat_quantile",[{"type":128,"definedAt":"built-in:stat_quantile","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_quantile","nodeId":"built-in:stat_quantile"}]],["stat_unique",[{"type":128,"definedAt":"built-in:stat_unique","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_unique","nodeId":"built-in:stat_unique"}]],["stat_density_2d",[{"type":128,"definedAt":"built-in:stat_density_2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_density_2d","nodeId":"built-in:stat_density_2d"}]],["stat_ellipse",[{"type":128,"definedAt":"built-in:stat_ellipse","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_ellipse","nodeId":"built-in:stat_ellipse"}]],["stat_summary",[{"type":128,"definedAt":"built-in:stat_summary","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_summary","nodeId":"built-in:stat_summary"}]],["stat_density2d_filled",[{"type":128,"definedAt":"built-in:stat_density2d_filled","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_density2d_filled","nodeId":"built-in:stat_density2d_filled"}]],["stat_bin",[{"type":128,"definedAt":"built-in:stat_bin","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_bin","nodeId":"built-in:stat_bin"}]],["stat_sum",[{"type":128,"definedAt":"built-in:stat_sum","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_sum","nodeId":"built-in:stat_sum"}]],["stat_spoke",[{"type":128,"definedAt":"built-in:stat_spoke","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_spoke","nodeId":"built-in:stat_spoke"}]],["stat_bin2d",[{"type":128,"definedAt":"built-in:stat_bin2d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"stat_bin2d","nodeId":"built-in:stat_bin2d"}]],["labs",[{"type":128,"definedAt":"built-in:labs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"labs","nodeId":"built-in:labs"}]],["theme_void",[{"type":128,"definedAt":"built-in:theme_void","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_void","nodeId":"built-in:theme_void"}]],["theme_test",[{"type":128,"definedAt":"built-in:theme_test","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_test","nodeId":"built-in:theme_test"}]],["theme_minimal",[{"type":128,"definedAt":"built-in:theme_minimal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_minimal","nodeId":"built-in:theme_minimal"}]],["theme_light",[{"type":128,"definedAt":"built-in:theme_light","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_light","nodeId":"built-in:theme_light"}]],["theme",[{"type":128,"definedAt":"built-in:theme","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme","nodeId":"built-in:theme"}]],["theme_get",[{"type":128,"definedAt":"built-in:theme_get","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_get","nodeId":"built-in:theme_get"}]],["theme_gray",[{"type":128,"definedAt":"built-in:theme_gray","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_gray","nodeId":"built-in:theme_gray"}]],["theme_dark",[{"type":128,"definedAt":"built-in:theme_dark","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_dark","nodeId":"built-in:theme_dark"}]],["theme_classic",[{"type":128,"definedAt":"built-in:theme_classic","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_classic","nodeId":"built-in:theme_classic"}]],["theme_linedraw",[{"type":128,"definedAt":"built-in:theme_linedraw","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_linedraw","nodeId":"built-in:theme_linedraw"}]],["theme_update",[{"type":128,"definedAt":"built-in:theme_update","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_update","nodeId":"built-in:theme_update"}]],["theme_replace",[{"type":128,"definedAt":"built-in:theme_replace","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_replace","nodeId":"built-in:theme_replace"}]],["theme_grey",[{"type":128,"definedAt":"built-in:theme_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_grey","nodeId":"built-in:theme_grey"}]],["theme_bw",[{"type":128,"definedAt":"built-in:theme_bw","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_bw","nodeId":"built-in:theme_bw"}]],["theme_tufte",[{"type":128,"definedAt":"built-in:theme_tufte","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_tufte","nodeId":"built-in:theme_tufte"}]],["theme_survminer",[{"type":128,"definedAt":"built-in:theme_survminer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_survminer","nodeId":"built-in:theme_survminer"}]],["facet_null",[{"type":128,"definedAt":"built-in:facet_null","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"facet_null","nodeId":"built-in:facet_null"}]],["facet_grid",[{"type":128,"definedAt":"built-in:facet_grid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"facet_grid","nodeId":"built-in:facet_grid"}]],["facet_wrap",[{"type":128,"definedAt":"built-in:facet_wrap","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"facet_wrap","nodeId":"built-in:facet_wrap"}]],["xlab",[{"type":128,"definedAt":"built-in:xlab","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"xlab","nodeId":"built-in:xlab"}]],["xlim",[{"type":128,"definedAt":"built-in:xlim","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"xlim","nodeId":"built-in:xlim"}]],["ylab",[{"type":128,"definedAt":"built-in:ylab","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"ylab","nodeId":"built-in:ylab"}]],["ylim",[{"type":128,"definedAt":"built-in:ylim","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"ylim","nodeId":"built-in:ylim"}]],["scale_linewidth_ordinal",[{"type":128,"definedAt":"built-in:scale_linewidth_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_ordinal","nodeId":"built-in:scale_linewidth_ordinal"}]],["scale_fill_steps",[{"type":128,"definedAt":"built-in:scale_fill_steps","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_steps","nodeId":"built-in:scale_fill_steps"}]],["scale_color_gradient2",[{"type":128,"definedAt":"built-in:scale_color_gradient2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_gradient2","nodeId":"built-in:scale_color_gradient2"}]],["scale_size_manual",[{"type":128,"definedAt":"built-in:scale_size_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_manual","nodeId":"built-in:scale_size_manual"}]],["scale_colour_discrete",[{"type":128,"definedAt":"built-in:scale_colour_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_discrete","nodeId":"built-in:scale_colour_discrete"}]],["scale_color_identity",[{"type":128,"definedAt":"built-in:scale_color_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_identity","nodeId":"built-in:scale_color_identity"}]],["scale_fill_fermenter",[{"type":128,"definedAt":"built-in:scale_fill_fermenter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_fermenter","nodeId":"built-in:scale_fill_fermenter"}]],["scale_alpha_manual",[{"type":128,"definedAt":"built-in:scale_alpha_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_manual","nodeId":"built-in:scale_alpha_manual"}]],["scale_fill_gradient",[{"type":128,"definedAt":"built-in:scale_fill_gradient","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_gradient","nodeId":"built-in:scale_fill_gradient"}]],["scale_size_date",[{"type":128,"definedAt":"built-in:scale_size_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_date","nodeId":"built-in:scale_size_date"}]],["scale_fill_viridis_b",[{"type":128,"definedAt":"built-in:scale_fill_viridis_b","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_viridis_b","nodeId":"built-in:scale_fill_viridis_b"}]],["scale_x_time",[{"type":128,"definedAt":"built-in:scale_x_time","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_time","nodeId":"built-in:scale_x_time"}]],["scale_linetype_manual",[{"type":128,"definedAt":"built-in:scale_linetype_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype_manual","nodeId":"built-in:scale_linetype_manual"}]],["scale_alpha_binned",[{"type":128,"definedAt":"built-in:scale_alpha_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_binned","nodeId":"built-in:scale_alpha_binned"}]],["scale_color_grey",[{"type":128,"definedAt":"built-in:scale_color_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_grey","nodeId":"built-in:scale_color_grey"}]],["scale_colour_gradient",[{"type":128,"definedAt":"built-in:scale_colour_gradient","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_gradient","nodeId":"built-in:scale_colour_gradient"}]],["scale_linewidth_date",[{"type":128,"definedAt":"built-in:scale_linewidth_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_date","nodeId":"built-in:scale_linewidth_date"}]],["scale_color_steps2",[{"type":128,"definedAt":"built-in:scale_color_steps2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_steps2","nodeId":"built-in:scale_color_steps2"}]],["scale_color_viridis_b",[{"type":128,"definedAt":"built-in:scale_color_viridis_b","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_viridis_b","nodeId":"built-in:scale_color_viridis_b"}]],["scale_size_binned",[{"type":128,"definedAt":"built-in:scale_size_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_binned","nodeId":"built-in:scale_size_binned"}]],["scale_colour_gradientn",[{"type":128,"definedAt":"built-in:scale_colour_gradientn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_gradientn","nodeId":"built-in:scale_colour_gradientn"}]],["scale_linewidth_manual",[{"type":128,"definedAt":"built-in:scale_linewidth_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_manual","nodeId":"built-in:scale_linewidth_manual"}]],["scale_fill_viridis_c",[{"type":128,"definedAt":"built-in:scale_fill_viridis_c","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_viridis_c","nodeId":"built-in:scale_fill_viridis_c"}]],["scale_fill_manual",[{"type":128,"definedAt":"built-in:scale_fill_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_manual","nodeId":"built-in:scale_fill_manual"}]],["scale_color_viridis_c",[{"type":128,"definedAt":"built-in:scale_color_viridis_c","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_viridis_c","nodeId":"built-in:scale_color_viridis_c"}]],["scale_fill_discrete",[{"type":128,"definedAt":"built-in:scale_fill_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_discrete","nodeId":"built-in:scale_fill_discrete"}]],["scale_size_discrete",[{"type":128,"definedAt":"built-in:scale_size_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_discrete","nodeId":"built-in:scale_size_discrete"}]],["scale_fill_binned",[{"type":128,"definedAt":"built-in:scale_fill_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_binned","nodeId":"built-in:scale_fill_binned"}]],["scale_fill_viridis_d",[{"type":128,"definedAt":"built-in:scale_fill_viridis_d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_viridis_d","nodeId":"built-in:scale_fill_viridis_d"}]],["scale_colour_fermenter",[{"type":128,"definedAt":"built-in:scale_colour_fermenter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_fermenter","nodeId":"built-in:scale_colour_fermenter"}]],["scale_color_viridis_d",[{"type":128,"definedAt":"built-in:scale_color_viridis_d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_viridis_d","nodeId":"built-in:scale_color_viridis_d"}]],["scale_x_datetime",[{"type":128,"definedAt":"built-in:scale_x_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_datetime","nodeId":"built-in:scale_x_datetime"}]],["scale_size_identity",[{"type":128,"definedAt":"built-in:scale_size_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_identity","nodeId":"built-in:scale_size_identity"}]],["scale_linewidth_identity",[{"type":128,"definedAt":"built-in:scale_linewidth_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_identity","nodeId":"built-in:scale_linewidth_identity"}]],["scale_shape_ordinal",[{"type":128,"definedAt":"built-in:scale_shape_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_ordinal","nodeId":"built-in:scale_shape_ordinal"}]],["scale_linewidth_discrete",[{"type":128,"definedAt":"built-in:scale_linewidth_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_discrete","nodeId":"built-in:scale_linewidth_discrete"}]],["scale_fill_ordinal",[{"type":128,"definedAt":"built-in:scale_fill_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_ordinal","nodeId":"built-in:scale_fill_ordinal"}]],["scale_y_time",[{"type":128,"definedAt":"built-in:scale_y_time","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_time","nodeId":"built-in:scale_y_time"}]],["scale_color_ordinal",[{"type":128,"definedAt":"built-in:scale_color_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_ordinal","nodeId":"built-in:scale_color_ordinal"}]],["scale_size_ordinal",[{"type":128,"definedAt":"built-in:scale_size_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_ordinal","nodeId":"built-in:scale_size_ordinal"}]],["scale_colour_distiller",[{"type":128,"definedAt":"built-in:scale_colour_distiller","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_distiller","nodeId":"built-in:scale_colour_distiller"}]],["scale_linewidth_datetime",[{"type":128,"definedAt":"built-in:scale_linewidth_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_datetime","nodeId":"built-in:scale_linewidth_datetime"}]],["scale_alpha_identity",[{"type":128,"definedAt":"built-in:scale_alpha_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_identity","nodeId":"built-in:scale_alpha_identity"}]],["scale_color_steps",[{"type":128,"definedAt":"built-in:scale_color_steps","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_steps","nodeId":"built-in:scale_color_steps"}]],["scale_alpha_discrete",[{"type":128,"definedAt":"built-in:scale_alpha_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_discrete","nodeId":"built-in:scale_alpha_discrete"}]],["scale_fill_date",[{"type":128,"definedAt":"built-in:scale_fill_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_date","nodeId":"built-in:scale_fill_date"}]],["scale_x_reverse",[{"type":128,"definedAt":"built-in:scale_x_reverse","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_reverse","nodeId":"built-in:scale_x_reverse"}]],["scale_fill_gradientn",[{"type":128,"definedAt":"built-in:scale_fill_gradientn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_gradientn","nodeId":"built-in:scale_fill_gradientn"}]],["scale_size_datetime",[{"type":128,"definedAt":"built-in:scale_size_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_datetime","nodeId":"built-in:scale_size_datetime"}]],["scale_y_continuous",[{"type":128,"definedAt":"built-in:scale_y_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_continuous","nodeId":"built-in:scale_y_continuous"}]],["scale_colour_steps",[{"type":128,"definedAt":"built-in:scale_colour_steps","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_steps","nodeId":"built-in:scale_colour_steps"}]],["scale_color_distiller",[{"type":128,"definedAt":"built-in:scale_color_distiller","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_distiller","nodeId":"built-in:scale_color_distiller"}]],["scale_colour_ordinal",[{"type":128,"definedAt":"built-in:scale_colour_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_ordinal","nodeId":"built-in:scale_colour_ordinal"}]],["scale_y_datetime",[{"type":128,"definedAt":"built-in:scale_y_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_datetime","nodeId":"built-in:scale_y_datetime"}]],["scale_linetype_discrete",[{"type":128,"definedAt":"built-in:scale_linetype_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype_discrete","nodeId":"built-in:scale_linetype_discrete"}]],["scale_colour_viridis_b",[{"type":128,"definedAt":"built-in:scale_colour_viridis_b","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_viridis_b","nodeId":"built-in:scale_colour_viridis_b"}]],["scale_alpha_datetime",[{"type":128,"definedAt":"built-in:scale_alpha_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_datetime","nodeId":"built-in:scale_alpha_datetime"}]],["scale_continuous_identity",[{"type":128,"definedAt":"built-in:scale_continuous_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_continuous_identity","nodeId":"built-in:scale_continuous_identity"}]],["scale_fill_brewer",[{"type":128,"definedAt":"built-in:scale_fill_brewer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_brewer","nodeId":"built-in:scale_fill_brewer"}]],["scale_shape_identity",[{"type":128,"definedAt":"built-in:scale_shape_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_identity","nodeId":"built-in:scale_shape_identity"}]],["scale_color_discrete",[{"type":128,"definedAt":"built-in:scale_color_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_discrete","nodeId":"built-in:scale_color_discrete"}]],["scale_colour_viridis_c",[{"type":128,"definedAt":"built-in:scale_colour_viridis_c","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_viridis_c","nodeId":"built-in:scale_colour_viridis_c"}]],["scale_linetype_identity",[{"type":128,"definedAt":"built-in:scale_linetype_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype_identity","nodeId":"built-in:scale_linetype_identity"}]],["scale_colour_hue",[{"type":128,"definedAt":"built-in:scale_colour_hue","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_hue","nodeId":"built-in:scale_colour_hue"}]],["scale_linewidth_binned",[{"type":128,"definedAt":"built-in:scale_linewidth_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_binned","nodeId":"built-in:scale_linewidth_binned"}]],["scale_color_hue",[{"type":128,"definedAt":"built-in:scale_color_hue","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_hue","nodeId":"built-in:scale_color_hue"}]],["scale_shape_continuous",[{"type":128,"definedAt":"built-in:scale_shape_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_continuous","nodeId":"built-in:scale_shape_continuous"}]],["scale_colour_viridis_d",[{"type":128,"definedAt":"built-in:scale_colour_viridis_d","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_viridis_d","nodeId":"built-in:scale_colour_viridis_d"}]],["scale_size_continuous",[{"type":128,"definedAt":"built-in:scale_size_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_continuous","nodeId":"built-in:scale_size_continuous"}]],["scale_color_manual",[{"type":128,"definedAt":"built-in:scale_color_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_manual","nodeId":"built-in:scale_color_manual"}]],["scale_alpha_date",[{"type":128,"definedAt":"built-in:scale_alpha_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_date","nodeId":"built-in:scale_alpha_date"}]],["scale_y_sqrt",[{"type":128,"definedAt":"built-in:scale_y_sqrt","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_sqrt","nodeId":"built-in:scale_y_sqrt"}]],["scale_shape_binned",[{"type":128,"definedAt":"built-in:scale_shape_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_binned","nodeId":"built-in:scale_shape_binned"}]],["scale_size",[{"type":128,"definedAt":"built-in:scale_size","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size","nodeId":"built-in:scale_size"}]],["scale_color_fermenter",[{"type":128,"definedAt":"built-in:scale_color_fermenter","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_fermenter","nodeId":"built-in:scale_color_fermenter"}]],["scale_color_stepsn",[{"type":128,"definedAt":"built-in:scale_color_stepsn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_stepsn","nodeId":"built-in:scale_color_stepsn"}]],["scale_size_area",[{"type":128,"definedAt":"built-in:scale_size_area","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_area","nodeId":"built-in:scale_size_area"}]],["scale_y_binned",[{"type":128,"definedAt":"built-in:scale_y_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_binned","nodeId":"built-in:scale_y_binned"}]],["scale_y_discrete",[{"type":128,"definedAt":"built-in:scale_y_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_discrete","nodeId":"built-in:scale_y_discrete"}]],["scale_alpha_continuous",[{"type":128,"definedAt":"built-in:scale_alpha_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_continuous","nodeId":"built-in:scale_alpha_continuous"}]],["scale_fill_continuous",[{"type":128,"definedAt":"built-in:scale_fill_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_continuous","nodeId":"built-in:scale_fill_continuous"}]],["scale_linetype_continuous",[{"type":128,"definedAt":"built-in:scale_linetype_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype_continuous","nodeId":"built-in:scale_linetype_continuous"}]],["scale_colour_steps2",[{"type":128,"definedAt":"built-in:scale_colour_steps2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_steps2","nodeId":"built-in:scale_colour_steps2"}]],["scale_colour_datetime",[{"type":128,"definedAt":"built-in:scale_colour_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_datetime","nodeId":"built-in:scale_colour_datetime"}]],["scale_colour_grey",[{"type":128,"definedAt":"built-in:scale_colour_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_grey","nodeId":"built-in:scale_colour_grey"}]],["scale_x_log10",[{"type":128,"definedAt":"built-in:scale_x_log10","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_log10","nodeId":"built-in:scale_x_log10"}]],["scale_x_discrete",[{"type":128,"definedAt":"built-in:scale_x_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_discrete","nodeId":"built-in:scale_x_discrete"}]],["scale_color_continuous",[{"type":128,"definedAt":"built-in:scale_color_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_continuous","nodeId":"built-in:scale_color_continuous"}]],["scale_type",[{"type":128,"definedAt":"built-in:scale_type","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_type","nodeId":"built-in:scale_type"}]],["scale_y_reverse",[{"type":128,"definedAt":"built-in:scale_y_reverse","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_reverse","nodeId":"built-in:scale_y_reverse"}]],["scale_colour_gradient2",[{"type":128,"definedAt":"built-in:scale_colour_gradient2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_gradient2","nodeId":"built-in:scale_colour_gradient2"}]],["scale_color_datetime",[{"type":128,"definedAt":"built-in:scale_color_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_datetime","nodeId":"built-in:scale_color_datetime"}]],["scale_color_date",[{"type":128,"definedAt":"built-in:scale_color_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_date","nodeId":"built-in:scale_color_date"}]],["scale_x_continuous",[{"type":128,"definedAt":"built-in:scale_x_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_continuous","nodeId":"built-in:scale_x_continuous"}]],["scale_colour_manual",[{"type":128,"definedAt":"built-in:scale_colour_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_manual","nodeId":"built-in:scale_colour_manual"}]],["scale_fill_gradient2",[{"type":128,"definedAt":"built-in:scale_fill_gradient2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_gradient2","nodeId":"built-in:scale_fill_gradient2"}]],["scale_fill_grey",[{"type":128,"definedAt":"built-in:scale_fill_grey","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_grey","nodeId":"built-in:scale_fill_grey"}]],["scale_colour_stepsn",[{"type":128,"definedAt":"built-in:scale_colour_stepsn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_stepsn","nodeId":"built-in:scale_colour_stepsn"}]],["scale_colour_binned",[{"type":128,"definedAt":"built-in:scale_colour_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_binned","nodeId":"built-in:scale_colour_binned"}]],["scale_color_binned",[{"type":128,"definedAt":"built-in:scale_color_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_binned","nodeId":"built-in:scale_color_binned"}]],["scale_color_gradientn",[{"type":128,"definedAt":"built-in:scale_color_gradientn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_gradientn","nodeId":"built-in:scale_color_gradientn"}]],["scale_colour_date",[{"type":128,"definedAt":"built-in:scale_colour_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_date","nodeId":"built-in:scale_colour_date"}]],["scale_fill_distiller",[{"type":128,"definedAt":"built-in:scale_fill_distiller","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_distiller","nodeId":"built-in:scale_fill_distiller"}]],["scale_color_gradient",[{"type":128,"definedAt":"built-in:scale_color_gradient","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_gradient","nodeId":"built-in:scale_color_gradient"}]],["scale_linewidth_continuous",[{"type":128,"definedAt":"built-in:scale_linewidth_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth_continuous","nodeId":"built-in:scale_linewidth_continuous"}]],["scale_shape",[{"type":128,"definedAt":"built-in:scale_shape","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape","nodeId":"built-in:scale_shape"}]],["scale_fill_hue",[{"type":128,"definedAt":"built-in:scale_fill_hue","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_hue","nodeId":"built-in:scale_fill_hue"}]],["scale_linetype",[{"type":128,"definedAt":"built-in:scale_linetype","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype","nodeId":"built-in:scale_linetype"}]],["scale_colour_identity",[{"type":128,"definedAt":"built-in:scale_colour_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_identity","nodeId":"built-in:scale_colour_identity"}]],["scale_discrete_manual",[{"type":128,"definedAt":"built-in:scale_discrete_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_discrete_manual","nodeId":"built-in:scale_discrete_manual"}]],["scale_fill_identity",[{"type":128,"definedAt":"built-in:scale_fill_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_identity","nodeId":"built-in:scale_fill_identity"}]],["scale_y_log10",[{"type":128,"definedAt":"built-in:scale_y_log10","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_log10","nodeId":"built-in:scale_y_log10"}]],["scale_linetype_binned",[{"type":128,"definedAt":"built-in:scale_linetype_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype_binned","nodeId":"built-in:scale_linetype_binned"}]],["scale_size_binned_area",[{"type":128,"definedAt":"built-in:scale_size_binned_area","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_size_binned_area","nodeId":"built-in:scale_size_binned_area"}]],["scale_y_date",[{"type":128,"definedAt":"built-in:scale_y_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_y_date","nodeId":"built-in:scale_y_date"}]],["scale_x_binned",[{"type":128,"definedAt":"built-in:scale_x_binned","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_binned","nodeId":"built-in:scale_x_binned"}]],["scale_shape_discrete",[{"type":128,"definedAt":"built-in:scale_shape_discrete","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_discrete","nodeId":"built-in:scale_shape_discrete"}]],["scale_colour_brewer",[{"type":128,"definedAt":"built-in:scale_colour_brewer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_brewer","nodeId":"built-in:scale_colour_brewer"}]],["scale_x_date",[{"type":128,"definedAt":"built-in:scale_x_date","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_date","nodeId":"built-in:scale_x_date"}]],["scale_discrete_identity",[{"type":128,"definedAt":"built-in:scale_discrete_identity","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_discrete_identity","nodeId":"built-in:scale_discrete_identity"}]],["scale_alpha",[{"type":128,"definedAt":"built-in:scale_alpha","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha","nodeId":"built-in:scale_alpha"}]],["scale_fill_steps2",[{"type":128,"definedAt":"built-in:scale_fill_steps2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_steps2","nodeId":"built-in:scale_fill_steps2"}]],["scale_color_brewer",[{"type":128,"definedAt":"built-in:scale_color_brewer","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_brewer","nodeId":"built-in:scale_color_brewer"}]],["scale_fill_datetime",[{"type":128,"definedAt":"built-in:scale_fill_datetime","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_datetime","nodeId":"built-in:scale_fill_datetime"}]],["scale_shape_manual",[{"type":128,"definedAt":"built-in:scale_shape_manual","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_manual","nodeId":"built-in:scale_shape_manual"}]],["scale_colour_continuous",[{"type":128,"definedAt":"built-in:scale_colour_continuous","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_continuous","nodeId":"built-in:scale_colour_continuous"}]],["scale_alpha_ordinal",[{"type":128,"definedAt":"built-in:scale_alpha_ordinal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_alpha_ordinal","nodeId":"built-in:scale_alpha_ordinal"}]],["scale_linewidth",[{"type":128,"definedAt":"built-in:scale_linewidth","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linewidth","nodeId":"built-in:scale_linewidth"}]],["scale_x_sqrt",[{"type":128,"definedAt":"built-in:scale_x_sqrt","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_x_sqrt","nodeId":"built-in:scale_x_sqrt"}]],["scale_fill_stepsn",[{"type":128,"definedAt":"built-in:scale_fill_stepsn","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_stepsn","nodeId":"built-in:scale_fill_stepsn"}]],["scale_radius",[{"type":128,"definedAt":"built-in:scale_radius","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_radius","nodeId":"built-in:scale_radius"}]],["rotateTextX",[{"type":128,"definedAt":"built-in:rotateTextX","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"rotateTextX","nodeId":"built-in:rotateTextX"}]],["removeGridX",[{"type":128,"definedAt":"built-in:removeGridX","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"removeGridX","nodeId":"built-in:removeGridX"}]],["removeGridY",[{"type":128,"definedAt":"built-in:removeGridY","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"removeGridY","nodeId":"built-in:removeGridY"}]],["removeGrid",[{"type":128,"definedAt":"built-in:removeGrid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"removeGrid","nodeId":"built-in:removeGrid"}]],["coord_trans",[{"type":128,"definedAt":"built-in:coord_trans","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_trans","nodeId":"built-in:coord_trans"}]],["coord_sf",[{"type":128,"definedAt":"built-in:coord_sf","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_sf","nodeId":"built-in:coord_sf"}]],["coord_cartesian",[{"type":128,"definedAt":"built-in:coord_cartesian","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_cartesian","nodeId":"built-in:coord_cartesian"}]],["coord_fixed",[{"type":128,"definedAt":"built-in:coord_fixed","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_fixed","nodeId":"built-in:coord_fixed"}]],["coord_flip",[{"type":128,"definedAt":"built-in:coord_flip","config":{"tags":["deprecated"]},"name":["coord_flip","ggplot2"],"nodeId":"built-in:coord_flip"}]],["coord_quickmap",[{"type":128,"definedAt":"built-in:coord_quickmap","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_quickmap","nodeId":"built-in:coord_quickmap"}]],["coord_equal",[{"type":128,"definedAt":"built-in:coord_equal","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_equal","nodeId":"built-in:coord_equal"}]],["coord_map",[{"type":128,"definedAt":"built-in:coord_map","config":{"tags":["deprecated"]},"name":["coord_map","ggplot2"],"nodeId":"built-in:coord_map"}]],["coord_polar",[{"type":128,"definedAt":"built-in:coord_polar","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_polar","nodeId":"built-in:coord_polar"}]],["coord_munch",[{"type":128,"definedAt":"built-in:coord_munch","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_munch","nodeId":"built-in:coord_munch"}]],["coord_radial",[{"type":128,"definedAt":"built-in:coord_radial","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"coord_radial","nodeId":"built-in:coord_radial"}]],["annotate",[{"type":128,"definedAt":"built-in:annotate","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"annotate","nodeId":"built-in:annotate"}]],["annotation_custom",[{"type":128,"definedAt":"built-in:annotation_custom","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"annotation_custom","nodeId":"built-in:annotation_custom"}]],["annotation_raster",[{"type":128,"definedAt":"built-in:annotation_raster","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"annotation_raster","nodeId":"built-in:annotation_raster"}]],["annotation_map",[{"type":128,"definedAt":"built-in:annotation_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"annotation_map","nodeId":"built-in:annotation_map"}]],["annotation_logticks",[{"type":128,"definedAt":"built-in:annotation_logticks","config":{"tags":["deprecated"]},"name":["annotation_logticks","ggplot2"],"nodeId":"built-in:annotation_logticks"}]],["borders",[{"type":128,"definedAt":"built-in:borders","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"borders","nodeId":"built-in:borders"}]],["ggtitle",[{"type":128,"definedAt":"built-in:ggtitle","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"ggtitle","nodeId":"built-in:ggtitle"}]],["expansion",[{"type":128,"definedAt":"built-in:expansion","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"expansion","nodeId":"built-in:expansion"}]],["expand_limits",[{"type":128,"definedAt":"built-in:expand_limits","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"expand_limits","nodeId":"built-in:expand_limits"}]],["expand_scale",[{"type":128,"definedAt":"built-in:expand_scale","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"expand_scale","nodeId":"built-in:expand_scale"}]],["guides",[{"type":128,"definedAt":"built-in:guides","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"guides","nodeId":"built-in:guides"}]],["wrap_by",[{"type":128,"definedAt":"built-in:wrap_by","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"wrap_by","nodeId":"built-in:wrap_by"}]],["theme_solid",[{"type":128,"definedAt":"built-in:theme_solid","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_solid","nodeId":"built-in:theme_solid"}]],["theme_hc",[{"type":128,"definedAt":"built-in:theme_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_hc","nodeId":"built-in:theme_hc"}]],["theme_excel_new",[{"type":128,"definedAt":"built-in:theme_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_excel_new","nodeId":"built-in:theme_excel_new"}]],["theme_few",[{"type":128,"definedAt":"built-in:theme_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_few","nodeId":"built-in:theme_few"}]],["theme_clean",[{"type":128,"definedAt":"built-in:theme_clean","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_clean","nodeId":"built-in:theme_clean"}]],["theme_wsj",[{"type":128,"definedAt":"built-in:theme_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_wsj","nodeId":"built-in:theme_wsj"}]],["theme_calc",[{"type":128,"definedAt":"built-in:theme_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_calc","nodeId":"built-in:theme_calc"}]],["theme_par",[{"type":128,"definedAt":"built-in:theme_par","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_par","nodeId":"built-in:theme_par"}]],["theme_igray",[{"type":128,"definedAt":"built-in:theme_igray","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_igray","nodeId":"built-in:theme_igray"}]],["theme_solarized_2",[{"type":128,"definedAt":"built-in:theme_solarized_2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_solarized_2","nodeId":"built-in:theme_solarized_2"}]],["theme_excel",[{"type":128,"definedAt":"built-in:theme_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_excel","nodeId":"built-in:theme_excel"}]],["theme_economist",[{"type":128,"definedAt":"built-in:theme_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_economist","nodeId":"built-in:theme_economist"}]],["theme_stata",[{"type":128,"definedAt":"built-in:theme_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_stata","nodeId":"built-in:theme_stata"}]],["theme_map",[{"type":128,"definedAt":"built-in:theme_map","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_map","nodeId":"built-in:theme_map"}]],["theme_fivethirtyeight",[{"type":128,"definedAt":"built-in:theme_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_fivethirtyeight","nodeId":"built-in:theme_fivethirtyeight"}]],["theme_economist_white",[{"type":128,"definedAt":"built-in:theme_economist_white","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_economist_white","nodeId":"built-in:theme_economist_white"}]],["theme_base",[{"type":128,"definedAt":"built-in:theme_base","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_base","nodeId":"built-in:theme_base"}]],["theme_foundation",[{"type":128,"definedAt":"built-in:theme_foundation","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_foundation","nodeId":"built-in:theme_foundation"}]],["theme_gdocs",[{"type":128,"definedAt":"built-in:theme_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_gdocs","nodeId":"built-in:theme_gdocs"}]],["theme_pander",[{"type":128,"definedAt":"built-in:theme_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_pander","nodeId":"built-in:theme_pander"}]],["theme_solarized",[{"type":128,"definedAt":"built-in:theme_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"theme_solarized","nodeId":"built-in:theme_solarized"}]],["scale_shape_tableau",[{"type":128,"definedAt":"built-in:scale_shape_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_tableau","nodeId":"built-in:scale_shape_tableau"}]],["scale_fill_pander",[{"type":128,"definedAt":"built-in:scale_fill_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_pander","nodeId":"built-in:scale_fill_pander"}]],["scale_shape_few",[{"type":128,"definedAt":"built-in:scale_shape_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_few","nodeId":"built-in:scale_shape_few"}]],["scale_colour_excel_new",[{"type":128,"definedAt":"built-in:scale_colour_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_excel_new","nodeId":"built-in:scale_colour_excel_new"}]],["scale_colour_hc",[{"type":128,"definedAt":"built-in:scale_colour_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_hc","nodeId":"built-in:scale_colour_hc"}]],["scale_fill_ptol",[{"type":128,"definedAt":"built-in:scale_fill_ptol","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_ptol","nodeId":"built-in:scale_fill_ptol"}]],["scale_fill_gradient2_tableau",[{"type":128,"definedAt":"built-in:scale_fill_gradient2_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_gradient2_tableau","nodeId":"built-in:scale_fill_gradient2_tableau"}]],["scale_shape_calc",[{"type":128,"definedAt":"built-in:scale_shape_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_calc","nodeId":"built-in:scale_shape_calc"}]],["scale_fill_stata",[{"type":128,"definedAt":"built-in:scale_fill_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_stata","nodeId":"built-in:scale_fill_stata"}]],["scale_colour_tableau",[{"type":128,"definedAt":"built-in:scale_colour_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_tableau","nodeId":"built-in:scale_colour_tableau"}]],["scale_colour_colorblind",[{"type":128,"definedAt":"built-in:scale_colour_colorblind","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_colorblind","nodeId":"built-in:scale_colour_colorblind"}]],["scale_color_stata",[{"type":128,"definedAt":"built-in:scale_color_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_stata","nodeId":"built-in:scale_color_stata"}]],["scale_colour_economist",[{"type":128,"definedAt":"built-in:scale_colour_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_economist","nodeId":"built-in:scale_colour_economist"}]],["scale_fill_calc",[{"type":128,"definedAt":"built-in:scale_fill_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_calc","nodeId":"built-in:scale_fill_calc"}]],["scale_fill_gradient_tableau",[{"type":128,"definedAt":"built-in:scale_fill_gradient_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_gradient_tableau","nodeId":"built-in:scale_fill_gradient_tableau"}]],["scale_shape_cleveland",[{"type":128,"definedAt":"built-in:scale_shape_cleveland","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_cleveland","nodeId":"built-in:scale_shape_cleveland"}]],["scale_color_pander",[{"type":128,"definedAt":"built-in:scale_color_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_pander","nodeId":"built-in:scale_color_pander"}]],["scale_colour_pander",[{"type":128,"definedAt":"built-in:scale_colour_pander","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_pander","nodeId":"built-in:scale_colour_pander"}]],["scale_color_fivethirtyeight",[{"type":128,"definedAt":"built-in:scale_color_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_fivethirtyeight","nodeId":"built-in:scale_color_fivethirtyeight"}]],["scale_color_wsj",[{"type":128,"definedAt":"built-in:scale_color_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_wsj","nodeId":"built-in:scale_color_wsj"}]],["scale_shape_stata",[{"type":128,"definedAt":"built-in:scale_shape_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_stata","nodeId":"built-in:scale_shape_stata"}]],["scale_colour_gdocs",[{"type":128,"definedAt":"built-in:scale_colour_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_gdocs","nodeId":"built-in:scale_colour_gdocs"}]],["scale_color_continuous_tableau",[{"type":128,"definedAt":"built-in:scale_color_continuous_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_continuous_tableau","nodeId":"built-in:scale_color_continuous_tableau"}]],["scale_fill_excel",[{"type":128,"definedAt":"built-in:scale_fill_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_excel","nodeId":"built-in:scale_fill_excel"}]],["scale_color_few",[{"type":128,"definedAt":"built-in:scale_color_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_few","nodeId":"built-in:scale_color_few"}]],["scale_linetype_stata",[{"type":128,"definedAt":"built-in:scale_linetype_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_linetype_stata","nodeId":"built-in:scale_linetype_stata"}]],["scale_shape_tremmel",[{"type":128,"definedAt":"built-in:scale_shape_tremmel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_tremmel","nodeId":"built-in:scale_shape_tremmel"}]],["scale_color_tableau",[{"type":128,"definedAt":"built-in:scale_color_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_tableau","nodeId":"built-in:scale_color_tableau"}]],["scale_color_colorblind",[{"type":128,"definedAt":"built-in:scale_color_colorblind","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_colorblind","nodeId":"built-in:scale_color_colorblind"}]],["scale_fill_colorblind",[{"type":128,"definedAt":"built-in:scale_fill_colorblind","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_colorblind","nodeId":"built-in:scale_fill_colorblind"}]],["scale_colour_stata",[{"type":128,"definedAt":"built-in:scale_colour_stata","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_stata","nodeId":"built-in:scale_colour_stata"}]],["scale_fill_wsj",[{"type":128,"definedAt":"built-in:scale_fill_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_wsj","nodeId":"built-in:scale_fill_wsj"}]],["scale_colour_calc",[{"type":128,"definedAt":"built-in:scale_colour_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_calc","nodeId":"built-in:scale_colour_calc"}]],["scale_colour_fivethirtyeight",[{"type":128,"definedAt":"built-in:scale_colour_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_fivethirtyeight","nodeId":"built-in:scale_colour_fivethirtyeight"}]],["scale_fill_hc",[{"type":128,"definedAt":"built-in:scale_fill_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_hc","nodeId":"built-in:scale_fill_hc"}]],["scale_shape_circlefill",[{"type":128,"definedAt":"built-in:scale_shape_circlefill","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_shape_circlefill","nodeId":"built-in:scale_shape_circlefill"}]],["scale_fill_excel_new",[{"type":128,"definedAt":"built-in:scale_fill_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_excel_new","nodeId":"built-in:scale_fill_excel_new"}]],["scale_color_solarized",[{"type":128,"definedAt":"built-in:scale_color_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_solarized","nodeId":"built-in:scale_color_solarized"}]],["scale_color_excel",[{"type":128,"definedAt":"built-in:scale_color_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_excel","nodeId":"built-in:scale_color_excel"}]],["scale_colour_excel",[{"type":128,"definedAt":"built-in:scale_colour_excel","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_excel","nodeId":"built-in:scale_colour_excel"}]],["scale_fill_tableau",[{"type":128,"definedAt":"built-in:scale_fill_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_tableau","nodeId":"built-in:scale_fill_tableau"}]],["scale_colour_ptol",[{"type":128,"definedAt":"built-in:scale_colour_ptol","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_ptol","nodeId":"built-in:scale_colour_ptol"}]],["scale_colour_canva",[{"type":128,"definedAt":"built-in:scale_colour_canva","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_canva","nodeId":"built-in:scale_colour_canva"}]],["scale_color_gradient2_tableau",[{"type":128,"definedAt":"built-in:scale_color_gradient2_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_gradient2_tableau","nodeId":"built-in:scale_color_gradient2_tableau"}]],["scale_colour_solarized",[{"type":128,"definedAt":"built-in:scale_colour_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_solarized","nodeId":"built-in:scale_colour_solarized"}]],["scale_colour_gradient2_tableau",[{"type":128,"definedAt":"built-in:scale_colour_gradient2_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_gradient2_tableau","nodeId":"built-in:scale_colour_gradient2_tableau"}]],["scale_fill_canva",[{"type":128,"definedAt":"built-in:scale_fill_canva","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_canva","nodeId":"built-in:scale_fill_canva"}]],["scale_color_ptol",[{"type":128,"definedAt":"built-in:scale_color_ptol","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_ptol","nodeId":"built-in:scale_color_ptol"}]],["scale_color_excel_new",[{"type":128,"definedAt":"built-in:scale_color_excel_new","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_excel_new","nodeId":"built-in:scale_color_excel_new"}]],["scale_color_economist",[{"type":128,"definedAt":"built-in:scale_color_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_economist","nodeId":"built-in:scale_color_economist"}]],["scale_fill_economist",[{"type":128,"definedAt":"built-in:scale_fill_economist","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_economist","nodeId":"built-in:scale_fill_economist"}]],["scale_fill_fivethirtyeight",[{"type":128,"definedAt":"built-in:scale_fill_fivethirtyeight","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_fivethirtyeight","nodeId":"built-in:scale_fill_fivethirtyeight"}]],["scale_colour_gradient_tableau",[{"type":128,"definedAt":"built-in:scale_colour_gradient_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_gradient_tableau","nodeId":"built-in:scale_colour_gradient_tableau"}]],["scale_colour_few",[{"type":128,"definedAt":"built-in:scale_colour_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_few","nodeId":"built-in:scale_colour_few"}]],["scale_color_calc",[{"type":128,"definedAt":"built-in:scale_color_calc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_calc","nodeId":"built-in:scale_color_calc"}]],["scale_fill_few",[{"type":128,"definedAt":"built-in:scale_fill_few","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_few","nodeId":"built-in:scale_fill_few"}]],["scale_fill_gdocs",[{"type":128,"definedAt":"built-in:scale_fill_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_gdocs","nodeId":"built-in:scale_fill_gdocs"}]],["scale_color_hc",[{"type":128,"definedAt":"built-in:scale_color_hc","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_hc","nodeId":"built-in:scale_color_hc"}]],["scale_color_gdocs",[{"type":128,"definedAt":"built-in:scale_color_gdocs","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_gdocs","nodeId":"built-in:scale_color_gdocs"}]],["scale_color_canva",[{"type":128,"definedAt":"built-in:scale_color_canva","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_canva","nodeId":"built-in:scale_color_canva"}]],["scale_color_gradient_tableau",[{"type":128,"definedAt":"built-in:scale_color_gradient_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_color_gradient_tableau","nodeId":"built-in:scale_color_gradient_tableau"}]],["scale_fill_solarized",[{"type":128,"definedAt":"built-in:scale_fill_solarized","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_solarized","nodeId":"built-in:scale_fill_solarized"}]],["scale_fill_continuous_tableau",[{"type":128,"definedAt":"built-in:scale_fill_continuous_tableau","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_fill_continuous_tableau","nodeId":"built-in:scale_fill_continuous_tableau"}]],["scale_colour_wsj",[{"type":128,"definedAt":"built-in:scale_colour_wsj","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"scale_colour_wsj","nodeId":"built-in:scale_colour_wsj"}]],["gradient_color",[{"type":128,"definedAt":"built-in:gradient_color","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"gradient_color","nodeId":"built-in:gradient_color"}]],["ggsurvplot_add_all",[{"type":128,"definedAt":"built-in:ggsurvplot_add_all","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"ggsurvplot_add_all","nodeId":"built-in:ggsurvplot_add_all"}]],["plotCI",[{"type":128,"definedAt":"built-in:plotCI","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"plotCI","nodeId":"built-in:plotCI"}]],["bandplot",[{"type":128,"definedAt":"built-in:bandplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"bandplot","nodeId":"built-in:bandplot"}]],["barplot2",[{"type":128,"definedAt":"built-in:barplot2","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"barplot2","nodeId":"built-in:barplot2"}]],["bubbleplot",[{"type":128,"definedAt":"built-in:bubbleplot","config":{"forceArgs":"all","treatAsFnCall":{"facet_grid":["labeller"]},"hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"bubbleplot","nodeId":"built-in:bubbleplot"}]],["ggdraw",[{"type":128,"definedAt":"built-in:ggdraw","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"ggdraw","nodeId":"built-in:ggdraw"}]],["last_plot",[{"type":128,"definedAt":"built-in:last_plot","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":"last_plot","nodeId":"built-in:last_plot"}]],["tinyplot_add",[{"type":128,"definedAt":"built-in:tinyplot_add","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["tinyplot_add","tinyplot",false],"nodeId":"built-in:tinyplot_add"}]],["plt_add",[{"type":128,"definedAt":"built-in:plt_add","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["plt_add","tinyplot",false],"nodeId":"built-in:plt_add"}]],["image_capture",[{"type":128,"definedAt":"built-in:image_capture","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["image_capture","magick"],"nodeId":"built-in:image_capture"}]],["dev.capture",[{"type":128,"definedAt":"built-in:dev.capture","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics"]},"name":["dev.capture","grDevices"],"nodeId":"built-in:dev.capture"}]],["image_write",[{"type":128,"definedAt":"built-in:image_write","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["draws-graphics","file","writes"],"sig":[["image",2],["path",16]]},"name":["image_write","magick"],"nodeId":"built-in:image_write"}]],["dev.off",[{"type":128,"definedAt":"built-in:dev.off","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["closes-handle","draws-graphics","file","writes"]},"name":["dev.off","grDevices"],"nodeId":"built-in:dev.off"}]],["graphics.off",[{"type":128,"definedAt":"built-in:graphics.off","config":{"libFn":true,"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"tags":["closes-handle","draws-graphics","file","writes"]},"name":["graphics.off","grDevices"],"nodeId":"built-in:graphics.off"}]],["(",[{"type":128,"definedAt":"built-in:(","config":{"keepArgumentOut":true,"props":1,"sig":[["x",1]]},"name":"(","nodeId":"built-in:("}]],["load_all",[{"type":128,"definedAt":"built-in:load_all","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":64},"name":["load_all","devtools"],"nodeId":"built-in:load_all"}]],["setwd",[{"type":128,"definedAt":"built-in:setwd","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":776},"name":["setwd","base"],"nodeId":"built-in:setwd"}]],["set.seed",[{"type":128,"definedAt":"built-in:set.seed","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":520,"tags":["random"]},"name":["set.seed","base"],"nodeId":"built-in:set.seed"}]],["body",[{"type":128,"definedAt":"built-in:body","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":2048},"name":["body","base"],"nodeId":"built-in:body"}]],["formals",[{"type":128,"definedAt":"built-in:formals","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"props":2048},"name":["formals","base"],"nodeId":"built-in:formals"}]],["environment",[{"type":128,"definedAt":"built-in:environment","config":{"hasUnknownSideEffects":true,"forceArgs":[true]},"name":["environment","base"],"nodeId":"built-in:environment"}]],[".Call",[{"type":128,"definedAt":"built-in:.Call","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":1024},"name":[".Call","base"],"nodeId":"built-in:.Call"}]],[".External",[{"type":128,"definedAt":"built-in:.External","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":1024},"name":[".External","base"],"nodeId":"built-in:.External"}]],[".C",[{"type":128,"definedAt":"built-in:.C","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":1024},"name":[".C","base"],"nodeId":"built-in:.C"}]],[".Fortran",[{"type":128,"definedAt":"built-in:.Fortran","config":{"hasUnknownSideEffects":true,"forceArgs":[true],"markArgsAsMasked":"first","treatAsFnCall":{".Call":[".NAME"],".External":[".NAME"],".C":[".NAME"],".Fortran":[".NAME"]},"props":1024},"name":[".Fortran","base"],"nodeId":"built-in:.Fortran"}]],["eval",[{"type":128,"definedAt":"built-in:eval","config":{"includeFunctionCall":true,"supportFunctionCall":false,"keepEnvironment":true,"tags":["eval"],"sig":[["expr",8258],["envir",66],["enclos",66]]},"name":["eval","base"],"nodeId":"built-in:eval"}]],["evalText",[{"type":128,"definedAt":"built-in:evalText","config":{"includeFunctionCall":true,"supportFunctionCall":true,"keepEnvironment":true,"tags":["eval"],"sig":[["text",8258],["envir",66]]},"name":["evalText","SoDA"],"nodeId":"built-in:evalText"}]],["cat",[{"type":128,"definedAt":"built-in:cat","config":{"forceArgs":"all","hasUnknownSideEffects":{"type":"link-to-last-call","callName":{}},"props":8,"tags":["file","writes","prints"],"sig":[["...",66],["file",16]]},"name":["cat","base"],"nodeId":"built-in:cat"}]],["switch",[{"type":128,"definedAt":"built-in:switch","config":{"forceArgs":[true],"alternativeArgsFrom":1,"useAsProcessor":"builtin:switch","props":1},"name":["switch","base"],"nodeId":"built-in:switch"}]],["return",[{"type":128,"definedAt":"built-in:return","config":{"cfg":1,"keepArgumentOut":true,"useAsProcessor":"builtin:return","props":1,"sig":[["value",1]]},"name":"return","nodeId":"built-in:return"}]],["stop",[{"type":128,"definedAt":"built-in:stop","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop","base"],"nodeId":"built-in:stop"}]],["abort",[{"type":128,"definedAt":"built-in:abort","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["abort","rlang"],"nodeId":"built-in:abort"}]],["cli_abort",[{"type":128,"definedAt":"built-in:cli_abort","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["cli_abort","cli"],"nodeId":"built-in:cli_abort"}]],["throw",[{"type":128,"definedAt":"built-in:throw","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["throw","R.oo"],"nodeId":"built-in:throw"}]],["stop_bad_type",[{"type":128,"definedAt":"built-in:stop_bad_type","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop_bad_type","purrr"],"nodeId":"built-in:stop_bad_type"}]],["stop_bad_element_type",[{"type":128,"definedAt":"built-in:stop_bad_element_type","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop_bad_element_type","purrr"],"nodeId":"built-in:stop_bad_element_type"}]],["stop_bad_element_length",[{"type":128,"definedAt":"built-in:stop_bad_element_length","config":{"useAsProcessor":"builtin:stop","cfg":4,"forceArgs":"all","props":4},"name":["stop_bad_element_length","purrr"],"nodeId":"built-in:stop_bad_element_length"}]],["try",[{"type":128,"definedAt":"built-in:try","config":{"block":"expr","handlers":{}},"name":["try","base"],"nodeId":"built-in:try"}]],["tryCatch",[{"type":128,"definedAt":"built-in:tryCatch","config":{"block":"expr","handlers":{"error":"error","finally":"finally"}},"name":["tryCatch","base"],"nodeId":"built-in:tryCatch"}]],["tryCatchLog",[{"type":128,"definedAt":"built-in:tryCatchLog","config":{"block":"expr","handlers":{"error":"error","finally":"finally"}},"name":["tryCatchLog","tryCatchLog"],"nodeId":"built-in:tryCatchLog"}]],["stopifnot",[{"type":128,"definedAt":"built-in:stopifnot","config":{"props":12},"name":["stopifnot","base"],"nodeId":"built-in:stopifnot"}]],["assert_that",[{"type":128,"definedAt":"built-in:assert_that","config":{"props":12},"name":["assert_that","assertthat"],"nodeId":"built-in:assert_that"}]],["break",[{"type":128,"definedAt":"built-in:break","config":{"useAsProcessor":"builtin:break","cfg":2},"name":"break","nodeId":"built-in:break"}]],["next",[{"type":128,"definedAt":"built-in:next","config":{"cfg":3},"name":"next","nodeId":"built-in:next"}]],["{",[{"type":128,"definedAt":"built-in:{","config":{},"name":"{","nodeId":"built-in:{"}]],["source",[{"type":128,"definedAt":"built-in:source","config":{"includeFunctionCall":true,"forceFollow":false,"props":8},"name":["source","base"],"nodeId":"built-in:source"}]],["[",[{"type":128,"definedAt":"built-in:[","config":{"treatIndicesAsString":false,"props":17},"name":"[","nodeId":"built-in:["}]],["[[",[{"type":128,"definedAt":"built-in:[[","config":{"treatIndicesAsString":false,"resolveField":true,"props":17},"name":"[[","nodeId":"built-in:[["}]],["$",[{"type":128,"definedAt":"built-in:$","config":{"treatIndicesAsString":true,"resolveField":true,"props":17},"name":"$","nodeId":"built-in:$"}]],["@",[{"type":128,"definedAt":"built-in:@","config":{"treatIndicesAsString":true,"resolveField":true,"props":1},"name":"@","nodeId":"built-in:@"}]],["::",[{"type":128,"definedAt":"built-in:::","config":{"internal":false},"name":"::","nodeId":"built-in:::"}]],[":::",[{"type":128,"definedAt":"built-in::::","config":{"internal":true},"name":":::","nodeId":"built-in::::"}]],["if",[{"type":128,"definedAt":"built-in:if","config":{},"name":"if","nodeId":"built-in:if"}]],["ifelse",[{"type":128,"definedAt":"built-in:ifelse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1},"name":["ifelse","base"],"nodeId":"built-in:ifelse"}]],["fifelse",[{"type":128,"definedAt":"built-in:fifelse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1},"name":["fifelse","data.table"],"nodeId":"built-in:fifelse"}]],["IfElse",[{"type":128,"definedAt":"built-in:IfElse","config":{"args":{"cond":"test","yes":"yes","no":"no"},"props":1},"name":"IfElse","nodeId":"built-in:IfElse"}]],["if_else",[{"type":128,"definedAt":"built-in:if_else","config":{"args":{"cond":"condition","yes":"true","no":"false"},"props":1},"name":["if_else","dplyr"],"nodeId":"built-in:if_else"}]],["get",[{"type":128,"definedAt":"built-in:get","config":{"props":1,"tags":["eval"],"sig":[["x",8258],["pos",8],["envir",66],["mode",72],["inherits",72]]},"name":["get","base"],"nodeId":"built-in:get"}]],["get0",[{"type":128,"definedAt":"built-in:get0","config":{"props":1,"tags":["eval"],"sig":[["x",8258],["envir",66],["mode",72],["inherits",72],["ifnotfound",66]]},"name":["get0","base"],"nodeId":"built-in:get0"}]],["match.fun",[{"type":128,"definedAt":"built-in:match.fun","config":{"props":1,"tags":["eval"],"sig":[["FUN",8258],["descend",8]]},"name":["match.fun","base"],"nodeId":"built-in:match.fun"}]],["library",[{"type":128,"definedAt":"built-in:library","config":{"props":72},"name":["library","base"],"nodeId":"built-in:library"}]],["require",[{"type":128,"definedAt":"built-in:require","config":{"props":72},"name":["require","base"],"nodeId":"built-in:require"}]],["attachNamespace",[{"type":128,"definedAt":"built-in:attachNamespace","config":{"characterOnly":true,"props":72},"name":["attachNamespace","base"],"nodeId":"built-in:attachNamespace"}]],["requireNamespace",[{"type":128,"definedAt":"built-in:requireNamespace","config":{"namespaceOnly":true,"characterOnly":true,"props":72},"name":["requireNamespace","base"],"nodeId":"built-in:requireNamespace"}]],["loadNamespace",[{"type":128,"definedAt":"built-in:loadNamespace","config":{"namespaceOnly":true,"characterOnly":true,"props":72},"name":["loadNamespace","base"],"nodeId":"built-in:loadNamespace"}]],["from",[{"type":128,"definedAt":"built-in:from","config":{"fromImports":true,"props":64},"name":["from","import"],"nodeId":"built-in:from"}]],["use",[{"type":128,"definedAt":"built-in:use","config":{"boxUse":true,"props":64},"name":["use","base"],"nodeId":"built-in:use"}]],["<-",[{"type":128,"definedAt":"built-in:<-","config":{"canBeReplacement":true,"props":72},"name":"<-","nodeId":"built-in:<-"}]],["=",[{"type":128,"definedAt":"built-in:=","config":{"canBeReplacement":true,"props":72},"name":"=","nodeId":"built-in:="}]],[":=",[{"type":128,"definedAt":"built-in::=","config":{"props":72},"name":[":=","data.table"],"nodeId":"built-in::="}]],["assign",[{"type":128,"definedAt":"built-in:assign","config":{"targetVariable":true,"mayHaveMoreArgs":true,"environmentArg":"envir","props":72,"sig":[["x",2],["value",2],["pos",8],["envir",32],["inherits",8]]},"name":["assign","base"],"nodeId":"built-in:assign"}]],["setValidity",[{"type":128,"definedAt":"built-in:setValidity","config":{"targetVariable":true,"mayHaveMoreArgs":true,"environmentArg":"envir","props":72},"name":["setValidity","methods"],"nodeId":"built-in:setValidity"}]],["setMethod",[{"type":128,"definedAt":"built-in:setMethod","config":{"targetVariable":true,"canBeReplacement":false,"target":{"idx":0,"name":"f"},"source":{"idx":2,"name":"definition"},"modesForFn":["s4"]},"name":["setMethod","methods"],"nodeId":"built-in:setMethod"}]],["delayedAssign",[{"type":128,"definedAt":"built-in:delayedAssign","config":{"quoteSource":true,"targetVariable":true,"props":72},"name":["delayedAssign","base"],"nodeId":"built-in:delayedAssign"}]],["<<-",[{"type":128,"definedAt":"built-in:<<-","config":{"superAssignment":true,"canBeReplacement":true,"props":72},"name":"<<-","nodeId":"built-in:<<-"}]],["->",[{"type":128,"definedAt":"built-in:->","config":{"swapSourceAndTarget":true,"canBeReplacement":true,"props":72},"name":"->","nodeId":"built-in:->"}]],["->>",[{"type":128,"definedAt":"built-in:->>","config":{"superAssignment":true,"swapSourceAndTarget":true,"canBeReplacement":true,"props":72},"name":"->>","nodeId":"built-in:->>"}]],["data",[{"type":128,"definedAt":"built-in:data","config":{"superAssignment":true},"name":["data","utils"],"nodeId":"built-in:data"}]],["getHdata",[{"type":128,"definedAt":"built-in:getHdata","config":{"superAssignment":true},"name":["getHdata","Hmisc"],"nodeId":"built-in:getHdata"}]],["&&",[{"type":128,"definedAt":"built-in:&&","config":{"lazy":true,"evalRhsWhen":true,"props":1},"name":["&&","base"],"nodeId":"built-in:&&"}]],["||",[{"type":128,"definedAt":"built-in:||","config":{"lazy":true,"evalRhsWhen":false,"props":1},"name":["||","base"],"nodeId":"built-in:||"}]],["&",[{"type":128,"definedAt":"built-in:&","config":{"lazy":false,"props":17},"name":["&","base"],"nodeId":"built-in:&"}]],["|",[{"type":128,"definedAt":"built-in:|","config":{"lazy":false,"props":17},"name":["|","base"],"nodeId":"built-in:|"}]],["|>",[{"type":128,"definedAt":"built-in:|>","config":{"pipePlaceholderName":"_","assignLhs":false,"returnLhs":false,"sig":[["lhs",2],["rhs",1]]},"name":"|>","nodeId":"built-in:|>"}]],["%>%",[{"type":128,"definedAt":"built-in:%>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":false,"rhsMightBeSymbol":true,"sig":[["lhs",2],["rhs",1]]},"name":["%>%","magrittr"],"nodeId":"built-in:%>%"}]],["%!>%",[{"type":128,"definedAt":"built-in:%!>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":false,"rhsMightBeSymbol":true,"sig":[["lhs",2],["rhs",1]]},"name":"%!>%","nodeId":"built-in:%!>%"}]],["%<>%",[{"type":128,"definedAt":"built-in:%<>%","config":{"pipePlaceholderName":".","assignLhs":true,"returnLhs":false,"rhsMightBeSymbol":true,"props":72},"name":["%<>%","magrittr"],"nodeId":"built-in:%<>%"}]],["%T>%",[{"type":128,"definedAt":"built-in:%T>%","config":{"pipePlaceholderName":".","assignLhs":false,"returnLhs":true,"rhsMightBeSymbol":true,"sig":[["lhs",1],["rhs",2]]},"name":["%T>%","magrittr"],"nodeId":"built-in:%T>%"}]],["map_lgl",[{"type":128,"definedAt":"built-in:map_lgl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_lgl","purrr"],"nodeId":"built-in:map_lgl"}]],["map_int",[{"type":128,"definedAt":"built-in:map_int","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_int","purrr"],"nodeId":"built-in:map_int"}]],["map_dbl",[{"type":128,"definedAt":"built-in:map_dbl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_dbl","purrr"],"nodeId":"built-in:map_dbl"}]],["map_chr",[{"type":128,"definedAt":"built-in:map_chr","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["map_chr","purrr"],"nodeId":"built-in:map_chr"}]],["pmap",[{"type":128,"definedAt":"built-in:pmap","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap","purrr"],"nodeId":"built-in:pmap"}]],["pmap_lgl",[{"type":128,"definedAt":"built-in:pmap_lgl","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_lgl","purrr"],"nodeId":"built-in:pmap_lgl"}]],["pmap_int",[{"type":128,"definedAt":"built-in:pmap_int","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_int","purrr"],"nodeId":"built-in:pmap_int"}]],["pmap_dbl",[{"type":128,"definedAt":"built-in:pmap_dbl","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_dbl","purrr"],"nodeId":"built-in:pmap_dbl"}]],["pmap_chr",[{"type":128,"definedAt":"built-in:pmap_chr","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"]},"name":["pmap_chr","purrr"],"nodeId":"built-in:pmap_chr"}]],["map2",[{"type":128,"definedAt":"built-in:map2","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2","purrr"],"nodeId":"built-in:map2"}]],["map2_lgl",[{"type":128,"definedAt":"built-in:map2_lgl","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_lgl","purrr"],"nodeId":"built-in:map2_lgl"}]],["map2_int",[{"type":128,"definedAt":"built-in:map2_int","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_int","purrr"],"nodeId":"built-in:map2_int"}]],["map2_dbl",[{"type":128,"definedAt":"built-in:map2_dbl","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_dbl","purrr"],"nodeId":"built-in:map2_dbl"}]],["map2_chr",[{"type":128,"definedAt":"built-in:map2_chr","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map2_chr","purrr"],"nodeId":"built-in:map2_chr"}]],["modify",[{"type":128,"definedAt":"built-in:modify","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["modify","purrr"],"nodeId":"built-in:modify"}]],["imodify",[{"type":128,"definedAt":"built-in:imodify","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imodify","purrr"],"nodeId":"built-in:imodify"}]],["imap",[{"type":128,"definedAt":"built-in:imap","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap","purrr"],"nodeId":"built-in:imap"}]],["imap_lgl",[{"type":128,"definedAt":"built-in:imap_lgl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_lgl","purrr"],"nodeId":"built-in:imap_lgl"}]],["imap_int",[{"type":128,"definedAt":"built-in:imap_int","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_int","purrr"],"nodeId":"built-in:imap_int"}]],["imap_dbl",[{"type":128,"definedAt":"built-in:imap_dbl","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_dbl","purrr"],"nodeId":"built-in:imap_dbl"}]],["imap_chr",[{"type":128,"definedAt":"built-in:imap_chr","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_chr","purrr"],"nodeId":"built-in:imap_chr"}]],["imap_vec",[{"type":128,"definedAt":"built-in:imap_vec","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["imap_vec","purrr"],"nodeId":"built-in:imap_vec"}]],["lmap",[{"type":128,"definedAt":"built-in:lmap","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[]},"name":["lmap","purrr"],"nodeId":"built-in:lmap"}]],["modify2",[{"type":128,"definedAt":"built-in:modify2","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[]},"name":["modify2","purrr"],"nodeId":"built-in:modify2"}]],["map_at",[{"type":128,"definedAt":"built-in:map_at","config":{"args":{".x":{"index":0,"name":".x"},".at":{"index":1,"name":".at"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["map_at","purrr"],"nodeId":"built-in:map_at"}]],["modify_at",[{"type":128,"definedAt":"built-in:modify_at","config":{"args":{".x":{"index":0,"name":".x"},".at":{"index":1,"name":".at"}},".f":{"index":2,"name":".f"},"ignore":[".progress"]},"name":["modify_at","purrr"],"nodeId":"built-in:modify_at"}]],["lmap_at",[{"type":128,"definedAt":"built-in:lmap_at","config":{"args":{".x":{"index":0,"name":".x"},".at":{"index":1,"name":".at"}},".f":{"index":2,"name":".f"},"ignore":[]},"name":["lmap_at","purrr"],"nodeId":"built-in:lmap_at"}]],["map_if",[{"type":128,"definedAt":"built-in:map_if","config":{"args":{".x":{"index":0,"name":".x"},".p":{"index":1,"name":".p"}},".f":{"index":2,"name":".f"},"ignore":[".else"]},"name":["map_if","purrr"],"nodeId":"built-in:map_if"}]],["modify_if",[{"type":128,"definedAt":"built-in:modify_if","config":{"args":{".x":{"index":0,"name":".x"},".p":{"index":1,"name":".p"}},".f":{"index":2,"name":".f"},"ignore":[".else"]},"name":["modify_if","purrr"],"nodeId":"built-in:modify_if"}]],["lmap_if",[{"type":128,"definedAt":"built-in:lmap_if","config":{"args":{".x":{"index":0,"name":".x"},".p":{"index":1,"name":".p"}},".f":{"index":2,"name":".f"},"ignore":[".else"]},"name":["lmap_if","purrr"],"nodeId":"built-in:lmap_if"}]],["walk",[{"type":128,"definedAt":"built-in:walk","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress"],"returnArg":".x"},"name":["walk","purrr"],"nodeId":"built-in:walk"}]],["iwalk",[{"type":128,"definedAt":"built-in:iwalk","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[],"returnArg":".x"},"name":["iwalk","purrr"],"nodeId":"built-in:iwalk"}]],["pwalk",[{"type":128,"definedAt":"built-in:pwalk","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress"],"returnArg":".l"},"name":["pwalk","purrr"],"nodeId":"built-in:pwalk"}]],["walk2",[{"type":128,"definedAt":"built-in:walk2","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress"],"returnArg":".x"},"name":["walk2","purrr"],"nodeId":"built-in:walk2"}]],["map_vec",[{"type":128,"definedAt":"built-in:map_vec","config":{"args":{".x":{"index":0,"name":".x"}},".f":{"index":1,"name":".f"},"ignore":[".progress",".ptype"]},"name":["map_vec","purrr"],"nodeId":"built-in:map_vec"}]],["pmap_vec",[{"type":128,"definedAt":"built-in:pmap_vec","config":{"args":{".l":{"index":0,"name":".l"}},".f":{"index":1,"name":".f"},"ignore":[".progress",".ptype"]},"name":["pmap_vec","purrr"],"nodeId":"built-in:pmap_vec"}]],["map_depth",[{"type":128,"definedAt":"built-in:map_depth","config":{"args":{".x":{"index":0,"name":".x"},".depth":{"index":2,"name":".depth"}},".f":{"index":2,"name":".f"},"ignore":[".ragged",".is_node"]},"name":["map_depth","purrr"],"nodeId":"built-in:map_depth"}]],["modify_depth",[{"type":128,"definedAt":"built-in:modify_depth","config":{"args":{".x":{"index":0,"name":".x"},".depth":{"index":2,"name":".depth"}},".f":{"index":2,"name":".f"},"ignore":[".ragged",".is_node"]},"name":["modify_depth","purrr"],"nodeId":"built-in:modify_depth"}]],["map2_vec",[{"type":128,"definedAt":"built-in:map2_vec","config":{"args":{".x":{"index":0,"name":".x"},".y":{"index":1,"name":".y"}},".f":{"index":2,"name":".f"},"ignore":[".progress",".ptype"]},"name":["map2_vec","purrr"],"nodeId":"built-in:map2_vec"}]],["across",[{"type":128,"definedAt":"built-in:across","config":{"args":{".x":{"index":0,"name":".cols"}},".f":{"index":1,"name":".fns"},"ignore":[".names",".unpack"]},"name":["across","dplyr"],"nodeId":"built-in:across"}]],["rename_with",[{"type":128,"definedAt":"built-in:rename_with","config":{"args":{".x":{"index":0,"name":".data"}},".f":{"index":1,"name":".fn"},"ignore":[".cols"]},"name":["rename_with","dplyr"],"nodeId":"built-in:rename_with"}]],["function",[{"type":128,"definedAt":"built-in:function","config":{},"name":"function","nodeId":"built-in:function"}]],["\\",[{"type":128,"definedAt":"built-in:\\","config":{},"name":"\\","nodeId":"built-in:\\"}]],["quote",[{"type":128,"definedAt":"built-in:quote","config":{"quoteArgumentsWithIndex":0,"keepEnvironment":true,"props":2048,"sig":[["expr",128]]},"name":["quote","base"],"nodeId":"built-in:quote"}]],["bquote",[{"type":128,"definedAt":"built-in:bquote","config":{"quoteArgumentsWithIndex":0,"unquote":"bquote","keepEnvironment":true,"props":2048,"sig":[["expr",128]]},"name":["bquote","base"],"nodeId":"built-in:bquote"}]],["substitute",[{"type":128,"definedAt":"built-in:substitute","config":{"quoteArgumentsWithIndex":0,"envArgIndex":1,"keepEnvironment":true,"props":2048,"sig":[["expr",128],["env",2]]},"name":["substitute","base"],"nodeId":"built-in:substitute"}]],["quo",[{"type":128,"definedAt":"built-in:quo","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":2048},"name":["quo","rlang"],"nodeId":"built-in:quo"}]],["quos",[{"type":128,"definedAt":"built-in:quos","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":2048},"name":["quos","rlang"],"nodeId":"built-in:quos"}]],["expr",[{"type":128,"definedAt":"built-in:expr","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":2048},"name":["expr","rlang"],"nodeId":"built-in:expr"}]],["exprs",[{"type":128,"definedAt":"built-in:exprs","config":{"quoteArgumentsWithIndex":0,"unquote":"rlang","keepEnvironment":true,"libFn":true,"props":2048},"name":["exprs","rlang"],"nodeId":"built-in:exprs"}]],["exec",[{"type":128,"definedAt":"built-in:exec","config":{"indexOfFunction":0,"nameOfFunctionArgument":".fn","unquoteFunction":true,"hasUnknownSideEffects":true,"libFn":true,"props":2,"sig":[[".fn",256],["...",2]]},"name":["exec","rlang"],"nodeId":"built-in:exec"}]],["invoke",[{"type":128,"definedAt":"built-in:invoke","config":{"indexOfFunction":0,"nameOfFunctionArgument":".f","unquoteFunction":true,"hasUnknownSideEffects":true,"libFn":true,"props":2,"tags":["deprecated"],"sig":[[".f",256],["...",2]]},"name":["invoke","purrr"],"nodeId":"built-in:invoke"}]],["invoke_map",[{"type":128,"definedAt":"built-in:invoke_map","config":{"indexOfFunction":0,"nameOfFunctionArgument":".f","unquoteFunction":true,"hasUnknownSideEffects":true,"libFn":true,"props":2,"tags":["deprecated"],"sig":[[".f",256],["...",2]]},"name":["invoke_map","purrr"],"nodeId":"built-in:invoke_map"}]],["glue",[{"type":128,"definedAt":"built-in:glue","config":{"props":2},"name":["glue","glue"],"nodeId":"built-in:glue"}]],["glue_safe",[{"type":128,"definedAt":"built-in:glue_safe","config":{"props":2},"name":["glue_safe","glue"],"nodeId":"built-in:glue_safe"}]],["glue_collapse",[{"type":128,"definedAt":"built-in:glue_collapse","config":{"props":2},"name":["glue_collapse","glue"],"nodeId":"built-in:glue_collapse"}]],["str_glue",[{"type":128,"definedAt":"built-in:str_glue","config":{"props":2},"name":["str_glue","stringr"],"nodeId":"built-in:str_glue"}]],["cli_text",[{"type":128,"definedAt":"built-in:cli_text","config":{"markup":true,"props":2},"name":["cli_text","cli"],"nodeId":"built-in:cli_text"}]],["cli_alert",[{"type":128,"definedAt":"built-in:cli_alert","config":{"markup":true,"props":2},"name":["cli_alert","cli"],"nodeId":"built-in:cli_alert"}]],["cli_alert_info",[{"type":128,"definedAt":"built-in:cli_alert_info","config":{"markup":true,"props":2},"name":["cli_alert_info","cli"],"nodeId":"built-in:cli_alert_info"}]],["cli_alert_success",[{"type":128,"definedAt":"built-in:cli_alert_success","config":{"markup":true,"props":2},"name":["cli_alert_success","cli"],"nodeId":"built-in:cli_alert_success"}]],["cli_alert_warning",[{"type":128,"definedAt":"built-in:cli_alert_warning","config":{"markup":true,"props":2},"name":["cli_alert_warning","cli"],"nodeId":"built-in:cli_alert_warning"}]],["cli_alert_danger",[{"type":128,"definedAt":"built-in:cli_alert_danger","config":{"markup":true,"props":2},"name":["cli_alert_danger","cli"],"nodeId":"built-in:cli_alert_danger"}]],["cli_h1",[{"type":128,"definedAt":"built-in:cli_h1","config":{"markup":true,"props":2},"name":["cli_h1","cli"],"nodeId":"built-in:cli_h1"}]],["cli_h2",[{"type":128,"definedAt":"built-in:cli_h2","config":{"markup":true,"props":2},"name":["cli_h2","cli"],"nodeId":"built-in:cli_h2"}]],["cli_h3",[{"type":128,"definedAt":"built-in:cli_h3","config":{"markup":true,"props":2},"name":["cli_h3","cli"],"nodeId":"built-in:cli_h3"}]],["cli_li",[{"type":128,"definedAt":"built-in:cli_li","config":{"markup":true,"props":2},"name":["cli_li","cli"],"nodeId":"built-in:cli_li"}]],["cli_bullets",[{"type":128,"definedAt":"built-in:cli_bullets","config":{"markup":true,"props":2},"name":["cli_bullets","cli"],"nodeId":"built-in:cli_bullets"}]],["cli_inform",[{"type":128,"definedAt":"built-in:cli_inform","config":{"markup":true,"props":2},"name":["cli_inform","cli"],"nodeId":"built-in:cli_inform"}]],["cli_warn",[{"type":128,"definedAt":"built-in:cli_warn","config":{"markup":true,"props":2},"name":["cli_warn","cli"],"nodeId":"built-in:cli_warn"}]],["format_inline",[{"type":128,"definedAt":"built-in:format_inline","config":{"markup":true,"props":2},"name":["format_inline","cli"],"nodeId":"built-in:format_inline"}]],["cli_verbatim",[{"type":128,"definedAt":"built-in:cli_verbatim","config":{"markup":true,"props":2},"name":["cli_verbatim","cli"],"nodeId":"built-in:cli_verbatim"}]],["str_interp",[{"type":128,"definedAt":"built-in:str_interp","config":{"open":"${","props":2,"tags":["deprecated"]},"name":["str_interp","stringr"],"nodeId":"built-in:str_interp"}]],["local",[{"type":128,"definedAt":"built-in:local","config":{"args":{"env":"envir","expr":"expr"}},"name":["local","base"],"nodeId":"built-in:local"}]],["with",[{"type":128,"definedAt":"built-in:with","config":{"props":16},"name":["with","base"],"nodeId":"built-in:with"}]],["within",[{"type":128,"definedAt":"built-in:within","config":{"props":16},"name":["within","base"],"nodeId":"built-in:within"}]],["new.env",[{"type":128,"definedAt":"built-in:new.env","config":{},"name":["new.env","base"],"nodeId":"built-in:new.env"}]],["new_environment",[{"type":128,"definedAt":"built-in:new_environment","config":{},"name":["new_environment","rlang"],"nodeId":"built-in:new_environment"}]],["R6Class",[{"type":128,"definedAt":"built-in:R6Class","config":{},"name":["R6Class","R6"],"nodeId":"built-in:R6Class"}]],["setRefClass",[{"type":128,"definedAt":"built-in:setRefClass","config":{},"name":["setRefClass","methods"],"nodeId":"built-in:setRefClass"}]],["globalenv",[{"type":128,"definedAt":"built-in:globalenv","config":{},"name":["globalenv","base"],"nodeId":"built-in:globalenv"}]],["baseenv",[{"type":128,"definedAt":"built-in:baseenv","config":{},"name":["baseenv","base"],"nodeId":"built-in:baseenv"}]],["emptyenv",[{"type":128,"definedAt":"built-in:emptyenv","config":{},"name":["emptyenv","base"],"nodeId":"built-in:emptyenv"}]],["parent.env",[{"type":128,"definedAt":"built-in:parent.env","config":{},"name":["parent.env","base"],"nodeId":"built-in:parent.env"}]],["parent.frame",[{"type":128,"definedAt":"built-in:parent.frame","config":{},"name":["parent.frame","base"],"nodeId":"built-in:parent.frame"}]],["environmentName",[{"type":128,"definedAt":"built-in:environmentName","config":{},"name":["environmentName","base"],"nodeId":"built-in:environmentName"}]],["as.environment",[{"type":128,"definedAt":"built-in:as.environment","config":{},"name":["as.environment","base"],"nodeId":"built-in:as.environment"}]],["pos.to.env",[{"type":128,"definedAt":"built-in:pos.to.env","config":{},"name":["pos.to.env","base"],"nodeId":"built-in:pos.to.env"}]],["sys.frame",[{"type":128,"definedAt":"built-in:sys.frame","config":{},"name":["sys.frame","base"],"nodeId":"built-in:sys.frame"}]],["sys.frames",[{"type":128,"definedAt":"built-in:sys.frames","config":{},"name":["sys.frames","base"],"nodeId":"built-in:sys.frames"}]],["topenv",[{"type":128,"definedAt":"built-in:topenv","config":{},"name":["topenv","base"],"nodeId":"built-in:topenv"}]],["load",[{"type":128,"definedAt":"built-in:load","config":{"props":72,"tags":["file","reads"],"sig":[["file",16]]},"name":["load","base"],"nodeId":"built-in:load"}]],["attach",[{"type":128,"definedAt":"built-in:attach","config":{},"name":["attach","base"],"nodeId":"built-in:attach"}]],["for",[{"type":128,"definedAt":"built-in:for","config":{},"name":"for","nodeId":"built-in:for"}]],["repeat",[{"type":128,"definedAt":"built-in:repeat","config":{},"name":"repeat","nodeId":"built-in:repeat"}]],["while",[{"type":128,"definedAt":"built-in:while","config":{},"name":"while","nodeId":"built-in:while"}]],["do.call",[{"type":128,"definedAt":"built-in:do.call","config":{"indexOfFunction":0,"unquoteFunction":true,"props":2,"tags":["eval"],"sig":[["what",8512],["args",66]]},"name":["do.call","base"],"nodeId":"built-in:do.call"}]],["UseMethod",[{"type":128,"definedAt":"built-in:UseMethod","config":{"args":{"generic":"generic","object":"object"},"props":16},"name":["UseMethod","base"],"nodeId":"built-in:UseMethod"}]],["NextMethod",[{"type":128,"definedAt":"built-in:NextMethod","config":{"args":{"generic":"generic","object":"object"},"inferFromClosure":true,"props":16},"name":["NextMethod","base"],"nodeId":"built-in:NextMethod"}]],["new_generic",[{"type":128,"definedAt":"built-in:new_generic","config":{"args":{"name":"name","dispatchArg":"dispatch_args","fun":"fun"}},"name":["new_generic","S7"],"nodeId":"built-in:new_generic"}]],["setGeneric",[{"type":128,"definedAt":"built-in:setGeneric","config":{"args":{"name":"name","fun":"fun"},"props":16},"name":["setGeneric","methods"],"nodeId":"built-in:setGeneric"}]],["S7_dispatch",[{"type":128,"definedAt":"built-in:S7_dispatch","config":{"libFn":true},"name":["S7_dispatch","S7"],"nodeId":"built-in:S7_dispatch"}]],["make_constructor",[{"type":128,"definedAt":"built-in:make_constructor","config":{"mode":["s7"]},"name":["make_constructor","ggplot2"],"nodeId":"built-in:make_constructor"}]],["new_class",[{"type":128,"definedAt":"built-in:new_class","config":{"mode":["s7"]},"name":["new_class","S7"],"nodeId":"built-in:new_class"}]],["setClass",[{"type":128,"definedAt":"built-in:setClass","config":{"mode":["s4"]},"name":["setClass","methods"],"nodeId":"built-in:setClass"}]],["Negate",[{"type":128,"definedAt":"built-in:Negate","config":{"wrapIndex":0,"props":1,"sig":[["f",256]]},"name":["Negate","base"],"nodeId":"built-in:Negate"}]],["Vectorize",[{"type":128,"definedAt":"built-in:Vectorize","config":{"wrapIndex":0,"props":1,"sig":[["FUN",256]]},"name":["Vectorize","base"],"nodeId":"built-in:Vectorize"}]],["partial",[{"type":128,"definedAt":"built-in:partial","config":{"wrapIndex":0,"wrapName":".f"},"name":["partial","purrr"],"nodeId":"built-in:partial"}]],[".Primitive",[{"type":128,"definedAt":"built-in:.Primitive","config":{"indexOfFunction":0,"unquoteFunction":true,"resolveInEnvironment":"global"},"name":[".Primitive","base"],"nodeId":"built-in:.Primitive"}]],[".Internal",[{"type":128,"definedAt":"built-in:.Internal","config":{"indexOfFunction":0,"unquoteFunction":true,"resolveInEnvironment":"global"},"name":[".Internal","base"],"nodeId":"built-in:.Internal"}]],["interference",[{"type":128,"definedAt":"built-in:interference","config":{"unquoteFunction":true,"nameOfFunctionArgument":"propensity_integrand","libFn":true},"name":["interference","inferference"],"nodeId":"built-in:interference"}]],["ddply",[{"type":128,"definedAt":"built-in:ddply","config":{"unquoteFunction":true,"indexOfFunction":2,"nameOfFunctionArgument":".fun","libFn":true},"name":["ddply","plyr"],"nodeId":"built-in:ddply"}]],["list",[{"type":128,"definedAt":"built-in:list","config":{"props":1,"sig":[["...",2]]},"name":["list","base"],"nodeId":"built-in:list"}]],["Recall",[{"type":128,"definedAt":"built-in:Recall","config":{"libFn":true},"name":["Recall","base"],"nodeId":"built-in:Recall"}]],["sys.function",[{"type":128,"definedAt":"built-in:sys.function","config":{"libFn":true,"unknownOnNonZeroArg":true,"props":2048},"name":["sys.function","base"],"nodeId":"built-in:sys.function"}]],["c",[{"type":128,"definedAt":"built-in:c","config":{"props":17,"sig":[["...",2]]},"name":["c","base"],"nodeId":"built-in:c"}]],["cmpfun",[{"type":128,"definedAt":"built-in:cmpfun","config":{"sig":[["f",1]]},"name":["cmpfun","compiler"],"nodeId":"built-in:cmpfun"}]],["compile",[{"type":128,"definedAt":"built-in:compile","config":{"sig":[["e",1]]},"name":["compile","compiler"],"nodeId":"built-in:compile"}]],["loadcmp",[{"type":128,"definedAt":"built-in:loadcmp","config":{"hasUnknownSideEffects":true},"name":["loadcmp","compiler"],"nodeId":"built-in:loadcmp"}]],["setnames",[{"type":128,"definedAt":"built-in:setnames","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setnames","data.table"],"nodeId":"built-in:setnames"}]],["setNames",[{"type":128,"definedAt":"built-in:setNames","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setNames","base"],"nodeId":"built-in:setNames"}]],["setkey",[{"type":128,"definedAt":"built-in:setkey","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setkey","data.table"],"nodeId":"built-in:setkey"}]],["setkeyv",[{"type":128,"definedAt":"built-in:setkeyv","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setkeyv","data.table"],"nodeId":"built-in:setkeyv"}]],["setindex",[{"type":128,"definedAt":"built-in:setindex","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setindex","data.table"],"nodeId":"built-in:setindex"}]],["setindexv",[{"type":128,"definedAt":"built-in:setindexv","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setindexv","data.table"],"nodeId":"built-in:setindexv"}]],["setattr",[{"type":128,"definedAt":"built-in:setattr","config":{"canBeReplacement":false,"targetVariable":false,"makeMaybe":true,"mayHaveMoreArgs":true},"name":["setattr","data.table"],"nodeId":"built-in:setattr"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in:sys.on.exit","config":{"hasUnknownSideEffects":true},"name":["sys.on.exit","base"],"nodeId":"built-in:sys.on.exit"}]],["asNamespace",[{"type":128,"definedAt":"built-in:asNamespace","config":{"hasUnknownSideEffects":true},"name":["asNamespace","base"],"nodeId":"built-in:asNamespace"}]],["unname",[{"type":128,"definedAt":"built-in:unname","config":{"hasUnknownSideEffects":true},"name":["unname","base"],"nodeId":"built-in:unname"}]],["dir.create",[{"type":128,"definedAt":"built-in:dir.create","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["dir.create","base"],"nodeId":"built-in:dir.create"}]],["dir_create",[{"type":128,"definedAt":"built-in:dir_create","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["dir_create","fs"],"nodeId":"built-in:dir_create"}]],["Sys.chmod",[{"type":128,"definedAt":"built-in:Sys.chmod","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["Sys.chmod","base"],"nodeId":"built-in:Sys.chmod"}]],["unlink",[{"type":128,"definedAt":"built-in:unlink","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["unlink","base"],"nodeId":"built-in:unlink"}]],["file.remove",[{"type":128,"definedAt":"built-in:file.remove","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["file.remove","base"],"nodeId":"built-in:file.remove"}]],["file.rename",[{"type":128,"definedAt":"built-in:file.rename","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["file.rename","base"],"nodeId":"built-in:file.rename"}]],["file.copy",[{"type":128,"definedAt":"built-in:file.copy","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["file.copy","base"],"nodeId":"built-in:file.copy"}]],["file.link",[{"type":128,"definedAt":"built-in:file.link","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["file.link","base"],"nodeId":"built-in:file.link"}]],["file.append",[{"type":128,"definedAt":"built-in:file.append","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["file.append","base"],"nodeId":"built-in:file.append"}]],["Sys.junction",[{"type":128,"definedAt":"built-in:Sys.junction","config":{"hasUnknownSideEffects":true,"tags":["file","writes"]},"name":["Sys.junction","base"],"nodeId":"built-in:Sys.junction"}]],["sink",[{"type":128,"definedAt":"built-in:sink","config":{"hasUnknownSideEffects":true,"props":8,"tags":["file","writes"],"sig":[["file",16]]},"name":["sink","base"],"nodeId":"built-in:sink"}]],["par",[{"type":128,"definedAt":"built-in:par","config":{"hasUnknownSideEffects":true,"tags":["draws-graphics"]},"name":["par","graphics"],"nodeId":"built-in:par"}]],["tpar",[{"type":128,"definedAt":"built-in:tpar","config":{"hasUnknownSideEffects":true,"tags":["draws-graphics"]},"name":["tpar","tinyplot"],"nodeId":"built-in:tpar"}]],["tinytheme",[{"type":128,"definedAt":"built-in:tinytheme","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["tinytheme","tinyplot"],"nodeId":"built-in:tinytheme"}]],["theme_set",[{"type":128,"definedAt":"built-in:theme_set","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["theme_set","ggplot2"],"nodeId":"built-in:theme_set"}]],["context",[{"type":128,"definedAt":"built-in:context","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["context","testthat"],"nodeId":"built-in:context"}]],["library.dynam",[{"type":128,"definedAt":"built-in:library.dynam","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["library.dynam","base"],"nodeId":"built-in:library.dynam"}]],["install_local",[{"type":128,"definedAt":"built-in:install_local","config":{"hasUnknownSideEffects":true,"libFn":true},"name":["install_local","devtools"],"nodeId":"built-in:install_local"}]],["install.packages",[{"type":128,"definedAt":"built-in:install.packages","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install.packages","utils"],"nodeId":"built-in:install.packages"}]],["install",[{"type":128,"definedAt":"built-in:install","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install","devtools"],"nodeId":"built-in:install"}]],["install_github",[{"type":128,"definedAt":"built-in:install_github","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_github","devtools"],"nodeId":"built-in:install_github"}]],["install_gitlab",[{"type":128,"definedAt":"built-in:install_gitlab","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_gitlab","devtools"],"nodeId":"built-in:install_gitlab"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in:install_bitbucket","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_bitbucket","devtools"],"nodeId":"built-in:install_bitbucket"}]],["install_url",[{"type":128,"definedAt":"built-in:install_url","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_url","devtools"],"nodeId":"built-in:install_url"}]],["install_git",[{"type":128,"definedAt":"built-in:install_git","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_git","devtools"],"nodeId":"built-in:install_git"}]],["install_svn",[{"type":128,"definedAt":"built-in:install_svn","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_svn","devtools"],"nodeId":"built-in:install_svn"}]],["install_version",[{"type":128,"definedAt":"built-in:install_version","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["install_version","devtools"],"nodeId":"built-in:install_version"}]],["update_packages",[{"type":128,"definedAt":"built-in:update_packages","config":{"hasUnknownSideEffects":true,"libFn":true,"props":8,"tags":["network","file","writes"]},"name":["update_packages","devtools"],"nodeId":"built-in:update_packages"}]],["on.exit",[{"type":128,"definedAt":"built-in:on.exit","config":{"hook":"fn-exit","args":{"expr":{"idx":0,"name":"expr"},"add":{"idx":1,"name":"add","default":false},"after":{"idx":2,"name":"after","default":true}}},"name":["on.exit","base"],"nodeId":"built-in:on.exit"}]],["on_load",[{"type":128,"definedAt":"built-in:on_load","config":{"libFn":true,"props":74,"sig":[["expr",64],["env",2],["ns",2]]},"name":["on_load","rlang"],"nodeId":"built-in:on_load"}]],["on_package_load",[{"type":128,"definedAt":"built-in:on_package_load","config":{"libFn":true,"props":74,"sig":[["pkg",2],["expr",64],["env",2]]},"name":["on_package_load","rlang"],"nodeId":"built-in:on_package_load"}]],["run_on_load",[{"type":128,"definedAt":"built-in:run_on_load","config":{"libFn":true,"props":74,"sig":[["ns",2]]},"name":["run_on_load","rlang"],"nodeId":"built-in:run_on_load"}]],["parse",[{"type":128,"definedAt":"built-in:parse","config":{"forceArgs":"all","props":1},"name":["parse","base"],"nodeId":"built-in:parse"}]],["list.files",[{"type":128,"definedAt":"built-in:list.files","config":{"forceArgs":"all","tags":["file","glob","reads"],"sig":[["path",16]]},"name":["list.files","base"],"nodeId":"built-in:list.files"}]],["dir",[{"type":128,"definedAt":"built-in:dir","config":{"forceArgs":"all","tags":["file","glob","reads"],"sig":[["path",16]]},"name":["dir","base"],"nodeId":"built-in:dir"}]],["list.dirs",[{"type":128,"definedAt":"built-in:list.dirs","config":{"forceArgs":"all","tags":["file","glob","reads"],"sig":[["path",16]]},"name":["list.dirs","base"],"nodeId":"built-in:list.dirs"}]],["Sys.glob",[{"type":128,"definedAt":"built-in:Sys.glob","config":{"forceArgs":"all","tags":["file","glob","reads"],"sig":[["paths",16]]},"name":["Sys.glob","base"],"nodeId":"built-in:Sys.glob"}]],["as.expression",[{"type":128,"definedAt":"built-in:as.expression","config":{"forceArgs":"all","props":2064},"name":["as.expression","base"],"nodeId":"built-in:as.expression"}]],["enquote",[{"type":128,"definedAt":"built-in:enquote","config":{"forceArgs":"all","props":2048},"name":["enquote","base"],"nodeId":"built-in:enquote"}]],["call",[{"type":128,"definedAt":"built-in:call","config":{"forceArgs":"all","props":2048},"name":["call","base"],"nodeId":"built-in:call"}]],["as.call",[{"type":128,"definedAt":"built-in:as.call","config":{"forceArgs":"all","props":2048},"name":["as.call","base"],"nodeId":"built-in:as.call"}]],["as.name",[{"type":128,"definedAt":"built-in:as.name","config":{"forceArgs":"all","props":2048},"name":["as.name","base"],"nodeId":"built-in:as.name"}]],["as.symbol",[{"type":128,"definedAt":"built-in:as.symbol","config":{"forceArgs":"all","props":2048},"name":["as.symbol","base"],"nodeId":"built-in:as.symbol"}]],["as.language",[{"type":128,"definedAt":"built-in:as.language","config":{"forceArgs":"all","props":2048},"name":["as.language","base"],"nodeId":"built-in:as.language"}]],["match.call",[{"type":128,"definedAt":"built-in:match.call","config":{"forceArgs":"all","props":2048},"name":["match.call","base"],"nodeId":"built-in:match.call"}]],["sys.call",[{"type":128,"definedAt":"built-in:sys.call","config":{"forceArgs":"all","props":2048},"name":["sys.call","base"],"nodeId":"built-in:sys.call"}]],["args",[{"type":128,"definedAt":"built-in:args","config":{"forceArgs":"all","props":2048},"name":["args","base"],"nodeId":"built-in:args"}]],["deparse",[{"type":128,"definedAt":"built-in:deparse","config":{"forceArgs":"all","props":2048},"name":["deparse","base"],"nodeId":"built-in:deparse"}]],["deparse1",[{"type":128,"definedAt":"built-in:deparse1","config":{"forceArgs":"all","props":2048},"name":["deparse1","base"],"nodeId":"built-in:deparse1"}]],["alist",[{"type":128,"definedAt":"built-in:alist","config":{"props":2048,"sig":[["...",128]]},"name":["alist","base"],"nodeId":"built-in:alist"}]],["evalq",[{"type":128,"definedAt":"built-in:evalq","config":{"props":2048,"tags":["eval"],"sig":[["expr",8320],["envir",66]]},"name":["evalq","base"],"nodeId":"built-in:evalq"}]],["eval.parent",[{"type":128,"definedAt":"built-in:eval.parent","config":{"props":2048,"tags":["eval"],"sig":[["expr",8258],["n",66]]},"name":["eval.parent","base"],"nodeId":"built-in:eval.parent"}]],["eval_tidy",[{"type":128,"definedAt":"built-in:eval_tidy","config":{"libFn":true,"props":2048,"tags":["eval"],"sig":[["expr",8258],["data",66],["env",66]]},"name":["eval_tidy","rlang"],"nodeId":"built-in:eval_tidy"}]],["eval_bare",[{"type":128,"definedAt":"built-in:eval_bare","config":{"libFn":true,"props":2048,"tags":["eval"],"sig":[["expr",8258],["env",66]]},"name":["eval_bare","rlang"],"nodeId":"built-in:eval_bare"}]],["enexpr",[{"type":128,"definedAt":"built-in:enexpr","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["enexpr","rlang"],"nodeId":"built-in:enexpr"}]],["enexprs",[{"type":128,"definedAt":"built-in:enexprs","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["enexprs","rlang"],"nodeId":"built-in:enexprs"}]],["inject",[{"type":128,"definedAt":"built-in:inject","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["inject","rlang"],"nodeId":"built-in:inject"}]],["enquo",[{"type":128,"definedAt":"built-in:enquo","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["enquo","rlang"],"nodeId":"built-in:enquo"}]],["enquos",[{"type":128,"definedAt":"built-in:enquos","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["enquos","rlang"],"nodeId":"built-in:enquos"}]],["enquo0",[{"type":128,"definedAt":"built-in:enquo0","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["enquo0","rlang"],"nodeId":"built-in:enquo0"}]],["enquos0",[{"type":128,"definedAt":"built-in:enquos0","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["enquos0","rlang"],"nodeId":"built-in:enquos0"}]],["ensym",[{"type":128,"definedAt":"built-in:ensym","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["ensym","rlang"],"nodeId":"built-in:ensym"}]],["ensyms",[{"type":128,"definedAt":"built-in:ensyms","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["ensyms","rlang"],"nodeId":"built-in:ensyms"}]],["new_formula",[{"type":128,"definedAt":"built-in:new_formula","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["new_formula","rlang"],"nodeId":"built-in:new_formula"}]],["f_rhs",[{"type":128,"definedAt":"built-in:f_rhs","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["f_rhs","rlang"],"nodeId":"built-in:f_rhs"}]],["f_lhs",[{"type":128,"definedAt":"built-in:f_lhs","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["f_lhs","rlang"],"nodeId":"built-in:f_lhs"}]],["fn_body",[{"type":128,"definedAt":"built-in:fn_body","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["fn_body","rlang"],"nodeId":"built-in:fn_body"}]],["fn_fmls",[{"type":128,"definedAt":"built-in:fn_fmls","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["fn_fmls","rlang"],"nodeId":"built-in:fn_fmls"}]],["fn_fmls_names",[{"type":128,"definedAt":"built-in:fn_fmls_names","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["fn_fmls_names","rlang"],"nodeId":"built-in:fn_fmls_names"}]],["call2",[{"type":128,"definedAt":"built-in:call2","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["call2","rlang"],"nodeId":"built-in:call2"}]],["sym",[{"type":128,"definedAt":"built-in:sym","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["sym","rlang"],"nodeId":"built-in:sym"}]],["syms",[{"type":128,"definedAt":"built-in:syms","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["syms","rlang"],"nodeId":"built-in:syms"}]],["quo_name",[{"type":128,"definedAt":"built-in:quo_name","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["quo_name","rlang"],"nodeId":"built-in:quo_name"}]],["as_name",[{"type":128,"definedAt":"built-in:as_name","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["as_name","rlang"],"nodeId":"built-in:as_name"}]],["as_label",[{"type":128,"definedAt":"built-in:as_label","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["as_label","rlang"],"nodeId":"built-in:as_label"}]],["as_string",[{"type":128,"definedAt":"built-in:as_string","config":{"forceArgs":"all","libFn":true,"props":2048},"name":["as_string","rlang"],"nodeId":"built-in:as_string"}]],["dyn.load",[{"type":128,"definedAt":"built-in:dyn.load","config":{"forceArgs":"all","props":1024},"name":["dyn.load","base"],"nodeId":"built-in:dyn.load"}]],["getNativeSymbolInfo",[{"type":128,"definedAt":"built-in:getNativeSymbolInfo","config":{"forceArgs":"all","props":1024},"name":["getNativeSymbolInfo","base"],"nodeId":"built-in:getNativeSymbolInfo"}]],["sourceCpp",[{"type":128,"definedAt":"built-in:sourceCpp","config":{"forceArgs":"all","libFn":true,"props":1024,"tags":["file","reads"],"sig":[["file",16]]},"name":["sourceCpp","Rcpp"],"nodeId":"built-in:sourceCpp"}]],["getOption",[{"type":128,"definedAt":"built-in:getOption","config":{"forceArgs":"all","props":256},"name":["getOption","base"],"nodeId":"built-in:getOption"}]],["Sys.getenv",[{"type":128,"definedAt":"built-in:Sys.getenv","config":{"forceArgs":"all","props":256},"name":["Sys.getenv","base"],"nodeId":"built-in:Sys.getenv"}]],["Sys.info",[{"type":128,"definedAt":"built-in:Sys.info","config":{"forceArgs":"all","props":256},"name":["Sys.info","base"],"nodeId":"built-in:Sys.info"}]],["Sys.getpid",[{"type":128,"definedAt":"built-in:Sys.getpid","config":{"forceArgs":"all","props":256},"name":["Sys.getpid","base"],"nodeId":"built-in:Sys.getpid"}]],["getwd",[{"type":128,"definedAt":"built-in:getwd","config":{"forceArgs":"all","props":256},"name":["getwd","base"],"nodeId":"built-in:getwd"}]],["getRversion",[{"type":128,"definedAt":"built-in:getRversion","config":{"forceArgs":"all","props":256},"name":["getRversion","base"],"nodeId":"built-in:getRversion"}]],["R.Version",[{"type":128,"definedAt":"built-in:R.Version","config":{"forceArgs":"all","props":256},"name":["R.Version","base"],"nodeId":"built-in:R.Version"}]],["Sys.time",[{"type":128,"definedAt":"built-in:Sys.time","config":{"forceArgs":"all","props":256},"name":["Sys.time","base"],"nodeId":"built-in:Sys.time"}]],["Sys.Date",[{"type":128,"definedAt":"built-in:Sys.Date","config":{"forceArgs":"all","props":256},"name":["Sys.Date","base"],"nodeId":"built-in:Sys.Date"}]],["Sys.timezone",[{"type":128,"definedAt":"built-in:Sys.timezone","config":{"forceArgs":"all","props":256},"name":["Sys.timezone","base"],"nodeId":"built-in:Sys.timezone"}]],["date",[{"type":128,"definedAt":"built-in:date","config":{"forceArgs":"all","props":256},"name":["date","base"],"nodeId":"built-in:date"}]],["proc.time",[{"type":128,"definedAt":"built-in:proc.time","config":{"forceArgs":"all","props":256},"name":["proc.time","base"],"nodeId":"built-in:proc.time"}]],["interactive",[{"type":128,"definedAt":"built-in:interactive","config":{"forceArgs":"all","props":256},"name":["interactive","base"],"nodeId":"built-in:interactive"}]],["commandArgs",[{"type":128,"definedAt":"built-in:commandArgs","config":{"forceArgs":"all","props":256,"tags":["command-line"]},"name":["commandArgs","base"],"nodeId":"built-in:commandArgs"}]],["system",[{"type":128,"definedAt":"built-in:system","config":{"forceArgs":"all","tags":["process"],"sig":[["command",8258],["intern",72],["ignore.stdout",72],["ignore.stderr",72],["wait",72],["input",66],["show.output.on.console",8],["minimized",8],["invisible",8],["timeout",66]]},"name":["system","base"],"nodeId":"built-in:system"}]],["system2",[{"type":128,"definedAt":"built-in:system2","config":{"forceArgs":"all","tags":["process"],"sig":[["command",8258],["args",8258],["stdout",66],["stderr",66],["stdin",2],["input",66],["env",66],["wait",72],["minimized",8],["invisible",8],["timeout",66]]},"name":["system2","base"],"nodeId":"built-in:system2"}]],["shell",[{"type":128,"definedAt":"built-in:shell","config":{"forceArgs":"all","tags":["process"],"sig":[["cmd",8258],["shell",66],["flag",66],["intern",72],["wait",72],["translate",72],["mustWork",8],["...",66]]},"name":["shell","base"],"nodeId":"built-in:shell"}]],["shell.exec",[{"type":128,"definedAt":"built-in:shell.exec","config":{"forceArgs":"all","tags":["process"],"sig":[["file",8272]]},"name":["shell.exec","base"],"nodeId":"built-in:shell.exec"}]],["pipe",[{"type":128,"definedAt":"built-in:pipe","config":{"forceArgs":"all","tags":["opens-handle","process"],"sig":[["description",8272],["open",72],["encoding",66]]},"name":["pipe","base"],"nodeId":"built-in:pipe"}]],["run",[{"type":128,"definedAt":"built-in:run","config":{"forceArgs":"all","libFn":true,"props":1,"sig":[["x",66],["...",2]]},"name":["run","cohortBuilder"],"nodeId":"built-in:run"}]],["process",[{"type":128,"definedAt":"built-in:process","config":{"forceArgs":"all","libFn":true,"tags":["process"],"sig":[["command",8258],["args",8258]]},"name":["process","processx"],"nodeId":"built-in:process"}]],["exec_wait",[{"type":128,"definedAt":"built-in:exec_wait","config":{"forceArgs":"all","libFn":true,"tags":["process"],"sig":[["cmd",8258],["args",8258]]},"name":["exec_wait","sys"],"nodeId":"built-in:exec_wait"}]],["exec_internal",[{"type":128,"definedAt":"built-in:exec_internal","config":{"forceArgs":"all","libFn":true,"tags":["process"],"sig":[["cmd",8258],["args",8258]]},"name":["exec_internal","sys"],"nodeId":"built-in:exec_internal"}]],["exec_background",[{"type":128,"definedAt":"built-in:exec_background","config":{"forceArgs":"all","libFn":true,"tags":["process"],"sig":[["cmd",8258],["args",8258]]},"name":["exec_background","sys"],"nodeId":"built-in:exec_background"}]],["dbGetQuery",[{"type":128,"definedAt":"built-in:dbGetQuery","config":{"forceArgs":"all","libFn":true,"tags":["database"],"sig":[["conn",4160],["statement",8258],["...",2]]},"name":["dbGetQuery","DBI"],"nodeId":"built-in:dbGetQuery"}]],["dbSendQuery",[{"type":128,"definedAt":"built-in:dbSendQuery","config":{"forceArgs":"all","libFn":true,"tags":["database"],"sig":[["conn",4160],["statement",8258],["...",2]]},"name":["dbSendQuery","DBI"],"nodeId":"built-in:dbSendQuery"}]],["dbSendStatement",[{"type":128,"definedAt":"built-in:dbSendStatement","config":{"forceArgs":"all","libFn":true,"tags":["database"],"sig":[["conn",4160],["statement",8258],["...",2]]},"name":["dbSendStatement","DBI"],"nodeId":"built-in:dbSendStatement"}]],["dbExecute",[{"type":128,"definedAt":"built-in:dbExecute","config":{"forceArgs":"all","libFn":true,"tags":["database"],"sig":[["conn",4160],["statement",8258],["...",2]]},"name":["dbExecute","DBI"],"nodeId":"built-in:dbExecute"}]],["sqldf",[{"type":128,"definedAt":"built-in:sqldf","config":{"forceArgs":"all","libFn":true,"tags":["database"],"sig":[["x",8258],["stringsAsFactors",72],["row.names",72],["envir",66],["method",72]]},"name":["sqldf","sqldf"],"nodeId":"built-in:sqldf"}]],["sql",[{"type":128,"definedAt":"built-in:sql","config":{"forceArgs":"all","libFn":true,"tags":["database"],"sig":[["...",8258]]},"name":["sql","dbplyr"],"nodeId":"built-in:sql"}]],["HTML",[{"type":128,"definedAt":"built-in:HTML","config":{"forceArgs":"all","libFn":true,"tags":["html"],"sig":[["text",8258],["...",66]]},"name":["HTML","htmltools"],"nodeId":"built-in:HTML"}]],["insertUI",[{"type":128,"definedAt":"built-in:insertUI","config":{"forceArgs":"all","libFn":true,"tags":["html"],"sig":[["selector",66],["where",72],["ui",8258],["immediate",72],["session",66]]},"name":["insertUI","shiny"],"nodeId":"built-in:insertUI"}]],["JS",[{"type":128,"definedAt":"built-in:JS","config":{"forceArgs":"all","libFn":true,"tags":["javascript"],"sig":[["...",8258]]},"name":["JS","htmlwidgets"],"nodeId":"built-in:JS"}]],["runjs",[{"type":128,"definedAt":"built-in:runjs","config":{"forceArgs":"all","libFn":true,"tags":["javascript"],"sig":[["code",8258]]},"name":["runjs","shinyjs"],"nodeId":"built-in:runjs"}]],["html",[{"type":128,"definedAt":"built-in:html","config":{"forceArgs":"all","libFn":true,"tags":["html"],"sig":[["id",66],["html",8258],["add",72],["selector",66],["asis",72]]},"name":["html","shinyjs"],"nodeId":"built-in:html"}]],["extendShinyjs",[{"type":128,"definedAt":"built-in:extendShinyjs","config":{"forceArgs":"all","libFn":true,"tags":["javascript","file","reads"],"sig":[["script",80],["text",8258],["functions",66]]},"name":["extendShinyjs","shinyjs"],"nodeId":"built-in:extendShinyjs"}]],["readline",[{"type":128,"definedAt":"built-in:readline","config":{"forceArgs":"all","tags":["asks-user"]},"name":["readline","base"],"nodeId":"built-in:readline"}]],["file.choose",[{"type":128,"definedAt":"built-in:file.choose","config":{"forceArgs":"all","tags":["asks-user"]},"name":["file.choose","base"],"nodeId":"built-in:file.choose"}]],["askYesNo",[{"type":128,"definedAt":"built-in:askYesNo","config":{"forceArgs":"all","tags":["asks-user"]},"name":["askYesNo","utils"],"nodeId":"built-in:askYesNo"}]],["choose.files",[{"type":128,"definedAt":"built-in:choose.files","config":{"forceArgs":"all","tags":["asks-user"]},"name":["choose.files","utils"],"nodeId":"built-in:choose.files"}]],["choose.dir",[{"type":128,"definedAt":"built-in:choose.dir","config":{"forceArgs":"all","tags":["asks-user"]},"name":["choose.dir","utils"],"nodeId":"built-in:choose.dir"}]],["menu",[{"type":128,"definedAt":"built-in:menu","config":{"forceArgs":"all","tags":["asks-user"]},"name":["menu","utils"],"nodeId":"built-in:menu"}]],["select.list",[{"type":128,"definedAt":"built-in:select.list","config":{"forceArgs":"all","tags":["asks-user"]},"name":["select.list","utils"],"nodeId":"built-in:select.list"}]],["winDialogString",[{"type":128,"definedAt":"built-in:winDialogString","config":{"forceArgs":"all","tags":["asks-user"]},"name":["winDialogString","utils"],"nodeId":"built-in:winDialogString"}]],["winDialog",[{"type":128,"definedAt":"built-in:winDialog","config":{"forceArgs":"all","tags":["asks-user"]},"name":["winDialog","utils"],"nodeId":"built-in:winDialog"}]],["showPrompt",[{"type":128,"definedAt":"built-in:showPrompt","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["showPrompt","rstudioapi"],"nodeId":"built-in:showPrompt"}]],["askForPassword",[{"type":128,"definedAt":"built-in:askForPassword","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["askForPassword","rstudioapi"],"nodeId":"built-in:askForPassword"}]],["selectDirectory",[{"type":128,"definedAt":"built-in:selectDirectory","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["selectDirectory","rstudioapi"],"nodeId":"built-in:selectDirectory"}]],["selectFile",[{"type":128,"definedAt":"built-in:selectFile","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["selectFile","rstudioapi"],"nodeId":"built-in:selectFile"}]],["showQuestion",[{"type":128,"definedAt":"built-in:showQuestion","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["showQuestion","rstudioapi"],"nodeId":"built-in:showQuestion"}]],["dlgInput",[{"type":128,"definedAt":"built-in:dlgInput","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["dlgInput","svDialogs"],"nodeId":"built-in:dlgInput"}]],["dlgOpen",[{"type":128,"definedAt":"built-in:dlgOpen","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["dlgOpen","svDialogs"],"nodeId":"built-in:dlgOpen"}]],["dlgList",[{"type":128,"definedAt":"built-in:dlgList","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["dlgList","svDialogs"],"nodeId":"built-in:dlgList"}]],["dlgSave",[{"type":128,"definedAt":"built-in:dlgSave","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["dlgSave","svDialogs"],"nodeId":"built-in:dlgSave"}]],["dlgDir",[{"type":128,"definedAt":"built-in:dlgDir","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["dlgDir","svDialogs"],"nodeId":"built-in:dlgDir"}]],["tk_choose.files",[{"type":128,"definedAt":"built-in:tk_choose.files","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["tk_choose.files","tcltk"],"nodeId":"built-in:tk_choose.files"}]],["tk_choose.dir",[{"type":128,"definedAt":"built-in:tk_choose.dir","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["tk_choose.dir","tcltk"],"nodeId":"built-in:tk_choose.dir"}]],["parseQueryString",[{"type":128,"definedAt":"built-in:parseQueryString","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["parseQueryString","shiny"],"nodeId":"built-in:parseQueryString"}]],["getQueryString",[{"type":128,"definedAt":"built-in:getQueryString","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["getQueryString","shiny"],"nodeId":"built-in:getQueryString"}]],["getUrlHash",[{"type":128,"definedAt":"built-in:getUrlHash","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["getUrlHash","shiny"],"nodeId":"built-in:getUrlHash"}]],["restoreInput",[{"type":128,"definedAt":"built-in:restoreInput","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["restoreInput","shiny"],"nodeId":"built-in:restoreInput"}]],["parseFilePaths",[{"type":128,"definedAt":"built-in:parseFilePaths","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["parseFilePaths","shinyFiles"],"nodeId":"built-in:parseFilePaths"}]],["parseDirPath",[{"type":128,"definedAt":"built-in:parseDirPath","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["parseDirPath","shinyFiles"],"nodeId":"built-in:parseDirPath"}]],["parseSavePath",[{"type":128,"definedAt":"built-in:parseSavePath","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["parseSavePath","shinyFiles"],"nodeId":"built-in:parseSavePath"}]],["shinyFileChoose",[{"type":128,"definedAt":"built-in:shinyFileChoose","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["shinyFileChoose","shinyFiles"],"nodeId":"built-in:shinyFileChoose"}]],["shinyDirChoose",[{"type":128,"definedAt":"built-in:shinyDirChoose","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["shinyDirChoose","shinyFiles"],"nodeId":"built-in:shinyDirChoose"}]],["shinyFileSave",[{"type":128,"definedAt":"built-in:shinyFileSave","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["shinyFileSave","shinyFiles"],"nodeId":"built-in:shinyFileSave"}]],["get_data",[{"type":128,"definedAt":"built-in:get_data","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["get_data","cohortBuilder"],"nodeId":"built-in:get_data"}]],["sum_up",[{"type":128,"definedAt":"built-in:sum_up","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["sum_up","cohortBuilder"],"nodeId":"built-in:sum_up"}]],["attrition",[{"type":128,"definedAt":"built-in:attrition","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["attrition","cohortBuilder"],"nodeId":"built-in:attrition"}]],["get_state",[{"type":128,"definedAt":"built-in:get_state","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["get_state","cohortBuilder"],"nodeId":"built-in:get_state"}]],["code",[{"type":128,"definedAt":"built-in:code","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["code","cohortBuilder"],"nodeId":"built-in:code"}]],["stat",[{"type":128,"definedAt":"built-in:stat","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["stat","cohortBuilder"],"nodeId":"built-in:stat"}]],["cb_server",[{"type":128,"definedAt":"built-in:cb_server","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["cb_server","shinyCohortBuilder"],"nodeId":"built-in:cb_server"}]],["cb_ui",[{"type":128,"definedAt":"built-in:cb_ui","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["cb_ui","shinyCohortBuilder"],"nodeId":"built-in:cb_ui"}]],["cb_chat_server",[{"type":128,"definedAt":"built-in:cb_chat_server","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["cb_chat_server","shinyCohortBuilder"],"nodeId":"built-in:cb_chat_server"}]],["cb_chat_ui",[{"type":128,"definedAt":"built-in:cb_chat_ui","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["cb_chat_ui","shinyCohortBuilder"],"nodeId":"built-in:cb_chat_ui"}]],["gui",[{"type":128,"definedAt":"built-in:gui","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["gui","shinyCohortBuilder"],"nodeId":"built-in:gui"}]],["demo_app",[{"type":128,"definedAt":"built-in:demo_app","config":{"forceArgs":"all","libFn":true,"tags":["asks-user"]},"name":["demo_app","shinyCohortBuilder"],"nodeId":"built-in:demo_app"}]],["tempfile",[{"type":128,"definedAt":"built-in:tempfile","config":{"forceArgs":"all","tags":["temp-file"]},"name":["tempfile","base"],"nodeId":"built-in:tempfile"}]],["tempdir",[{"type":128,"definedAt":"built-in:tempdir","config":{"forceArgs":"all","tags":["temp-file"]},"name":["tempdir","base"],"nodeId":"built-in:tempdir"}]],["file_temp",[{"type":128,"definedAt":"built-in:file_temp","config":{"forceArgs":"all","libFn":true,"tags":["temp-file"]},"name":["file_temp","fs"],"nodeId":"built-in:file_temp"}]],["dir_temp",[{"type":128,"definedAt":"built-in:dir_temp","config":{"forceArgs":"all","libFn":true,"tags":["temp-file"]},"name":["dir_temp","fs"],"nodeId":"built-in:dir_temp"}]],["local_tempfile",[{"type":128,"definedAt":"built-in:local_tempfile","config":{"forceArgs":"all","libFn":true,"tags":["temp-file"]},"name":["local_tempfile","withr"],"nodeId":"built-in:local_tempfile"}]],["with_tempfile",[{"type":128,"definedAt":"built-in:with_tempfile","config":{"forceArgs":"all","libFn":true,"tags":["temp-file"]},"name":["with_tempfile","withr"],"nodeId":"built-in:with_tempfile"}]],["local_tempdir",[{"type":128,"definedAt":"built-in:local_tempdir","config":{"forceArgs":"all","libFn":true,"tags":["temp-file"]},"name":["local_tempdir","withr"],"nodeId":"built-in:local_tempdir"}]],["with_tempdir",[{"type":128,"definedAt":"built-in:with_tempdir","config":{"forceArgs":"all","libFn":true,"tags":["temp-file"]},"name":["with_tempdir","withr"],"nodeId":"built-in:with_tempdir"}]],["reactive",[{"type":128,"definedAt":"built-in:reactive","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactive","shiny"],"nodeId":"built-in:reactive"}]],["eventReactive",[{"type":128,"definedAt":"built-in:eventReactive","config":{"forceArgs":"all","libFn":true,"props":2},"name":["eventReactive","shiny"],"nodeId":"built-in:eventReactive"}]],["bindEvent",[{"type":128,"definedAt":"built-in:bindEvent","config":{"forceArgs":"all","libFn":true,"props":2},"name":["bindEvent","shiny"],"nodeId":"built-in:bindEvent"}]],["bindCache",[{"type":128,"definedAt":"built-in:bindCache","config":{"forceArgs":"all","libFn":true,"props":2},"name":["bindCache","shiny"],"nodeId":"built-in:bindCache"}]],["isolate",[{"type":128,"definedAt":"built-in:isolate","config":{"forceArgs":"all","libFn":true,"props":2},"name":["isolate","shiny"],"nodeId":"built-in:isolate"}]],["req",[{"type":128,"definedAt":"built-in:req","config":{"forceArgs":"all","libFn":true,"props":2},"name":["req","shiny"],"nodeId":"built-in:req"}]],["debounce",[{"type":128,"definedAt":"built-in:debounce","config":{"forceArgs":"all","libFn":true,"props":2},"name":["debounce","shiny"],"nodeId":"built-in:debounce"}]],["throttle",[{"type":128,"definedAt":"built-in:throttle","config":{"forceArgs":"all","libFn":true,"props":2},"name":["throttle","shiny"],"nodeId":"built-in:throttle"}]],["reactiveVal",[{"type":128,"definedAt":"built-in:reactiveVal","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactiveVal","shiny"],"nodeId":"built-in:reactiveVal"}]],["reactiveValues",[{"type":128,"definedAt":"built-in:reactiveValues","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactiveValues","shiny"],"nodeId":"built-in:reactiveValues"}]],["reactiveValuesToList",[{"type":128,"definedAt":"built-in:reactiveValuesToList","config":{"forceArgs":"all","libFn":true,"props":2},"name":["reactiveValuesToList","shiny"],"nodeId":"built-in:reactiveValuesToList"}]],["freezeReactiveVal",[{"type":128,"definedAt":"built-in:freezeReactiveVal","config":{"forceArgs":"all","libFn":true,"props":2},"name":["freezeReactiveVal","shiny"],"nodeId":"built-in:freezeReactiveVal"}]],["cohort",[{"type":128,"definedAt":"built-in:cohort","config":{"forceArgs":"all","libFn":true,"props":1},"name":["cohort","cohortBuilder"],"nodeId":"built-in:cohort"}]],["set_source",[{"type":128,"definedAt":"built-in:set_source","config":{"forceArgs":"all","libFn":true,"props":1},"name":["set_source","cohortBuilder"],"nodeId":"built-in:set_source"}]],["add_source",[{"type":128,"definedAt":"built-in:add_source","config":{"forceArgs":"all","libFn":true,"props":1},"name":["add_source","cohortBuilder"],"nodeId":"built-in:add_source"}]],["update_source",[{"type":128,"definedAt":"built-in:update_source","config":{"forceArgs":"all","libFn":true,"props":1},"name":["update_source","cohortBuilder"],"nodeId":"built-in:update_source"}]],["add_filter",[{"type":128,"definedAt":"built-in:add_filter","config":{"forceArgs":"all","libFn":true,"props":1},"name":["add_filter","cohortBuilder"],"nodeId":"built-in:add_filter"}]],["update_filter",[{"type":128,"definedAt":"built-in:update_filter","config":{"forceArgs":"all","libFn":true,"props":1},"name":["update_filter","cohortBuilder"],"nodeId":"built-in:update_filter"}]],["rm_filter",[{"type":128,"definedAt":"built-in:rm_filter","config":{"forceArgs":"all","libFn":true,"props":1},"name":["rm_filter","cohortBuilder"],"nodeId":"built-in:rm_filter"}]],["bind_key",[{"type":128,"definedAt":"built-in:bind_key","config":{"forceArgs":"all","libFn":true,"props":1},"name":["bind_key","cohortBuilder"],"nodeId":"built-in:bind_key"}]],["bind_keys",[{"type":128,"definedAt":"built-in:bind_keys","config":{"forceArgs":"all","libFn":true,"props":1},"name":["bind_keys","cohortBuilder"],"nodeId":"built-in:bind_keys"}]],["as.tblist",[{"type":128,"definedAt":"built-in:as.tblist","config":{"forceArgs":"all","libFn":true,"props":1},"name":["as.tblist","cohortBuilder"],"nodeId":"built-in:as.tblist"}]],["tblist",[{"type":128,"definedAt":"built-in:tblist","config":{"forceArgs":"all","libFn":true,"props":1},"name":["tblist","cohortBuilder"],"nodeId":"built-in:tblist"}]],["step",[{"type":128,"definedAt":"built-in:step","config":{"forceArgs":"all","libFn":true,"props":1},"name":["step","cohortBuilder"],"nodeId":"built-in:step"}]],["add_step",[{"type":128,"definedAt":"built-in:add_step","config":{"forceArgs":"all","libFn":true,"props":1},"name":["add_step","cohortBuilder"],"nodeId":"built-in:add_step"}]],["rm_step",[{"type":128,"definedAt":"built-in:rm_step","config":{"forceArgs":"all","libFn":true,"props":1},"name":["rm_step","cohortBuilder"],"nodeId":"built-in:rm_step"}]],["restore",[{"type":128,"definedAt":"built-in:restore","config":{"forceArgs":"all","libFn":true,"props":1},"name":["restore","cohortBuilder"],"nodeId":"built-in:restore"}]],["[<-",[{"type":128,"definedAt":"built-in:[<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"[","nodeId":"built-in:[<-"}]],["[<<-",[{"type":128,"definedAt":"built-in:[<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"[","nodeId":"built-in:[<<-"}]],["[[<-",[{"type":128,"definedAt":"built-in:[[<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"[[","nodeId":"built-in:[[<-"}]],["[[<<-",[{"type":128,"definedAt":"built-in:[[<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"[[","nodeId":"built-in:[[<<-"}]],["names<-",[{"type":128,"definedAt":"built-in:names<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["names","base"],"nodeId":"built-in:names<-"}]],["names<<-",[{"type":128,"definedAt":"built-in:names<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["names","base"],"nodeId":"built-in:names<<-"}]],["dimnames<-",[{"type":128,"definedAt":"built-in:dimnames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["dimnames","base"],"nodeId":"built-in:dimnames<-"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in:dimnames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["dimnames","base"],"nodeId":"built-in:dimnames<<-"}]],["attributes<-",[{"type":128,"definedAt":"built-in:attributes<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["attributes","base"],"nodeId":"built-in:attributes<-"}]],["attributes<<-",[{"type":128,"definedAt":"built-in:attributes<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["attributes","base"],"nodeId":"built-in:attributes<<-"}]],["attr<-",[{"type":128,"definedAt":"built-in:attr<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["attr","base"],"nodeId":"built-in:attr<-"}]],["attr<<-",[{"type":128,"definedAt":"built-in:attr<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["attr","base"],"nodeId":"built-in:attr<<-"}]],["class<-",[{"type":128,"definedAt":"built-in:class<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["class","base"],"nodeId":"built-in:class<-"}]],["class<<-",[{"type":128,"definedAt":"built-in:class<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["class","base"],"nodeId":"built-in:class<<-"}]],["levels<-",[{"type":128,"definedAt":"built-in:levels<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["levels","base"],"nodeId":"built-in:levels<-"}]],["levels<<-",[{"type":128,"definedAt":"built-in:levels<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["levels","base"],"nodeId":"built-in:levels<<-"}]],["rownames<-",[{"type":128,"definedAt":"built-in:rownames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["rownames","base"],"nodeId":"built-in:rownames<-"}]],["rownames<<-",[{"type":128,"definedAt":"built-in:rownames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["rownames","base"],"nodeId":"built-in:rownames<<-"}]],["colnames<-",[{"type":128,"definedAt":"built-in:colnames<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["colnames","base"],"nodeId":"built-in:colnames<-"}]],["colnames<<-",[{"type":128,"definedAt":"built-in:colnames<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["colnames","base"],"nodeId":"built-in:colnames<<-"}]],["body<-",[{"type":128,"definedAt":"built-in:body<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["body","base"],"nodeId":"built-in:body<-"}]],["body<<-",[{"type":128,"definedAt":"built-in:body<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["body","base"],"nodeId":"built-in:body<<-"}]],["environment<-",[{"type":128,"definedAt":"built-in:environment<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["environment","base"],"nodeId":"built-in:environment<-"}]],["environment<<-",[{"type":128,"definedAt":"built-in:environment<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["environment","base"],"nodeId":"built-in:environment<<-"}]],["formals<-",[{"type":128,"definedAt":"built-in:formals<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["formals","base"],"nodeId":"built-in:formals<-"}]],["formals<<-",[{"type":128,"definedAt":"built-in:formals<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["formals","base"],"nodeId":"built-in:formals<<-"}]],["length<-",[{"type":128,"definedAt":"built-in:length<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["length","base"],"nodeId":"built-in:length<-"}]],["length<<-",[{"type":128,"definedAt":"built-in:length<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["length","base"],"nodeId":"built-in:length<<-"}]],["dim<-",[{"type":128,"definedAt":"built-in:dim<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":["dim","base"],"nodeId":"built-in:dim<-"}]],["dim<<-",[{"type":128,"definedAt":"built-in:dim<<-","config":{"readIndices":true,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":["dim","base"],"nodeId":"built-in:dim<<-"}]],["method<-",[{"type":128,"definedAt":"built-in:method<-","config":{"readIndices":true,"constructName":"s7","assignmentOperator":"<-","makeMaybe":true},"name":["method","S7"],"nodeId":"built-in:method<-"}]],["method<<-",[{"type":128,"definedAt":"built-in:method<<-","config":{"readIndices":true,"constructName":"s7","assignmentOperator":"<<-","makeMaybe":true},"name":["method","S7"],"nodeId":"built-in:method<<-"}]],["$<-",[{"type":128,"definedAt":"built-in:$<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"$","nodeId":"built-in:$<-"}]],["$<<-",[{"type":128,"definedAt":"built-in:$<<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"$","nodeId":"built-in:$<<-"}]],["@<-",[{"type":128,"definedAt":"built-in:@<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<-","makeMaybe":true},"name":"@","nodeId":"built-in:@<-"}]],["@<<-",[{"type":128,"definedAt":"built-in:@<<-","config":{"readIndices":false,"props":64,"assignmentOperator":"<<-","makeMaybe":true},"name":"@","nodeId":"built-in:@<<-"}]],["id",[{"type":128,"definedAt":"built-in:id","config":{"tags":["deprecated"]},"name":["id","dplyr"],"nodeId":"built-in:id"}]],["top_n",[{"type":128,"definedAt":"built-in:top_n","config":{"tags":["deprecated"]},"name":["top_n","dplyr"],"nodeId":"built-in:top_n"}]],["sample_n",[{"type":128,"definedAt":"built-in:sample_n","config":{"tags":["deprecated"]},"name":["sample_n","dplyr"],"nodeId":"built-in:sample_n"}]],["recode",[{"type":128,"definedAt":"built-in:recode","config":{"tags":["deprecated"]},"name":["recode","dplyr"],"nodeId":"built-in:recode"}]],["progress_estimated",[{"type":128,"definedAt":"built-in:progress_estimated","config":{"tags":["deprecated"]},"name":["progress_estimated","dplyr"],"nodeId":"built-in:progress_estimated"}]],["group_nest",[{"type":128,"definedAt":"built-in:group_nest","config":{"tags":["deprecated"]},"name":["group_nest","dplyr"],"nodeId":"built-in:group_nest"}]],["add_rownames",[{"type":128,"definedAt":"built-in:add_rownames","config":{"tags":["deprecated"]},"name":["add_rownames","dplyr"],"nodeId":"built-in:add_rownames"}]],["tbl_df",[{"type":128,"definedAt":"built-in:tbl_df","config":{"tags":["deprecated"]},"name":["tbl_df","dplyr"],"nodeId":"built-in:tbl_df"}]],["src_local",[{"type":128,"definedAt":"built-in:src_local","config":{"tags":["deprecated"]},"name":["src_local","dplyr"],"nodeId":"built-in:src_local"}]],["summarise_each",[{"type":128,"definedAt":"built-in:summarise_each","config":{"tags":["deprecated"]},"name":["summarise_each","dplyr"],"nodeId":"built-in:summarise_each"}]],["summarize_",[{"type":128,"definedAt":"built-in:summarize_","config":{"tags":["deprecated"]},"name":["summarize_","dplyr"],"nodeId":"built-in:summarize_"}]],["summarise_",[{"type":128,"definedAt":"built-in:summarise_","config":{"tags":["deprecated"]},"name":["summarise_","dplyr"],"nodeId":"built-in:summarise_"}]],["slice_",[{"type":128,"definedAt":"built-in:slice_","config":{"tags":["deprecated"]},"name":["slice_","dplyr"],"nodeId":"built-in:slice_"}]],["select_vars_",[{"type":128,"definedAt":"built-in:select_vars_","config":{"tags":["deprecated"]},"name":["select_vars_","dplyr"],"nodeId":"built-in:select_vars_"}]],["select_",[{"type":128,"definedAt":"built-in:select_","config":{"tags":["deprecated"]},"name":["select_","dplyr"],"nodeId":"built-in:select_"}]],["rename_vars_",[{"type":128,"definedAt":"built-in:rename_vars_","config":{"tags":["deprecated"]},"name":["rename_vars_","dplyr"],"nodeId":"built-in:rename_vars_"}]],["rename_",[{"type":128,"definedAt":"built-in:rename_","config":{"tags":["deprecated"]},"name":["rename_","dplyr"],"nodeId":"built-in:rename_"}]],["transmute_",[{"type":128,"definedAt":"built-in:transmute_","config":{"tags":["deprecated"]},"name":["transmute_","dplyr"],"nodeId":"built-in:transmute_"}]],["tally_",[{"type":128,"definedAt":"built-in:tally_","config":{"tags":["deprecated"]},"name":["tally_","dplyr"],"nodeId":"built-in:tally_"}]],["mutate_",[{"type":128,"definedAt":"built-in:mutate_","config":{"tags":["deprecated"]},"name":["mutate_","dplyr"],"nodeId":"built-in:mutate_"}]],["group_indices_",[{"type":128,"definedAt":"built-in:group_indices_","config":{"tags":["deprecated"]},"name":["group_indices_","dplyr"],"nodeId":"built-in:group_indices_"}]],["group_by_",[{"type":128,"definedAt":"built-in:group_by_","config":{"tags":["deprecated"]},"name":["group_by_","dplyr"],"nodeId":"built-in:group_by_"}]],["funs_",[{"type":128,"definedAt":"built-in:funs_","config":{"tags":["deprecated"]},"name":["funs_","dplyr"],"nodeId":"built-in:funs_"}]],["filter_",[{"type":128,"definedAt":"built-in:filter_","config":{"tags":["deprecated"]},"name":["filter_","dplyr"],"nodeId":"built-in:filter_"}]],["do_",[{"type":128,"definedAt":"built-in:do_","config":{"tags":["deprecated"]},"name":["do_","dplyr"],"nodeId":"built-in:do_"}]],["distinct_",[{"type":128,"definedAt":"built-in:distinct_","config":{"tags":["deprecated"]},"name":["distinct_","dplyr"],"nodeId":"built-in:distinct_"}]],["count_",[{"type":128,"definedAt":"built-in:count_","config":{"tags":["deprecated"]},"name":["count_","dplyr"],"nodeId":"built-in:count_"}]],["arrange_",[{"type":128,"definedAt":"built-in:arrange_","config":{"tags":["deprecated"]},"name":["arrange_","dplyr"],"nodeId":"built-in:arrange_"}]],["add_tally_",[{"type":128,"definedAt":"built-in:add_tally_","config":{"tags":["deprecated"]},"name":["add_tally_","dplyr"],"nodeId":"built-in:add_tally_"}]],["add_count_",[{"type":128,"definedAt":"built-in:add_count_","config":{"tags":["deprecated"]},"name":["add_count_","dplyr"],"nodeId":"built-in:add_count_"}]],["funs",[{"type":128,"definedAt":"built-in:funs","config":{"tags":["deprecated"]},"name":["funs","dplyr"],"nodeId":"built-in:funs"}]],["do",[{"type":128,"definedAt":"built-in:do","config":{"tags":["deprecated"]},"name":["do","dplyr"],"nodeId":"built-in:do"}]],["combine",[{"type":128,"definedAt":"built-in:combine","config":{"tags":["deprecated"]},"name":["combine","dplyr"],"nodeId":"built-in:combine"}]],["changes",[{"type":128,"definedAt":"built-in:changes","config":{"tags":["deprecated"]},"name":["changes","dplyr"],"nodeId":"built-in:changes"}]],["location",[{"type":128,"definedAt":"built-in:location","config":{"tags":["deprecated"]},"name":["location","dplyr"],"nodeId":"built-in:location"}]],["eval_tbls2",[{"type":128,"definedAt":"built-in:eval_tbls2","config":{"tags":["deprecated"]},"name":["eval_tbls2","dplyr"],"nodeId":"built-in:eval_tbls2"}]],["eval_tbls",[{"type":128,"definedAt":"built-in:eval_tbls","config":{"tags":["deprecated"]},"name":["eval_tbls","dplyr"],"nodeId":"built-in:eval_tbls"}]],["compare_tbls2",[{"type":128,"definedAt":"built-in:compare_tbls2","config":{"tags":["deprecated"]},"name":["compare_tbls2","dplyr"],"nodeId":"built-in:compare_tbls2"}]],["compare_tbls",[{"type":128,"definedAt":"built-in:compare_tbls","config":{"tags":["deprecated"]},"name":["compare_tbls","dplyr"],"nodeId":"built-in:compare_tbls"}]],["bench_tbls",[{"type":128,"definedAt":"built-in:bench_tbls","config":{"tags":["deprecated"]},"name":["bench_tbls","dplyr"],"nodeId":"built-in:bench_tbls"}]],["current_vars",[{"type":128,"definedAt":"built-in:current_vars","config":{"tags":["deprecated"]},"name":["current_vars","dplyr"],"nodeId":"built-in:current_vars"}]],["select_var",[{"type":128,"definedAt":"built-in:select_var","config":{"tags":["deprecated"]},"name":["select_var","dplyr"],"nodeId":"built-in:select_var"}]],["rename_vars",[{"type":128,"definedAt":"built-in:rename_vars","config":{"tags":["deprecated"]},"name":["rename_vars","dplyr"],"nodeId":"built-in:rename_vars"}]],["select_vars",[{"type":128,"definedAt":"built-in:select_vars","config":{"tags":["deprecated"]},"name":["select_vars","dplyr"],"nodeId":"built-in:select_vars"}]],["failwith",[{"type":128,"definedAt":"built-in:failwith","config":{"tags":["deprecated"]},"name":["failwith","dplyr"],"nodeId":"built-in:failwith"}]],["all_vars",[{"type":128,"definedAt":"built-in:all_vars","config":{"tags":["deprecated"]},"name":["all_vars","dplyr"],"nodeId":"built-in:all_vars"}]],["select_all",[{"type":128,"definedAt":"built-in:select_all","config":{"tags":["deprecated"]},"name":["select_all","dplyr"],"nodeId":"built-in:select_all"}]],["mutate_all",[{"type":128,"definedAt":"built-in:mutate_all","config":{"tags":["deprecated"]},"name":["mutate_all","dplyr"],"nodeId":"built-in:mutate_all"}]],["summarise_all",[{"type":128,"definedAt":"built-in:summarise_all","config":{"tags":["deprecated"]},"name":["summarise_all","dplyr"],"nodeId":"built-in:summarise_all"}]],["group_by_all",[{"type":128,"definedAt":"built-in:group_by_all","config":{"tags":["deprecated"]},"name":["group_by_all","dplyr"],"nodeId":"built-in:group_by_all"}]],["filter_all",[{"type":128,"definedAt":"built-in:filter_all","config":{"tags":["deprecated"]},"name":["filter_all","dplyr"],"nodeId":"built-in:filter_all"}]],["all_equal",[{"type":128,"definedAt":"built-in:all_equal","config":{"tags":["deprecated"]},"name":["all_equal","dplyr"],"nodeId":"built-in:all_equal"}]],["arrange_all",[{"type":128,"definedAt":"built-in:arrange_all","config":{"tags":["deprecated"]},"name":["arrange_all","dplyr"],"nodeId":"built-in:arrange_all"}]],["distinct_all",[{"type":128,"definedAt":"built-in:distinct_all","config":{"tags":["deprecated"]},"name":["distinct_all","dplyr"],"nodeId":"built-in:distinct_all"}]],["fct_explicit_na",[{"type":128,"definedAt":"built-in:fct_explicit_na","config":{"tags":["deprecated"]},"name":["fct_explicit_na","forcats",false],"nodeId":"built-in:fct_explicit_na"}]],["gg_dep",[{"type":128,"definedAt":"built-in:gg_dep","config":{"tags":["deprecated"]},"name":["gg_dep","ggplot2"],"nodeId":"built-in:gg_dep"}]],["is.theme",[{"type":128,"definedAt":"built-in:is.theme","config":{"tags":["deprecated"]},"name":["is.theme","ggplot2"],"nodeId":"built-in:is.theme"}]],["is.ggplot",[{"type":128,"definedAt":"built-in:is.ggplot","config":{"tags":["deprecated"]},"name":["is.ggplot","ggplot2"],"nodeId":"built-in:is.ggplot"}]],["guide_train",[{"type":128,"definedAt":"built-in:guide_train","config":{"tags":["deprecated"]},"name":["guide_train","ggplot2"],"nodeId":"built-in:guide_train"}]],["is.ggproto",[{"type":128,"definedAt":"built-in:is.ggproto","config":{"tags":["deprecated"]},"name":["is.ggproto","ggplot2"],"nodeId":"built-in:is.ggproto"}]],["fortify",[{"type":128,"definedAt":"built-in:fortify","config":{"tags":["deprecated"]},"name":["fortify","ggplot2"],"nodeId":"built-in:fortify"}]],["is.facet",[{"type":128,"definedAt":"built-in:is.facet","config":{"tags":["deprecated"]},"name":["is.facet","ggplot2"],"nodeId":"built-in:is.facet"}]],["is.Coord",[{"type":128,"definedAt":"built-in:is.Coord","config":{"tags":["deprecated"]},"name":["is.Coord","ggplot2"],"nodeId":"built-in:is.Coord"}]],["aes_auto",[{"type":128,"definedAt":"built-in:aes_auto","config":{"tags":["deprecated"]},"name":["aes_auto","ggplot2"],"nodeId":"built-in:aes_auto"}]],["aes_",[{"type":128,"definedAt":"built-in:aes_","config":{"tags":["deprecated"]},"name":["aes_","ggplot2"],"nodeId":"built-in:aes_"}]],["liply",[{"type":128,"definedAt":"built-in:liply","config":{"tags":["deprecated"]},"name":["liply","plyr"],"nodeId":"built-in:liply"}]],["isplit2",[{"type":128,"definedAt":"built-in:isplit2","config":{"tags":["deprecated"]},"name":["isplit2","plyr"],"nodeId":"built-in:isplit2"}]],["transpose",[{"type":128,"definedAt":"built-in:transpose","config":{"tags":["deprecated"]},"name":["transpose","purrr"],"nodeId":"built-in:transpose"}]],["as_vector",[{"type":128,"definedAt":"built-in:as_vector","config":{"tags":["deprecated"]},"name":["as_vector","purrr"],"nodeId":"built-in:as_vector"}]],["map_dfr",[{"type":128,"definedAt":"built-in:map_dfr","config":{"tags":["deprecated"]},"name":["map_dfr","purrr"],"nodeId":"built-in:map_dfr"}]],["flatten",[{"type":128,"definedAt":"built-in:flatten","config":{"tags":["deprecated"]},"name":["flatten","purrr"],"nodeId":"built-in:flatten"}]],["reduce_right",[{"type":128,"definedAt":"built-in:reduce_right","config":{"tags":["deprecated"]},"name":["reduce_right","purrr"],"nodeId":"built-in:reduce_right"}]],["accumulate",[{"type":128,"definedAt":"built-in:accumulate","config":{"tags":["deprecated"]},"name":["accumulate","purrr"],"nodeId":"built-in:accumulate"}]],["map_raw",[{"type":128,"definedAt":"built-in:map_raw","config":{"tags":["deprecated"]},"name":["map_raw","purrr"],"nodeId":"built-in:map_raw"}]],["update_list",[{"type":128,"definedAt":"built-in:update_list","config":{"tags":["deprecated"]},"name":["update_list","purrr"],"nodeId":"built-in:update_list"}]],["when",[{"type":128,"definedAt":"built-in:when","config":{"tags":["deprecated"]},"name":["when","purrr"],"nodeId":"built-in:when"}]],["rdunif",[{"type":128,"definedAt":"built-in:rdunif","config":{"tags":["deprecated"]},"name":["rdunif","purrr"],"nodeId":"built-in:rdunif"}]],["rbernoulli",[{"type":128,"definedAt":"built-in:rbernoulli","config":{"tags":["deprecated"]},"name":["rbernoulli","purrr"],"nodeId":"built-in:rbernoulli"}]],["splice",[{"type":128,"definedAt":"built-in:splice","config":{"tags":["deprecated"]},"name":["splice","purrr"],"nodeId":"built-in:splice"}]],["rerun",[{"type":128,"definedAt":"built-in:rerun","config":{"tags":["deprecated"]},"name":["rerun","purrr"],"nodeId":"built-in:rerun"}]],["prepend",[{"type":128,"definedAt":"built-in:prepend","config":{"tags":["deprecated"]},"name":["prepend","purrr"],"nodeId":"built-in:prepend"}]],["at_depth",[{"type":128,"definedAt":"built-in:at_depth","config":{"tags":["deprecated"]},"name":["at_depth","purrr"],"nodeId":"built-in:at_depth"}]],["cross",[{"type":128,"definedAt":"built-in:cross","config":{"tags":["deprecated"]},"name":["cross","purrr"],"nodeId":"built-in:cross"}]],["list_along",[{"type":128,"definedAt":"built-in:list_along","config":{"tags":["deprecated"]},"name":["list_along","purrr"],"nodeId":"built-in:list_along"}]],["`%@%`",[{"type":128,"definedAt":"built-in:`%@%`","config":{"tags":["deprecated"]},"name":"`%@%`","nodeId":"built-in:`%@%`"}]],["read_table2",[{"type":128,"definedAt":"built-in:read_table2","config":{"tags":["deprecated"]},"name":["read_table2","readr"],"nodeId":"built-in:read_table2"}]],["melt_table",[{"type":128,"definedAt":"built-in:melt_table","config":{"tags":["deprecated"]},"name":["melt_table","readr"],"nodeId":"built-in:melt_table"}]],["melt_fwf",[{"type":128,"definedAt":"built-in:melt_fwf","config":{"tags":["deprecated"]},"name":["melt_fwf","readr"],"nodeId":"built-in:melt_fwf"}]],["melt_delim",[{"type":128,"definedAt":"built-in:melt_delim","config":{"tags":["deprecated"]},"name":["melt_delim","readr"],"nodeId":"built-in:melt_delim"}]],["repair_names",[{"type":128,"definedAt":"built-in:repair_names","config":{"tags":["deprecated"]},"name":["repair_names","tibble"],"nodeId":"built-in:repair_names"}]],["set_tidy_names",[{"type":128,"definedAt":"built-in:set_tidy_names","config":{"tags":["deprecated"]},"name":["set_tidy_names","tibble"],"nodeId":"built-in:set_tidy_names"}]],["tidy_names",[{"type":128,"definedAt":"built-in:tidy_names","config":{"tags":["deprecated"]},"name":["tidy_names","tibble"],"nodeId":"built-in:tidy_names"}]],["is.tibble",[{"type":128,"definedAt":"built-in:is.tibble","config":{"tags":["deprecated"]},"name":["is.tibble","tibble"],"nodeId":"built-in:is.tibble"}]],["trunc_mat",[{"type":128,"definedAt":"built-in:trunc_mat","config":{"tags":["deprecated"]},"name":["trunc_mat","tibble"],"nodeId":"built-in:trunc_mat"}]],["frame_data",[{"type":128,"definedAt":"built-in:frame_data","config":{"tags":["deprecated"]},"name":["frame_data","tibble"],"nodeId":"built-in:frame_data"}]],["as.tibble",[{"type":128,"definedAt":"built-in:as.tibble","config":{"tags":["deprecated"]},"name":["as.tibble","tibble"],"nodeId":"built-in:as.tibble"}]],["as_data_frame",[{"type":128,"definedAt":"built-in:as_data_frame","config":{"tags":["deprecated"]},"name":["as_data_frame","tibble"],"nodeId":"built-in:as_data_frame"}]],["lst_",[{"type":128,"definedAt":"built-in:lst_","config":{"tags":["deprecated"]},"name":["lst_","tibble"],"nodeId":"built-in:lst_"}]],["data_frame_",[{"type":128,"definedAt":"built-in:data_frame_","config":{"tags":["deprecated"]},"name":["data_frame_","tibble"],"nodeId":"built-in:data_frame_"}]],["tibble_",[{"type":128,"definedAt":"built-in:tibble_","config":{"tags":["deprecated"]},"name":["tibble_","tibble"],"nodeId":"built-in:tibble_"}]],["data_frame",[{"type":128,"definedAt":"built-in:data_frame","config":{"tags":["deprecated"]},"name":["data_frame","tibble"],"nodeId":"built-in:data_frame"}]],["as_tibble",[{"type":128,"definedAt":"built-in:as_tibble","config":{"tags":["deprecated"]},"name":["as_tibble","tibble"],"nodeId":"built-in:as_tibble"}]],["nest_legacy",[{"type":128,"definedAt":"built-in:nest_legacy","config":{"tags":["deprecated"]},"name":["nest_legacy","tidyr"],"nodeId":"built-in:nest_legacy"}]],["unnest_",[{"type":128,"definedAt":"built-in:unnest_","config":{"tags":["deprecated"]},"name":["unnest_","tidyr"],"nodeId":"built-in:unnest_"}]],["unite_",[{"type":128,"definedAt":"built-in:unite_","config":{"tags":["deprecated"]},"name":["unite_","tidyr"],"nodeId":"built-in:unite_"}]],["spread_",[{"type":128,"definedAt":"built-in:spread_","config":{"tags":["deprecated"]},"name":["spread_","tidyr"],"nodeId":"built-in:spread_"}]],["separate_",[{"type":128,"definedAt":"built-in:separate_","config":{"tags":["deprecated"]},"name":["separate_","tidyr"],"nodeId":"built-in:separate_"}]],["separate_rows_",[{"type":128,"definedAt":"built-in:separate_rows_","config":{"tags":["deprecated"]},"name":["separate_rows_","tidyr"],"nodeId":"built-in:separate_rows_"}]],["nest_",[{"type":128,"definedAt":"built-in:nest_","config":{"tags":["deprecated"]},"name":["nest_","tidyr"],"nodeId":"built-in:nest_"}]],["gather_",[{"type":128,"definedAt":"built-in:gather_","config":{"tags":["deprecated"]},"name":["gather_","tidyr"],"nodeId":"built-in:gather_"}]],["fill_",[{"type":128,"definedAt":"built-in:fill_","config":{"tags":["deprecated"]},"name":["fill_","tidyr"],"nodeId":"built-in:fill_"}]],["extract_",[{"type":128,"definedAt":"built-in:extract_","config":{"tags":["deprecated"]},"name":["extract_","tidyr"],"nodeId":"built-in:extract_"}]],["nesting_",[{"type":128,"definedAt":"built-in:nesting_","config":{"tags":["deprecated"]},"name":["nesting_","tidyr"],"nodeId":"built-in:nesting_"}]],["crossing_",[{"type":128,"definedAt":"built-in:crossing_","config":{"tags":["deprecated"]},"name":["crossing_","tidyr"],"nodeId":"built-in:crossing_"}]],["expand_",[{"type":128,"definedAt":"built-in:expand_","config":{"tags":["deprecated"]},"name":["expand_","tidyr"],"nodeId":"built-in:expand_"}]],["drop_na_",[{"type":128,"definedAt":"built-in:drop_na_","config":{"tags":["deprecated"]},"name":["drop_na_","tidyr"],"nodeId":"built-in:drop_na_"}]],["complete_",[{"type":128,"definedAt":"built-in:complete_","config":{"tags":["deprecated"]},"name":["complete_","tidyr"],"nodeId":"built-in:complete_"}]],["extract_numeric",[{"type":128,"definedAt":"built-in:extract_numeric","config":{"tags":["deprecated"]},"name":["extract_numeric","tidyr"],"nodeId":"built-in:extract_numeric"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{"timing":1}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":1792,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
 ```
-
 
 </details>
 
 You may be interested in its implementation:
 
- * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225)**   
+ * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L234)**   
    The dataflow information is one of the fundamental structures we have in the dataflow analysis.
    It is continuously updated during the dataflow analysis
    and holds its current state for the respective subtree processed.
@@ -6096,8 +5418,7 @@ You may be interested in its implementation:
    You may initialize a new dataflow information with
    <code>DataflowInformation.initialize</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225">src/dataflow/info.ts#L225</a></summary>
-   
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L234">src/dataflow/info.ts#L234</a></summary>
    
    ```ts
    /**
@@ -6138,18 +5459,21 @@ You may be interested in its implementation:
         * @see {@link KillReference}
         */
        kill?:             readonly KillReference[]
+       /**
+        * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+        * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+        */
+       cutShort?:         DataflowBudgetExhaustion
    }
    ```
-   
    
    </details>
    
     <details><summary>View more (DataflowCfgInformation)</summary>
 
-   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188)**   
+   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L197)**   
      The control flow information for the current DataflowInformation.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188">src/dataflow/info.ts#L188</a></summary>
-     
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L197">src/dataflow/info.ts#L197</a></summary>
      
      ```ts
      /** The control flow information for the current DataflowInformation. */
@@ -6181,15 +5505,11 @@ You may be interested in its implementation:
      }
      ```
      
-     
      </details>
      
-
     </details>
 
 Let's start by looking at the properties of the dataflow information object: `unknownReferences`, `in`, `out`, `environment`, `graph`, `entryPoint`, `cfgEntry`, `cfgExit`, `exitPoints`, `hooks`, `kill`, `.meta`.
-
-
 
 There are three sets of references.
 **in** (ids: [2,5]) and **out** (ids: [0]) contain the 
@@ -6208,7 +5528,7 @@ A summarized version of the produced environment looks like this:
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (1510 entries)_
+_Built-in Environment (799 entries)_
 
 </details>
 
@@ -6223,13 +5543,39 @@ Mirroring R's `search()`, _flowR_ inserts the package's namespace and imports en
 A global binding shadows a package export of the same name, exactly as in R.
 The most recently attached package is the nearest one, and re-attaching neither moves nor duplicates it.
 The `pos` argument attaches further down the search path instead, given either as a position or as the name of an existing entry (an unknown position or name falls back to the default of 2, directly below the global environment).
-Attaching inside a function propagates to the caller (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path).
+Attaching inside a function propagates to the caller (R attaches globally).
+A package attached in only one branch, or in a loop body that may not run, or by a function called in one, is only maybe attached: its exports may be what a name means, but so may whatever it would shadow.
+`detach` and `unloadNamespace` remove the entry again (named, by position, or the topmost one), uncovering what it masked.
+
+Attaching brings a package's `Depends` onto the search path below it (so the package masks them), and for a meta-package like `tidyverse` the core set of that version above it, while its `Imports` are only loaded: `pkg::fn` resolves for them, a bare `fn` does not.
+Besides `library` and `require`, the multi-package loaders `pacman::p_load`, `librarian::shelf`, `xfun::pkg_attach` and `easypackages::libraries` attach the same way.
+To ask what a `library` call does without analyzing any code, use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L426"><code><span title="What library(pkg) does, asked without analyzing any code.">Dataflow::<b>library</b></span></code></a>, which builds the very layers the analysis would:
+
+```ts
+function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
+	const ctx = analyzer.context();
+	return {
+		attaches:  Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
+		loads:     Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively, magrittr included
+		layers:    Dataflow.library.layers(ctx, 'tidyverse'),   // the namespace and imports environments it attaches
+		reexports: Dataflow.library.reexports(ctx, 'dplyr')     // what dplyr re-exports, `%>%` from magrittr included
+	};
+}
+```
+
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L889">src/documentation/wiki-dataflow-graph.ts#L889</a></i>
+
+It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the `NAMESPACE` files it read.
+A package R attaches on startup (`methods`, `stats`, ...) is on the search path already, so a `Depends` on it adds no entry.
+Packages R only loads, such as the `magrittr` of `library(tidyverse)`, are not attached: their functions are reachable through the re-exports of the attached ones (`dplyr::%>%` is `magrittr::%>%`).
+The analysis keeps such a re-export as an export of the re-exporting package, so the two stay apart, and gives it what flowR states about the origin; `reexports` names the origin of each.
+A signature database that records no re-exports falls back to what R reports for the package (`scripts/gen-r-reexports.R`, covering the tidyverse and other popular packages).
 
 Last but not least, the information contains the single **entry point** (2) and a set of **exit points** ([5]). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
-Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L179"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
-It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L157"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
+Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
+It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L201"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the right location.
 A definition that such a removal undid is dropped from the outgoing references, so `x <- 1; rm(x)` has an empty **out** set (a conditional removal keeps the now maybe-defined `x`).
 
 ### Unknown Side Effects
@@ -6237,10 +5583,6 @@ A definition that such a removal undid is dropped from the outgoing references, 
 In case _flowR_ encounters a function call that it cannot handle, it marks the call as an unknown side effect.
 You can find these as part of the dataflow graph, specifically as `unknownSideEffects` (with a leading underscore if sesrialized as JSON).
 In the following graph, _flowR_ realizes that it is unable to correctly handle the impacts of the `load` call and therefore marks it as such (marked in bright red):
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6260,9 +5602,9 @@ load`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.7-11* (**id: 7**)
     arg: (5, 6)`"]]
-    built-in:_["`Built-In:
+    built-in:_43_["`Built-In:
 #43;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     9[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *2.1-12* (**id: 9**)
     arg: (7)`"]]
@@ -6282,7 +5624,7 @@ print`"]
     linkStyle 5 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -->|"reads, arg"| 6
-    7 -.->|"reads, calls"| built-in:_
+    7 -.->|"reads, calls"| built-in:_43_
     linkStyle 8 stroke:gray;
     7 -.->|"flow"| 9
     linkStyle 9 stroke:gray,color:gray;
@@ -6291,31 +5633,25 @@ print`"]
     linkStyle 11 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 3, 9 (linked)) during the analysis.
-
 
 ```r
 load("file")
 print(x + y)
 ```
 
-
-
 </details>
-
-
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API)) to handle these cases
 as they see fit.
 
 The `load` call above degrades to an unknown side effect only because the file could not be found.
-When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L271"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L40"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L316"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L43"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
 You can disable this and always treat `load` as an unknown side effect with the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether load calls should be ignored, causing {@link processLoadCall}&#39;s behavior to be skipped.">ignoreLoadCalls</a> configuration option.
 
 #### Linked Unknown Side Effects
@@ -6323,11 +5659,6 @@ You can disable this and always treat `load` as an unknown side effect with the 
 Not all side effects are created equal in the sense that they stem from a specific function call.
 Consider R's basic [`graphics`](https://www.rdocumentation.org/packages/graphics/) which
 implicitly draws on the current device and does not explicitly link a function like `points` to the last call opening a new graphic device. In such a scenario, we use a linked side effect to mark the relation:
-
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6367,56 +5698,43 @@ points`"]
     7 -->|"reads"| 3
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
-
 
 ```r
 plot(data)
 points(data2)
 ```
 
-
-
 </details>
-
-
 
 Such side effects are not marked explicitly (with a big edge) but they are part of the unknown side effects: [3 (linked)].
 Additionally, we express this by a [`reads`](#reads) edge.
 	
- 
 <h2 id="perspectives">Perspectives on the Dataflow Graph</h2>
 
 For certain questions, handling the *full* dataflow graph may be too complex or unnecessary, given that you might have to consider edge interactions, or trace
 transitive relationships by yourself.
-Perspectives are simplified views on the dataflow graph, tailored to specific questions, which still comply with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L283"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a> interface
+Perspectives are simplified views on the dataflow graph, tailored to specific questions, which still comply with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L186"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a> interface
 so you can use them as drop-in replacements for the full dataflow graph. Although, please be aware that this does not mean that every function will work correctly&mdash;a
 call graph will no longer contain information on variables, for example.
 
 <h3 id="perspectives-cg">Call Graphs</h3>
 
-These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L27"><code><span title="A call graph is a dataflow graph where all vertices are function calls. You can create a call graph from a dataflow graph using CallGraph.compute . If you want to extract a sub call graph, use CallGraph.computeSubCallGraph .">CallGraph</span></code></a> type.
-It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L340"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
+These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L265"><code><span title="Helper object for call-graphs, you can compute new call graphs based on CallGraph.compute .">CallGraph</span></code></a> type.
+It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L350"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
-
 
 ```r
 f <- function() f()
 ```
 
-
 The resulting call graph looks like this:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6456,41 +5774,29 @@ function`"]
     linkStyle 4 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Call Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 f <- function() f()
 ```
 
-
-
 </details>
-
-
 
 Please note, that, due to the over-approximative nature of call-graphs, the call-graph may label some function calls that are *not*
 marked as such in the full dataflow graph (which may have more precise information).
 For example, if we call an unknown alias:
-
 
 ```r
 alias <- unknown
 alias(print)
 ```
 
-
 The resulting call graph looks like this:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6514,31 +5820,21 @@ assign`"]
     4 -->|"calls"| 1
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Call Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 alias <- unknown
 alias()
 ```
 
-
-
 </details>
 
-
-
 Here, `unknown` is a function call, while it is a symbol in the full dataflow graph (as we cannot resolve it):
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6549,9 +5845,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-16* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 4 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -6564,70 +5860,65 @@ flowchart LR
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
     4 -->|"reads"| 0
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered no unknown side effects during the analysis.
-
 
 ```r
 alias <- unknown
 alias()
 ```
 
-
-
 </details>
-
-
-
 
 <h2 id="dfg-working">Working with the Dataflow Graph</h2>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L273"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
-Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L35"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.views - for working with specific views of the dataflow graph (e.g., the call graph), - Dataflow.edge - for working with the edges in the dataflow graph, - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn...">Dataflow</span></code></a> helper object!
+Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L47"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> helper object!
 
 * The **[Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **[Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
-* The [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on this graph, so <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L531"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> answers what runs before what without a second analysis
+* The [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) is a view on this graph, so <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L506"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> answers what runs before what without a second analysis
 
 Everything else lives on a helper object named after the thing it works on:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L35"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.views - for working with specific views of the dataflow graph (e.g., the call graph), - Dataflow.edge - for working with the edges in the dataflow graph, - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn...">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L70"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L109"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> for edges, e.g. `DfEdge.includesType(edge, EdgeType.Reads)` (see [below](#dfg-resolving-values))
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L278"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L43"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> for identifiers, e.g. `Identifier.toString(vertex.name)`
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L70"><code><span title="Helper functions to work with FunctionArgument s.">FunctionArgument</span></code></a> for the arguments of a call, e.g. `FunctionArgument.isNotEmpty(arg)`
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L29"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Reachable as Dataflow.resolve as well. Take the narrowest entry point that answers your question, they differ a lot in cost: - Resolve.byName walks the environment layers once and answers repeat questions from the layer's own  lookup cache. Use it whenever the ReferenceTyp...">Resolve</span></code></a> (also reachable as `Dataflow.resolve`) for everything that resolves. Take the narrowest entry point:
-  <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L32"><code><span title="Every definition the identifier may refer to, whatever its type.">Resolve::<b>byName</b></span></code></a> walks the environment layers once, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L34"><code><span title="The definitions the identifier may refer to that fit the wanted ReferenceType .">Resolve::<b>byNameAndType</b></span></code></a> merges the definitions of every layer it passes,
-  and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L42"><code><span title="The value(s) the node may hold, tracking aliases as the configuration allows.">Resolve::<b>toValue</b></span></code></a> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L46"><code><span title="The same, for the arguments of a call.">Resolve::<b>argument</b></span></code></a> run the evaluator on top of a resolution (see [below](#dfg-resolving-values))
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L41"><code><span title="R's argument matching, as matchArgumentsToParameters implements it. Pick by what you hold: - toNames - AST arguments and the formal names - toSpec - graph arguments and the formals (a spec or a database signature) - onCallAndLink - as toSpec, and **adds the argument edges to the graph* - toDefinition - only the call, the formals are looked up for you - findWithProps - graph arguments and a built-i...">MatchArgs</span></code></a> to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L47"><code><span title="This is the root helper object to work with the DataflowGraph . - Dataflow.visualize - for visualization helpers (e.g., rendering the DFG as a mermaid graph), - Dataflow.qualify / Dataflow.qualifyAll - for the package-qualified pkg::fn identifier of a call from its id and graph, or of every call of a graph at once, - Dataflow.targetsOf / Dataflow.sourcesOf / Dataflow.hasEdge - for the neighbors of...">Dataflow</span></code></a> for the graph itself, e.g. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L64"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a> tells you where a read, call,&nbsp;... comes from (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L110"><code><span title="Helper Functions to work with DfEdge and EdgeType .">DfEdge</span></code></a> for edges, e.g. `DfEdge.includesType(edge, EdgeType.Reads)` (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L282"><code><span title="Helper object to provide helper functions for RNodes . For the individual type checks, please consult the individual vertices, e.g. RPipe.is . Some vertices also have a RPipe.availableFromRVersion property that indicates from which R version they are available, so you can check for that as well if needed.">RNode</span></code></a> for the nodes behind the vertices, e.g. `RNode.lexeme(graph.idMap?.get(id))` for what a vertex is written as
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> for identifiers, e.g. `Identifier.toString(vertex.name)`
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L46"><code><span title="Helper functions to work with FunctionArguments . EmptyArgument marks an empty argument.">FunctionArgument</span></code></a> for the arguments of a call, e.g. `FunctionArgument.isNotEmpty(arg)`
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a> for everything that resolves, with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L46"><code><span title="Where to resolve, put together from a finished analysis: its graph, its id map and the configuration the analyzer was built with. Hand what this returns to Resolve.toValue and its kin, or to NodeValue , rather than assembling a ResolveInfo by hand.">Resolve::<b>infoOf</b></span></code></a> stating *where* to resolve, straight from an analyzer. Take the narrowest entry point:
+  <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L59"><code><span title="Every definition the identifier may refer to, whatever its type.">Resolve::<b>byName</b></span></code></a> walks the environment layers once, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L61"><code><span title="The definitions the identifier may refer to that fit the wanted ReferenceType .">Resolve::<b>byNameAndType</b></span></code></a> merges the definitions of every layer it passes,
+  and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L69"><code><span title="The value(s) the node may hold, tracking aliases as the configuration allows.">Resolve::<b>toValue</b></span></code></a> as well as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L73"><code><span title="The same, for the arguments of a call.">Resolve::<b>argument</b></span></code></a> run the evaluator on top of a resolution (see [below](#dfg-resolving-values))
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L52"><code><span title="R's argument matching, as matchArgumentsToParameters implements it. Pick by what you hold: - toNames - AST arguments and the formal names - toSpec - graph arguments and the formals (a spec or a database signature) - onCallAndLink - as toSpec, and **adds the argument edges to the graph* - toDefinition - only the call, the formals are looked up for you - findWithProps - graph arguments and a built-i...">MatchArgs</span></code></a> (reached as `FunctionSemantics.call.match`) to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+
+These are the ones this page needs; the [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) page lists every helper object flowR has, grouped by what it is about.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
 
 <h3 id="dfg-resolving-values">Resolving Values</h3>
 
 FlowR supports a [configurable](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value) and backed by two important functions:
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L657"><code><span title="An environment describes a ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; during serialization use builtInEnvJsonReplacer to avoid inlining it.">REnvironmentInformation</span></code></a>)
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L214"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L747"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
 value resolution depending on if the environment is provided.
-The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
+The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L214"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)).
 
-Additionally, to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L162"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a>, we offer the aforementioned <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L103"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to retrieve the value of an argument in a function call.
+Additionally, to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L214"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a>, we offer the aforementioned <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/identify-link-to-last-call-relation.ts#L100"><code><span title="Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.">getValueOfArgument</span></code></a> to retrieve the value of an argument in a function call.
 Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](https://github.com/flowr-analysis/flowr/issues/new/choose) to request support for resolving
 multiple arguments at once.
 
@@ -6636,16 +5927,16 @@ multiple arguments at once.
 R does not bind a call's arguments to the formals left to right. An exactly named argument takes its formal, then a
 uniquely abbreviated one does (`pmatch`), then the rest fill what is still free until `...`, and whatever is
 left over goes to `...`. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/arg-matching.ts#L24"><code><span title="Bind the arguments of a call to the formal parameters of the called function, following R's argument matching rules (see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching): 1. every named argument that *exactly* matches a formal takes it, 2. every remaining named argument that is a *unique prefix* of a still-free formal takes it (pmatch),  judged against the formals step 1 left ...">matchArgumentsToParameters</span></code></a> is that algorithm, and
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L41"><code><span title="R's argument matching, as matchArgumentsToParameters implements it. Pick by what you hold: - toNames - AST arguments and the formal names - toSpec - graph arguments and the formals (a spec or a database signature) - onCallAndLink - as toSpec, and **adds the argument edges to the graph* - toDefinition - only the call, the formals are looked up for you - findWithProps - graph arguments and a built-i...">MatchArgs</span></code></a> is how you ask for it:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L52"><code><span title="R's argument matching, as matchArgumentsToParameters implements it. Pick by what you hold: - toNames - AST arguments and the formal names - toSpec - graph arguments and the formals (a spec or a database signature) - onCallAndLink - as toSpec, and **adds the argument edges to the graph* - toDefinition - only the call, the formals are looked up for you - findWithProps - graph arguments and a built-i...">MatchArgs</span></code></a> is how you ask for it:
 
 | Use case | member |
 |----------|--------|
-| AST arguments and the formal names | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L51"><code><span title="Binds a call's AST args to the formal paramNames. An empty argument (f(1, ,3)) takes its formal but never appears here. Arguments falling to ... share that key, so only the last survives; use MatchArgs.toSpec to keep them all.">MatchArgs::<b>toNames</b></span></code></a> |
-| graph arguments and the formals (a spec, or a database signature) | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L70"><code><span title="Binds a call's graph args against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. Name '...' in a specification unless the function really has none, as that is what collects arguments finding no formal of their own.">MatchArgs::<b>toSpec</b></span></code></a> |
-| graph arguments and the callee's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10"><code><span title="Represents a parameter of a function definition in R.">RParameter</span></code></a>s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L105"><code><span title="Binds a call's graph args to the params of the definition it calls **and mutates graph**, adding an EdgeType.DefinesOnCall and a EdgeType.DefinedByOnCall edge per bound pair. It is the only member here that writes anything.">MatchArgs::<b>onCallAndLink</b></span></code></a> |
-| only the call, the formals are looked up for you | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L141"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> |
+| AST arguments and the formal names | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L62"><code><span title="Binds a call's AST args to the formal paramNames. An empty argument (f(1, ,3)) takes its formal but never appears here. Arguments falling to ... share that key, so only the last survives; use MatchArgs.toSpec to keep them all.">MatchArgs::<b>toNames</b></span></code></a> |
+| graph arguments and the formals (a spec, or a database signature) | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L73"><code><span title="Binds a call's graph args against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. Name '...' in a specification unless the function really has none, as that is what collects arguments finding no formal of their own.">MatchArgs::<b>toSpec</b></span></code></a> |
+| graph arguments and the callee's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L23"><code><span title="Helper for working with RParameter AST nodes.">RParameter</span></code></a>s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L108"><code><span title="Binds a call's graph args to the params of the definition it calls **and mutates graph**, adding an EdgeType.DefinesOnCall and a EdgeType.DefinedByOnCall edge per bound pair. It is the only member here that writes anything.">MatchArgs::<b>onCallAndLink</b></span></code></a> |
+| only the call, the formals are looked up for you | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L144"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> |
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L141"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> takes the formals from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16"><code><span title="  function(<parameters>) <body>   or:   \\(<parameters>) <body>  ">RFunctionDefinition</span></code></a> the call
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/match-args.ts#L144"><code><span title="Binds a call's arguments to the formals of whatever it calls, looking the formals up itself. It takes them from the RFunctionDefinition the call resolves to in user code, and from the database signature at the version the analysis assumes otherwise (see SignatureDb ). undefined when it resolves to neither, so fall back to a hardcoded list then. graph is what says which definition a name reaches he...">MatchArgs::<b>toDefinition</b></span></code></a> takes the formals from the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L27"><code><span title="Helper for working with RFunctionDefinition AST nodes.">RFunctionDefinition</span></code></a> the call
 resolves to in user code, and from the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) otherwise.
 
 <h3 id="dfg-assess-edge">Assessing Edges</h3>
@@ -6653,10 +5944,6 @@ resolves to in user code, and from the [signature database](https://github.com/f
 The [edges](#edges) of the dataflow graph use bitmasks to represent an edge with multiple types. While this compacts the representation greatly, it makes it
 difficult to check whether a given edge is a read edge. 
 Consider the following example:
-
-
-
-
 
 ```mermaid
 flowchart LR
@@ -6676,55 +5963,46 @@ print`"]
     linkStyle 2 stroke:gray;
 ```
 
-	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
-
 
 ```r
 print(x)
 ```
 
-
-
 </details>
-
-
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
 `73`&mdash;which is usually not very helpful.
-You can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L131"><code><span title="Takes joint edge types and splits them into their individual components.">DfEdge::<b>splitTypes</b></span></code></a> to get the individual bitmasks of all included types, and 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L158"><code><span title="Check if the given-edge type has any of the given types. As types are bitmasks, you can combine multiple types with a bitwise OR (|).">DfEdge::<b>includesType</b></span></code></a> to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L132"><code><span title="Takes joint edge types and splits them into their individual components.">DfEdge::<b>splitTypes</b></span></code></a> to get the individual bitmasks of all included types, and 
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L159"><code><span title="Check if the given-edge type has any of the given types. As types are bitmasks, you can combine multiple types with a bitwise OR (|).">DfEdge::<b>includesType</b></span></code></a> to check whether a specific type (or one of a collection of types) is included in the edge.
 
 <h3 id="dfg-handling-origins">Handling Origins</h3>
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L97"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (this is also accessible with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L70"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function provides you with a collection of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L78"><code>Origin</code></a> objects:
+For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L92"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> (this is also accessible with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L64"><code><span title="Returns the origin of a vertex in the dataflow graph">Dataflow::<b>origin</b></span></code></a>) function provides you with a collection of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73"><code>Origin</code></a> objects:
 
- * [Origin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L78)   
+ * [Origin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73)   
  
-   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L78">src/dataflow/origin/dfg-get-origin.ts#L78</a></summary>
-   
+   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L73">src/dataflow/origin/dfg-get-origin.ts#L73</a></summary>
    
    ```ts
    export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
    ```
    
-   
    </details>
    
     <details><summary>View more (SimpleOrigin, FunctionCallOrigin, BuiltInFunctionOrigin)</summary>
 
-   * **[SimpleOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L35)**   
+   * **[SimpleOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31)**   
      An origin that indicates that the definition is read, written, or simply a constant.
      These origins only reference the 'direct' dependencies. There is no transitivity.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L35">src/dataflow/origin/dfg-get-origin.ts#L35</a></summary>
-     
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31">src/dataflow/origin/dfg-get-origin.ts#L31</a></summary>
      
      ```ts
      /**
@@ -6746,27 +6024,23 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
      }
      ```
      
-     
      </details>
      
-   * **[FunctionCallOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L17)**   
+   * **[FunctionCallOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13)**   
    
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L17">src/dataflow/origin/dfg-get-origin.ts#L17</a></summary>
-     
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L13">src/dataflow/origin/dfg-get-origin.ts#L13</a></summary>
      
      ```ts
      FunctionCallOrigin = 2
      ```
      
-     
      </details>
      
       <details><summary>View more (OriginType)</summary>
 
-     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
+     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10)**   
      
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
-       
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10">src/dataflow/origin/dfg-get-origin.ts#L10</a></summary>
        
        ```ts
        export const enum OriginType {
@@ -6778,29 +6052,24 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
        }
        ```
        
-       
        </details>
        
-
       </details>
-   * **[BuiltInFunctionOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L18)**   
+   * **[BuiltInFunctionOrigin](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
    
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L18">src/dataflow/origin/dfg-get-origin.ts#L18</a></summary>
-     
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
      
      ```ts
      BuiltInFunctionOrigin = 3
      ```
      
-     
      </details>
      
       <details><summary>View more (OriginType)</summary>
 
-     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14)**   
+     * **[OriginType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10)**   
      
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L14">src/dataflow/origin/dfg-get-origin.ts#L14</a></summary>
-       
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L10">src/dataflow/origin/dfg-get-origin.ts#L10</a></summary>
        
        ```ts
        export const enum OriginType {
@@ -6812,24 +6081,22 @@ For this, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dat
        }
        ```
        
-       
        </details>
        
-
       </details>
 
     </details>
 
 Their respective uses are documented alongside their implementation:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L18"><code>BuiltInFunctionOrigin</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L61"><code><span title="This is similar to a FunctionCallOrigin , but used for built-in functions that have no direct correspondence in the dataflow graph.">BuiltInFunctionOrigin</span></code></a>\
 This is similar to a
 <code>FunctionCallOrigin</code>
 , but used for built-in functions that have no direct correspondence in the dataflow graph.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L17"><code>FunctionCallOrigin</code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L53"><code><span title="Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that can be called).">FunctionCallOrigin</span></code></a>\
 Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that
 can be called).
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L35"><code><span title="An origin that indicates that the definition is read, written, or simply a constant. These origins only reference the 'direct' dependencies. There is no transitivity.">SimpleOrigin</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L31"><code><span title="An origin that indicates that the definition is read, written, or simply a constant. These origins only reference the 'direct' dependencies. There is no transitivity.">SimpleOrigin</span></code></a>\
 An origin that indicates that the definition is read, written, or simply a constant.
 These origins only reference the 'direct' dependencies. There is no transitivity.
 
@@ -6837,4 +6104,3 @@ Please note, the current structure of this function is biased by what implementa
 Hence, we do not just track definitions and constants, but also the origins of function calls, albeit we do not yet track the origins of values (only resorting to
 a constant origin). If you are confused by this please start a discussion&mdash;in a way we are still deciding on a good API for this.
 	
-

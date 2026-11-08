@@ -17,52 +17,55 @@ export type FilePath = string;
  */
 export enum FileRole {
 	/** The `DESCRIPTION` file in R packages, this is the only currently supported special file. */
-	Description = 'description',
+	Description   = 'description',
 	/** The `NAMESPACE` file in R packages, currently not specially supported. */
-	Namespace   = 'namespace',
+	Namespace     = 'namespace',
 	/** The `NEWS` file in R packages */
-	News        = 'news',
+	News          = 'news',
 	/** Vignette files, e.g., R Markdown files in the `vignettes/` folder */
-	Vignette    = 'vignette',
+	Vignette      = 'vignette',
 	/** Test source files, e.g., files in the `tests/` folder */
-	Test        = 'test',
+	Test          = 'test',
 	/**
 	 * Files below an `inst/` folder, which R installs verbatim into the package root (resources/scripts, e.g., `inst/REFERENCES.R`, `inst/CITATION`, `inst/extdata/...`).
 	 * These are not part of the package namespace source, so tooling may want to treat them separately.
 	 */
-	Install     = 'install',
-	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
-	Data        = 'data',
+	Install       = 'install',
+	/**
+	 * Data files: a `data/datalist`, a package's system data (`R/sysdata.rda`, or the `R/sysdata.rdx` of an
+	 * installed package), and any other data file, which has no special support.
+	 */
+	Data          = 'data',
+	/** Manual pages (`man/*.Rd`) and an installed package's `help/AnIndex`, i.e. what documents a name. */
+	Documentation = 'documentation',
 	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
-	License     = 'license',
-	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock` or `uvr.lock`. */
-	VirtualEnv  = 'virtual-env',
-	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project or the `uvr.toml` of a uvr project. */
-	Manifest    = 'manifest',
+	License       = 'license',
+	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock`, `uvr.lock` or rig's `rproj.lock`. */
+	VirtualEnv    = 'virtual-env',
+	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project, the `uvr.toml` of a uvr project or the `rproj.toml` of a rig project. */
+	Manifest      = 'manifest',
 	/**
 	 * R sources evaluated at startup, before any project code (`.Rprofile`, `Rprofile.site`).
 	 * These commonly bootstrap a package manager, e.g. by sourcing `packrat/init.R` or `renv/activate.R`.
 	 */
-	Startup     = 'startup',
+	Startup       = 'startup',
 	/**
 	 * Environment-variable definitions read at startup (`.Renviron`, `Renviron.site`). These are `KEY=value`
 	 * files, not R source, so they are labeled but not parsed as R.
 	 */
-	Environment = 'environment',
+	Environment   = 'environment',
 	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files
 	 * is determined by the loading order plugins (cf. {@link PluginType.LoadingOrder})
 	 * in the {@link FlowrAnalyzerLoadingOrderContext}.
 	 */
-	Source      = 'source',
+	Source        = 'source',
 	/** Other special files that are not specifically supported by flowR but may be interesting for some analyses. */
-	Other       = 'other'
+	Other         = 'other'
 }
 
 export type StringableContent = { toString(): string };
-
-
 
 /**
  * This is the basic interface for all files known to the FlowrAnalyzer.
@@ -96,6 +99,8 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 	 * So make sure your implementation closes the resource as soon as possible.
 	 */
 	content(): Content;
+	/** The text the {@link content} was parsed from, for files whose content is not their text (e.g. a DESCRIPTION or an R Markdown document). */
+	rawText?(): string;
 
 	/**
 	 * Assign a role to this file, this should be done by the loader plugins (cf. {@link PluginType}).
@@ -235,5 +240,28 @@ export class FlowrInlineTextFile extends FlowrFile<string> {
 	public updateInlineContent(newContent: string): void {
 		this.contentStr = newContent;
 		this.invalidate();
+	}
+}
+
+/**
+ * A {@link FlowrFile} that decorates another file to expose its raw content as something parsed.
+ * Prefer the static {@link FlowrWrappedFile.from|from}, which avoids re-wrapping and handles roles.
+ */
+export abstract class FlowrWrappedFile<Content extends StringableContent = StringableContent> extends FlowrFile<Content> {
+	public constructor(protected readonly wrapped: FlowrFileProvider) {
+		super(wrapped.path(), wrapped.roles);
+	}
+
+	/** The text the content was parsed from, e.g. to locate what the parsed content holds in the file. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
+	/** Lifts a file to the class this is called on, reusing it if already one and assigning `role`. */
+	public static from<T>(this: new(file: FlowrFileProvider) => T, file: FlowrFileProvider, role?: FileRole): T {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof this ? file : new this(file);
 	}
 }

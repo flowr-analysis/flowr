@@ -1,3 +1,4 @@
+import { SourceRange } from '../../../../../src/util/range';
 import { rPath } from '../../../_helper/r-path';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
@@ -13,7 +14,6 @@ import type { DeepWritable } from 'ts-essentials';
 import type { DataflowGraph } from '../../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexInfo } from '../../../../../src/dataflow/graph/vertex';
-import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 
 /** the vertices `s.R` contributed, i.e. the ones its id names */
 function sourced(graph: DataflowGraph): [NodeId, DataflowGraphVertexInfo][] {
@@ -61,10 +61,10 @@ describe('solver.resolveSource.assumeFilesExist', withTreeSitter(parser => {
 		const { dataflow, normalize } = await sourcingProject(true, parser);
 		const use = dataflow.graph.vertices(true).find(([id]) => {
 			const node = normalize.idMap.get(id);
-			return node?.lexeme === 'y' && node?.location?.[0] === 3;
+			return node?.lexeme === 'y' && SourceRange.getStartLine(node?.location) === 3;
 		});
 		assert.isDefined(use, 'the `y` of `x <- y` has to be a vertex');
-		const reads = [...dataflow.graph.outgoingEdges(use[0]) ?? NoEdges]
+		const reads = [...dataflow.graph.edgesFrom(use[0])]
 			.filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads)).map(([t]) => String(t));
 		assert.isNotEmpty(reads);
 		for(const read of reads) {

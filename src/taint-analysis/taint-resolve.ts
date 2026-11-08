@@ -7,14 +7,14 @@ import {
 	getArgumentValue,
 	getFunctionArgument,
 	getVertexArguments
-} from '../abstract-interpretation/data-frame/mappers/arguments';
+} from '../abstract-interpretation/data-frame/arguments';
 import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { MatchArgs } from '../dataflow/graph/match-args';
-import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { isUndefined } from '../util/assert';
 import { taintLogger } from './logger';
 import type {
@@ -125,10 +125,13 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 		? mapping.condition.argValues.map(location => getArgumentValue(allArgs, location, resolveInfo))
 		: [];
 
-	const { argSignature, argDefinition } = mapping.condition;
+	const { argSignature, argDefinition, allArgs: everyArg } = mapping.condition;
 	const taintIds: (NodeId | undefined)[] = argSignature !== undefined
 		? taintIdsFromSignature(dfg, call.id, argSignature)
 		: taintIdsFromDef(allArgs, resolveInfo, call.name, argDefinition);
+	if(everyArg) {
+		taintIds.push(...allArgs.map(arg => arg === EmptyArgument ? undefined : arg.value?.info.id));
+	}
 
 	const incomingTaints = taintIds
 		.map(id => isUndefined(id) ? domain.top() : projectArg(id))
@@ -139,7 +142,7 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 
 function taintIdsFromSignature(dfg: DataflowGraph, id: NodeId, argTaintSig: NonNullable<TaintCondition['argSignature']>): NodeId[] {
 	const vertex = dfg.getVertex(id);
-	return FunctionCallVertex.is(vertex) ? MatchArgs.findWithProps(vertex.args, argTaintSig.sig, argTaintSig.props) : [];
+	return DfgVertex.isFunctionCall(vertex) ? MatchArgs.findWithProps(vertex.args, argTaintSig.sig, argTaintSig.props) : [];
 }
 
 function taintIdsFromDef(allArgs: readonly PotentiallyEmptyRArgument<ParentInformation>[], resolveInfo: ResolveInfo, name: Identifier, argTaints: TaintParameterLocation[] | undefined) {

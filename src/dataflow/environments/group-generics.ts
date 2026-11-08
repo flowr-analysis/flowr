@@ -17,14 +17,22 @@ export const RGroupGenerics = {
 	Ops:  [...Arith, ...Compare, ...Logic, '!'],
 	Math: ['abs', 'sign', 'sqrt', 'floor', 'ceiling', 'trunc', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p',
 		'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'acos', 'asin', 'atan', 'acosh', 'asinh', 'atanh',
+		'cospi', 'sinpi', 'tanpi', 'gamma', 'lgamma', 'digamma', 'trigamma',
 		'cumsum', 'cumprod', 'cummax', 'cummin'],
-	Math2:   ['round', 'signif'],
-	Summary: ['any', 'sum', 'prod', 'min', 'max', 'range'],
-	Complex: ['Re', 'Im', 'Mod', 'Arg', 'Conj']
+	Math2:     ['round', 'signif'],
+	Summary:   ['any', 'all', 'sum', 'prod', 'min', 'max', 'range'],
+	Complex:   ['Re', 'Im', 'Mod', 'Arg', 'Conj'],
+	matrixOps: ['%*%']
 } as const satisfies Record<string, readonly string[]>;
 
+/** what an S3 `Math.<class>` answers for: S3 has no `Math2`, so `round`/`signif` dispatch to it as well */
+const MathS3: readonly string[] = [...RGroupGenerics.Math, ...RGroupGenerics.Math2];
+
+/** the name of a group in {@link RGroupGenerics} */
+export type RGroupGeneric = keyof typeof RGroupGenerics;
+
 /** the S4 groups, i.e. {@link RGroupGenerics} without `Ops`, which only S3 knows */
-const S4Groups = ['Arith', 'Compare', 'Logic', 'Math', 'Math2', 'Summary', 'Complex'] as const;
+const S4Groups = ['Arith', 'Compare', 'Logic', 'Math', 'Math2', 'Summary', 'Complex', 'matrixOps'] as const;
 
 /**
  * Member name to its S4 group (`sin` to `Math`, `+` to `Arith`). `Ops` is left out so `+` answers `Arith`
@@ -37,4 +45,19 @@ export const S4GroupOfMember: ReadonlyMap<string, string> = new Map(
 /** The S4 group generic `name` is a member of, `undefined` for a name that is in none. */
 export function groupGenericOf(name: string): string | undefined {
 	return S4GroupOfMember.get(name);
+}
+
+/** The members a method registered on `name` answers for, `undefined` when `name` names no group (`Ops` flattened to its operators). */
+export function groupGenericMembers(name: string): readonly string[] | undefined {
+	return RGroupGenerics[name as RGroupGeneric];
+}
+
+/** The members an S3 `<group>.<class>` method answers for; S3 has no `Math2`, so `Math` covers both (see {@link MathS3}). */
+export function s3GroupGenericMembers(name: string): readonly string[] | undefined {
+	return name === 'Math' ? MathS3 : groupGenericMembers(name);
+}
+
+/** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */
+export function isGroupGeneric(name: string): name is RGroupGeneric {
+	return Object.hasOwn(RGroupGenerics, name);
 }

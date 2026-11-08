@@ -1,4 +1,4 @@
-import { LintingResultCertainty, type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { LintingResultCertainty, type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -12,7 +12,7 @@ export interface SoftwareHasTestsResult extends LintingResult {
 
 export interface SoftwareHasTestsConfig extends MergeableRecord {
 	/** Additional test function patterns beyond the defaults */
-	readonly additionalTestFunctions: FunctionInfo[]
+	readonly additionalTestFunctions: readonly FunctionInfo[]
 }
 
 export interface SoftwareHasTestsMetadata extends MergeableRecord {
@@ -45,17 +45,16 @@ export const SOFTWARE_HAS_TESTS = {
 			}
 		};
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: SoftwareHasTestsResult) => result.message,
-		[LintingPrettyPrintContext.Full]:  (result: SoftwareHasTestsResult) => result.message
-	},
+	prettyPrint: prettyPrint(
+		(result: SoftwareHasTestsResult) => result.message
+	),
 	info: {
 		name:          'Software Has Tests',
-		description:   'Checks whether the software project has tests (test files in a test directory or test function calls in R code).',
-		tags:          [LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		description:   'Finds software projects without tests (test files in a test directory or test function calls in R code).',
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			additionalTestFunctions: []
-		}
+		})
 	}
 } as const satisfies LintingRule<SoftwareHasTestsResult, SoftwareHasTestsMetadata, SoftwareHasTestsConfig>;

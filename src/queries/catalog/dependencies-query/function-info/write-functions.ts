@@ -1,19 +1,25 @@
 import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInfo } from './function-info';
+import { StdErr } from '../dependency-values';
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
-import { functionInfosFromProps } from './derived-functions';
+import { functionInfosFromProps, readingAndWritingApart } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
-import { ReadFunctions } from './read-functions';
-import { PkgName } from '../../../../dataflow/environments/identifier';
+import { LinkToLastGgPlot } from '../../../../dataflow/environments/default-builtin-config';
+import { computeReadFunctions } from './read-functions';
+import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../../project/context/flowr-analyzer-environment-context';
 
 const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
 ] as const satisfies DependencyInfoLink[];
 
-
 const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'save.image',  argIdx: 0, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
-	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
+	/* the write happens in the `GET` it configures, which the dataflow cannot tell, so only this category knows it */
+	{ package: 'httr', name: 'write_disk',  argIdx: 0, argName: 'path',    resolveValue: true },
+	/* without a `plot`, it saves `last_plot()` */
+	{ package: 'ggplot2', name: 'ggsave',  argIdx: 0, argName: 'filename', resolveValue: true, linkTo: [LinkToLastGgPlot] },
 	{
 		package:        'base',
 		name:           'try',
@@ -21,43 +27,44 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 		argIdx:         2,
 		argName:        'outFile',
 		resolveValue:   true,
-		defaultValue:   'stderr',
+		defaultValue:   StdErr,
 		ignoreIf:       'arg-true',
 		additionalArgs: {
 			val: { argIdx: 1, argName: 'silent' }
 		}
 	},
 	// write functions that don't have argIndex are assumed to write to stdout
-	{ package: 'base',  name: 'print',      linkTo: OutputRedirects,                  resolveValue: false },
+	/* a print method may write to a file instead, like `print(xtable(d), file = "t.tex")` */
+	{ package: 'base',  name: 'print',      linkTo: OutputRedirects, argName: 'file', resolveValue: true },
+	{ package: 'graphics', name: 'stem',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
-	{ package: 'base',  name: 'message',    linkTo: OutputRedirects,                  resolveValue: false },
-	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects,                  resolveValue: false },
-	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects,                  resolveValue: false },
-	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects,                  resolveValue: false },
-	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects,                  resolveValue: false },
-	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects,                  resolveValue: false },
+	/* conditions and messages go to the message stream, which is stderr */
+	{ package: 'base',  name: 'message',    linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	/* `output = "default"` shows the table where R prints */
+	{ package: 'modelsummary', name: 'modelsummary', argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
+	{ package: 'modelsummary', name: 'msummary',     argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
+	{ package: 'modelsummary', name: 'datasummary',  argIdx: 2, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
+	{ package: 'base',  name: 'file.create',   argIdx: 'unnamed',             resolveValue: true },
+	{ package: 'base',  name: 'file.copy',     argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'base',  name: 'file.rename',   argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'base',  name: 'file.append',   argIdx: 0, argName: 'file1',   resolveValue: true },
+	{ package: 'base',  name: 'file.symlink',  argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'base',  name: 'file.link',     argIdx: 1, argName: 'to',      resolveValue: true },
+	{ package: 'utils', name: 'download.file', argIdx: 1, argName: 'destfile', resolveValue: true },
+	/* an archive unpacks into the working directory unless told otherwise */
+	{ package: 'utils',   name: 'unzip',           argIdx: 5, argName: 'exdir', resolveValue: true, defaultValue: '.', invisible: true },
+	{ package: 'utils',   name: 'untar',           argIdx: 3, argName: 'exdir', resolveValue: true, defaultValue: '.', invisible: true },
+	{ package: 'zip',     name: 'unzip',           argIdx: 4, argName: 'exdir', resolveValue: true, defaultValue: '.', invisible: true },
+	{ package: 'archive', name: 'archive_extract', argIdx: 1, argName: 'dir',   resolveValue: true, defaultValue: '.', invisible: true },
+	/* the name the file has with the extension added or dropped, `Unknown` of the query format, which imports this module */
+	...['gzip', 'gunzip', 'bzip2', 'bunzip2', 'compressFile', 'decompressFile'].map(name => ({ package: 'R.utils', name, argIdx: 1, argName: 'destname', resolveValue: true, defaultValue: 'unknown', invisible: true } as const)),
 	{ package: 'base', name: 'file', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'url', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
-	{ package: 'readr', name: 'write_csv',   argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_csv2',  argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_delim', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_excel_csv',  argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_excel_csv2', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_file',       argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_tsv',   argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_lines', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'readr', name: 'write_rds',   argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'haven', name: 'write_sas', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'haven', name: 'write_sav', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'haven', name: 'write_dta', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'haven', name: 'write_xpt', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'feather', name: 'write_feather', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'foreign', name: 'write.arff',    argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'foreign', name: 'write.dbf',     argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'foreign', name: 'write.dta',     argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'foreign', name: 'write.foreign', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'xlsx', name: 'write.xlsx',  argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'xlsx', name: 'write.xlsx2', argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'grDevices', name: 'jpeg',       argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'grDevices', name: 'png',        argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'grDevices', name: 'windows',    argIdx: 0, argName: 'file', resolveValue: true },
@@ -72,33 +79,15 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'ragg', name: 'agg_tiff',    argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'ragg', name: 'agg_ppm',     argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'ragg', name: 'agg_webp',    argIdx: 0, argName: 'filename', resolveValue: true },
-	{ package: 'car', name: 'Export', argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'LIM', name: 'PrintMat', linkTo: OutputRedirects, resolveValue: true },
 	// write_spss/write_stata moved sjmisc -> sjlabelled, so do not pin a namespace (match either); write_sas also lives in haven
 	{ name: 'write_spss',  argIdx: 1, argName: 'path', resolveValue: true },
 	{ name: 'write_stata', argIdx: 1, argName: 'path', resolveValue: true },
-	{ package: 'ape', name: 'write.tree',     argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'ape', name: 'write.nexus',    argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'ape', name: 'write.phyloXML', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'Claddis', name: 'write_nexus_matrix', argIdx: 1, argName: 'file_name', resolveValue: true },
-	{ package: 'Claddis', name: 'write_tnt_matrix',   argIdx: 1, argName: 'file_name', resolveValue: true },
-	{ package: 'rgdal', name: 'writeOGR',  argIdx: 1, argName: 'dsn',   resolveValue: true },
-	{ package: 'rgdal', name: 'writeGDAL', argIdx: 1, argName: 'fname', resolveValue: true },
-	{ package: 'arrow', name: 'write_parquet', argIdx: 1, argName: 'sink', resolveValue: true },
-	{ package: 'sf', name: 'st_write', argIdx: 1, argName: 'dsn', resolveValue: true },
 	{ package: 'sf', name: 'write_sf', argIdx: 1, argName: 'dsn', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'maptools', name: 'writePolyShape', argIdx: 1, argName: 'fn', resolveValue: true },
-	{ package: 'XLConnect', name: 'writeNamedRegionToFile', argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'XLConnect', name: 'writeWorksheetToFile',   argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'visNetwork', name: 'visSave', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'DiagrammeR', name: 'save_graph',   argIdx: 1, argName: 'file',      resolveValue: true },
 	{ package: 'DiagrammeR', name: 'export_graph',            argName: 'file_name', resolveValue: true },
-	{ package: 'ggplot2', name: 'ggsave', argIdx: 0, argName: 'filename', resolveValue: true },
-	{ package: 'cowplot', name: 'ggsave2', argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'tinyplot', name: 'tinyplot',  argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'tinyplot', name: 'plt',  argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'highcharter', name: 'hc_exporting', argName: 'filename', resolveValue: true },
-	{ package: PkgName.Jsonlite, name: 'write_json', argIdx: 1, argName: 'path', resolveValue: true },
 	{ package: 'rpolars', name: 'sink_ipc', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'sink_csv', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'sink_ndjson', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
@@ -108,54 +97,28 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'write_csv', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'write_ndjson', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'write_parquet', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'data.table', name: 'fwrite', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'writexl', name: 'write_xlsx', argIdx: 1, argName: 'path', resolveValue: true },
-	{ package: 'openxlsx', name: 'write.xlsx', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'vroom', name: 'vroom_write', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'vroom', name: 'vroom_write_lines', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'rio', name: 'export', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'rio', name: 'export_list', argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'magick', name: 'image_write', argIdx: 1, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'compiler', name: 'cmpfile', argIdx: 1, argName: 'outfile', resolveValue: true },
 	/* image / raster */
 	{ package: 'jpeg',       name: 'writeJPEG',  argIdx: 1, argName: 'target',    resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'png',        name: 'writePNG',   argIdx: 1, argName: 'target',    resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'tiff',       name: 'writeTIFF',  argIdx: 1, argName: 'where',     resolveValue: true },
-	{ package: 'imager',     name: 'make.video', argIdx: 1, argName: 'file',      resolveValue: true },
-	{ package: 'OpenImageR', name: 'writeImage', argIdx: 1, argName: 'file_name', resolveValue: true },
-	{ package: 'EBImage',    name: 'writeImage', argIdx: 1, argName: 'files',     resolveValue: true },
-	{ package: 'gifski',     name: 'gifski',     argIdx: 1, argName: 'gif_file',  resolveValue: true },
-	{ package: 'gifski',     name: 'save_gif',   argIdx: 1, argName: 'gif_file',  resolveValue: true },
-	{ package: 'svglite',    name: 'svglite',    argIdx: 0, argName: 'file',      resolveValue: true },
 	/* audio / video */
-	{ package: 'av',      name: 'av_encode_video',      argIdx: 1, argName: 'output',   resolveValue: true },
-	{ package: 'av',      name: 'av_audio_convert',     argIdx: 1, argName: 'output',   resolveValue: true },
-	{ package: 'av',      name: 'av_capture_graphics',  argIdx: 1, argName: 'output',   resolveValue: true },
-	{ package: 'tuneR',   name: 'writeWave',             argIdx: 1, argName: 'filename', resolveValue: true },
 	{ package: 'seewave', name: 'savewav',               argName: 'filename', resolveValue: true, defaultValue: '<wave-name>' },
-	{ package: 'audio',   name: 'save.wave',             argIdx: 1, argName: 'where',    resolveValue: true },
-	/* geospatial */
-	{ package: 'terra',  name: 'writeRaster', argIdx: 1, argName: 'filename', resolveValue: true },
-	{ package: 'terra',  name: 'writeVector', argIdx: 1, argName: 'filename', resolveValue: true },
-	{ package: 'terra',  name: 'writeCDF',    argIdx: 1, argName: 'filename', resolveValue: true },
-	{ package: 'raster', name: 'writeRaster', argIdx: 1, argName: 'filename', resolveValue: true },
-	{ package: 'stars',  name: 'write_stars', argIdx: 1, argName: 'dsn',      resolveValue: true },
-	/* array / binary science formats */
-	{ package: 'ncdf4',    name: 'nc_create',  argIdx: 0, argName: 'filename', resolveValue: true },
-	{ package: 'RNetCDF',  name: 'create.nc',  argIdx: 0, argName: 'filename', resolveValue: true },
-	{ package: 'R.matlab', name: 'writeMat',   argIdx: 0, argName: 'con',      resolveValue: true },
-	{ package: 'rhdf5',    name: 'h5write',    argIdx: 1, argName: 'file',     resolveValue: true },
-	{ package: 'rhdf5',    name: 'h5createFile', argIdx: 0, argName: 'file',   resolveValue: true },
-	{ package: 'fst',      name: 'write_fst',  argIdx: 1, argName: 'path',     resolveValue: true },
-	{ package: 'qs',       name: 'qsave',      argIdx: 1, argName: 'file',     resolveValue: true },
-	{ package: 'yaml',     name: 'write_yaml', argIdx: 1, argName: 'file',     resolveValue: true },
-	/* phylogeny / sequence */
-	{ package: 'ape',    name: 'write.dna',        argIdx: 1, argName: 'file',     resolveValue: true },
-	{ package: 'ape',    name: 'write.nexus.data', argIdx: 1, argName: 'file',     resolveValue: true },
-	{ package: 'seqinr', name: 'write.fasta',      argIdx: 2, argName: 'file.out', resolveValue: true }
 ] as const;
 
-export const WriteFunctions: FunctionInfo[] = [
-	...WriteFunctionsWithMore,
-	...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions])
-];
+/** The write entries the given built-in definitions imply, together with the ones written down here. */
+export function computeWriteFunctions(definitions: BuiltInDefinitions, read: FunctionInfo[] = computeReadFunctions(definitions)): FunctionInfo[] {
+	const apart = readingAndWritingApart(read, definitions);
+	return [
+		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...read.filter(f => !apart.has(f))], definitions),
+		...WriteFunctionsWithMore
+	];
+}
+
+/** {@link computeWriteFunctions} for the built-ins `env` registered, reusing the read entries it already derived. */
+export function writeFunctionsOf(env: ReadOnlyFlowrAnalyzerEnvironmentContext): FunctionInfo[] {
+	return computeWriteFunctions(env.builtInDefinitions, env.deriveFromDefinitions(computeReadFunctions));
+}
+
+/** {@link computeWriteFunctions} for the built-ins an analyzer registered, shared per built-in index. */
+export const writeFunctions = (ctx: ReadOnlyFlowrAnalyzerContext): FunctionInfo[] => ctx.env.derive(writeFunctionsOf);

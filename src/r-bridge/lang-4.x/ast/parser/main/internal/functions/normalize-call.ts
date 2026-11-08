@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
-import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
+import { getWithTokenType, retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../../util/assert';
 import { tryToNormalizeArgument } from './normalize-argument';
@@ -21,7 +21,7 @@ import { RSymbol } from '../../../../model/nodes/r-symbol';
  * Tries to parse the given data as a function call.
  * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
+ * @returns              The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
 export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionCall | RNext | RBreak | undefined {
@@ -44,12 +44,21 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: r
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
-	} else if(!namedSymbolContent.some(x => x.name === RawRType.SymbolFunctionCall) ) {
+	} else if(!isNamedCallee(namedSymbolContent)) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`);
 		return tryParseUnnamedFunctionCall(data, mappedWithName, location, content);
 	} else {
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
 	}
+}
+
+function isNamedCallee(namedSymbolContent: readonly NamedJsonEntry[]): boolean {
+	if(namedSymbolContent.length === 1) {
+		return namedSymbolContent[0].name === RawRType.SymbolFunctionCall;
+	}
+	const op = namedSymbolContent.length === 3 ? namedSymbolContent[1].content.text : undefined;
+	return (op === RawRType.NsGet || op === RawRType.NsGetInt)
+		&& namedSymbolContent[2].name === RawRType.SymbolFunctionCall;
 }
 
 function parseArguments(mappedWithName: readonly NamedJsonEntry[], data: NormalizerData): (RArgument | undefined)[] {
@@ -82,22 +91,14 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 				type:   RType.Next,
 				lexeme: content,
 				location,
-				info:   {
-					fullRange:  data.currentRange,
-					adToks:     [],
-					fullLexeme: data.currentLexeme
-				}
+				info:   currentSourceInfo(data)
 			};
 		} else if(RBreak.is(calledFunction)) {
 			return {
 				type:   RType.Break,
 				lexeme: content,
 				location,
-				info:   {
-					fullRange:  data.currentRange,
-					adToks:     [],
-					fullLexeme: data.currentLexeme
-				}
+				info:   currentSourceInfo(data)
 			};
 		}
 	}
@@ -109,11 +110,7 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 		lexeme:         content,
 		calledFunction: calledFunction,
 		arguments:      parsedArguments.map(x => x ?? EmptyArgument),
-		info:           {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:           currentSourceInfo(data)
 	};
 }
 
@@ -144,10 +141,6 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 		lexeme:    content,
 		functionName,
 		arguments: parsedArguments.map(x => x ?? EmptyArgument),
-		info:      {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:      currentSourceInfo(data)
 	};
 }

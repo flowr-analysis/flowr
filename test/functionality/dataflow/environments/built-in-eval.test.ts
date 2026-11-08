@@ -1,11 +1,13 @@
 import { assert, describe, test } from 'vitest';
+import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
 import { BuiltInEvalHandlerMapper } from '../../../../src/dataflow/environments/built-in';
 import { BuiltInEvalName } from '../../../../src/dataflow/environments/built-in-eval-name';
-import { CallProp, InputProps, CallProps } from '../../../../src/dataflow/environments/built-in-props';
+import { CallProp, InputProps } from '../../../../src/dataflow/environments/built-in-props';
 import { ComparisonOps, LogicalOps } from '../../../../src/dataflow/eval/resolve/resolve-operators';
 import { NumericFns } from '../../../../src/dataflow/eval/resolve/resolve-numbers';
 import { StringFns } from '../../../../src/dataflow/eval/resolve/resolve-strings';
+import { GetFns } from '../../../../src/dataflow/eval/resolve/resolve-get';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { label } from '../../_helper/label';
 
@@ -21,13 +23,17 @@ const FoldedBy: Record<BuiltInEvalName, readonly string[]> = {
 	[BuiltInEvalName.StringFn]:   Object.keys(StringFns),
 	[BuiltInEvalName.Seq]:        [':'],
 	[BuiltInEvalName.Vector]:     ['c'],
-	[BuiltInEvalName.Group]:      ['(']
+	[BuiltInEvalName.Group]:      ['(', '{'],
+	[BuiltInEvalName.Get]:        Object.keys(GetFns),
+	[BuiltInEvalName.Element]:    ['[[']
 };
 
 const handlerOf = new Map(Object.entries(BuiltInEvalHandlerMapper).map(([name, handler]) => [handler, name as BuiltInEvalName]));
 
 /** what the default configuration ends up registering, so that a redefinition dropping a handler shows up too */
-const folded = [...getDefaultBuiltInDefinitions().builtInMemory].flatMap(([name, defs]) => defs.flatMap(d =>
+const definitions = getDefaultBuiltInDefinitions();
+/* a name a package owns is stated apart from the built-ins, but it is folded just the same */
+const folded = [definitions.builtInMemory, ...definitions.packageMemory.values()].flatMap(m => [...m]).flatMap(([name, defs]) => defs.flatMap(d =>
 	d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined ?
 		[{ name, handler: handlerOf.get(d.evalHandler), info: d.config ?? {} }] : []));
 
@@ -38,8 +44,8 @@ describe('Built-in value folding', () => {
 
 	test(label('a folded call is pure and names its argument as its handler expects', ['name-normal'], ['other']), () => {
 		for(const { name, info } of folded) {
-			assert.isTrue(CallProps.hasAny(info, CallProp.Pure), `${name} is folded but does not claim to be pure`);
-			assert.isTrue(!CallProps.hasAny(info, InputProps), `${name} is folded but brings in data of its own`);
+			assert.isTrue(FunctionSemantics.call.props.hasAny(info, CallProp.Pure), `${name} is folded but does not claim to be pure`);
+			assert.isTrue(!FunctionSemantics.call.props.hasAny(info, InputProps), `${name} is folded but brings in data of its own`);
 			/* the handlers match arguments by the parameter names they declare, so the signature has to use the same ones */
 			const params: readonly string[] | undefined = StringFns[name as keyof typeof StringFns]?.params
 				?? NumericFns[name as keyof typeof NumericFns]?.params;

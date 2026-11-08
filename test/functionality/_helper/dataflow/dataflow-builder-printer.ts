@@ -12,13 +12,7 @@ import { wrap, wrapControlDependencies, wrapExitPoint, wrapReference } from './p
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { type DataflowGraph, FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	type DataflowGraphVertexInfo,
-	type DataflowGraphVertexUse,
-	VertexType
-} from '../../../../src/dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DataflowGraphVertexUse, VertexType } from '../../../../src/dataflow/graph/vertex';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 
@@ -29,7 +23,9 @@ type Lines = [NodeId, string][];
 
 
 /**
- *
+ * A graph as the `emptyGraph().…` builder calls that would produce it, which is what a failing
+ * dataflow test prints so the expectation can be pasted back in.
+ * @param graph - the graph to print
  */
 export function printAsBuilder(graph: DataflowGraph): string {
 	return new DataflowBuilderPrinter(graph).print();
@@ -156,7 +152,7 @@ class DataflowBuilderPrinter {
 		}
 	}
 
-	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
+	private controlDependenciesForArgument(id: NodeId): readonly ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
 		return this.graph.getVertex(id)?.cds;
@@ -248,7 +244,7 @@ class DataflowBuilderPrinter {
 		]);
 	}
 
-	private getControlDependencySuffix(arg: ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
+	private getControlDependencySuffix(arg: readonly ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
 			return `${prefix}cds: ${wrapControlDependencies(arg)}${suffix}`;
 		}

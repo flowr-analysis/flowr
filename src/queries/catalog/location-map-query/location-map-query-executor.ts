@@ -3,6 +3,7 @@ import { LocationMapSpan } from './location-map-query-format';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { SourceRange } from '../../../util/range';
 import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../../util/assert';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
@@ -70,9 +71,7 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 	}
 
 	return {
-		'.meta': {
-			timing: Date.now() - start
-		},
+		...metaSince(start),
 		map: locationMap
 	};
 }

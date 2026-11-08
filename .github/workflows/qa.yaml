@@ -80,6 +80,9 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           cache: npm
 
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
+
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
 
@@ -104,6 +107,9 @@ jobs:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
           cache: npm
+
+      - name: "🔍 Typecheck"
+        run: bash .github/workflows/scripts/run-flowr-command.sh typecheck
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint
@@ -135,34 +141,16 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "📦 Install Node Dependencies"
         # the sync below runs through ts-node, so the dependencies have to be there before it
         run: npm ci
 
-      - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
         with:
-          # only the bundles, the shards unpacked next to them are re-derived on demand
-          path: ~/.cache/flowr/sigdb/bundles
-          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
-
-      - name: "⬇️ Sync the Signature Database"
-        # without a database every sigdb-backed test skips instead of checking anything; run through the same
-        # script as the tests so the node dependencies are installed once and reused by both
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/workflows/scripts/run-flowr-command.sh sync:sigdb
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
@@ -171,7 +159,7 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
       - name: "⬆️ Upload Test Label Details"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-label-details
           path: |
@@ -181,14 +169,119 @@ jobs:
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
         if: github.ref == 'refs/heads/main'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
+  # apart from the coverage job, so the two run side by side instead of one after the other
+  test-mutations:
+    needs: [ debug ]
+    name: "🧬 Mutation Tests"
+    # the release workflow runs them in full for a release commit
+    if: ${{
+              (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main')
+          && !startsWith(github.event.head_commit.message, '[release:')
+      }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+          packages: 'true'
+
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # a branch checks a fifth of the mutants, other ones on every push, main and the release check all of them
+      - name: "🧬 Run Mutation Tests"
+        env:
+          FLOWR_MUTATION_SAMPLE: ${{ (inputs.force-full || github.ref == 'refs/heads/main') && '1' || '0.2' }}
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
+
+      - name: "⬆️ Upload Test Label Details"
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-label-details-mutations
+          path: |
+            coverage/flowr-test-details-mutations.json
+            coverage/flowr-mutation-details.json
+            coverage/flowr-mutation-test-results.json
+          if-no-files-found: warn
+
+  test-os:
+    needs: [ debug ]
+    name: "🧪 Test Suite (${{ matrix.os }})"
+    # the release matrix tests these as well, but by then a failure blocks the release instead of the merge
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: |
+          wanted <- readLines(".github/actions/setup-r/packages.txt")
+          install.packages(wanted, repos="https://cloud.r-project.org/")
+          missing <- setdiff(wanted, rownames(installed.packages()))
+          if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
+
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🧪 Run the Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"
+
 
   performance-test:
-    needs: [ test ]
+    # the upload after it needs the label details of both
+    needs: [ test, test-mutations ]
     name: "⏱️ Performance Test"
     # we do not run if the release workflow runs it with pushing
     if: ${{
@@ -235,7 +328,7 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
@@ -268,211 +361,48 @@ jobs:
           cache: npm
 
       - name: "⬇️ Get the Test Label Details"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         continue-on-error: true
         with:
-          name: test-label-details
+          pattern: test-label-details*
+          merge-multiple: true
           path: test-labels/
 
-      # currently we have a duplication, add your benchmark names here and in `performance-test` and check the release.yaml
-      - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
-        uses: actions/download-artifact@v4
+      # add new benchmark suites and parsers here and in the matrix of `performance-test`
+      - name: "⬆️ Benchmark (artificial, r-shell)"
+        uses: ./.github/actions/upload-benchmark
         with:
-          name: benchmark-results-artificial-r-shell
-          path: benchmark-ai-r-shell/
+          suite:  artificial
+          parser: r-shell
+          token:  ${{ secrets.GITHUB_TOKEN }}
+          ref:    "refs/heads/main"
 
-      - name: "🧪 Add the Test Counters (artificial-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json"
-
-      - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
-        uses: benchmark-action/github-action-benchmark@v1
+      - name: "⬆️ Benchmark (artificial, tree-sitter)"
+        uses: ./.github/actions/upload-benchmark
         with:
-          name: '"artificial" Benchmark Suite'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai-r-shell/artificial/artificial-summarized-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: true
-          comment-always: true
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
+          suite:  artificial
+          parser: tree-sitter
+          token:  ${{ secrets.GITHUB_TOKEN }}
+          ref:    "refs/heads/main"
 
-      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
-      # them: a release with more linting rules must never read as a performance regression. The page merges
-      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
-      - name: "🧮 Merge and Produce the Counters (artificial, r-shell)"
-        uses: benchmark-action/github-action-benchmark@v1
+      - name: "⬆️ Benchmark (real-world, r-shell)"
+        uses: ./.github/actions/upload-benchmark
         with:
-          name: '"artificial" Benchmark Suite [info]'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai-r-shell/artificial/artificial-summarized-graph-info.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: false
-          comment-always: false
-          alert-threshold: '100000%'
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
+          suite:  real-world
+          parser: r-shell
+          token:  ${{ secrets.GITHUB_TOKEN }}
+          ref:    "refs/heads/main"
 
-      - name: "⬇️ Get benchmark Artifacts (real-world, r-shell)"
-        uses: actions/download-artifact@v4
+      - name: "⬆️ Benchmark (real-world, tree-sitter)"
+        uses: ./.github/actions/upload-benchmark
         with:
-          name: benchmark-results-real-world-r-shell
-          path: benchmark-rw-r-shell
-
-      - name: "🧪 Add the Test Counters (real-world-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json"
-
-      - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"real-world" Benchmark Suite'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-rw-r-shell/real-world/real-world-summarized-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: true
-          comment-always: true
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
-      # them: a release with more linting rules must never read as a performance regression. The page merges
-      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
-      - name: "🧮 Merge and Produce the Counters (real-world, r-shell)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"real-world" Benchmark Suite [info]'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-rw-r-shell/real-world/real-world-summarized-graph-info.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: false
-          comment-always: false
-          alert-threshold: '100000%'
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      - name: "⬇️ Get benchmark Artifacts (artificial, tree-sitter)"
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-artificial-tree-sitter
-          path: benchmark-ai-tree-sitter/
-
-      - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json"
-
-      - name: "🥄 Merge and Produce Performance Results (artificial, tree-sitter)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"artificial" Benchmark Suite (tree-sitter)'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai-tree-sitter/artificial/artificial-summarized-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: true
-          comment-always: true
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
-      # them: a release with more linting rules must never read as a performance regression. The page merges
-      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
-      - name: "🧮 Merge and Produce the Counters (artificial, tree-sitter)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"artificial" Benchmark Suite (tree-sitter) [info]'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai-tree-sitter/artificial/artificial-summarized-graph-info.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: false
-          comment-always: false
-          alert-threshold: '100000%'
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      - name: "⬇️ Get benchmark Artifacts (real-world, tree-sitter)"
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-real-world-tree-sitter
-          path: benchmark-rw-tree-sitter
-
-      - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json"
-
-      - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"real-world" Benchmark Suite (tree-sitter)'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-rw-tree-sitter/real-world/real-world-summarized-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: true
-          comment-always: true
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      # the counters are no measurement of speed, so they are uploaded on their own, where nothing alerts on
-      # them: a release with more linting rules must never read as a performance regression. The page merges
-      # the two suites back into one, see `mergeInfoSuites` in `wiki/stats/benchmark/stats.js`.
-      - name: "🧮 Merge and Produce the Counters (real-world, tree-sitter)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"real-world" Benchmark Suite (tree-sitter) [info]'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-rw-tree-sitter/real-world/real-world-summarized-graph-info.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: false
-          comment-always: false
-          alert-threshold: '100000%'
-          skip-fetch-gh-pages: true
-          max-items-in-chart: 100
-          ref: "refs/heads/main"
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
+          suite:  real-world
+          parser: tree-sitter
+          token:  ${{ secrets.GITHUB_TOKEN }}
+          ref:    "refs/heads/main"
 
       - name: "⬆️ Upload Benchmark Graph Data"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results-graph-data
           path: wiki/stats/benchmark/

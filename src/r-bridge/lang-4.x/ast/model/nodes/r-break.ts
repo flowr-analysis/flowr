@@ -11,6 +11,7 @@ export interface RBreak<Info = NoInfo> extends Location, Leaf<Info> {
 
 /**
  * Helper for working with {@link RBreak} AST nodes.
+ * @helper ast
  */
 export const RBreak = {
 	...RNode,

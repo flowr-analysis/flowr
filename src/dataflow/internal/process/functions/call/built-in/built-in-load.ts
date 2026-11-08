@@ -1,23 +1,26 @@
-import { MatchArgs } from '../../../../../graph/match-args';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
+import { happensInEveryBranch } from '../../../../../info';
+import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { InGraphReferenceType } from '../../../../../environments/identifier';
+import type { InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { findSource } from './built-in-source';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
-import { unpackArg } from '../argument/unpack-argument';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { isNotUndefined } from '../../../../../../util/assert';
@@ -29,7 +32,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type {
 	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, type EnvirResolution } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
@@ -43,7 +46,7 @@ export function processLoadCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { fileArg, envirArg } = getArguments(args, data);
+	const { fileArg, envirArg } = loadArgsOf(args, data);
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
@@ -59,16 +62,15 @@ export function processLoadCall<OtherInfo>(
 		return fn.information;
 	}
 
-	const envirResolution = envirArg ? resolveArgToEnvir(envirArg, data) : undefined;
+	const envirResolution = envirArg ? envirOf(resolveArgToEnvirOrAmbiguous(envirArg, data)) : undefined;
 	if(envirResolution) {
 		fn.information.graph.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	}
 
-
 	let sourceFile: string[] | undefined;
 
 	if(RString.is(fileArg)) {
-		sourceFile = [removeRQuotes(fileArg.lexeme)];
+		sourceFile = [RString.unquote(fileArg.lexeme)];
 	} else {
 		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
@@ -76,7 +78,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(sourceFile) {
 		for(const candidate of sourceFile) {
-			const path = removeRQuotes(candidate);
+			const path = RString.unquote(candidate);
 			let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
 
 			if(Array.isArray(filepath)) {
@@ -106,23 +108,100 @@ export function processLoadCall<OtherInfo>(
 				return fn.information;
 			}
 
-			let envir = envirResolution ? envirResolution.envirData.environment : fn.information.environment;
-
-			const loadLocation = name.location ?? name.fullRange ?? SourceRange.invalid();
-			const loadCds = [...(data.cds ?? []), { id: rootId, when: true, file: filepath }];
-
-			for(const variable of variables) {
-				if(variable.name) {
-					envir = defineLoadedVariable({ ...variable, name: variable.name }, rootId, fn, envir, loadLocation, loadCds, data);
-				}
+			const named = variables.filter((v): v is RObjectData & { name: string } => v.name !== undefined);
+			return withLoaded(named, rootId, fn, [...(data.cds ?? []), { id: rootId, when: true, file: filepath }], data, envirResolution);
+		}
+		/* a file the program saves itself holds the variables it saved */
+		const saved = savedInto(sourceFile, data);
+		if(saved !== undefined) {
+			const loaded = withLoaded(saved.names.map(n => ({ name: n })), rootId, fn, [...(data.cds ?? []), { id: rootId, when: true }], data, envirResolution);
+			if(!saved.complete) {
+				handleUnknownSideEffect(loaded.graph, loaded.environment, rootId);
 			}
-
-			return { ...fn.information, environment: envir };
+			return loaded;
 		}
 	}
 
 	handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
 	return fn.information;
+}
+
+/**
+ * The variables the `save()` calls that wrote the files at `paths` stored, and whether that is all the files may hold
+ * (every writer surely ran, so no older content remains); `undefined` if another call may have written them or a
+ * name is unknown.
+ */
+function savedInto<OtherInfo>(paths: readonly string[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): { names: string[], complete: boolean } | undefined {
+	const names = new Set<string>();
+	let complete = true;
+	for(const path of paths) {
+		const stem = RString.unquote(path).split(/[/\\]/).at(-1)?.split('.')[0];
+		const writers = stem ? Resolve.byName(AmbientStateName.file(stem), data.environment) : undefined;
+		if(writers === undefined || writers.length === 0) {
+			return undefined;
+		}
+		for(const writer of writers) {
+			const call = data.completeAst.idMap.get(writer.nodeId);
+			const stored = RFunctionCall.isNamed(call, 'save') ? namesSavedBy(call.arguments, data) : undefined;
+			if(stored === undefined) {
+				return undefined;
+			}
+			stored.forEach(n => names.add(n));
+			complete &&= happensInEveryBranch(writer.cds);
+		}
+	}
+	return { names: [...names], complete };
+}
+
+/** The variables `save(...)` names: its unnamed symbols and strings, and the strings `list` holds; `undefined` if one is unknown. */
+function namesSavedBy<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+	const names: string[] = [];
+	for(const arg of args) {
+		if(arg === EmptyArgument || arg.value === undefined) {
+			continue;
+		}
+		const named = arg.name === undefined ? undefined : Identifier.getName(arg.name.content);
+		if(named === 'list') {
+			const listed = NodeValue.stringsOf(arg.value.info.id, data);
+			if(listed === undefined) {
+				return undefined;
+			}
+			names.push(...listed);
+		} else if(named === undefined) {
+			if(RSymbol.is(arg.value)) {
+				names.push(Identifier.getName(arg.value.content));
+			} else if(RString.is(arg.value)) {
+				names.push(arg.value.content.str);
+			} else {
+				return undefined;
+			}
+		}
+	}
+	return names;
+}
+
+/**
+ * The load call `rootId` with the `variables` it restores defined, in the caller's frame or, given `envir`, in the
+ * environment it names (routed there like any other write into it, so the caller keeps its own bindings).
+ */
+function withLoaded<OtherInfo>(
+	variables: readonly (RObjectData & { name: string })[],
+	rootId: NodeId,
+	fn: { information: DataflowInformation },
+	loadCds: ControlDependency[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	envir: EnvirResolution<OtherInfo> | undefined
+): DataflowInformation {
+	const location = data.completeAst.idMap.get(rootId)?.location ?? SourceRange.invalid();
+	let environment = fn.information.environment;
+	const out = [...fn.information.out];
+	for(const variable of variables) {
+		const [next, defined] = defineLoadedVariable(variable, rootId, fn, environment, location, loadCds, data);
+		environment = next;
+		out.push(defined);
+	}
+	const result = { ...fn.information, environment, out };
+	return envir === undefined ? result : routeWrittenToEnvir(result, envir, rootId, data.environment, rootId);
 }
 
 function defineLoadedVariable<OtherInfo>(
@@ -133,7 +212,7 @@ function defineLoadedVariable<OtherInfo>(
 	loadLocation: SourceRange,
 	loadCds: ControlDependency[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): REnvironmentInformation {
+): [REnvironmentInformation, InGraphIdentifierDefinition & { name: string }] {
 	const syntheticId = `${rootId}:loaded:${variable.name}`;
 	const isClosure = variable.type === SexpType.CloSxp;
 	const rootInfo = data.completeAst.idMap.get(rootId)?.info;
@@ -169,8 +248,7 @@ function defineLoadedVariable<OtherInfo>(
 		definedAt: rootId,
 		cds:       loadCds,
 	};
-	const newCurrent = envir.current.define(nodeToDefine);
-	return { ...envir, current: newCurrent };
+	return [{ ...envir, current: envir.current.define(nodeToDefine) }, nodeToDefine];
 }
 
 function defineLoadedClosure<OtherInfo>(
@@ -246,8 +324,9 @@ function defineLoadedClosure<OtherInfo>(
 	fn.information.graph.addEdge(syntheticId, fdefId, EdgeType.DefinedBy);
 }
 
-function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
-	if(type === undefined){
+/** The kind of reference a serialized R object stands for, from the {@link SexpType} it was stored as. */
+export function sexpTypeToReferenceType(type?: SexpType): ReferenceType {
+	if(type === undefined) {
 		return ReferenceType.Unknown;
 	}
 	switch(type) {
@@ -280,17 +359,17 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 	}
 }
 
-function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function loadArgsOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
-	const bound = MatchArgs.toNames(args, loadParams);
+	const bound = FunctionSemantics.call.match.toNames(args, loadParams);
 
 	const fileArgBound = bound.get('file');
 	const envirArg = bound.get('envir');
 	const verboseArgBound = bound.get('verbose');
 
-	const fileArg = fileArgBound ? unpackArg(fileArgBound) : undefined;
-	const verboseArg = verboseArgBound ? unpackArg(verboseArgBound) : undefined;
+	const fileArg = fileArgBound ? RArgument.valueOf(fileArgBound) : undefined;
+	const verboseArg = verboseArgBound ? RArgument.valueOf(verboseArgBound) : undefined;
 
 	return { fileArg, envirArg, verboseArg };
 }

@@ -1,0 +1,24 @@
+{
+  "name": "@eagleoutice/flowr-mcp",
+  "version": "0.1.3",
+  "description": "Model Context Protocol server for flowR: static dataflow analysis, slicing, and linting of R code for LLM clients",
+  "mcpName": "io.github.flowr-analysis/flowr",
+  "bin": {
+    "flowr-mcp": "index.js"
+  },
+  "files": ["index.js", "SKILL.md", "npm-shrinkwrap.json"],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@eagleoutice/flowr": "^2.16.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flowr-analysis/flowr.git",
+    "directory": "mcp"
+  },
+  "keywords": ["mcp", "R", "static code analysis", "slicing", "dataflow analysis"],
+  "author": "Florian Sihler",
+  "license": "ISC"
+}

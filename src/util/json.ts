@@ -5,7 +5,6 @@ import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow
 
 /**
  * This is flowR's custom JSON replacer, used to stringify flowR-internal structures.
- * @see {@link jsonBigIntRetriever}
  * @see {@link superBigJsonStringify}
  */
 export function jsonReplacer(key: unknown, value: unknown): unknown {
@@ -19,20 +18,6 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 		return value;
 	}
 }
-
-/**
- * This is flowR's custom JSON retriever, used to parse flowR-internal structures.
- * @see {@link jsonReplacer}
- * @see {@link superBigJsonStringify}
- */
-export function jsonBigIntRetriever(key: string, value: unknown): unknown {
-	if(typeof value === 'string' && value.endsWith('n')) {
-		return BigInt(value.slice(0, -1));
-	} else {
-		return value;
-	}
-}
-
 
 /**
  * Stringifies potentially very large objects to JSON, sending chunks to the provided send function.
@@ -57,20 +42,7 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 		return current + 'null';
 	} else if(isDefaultBuiltInEnvironment(obj)) {
 		return current + '<BuiltInEnvironment>';
-	} else if(Array.isArray(obj)) {
-		let str = current + '[';
-		for(let i = 0; i < obj.length; i++) {
-			if(i > 0) {
-				str += ',';
-			}
-			str = bigStringify(obj[i], str, send);
-			if(str.length > 20_000) {
-				send(str);
-				str = '';
-			}
-		}
-		return str + ']';
-	} else if(obj instanceof Map || obj instanceof Set) {
+	} else if(Array.isArray(obj) || obj instanceof Map || obj instanceof Set) {
 		let str = current + '[';
 		let i = 0;
 		for(const value of obj) {

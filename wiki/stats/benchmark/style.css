@@ -124,105 +124,13 @@ body {
 
 a {
 	color: var(--accent);
-}
-
-header {
-	display: flex;
-	flex-wrap: wrap;
-	gap: .4rem 1.5rem;
-	align-items: baseline;
-	justify-content: space-between;
-	padding: .8rem 0 .6rem;
-	border-bottom: 1px solid var(--border);
-}
-
-.titles h1 {
-	margin: 0;
-	font-size: 1.15rem;
-	line-height: 1.2;
-	/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
-	display: inline-flex;
-	align-items: center;
-}
-
-.titles h1 a.brand {
-	display: inline-flex;
-	align-items: center;
-	gap: .45rem;
-	color: var(--fg);
 	text-decoration: none;
+	text-decoration-thickness: from-font;
+	text-underline-offset: .16em;
+	transition: color .12s ease;
 }
 
-.mark { flex: none; }
-
-/* the slash owns the space on both of its sides, so the two names sit evenly around it */
-.titles h1 .where {
-	color: var(--muted);
-	font-weight: 400;
-	font-size: 1.05rem;
-	white-space: nowrap;
-}
-
-.titles h1 .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
-
-/* a grid is only as wide as its widest row, which puts the release above the end of the intro */
-.titles {
-	display: inline-grid;
-	max-width: 90ch;
-}
-
-.title-row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 0 1.5rem;
-}
-
-.intro {
-	margin: .15rem 0 0;
-	font-size: .82rem;
-	color: var(--muted);
-}
-
-/* the way back to the landing page, after the sentence rather than crowding the heading */
-.intro a { margin-left: .5rem; }
-
-/* the release this page is about, which is what a reader looks for first */
-/* the size of the title it shares its line with, so the two read as one heading */
-.latest {
-	margin-left: .55rem;
-	white-space: nowrap;
-}
-
-/* the number of the release the page is about, in the same plain text every flowR page carries */
-.latest .version {
-	font-size: .82rem;
-	font-weight: 400;
-	color: var(--muted);
-	font-variant-numeric: tabular-nums;
-	text-decoration: none;
-	transition: color .18s ease;
-}
-
-.latest .version:hover,
-.latest .version:focus-visible {
-	color: var(--fg);
-}
-
-.theme {
-	display: flex;
-	align-items: center;
-	gap: .4rem;
-	font-size: .8rem;
-	color: var(--muted);
-}
-
-.theme select {
-	width: auto;
-}
-
-
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration: underline; }
 
 .status {
 	margin: .8rem 0 0;
@@ -639,7 +547,7 @@ figcaption .chip {
 	white-space: nowrap;
 }
 
-svg {
+main svg {
 	width: 100%;
 	height: auto;
 	display: block;
@@ -1033,17 +941,7 @@ svg {
 	padding: .5rem 0 .8rem;
 }
 
-footer {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: .4rem;
-	margin-top: 1.5rem;
-	padding-top: .8rem;
-	border-top: 1px solid var(--border);
-	font-size: .8rem;
-	color: var(--muted);
-}
+footer { margin-top: 1.5rem; }
 
 /* whether the page is still watching for a newer history, and why not where it is not */
 #watch-note {
@@ -1066,11 +964,6 @@ footer {
 @media (max-width: 560px) {
 	body {
 		padding: 0 .6rem 1.5rem;
-	}
-
-	header {
-		flex-direction: column;
-		align-items: flex-start;
 	}
 
 	#controls {
@@ -1236,10 +1129,86 @@ footer {
 	stroke-width: 1.2;
 }
 
+/* the releases named above the sparkline, as the charts name them above their own */
+.timeline-release {
+	fill: var(--muted);
+	font-size: 5px;
+	font-variant-numeric: tabular-nums;
+}
+
+.timeline-release.major { font-weight: 600; }
+
 .timeline-tick {
 	fill: var(--muted);
 	font-size: 5.5px;
 	font-variant-numeric: tabular-nums;
+}
+
+/* what a detailed view breaks down, said above it */
+.tags-head {
+	margin-bottom: .35rem;
+}
+
+.tags-title {
+	font-size: .78rem;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+/* the breakdowns a tile could show instead of the one it does */
+.tags-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .35rem;
+	margin-top: .5rem;
+	border-top: 1px solid var(--border);
+	padding-top: .5rem;
+}
+
+.tags-tab {
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: none;
+	color: var(--muted);
+	font: inherit;
+	font-size: .74rem;
+	padding: .12rem .55rem;
+	cursor: pointer;
+	transition: color .18s ease, border-color .18s ease;
+}
+
+.tags-tab:hover { color: var(--fg); }
+
+.tags-tab.on {
+	color: var(--fg);
+	border-color: var(--fg);
+	font-weight: 600;
+	cursor: default;
+}
+
+/* the views of a tile sit above its numbers, so they need no separator of their own */
+.view-tabs {
+	margin: 0 0 .6rem;
+	border-top: none;
+	padding-top: 0;
+}
+
+.composition.stack {
+	display: block;
+}
+
+.composition.stack svg {
+	width: 100%;
+	height: auto;
+	display: block;
+	margin: .3rem 0;
+}
+
+/* the parts of a stacked chart, filled stronger than a single sparkline so the layers tell apart */
+.stack-area {
+	fill: var(--c);
+	opacity: .35;
+	stroke: none;
 }
 
 .facts .composition {

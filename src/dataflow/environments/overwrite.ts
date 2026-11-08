@@ -8,6 +8,7 @@ export function overwriteEnvironment(base: undefined, next: undefined,  applyCds
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined;
 /**
  * Definitions within `next` replace those in `base` by name; if all of `next`'s are maybe, they are appended instead (turning existing ones maybe too), like {@link appendEnvironment}.
+ * @useInstead {@link REnvironment.overwrite}
  * @see {@link Environment.overwrite} - for details on how definitions are handled.
  */
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined {

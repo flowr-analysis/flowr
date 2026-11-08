@@ -1,6 +1,7 @@
 import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
-import { RemoteFlowrFilePathBaseRef, toPosixPath } from './doc-files';
+import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import { RPath } from '../../util/files';
 import fs from 'fs';
 import path from 'path';
 import { codeBlock } from './doc-code';
@@ -62,7 +63,7 @@ const options: ts.CompilerOptions = {
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
-		const normalizedFileNames = fileNames.map(toPosixPath);
+		const normalizedFileNames = fileNames.map(RPath.of);
 		const program = ts.createProgram(normalizedFileNames, options);
 		return { program, files: normalizedFileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
@@ -134,7 +135,9 @@ function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 
 
 /**
- *
+ * The 1-based line a TypeScript node starts on, for the wiki pages that link into the source.
+ * @param node       - the node to locate
+ * @param sourceFile - the file it belongs to
  */
 export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.SourceFile): number {
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
@@ -206,7 +209,7 @@ function genericNames(node: { readonly typeParameters?: ts.NodeArray<ts.TypePara
 	return node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 }
 
-function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
+function collectTypeHierarchy(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
 	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
 	const visit = (node: ts.Node | undefined, sourceFile: ts.SourceFile) => {
@@ -402,7 +405,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '')}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;
@@ -462,7 +465,7 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 	const { files, program } = getTypeScriptSourceFiles(fileNames);
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
-	const hierarchyList = collectHierarchyInformation(files, withProgram);
+	const hierarchyList = collectTypeHierarchy(files, withProgram);
 	return {
 		mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram),
 		info:    hierarchyList,
@@ -642,7 +645,7 @@ export function printCodeOfElement(info: FnElementInfo, name: string): string {
  * This is great to show examples that are directly taken from the source code.
  */
 export function printCodeOfFile(info: FnElementInfo, relativePath: string): string {
-	const fullPath = toPosixPath(path.resolve(__dirname, `../../../${relativePath}`));
+	const fullPath = RPath.of(path.resolve(__dirname, `../../../${relativePath}`));
 	const code = info.program.getSourceFile(fullPath)?.getFullText().trim();
 	if(!code) {
 		console.error(`Could not find source file ${relativePath}!`);
@@ -709,19 +712,23 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 			return undefined;
 		}
 	}
+	if(!container) {
+		/* a bare name means the declaration itself, not a member that happens to share it (like the `Dataflow` gas key of `GasFeatureKey`) */
+		node = [...node.filter(n => n.extends.length === 0), ...node.filter(n => n.extends.length > 0)];
+	}
 	return [container, name, node[0]];
 }
 
 /**
  * Create a short link to a type in the documentation.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
- * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
+ * @param name            - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
- * @param hierarchy - The hierarchy of types to search in
- * @param codeStyle - Whether to use code style for the link
+ * @param hierarchy       - The hierarchy of types to search in
+ * @param codeStyle       - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
- * @param fuzzy     - Whether to use fuzzy matching when searching for the type
- * @param type      - Optionally restrict to a certain type of element
+ * @param fuzzy           - Whether to use fuzzy matching when searching for the type
+ * @param type            - Optionally restrict to a certain type of element
  */
 export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
 	const res = retrieveNode(name, hierarchy, fuzzy, type);

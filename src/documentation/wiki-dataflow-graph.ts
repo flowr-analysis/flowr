@@ -1,34 +1,19 @@
 import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { Quoted } from '../dataflow/internal/process/functions/call/quoted';
-import { Nse } from '../dataflow/internal/process/functions/call/nse';
-import { Deferred } from '../dataflow/internal/process/functions/call/deferred';
 import { linkToQueryOfName } from './doc-util/doc-query';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	VertexType
-} from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, VertexType } from '../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import {
-	FlowrGithubBaseRef,
-	FlowrGithubGroupName,
-	getFilePathMd
-} from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from './doc-util/doc-files';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
-import {
-	type ExplanationParameters,
-	getAllEdges,
-	getAllVertices,
-	type SubExplanationParameters
-} from './data/dfg/doc-data-dfg-util';
+import { type ExplanationParameters, getAllEdges, getAllVertices, type SubExplanationParameters } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
-import { codeBlock } from './doc-util/doc-code';
+import { codeBlock, jsonWithLimit } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -36,15 +21,12 @@ import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
-import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { applyKills } from '../dataflow/environments/apply-kill';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import {
-	UnnamedFunctionCallPrefix
-} from '../dataflow/internal/process/functions/call/unnamed-call-handling';
+import { UnnamedFunctionCallPrefix } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
@@ -65,8 +47,9 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { DfgVertex } from '../dataflow/graph/vertex';
 import { enumMembers } from '../util/objects';
+import { compareByCodeUnit } from '../util/text/strings';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -142,7 +125,7 @@ async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDoc
 		type:        VertexType.Value,
 		description: `
 Describes a constant value (numbers, booleans/logicals, strings, ...).
-In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
+The respective vertex is more or less a dummy vertex.
 
 ${
 	ctx.hierarchy('DataflowGraphVertexValue')
@@ -281,7 +264,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true, ctx });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
@@ -298,8 +281,7 @@ In this case, we have a function call vertex with id \`${callId}\` and the follo
 
 ${codeBlock('json', JSON.stringify(callVert.args, jsonReplacer, 2))}
 
-Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
-as the \`type\` of these references is a bit-mask, encoding one of the following reference types:
+This is hard to read in this form, as the \`type\` of these references is a bit-mask, encoding one of the following reference types:
 
 | Value | Reference Type |
 |------:|----------------|
@@ -353,8 +335,8 @@ ${await (async() => {
 		const code = 'foo <- function() 3\nfoo()';
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']), ctx });
 
-		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
+		const numberOfEdges = [...info.dataflow.graph.edges()].flatMap(e => [...e[1].keys()]).length;
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 
@@ -420,15 +402,15 @@ Interesting program, right? Running this with \`u <- TRUE\` will cause the last 
 operator to mean multiplication, while with \`u <- FALSE\` causes \`x\` to be assigned to \`3\`.
 In short: the last line may either refer to a definition or to a use of \`x\`, and we are not fully equipped to visualize this (this causes a warning).
 First of all how can you spot that something weird is happening? Well, this definition has a ${linkEdgeName(EdgeType.Reads)} and a ${linkEdgeName(EdgeType.DefinedBy)} edge,
-but this of course does not apply to the general case.
+but this does not apply to the general case.
 
 For starters, let's have a look at the environment of the call to \`<-\` in the last line:
 
 ${printEnvironmentToMarkdown(env.current)}
 
 Great, you should see a definition of \`<-\` which is constraint by the [control dependency](#branches) to the \`if\`.
-Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
-the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
+Hence, trying to re-resolve the call using ${ctx.link(Dataflow.callTargetsOf)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
+the following target ids: { \`${[...Dataflow.callTargetsOf(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(Resolve.byNameAndType)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
 { \`${Resolve.byName(Identifier.make(name), env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
@@ -439,7 +421,7 @@ Similarly, trying to resolve the name with ${ctx.link(Resolve.byNameAndType)}\` 
 `)}
 
 
-Similar to finding the definitions read by a variable use, please use the ${ctx.link(getAllFunctionCallTargets)} function to find all possible definitions of a function call,
+Similar to finding the definitions read by a variable use, please use the ${ctx.link(Dataflow.callTargetsOf)} function to find all possible definitions of a function call,
 as explained in the ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} section.`
 	})
 }
@@ -493,12 +475,12 @@ ${
 }
 Of only interest is \`par\`, which signals that the definitions is partial (e.g., in the case of \`x[a] <- 1\`).
 
-Of course, there are not just operators that define variables, but also functions, like \`assign\`.
+Functions can define variables too, like \`assign\`.
 
 ${
 	details('Example: Using <code>assign</code>',
 		await printDfGraphForCode(parser, 'assign("x", 1)\nx', { mark: new Set([1]), ctx })
-		+ `\nThe example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable \`x\` (without the quotes) as you can see with the ${linkEdgeName(EdgeType.Reads)} edge.`
+		+ `\nThe example may be misleading as the visualization prints the lexeme of the variable. However, this actually defines the variable \`x\` (without the quotes), as the ${linkEdgeName(EdgeType.Reads)} edge shows.`
 	)
 }
 
@@ -522,7 +504,7 @@ In this case, the definition of \`x\` is constrained by the conditional, which i
 
 ${finalEnvironment}
 
-As you can see, _flowR_ is able to recognize that the initial definition of \`x\` has no influence on the final value of the variable.
+_flowR_ recognizes that the initial definition of \`x\` has no influence on the final value of the variable.
 		`;
 })())}
 
@@ -574,7 +556,7 @@ ${details('Example: Nested Function Definitions',
 		return `
 ${text}
 
-As you can see, the vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
+The vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
 
 | Id | Vertex Ids in Subflow |
 |---:|-----------------------|
@@ -595,7 +577,7 @@ ${details('Example: Parameters of a Function',
 		const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([10, 1, 3]), exposeResult: true, ctx });
 		const ast = await printNormalizedAstForCode(parser, code, { prefix: 'flowchart LR\n', showCode: false, ctx });
 
-		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionDefinitionVertex.is(vertex));
+		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionDefinition(vertex));
 		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
 		const [id] = functionDefinition;
 
@@ -607,7 +589,7 @@ Let's first consider the following dataflow graph (of \`${code}\`):
 ${text}
 
 The function definition we are interested in has the id \`${id}\`. Looking at the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} of the code,
-we can get the parameters simply be requesting the \`parameters\` property of the function definition (yielding the names: [${normalized.parameters.map(p => `\`${p.name.content}\``).join(', ')}]):
+we can get the parameters by requesting the \`parameters\` property of the function definition (yielding the names: [${normalized.parameters.map(p => `\`${p.name.content}\``).join(', ')}]):
 
 ${ast}
 	`;
@@ -654,7 +636,7 @@ ${
 		content: `
 A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
 Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
-are currently tailored to what we need in _flowR_. Hence, we offer a function like ${ctx.link(getAllFunctionCallTargets)},
+are currently tailored to what we need in _flowR_. Hence, we offer a function like ${ctx.link(Dataflow.callTargetsOf)},
 as well as ${ctx.link(Resolve.toBuiltIn)} which do this for specific cases.
 Refer to ${ctx.link(Dataflow.origin)} for a more general solution, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
 
@@ -728,7 +710,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		name:        'Returns Edge',
 		type:        EdgeType.Returns,
 		description: `Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
-As you can see in the example, this happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
+This happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
 However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
 For contrast, compare this to a use of, for example, \`+\`:
 		
@@ -849,9 +831,9 @@ ${details('Example: For-Loop Body', await printDfGraphForCode(parser, 'for(i in 
 ${details('Example: While-Loop Body', await printDfGraphForCode(parser, 'while(TRUE) b', { mark: new Set([1, '3->1']), ctx }))}
 
 Three helpers decide what such a mark means once the graph is complete:
-${ctx.link(Quoted.name, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO(Quoted, 'finalize')}),
-${ctx.link(Nse.name, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
-${ctx.link(Deferred.name, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
+${ctx.link({ name: 'Quoted' }, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO({ ...Quoted, name: 'Quoted' }, 'finalize')}),
+${ctx.link({ name: 'Nse' }, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
+${ctx.link({ name: 'Deferred' }, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
 				`
 	})
 }
@@ -903,6 +885,17 @@ the edge names the vertex that decides (e.g. an \`if\`) and whether it is the br
 	return results.join('\n');
 }
 
+/** what `library(tidyverse)` would do, asked without analyzing any code */
+function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
+	const ctx = analyzer.context();
+	return {
+		attaches:  Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
+		loads:     Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively, magrittr included
+		layers:    Dataflow.library.layers(ctx, 'tidyverse'),   // the namespace and imports environments it attaches
+		reexports: Dataflow.library.reexports(ctx, 'dplyr')     // what dplyr re-exports, `%>%` from magrittr included
+	};
+}
+
 async function dummyDataflow(): Promise<DataflowInformation> {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
 	analyzer.addRequest('x <- 1\nx + 1');
@@ -924,7 +917,7 @@ export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 
 		return `
 This page briefly summarizes flowR's dataflow graph (${ctx.link(DataflowGraph)}).
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('flowr:capabilities')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
 In summary, we discuss the following topics in this wiki page:
 
@@ -1069,7 +1062,7 @@ in the first line at the seventh character and ending in the first line at the n
 ${section('Arguments and Additional Information', 3, 'vtx-additional-info')}
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
-As you can see with the \`if\` example above alongside the [vertex id](#vtx-id),
+As in the \`if\` example above, alongside the [vertex id](#vtx-id),
 these vertices also have an additional line (prefixed with \`arg:\`) which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 
@@ -1136,8 +1129,7 @@ However, the dataflow information contains more, quite a lot of information in f
 
 <summary style="color:gray">Dataflow Information as Json</summary>
 
-_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
-${codeBlock('text', JSON.stringify(result, jsonReplacer))}
+${jsonWithLimit(result, 0, '_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_')}
 
 </details>
 
@@ -1149,10 +1141,10 @@ ${
 
 Let's start by looking at the properties of the dataflow information object: ${Object.keys(result).map(k => `\`${k}\``).join(', ')}.
 
-${ (() => {
+${(() => {
 			/* this includes the meta field for timing as well as the control flow entry and exit of the program */
 			guard(Object.keys(result).length === 12, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
-		})() }
+		})()}
 
 There are three sets of references.
 **in** (ids: ${JSON.stringify(new Set(result.in.map(n => n.nodeId)), jsonReplacer)}) and **out** (ids: ${JSON.stringify(new Set(result.out.map(n => n.nodeId)), jsonReplacer)}) contain the 
@@ -1178,7 +1170,21 @@ Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports 
 A global binding shadows a package export of the same name, exactly as in R.
 The most recently attached package is the nearest one, and re-attaching neither moves nor duplicates it.
 The \`pos\` argument attaches further down the search path instead, given either as a position or as the name of an existing entry (an unknown position or name falls back to the default of 2, directly below the global environment).
-Attaching inside a function propagates to the caller (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path).
+Attaching inside a function propagates to the caller (R attaches globally).
+A package attached in only one branch, or in a loop body that may not run, or by a function called in one, is only maybe attached: its exports may be what a name means, but so may whatever it would shadow.
+\`detach\` and \`unloadNamespace\` remove the entry again (named, by position, or the topmost one), uncovering what it masked.
+
+Attaching brings a package's \`Depends\` onto the search path below it (so the package masks them), and for a meta-package like \`tidyverse\` the core set of that version above it, while its \`Imports\` are only loaded: \`pkg::fn\` resolves for them, a bare \`fn\` does not.
+Besides \`library\` and \`require\`, the multi-package loaders \`pacman::p_load\`, \`librarian::shelf\`, \`xfun::pkg_attach\` and \`easypackages::libraries\` attach the same way.
+To ask what a \`library\` call does without analyzing any code, use ${ctx.link('Dataflow::library')}, which builds the very layers the analysis would:
+
+${ctx.code(askWhatLibraryDoes, { dropLinesStart: 1 })}
+
+It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the \`NAMESPACE\` files it read.
+A package R attaches on startup (\`methods\`, \`stats\`, ...) is on the search path already, so a \`Depends\` on it adds no entry.
+Packages R only loads, such as the \`magrittr\` of \`library(tidyverse)\`, are not attached: their functions are reachable through the re-exports of the attached ones (\`dplyr::%>%\` is \`magrittr::%>%\`).
+The analysis keeps such a re-export as an export of the re-exporting package, so the two stay apart, and gives it what flowR states about the origin; \`reexports\` names the origin of each.
+A signature database that records no re-exports falls back to what R reports for the package (\`scripts/gen-r-reexports.R\`, covering the tidyverse and other popular packages).
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)
@@ -1275,13 +1281,15 @@ Everything else lives on a helper object named after the thing it works on:
 * ${ctx.link(RNode, undefined, { type: 'variable' })} for the nodes behind the vertices, e.g. \`RNode.lexeme(graph.idMap?.get(id))\` for what a vertex is written as
 * ${ctx.link(Identifier, undefined, { type: 'variable' })} for identifiers, e.g. \`Identifier.toString(vertex.name)\`
 * ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} for the arguments of a call, e.g. \`FunctionArgument.isNotEmpty(arg)\`
-* ${ctx.link(Resolve, undefined, { type: 'variable' })} (also reachable as \`Dataflow.resolve\`) for everything that resolves. Take the narrowest entry point:
+* ${ctx.link(Resolve, undefined, { type: 'variable' })} for everything that resolves, with ${ctx.linkO(Resolve, 'infoOf')} stating *where* to resolve, straight from an analyzer. Take the narrowest entry point:
   ${ctx.linkO(Resolve, 'byName')} walks the environment layers once, ${ctx.linkO(Resolve, 'byNameAndType')} merges the definitions of every layer it passes,
   and ${ctx.linkO(Resolve, 'toValue')} as well as ${ctx.linkO(Resolve, 'argument')} run the evaluator on top of a resolution (see [below](#dfg-resolving-values))
-* ${ctx.link(MatchArgs, undefined, { type: 'variable' })} to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+* ${ctx.link({ name: 'MatchArgs' }, undefined, { type: 'variable' })} (reached as \`FunctionSemantics.call.match\`) to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+
+These are the ones this page needs; the ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} page lists every helper object flowR has, grouped by what it is about.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 
@@ -1302,16 +1310,16 @@ ${section('Matching Arguments to Parameters', 3, 'dfg-matching-arguments')}
 R does not bind a call's arguments to the formals left to right. An exactly named argument takes its formal, then a
 uniquely abbreviated one does (\`pmatch\`), then the rest fill what is still free until \`...\`, and whatever is
 left over goes to \`...\`. ${ctx.link('matchArgumentsToParameters')} is that algorithm, and
-${ctx.link(MatchArgs, undefined, { type: 'variable' })} is how you ask for it:
+${ctx.link({ name: 'MatchArgs' }, undefined, { type: 'variable' })} is how you ask for it:
 
 | Use case | member |
 |----------|--------|
-| AST arguments and the formal names | ${ctx.linkO(MatchArgs, 'toNames')} |
-| graph arguments and the formals (a spec, or a database signature) | ${ctx.linkO(MatchArgs, 'toSpec')} |
-| graph arguments and the callee's ${ctx.link('RParameter')}s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | ${ctx.linkO(MatchArgs, 'onCallAndLink')} |
-| only the call, the formals are looked up for you | ${ctx.linkO(MatchArgs, 'toDefinition')} |
+| AST arguments and the formal names | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toNames')} |
+| graph arguments and the formals (a spec, or a database signature) | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toSpec')} |
+| graph arguments and the callee's ${ctx.link('RParameter')}s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'onCallAndLink')} |
+| only the call, the formals are looked up for you | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toDefinition')} |
 
-${ctx.linkO(MatchArgs, 'toDefinition')} takes the formals from the ${ctx.link('RFunctionDefinition')} the call
+${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toDefinition')} takes the formals from the ${ctx.link('RFunctionDefinition')} the call
 resolves to in user code, and from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} otherwise.
 
 ${section('Assessing Edges', 3, 'dfg-assess-edge')}
@@ -1323,7 +1331,7 @@ Consider the following example:
 ${await printDfGraphForCode(treeSitter, 'print(x)', { mark: new Set(['3->1']), ctx })}
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
-${await(async() => {
+${await (async() => {
 			const dfg =  await createDataflowPipeline(treeSitter, {
 				context: contextFromInput('print(x)')
 			}).allRemainingSteps();
@@ -1350,7 +1358,7 @@ ${ctx.hierarchy('Origin', { openTop: true })}
 Their respective uses are documented alongside their implementation:
 
 ${
-		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort((a, b) => a.localeCompare(b)).map(
+		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort(compareByCodeUnit).map(
 			key => `- ${ctx.link(key)}\\\n${ctx.doc(key, { type: 'interface' })}`
 		).join('\n')
 		}

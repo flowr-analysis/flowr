@@ -1,7 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeCallGraphQuery } from './call-graph-query-executor';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -33,7 +32,7 @@ export const CallGraphQueryDefinition = {
 	executor:        executeCallGraphQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'call-graph'>['call-graph'];
-		result.push(`Query: ${bold('call-graph', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('call-graph', formatter, out['.meta'].timing));
 		result.push(`   ╰ [Call Graph](${CallGraph.visualize.mermaid.url(out.graph)})`);
 		if(out.unreachable !== undefined) {
 			result.push(`   ╰ Unreachable calls: {${out.unreachable.join(', ')}}`);

@@ -45,22 +45,34 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		throw new Error('illegal types for deepMergeObject!');
 	}
 
-	assertSameType(base, addon);
+	return deepMergeObjectCore(base, addon, false);
+}
 
-	const result: MergeableRecord = { ...base };
+/**
+ * The merge logic shared by {@link deepMergeObject} and {@link deepMergeObjectInPlace}, `inPlace` decides whether
+ * `base` is written to and returned, or left untouched in favor of a new object/array.
+ */
+function deepMergeObjectCore(base: Mergeable, addon: Mergeable, inPlace: boolean): Mergeable {
+	assertSameType(base, addon);
 
 	const baseIsArray = Array.isArray(base);
 	const addonIsArray = Array.isArray(addon);
 
 	if(!baseIsArray && !addonIsArray) {
+		const result: MergeableRecord = inPlace ? base : { ...base };
 		deepMergeObjectWithResult(addon, base, result);
+		return result;
 	} else if(baseIsArray && addonIsArray) {
+		if(inPlace) {
+			for(const item of addon) {
+				base.push(item);
+			}
+			return base;
+		}
 		return base.concat(addon);
 	} else {
 		throw new Error('cannot merge object with array!');
 	}
-
-	return result;
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
@@ -101,22 +113,7 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 		throw new Error('illegal types for deepMergeObjectInPlace!');
 	}
 
-	assertSameType(base, addon);
-
-	const baseIsArray = Array.isArray(base);
-	const addonIsArray = Array.isArray(addon);
-
-	if(!baseIsArray && !addonIsArray) {
-		deepMergeObjectWithResult(addon, base, base);
-	} else if(baseIsArray && addonIsArray) {
-		for(const item of addon) {
-			(base).push(item);
-		}
-	} else {
-		throw new Error('cannot merge object with array!');
-	}
-
-	return base;
+	return deepMergeObjectCore(base, addon, true);
 }
 
 function assertSameType(base: unknown, addon: unknown): void {
@@ -156,8 +153,7 @@ type Primitive =
 	| null
 	| undefined
 	| Date
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-	| Function;
+	| ((...args: never[]) => unknown);
 
 /**
  * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
@@ -215,10 +211,10 @@ export function deepClonePreserveUnclonable<T>(obj: T): T {
 
 /**
  * Compares the two passed objects deeply using the loose comparison system designed for the {@link FlowrFilter.MatchesEnrichment}. For this system in use, see {@link FlowrFilter.MatchesEnrichment} in use.
- * @param obj - The real object which we want to test against.
- * @param expected - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
+ * @param obj        - The real object which we want to test against.
+ * @param expected   - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
  * @param arrayMatch - For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
- * @param logger - The logger to use for trace debugging.
+ * @param logger     - The logger to use for trace debugging.
  */
 export function looselyCompareObjects(obj: Record<string, unknown>, expected: Record<string, unknown>, arrayMatch?: 'some' | 'every', logger?: Logger<ILogObj>): boolean {
 	expensiveTrace(logger, () => `Comparing ${JSON.stringify(obj)} against ${JSON.stringify(expected)}`);

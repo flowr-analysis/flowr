@@ -2,6 +2,8 @@ import { RShell } from '../r-bridge/shell';
 import { RShellExecutor } from '../r-bridge/shell-executor';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { block } from './doc-util/doc-structure';
+import { codeBlock } from './doc-util/doc-code';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 
@@ -25,11 +27,20 @@ is synchronous, faster, and no longer needs an R installation, but requires the 
 To allow users of R to freely choose their backend between the R interpreter and the tree-sitter parser,
 we provide the concept of engines.
 
-Engines can be loaded with ${ctx.linkPage('wiki/Interface', "flowR's configuration file", 'configuring-flowr')}. Additionally, they
-are exposed with some command line options (e.g., when using the docker image of flowR):
+Engines can be loaded with ${ctx.linkPage('wiki/Interface', "flowR's configuration file", 'configuring-flowr')}, and an
+engine's own options are set on the ${ctx.link(FlowrAnalyzerBuilder)} under the same names, so lax parsing (see
+[below](#tree-sitter)) is one call:
+
+${codeBlock('ts', `const analyzer = await new FlowrAnalyzerBuilder()
+    .setEngine('tree-sitter')
+    .configure('engine.tree-sitter.lax', true)
+    .build();`)}
+
+Additionally, they are exposed with some command line options (e.g., when using the docker image of flowR):
 
 - ${ctx.cliOption('flowr', 'engine.r-shell.disabled', false)} to disable the ${ctx.link(RShell)} engine
 - ${ctx.cliOption('flowr', 'engine.r-shell.r-path', false)} (which is the canonical version of ${ctx.cliOption('flowr', 'r-path')})
+- ${ctx.cliOption('flowr', 'engine.r-shell.pipe-bind', false)} to enable R's experimental pipe-bind operator \`=>\`
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.disabled', false)} to disable the ${ctx.link(TreeSitterExecutor)} engine
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.lax', false)} to use lax parsing with tree-sitter
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.wasm-path', false)} pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))

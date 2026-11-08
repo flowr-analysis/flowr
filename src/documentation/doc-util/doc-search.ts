@@ -1,10 +1,10 @@
 import type { RShell } from '../../r-bridge/shell';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock } from './doc-code';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
-import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { SourceRange } from '../../util/range';
 
@@ -26,7 +26,7 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 	const duration = performance.now() - now;
 
 	const metaInfo = `
-The search required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
+The search${docTook(duration)} ran (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
 	const dataflow = await analyzer.dataflow();
@@ -56,14 +56,14 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 
 The query returns the following vetices (all references to \`x\` in the code):
 ${
-	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, dataflow.graph)}')</b> at L${SourceRange.format(node.location)}`).join(', ')
+	result.getElements().map(({ node }) => `<b>${node.info.id} ('${NodeId.recoverContent(node.info.id, dataflow.graph)}')</b> at L${SourceRange.format(node.location)}`).join(', ')
 }
 
 ${metaInfo}
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
-${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.getElements().map(({ node }) => node.info.id )) } )}
+${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.getElements().map(({ node }) => node.info.id)) })}
 
 
 ${collapseResult ? '</details>' : ''}

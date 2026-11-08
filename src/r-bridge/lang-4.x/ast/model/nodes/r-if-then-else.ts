@@ -17,6 +17,7 @@ export interface RIfThenElse<Info = NoInfo> extends RAstNodeBase<Info>, Location
 
 /**
  * Helper for working with {@link RIfThenElse} AST nodes.
+ * @helper ast
  */
 export const RIfThenElse = {
 	...RNode,

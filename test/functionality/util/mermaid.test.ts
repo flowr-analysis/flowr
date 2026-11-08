@@ -13,15 +13,20 @@ describe('Mermaid', () => {
 		shouldEscape('built-in:get', 'built-in:get');
 		shouldEscape('built-in:_', 'built-in:_');
 		shouldEscape('flow-4', 'flow-4');
-		shouldEscape('foo bar', 'foo_bar');
+		shouldEscape('foo bar', 'foo_32_bar');
+		shouldEscape('built-in:$<-.grouped_df', 'built-in:_36__60__45_.grouped_df');
+
+		test('different characters escape differently', () => {
+			assert.notStrictEqual(Mermaid.escapeId('built-in:{'), Mermaid.escapeId('built-in:+'));
+		});
 
 		describe('a path stays legible, mermaid reads `/` and `.`', () => {
 			shouldEscape('/tmp/s.R-1:1-0', '/tmp/s.R-1:1-0');
 			shouldEscape('./R/a.R-1:1-0', './R/a.R-1:1-0');
 			// only what ends the id has to go
-			shouldEscape('/tmp/my dir/s.R-0', '/tmp/my_dir/s.R-0');
-			shouldEscape('/tmp/a(b).R-0', '/tmp/a_b_.R-0');
-			shouldEscape('/tmp/we`ird".R-0', '/tmp/we_ird_.R-0');
+			shouldEscape('/tmp/my dir/s.R-0', '/tmp/my_32_dir/s.R-0');
+			shouldEscape('/tmp/a(b).R-0', '/tmp/a_40_b_41_.R-0');
+			shouldEscape('/tmp/we`ird".R-0', '/tmp/we_96_ird_34_.R-0');
 			// a keyword is a keyword between any two separators
 			shouldEscape('/tmp/end/s.R-0', '/tmp/end_/s.R-0');
 			shouldEscape('/tmp/graph.R-0', '/tmp/graph_.R-0');

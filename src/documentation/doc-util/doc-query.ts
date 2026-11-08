@@ -8,12 +8,12 @@ import { guard } from '../../util/assert';
 import path from 'path';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
-import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
+import { FlowrWikiBaseRef } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../../project/context/flowr-file';
@@ -21,6 +21,7 @@ import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
 import type { KnownParser } from '../../r-bridge/parser';
+import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
 
 const QueryDocFile = 'src/documentation/wiki-query.ts';
 
@@ -28,9 +29,11 @@ export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	/** whether to add the detailed JSON results besides the prettified ones (default: true) */
+	readonly withJson?:       boolean;
 	readonly shorthand?:      string;
 	readonly ctx?:            GeneralDocContext;
-	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls */
+	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls; a `code` of `file://<name>` analyzes one of them */
 	readonly files?:          readonly { readonly name: string, readonly content: string }[];
 	/** hook to configure the analyzer, e.g. to pin a version so the generated output does not follow the generating machine */
 	readonly prepare?:        (builder: FlowrAnalyzerBuilder) => void;
@@ -45,7 +48,7 @@ export async function showQuery<
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
+	{ showCode, collapseResult, collapseQuery, withJson = true, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const builder = new FlowrAnalyzerBuilder().setParser(parser);
@@ -54,12 +57,13 @@ export async function showQuery<
 	for(const file of files ?? []) {
 		analyzer.addFile(new FlowrInlineTextFile(file.name, file.content));
 	}
-	analyzer.addRequest(code);
+	/* code naming one of the files above analyzes that file, as a package's code is analyzed */
+	analyzer.addRequest(files?.some(f => `${fileProtocol}${f.name}` === code) ? requestFromInput(code) : code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `
-The analysis required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
+The analysis${docTook(duration)} ran (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
 	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
@@ -83,16 +87,16 @@ ${
 	await asciiSummaryOfQueryResult(markdownFormatter, duration, results, analyzer, queries)
 }
 
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+${withJson ? `<details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
 ${metaInfo}
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the ${ctx ? ctx.linkPage('wiki/Interface', 'Interface') : `[Interface](${FlowrWikiBaseRef}/Interface)`} wiki page for more information on how to get those.
+The JSON contains the ids of the nodes in question (see the ${ctx ? ctx.linkPage('wiki/Interface', 'Interface') : `[Interface](${FlowrWikiBaseRef}/Interface)`} wiki page).
 
 ${jsonWithLimit(results)}
 
 </details>
+` : ''}
 
 ${
 	showCode ? `
@@ -115,9 +119,6 @@ export interface QueryDocumentation {
 	readonly name?:            string;
 	readonly type:             'virtual' | 'active';
 	readonly shortDescription: string;
-	readonly functionName:     string;
-	/** Path to the file implementing the query function, the wiki generation will fail if this isn't found */
-	readonly functionFile:     string;
 	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
@@ -170,7 +171,8 @@ export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQuer
 
 
 /**
- *
+ * The table of contents for one kind of query, its entries sorted by the title they are shown under.
+ * @param type - whether to list the active or the virtual queries
  */
 export function tocForQueryType(type: 'active' | 'virtual') {
 	const queries = [...RegisteredQueries[type].keys()].sort((a, b) => getQueryTitle(a).localeCompare(getQueryTitle(b)));
@@ -181,9 +183,10 @@ export function tocForQueryType(type: 'active' | 'virtual') {
 	return result.join('\n');
 }
 
-async function explainQuery(shell: RShell, ctx: GeneralDocContext, id: string, { shortDescription, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+async function explainQuery(shell: RShell, ctx: GeneralDocContext, id: string, { shortDescription, buildExplanation }: QueryDocumentation) {
 	const name = getQueryTitle(id);
-	const syntax = (SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined)?.syntax;
+	const supported = SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined;
+	const syntax = supported?.syntax;
 	return `
 ${autoGenHeader({ filename: QueryDocFile, purpose: 'query API' })}
 ${section(name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Query-API">overview</a>]</sup>`, 2, name)}
@@ -197,7 +200,7 @@ ${await buildExplanation(shell, ctx)}
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
+The ${name} is executed by ${ctx.link((supported?.executor ?? SupportedVirtualQueries[id as SupportedVirtualQueryTypes]).name)}.
 
 </details>
 

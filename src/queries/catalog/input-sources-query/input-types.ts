@@ -9,7 +9,7 @@
  * Please note that the classifier considers this basis with a set-lift,
  * joining differing lattice elements.
  *
- *```
+ * ```
  *                  [ Unknown ]
  *                       |
  *  [Param]  [File]  [Net]  [User], ...
@@ -20,7 +20,7 @@
  *            [ DerivedConstant ]
  *                    |
  *               [ Constant ]
- *```
+ * ```
  *
  */
 export enum InputType {

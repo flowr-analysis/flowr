@@ -1,30 +1,13 @@
-import { afterAll, assert, describe, test } from 'vitest';
-import fs from 'fs';
-import os from 'os';
+import { assert, describe, test } from 'vitest';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrAnalyzerDefaultProjectDiscoveryPlugin } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { isParseRequest } from '../../../../src/r-bridge/retriever';
 import type { FlowrFile } from '../../../../src/project/context/flowr-file';
+import { projectFixture } from './plugin-test-helper';
 
-const roots: string[] = [];
-afterAll(() => {
-	for(const r of roots) {
-		fs.rmSync(r, { recursive: true, force: true });
-	}
-});
-
-function project(files: Record<string, string>): string {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-intel-'));
-	roots.push(root);
-	for(const [file, content] of Object.entries(files)) {
-		const target = path.join(root, file);
-		fs.mkdirSync(path.dirname(target), { recursive: true });
-		fs.writeFileSync(target, content);
-	}
-	return root;
-}
+const project = projectFixture('flowr-intel-');
 
 /** the root-relative posix paths the intelligent plugin discovers under `config` */
 function discovered(root: string, config: FlowrConfig = FlowrConfig.default()): string[] {
@@ -56,9 +39,10 @@ describe('Default (scoped) project discovery', () => {
 		const got = discovered(project(pkg));
 		assert.includeMembers(got, [
 			'R/foo.R', 'R/bar.R', 'DESCRIPTION', 'NAMESPACE', 'renv.lock',
-			'tests/testthat/test-foo.R', 'vignettes/intro.Rmd'
+			'tests/testthat/test-foo.R', 'vignettes/intro.Rmd',
+			'man/f.Rd'   /* the manual says what documents a name, so the Rd plugin needs it */
 		], 'project sources + metadata are kept');
-		for(const dropped of ['man/f.Rd', 'inst/extdata/big.bin', 'renv/library/foo/lib.R', 'RtmpAB12/scratch.R', 'README.md']) {
+		for(const dropped of ['inst/extdata/big.bin', 'renv/library/foo/lib.R', 'RtmpAB12/scratch.R', 'README.md']) {
 			assert.notInclude(got, dropped, `${dropped} is noise and must be dropped`);
 		}
 	});
@@ -100,5 +84,31 @@ describe('Default (scoped) project discovery', () => {
 		const got = discovered(root);
 		assert.includeMembers(got, ['app.R', 'R/mod.R']);
 		assert.notInclude(got, 'data.csv');
+	});
+});
+
+describe('R sources with the other extensions R allows', () => {
+	/** the root-relative posix paths discovered as R sources to parse, not as text */
+	function parsed(root: string): string[] {
+		const plugin = new FlowrAnalyzerDefaultProjectDiscoveryPlugin();
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), [plugin]);
+		return plugin.processor(ctx, { request: 'project', content: root })
+			.filter(r => isParseRequest(r) && r.request === 'file')
+			.map(r => path.relative(root, (r as { content: string }).content).replaceAll(path.sep, '/'))
+			.sort();
+	}
+
+	test('.S, .s and .q directly below R/ are parsed, elsewhere they are not', () => {
+		const got = parsed(project({
+			'DESCRIPTION': 'Package: mypkg\nType: Package\n',
+			'R/a.S':       'a <- function() 1',
+			'R/b.s':       'b <- function() 2',
+			'R/c.q':       'c <- function() 3',
+			'R/d.R':       'd <- function() 4',
+			'R/sub/e.S':   'e <- function() 5',
+			'src/asm.s':   'mov eax, 1',
+			'other/f.q':   'f <- function() 6'
+		}));
+		assert.deepStrictEqual(got, ['R/a.S', 'R/b.s', 'R/c.q', 'R/d.R']);
 	});
 });

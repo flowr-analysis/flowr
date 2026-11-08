@@ -1,4 +1,4 @@
-import { LintingResultCertainty, type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { LintingResultCertainty, type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -18,7 +18,7 @@ export interface SoftwareHasLicenseConfig extends MergeableRecord {
 export type SoftwareHasLicenseMetadata = MergeableRecord;
 
 export const SOFTWARE_HAS_LICENSE = {
-	createSearch:        () => Q.fromQuery({ type: 'dependencies', enabledCategories: [] }),
+	createSearch:        () => Q.from([]),
 	processSearchResult: (_elements, config, data) => {
 		const ctx = data.inspectContext();
 		const licenseFiles = ctx.files.getFilesByRole(FileRole.License);
@@ -39,17 +39,16 @@ export const SOFTWARE_HAS_LICENSE = {
 		}];
 		return { results, '.meta': {} };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: SoftwareHasLicenseResult) => result.message,
-		[LintingPrettyPrintContext.Full]:  (result: SoftwareHasLicenseResult) => result.message
-	},
+	prettyPrint: prettyPrint(
+		(result: SoftwareHasLicenseResult) => result.message
+	),
 	info: {
 		name:          'Software Has License',
-		description:   'Checks whether the software project provides a license (via a LICENSE file or the DESCRIPTION file License field).',
-		tags:          [LintingRuleTag.Documentation, LintingRuleTag.Usability],
+		description:   'Finds software projects without a license (a LICENSE file or the License field of the DESCRIPTION).',
+		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation, LintingRuleTag.Usability],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: {
+		defaultConfig: () => ({
 			checkDescriptionFile: true
-		}
+		})
 	}
 } as const satisfies LintingRule<SoftwareHasLicenseResult, SoftwareHasLicenseMetadata, SoftwareHasLicenseConfig>;

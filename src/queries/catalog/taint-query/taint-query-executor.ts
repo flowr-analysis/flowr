@@ -25,6 +25,7 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 	const analysis = analyzer
 		.taint<AllPredefinedTaintAnalysisNames>()
 		.addPredefined(...flattened);
+
 	if(queries.some(q => q.recordProvenance)) {
 		analysis.withProvenance();
 	}

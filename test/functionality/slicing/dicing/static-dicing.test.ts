@@ -7,9 +7,10 @@ describe('Static Dicing', withTreeSitter(shell => {
 			shell, 'a <- 3\nb <- 4\nc <- a + b', ['1@a'], ['3@c'],
 			'a <- 3\nc <- a + b');
 
+		/* the operation stays whole, as `c <- b` would compute something the program never does */
 		assertDiced('only b contribution when dicing from b to c',
 			shell, 'a <- 3\nb <- 4\nc <- a + b', ['2@b'], ['3@c'],
-			'b <- 4\nc <- b');
+			'b <- 4\nc <- a + b');
 
 		assertDiced('unrelated start yields empty result',
 			shell, 'a <- 3\nb <- 4\nc <- b + 1', ['1@a'], ['3@c'],
@@ -33,9 +34,9 @@ describe('Static Dicing', withTreeSitter(shell => {
 			shell, 'a <- 1\nb <- a + 1\nc <- b * 2\nd <- 100\nresult <- c + d',
 			['1@a'], ['5@result'],
 			{
-				excludes:   ['d <- 100'],
-				contains:   ['result <-'],
-				lacksNodes: ['4@d'],
+				excludes:     ['d <- 100'],
+				contains:     ['result <-'],
+				droppedNodes: ['4@d'],
 			});
 	});
 
@@ -65,13 +66,13 @@ describe('Static Dicing', withTreeSitter(shell => {
 		assertDiced('multiple end nodes: unrelated e is excluded',
 			shell, 'a <- 1\nb <- a + 1\nc <- b * 2\nd <- a + 10\ne <- 999',
 			['1@a'], ['3@c', '4@d'],
-			{ minSize: 1, lacksNodes: ['5@e'] });
+			{ minSize: 1, droppedNodes: ['5@e'] });
 	});
 
 	describe('Function calls', () => {
 		assertDiced('function body is on the data-flow path from argument to return value',
 			shell, 'f <- function(x) x * 2\na <- 3\nb <- f(a)', ['2@a'], ['3@b'],
-			{ contains: ['a <- 3', 'b <- f(a)'], excludes: ['f <- function'] });
+			{ contains: ['f <- function(x) x * 2', 'a <- 3', 'b <- f(a)'] });
 
 		assertDiced('dice through a two-argument function: a-path excludes b-def, b-path excludes a-def',
 			shell,
@@ -80,7 +81,7 @@ a <- 10
 b <- 3
 result <- subtract(a, b)`,
 			['2@a'], ['4@result'],
-			{ minSize: 1, hasNodes: ['2@a'], lacksNodes: ['3@b'] });
+			{ minSize: 1, keptNodes: ['2@a'], droppedNodes: ['3@b'] });
 
 		assertDiced('dice through two-argument function from b: b-path excludes a-def',
 			shell,
@@ -89,7 +90,7 @@ a <- 10
 b <- 3
 result <- subtract(a, b)`,
 			['3@b'], ['4@result'],
-			{ minSize: 1, hasNodes: ['3@b'], lacksNodes: ['2@a'] });
+			{ minSize: 1, keptNodes: ['3@b'], droppedNodes: ['2@a'] });
 
 		assertDiced('closure: outer variable flows to result through captured reference',
 			shell, 'y <- 10\nf <- function(x) x + y\nresult <- f(5)', ['1@y'], ['3@result'],
@@ -118,7 +119,7 @@ if(x > 0) {
 }
 result <- x * 2`,
 			['1@x'], ['6@result'],
-			{ lacksNodes: ['2@z'] });
+			{ droppedNodes: ['2@z'] });
 	});
 
 	describe('Compound programs', () => {
@@ -161,6 +162,6 @@ for(i in 1:5) {
 }
 result <- total`,
 			['1@total'], ['5@result'],
-			{ minSize: 1, hasNodes: ['5@result'] });
+			{ minSize: 1, keptNodes: ['5@result'] });
 	});
 }));

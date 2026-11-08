@@ -1,9 +1,8 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 15:03:10 UTC (v2.16.6), do not edit directly._
 <h2 id="Call-Context Query">Call-Context Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds all calls in a set of files that matches specified criteria.\
 _This query is requested with the type `call-context`._
-
 
 Call context queries can be used to identify calls to specific functions that match criteria of your interest.
 For now, we support two criteria:
@@ -28,9 +27,6 @@ It's also possible to filter the results based on the following properties:
 
 Re-using the example code from above, the following query attaches all calls to `mean` to the kind `visualize` and the subkind `text`,
 all calls that start with `read_` to the kind `input` but only if they are not locally overwritten, and the subkind `csv-file`, and links all calls to `points` to the last call to `plot`:
-
-
-
 
 ```json
 [
@@ -60,103 +56,39 @@ all calls that start with `read_` to the kind `input` but only if they are not l
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (3 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text** (2 hits): _`mean(data$x)`_ (L.9), _`mean(data2$k)`_ (L.19)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **plot** (1 hit): _`points(data2$x, data2$y)`_ (L.17) with 1 link (_`plot(data2$x, data2$y)`_ (L.16))\
-_All queries together required ≈11 ms (1ms accuracy, total 11 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **plot** (1 hit): _`points(data2$x, data2$y)`_ (L.17) with 1 link (_`plot(data2$x, data2$y)`_ (L.16))
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _11.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
   "call-context": {
-    ".meta": {
-      "timing": 1
-    },
+    ".meta": {},
     "kinds": {
-      "input": {
-        "subkinds": {
-          "csv-file": [
-            {
-              "id": 16,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            },
-            {
-              "id": 22,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            }
-          ]
-        }
-      },
-      "visualize": {
-        "subkinds": {
-          "text": [
-            {
-              "id": 31,
-              "name": "mean"
-            },
-            {
-              "id": 87,
-              "name": "mean"
-            }
-          ],
-          "plot": [
-            {
-              "id": 79,
-              "name": "points",
-              "linkedIds": [
-                67
-              ]
-            }
-          ]
-        }
-      }
+      "input": {"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}},
+      "visualize": {"subkinds":{"text":[{"id":31,"name":"mean"},{"id":87,"name":"mean"}],"plot":[{"id":79,"name":"points","linkedIds":[67]}]}}
     }
   },
-  ".meta": {
-    "timing": 11
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
 
-
-
-
-
-	
-
-As you can see, all kinds and subkinds with the same name are grouped together.
+All kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
 See the [Compound Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Compound) for a way to structure your queries more compactly if you think it gets too verbose. 
-
 
 <details><summary>Alias Example</summary>
 
@@ -171,7 +103,6 @@ my_test_function()
 
 Now let's say we want to query _all_ uses of the `my_test_function`:
 
-
 ```json
 [
   {
@@ -182,80 +113,36 @@ Now let's say we want to query _all_ uses of the `my_test_function`:
 ]
 ```
 
-
-
-
-
-
 _Results (prettified and summarized):_
 
 Query: **call-context** (0 ms)\
-&nbsp;&nbsp;&nbsp;╰ **.** (2 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (2 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1))\
-_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
+&nbsp;&nbsp;&nbsp;╰ **.** (3 hits):\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (3 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1)), _`my_test_function()`_ (L.5)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
   "call-context": {
-    ".meta": {
-      "timing": 0
-    },
-    "kinds": {
-      ".": {
-        "subkinds": {
-          ".": [
-            {
-              "id": 4,
-              "name": "foo",
-              "aliasRoots": [
-                1
-              ]
-            },
-            {
-              "id": 12,
-              "name": "bar",
-              "aliasRoots": [
-                1
-              ]
-            }
-          ]
-        }
-      }
-    }
+    ".meta": {},
+    "kinds": {".":{"subkinds":{".":[{"id":4,"name":"foo","aliasRoots":[1]},{"id":12,"name":"bar","aliasRoots":[1]},{"id":14,"name":"my_test_function"}]}}}
   },
-  ".meta": {
-    "timing": 4
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 </details>
 		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Call-Context Query query is `executeCallContextQueries` in [`./src/queries/catalog/call-context-query/call-context-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/call-context-query-executor.ts).
+The Call-Context Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/call-context-query/call-context-query-executor.ts#L312"><code><span title="Multi-stage call context query resolve. 1. Resolve all calls in the DF graph that match the respective DefaultCallContextQueryFormat#callName regex. 2. If there is an alias attached, consider all call traces. 3. Identify their respective call targets, if DefaultCallContextQueryFormat#callTargets is set to be non-any. This happens during the main resolution! 4. Attach linkTo calls to the respective...">executeCallContextQueries</span></code></a>.
 
 </details>

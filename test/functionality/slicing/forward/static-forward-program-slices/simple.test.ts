@@ -1,7 +1,9 @@
-import { assertSlicedF, withShell } from '../../../_helper/shell';
+import { assertSlicedF, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+
+assumeLoadedPackages('data.table');
 
 describe('Simple Forward', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
@@ -16,7 +18,7 @@ describe('Simple Forward', { concurrent: false }, withShell(shell => {
 			);
 		}
 		assertSlicedF(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['1@x'], 'x <- read.csv("foo")\nprint(x)'
+			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['1@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)'
 		);
 		assertSlicedF(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
 			shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['2@y'], 'y <- 3\nprint(y)'
@@ -30,7 +32,18 @@ print(x + y)
 	}
 f()
 print(x + y)
-		`, ['2@x'], '{ x <<- 2 }\nf()\nprint(x + y)');
+		`, ['2@x'], 'f <- function() { x <<- 2 }\nf()\nprint(x + y)');
+	});
+	describe('Function definitions', () => {
+		/* the slice keeps the binding of `f`, so the body must not be reconstructed without its header */
+		assertSlicedF(label('definition reached by its own name', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'newlines', 'call-normal', 'unnamed-arguments']),
+			shell, 'f <- function(a) a + 1\ny <- f(2)\nz <- 7\ny', ['1@f'], 'f <- function(a) a + 1\ny <- f(2)\ny',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSlicedF(label('unrelated definition stays out', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', 'newlines', 'function-calls']),
+			shell, 'f <- function(a) a + 1\nx <- 3\nprint(x)', ['2@x'], 'x <- 3\nprint(x)',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
 	});
 	describe('Constant conditionals', () => {
 		assertSlicedF(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
@@ -196,5 +209,10 @@ plot(b$v)`;
 			shell, code, ['3@x'], 'x <- undefined_symbol');
 		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...OperatorDatabase['<-'].capabilities]),
 			shell, code, ['1@a'], 'a <- read.csv("a.csv")\nplot(a$v)');
+	});
+	describe('Globals read in a function', () => {
+		const caps = ['name-normal', 'function-calls', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines'] as const;
+		assertSlicedF(label('reach the calls after the definition', [...caps]),
+			shell, 'f <- function() print(x)\nf()\nx <- 1\nf()', ['3@x'], 'f <- function() print(x)\nx <- 1\nf()');
 	});
 }));

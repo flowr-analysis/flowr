@@ -131,6 +131,15 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
+		/** A rename onto a name the program binds already would change what that name refers to, so no fix is offered */
+		assertLinter('no fix onto a taken name', parser, 'testVar <- 5\nTestVar <- 6', 'naming-convention', [{
+			name:           'testVar',
+			detectedCasing: CasingConvention.CamelCase,
+			quickFix:       undefined,
+			loc:            [1, 1, 1, 7],
+			certainty:      LintingResultCertainty.Certain,
+		}], undefined, { caseing: CasingConvention.PascalCase });
+
 		/** The casing of the definition is checked, and quick fixes for all usages (and the definition) are provided */
 		assertLinter('only detect definition', parser, 'testVar <- 5\nprint(testVar)\n', 'naming-convention', [{
 			name:           'testVar',
@@ -171,7 +180,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,
-			quickFix:       [{ type: 'replace', replacement: 'testVar', loc: [3, 1, 3, 8], description: 'Rename to match naming convention camelCase' } as const],
+			quickFix:       undefined,
 			loc:            [3, 1, 3, 8],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: 'auto' });
@@ -187,12 +196,36 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingResultCertainty.Certain,
 			detectedCasing: CasingConvention.Unknown,
 			name:           '._',
-			loc:            [ 1, 1, 1, 2],
+			loc:            [1, 1, 1, 2],
 			quickFix:       undefined
 		}], undefined, {
 			caseing:        CasingConvention.SnakeCase,
 			ignoreNonAlpha: false
 		});
+
+		assertLinter('one-word names cast no vote', parser, 'x <- 1\ny <- 2\nmy_var <- 3', 'naming-convention', [], undefined, { caseing: 'auto' });
+		assertLinter('one-word names do not hide a name breaking the multi-word convention', parser, 'x <- 1\ny <- 2\nmy_var <- 3\nother_var <- 4\nmyVar <- 5', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.CamelCase,
+			name:           'myVar',
+			loc:            [5, 1, 5, 5],
+			quickFix:       undefined
+		}], undefined, { caseing: 'auto' });
+		assertLinter('quoted names are converted within their quotes', parser, 'my_var <- 1\nother_var <- 2\nassign("BadName", 1)', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.PascalCase,
+			name:           'BadName',
+			loc:            [3, 8, 3, 16],
+			quickFix:       [{ type: 'replace', replacement: '"bad_name"', description: 'Rename to match naming convention snake_case', loc: [3, 8, 3, 16] }]
+		}], undefined, { caseing: 'auto' });
+		assertLinter('an S3 method keeps the name dispatch needs', parser, 'print.myClass <- function(x, ...) cat("x")\nmy_var <- 1\nother_var <- 2', 'naming-convention', [], undefined, { caseing: 'auto' });
+		assertLinter('beside an S3 method another name is still checked', parser, 'print.myClass <- function(x, ...) cat("x")\nmy_var <- 1\nother_var <- 2\nanotherVar <- 3', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.CamelCase,
+			name:           'anotherVar',
+			loc:            [4, 1, 4, 10],
+			quickFix:       [{ type: 'replace', replacement: 'another_var', description: 'Rename to match naming convention snake_case', loc: [4, 1, 4, 10] }]
+		}], undefined, { caseing: 'auto' });
 
 		assertLinter('empty string', parser, '', 'naming-convention', [], undefined, { caseing: CasingConvention.SnakeCase });
 		assertLinter('empty string (auto detect)', parser, '', 'naming-convention', [], undefined, { caseing: 'auto' });

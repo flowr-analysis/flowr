@@ -1,68 +1,26 @@
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
+import { namespacePackage, ggplot2Package, addPackages } from '../../../_helper/sigdb';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
-import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
-import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
-const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const randomPlaceholder1Callable = ['test1', 'test2'];
 const randomPlaceholder2Callable = ['test1', 'test2', 'test3'];
 const randomPlaceholder3Callable = ['a', 'b'];
-const namespaceContent = `S3method(fortify,data.frame)
-S3method(fortify,lm)
-S3method(fortify,default)
-S3method(fortify,map)
-S3method(scale_type,Date)
-S3method(scale_type,POSIXt)
-S3method(scale_type,character)
-S3method(scale_type,numeric)
-S3method(scale_type,factor)
-S3method(scale_type,default)
-S3method(ggplot,default)
-S3method(print,ggproto)
-S3method(print,rel)
-export("+")
-export(ggplot)
-export(aes)
-export(geom_point)
-export(geom_line)
-export(theme_bw)
-export(coord_cartesian)
-export(ggsave)
-export(fortify)
-export(scale_type)
-exportPattern("^[^\\\\.]\\\\.*$")
-import(grid)
-import(rlang)
-importFrom(scales,alpha)
-importFrom(stats,setNames)`;
 
 describe('Linked library imports libraries', withTreeSitter(ts => {
 	test('Linked library loads circular imports 1', async() => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent + '\nimport(random_placeholder)')).content().current, ggplot2Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)')).content().current, randomPlaceholder1Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)')).content().current, randomPlaceholder2Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder3',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current, randomPlaceholder3Callable)
-		}));
+		addPackages(analyzer, ggplot2Package('\nimport(random_placeholder)'));
+		addPackages(analyzer, namespacePackage('random_placeholder', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)', randomPlaceholder1Callable));
+		addPackages(analyzer, namespacePackage('random_placeholder2', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)', randomPlaceholder2Callable));
+		addPackages(analyzer, namespacePackage('random_placeholder3', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)', randomPlaceholder3Callable));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 
 		const df = await analyzer.dataflow();
@@ -72,7 +30,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		//namespace:ggplot2 -> imports:ggplot2 -> globalEnv -> ...
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		const imported = createImportedFunctions([['random_placeholder', rPSsymbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
+		/* as in R, only what the NAMESPACE itself imports, not what the imported packages import in turn */
+		const imported = createImportedFunctions([['random_placeholder', rPSsymbols]]);
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
 	});
 
@@ -80,22 +39,10 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent + '\nimport(random_placeholder)')).content().current, ggplot2Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)')).content().current, randomPlaceholder1Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)')).content().current, randomPlaceholder2Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder3',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current, randomPlaceholder3Callable)
-		}));
+		addPackages(analyzer, ggplot2Package('\nimport(random_placeholder)'));
+		addPackages(analyzer, namespacePackage('random_placeholder', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)', randomPlaceholder1Callable));
+		addPackages(analyzer, namespacePackage('random_placeholder2', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)', randomPlaceholder2Callable));
+		addPackages(analyzer, namespacePackage('random_placeholder3', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)', randomPlaceholder3Callable));
 		analyzer.addRequest('library(ggplot2)\nlibrary(random_placeholder2)\nlibrary(random_placeholder3)\nggplot()');
 
 		const df = await analyzer.dataflow();
@@ -106,8 +53,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const rP3Symbols = ['a', 'b'];
 		// random_placeholder3 namespace -> random_placeholder3 imports -> random_placeholder2 namespace -> random_placeholder2 imports -> ggplot2 namespace -> ggplot2 imports -> global environment
 		const imp3 = createImportedFunctions([['random_placeholder2', ['test3']]]);
-		const imp2 = createImportedFunctions([['random_placeholder3', ['a']], ['ggplot2', ggplotSymbols], ['random_placeholder', rP1symbols]]);
-		const impggplot = createImportedFunctions([['random_placeholder', rP1symbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
+		const imp2 = createImportedFunctions([['random_placeholder', rP1symbols]]);
+		const impggplot = createImportedFunctions([['random_placeholder', rP1symbols]]);
 		expect(env.n === 'random_placeholder3' && env.t === EnvType.Namespace && compare(new Set(rP3Symbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'random_placeholder3' && env.t === EnvType.Imports && compare(new Set(imp3), new Set(env.memory.keys()))).toBeTruthy();
@@ -125,14 +72,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent + '\nimportFrom(random_placeholder, test1)')).content().current, ggplot2Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, randomPlaceholder1Callable)
-		}));
+		addPackages(analyzer, ggplot2Package('\nimportFrom(random_placeholder, test1)'));
+		addPackages(analyzer, namespacePackage('random_placeholder', 'export(test1)\nexport(test2)', randomPlaceholder1Callable));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
@@ -148,14 +89,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 
 	test('the analyzed package\'s own importFrom resolves a bare imported call to its source package', async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'current',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'importFrom(zoo, index)')).content().current
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'zoo',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(index)')).content().current, ['index'])
-		}));
+		addPackages(analyzer, namespacePackage('current', 'importFrom(zoo, index)'));
+		addPackages(analyzer, namespacePackage('zoo', 'export(index)', ['index']));
 		analyzer.addRequest('index(x)');
 		const df = await analyzer.dataflow();
 		let resolved: string | undefined;
@@ -172,14 +107,8 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(ts)
 			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent + '\nimport(random_placeholder)')).content().current, ggplot2Callable)
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'random_placeholder',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, randomPlaceholder1Callable)
-		}));
+		addPackages(analyzer, ggplot2Package('\nimport(random_placeholder)'));
+		addPackages(analyzer, namespacePackage('random_placeholder', 'export(test1)\nexport(test2)', randomPlaceholder1Callable));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
@@ -192,14 +121,14 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 	});
 }));
 
-function createImportedFunctions(a: [string, string[]][]): string[]{
+function createImportedFunctions(a: [string, string[]][]): string[] {
 	let res: string[] = [];
-	for(const [dependency, functions] of a){
+	for(const [dependency, functions] of a) {
 		res = res.concat(functions.map(f => Package.functionIdentifier(dependency, f)));
 	}
 	return res;
 }
 
-function compare<T>(s1: Set<T>, s2: Set<T>){
+function compare<T>(s1: Set<T>, s2: Set<T>) {
 	return s1.difference(s2).size === 0 && s2.difference(s1).size === 0;
 }

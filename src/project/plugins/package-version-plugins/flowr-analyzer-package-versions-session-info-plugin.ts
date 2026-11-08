@@ -1,6 +1,6 @@
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
 import { SemVer } from 'semver';
-import { Package } from './package';
+import { pin } from './flowr-analyzer-package-versions-lockfile-plugin';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
 import { log } from '../../../util/log';
@@ -15,11 +15,6 @@ const packageHeaderRe = /\b(?:other attached packages|loaded via a namespace \(a
 const packageListingLineRe = /\[\d+\]\s*(.+)$/gm;
 /** a single `name_version` token within a listing line, e.g. `dplyr_1.1.2` or `data.table_1.14.8` */
 const packageTokenRe = /([A-Za-z][A-Za-z0-9.]*)_(\d+(?:[.-]\d+)+)/g;
-
-function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
-	const range = Package.parsePkgVersionRange(undefined, version);
-	ctx.deps.addDeclaredDependency(new Package({ name, versionConstraints: range ? [range] : undefined }));
-}
 
 /**
  * Reads package (and R) versions from a pasted `sessionInfo()` output block within a source file (typically inside

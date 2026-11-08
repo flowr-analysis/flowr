@@ -8,7 +8,7 @@
 
 import { DefaultMap } from '../../../src/util/collections/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
-import { type FlowrCapabilityWithPath, type SupportedFlowrCapabilityId, getAllCapabilities } from '../../../src/r-bridge/data/get';
+import { type FlowrCapabilityWithPath, type FlowrCapabilityId, getAllCapabilities } from '../../../src/r-bridge/data/get';
 import { randomString } from '../../../src/util/random';
 
 // map flowr ids to the capabilities
@@ -26,7 +26,7 @@ export interface TestLabel extends MergeableRecord {
 	readonly id:           string
 	readonly name:         string
 	/** even if ids appear multiple times, we only want to count each one once */
-	readonly capabilities: ReadonlySet<SupportedFlowrCapabilityId>
+	readonly capabilities: ReadonlySet<FlowrCapabilityId>
 	/** this is automatically set (hihi) by functions like `assertAst` to correctly derive what part of capability we check */
 	readonly context:      Set<TestLabelContext>
 }
@@ -34,7 +34,7 @@ export interface TestLabel extends MergeableRecord {
 export interface SerializedTestLabel {
 	readonly id:           string
 	readonly name:         string
-	readonly capabilities: readonly SupportedFlowrCapabilityId[]
+	readonly capabilities: readonly FlowrCapabilityId[]
 	readonly context:      readonly TestLabelContext[]
 }
 
@@ -43,14 +43,17 @@ export interface SerializedTestLabel {
  * Wraps a test name with a unique identifier and label it with the given ids.
  * Test labels are used for identifying which of flowR's capabilities are being tested for.
  * For more information about test labels and capabilities, see the wiki page: {@link https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#test-labels}
+ *
+ * To make a test the signature test of capabilities on the generated capabilities page, put a `// \@signature <ids>` comment
+ * (`// \@signature function-calls`) on the line naming the test or the line above it.
  * @param testname - the name of the test (`it`) to be labeled
- * @param ids      - the capability ids to attach to the test
+ * @param ids      - the capability ids to attach to the test, including `supported: 'not'` ones so a counterexample can name the gap it documents
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
-export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string;
-export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel;
-export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
-	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids);
+export function label(testname: string, ids: readonly FlowrCapabilityId[], context: readonly TestLabelContext[]): string;
+export function label(testname: string, ids?: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel;
+export function label(testname: string, ids?: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
+	const capabilities: Set<FlowrCapabilityId> = new Set(ids);
 	const label: TestLabel = {
 		id:      uniqueTestId(),
 		name:    testname.toLowerCase(),
@@ -75,7 +78,8 @@ export function label(testname: string, ids?: readonly SupportedFlowrCapabilityI
 
 
 /**
- *
+ * Records that a labelled test ran, so the capabilities it covers count as covered.
+ * @param l - the label of the test that ran
  */
 export function dropTestLabel(l: TestLabel): void {
 	const names = l.capabilities.size === 0 ? ['.'] : [...l.capabilities];
@@ -102,7 +106,9 @@ export function modifyLabelName(label: string, nameModification: (name: string) 
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string;
 
 /**
- *
+ * The same label under a reworded name, keeping the capabilities it claims.
+ * @param label            - the label (or plain name) to rework
+ * @param nameModification - how to reword it
  */
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string {
 	if(typeof label === 'string') {
@@ -143,7 +149,8 @@ function printMissingCapability(label: FlowrCapabilityWithPath, testNames: reado
 
 
 /**
- *
+ * Prints the capabilities no test claims, which is what the summary run reports.
+ * @param map - the label map to summarize, the global one by default
  */
 export function printMissingLabelSummary(map: Map<string, readonly TestLabel[]> | DefaultMap<string, readonly TestLabel[]> = TheGlobalLabelMap): void {
 	console.log('== Test Capability Coverage (missing only)' + '='.repeat(80));
@@ -169,7 +176,7 @@ export function printMissingLabelSummary(map: Map<string, readonly TestLabel[]> 
 			}
 		}
 	}
-	for(const [context, count] of [...contextMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))){
+	for(const [context, count] of [...contextMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
 		console.log(`- ${context}: ${count}`);
 	}
 }

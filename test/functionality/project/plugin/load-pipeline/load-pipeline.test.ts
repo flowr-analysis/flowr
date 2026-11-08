@@ -9,6 +9,7 @@ import path from 'path';
 import os from 'os';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
+import { getVarsAndTypesFromShell, MissingRealWorldRda, realWorldRdaFiles, SexpToRType } from '../../../_helper/rda';
 
 describe('rda-files', () => {
 	describe('load-pipeline random', () => {
@@ -152,13 +153,11 @@ describe('rda-files', () => {
 	});
 
 	describe('load-pipeline real-world', () => {
-		const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
-		if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
-			it.skip('skipped - no RDA files found', () => {});
+		const files = realWorldRdaFiles();
+		if(files.length === 0) {
+			it.skip(MissingRealWorldRda, () => {});
 			return;
 		}
-
-		const files = fs.readdirSync(dir).filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda')).map(file => path.join(dir, file));
 
 		for(const file of files) {
 			it(`File: ${file}`, () => {
@@ -180,63 +179,9 @@ describe('rda-files', () => {
 	});
 });
 
-/**
- * Loads an RDA file in a fresh R environment and returns a map of variable names to their types.
- * @param file    - Path to the RDA file to load
- * @param rShell  - The R shell executor to use for running the R code
- * @returns A map from variable name to its R type string
- */
-export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
-	const output = rShell.run(`
-		e <- new.env()
-		
-		vars <- load("${rPath(file)}", envir = e)
-
-		for(v in vars) {
-			cat(v, "::", typeof(e[[v]]), "\\n")
-		}
-	`);
-
-	const result = new Map<string, string>();
-
-	for(const line of output.split('\n')) {
-		const [name, type] = line.split('::').map(x => x.trim());
-
-		if(name && type) {
-			result.set(name, type);
-		}
-	}
-
-	return result;
-}
-
 function expectNames(result: RObjectData[], vars: ReadonlyMap<string, string>) {
 	expect(result?.flatMap(x => x.name).sort()).toEqual([...vars.keys()].sort());
 }
-
-/* Maps the {@link SexpType} to its string representation in the R shell*/
-export const SexpToRType = {
-	0:  'NULL',
-	1:  'symbol',
-	2:  'pairlist',
-	3:  'closure',
-	4:  'environment',
-	5:  'prom',
-	6:  'language',
-	7:  'special',
-	8:  'builtin',
-	9:  'character',
-	10: 'logical',
-	13: 'integer',
-	14: 'double',
-	15: 'complex',
-	16: 'string',
-	17: '...',
-	19: 'list',
-	20: 'expression',
-	24: 'raw',
-	25: 'S4',
-} as const;
 
 function _expectTypes(result: RObjectData[], types: ReadonlyMap<string, string>) {
 	for(const obj of result) {

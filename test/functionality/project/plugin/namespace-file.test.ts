@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import {
@@ -7,7 +8,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import { FlowrNamespaceFile, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, importOrigin, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrConfig } from '../../../../src/config';
 
 
@@ -44,7 +45,7 @@ export(coord_cartesian)
 export(ggsave)
 export(fortify)
 export(scale_type)
-exportPattern("^[^\\.]\\.*$")
+exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
@@ -56,7 +57,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 	ctx.addRequests([{ request: 'file', content: 'test.R' }]);
 
 	describe('Basic exports', function() {
-		test('Functions are exported', () => {
+		test(label('Functions are exported', ['project-namespace'], ['other']), () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.isDefined(ctx.deps.functionsContext.getFunctionInfo('current', 'ggplot'));
@@ -84,7 +85,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.length, 1);
-			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.]\\.*$');
+			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\\\.]\\\\.*$', 'as written, the escapes of the R string included');
 		});
 
 		test('isExported', () => {
@@ -92,6 +93,19 @@ importMethodsFrom(BiocGenerics,combine)`));
 			assert.isDefined(deps?.namespaceInfo);
 			assert.isFalse(isExportedInInfo('ggplot2', deps?.namespaceInfo));
 			assert.isTrue(isExportedInInfo('ggplot', deps?.namespaceInfo));
+			assert.isTrue(isExportedInInfo('q..', deps?.namespaceInfo), 'the pattern is read as R reads its string, "\\\\." is a literal dot');
+			assert.isFalse(isExportedInInfo('q\\x', deps?.namespaceInfo), 'no backslash is left in the pattern');
+		});
+	});
+
+	describe('re-exports', function() {
+		test(label('an importFrom names where the name comes from, an import of a whole package does not', ['project-namespace'], ['other']), () => {
+			const ns = ctx.deps.getDependency('current')?.namespaceInfo;
+			assert.isDefined(ns);
+			assert.strictEqual(importOrigin('alpha', ns), 'scales');
+			assert.strictEqual(importOrigin('setNames', ns), 'stats');
+			assert.isUndefined(importOrigin('ggplot', ns), 'a name the package defines itself');
+			assert.isUndefined(importOrigin('enquo', ns), 'import(rlang) does not tell which names rlang exports');
 		});
 	});
 
@@ -120,7 +134,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 	});
 
 	describe('Correct Imports', function() {
-		test('Imports are registered correctly', () => {
+		test(label('Imports are registered correctly', ['project-namespace'], ['other']), () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 
@@ -135,7 +149,7 @@ importMethodsFrom(BiocGenerics,combine)`));
 			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('stats'), ['setNames']);
 		});
 
-		test('importClassesFrom / importMethodsFrom register their source package (S4)', () => {
+		test(label('importClassesFrom / importMethodsFrom register their source package (S4)', ['project-namespace', 'class-owner-s4'], ['other']), () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('Matrix'), ['dgCMatrix']);
@@ -155,14 +169,21 @@ importMethodsFrom(BiocGenerics,combine)`));
 
 		test('exportMethods / exportClasses split their arguments too', () => {
 			const info = simple('exportMethods(show, summary)\nexportClasses("A", "B")').current;
-			assert.includeMembers(info.exportedFunctions, ['show', 'summary', 'A', 'B']);
-			assert.strictEqual(info.exportedFunctions.length, 4);
+			assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
+			assert.deepEqual(info.exportedS4Classes, ['A', 'B']);
+			assert.deepEqual(info.exportedSymbols, [], 'S4 exports are no ordinary exports');
 		});
 
 		test('single-symbol and quoted exports still parse (no regression)', () => {
 			const info = simple('export("+")\nexport(ggplot)').current;
 			assert.includeMembers(info.exportedSymbols, ['+', 'ggplot']);
 			assert.isFalse(info.exportedSymbols.includes('"+"'));
+		});
+
+		test('exportMethods on a primitive generic exports nothing, as in R', () => {
+			const info = simple('exportMethods("[", "+", `$`, rep, as.difftime)\nexport(log)').current;
+			assert.deepEqual(info.exportedS4Methods, ['as.difftime']);
+			assert.deepEqual(info.exportedSymbols, ['log']);
 		});
 
 		test('importClassesFrom / importMethodsFrom record the source package like importFrom', () => {

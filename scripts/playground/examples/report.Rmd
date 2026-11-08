@@ -1,0 +1,30 @@
+---
+title: "Plant growth"
+output: html_document
+---
+
+A small report on R's built-in `PlantGrowth` data.
+
+```{r setup, include = FALSE}
+groups <- split(PlantGrowth$weight, PlantGrowth$group)
+```
+
+The mean weight per group:
+
+```{r means}
+means <- sapply(groups, mean)
+means
+```
+
+This chunk is shown but never evaluated:
+
+```{r eval = FALSE}
+install.packages("ggplot2")
+```
+
+```{r plot}
+barplot(means, ylab = "weight")
+best <- names(which.max(means))
+```
+
+The heaviest plants grew in group `r best`.

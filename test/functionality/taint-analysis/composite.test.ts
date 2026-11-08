@@ -6,7 +6,7 @@ import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
 import { normalizationKnownConstant, ZScore } from '../../../src/taint-analysis/predefined/normalization';
 import { randomnessAnalysis } from '../../../src/taint-analysis/predefined/randomness-analysis';
-import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
+import type { TaintProduct } from '../../../src/taint-analysis/taint-visitor';
 import type { ProductReduction } from '../../../src/abstract-interpretation/domains/partial-product-domain';
 
 describe('Composite Taint Analysis', () => {

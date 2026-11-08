@@ -3,11 +3,16 @@
  * dependency records, and the {@link LibraryExports} export view. Pure -- no I/O, no mutation of inputs.
  * Split out of `../sigdb` so the reader/writer there does not carry the per-record decoding.
  */
+import type { SigDict } from './dict';
 import {
-	DefaultCranBase, FnProp, FnPropNames, ParamFlag,
-	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDbPkgMeta, type SigDefinitionLocation
+	ClassProp, DefaultCranBase, FnProp, FnPropNames, SigClassSystemNames,
+	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDbPkgMeta,
+	type SigDefinitionLocation, type SigSlotInfo
 } from './schema';
+import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
+import { compactRecord } from '../../util/objects';
+import { RPrimitives } from '../../data/r-primitives.generated';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
 export interface CranBlobInfo {
@@ -30,34 +35,54 @@ export function cranBlobUrl(cranBase: string, pkg: string, version: string, opts
 		: `${base}Archive/${pkg}/${pkg}_${version}.tar.gz`;
 }
 
-/** a {@link PkgBlob} in its compact on-disk tuple form (drops the trailing `dates` when empty) */
-export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => Object.keys(b.dates).length > 0
-	? [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion, b.dates]
-	: [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion];
+/** whether the record holds anything, without building the array `Object.keys(...).length` would */
+function hasEntries(record: Readonly<Record<string, unknown>> | undefined): boolean {
+	for(const _ in record) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * A {@link PkgBlob} in its compact on-disk tuple form, dropping the trailing fields it has nothing to say about
+ * (the length says what is there, so no flag needs writing/reading), so a reader that stops earlier keeps working.
+ */
+export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
+	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
+	if(b.classes?.length) {
+		return [...head, b.dates, b.sources ?? {}, b.classes, b.classesByVersion ?? {}];
+	}
+	if(hasEntries(b.sources)) {
+		return [...head, b.dates, b.sources];
+	}
+	return hasEntries(b.dates) ? [...head, b.dates] : [...head];
+};
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
-	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {} };
+	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9], classesByVersion: t[10] };
 }
 
 /** one decoded parameter of a function signature */
 export interface SigParameter {
 	readonly name:     string;
-	readonly forced:   boolean;
-	readonly optional: boolean;
+	/** bitfield of {@link ArgProp}, as flowR's built-ins state it; a bit the extractor cannot see stays unset */
+	readonly props:    ArgProps;
 	readonly default?: string;
 }
 
 /** the decoded view of one function at one package version */
 export interface DecodedFunction {
-	readonly name:      string;
-	readonly file?:     string;
-	readonly line:      number;
-	readonly exported:  boolean;
-	readonly props:     readonly string[];
-	readonly signature: readonly SigParameter[];
-	readonly callees:   readonly string[];
+	readonly name:        string;
+	readonly file?:       string;
+	readonly line:        number;
+	readonly exported:    boolean;
+	readonly props:       readonly string[];
+	readonly signature:   readonly SigParameter[];
+	readonly callees:     readonly string[];
 	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
-	readonly topic?:    string;
+	readonly topic?:      string;
+	/** the package this name is re-exported from, see {@link SigFunctionInfo.reexportOf} */
+	readonly reexportOf?: string;
 }
 
 /**
@@ -83,32 +108,29 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: s
 }
 
 /** decode one of a blob's function records against the global string dictionary */
-export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
-	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
+export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
+	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx, reexportIdx] = blob.fns[fnIdx];
+	const name = strings.at(nameIdx);
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
-		const [n, flags, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
-		return {
-			name:     strings[n],
-			forced:   Boolean(flags & ParamFlag.Forced),
-			optional: !(flags & ParamFlag.Missing),
-			...(def >= 0 ? { default: strings[def] } : {})
-		};
+		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
+		return compactRecord({ name: strings.at(n), props, default: def >= 0 ? strings.at(def) : undefined });
 	});
 	let callees: string[] = [];
 	if(cgIdx >= 0) {
 		let prev = 0;
-		callees = blob.cgs[cgIdx].map(d => strings[prev += d]);
+		callees = blob.cgs[cgIdx].map(d => strings.at(prev += d));
 	}
-	return {
-		name:     strings[nameIdx],
-		...(topicIdx !== undefined && topicIdx >= 0 ? { topic: strings[topicIdx] } : {}),
-		...(fileIdx >= 0 ? { file: strings[fileIdx] } : {}),
+	return compactRecord({
+		name,
+		topic:      topicIdx !== undefined && topicIdx >= 0 ? strings.at(topicIdx) : undefined,
+		reexportOf: reexportIdx !== undefined ? strings.at(reexportIdx) : undefined,
+		file:       fileIdx >= 0 ? strings.at(fileIdx) : undefined,
 		line,
-		exported: Boolean(bits & FnProp.Exported),
-		props:    Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
+		exported:   isExportedEntry(bits, name),
+		props:      Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
 		signature,
 		callees
-	};
+	});
 }
 
 /** a decoded package dependency of one version (`type` is the compact {@link DepType} enum; map to a label via {@link DepTypeNames}) */
@@ -120,16 +142,42 @@ export interface ResolvedDependency {
 }
 
 /** decode the declared dependencies of one blob version (empty when it declares none / the bundle omits them) */
-export function decodeDependencies(strings: readonly string[], blob: Readonly<PkgBlob>, ver: string): ResolvedDependency[] {
+export function decodeDependencies(strings: SigDict, blob: Readonly<PkgBlob>, ver: string): ResolvedDependency[] {
 	const idx = blob.depsByVersion[ver];
 	if(idx === undefined) {
 		return [];
 	}
-	return blob.deps[idx].map(d => ({
-		name: strings[d[0]],
-		type: d[1],
-		...(d.length === 3 ? { constraint: strings[d[2]] } : {})
-	}));
+	return blob.deps[idx].map(d => compactRecord({ name: strings.at(d[0]), type: d[1], constraint: d.length === 3 ? strings.at(d[2]) : undefined }));
+}
+
+/** the classes a package version declares, decoded from the blob's class pool */
+export function decodeClasses(strings: SigDict, blob: Readonly<PkgBlob>, ver: string): SigClassInfo[] {
+	const list = blob.classesByVersion?.[ver];
+	const pool = blob.classes;
+	if(list === undefined || pool === undefined) {
+		return [];
+	}
+	const out: SigClassInfo[] = [];
+	let prev = 0;
+	for(const delta of list) {
+		const rec = pool[prev += delta];
+		if(rec === undefined) {
+			continue;
+		}
+		const [nameIdx, system, props, supers, slots, pkgIdx] = rec;
+		out.push(compactRecord({
+			name:   strings.at(nameIdx),
+			system: SigClassSystemNames[system] ?? SigClassSystemNames[0],
+			supers: supers.map(i => strings.at(i)),
+			slots:  slots.map((sl): SigSlotInfo => typeof sl === 'number'
+				? { name: strings.at(sl) }
+				: { name: strings.at(sl[0]), type: strings.at(sl[1]) }),
+			virtual: props & ClassProp.Virtual ? true : undefined,
+			union:   props & ClassProp.Union ? true : undefined,
+			package: pkgIdx !== undefined ? strings.at(pkgIdx) : undefined
+		}));
+	}
+	return out;
 }
 
 /** the function indices of a blob version (undoing the delta encoding) */
@@ -146,9 +194,18 @@ export function versionFnIndices(blob: Readonly<PkgBlob>, ver: string): number[]
 	return out;
 }
 
+/**
+ * Whether a stored entry is an export. A method on a primitive generic (`setMethod("+", ...)`) binds nothing in the
+ * namespace, so R exports it under no directive, and `pkg::"+"` does not exist; a database built before that was
+ * known may still flag it exported, and attaching it would shadow the base primitive for every call.
+ */
+function isExportedEntry(bits: number, name: string): boolean {
+	return (bits & FnProp.Exported) !== 0 && !((bits & FnProp.S4Method) !== 0 && RPrimitives.has(name));
+}
+
 /** derive the {@link LibraryExports} export view of one package version from its blob + metadata */
 export function deriveLibraryExports(
-	strings: readonly string[], blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: string, version?: string, cranBase = DefaultCranBase
+	strings: SigDict, blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: string, version?: string, cranBase = DefaultCranBase
 ): LibraryExports | undefined {
 	const [latest, archived] = meta;
 	const ver = resolveVersion(blob, latest, version);
@@ -162,10 +219,11 @@ export function deriveLibraryExports(
 	const s3Classes: string[] = [];
 	const s4Classes: string[] = [];
 	const locations = new Map<string, SigDefinitionLocation>();
+	const reexports = new Map<string, string>();
 	for(const i of idxs) {
-		const [nameIdx, , , bits, fileIdx, line] = blob.fns[i];
-		const name = strings[nameIdx];
-		(bits & FnProp.Exported ? exported : internal).push(name);
+		const [nameIdx, , , bits, fileIdx, line, , reexportIdx] = blob.fns[i];
+		const name = strings.at(nameIdx);
+		(isExportedEntry(bits, name) ? exported : internal).push(name);
 		if(bits & FnProp.Deprecated) {
 			deprecated.push(name);
 		}
@@ -176,13 +234,17 @@ export function deriveLibraryExports(
 			s4Classes.push(name);
 		}
 		if(fileIdx >= 0) {
-			locations.set(name, { file: strings[fileIdx], line });
+			locations.set(name, { file: strings.at(fileIdx), line });
+		}
+		if(reexportIdx !== undefined) {
+			reexports.set(name, strings.at(reexportIdx));
 		}
 	}
 	const cran = !blob.noncran?.includes(ver);
 	return {
 		version: ver, exported, internal, deprecated, s3Classes, s4Classes, cran,
 		cranUrl: cranBlobUrl(cranBase, pkg, ver, { latest, archived: archived === 1, cran }),
-		...(locations.size > 0 ? { locations } : {})
+		...(locations.size > 0 ? { locations } : {}),
+		...(reexports.size > 0 ? { reexports } : {})
 	};
 }

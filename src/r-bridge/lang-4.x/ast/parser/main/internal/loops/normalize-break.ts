@@ -9,7 +9,9 @@ import type { JsonEntry } from '../../../json/format';
 
 
 /**
- *
+ * Normalizes a `break`, which carries nothing beyond where it is written.
+ * @param data - the normalizer's state
+ * @param obj  - the parsed entry to normalize
  */
 export function normalizeBreak(data: NormalizerData, obj: JsonEntry): RBreak {
 	expensiveTrace(parseLog, () => `[break] ${JSON.stringify(obj)}`);

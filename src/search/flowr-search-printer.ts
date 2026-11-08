@@ -28,28 +28,17 @@ export function flowrSearchToMermaid(search: FlowrSearchLike, conf?: FlowrSearch
 	return out.join('\n');
 }
 
-function argsToMermaidString(args: Record<string, unknown> | undefined): string {
+function argsToString(args: Record<string, unknown> | undefined, escape: (s: string) => string): string {
 	if(args === undefined) {
 		return '';
 	}
 	return Object.entries(args).map(([key, value]) =>
-		`${key}: ${isBinaryTree(value) ? '_' + Mermaid.escape(binaryTreeToString(value.tree)) + '_'
-			: Mermaid.escape(JSON.stringify(value))}`)
+		`${key}: ${isBinaryTree(value) ? '_' + escape(binaryTreeToString(value.tree)) + '_' : escape(JSON.stringify(value))}`)
 		.join(', ');
 }
 
-function argsToAsciiString(args: Record<string, unknown> | undefined): string {
-	if(args === undefined) {
-		return '';
-	} else if(Object.keys(args).length === 1) {
-		const key = Object.keys(args)[0];
-		const value = args[key];
-		return `${key}: ${isBinaryTree(value) ? '_' + binaryTreeToString(value.tree) + '_' : JSON.stringify(value)}`;
-	}
-	return Object.entries(args).map(([key, value]) =>
-		`${key}: ${isBinaryTree(value) ? '_' + binaryTreeToString(value.tree) + '_' : JSON.stringify(value)}`)
-		.join(', ');
-}
+const argsToMermaidString = (args: Record<string, unknown> | undefined) => argsToString(args, Mermaid.escape);
+const argsToAsciiString = (args: Record<string, unknown> | undefined) => argsToString(args, s => s);
 
 /**
  * Converts a {@link FlowrSearchLike} object to an ASCII representation.

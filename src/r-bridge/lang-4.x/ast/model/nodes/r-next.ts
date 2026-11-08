@@ -11,6 +11,7 @@ export interface RNext<Info = NoInfo> extends Location, Leaf<Info> {
 
 /**
  * Helper for working with {@link RNext} AST nodes.
+ * @helper ast
  */
 export const RNext = {
 	...RNode,

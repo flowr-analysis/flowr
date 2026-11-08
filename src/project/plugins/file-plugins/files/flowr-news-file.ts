@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type FileRole, FlowrFile, FlowrTextFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole, FlowrWrappedFile, FlowrTextFile } from '../../../context/flowr-file';
 import { RPunctuationChars, RStandardRegexp } from '../../../../util/r-regex';
 import { compactRecord } from '../../../../util/objects';
 
@@ -11,36 +11,15 @@ export interface NewsChunk {
 
 /**
  * This decorates a text file and provides access to its content following R's NEWS file structure.
+ * Prefer the static {@link FlowrNewsFile.from} method, which avoids re-wrapping and handles roles.
  */
-export class FlowrNewsFile extends FlowrFile<NewsChunk[]> {
-	private readonly wrapped: FlowrFileProvider;
-
-	/**
-	 * Prefer the static {@link FlowrNewsFile.from} method to create instances of this class as it will not re-create if already a news file
-	 * and handle role assignments.
-	 */
-	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.roles);
-		this.wrapped = file;
-	}
-
+export class FlowrNewsFile extends FlowrWrappedFile<NewsChunk[]> {
 	/**
 	 * Loads and parses the content of the wrapped file as news chunks.
 	 * @see {@link parseNews} for details on the parsing logic.
 	 */
 	protected loadContent(): NewsChunk[] {
 		return parseNews(this.wrapped);
-	}
-
-
-	/**
-	 * News file lifter, this does not re-create if already a news file
-	 */
-	public static from(file: FlowrFileProvider | FlowrNewsFile, role?: FileRole): FlowrNewsFile {
-		if(role) {
-			file.assignRole(role);
-		}
-		return file instanceof FlowrNewsFile ? file : new FlowrNewsFile(file);
 	}
 
 	/**

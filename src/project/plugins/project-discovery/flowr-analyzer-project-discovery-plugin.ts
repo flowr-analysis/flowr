@@ -4,8 +4,7 @@ import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
-import { getAllFilesSync } from '../../../util/files';
-import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { getAllFilesSync, RPath, rPackageSourceRegex } from '../../../util/files';
 import fs from 'fs';
 import path from 'path';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from '../../context/classify-project-kind';
@@ -27,10 +26,10 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 }
 
-// `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources
-export const discoverRSourcesRegex = /(\.(r|rmd|rmarkdown|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
+// `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources, as are the `.S`/`.s`/`.q` files below `R/`
+export const discoverRSourcesRegex = new RegExp(`(\\.(r|rmd|rmarkdown|ipynb|qmd|rnw)|(^|[\\\\/])\\.?Rprofile(\\.site)?)$|${rPackageSourceRegex.source}`, 'i');
 // matched against the posix path relative to the project root
-export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
+export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|\.rvenv|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 export const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
 /** Options for {@link collectRequests}; unset fields fall back to the module defaults. */
@@ -56,9 +55,9 @@ export function collectRequests(files: Iterable<string>, root: string, opts: Col
 	const requests: (RParseRequest | FlowrFile<string>)[] = [];
 	for(const file of files) {
 		const relativePath = path.relative(root, file);
-		if(supportedExtensions.test(relativePath) && (!onlyTraversePaths || onlyTraversePaths.test(relativePath)) && !excludePathsRegex.test(platformDirname(relativePath))) {
+		if(supportedExtensions.test(relativePath) && (!onlyTraversePaths || onlyTraversePaths.test(relativePath)) && !excludePathsRegex.test(RPath.dirname(relativePath))) {
 			requests.push({ content: file, request: 'file' });
-			if(RprofileFilePattern.test(platformBasename(relativePath))) {
+			if(RprofileFilePattern.test(RPath.basename(relativePath))) {
 				// parse requests skip the file plugins, so emit a file too to have the profile tagged
 				requests.push(new FlowrTextFile(file));
 			}
@@ -124,7 +123,7 @@ export class FlowrAnalyzerFullProjectDiscoveryPlugin extends FlowrAnalyzerProjec
 }
 
 // noise directories pruned from the scoped walk on top of `ignorePathsWith`: build output, checks, rendered docs, and packaged data
-const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|man|inst\/(extdata|doc))(\/|$)/i;
+const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|\.rvenv|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|inst\/(extdata|doc))(\/|$)/i;
 // binary/data blobs, dropped even inside an otherwise kept directory
 const noiseFiles = /\.(rds|rda|rdata|rd|png|jpe?g|gif|svg|pdf|ico|zip|tar|t?gz|bz2|xz|so|o|a|dll|dylib|exe|jar|woff2?|ttf|eot|feather|parquet|xls[xm]?|docx?|pptx?)$/i;
 const descriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
@@ -133,13 +132,22 @@ const metadataFilePatterns = [
 	descriptionFilePattern,
 	/^NAMESPACE(\.txt)?$/i,
 	/^NEWS(\.(rd|md))?$/i,
-	/^(renv|rv|uvr|packrat)\.lock$/i,
-	/^(rproject|uvr)\.toml$/i,
+	/^(renv|rv|uvr|packrat|rproj|.+\.r)\.lock$/i,
+	/^(rproject|uvr|rproj)\.toml$/i,
 	/license(\.md|\.txt)?$/i,
 	RprofileFilePattern,
 	RenvironFilePattern
 ];
 const testOrVignetteDir = /(^|\/)(tests?|vignettes?)(\/|$)/i;
+/** a package's manual pages and the `macros/` definitions they use, which the Rd plugins read */
+const manPageFile = /(^|[\\/])man[\\/](macros[\\/])?[^\\/]+\.rd$/i;
+/** a package's system data, which R lazy-loads into its namespace (source `R/sysdata.rda`, installed `R/sysdata.rdx`) */
+const sysdataFile = /(^|[\\/])R[\\/]sysdata\.(rda|rdx)$/i;
+/** the tables R keeps beside the pages: what a package documents, and what its datasets provide */
+const documentationTables = [
+	/^(INDEX|00Index)$/,
+	/^datalist$/i
+];
 
 interface KeepRules { readonly include: readonly ((p: string) => boolean)[]; readonly exclude: readonly ((p: string) => boolean)[] }
 
@@ -151,15 +159,22 @@ function resolveRules(override: { include?: string[], exclude?: string[] } | und
 	};
 }
 
-/** over-approximating default: R sources, role metadata, and `tests/`/`vignettes/` count as project files */
+/** over-approximating default: R sources, role metadata, `tests/`/`vignettes/`, and what documents a name */
 function keptByDefault(rel: string): boolean {
 	const base = path.basename(rel);
-	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base)) || testOrVignetteDir.test(rel);
+	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base))
+		|| testOrVignetteDir.test(rel) || manPageFile.test(rel) || sysdataFile.test(rel)
+		|| documentationTables.some(p => p.test(base));
 }
 
 /** whether root-relative `rel` is kept; an explicit `ignore` or `perKind` exclude wins over everything */
 function keep(rel: string, rules: KeepRules, ignore: readonly ((p: string) => boolean)[]): boolean {
-	if(noiseFiles.test(rel) || ignore.some(m => m(rel)) || rules.exclude.some(m => m(rel))) {
+	// what the user excluded is out whatever else says, which is why this is asked first
+	if(ignore.some(m => m(rel)) || rules.exclude.some(m => m(rel))) {
+		return false;
+	}
+	// a binary/data blob is out too, except a `.Rd` under `man/` and the package's system data: those the analysis reads
+	if(noiseFiles.test(rel) && !manPageFile.test(rel) && !sysdataFile.test(rel)) {
 		return false;
 	}
 	return keptByDefault(rel) || rules.include.some(m => m(rel));

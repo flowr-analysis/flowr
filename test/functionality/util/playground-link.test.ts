@@ -1,6 +1,7 @@
+import fs from 'fs';
 import { assert, describe, test } from 'vitest';
 import { label } from '../_helper/label';
-import { Playground, PlaygroundMark } from '../../../src/util/text/playground-link';
+import { Playground, type PlaygroundMark } from '../../../src/util/text/playground-link';
 import { unpackFromUrl } from '../../../src/util/text/url-encoding';
 
 /** The links the README and `:playground` hand out, and what the page reads back out of them. */
@@ -26,11 +27,19 @@ describe('Playground links', () => {
 			'1,3@sum,lint:absolute-file-paths@1');
 	});
 
+	test(label('a project travels as the opened file, its name, and the files loaded before it', ['name-normal'], ['other']), () => {
+		const link = fields(Playground.link({ code, name: 'b.Rmd', files: [{ name: 'lib/a.R', code: 'f <- 1' }], marks: ['3@f(^lib/a\\.R$)', '2'] }));
+		assert.strictEqual(link.n, 'b.Rmd');
+		assert.deepStrictEqual(JSON.parse(unpackFromUrl(link.o) ?? ''), [['lib/a.R', 'f <- 1']]);
+		assert.strictEqual(link.h, '2,3@f(^lib/a\\.R$)');
+		assert.isUndefined(fields(Playground.link({ code, name: Playground.MainFile })).n);
+	});
+
 	test(label('a run of lines travels as one range, and back', ['name-normal'], ['other']), () => {
-		assert.deepStrictEqual(PlaygroundMark.compress(['4', '2', '3', '2', '9']), ['2-4', '9']);
-		assert.deepStrictEqual(PlaygroundMark.expand(['2-4', '9']), ['2', '3', '4', '9']);
+		assert.deepStrictEqual(Playground.Mark.compress(['4', '2', '3', '2', '9']), ['2-4', '9']);
+		assert.deepStrictEqual(Playground.Mark.expand(['2-4', '9']), ['2', '3', '4', '9']);
 		/* what a rule reported as a whole covers each of its findings, so those say nothing more */
-		assert.deepStrictEqual(PlaygroundMark.compress(['lint:x@1', 'lint:x', 'dep:library@2']),
+		assert.deepStrictEqual(Playground.Mark.compress(['lint:x@1', 'lint:x', 'dep:library@2']),
 			['lint:x', 'dep:library@2']);
 	});
 
@@ -38,7 +47,7 @@ describe('Playground links', () => {
 		/* the type says as much, but a link may also be written by hand or come from an older page */
 		const marks = ['nonsense', '@', ''] as unknown as PlaygroundMark[];
 		assert.isUndefined(fields(Playground.link({ code, marks })).h);
-		assert.deepStrictEqual(PlaygroundMark.expand(marks), []);
+		assert.deepStrictEqual(Playground.Mark.expand(marks), []);
 	});
 
 	test(label('a criterion becomes the position the cursor opens on', ['name-normal'], ['other']), () => {
@@ -64,6 +73,22 @@ describe('Playground links', () => {
 		assert.isFalse(/[.,:;"')\]]$/.test(hash), 'a link may not end on what ends a sentence');
 		assert.notInclude(hash, '<', 'an angle bracket ends the autolink a reader made of the address');
 		assert.notInclude(hash, '>', 'an angle bracket ends the autolink a reader made of the address');
+	});
+
+	test(label('a configuration travels packed and reads back as it was', ['name-normal'], ['other']), () => {
+		const config = ['sp.u.l.d=["software-has-license","problematic-inputs"]', 'e=[{"type":"tree-sitter","lax":true}]'];
+		const url = Playground.link({ code, config });
+		const hash = url.split('#')[1];
+		assert.notMatch(hash.replace(/%[0-9A-Fa-f]{2}/g, ''), /[^A-Za-z0-9\-._~!$'()*,;:@/?=&]/,
+			'a fragment carries nothing outside what a URI allows in one');
+		assert.notInclude(hash, '%', 'a packed configuration needs no escaping at all');
+		assert.deepStrictEqual(Playground.unpackConfig(fields(url).k), config);
+	});
+
+	test(label('a configuration an older link spelled out still reads', ['name-normal'], ['other']), () => {
+		assert.deepStrictEqual(Playground.unpackConfig('sp.u.l.d=["a"];e=[{"lax":true}]'),
+			['sp.u.l.d=["a"]', 'e=[{"lax":true}]']);
+		assert.deepStrictEqual(Playground.unpackConfig(null), []);
 	});
 
 	test(label('the forward flag rides along escaped, and still reads back', ['name-normal'], ['other']), () => {
@@ -103,10 +128,21 @@ describe('Playground links', () => {
 	test(label('a mark is what the page knows how to resolve', ['name-normal'], ['other']), () => {
 		for(const mark of ['12', '12:5', '12-15', '12@sum', 'lint:absolute-file-paths', 'lint:absolute-file-paths@12',
 			'dep:library', 'slice', 'repl', 'deps', 'lints']) {
-			assert.isTrue(PlaygroundMark.isValid(mark), mark);
+			assert.isTrue(Playground.Mark.isValid(mark), mark);
 		}
 		for(const mark of ['', 'sum', '@sum', 'twelve', '1,2']) {
-			assert.isFalse(PlaygroundMark.isValid(mark), mark);
+			assert.isFalse(Playground.Mark.isValid(mark), mark);
+		}
+	});
+
+	/* links already printed, here those of the STTT 26(4) article, have to open on what they were written with */
+	test(label('published links still read back', ['name-normal'], ['other']), () => {
+		for(const link of fs.readFileSync('test/testfiles/playground/sttt-26-4-links.txt', 'utf8').trim().split('\n')) {
+			const { c, h } = fields(link);
+			assert.isNotEmpty(unpackFromUrl(c), link);
+			if(h !== undefined) {
+				assert.isNotEmpty(Playground.Mark.expand(h.split(',')), link);
+			}
 		}
 	});
 });

@@ -3,10 +3,10 @@ import { AbstractDomain } from '../../abstract-interpretation/domains/abstract-d
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
 import { PkgName } from '../../dataflow/environments/identifier';
-import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, FileInputProps, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { TaintConditionFunction } from '../taint-mapping';
-import { taintMappingFromBuiltInIndex } from '../builtin-index-bridge';
+import { argValueMappingFromBuiltInIndex, taintMappingFromBuiltInIndex } from '../builtin-index-bridge';
 import { TaintFnCategory } from '../function-categories';
 
 export const UserInput = Symbol('User Input');
@@ -48,37 +48,15 @@ export const securityAnalysis = TaintAnalysisDefinition.create('security', secur
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Network, SemanticCallTag.User)],
 			taint:      NetworkInput,
 		},
+		...argValueMappingFromBuiltInIndex(FileInputProps, ArgProp.Resource, protocolTaint, SemanticCallTag.User),
 		{
-			identifier: [
-				['readRDS', PkgName.Base],
-				['load', PkgName.Base],
-				['read.table', PkgName.Utils],
-				['read.csv', PkgName.Utils],
-				['read.csv2', PkgName.Utils],
-				['read.delim', PkgName.Utils],
-				['read.delim2', PkgName.Utils],
-			],
-			condition: {
-				argValues:   [{ pos: 0, name: 'file' }],
-				conditionFn: protocolTaint
-			}
-		},
-		{
-			identifier: [
-				['readBin', PkgName.Base],
-				['readChar', PkgName.Base],
-				['readLines', PkgName.Base],
-				['gzcon', 'base']
-			],
-			condition: {
-				argValues:   [{ pos: 0, name: 'con' }],
-				conditionFn: protocolTaint
-			}
-		},
+			identifier: ['gzcon', PkgName.Base],
+			condition:  { argValues: [{ pos: 0, name: 'con' }], conditionFn: protocolTaint }
+		}
 	)
 	.through(
 		{
-			identifier: [ 'shQuote', PkgName.Base ],
+			identifier: ['shQuote', PkgName.Base],
 			taint:      Top
 		},
 		{

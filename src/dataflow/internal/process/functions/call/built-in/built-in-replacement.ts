@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
+import { patchFunctionCall, processAllArguments, type ProcessAllArgumentResult } from '../common';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -12,9 +12,9 @@ import type {
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
-import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import type { AssignmentConfiguration } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
@@ -24,10 +24,9 @@ import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-a
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-
 
 /**
  * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
@@ -39,7 +38,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId, beforeDefine?: AssignmentConfiguration['beforeDefine'] }
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
@@ -55,7 +54,7 @@ export function processReplacementFunction<OtherInfo>(
 		if(args.length > 2 && args[1] !== EmptyArgument) {
 			tarName += S7DispatchSeparator + args[1].lexeme;
 		}
-		const uArg = unpackArg(targetArg) ?? targetArg;
+		const uArg = RArgument.valueOf(targetArg) ?? targetArg;
 		targetArg = toUnnamedArgument({
 			content:  tarName,
 			type:     RType.Symbol,
@@ -64,6 +63,21 @@ export function processReplacementFunction<OtherInfo>(
 			location: uArg.location ?? targetArg.location ?? name.location ?? SourceRange.invalid()
 		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
 	}
+
+	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
+	/* R evaluates the value, then the indices, and rebinds the target last */
+	let indices: ProcessAllArgumentResult | undefined;
+	const processIndices: AssignmentConfiguration['beforeDefine'] = ({ environment, graph }) => {
+		const indexData = { ...data, environment };
+		indices = processAllArguments({
+			functionName:   DataflowInformation.initialize(rootId, indexData),
+			args:           convertedArgs,
+			data:           indexData,
+			functionRootId: rootId,
+			finalGraph:     graph,
+		});
+		return config.beforeDefine?.({ environment: indices.finalEnv, graph }) ?? indices.finalEnv;
+	};
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
 	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
@@ -74,33 +88,32 @@ export function processReplacementFunction<OtherInfo>(
 		{
 			superAssignment:  config.assignmentOperator === '<<-',
 			makeMaybe:        config.makeMaybe,
-			canBeReplacement: true
+			canBeReplacement: true,
+			replacement:      true,
+			beforeDefine:     processIndices
 		}
 	);
 
 	const createdVert = res.graph.getVertex(rootId);
-	if(FunctionCallVertex.is(createdVert)) {
+	if(DfgVertex.isFunctionCall(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
-	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
-	if(VariableDefinitionVertex.is(targetVert)) {
+	const targetVert = res.graph.getVertex(RArgument.valueOf(args[0])?.info.id as NodeId);
+	if(DfgVertex.isVariableDefinition(targetVert)) {
 		(targetVert as { par: boolean }).par = true;
 	}
 
-	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
-
-	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs, processedArguments: indexArguments } = processAllArguments({
+	/* an assignment that never defines a symbol target does not reach the hook, so the indices are processed here */
+	const { callArgs, processedArguments: indexArguments } = indices ?? processAllArguments({
 		functionName:   DataflowInformation.initialize(rootId, data),
 		args:           convertedArgs,
 		data,
 		functionRootId: rootId,
 		finalGraph:     res.graph,
-		forceArgs:      config.forceArgs,
 	});
 
 	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
-	const targetNode = unpackArg(args[0]);
+	const targetNode = RArgument.valueOf(args[0]);
 	if(targetNode !== undefined && targetNode.info.id !== rootId) {
 		/*
 		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
@@ -116,12 +129,18 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+			args.map(a => {
+				if(RArgument.isEmpty(a)) {
+					return undefined;
+				}
+				const entry = a.name === undefined ? RArgument.unnamedValueOf(a) : a;
+				return entry === undefined ? undefined : { entryPoint: entry.info.id };
+			}),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
-	const firstArg = unpackNonameArg(args[0]);
+	const firstArg = RArgument.unnamedValueOf(args[0]);
 
 	handleReplacementOperator({
 		operator: name.content,

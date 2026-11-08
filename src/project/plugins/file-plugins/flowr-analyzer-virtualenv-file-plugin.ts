@@ -2,8 +2,8 @@ import { FlowrAnalyzerRoleFilePlugin } from './flowr-analyzer-file-plugin';
 import { SemVer } from 'semver';
 import { FileRole } from '../../context/flowr-file';
 
-/** Lockfiles pinning a project's package environment (`renv.lock`, `rv.lock`, `uvr.lock`, `packrat.lock`). */
-const VirtualEnvFilePattern = /^(renv|rv|uvr|packrat)\.lock$/i;
+/** Lockfiles pinning a project's package environment (`renv.lock`, `rv.lock`, `uvr.lock`, `packrat.lock`, rig's `rproj.lock` and `<script>.R.lock`). */
+const VirtualEnvFilePattern = /^(renv|rv|uvr|packrat|rproj|.+\.r)\.lock$/i;
 
 /**
  * Tags a project's virtual-environment lockfiles with the {@link FileRole.VirtualEnv} role, so the version
@@ -11,7 +11,7 @@ const VirtualEnvFilePattern = /^(renv|rv|uvr|packrat)\.lock$/i;
  */
 export class FlowrAnalyzerVirtualEnvFilePlugin extends FlowrAnalyzerRoleFilePlugin {
 	public readonly name = 'flowr-analyzer-virtualenv-files-plugin';
-	public readonly description = 'Marks virtual-environment lockfiles (renv.lock, rv.lock, uvr.lock).';
+	public readonly description = 'Marks virtual-environment lockfiles (renv.lock, rv.lock, uvr.lock, packrat.lock, rig lockfiles).';
 	public readonly version = new SemVer('0.1.0');
 	protected readonly roles = [FileRole.VirtualEnv];
 

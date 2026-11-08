@@ -6,6 +6,7 @@
  */
 import fs from 'fs';
 import os from 'os';
+import { randomBytes } from 'crypto';
 import path from 'path';
 import readline from 'readline';
 import { pipeline } from 'stream/promises';
@@ -14,6 +15,7 @@ import { SigDbExt, type SigDbContent } from './schema';
 import { encodeIndex, type SigDbIndex } from './index-format';
 import { Hash53 } from '../../util/hash';
 import { createDecompressFor, decompressSyncFor, isCompressedExt, readableExtsPreferred } from './codec';
+import { joinUntrustedSegment } from '../../util/files';
 
 /** whether a bundle path is a compressed (`.br`/`.zst`/`.gz`) source that must be decompressed to be seekable */
 export const isCompressed = (f: string): boolean => isCompressedExt(f);
@@ -70,18 +72,30 @@ export function sigDbCacheDir(override?: string, create = true): string {
 		?? (process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'flowr', 'cache') : undefined)
 		?? path.join(os.homedir?.() || os.tmpdir(), '.cache', 'flowr');
 	const dir = path.join(base, 'sigdb');
-	if(!create) {
+	const tmp = path.join(os.tmpdir(), `flowr-sigdb-cache-${process.getuid?.() ?? os.userInfo().username}`);
+	if(isWritableDir(dir, create) || !(create || fs.existsSync(tmp))) {
 		return dir;
 	}
+	if(create) {
+		fs.mkdirSync(tmp, { recursive: true, mode: 0o700 });
+	}
+	return tmp;
+}
+
+function isWritableDir(dir: string, create: boolean): boolean {
 	try {
-		fs.mkdirSync(dir, { recursive: true });
-		return dir;
+		if(create) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+		fs.accessSync(dir, fs.constants.W_OK);
+		return true;
 	} catch{
-		const tmp = path.join(os.tmpdir(), 'flowr-sigdb-cache');
-		fs.mkdirSync(tmp, { recursive: true });
-		return tmp;
+		return false;
 	}
 }
+
+/** a temp path next to `target`, unique even across containers sharing a volume */
+export const uniqueTempPath = (target: string, ext: string): string => `${target}.${process.pid}-${randomBytes(6).toString('hex')}.${ext}`;
 
 /** read the (small) header line of a possibly-compressed bundle without decompressing the whole thing */
 export async function readHeaderOf(source: string): Promise<Record<string, unknown> | undefined> {
@@ -98,7 +112,7 @@ export async function readHeaderOf(source: string): Promise<Record<string, unkno
 	const input = decompressStream(source);
 	const rl = readline.createInterface({ input, crlfDelay: Infinity });
 	try {
-		const line = (await rl[Symbol.asyncIterator]().next()).value as string | undefined;   // just the first line (the header)
+		const line = (await rl[Symbol.asyncIterator]().next()).value;   // just the first line (the header)
 		return line !== undefined ? JSON.parse(line) as Record<string, unknown> : undefined;
 	} finally {
 		rl.close();
@@ -113,12 +127,15 @@ export interface EnsureOptions {
 	index?:     SigDbIndex;
 	/** the source is not a seekable bundle (e.g. a shared dictionary file) -- decompress only, write no `.idx` */
 	indexless?: boolean;
+	/** the expected decompressed size */
+	bytes?:     number;
 }
 
 /** the cache paths for a source given its content hash */
 interface CachePaths { plain: string; idx: string }
 function cachePaths(hash: string, cacheDir?: string): CachePaths {
-	const plain = path.join(sigDbCacheDir(cacheDir), `sigdb-${hash}${SigDbExt}`);
+	// the hash may come from the header of a project-supplied bundle
+	const plain = joinUntrustedSegment(sigDbCacheDir(cacheDir), `sigdb-${hash}${SigDbExt}`);
 	return { plain, idx: `${plain}.idx` };
 }
 
@@ -140,6 +157,27 @@ function writeCacheIndex(source: string, idx: string, index?: SigDbIndex): void 
 	fs.copyFileSync(srcIdx, idx);
 }
 
+function isCachedPlain(plain: string, idx: string, opts: EnsureOptions): boolean {
+	try {
+		const size = fs.statSync(plain).size;
+		return (opts.bytes === undefined || size === opts.bytes) && (opts.indexless || fs.existsSync(idx));
+	} catch{
+		return false;
+	}
+}
+
+function commitPlain(source: string, tmp: string, plain: string, idx: string, opts: EnsureOptions): string {
+	const size = fs.statSync(tmp).size;
+	if(opts.bytes !== undefined && size !== opts.bytes) {
+		throw new Error(`decompressing ${source} gave ${size} bytes, expected ${opts.bytes}; the file is corrupt or does not match its manifest`);
+	}
+	fs.renameSync(tmp, plain);
+	if(!opts.indexless) {
+		writeCacheIndex(source, idx, opts.index);
+	}
+	return plain;
+}
+
 /**
  * Ensure a seekable plain `.sigs.ndjson` (+ its `.idx`) exists for `source`, decompressing a `.br`/`.zst`/`.gz`
  * once into a hash-keyed cache the first time and reusing it on every later startup. The index may be
@@ -151,20 +189,23 @@ export async function ensurePlain(source: string, opts: EnsureOptions = {}): Pro
 	}
 	let hash = opts.hash;
 	if(hash === undefined) {
-		const content = (await readHeaderOf(source))?.content as SigDbContent | undefined;
-		hash = content?.hash ?? new Hash53().update(source).digest();
+		hash = ((await readHeaderOf(source))?.content as SigDbContent | undefined)?.hash;
+		if(hash === undefined) {
+			const { size, mtimeMs } = fs.statSync(source);
+			hash = new Hash53().update(`${source}\0${size}\0${mtimeMs}`).digest();
+		}
 	}
 	const { plain, idx } = cachePaths(hash, opts.cacheDir);
-	if(fs.existsSync(plain) && (opts.indexless || fs.existsSync(idx))) {
+	if(isCachedPlain(plain, idx, opts)) {
 		return plain;
 	}
-	const tmp = `${plain}.${process.pid}.tmp`;
-	await pipeline(decompressStream(source), fs.createWriteStream(tmp));
-	fs.renameSync(tmp, plain);
-	if(!opts.indexless) {
-		writeCacheIndex(source, idx, opts.index);
+	const tmp = uniqueTempPath(plain, 'tmp');
+	try {
+		await pipeline(decompressStream(source), fs.createWriteStream(tmp));
+		return commitPlain(source, tmp, plain, idx, opts);
+	} finally {
+		fs.rmSync(tmp, { force: true });
 	}
-	return plain;
 }
 
 /** synchronous {@link ensurePlain} (blocking decompression) -- a `hash` must be supplied to key the cache */
@@ -175,16 +216,14 @@ export function ensurePlainSync(source: string, opts: EnsurePlainSyncOptions): s
 		return source;
 	}
 	const { plain, idx } = cachePaths(opts.hash, opts.cacheDir);
-	if(fs.existsSync(plain) && (opts.indexless || fs.existsSync(idx))) {
+	if(isCachedPlain(plain, idx, opts)) {
 		return plain;
 	}
-	const raw = fs.readFileSync(source);
-	const out = decompressSyncFor(source, raw);
-	const tmp = `${plain}.${process.pid}.tmp`;
-	fs.writeFileSync(tmp, out);
-	fs.renameSync(tmp, plain);
-	if(!opts.indexless) {
-		writeCacheIndex(source, idx, opts.index);
+	const tmp = uniqueTempPath(plain, 'tmp');
+	try {
+		fs.writeFileSync(tmp, decompressSyncFor(source, fs.readFileSync(source)));
+		return commitPlain(source, tmp, plain, idx, opts);
+	} finally {
+		fs.rmSync(tmp, { force: true });
 	}
-	return plain;
 }

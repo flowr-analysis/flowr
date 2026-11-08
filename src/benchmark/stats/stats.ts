@@ -45,7 +45,6 @@ export interface SlicerStatsInput<T = number> {
 	numberOfNormalizedTokensNoComments:        T
 }
 
-
 export interface SlicerStatsDataflow<T = number> {
 	numberOfNodes:               T
 	numberOfEdges:               T
@@ -75,6 +74,10 @@ export interface FlowrFeatureCounts {
 	builtinDefinitionsWithEvalHandler: number
 	/** how many linting rules carry each tag, a rule usually carries several */
 	lintingRulesByTag:                 Record<string, number>
+	/** built-in plugins the analyzer registers */
+	plugins:                           number
+	/** which of them carry each plugin type, every plugin has exactly one */
+	pluginsByType:                     Record<string, readonly string[]>
 }
 
 /**

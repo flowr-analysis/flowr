@@ -1,4 +1,5 @@
 import { Identifier } from '../../dataflow/environments/identifier';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { groupGenericOf } from '../../dataflow/environments/group-generics';
 import type { DecodedFunction } from './decode';
 import type { PackageSignatureSource } from './reader';
@@ -48,12 +49,23 @@ export interface SignatureDb {
 	 * A name the package answers only as part of an S4 group falls back to the group: `Matrix::sin` is served by
 	 * `Matrix`'s `Math` entry when there is no `sin` of its own, because that is what an `sin(x)` call dispatches
 	 * to. The result then carries the group's name, not the one that was asked for.
+	 *
+	 * The {@link Identifier} decides how far the lookup reaches: `pkg::fn` answers only with what the package
+	 * exports, `pkg:::fn` reaches its internals as well, exactly as R has it.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */
 	functionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
 	/**
-	 * The formal parameter names of a qualified call, ready to hand to {@link MatchArgs.toNames}.
+	 * Like {@link functionOf} (same version and S4-group resolution) but returns the entry's true `exported`
+	 * bit instead of applying the `::`-only check - for callers checking whether a source's own `::`/`:::`
+	 * matches what the package actually exports, rather than wanting R's accessibility rules applied for them.
+	 * @param id      - The identifier to look up; its internal bit is ignored.
+	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
+	 */
+	rawFunctionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
+	/**
+	 * The formal parameter names of a qualified call, ready to hand to {@link FunctionSemantics.call.match.toNames}.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */
@@ -95,18 +107,28 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 	};
 
 	const functionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
-		const pkg = Identifier.getNamespace(id);
+		const [name, pkg, internal] = Identifier.toArray(id);
 		if(pkg === undefined) {
 			return undefined; // without a package there is nothing to look the function up in
 		}
-		const name = Identifier.getName(id);
-		const found = answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
+		/* `::` reaches what the package exports, only `:::` reaches the rest */
+		const reaches = (fn: DecodedFunction | undefined) =>
+			fn !== undefined && (fn.exported || internal === true) ? fn : undefined;
+		const found = reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v)));
 		if(found !== undefined) {
 			return found;
 		}
 		/* `setMethod('Math', 'cls', ...)` answers every member of the group at once, so the group is the entry */
 		const group = groupGenericOf(name);
-		return group === undefined ? undefined : answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v));
+		return group === undefined ? undefined : reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v)));
+	};
+
+	const rawFunctionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
+		const [name, pkg] = Identifier.toArray(id);
+		if(pkg === undefined) {
+			return undefined; // without a package there is nothing to look the function up in
+		}
+		return answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
 	};
 
 	return {
@@ -117,6 +139,7 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 		packagesExporting: name => deps.packagesExporting(name),
 		sources:           () => merged(),
 		functionOf,
+		rawFunctionOf,
 		parametersOf:      (id, version) => functionOf(id, version)?.signature.map(p => p.name)
 	};
 }

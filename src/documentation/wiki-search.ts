@@ -6,6 +6,7 @@ import { runSearch } from '../search/flowr-search-executor';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrSearchElements } from '../search/flowr-search';
+import { compareByCodeUnit } from '../util/text/strings';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Search-API
@@ -52,7 +53,7 @@ also allow you to pass in a regex to only match files that fit your specified pa
 We offer the following generators:
 
 ${
-	Object.keys(Q).filter(n => n !== 'name').sort((a, b) => a.localeCompare(b)).map(
+	Object.keys(Q).filter(n => n !== 'name').sort(compareByCodeUnit).map(
 		key => `- ${ctx.linkO(FlowrSearchGenerator, key as never)}\\\n${ctx.docO(FlowrSearchGenerator, key as never)}`
 	).join('\n')
 }

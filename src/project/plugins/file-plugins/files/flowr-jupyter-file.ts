@@ -1,22 +1,30 @@
-import type { INotebookContent } from '@jupyterlab/nbformat';
+import type { ICodeCell, INotebookContent, IOutput } from '@jupyterlab/nbformat';
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
-
+import type { RecordedRun, RecordsRuns } from './recorded-runs';
 
 /**
  * This decorates a text file and parses its contents as a Jupyter file.
  * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
  */
-export class FlowrJupyterFile extends FlowrFile {
-	private readonly wrapped: FlowrFileProvider<string>;
-
+export class FlowrJupyterFile extends FlowrFile implements RecordsRuns {
 	/**
-	 * Prefer the static {@link FlowrRMarkdownFile.from} method
-	 * @param file - the file to load as R Markdown
+	 * Prefer the static {@link FlowrJupyterFile.from} method
+	 * @param wrapped - the file to load as Jupyter
 	 */
-	constructor(file: FlowrFileProvider<string>) {
-		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
-		this.wrapped = file;
+	constructor(private readonly wrapped: FlowrFileProvider<string>) {
+		super(wrapped.path(), wrapped.roles ? [...wrapped.roles, FileRole.Source] : [FileRole.Source]);
+	}
+
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
+	}
+
+	/** The code cells with the output the notebook recorded for each. */
+	public recorded(): RecordedRun[] {
+		return jupyterRecordedRuns(this.rawText());
 	}
 
 	/**
@@ -27,19 +35,57 @@ export class FlowrJupyterFile extends FlowrFile {
 		return loadJupyter(this.wrapped.content());
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrJupyterFile): FlowrJupyterFile {
+	/**
+	 * Lifts a file to a {@link FlowrJupyterFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already a Jupyter file
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrJupyterFile, role?: FileRole): FlowrJupyterFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrJupyterFile ? file : new FlowrJupyterFile(file);
 	}
 }
 
-function loadJupyter(content: string): string {
-	const nb = JSON.parse(content) as INotebookContent;
+/** the code cells of a notebook with the output recorded for each */
+export function jupyterRecordedRuns(json: string): RecordedRun[] {
+	let cells: unknown;
+	try {
+		cells = (JSON.parse(json) as Partial<INotebookContent>).cells;
+	} catch{
+		return [];
+	}
+	return !Array.isArray(cells) ? [] : (cells as INotebookContent['cells']).flatMap(cell => cell.cell_type === 'code'
+		? [{ code: joined(cell.source ?? ''), output: outputText((cell as ICodeCell).outputs ?? []).trim(), plots: plotCount((cell as ICodeCell).outputs ?? []), images: imagesOf((cell as ICodeCell).outputs ?? []) }] : []);
+}
 
-	return nb.cells.map(cell => {
-		if(cell.cell_type === 'code') {
-			return typeof cell.source === 'object' ? cell.source.join('') : cell.source;
-		} else {
-			return typeof cell.source === 'object' ? cell.source.map(s => `# ${s}`).join('') : `# ${cell.source}`;
+const joined = (text: string | readonly string[]) => typeof text === 'string' ? text : text.join('');
+
+/** the images the outputs hold, which are the plots */
+const plotCount = (outputs: readonly IOutput[]): number => outputs.filter(o => Object.keys((o.data as object | undefined) ?? {}).some(type => type.startsWith('image/'))).length;
+
+/** the plots of a cell as data URLs, for the formats a browser shows */
+const imagesOf = (outputs: readonly IOutput[]): string[] => outputs.flatMap(o => ['image/png', 'image/jpeg', 'image/gif'].flatMap(type => {
+	const data = (o.data as Record<string, string | string[]> | undefined)?.[type];
+	return data === undefined ? [] : [`data:${type};base64,${joined(data).replace(/\s/g, '')}`];
+}));
+
+/** what a cell printed: streams and the plain text of results, and the error a run ended in */
+function outputText(outputs: readonly IOutput[]): string {
+	return outputs.map(o => {
+		switch(o.output_type) {
+			case 'stream': return joined(o.text as string | string[]);
+			case 'error': return `Error: ${o.evalue as string}`;
+			default: return joined(((o.data as Record<string, string | string[]> | undefined)?.['text/plain']) ?? '');
 		}
+	}).join('\n');
+}
+
+function loadJupyter(content: string): string {
+	return (JSON.parse(content) as INotebookContent).cells.map(cell => {
+		const source = typeof cell.source === 'object' ? cell.source.join('') : cell.source;
+		/* every line of a text cell becomes a comment, whether the notebook stores the cell as lines or as one string */
+		return cell.cell_type === 'code' ? source : source.replace(/^/gm, '# ');
 	}).join('\n');
 }

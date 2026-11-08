@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
 <h2 id="Resolve Value Query">Resolve Value Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides access to flowR's value tracking (which is configurable)\
 _This query is requested with the type `resolve-value`._\
 Run in the REPL: `:query @resolve-value (<crit>;...) <code | file://path>`
-
 
 With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
 The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information).
@@ -13,8 +12,6 @@ Using the example code `x <- 1
 y <-2
 print(x)
 print(y)` (with newlines), the following query returns all values of `x` in the code:
-
-
 
 ```json
 [
@@ -28,34 +25,24 @@ print(y)` (with newlines), the following query returns all values of `x` in the 
 ]
 ```
 
-
 (This can be shortened to `@resolve-value (3@x;4@y) "x <- 1\ny <-2\nprint(x)\nprint(y)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **resolve-value** (3 ms)\
+Query: **resolve-value** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ Values for {3@x, 4@y}\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [1L, 1L], [2L, 2L]\
-_All queries together required ≈4 ms (1ms accuracy, total 4 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [1L, 1L], [2L, 2L]
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
 {
   "resolve-value": {
-    ".meta": {
-      "timing": 3
-    },
+    ".meta": {},
     "results": {
       "{\"type\":\"resolve-value\",\"criteria\":[\"3@x\",\"4@y\"]}": {
         "values": [
@@ -64,22 +51,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "elements": [
               {
                 "type": "interval",
-                "start": {
-                  "type": "number",
-                  "value": {
-                    "markedAsInt": true,
-                    "num": 1,
-                    "complexNumber": false
-                  }
-                },
-                "end": {
-                  "type": "number",
-                  "value": {
-                    "markedAsInt": true,
-                    "num": 1,
-                    "complexNumber": false
-                  }
-                },
+                "start": {"type":"number","value":{"markedAsInt":true,"num":1,"complexNumber":false}},
+                "end": {"type":"number","value":{"markedAsInt":true,"num":1,"complexNumber":false}},
                 "startInclusive": true,
                 "endInclusive": true
               }
@@ -90,22 +63,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "elements": [
               {
                 "type": "interval",
-                "start": {
-                  "type": "number",
-                  "value": {
-                    "markedAsInt": true,
-                    "num": 2,
-                    "complexNumber": false
-                  }
-                },
-                "end": {
-                  "type": "number",
-                  "value": {
-                    "markedAsInt": true,
-                    "num": 2,
-                    "complexNumber": false
-                  }
-                },
+                "start": {"type":"number","value":{"markedAsInt":true,"num":2,"complexNumber":false}},
+                "end": {"type":"number","value":{"markedAsInt":true,"num":2,"complexNumber":false}},
                 "startInclusive": true,
                 "endInclusive": true
               }
@@ -115,21 +74,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       }
     }
   },
-  ".meta": {
-    "timing": 4
-  }
+  ".meta": {}
 }
 ```
 
-
-
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 x <- 1
@@ -142,10 +93,8 @@ print(y)
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 9 (linked), 13 (linked)) during the analysis.
-
-
 
 ```mermaid
 flowchart LR
@@ -156,9 +105,9 @@ flowchart LR
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-6* (**id: 2**)
     arg: (0, 1)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     4{{"`*#91;RNumber#93;* **2**
       *2.5* (**id: 4**)`"}}
     3["`*#91;RSymbol#93;* **y**
@@ -185,7 +134,7 @@ print`"]
     0 -->|"defined-by"| 1
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_-
+    2 -.->|"reads, calls"| built-in:_60_-
     linkStyle 5 stroke:gray;
     2 -.->|"flow"| 4
     linkStyle 6 stroke:gray,color:gray;
@@ -195,7 +144,7 @@ print`"]
     3 -->|"defined-by"| 4
     5 -->|"reads, arg"| 4
     5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:_-
+    5 -.->|"reads, calls"| built-in:_60_-
     linkStyle 12 stroke:gray;
     5 -.->|"flow"| 7
     linkStyle 13 stroke:gray,color:gray;
@@ -215,25 +164,14 @@ print`"]
     linkStyle 22 stroke:gray;
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Resolve Value Query query is `executeSearch` in [`./src/queries/catalog/resolve-value-query/resolve-value-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/resolve-value-query/resolve-value-query-executor.ts).
+The Resolve Value Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/resolve-value-query/resolve-value-query-executor.ts#L20"><code><span title="Executes a resolve-value query.">executeResolveValueQuery</span></code></a>.
 
 </details>

@@ -19,14 +19,18 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { EdgeType } from './edge';
 import type { ControlDependency, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
-import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
-import { DefaultBuiltinConfig, getDefaultProcessor } from '../environments/default-builtin-config';
-import type { FlowrSearchLike } from '../../search/flowr-search-builder';
-import { guard } from '../../util/assert';
-import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import { getDefaultProcessor } from '../environments/default-builtin-config';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { HookInformation } from '../hooks';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
+
+function normalizeCds(cds: readonly ControlDependency[] | undefined): ControlDependency[] | undefined {
+	return cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }));
+}
+
+function normalizeReference<T extends { nodeId: NodeId, cds?: readonly ControlDependency[] }>(ref: T): T {
+	return { ...ref, nodeId: NodeId.normalize(ref.nodeId), cds: normalizeCds(ref.cds) };
+}
 
 /**
  * Creates an empty dataflow graph.
@@ -60,16 +64,16 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for a **function definition** (V1).
-	 * @param id - AST node ID
-	 * @param subflow - Subflow data graph for the defined function.
+	 * @param id         - AST node ID
+	 * @param subflow    - Subflow data graph for the defined function.
 	 * @param exitPoints - Node IDs for exit point vertices.
-	 * @param info - Additional/optional properties.
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * @param info       - Additional/optional properties.
+	 * @param asRoot     - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: readonly ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
@@ -79,26 +83,26 @@ export class DataflowGraphBuilder<
 				...subflow,
 				entryPoint:        NodeId.normalize(subflow.entryPoint),
 				graph:             new Set([...subflow.graph].map(NodeId.normalize)),
-				out:               subflow.out.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
-				in:                subflow.in.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
-				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
+				out:               subflow.out.map(normalizeReference),
+				in:                subflow.in.map(normalizeReference),
+				unknownReferences: subflow.unknownReferences.map(normalizeReference),
 				hooks:             subflow.hooks ?? [],
 			},
 			mode:       info?.mode,
-			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: NodeId.normalize(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) }) :
+			exitPoints: exitPoints.map(e => typeof e === 'object' ? normalizeReference(e) :
 				({ nodeId: NodeId.normalize(e), type: ExitPointType.Default, cds: undefined })
 			),
-			cds:         info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
+			cds:         normalizeCds(info?.cds),
 			environment: info?.environment,
 		}, asRoot);
 	}
 
 	/**
 	 * Adds a **vertex** for a **function call** (V2).
-	 * @param id - AST node ID
-	 * @param name - Function name
-	 * @param args - Function arguments; may be empty
-	 * @param info - Additional/optional properties.
+	 * @param id     - AST node ID
+	 * @param name   - Function name
+	 * @param args   - Function arguments; may be empty
+	 * @param info   - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
@@ -109,7 +113,7 @@ export class DataflowGraphBuilder<
 			onlyBuiltIn?:        boolean,
 			environment?:        REnvironmentInformation,
 			builtInEnvironment?: IEnvironment,
-			cds?:                ControlDependency[],
+			cds?:                readonly ControlDependency[],
 			origin?:             FunctionOriginInformation[]
 			link?:               DataflowGraphVertexAstLink,
 			omitArgs?:           boolean
@@ -122,9 +126,9 @@ export class DataflowGraphBuilder<
 			name,
 			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: NodeId.normalize(a.nodeId), cds: undefined }),
 			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
-			cds:         info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
+			cds:         normalizeCds(info?.cds),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
-			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? BuiltInProcName.Function ],
+			origin:      info?.origin ?? [getDefaultProcessor(name) ?? BuiltInProcName.Function],
 			link:        info?.link
 		}, asRoot);
 		if(!info?.omitArgs) {
@@ -164,19 +168,19 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for a **variable definition** (V4).
-	 * @param id - AST node ID
-	 * @param name - Variable name
-	 * @param info - Additional/optional properties.
+	 * @param id     - AST node ID
+	 * @param name   - Variable name
+	 * @param info   - Additional/optional properties.
 	 * @param asRoot - Should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name?: string,
-		info?: { cds?: ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
+		info?: { cds?: readonly ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
 			id:  NodeId.normalize(id),
 			name,
-			cds: info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
+			cds: normalizeCds(info?.cds),
 		}, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -188,9 +192,9 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests.
-	 * @param id - AST node id
-	 * @param name - Variable name
-	 * @param info - Additional/optional properties; i.e., scope, when, or environment.
+	 * @param id     - AST node id
+	 * @param name   - Variable name
+	 * @param info   - Additional/optional properties; i.e., scope, when, or environment.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
@@ -203,23 +207,23 @@ export class DataflowGraphBuilder<
 			environment: undefined
 		}, {
 			...info,
-			cds: info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }))
+			cds: normalizeCds(info?.cds)
 		} as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
 
 	/**
 	 * Adds a **vertex** for a **constant value** (V6).
-	 * @param id - AST node ID
+	 * @param id      - AST node ID
 	 * @param options - Additional/optional properties;
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * @param asRoot  - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public constant(id: NodeId, options?: { cds?: ControlDependency[] }, asRoot: boolean = true) {
+	public constant(id: NodeId, options?: { cds?: readonly ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
 			id:          NodeId.normalize(id),
-			cds:         options?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
+			cds:         normalizeCds(options?.cds),
 			environment: undefined
 		}, asRoot);
 	}
@@ -234,34 +238,6 @@ export class DataflowGraphBuilder<
 		return this.addEdge(NodeId.normalize(from), NodeId.normalize(to as NodeId), type);
 	}
 
-	private async queryHelper(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider, type: EdgeType) {
-		/*
-		 * the search executor reaches back into the dataflow graph (via the queries and the linter), so importing it
-		 * up here would make this cycle load-bearing: whoever is loaded first sees the other half-initialized, which
-		 * breaks at module-evaluation time (a subclass extending an `undefined` base). We only need it once a query
-		 * is actually run, which is long after every module is up.
-		 */
-		const { runSearch } = await import('../../search/flowr-search-executor');
-		let fromId: NodeId;
-		if('nodeId' in from) {
-			fromId = from.nodeId;
-		} else {
-			const result = (await runSearch(from.query, data)).getElements();
-			guard(result.length === 1, `from query result should yield exactly one node, but yielded ${result.length}`);
-			fromId = result[0].node.info.id;
-		}
-
-		let toIds: DataflowGraphEdgeTarget;
-		if('target' in to) {
-			toIds = to.target;
-		} else {
-			const result = (await runSearch(to.query, data)).getElements();
-			toIds = result.map(r => r.node.info.id);
-		}
-
-		return this.edgeHelper(fromId, toIds, type);
-	}
-
 	/**
 	 * Adds a **read edge**.
 	 * @param from - NodeId of the source vertex
@@ -270,16 +246,6 @@ export class DataflowGraphBuilder<
 	 */
 	public reads(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Reads);
-	}
-
-	/**
-	 * Adds a **read edge** with a query for the from and/or to vertices.
-	 * @param from - Either a node id or a query to find the node id.
-	 * @param to - Either a node id or a query to find the node id.
-	 * @param input - The input to search in i.e. the dataflow graph.
-	 */
-	public readsQuery(from: FromQueryParam, to: ToQueryParam, input: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, input, EdgeType.Reads);
 	}
 
 	/**
@@ -292,27 +258,11 @@ export class DataflowGraphBuilder<
 	}
 
 	/**
-	 * Adds a **defined-by edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public definedByQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.DefinedBy);
-	}
-
-	/**
 	 * Adds a **call edge** with from as caller, and to as callee.
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public calls(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Calls);
-	}
-
-	/**
-	 * Adds a **call edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public callsQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.Calls);
 	}
 
 	/**
@@ -324,27 +274,11 @@ export class DataflowGraphBuilder<
 	}
 
 	/**
-	 * Adds a **return edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public returnsQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.Returns);
-	}
-
-	/**
 	 * Adds a **defines-on-call edge** with from as variable, and to as its definition
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinesOnCall);
-	}
-
-	/**
-	 * Adds a **defines-on-call edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public definesOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.DefinesOnCall);
 	}
 
 	/**
@@ -356,27 +290,11 @@ export class DataflowGraphBuilder<
 	}
 
 	/**
-	 * Adds a **defined-by-on-call edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public definedByOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.DefinedByOnCall);
-	}
-
-	/**
 	 * Adds an **argument edge** with from as function call, and to as argument.
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Argument);
-	}
-
-	/**
-	 * Adds a **argument edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public argumentQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.Argument);
 	}
 
 	/**
@@ -388,27 +306,11 @@ export class DataflowGraphBuilder<
 	}
 
 	/**
-	 * Adds a **non-standard evaluation edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public nseQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.NonStandardEvaluation);
-	}
-
-	/**
 	 * Adds a **side-effect-on-call edge** with from as vertex, and to as vertex.
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall);
-	}
-
-	/**
-	 * Adds a **side-effect-on-call edge** with a query for the from and/or to vertices.
-	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
-	 */
-	public sideEffectOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
-		return this.queryHelper(from, to, data, EdgeType.SideEffectOnCall);
 	}
 
 	/**
@@ -421,22 +323,3 @@ export class DataflowGraphBuilder<
 	}
 }
 
-
-/**
- *
- */
-export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
-	const got = DefaultBuiltinConfig.find(e => (e.names as string[]).includes(name));
-	if(got?.type !== 'function') {
-		return undefined;
-	}
-	return (got?.config as { hasUnknownSideEffects: LinkTo<RegExp> | undefined }).hasUnknownSideEffects;
-}
-
-interface Query {
-	query: FlowrSearchLike;
-}
-
-type FromQueryParam = { nodeId: NodeId; } | Query;
-
-type ToQueryParam = { target: DataflowGraphEdgeTarget; } | Query;

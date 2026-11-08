@@ -8,6 +8,7 @@ import { initCommand } from './init';
 import { ts2r } from './lang-4.x/convert-values';
 import type { BaseRShellInformation, SyncParser } from './parser';
 import { retrieveParseDataFromRCode, type RParseRequest } from './retriever';
+import { SecureMode } from '../util/secure-mode';
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
 
@@ -29,7 +30,7 @@ export class RShellExecutor implements SyncParser<string> {
 
 	public constructor(options?: Partial<RShellExecutionOptions>) {
 		this.options = deepMergeObject(getDefaultRShellOptions(), options);
-		this.prerequisites = [initCommand(this.options.eol)];
+		this.prerequisites = [initCommand(this.options.eol, this.options.pipeBind)];
 	}
 
 	/**
@@ -74,6 +75,7 @@ export class RShellExecutor implements SyncParser<string> {
 		command += ';base::quit()';
 		expensiveTrace(executorLog, () => `> ${JSON.stringify(command)}`);
 
+		SecureMode.guard('starting R', this.options.pathToRExecutable);
 		const returns = spawnSync(this.options.pathToRExecutable, this.options.commandLineOptions, {
 			env:         this.options.env,
 			cwd:         this.options.cwd,

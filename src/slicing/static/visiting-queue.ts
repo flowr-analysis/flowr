@@ -1,40 +1,45 @@
 import { type Fingerprint, fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import type { ReadOnlyFlowrAnalyzerGasContext } from '../../project/context/flowr-analyzer-gas-context';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../gas';
 import { slicerLogger } from './static-slicer';
 
-/** How many nodes the traversal visits between two {@link GasFeatureKey.Slicer|gas} checks. */
-const GasCheckEvery = 512;
+const enum SeenAs {
+	Normal     = 1,
+	SideEffect = 2
+}
 
 export class VisitingQueue {
-	private readonly threshold:      number;
-	private timesHitThreshold:       number                   = 0;
-	private readonly seen:           Map<Fingerprint, NodeId> = new Map();
-	private readonly seenByCache:    Set<NodeId>              = new Set();
-	private readonly idThreshold:    Map<NodeId, number>      = new Map();
-	private readonly queue:          NodeToSlice[] = [];
-	private readonly cache?:         Map<Fingerprint, Set<NodeId>> = new Map();
+	private readonly threshold:     number;
+	private timesHitThreshold:      number                   = 0;
+	private readonly seen:          Map<NodeId, Map<Fingerprint, number>> = new Map();
+	private readonly seenByCache:   Set<NodeId>              = new Set();
+	private readonly idThreshold:   Map<NodeId, number>      = new Map();
+	private readonly queue:         NodeToSlice[] = [];
+	private readonly cache?:        Map<Fingerprint, Set<NodeId>> = new Map();
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
 	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
-	public potentialAdditions:       Map<NodeId, [NodeId, NodeToSlice]> = new Map();
-	private cachedCallTargets:       Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
-	/** whether the dataflow graph has a vertex for an id, i.e. whether the traversal could continue from it */
-	private readonly isGraphVertex?: (id: NodeId) => boolean;
-	private readonly gas?:           ReadOnlyFlowrAnalyzerGasContext;
+	public potentialAdditions:      Map<NodeId, [NodeId, NodeToSlice]> = new Map();
+	private readonly graph?:        Pick<DataflowGraph, 'hasVertex' | 'isRoot'>;
+	private readonly global?:       readonly [REnvironmentInformation, Fingerprint];
+	private readonly gas?:          ReadOnlyFlowrAnalyzerGasContext;
 	private stoppedEarly            = false;
+	/** how many nodes pass between two gas checks, see {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} */
+	private readonly gasCheckEvery: number;
 	private untilGasCheck           = 0;
 	/** entries dequeued, see {@link SliceProgress} */
 	private visited                 = 0;
 
-	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, isGraphVertex?: (id: NodeId) => boolean, gas?: ReadOnlyFlowrAnalyzerGasContext) {
+	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, graph?: Pick<DataflowGraph, 'hasVertex' | 'isRoot'>, gas?: ReadOnlyFlowrAnalyzerGasContext, global?: readonly [REnvironmentInformation, Fingerprint]) {
 		this.threshold = threshold;
 		this.cache     = cache;
-		this.isGraphVertex = isGraphVertex;
+		this.graph = graph;
+		this.global = global;
 		this.gas = gas;
+		this.gasCheckEvery = gas?.checkEvery() ?? 0;
 	}
 
 	/**
@@ -47,8 +52,11 @@ export class VisitingQueue {
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		/* a built-in without a vertex is R's own definition (`x <- 1` reads `built-in:<-`), a dead end the traversal
 		 * would drop right back out of, so it only ever widened the result */
-		if(NodeId.isBuiltIn(target) && this.isGraphVertex?.(target) === false) {
+		if(NodeId.isBuiltIn(target) && this.graph?.hasVertex(target) === false) {
 			return;
+		}
+		if(this.global !== undefined && this.graph?.isRoot(target)) {
+			[env, envFingerprint] = this.global;
 		}
 
 		const idCounter = this.idThreshold.get(target) ?? 0;
@@ -58,20 +66,29 @@ export class VisitingQueue {
 		}
 
 		/* we do not include the in call part in the fingerprint as it is 'deterministic' from the source position */
-		const print = fingerprint(target, envFingerprint, onlyForSideEffects);
+		const seenAs = onlyForSideEffects ? SeenAs.SideEffect : SeenAs.Normal;
+		let seenIn = this.seen.get(target);
+		if(seenIn === undefined) {
+			seenIn = new Map();
+			this.seen.set(target, seenIn);
+		}
+		const seenBefore = seenIn.get(envFingerprint) ?? 0;
+		if((seenBefore & seenAs) !== 0) {
+			return;
+		}
+		seenIn.set(envFingerprint, seenBefore | seenAs);
 
-		if(!this.seen.has(print)) {
-			const cached = this.cache?.get(print);
+		if(this.cache !== undefined) {
+			const cached = this.cache.get(fingerprint(target, envFingerprint, onlyForSideEffects));
 			if(cached) {
 				this.seenByCache.add(target);
 				for(const id of cached) {
 					this.queue.push({ id, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 				}
 			}
-			this.idThreshold.set(target, idCounter + 1);
-			this.seen.set(print, target);
-			this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 		}
+		this.idThreshold.set(target, idCounter + 1);
+		this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 	}
 
 	public next(): NodeToSlice {
@@ -86,13 +103,13 @@ export class VisitingQueue {
 
 	/**
 	 * The traversal is synchronous, so a caller can only bound it from within. Gas is polled every
-	 * {@link GasCheckEvery} nodes, which keeps even an enabled check off the per-node path.
+	 * {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} nodes, keeping even an enabled check off the per-node path.
 	 */
 	private outOfGas(): boolean {
 		if(this.gas === undefined || this.untilGasCheck-- > 0) {
 			return this.stoppedEarly;
 		}
-		this.untilGasCheck = GasCheckEvery - 1;
+		this.untilGasCheck = this.gasCheckEvery - 1;
 		if(!this.stoppedEarly && this.gas.checkGas(GasFeatureKey.Slicer) >= GasLevel.Critical) {
 			this.stoppedEarly = true;
 			slicerLogger.warn(`slicing ran out of gas, the slice is incomplete (${GasWikiRef})`);
@@ -104,17 +121,10 @@ export class VisitingQueue {
 		return this.idThreshold.has(id);
 	}
 
-	public memoizeCallTargets(id: NodeId, targets: () => Set<DataflowGraphVertexInfo>): Set<DataflowGraphVertexInfo> {
-		if(!this.cachedCallTargets.has(id)) {
-			this.cachedCallTargets.set(id, targets());
-		}
-		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
-	}
-
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set([...this.seen.values(), ...this.seenByCache]),
+			result:            new Set([...this.seen.keys(), ...this.seenByCache]),
 			...(this.stoppedEarly ? { stoppedEarly: true, progress: { visited: this.visited, frontier: this.queue.length } } : {})
 		};
 	}

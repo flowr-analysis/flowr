@@ -22,8 +22,13 @@ import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/t
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import { TaintAnalysis, type TaintAnalysisBuilder } from '../taint-analysis/builder/taint-analysis';
+import type { DataflowGraph } from '../dataflow/graph/graph';
+import { VertexType } from '../dataflow/graph/vertex';
+import { Dataflow } from '../dataflow/graph/df-helper';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
+import type { FnInfo } from '../dataflow/environments/query-fn-props';
+import type { Identifier } from '../dataflow/environments/identifier';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -89,6 +94,16 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	inspectContext(): ReadOnlyFlowrAnalyzerContext
 	/**
+	 * What flowR knows about the function `name`, whether that is one of its own built-ins, a package function
+	 * the signature database carries, or both; see {@link fnInfo}.
+	 *
+	 * A string is read the way R source spells a name, so `'dplyr::lead'` and `'dplyr:::internal'` name the
+	 * package function rather than a symbol with a `::` in it (pass an {@link Identifier} for that one).
+	 * @param name    - The function to ask about, `'dplyr::lead'` or `Identifier.make('lead', 'dplyr')` to pin the package down.
+	 * @param version - The package version to answer for, the one the analysis assumes if omitted.
+	 */
+	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined
+	/**
 	 * Get the parse output for the request.
 	 *
 	 * The parse result type depends on the {@link KnownParser} used by the analyzer.
@@ -102,8 +117,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Parse standalone R code provided as a string or via the `file://` protocol.
-	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 * @param data - The R code to parse, either as a string or as a `file://` URL.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 */
 	parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree;
 	/**
@@ -119,8 +134,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 
 	/**
 	 * Normalize standalone R code provided as a string or via the `file://` protocol.
-	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 * @param data - The R code to normalize, either as a string or as a `file://` URL.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 */
 	normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst;
 	/**
@@ -199,6 +214,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private readonly cache:  FlowrAnalyzerCache<Parser>;
 	private readonly ctx:    FlowrAnalyzerContext;
 	private parserInfo:      KnownParserInformation | undefined;
+	/** the graph whose calls are already being qualified in the background, see {@link qualifyInBackground} */
+	private qualifying:      DataflowGraph | undefined;
 
 	/**
 	 * Create a new analyzer instance.
@@ -229,6 +246,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
 		return this.ctx.inspect();
+	}
+
+	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
+		return this.ctx.functionInfo(name, version);
 	}
 
 	public reset() {
@@ -268,40 +289,19 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
-		for(const r of request) {
-			if(typeof r === 'string') {
-				const trimmed = r.slice(fileProtocol.length);
-				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
-					this.addAnalysisRequest({ request: 'project', content: trimmed });
-				} else {
-					this.addRequestFromInput(r);
-				}
-			} else {
-				this.addAnalysisRequest(r);
+		/* added at once, so that every request knows the folders of the others when its files are added */
+		this.ctx.addRequests(request.flatMap((r): RAnalysisRequest | readonly RAnalysisRequest[] => {
+			if(typeof r !== 'string') {
+				return r;
 			}
-		}
+			const trimmed = r.slice(fileProtocol.length);
+			return r.startsWith(fileProtocol) && !isFilePath(trimmed) ? { request: 'project', content: trimmed } : requestFromInput(r);
+		}));
 		return this;
 	}
 
 	public addFile(...f: (string | FlowrFileProvider | RParseRequestFromFile)[]): this {
 		this.ctx.addFiles(f);
-		return this;
-	}
-
-	/**
-	 * Add a request created from the given input.
-	 * This is a convenience method that uses {@link requestFromInput} internally.
-	 */
-	private addRequestFromInput(input: Parameters<typeof requestFromInput>[0]): this {
-		this.addAnalysisRequest(requestFromInput(input));
-		return this;
-	}
-
-	/**
-	 * Add one or multiple requests to analyze the builder.
-	 */
-	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
-		this.ctx.addRequests((Array.isArray(request) ? request : [request]) as RAnalysisRequest[]);
 		return this;
 	}
 
@@ -322,7 +322,12 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
-		return this.cache.dataflow(force);
+		const dataflow = await this.cache.dataflow(force);
+		if(this.qualifying !== dataflow.graph) {
+			this.qualifying = dataflow.graph;
+			qualifyInBackground(dataflow.graph);
+		}
+		return dataflow;
 	}
 
 	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
@@ -374,4 +379,24 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 		return this.parser?.close();
 	}
+}
+
+/** Qualifies calls (see {@link Dataflow.qualify}) in idle time on unreferenced timers, so later queries find it done. */
+function qualifyInBackground(graph: DataflowGraph): void {
+	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
+	let next = 0;
+	const step = () => {
+		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
+			Dataflow.qualify(calls[next], graph, false);
+		}
+		if(next < calls.length) {
+			later(step);
+		}
+	};
+	later(step);
+}
+
+/** an unreferenced timer where there are such (node), a plain one elsewhere (the browser returns a number) */
+function later(step: () => void): void {
+	(setTimeout(step, 0) as { unref?: () => void }).unref?.();
 }

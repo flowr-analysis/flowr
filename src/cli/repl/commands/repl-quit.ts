@@ -5,7 +5,7 @@ import { exitSafe } from '../../../util/proc';
 export const quitCommand: ReplCommand = {
 	description:   'End the repl',
 	isCodeCommand: false,
-	aliases:       [ 'q', 'exit' ],
+	aliases:       ['q', 'exit'],
 	usageExample:  ':quit',
 	script:        false,
 	fn:            () => {

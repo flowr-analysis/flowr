@@ -5,7 +5,9 @@
 import type { ControlDependency, KillReference } from '../info';
 import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
-import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference, InGraphIdentifierDefinition } from './identifier';
+import { anyRemovalMarker, noteRemovalMarker, removalMarkerOf } from './removal-marker';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from './identifier';
 import { withAppliedCds } from './reference-to-maybe';
 
@@ -61,6 +63,11 @@ export function cancelRevivedKills(kills: readonly KillReference[], writes: read
 	return remaining;
 }
 
+/** the options and graphics state flowR keeps as `#...` variables, which `rm(list = ls())` does not touch in R */
+function isAmbientState(key: BrandedIdentifier): boolean {
+	return key.startsWith('#');
+}
+
 function isBuiltInDef(d: IdentifierDefinition): boolean {
 	return d.type === ReferenceType.BuiltInFunction || d.type === ReferenceType.BuiltInConstant;
 }
@@ -87,7 +94,7 @@ function weakenAll(env: Environment, cds: readonly ControlDependency[], except?:
 		return;
 	}
 	for(const [key, defs] of env.memory) {
-		if(except?.has(key)) {
+		if(except?.has(key) || isAmbientState(key)) {
 			continue;
 		}
 		if(defs.some(d => !isBuiltInDef(d))) {
@@ -103,7 +110,7 @@ function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifi
 		return;
 	}
 	for(const [key, defs] of env.memory) {
-		if(except?.has(key) || defs.every(isBuiltInDef)) {
+		if(except?.has(key) || isAmbientState(key) || defs.every(isBuiltInDef)) {
 			continue;
 		}
 		const kept = defs.filter(isBuiltInDef);
@@ -116,18 +123,46 @@ function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifi
 	env.cache?.clear();
 }
 
+const NoRemovals: readonly NodeId[] = [];
+
+/** The calls that removed `name` from the scope it would otherwise still be bound in. */
+export function removalsOf(name: Identifier, env: REnvironmentInformation): readonly NodeId[] {
+	const plain = Identifier.getName(name);
+	if(!anyRemovalMarker(plain)) {
+		return NoRemovals;
+	}
+	const marker = removalMarkerOf(plain);
+	let nodes: NodeId[] | undefined = undefined;
+	for(let e: Environment | undefined = env.current; e !== undefined && !e.builtInEnv; e = e.parent) {
+		const defs = e.memory.get(marker);
+		if(defs === undefined) {
+			continue;
+		}
+		for(const def of defs) {
+			const definedAt = (def as Partial<InGraphIdentifierDefinition>).definedAt;
+			if(definedAt !== undefined) {
+				(nodes ??= []).push(definedAt);
+			}
+		}
+	}
+	return nodes ?? NoRemovals;
+}
+
 /** Groups the `named` kills by the name they remove, so removals from separate branches are decided together. */
-function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, IdentifierReference[]> {
-	const named = new Map<Identifier, IdentifierReference[]>();
+function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, { refs: IdentifierReference[], by?: NodeId[] }> {
+	const named = new Map<Identifier, { refs: IdentifierReference[], by?: NodeId[] }>();
 	for(const kill of kills) {
 		if(kill.kind !== 'named' || kill.reference.name === undefined) {
 			continue;
 		}
 		const group = named.get(kill.reference.name);
-		if(group) {
-			group.push(kill.reference);
+		if(group === undefined) {
+			named.set(kill.reference.name, { refs: [kill.reference], by: kill.killedBy !== undefined ? [kill.killedBy] : undefined });
 		} else {
-			named.set(kill.reference.name, [kill.reference]);
+			group.refs.push(kill.reference);
+			if(kill.killedBy !== undefined) {
+				(group.by ??= []).push(kill.killedBy);
+			}
 		}
 	}
 	return named;
@@ -138,9 +173,18 @@ function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
 	return refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
 }
 
-function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[]): void {
+function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[], killedBy: readonly NodeId[] | undefined): void {
 	if(isCertainRemoval(refs)) {
+		const removed = env.lookup(Identifier.getName(name)) !== undefined;
 		env.remove(name);
+		if(removed && killedBy !== undefined) {
+			const plain = Identifier.getName(name);
+			const marker = removalMarkerOf(plain);
+			noteRemovalMarker(plain);
+			env.writableMemory.set(marker, killedBy.map(by => (
+				{ name: marker, type: ReferenceType.Variable, nodeId: by, definedAt: by, cds: undefined }
+			)));
+		}
 	} else {
 		// the definition survives unless the killing branch executed
 		for(const ref of refs) {
@@ -170,8 +214,8 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 			weakenAll(current, kill.cds ?? [], kill.except);
 		}
 	}
-	for(const [name, refs] of groupNamedKills(kills)) {
-		applyNamedKill(current, name, refs);
+	for(const [name, { refs, by }] of groupNamedKills(kills)) {
+		applyNamedKill(current, name, refs, by);
 	}
 	return { current, level: env.level };
 }
@@ -183,7 +227,7 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 	}
 	return kills.map(k => {
 		if(k.kind === 'named') {
-			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) } };
+			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) }, killedBy: k.killedBy };
 		}
 		return { ...k, cds: withCds(k.cds, cds) };
 	});
@@ -199,7 +243,7 @@ export function dropKilledWrites(out: readonly IdentifierReference[], kills: rea
 		return out;
 	}
 	const removed = new Set<BrandedIdentifier>();
-	for(const [name, refs] of groupNamedKills(kills)) {
+	for(const [name, { refs }] of groupNamedKills(kills)) {
 		if(isCertainRemoval(refs)) {
 			removed.add(Identifier.getName(name));
 		}

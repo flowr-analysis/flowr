@@ -1,10 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
 _This query is requested with the type `does-call`._\
 Run in the REPL: `:query @does-call (<criterion>:$<id>|"<name>") <code | file://path>`
-
 
 This query checks whether a function calls another function matching given constraints.
 
@@ -16,8 +15,6 @@ f("1 + 1")
 ```
 
 the following query checks whether the call to `f` calls `eval`:
-
-
 
 ```json
 [
@@ -34,55 +31,27 @@ the following query checks whether the call to `f` calls `eval`:
 ]
 ```
 
-
 (This can be shortened to `@does-call (2@f:"eval")` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
-
-
 
 _Results (prettified and summarized):_
 
-Query: **does-call** (2ms)\
+Query: **does-call**\
 &nbsp;&nbsp;- **calls-eval** found:\
-&nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "does-call": {
-    ".meta": {
-      "timing": 2
-    },
-    "results": {
-      "calls-eval": {
-        "call": 15
-      }
-    }
-  },
-  ".meta": {
-    "timing": 2
-  }
-}
+{"does-call":{".meta":{},"results":{"calls-eval":{"call":15}}},".meta":{}}
 ```
-
-
 
 </details>
 
-
 <details> <summary style="color:gray">Original Code</summary>
-
-
-
 
 ```r
 f <- function(x) { eval(x) };
@@ -93,13 +62,19 @@ f("1 + 1")
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
 We encountered unknown side effects (with ids: 8) during the analysis.
-
-
 
 ```mermaid
 flowchart LR
+    %% Environment of 10 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%   #option:*:    {**#option:*** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #options:     {**#options** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #graphics:    {**#graphics** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #palette:     {**#palette** (id: 8, type: Variable, cds: {}, def. @8)}
+    %%   #search-path: {**#search-path** (id: 8, type: Variable, cds: {}, def. @8)}
     10["`*#91;RFunctionDefinition#93;* **function**
       *1.6-28* (**id: 10**)`"]
 
@@ -123,20 +98,20 @@ eval`"]
     9[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.18* (**id: 9**)
     arg: (8)`"]]
-    built-in:_["`Built-In:
+    built-in:_123_["`Built-In:
 #123;`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_123_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 10)`"]
     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *1.1-28* (**id: 11**)
     arg: (0, 10)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     13{{"`*#91;RString#93;* **#34;1 #43; 1#34;**
-      *2.3-9* (**id: 13**)`"}}
+      *2.3-9* (**id: 13**, 15+)`"}}
     %% Environment of 15 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -155,23 +130,24 @@ end
     linkStyle 5 stroke:gray;
     8 -.->|"flow"| 9
     linkStyle 6 stroke:gray,color:gray;
+    8 -->|"side-effect-on-call"| 15
     9 -->|"returns, arg"| 8
-    9 -.->|"reads, calls"| built-in:_
-    linkStyle 8 stroke:gray;
+    9 -.->|"reads, calls"| built-in:_123_
+    linkStyle 9 stroke:gray;
 10 -.-|function| flow-10
 
     10 -.->|"flow"| 0
-    linkStyle 10 stroke:gray,color:gray;
+    linkStyle 11 stroke:gray,color:gray;
     0 -->|"defined-by, flow"| 11
     0 -->|"defined-by"| 10
     11 -->|"reads, arg"| 10
     11 -->|"returns, arg"| 0
-    11 -.->|"reads, calls"| built-in:_-
-    linkStyle 15 stroke:gray;
+    11 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 16 stroke:gray;
     11 -.->|"flow"| 13
-    linkStyle 16 stroke:gray,color:gray;
-    13 -.->|"flow"| 15
     linkStyle 17 stroke:gray,color:gray;
+    13 -.->|"flow"| 15
+    linkStyle 18 stroke:gray,color:gray;
     13 -->|"def-on-call"| 1
     15 -->|"reads, arg"| 13
     15 -->|"reads"| 0
@@ -179,25 +155,14 @@ end
     15 -->|"calls"| 10
 ```
 
-	
-
-
 </details>
-
-
 
 </details>
 	
-
-
-
-	
-		
-
 <details>
 
 <summary style="color:gray">Implementation Details</summary>
 
-Responsible for the execution of the Does-Call Query query is `executeDoesCallQuery` in [`./src/queries/catalog/does-call-query/does-call-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/does-call-query/does-call-query-executor.ts).
+The Does-Call Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/does-call-query/does-call-query-executor.ts#L15"><code><span title="Execute does call queries on the given analyzer.">executeDoesCallQuery</span></code></a>.
 
 </details>

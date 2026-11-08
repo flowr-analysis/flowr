@@ -1,14 +1,15 @@
+import { Identifier } from '../../dataflow/environments/identifier';
+import { unescapeRString } from '../../dataflow/eval/values/string/string-constants';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
 import { unliftRValue, unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
 import { startAndEndsWith } from '../../util/text/strings';
-import { Identifier } from '../../dataflow/environments/identifier';
-import { Resolve } from '../../dataflow/environments/resolve-helper';
-import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /**
  * Returns the argument name of a function argument
@@ -121,27 +122,11 @@ export function unquoteArgument(argument: string | undefined): string | undefine
 }
 
 /**
- * Unescapes escaped quotes like `\'`, `\"` back into actual single and double quotes
- */
-export function unescapeQuotes(argument: undefined): undefined;
-export function unescapeQuotes(argument: string): string;
-export function unescapeQuotes(argument: string | undefined): string | undefined;
-export function unescapeQuotes(argument: string | undefined) {
-	if(argument === undefined) {
-		return undefined;
-	}
-	return argument.replaceAll('\\\'', '\'').replaceAll('\\"', '"');
-}
-
-/**
- * Unescapes escape sequences like `\r`, `\n`, `\t`, `\'`, `\"`, `\\` back into actual newlines, tabs, quotes, and backslashes
+ * The characters the content of an R string literal stands for, see {@link unescapeRString}; as written where R would reject it
  */
 export function unescapeSpecialChars(argument: undefined): undefined;
 export function unescapeSpecialChars(argument: string): string;
 export function unescapeSpecialChars(argument: string | undefined): string | undefined;
 export function unescapeSpecialChars(argument: string | undefined) {
-	if(argument === undefined) {
-		return undefined;
-	}
-	return unescapeQuotes(argument).replaceAll('\\r', '\r').replaceAll('\\n', '\n').replaceAll('\\t', '\t').replaceAll('\\\\', '\\');
+	return argument === undefined ? undefined : unescapeRString(argument) ?? argument;
 }

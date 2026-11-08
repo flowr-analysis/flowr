@@ -4,6 +4,8 @@
  * If started with arguments, it may be used to run a single of the flowR scripts.
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
+/* must stay first: it caches the compilation of everything loaded after it */
+import './compile-cache';
 import type { DeepReadonly } from 'ts-essentials';
 import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
@@ -38,16 +40,19 @@ import fs from 'fs';
 import path from 'path';
 import { retrieveEngineInstances } from '../engines';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { SecureMode } from '../util/secure-mode';
 
 export const toolName = 'flowr';
 
 export interface FlowrCliOptions {
 	'config-file':      string
 	'config-json':      string
+	'trust-config':     boolean
 	'no-ansi':          boolean
 	'no-fs':            boolean
 	'r-path':           string | undefined
 	'r-session-access': boolean
+	secure:             boolean
 	execute:            string | undefined
 	help:               boolean
 	port:               number
@@ -56,10 +61,12 @@ export interface FlowrCliOptions {
 	verbose:            boolean
 	version:            boolean
 	ws:                 boolean
+	'ws-allow-origin':  string[] | undefined
 	'default-engine':   string
 
-	'engine.r-shell.disabled': boolean
-	'engine.r-shell.r-path':   string | undefined
+	'engine.r-shell.disabled':  boolean
+	'engine.r-shell.r-path':    string | undefined
+	'engine.r-shell.pipe-bind': boolean
 
 	'engine.tree-sitter.disabled':              boolean
 	'engine.tree-sitter.wasm-path':             string | undefined
@@ -91,7 +98,16 @@ export const optionHelp = [
 const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
+log.debug(`flowR ${flowrVersion().toString()}, node ${process.version}, ${process.platform}/${process.arch}`);
 log.info('running with options', options);
+
+if(options.secure) {
+	SecureMode.enable();
+}
+if(SecureMode.isEnabled() && options['r-session-access']) {
+	console.error('The secure mode forbids --r-session-access, as it would run R code');
+	process.exit(1);
+}
 
 if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
 	log.info('disabling ansi colors');
@@ -119,7 +135,10 @@ function createConfig(): FlowrConfig {
 					process.exit(1);
 				}
 			}
-			config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
+			// a file named by the user is trusted, a flowr.json found in the analyzed project is not
+			config = options['config-file']
+				? FlowrConfig.fromFile(path.resolve(options['config-file']))
+				: FlowrConfig.fromFile(defaultConfigFile, process.cwd(), options['trust-config']);
 		}
 	}
 
@@ -128,12 +147,27 @@ function createConfig(): FlowrConfig {
 	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
+		const engine = <E extends EngineConfig>(values: E): void => {
+			const engines = c.engines as EngineConfig[];
+			const at = engines.findIndex(e => e.type === values.type);
+			const given = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
+			if(at < 0) {
+				engines.push(given as E);
+			} else {
+				engines[at] = { ...engines[at], ...given };
+			}
+		};
+
 		if(!options['engine.r-shell.disabled']) {
-			c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
+			engine({
+				type:     'r-shell',
+				rPath:    options['r-path'] || options['engine.r-shell.r-path'],
+				pipeBind: options['engine.r-shell.pipe-bind']
+			});
 		}
 
 		if(!options['engine.tree-sitter.disabled']) {
-			c.engines.push({
+			engine({
 				type:               'tree-sitter',
 				wasmPath:           options['engine.tree-sitter.wasm-path'],
 				treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
@@ -241,13 +275,15 @@ async function mainServer(useWebSocket: boolean) {
 	// so the common one-shot analysis path does not pay for evaluating it
 	const { FlowRServer } = await import('./repl/server/server');
 	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
-	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper(options['ws-allow-origin']) : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 
 
 async function main() {
 	try {
+		guard(typeof (new Map()).entries().filter === 'function',
+			`flowR requires a JavaScript runtime with Iterator Helper support (e.g. node >= 22), but this is node ${process.version}.`);
 		if(options.server) {
 			await mainServer(options.ws);
 		} else {

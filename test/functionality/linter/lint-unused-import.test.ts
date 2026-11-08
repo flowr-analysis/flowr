@@ -1,8 +1,11 @@
 import { assert, describe, test } from 'vitest';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { LibraryFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/library-functions';
+import { DepType } from '../../../src/project/sigdb/schema';
+
+assumeLoadedPackages('ggplot2');
 
 /** every package here resolves to version `1.0.0` */
 const sigDb = controlledSigDb({
@@ -56,6 +59,36 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a called export keeps the import', parser, 'library(ggplot2)\nggplot()', 'unused-import',
 				[], undefined, { sigDb });
 
+		});
+
+		describe('calls nothing binds', () => {
+			assertLinter('a call the package does not export does not keep the import', parser, 'library(ggplot2)\nhugobar()', 'unused-import',
+				[unused('ggplot2', [1, 1, 1, 16])], meta(1, 0, 0, 1), { sigDb });
+
+			assertLinter('nor does it inside a function body', parser, 'library(ggplot2)\nf <- function() hugobar()\nf()', 'unused-import',
+				[unused('ggplot2', [1, 1, 1, 16])], undefined, { sigDb });
+
+			assertLinter('nor inside a branch', parser, 'library(ggplot2)\nif(x) { hugobar() }', 'unused-import',
+				[unused('ggplot2', [1, 1, 1, 16])], undefined, { sigDb });
+
+			assertLinter('nor before the attach', parser, 'hugobar()\nlibrary(ggplot2)', 'unused-import',
+				[unused('ggplot2', [2, 1, 2, 16])], undefined, { sigDb });
+
+			assertLinter('it excuses none of several attached packages', parser, 'library(ggplot2)\nlibrary(random1)\nhugobar()', 'unused-import',
+				[unused('ggplot2', [1, 1, 1, 16]), unused('random1', [2, 1, 2, 16])], undefined, { sigDb });
+
+			assertLinter('a real use next to it still keeps the import', parser, 'library(ggplot2)\nhugobar()\nggplot()', 'unused-import',
+				[], undefined, { sigDb });
+
+			assertLinter('an export passed to it keeps the import', parser, 'library(ggplot2)\nhugobar(aes)', 'unused-import',
+				[], undefined, { sigDb });
+
+			assertLinter('only the package exporting the name is kept', parser, 'library(ggplot2)\nlibrary(random1)\ntest1()\nhugobar()', 'unused-import',
+				[unused('ggplot2', [1, 1, 1, 16])], undefined, { sigDb });
+
+			assertLinter('a script source() cannot resolve still keeps the import', parser, 'library(ggplot2)\nsource("plots.R")\nhugobar()', 'unused-import',
+				[], undefined, { sigDb });
+
 			assertLinter('require counts just like library', parser, 'require(ggplot2)\nrequire(random1)\naes()', 'unused-import',
 				[unused('random1', [2, 1, 2, 16])], undefined, { sigDb });
 
@@ -64,7 +97,18 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('what counts as a use', () => {
+			const reexporting = { ...controlledSigDb({ dplyr: ['mutate'], tibble: ['glimpse'] }), dependencies: (pkg: string) => pkg === 'dplyr' ? [{ name: 'tibble', type: DepType.Imports }] : undefined };
+			assertLinter('a script source() cannot resolve may use the import', parser, 'library(ggplot2)\nsource("plots.R")', 'unused-import',
+				[], undefined, { sigDb });
+			assertLinter('a name the package may re-export from its imports keeps the import', parser, 'library(dplyr)\nglimpse(mtcars)', 'unused-import',
+				[], undefined, { sigDb: reexporting });
+			assertLinter('an import using neither its own nor a re-exported name is unused', parser, 'library(dplyr)\nx <- 1', 'unused-import',
+				[unused('dplyr', [1, 1, 1, 14])], undefined, { sigDb: reexporting });
+
 			assertLinter('a namespaced call keeps the import', parser, 'library(ggplot2)\nggplot2::ggplot()', 'unused-import',
+				[], undefined, { sigDb });
+
+			assertLinter('an export handed on as a value keeps the import', parser, 'library(ggplot2)\nf <- aes\nf()', 'unused-import',
 				[], undefined, { sigDb });
 
 			assertLinter('a use inside a function body keeps the import', parser, 'library(ggplot2)\nf <- function() aes()\nf()', 'unused-import',
@@ -76,13 +120,26 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a shadowed export does not keep the import', parser, 'library(ggplot2)\naes <- function() 1\naes()', 'unused-import',
 				[unused('ggplot2', [1, 1, 1, 16])], undefined, { sigDb });
 
-			assertLinter('a call we cannot bind yet keeps the import, even when the code defines the name itself', parser,
-				'library(ggplot2)\naes <- function() 1\nf <- function() aes()\nf()', 'unused-import',
-				[], undefined, { sigDb });
-
 			assertLinter('using one package does not excuse the others', parser,
 				'library(p)\nlibrary(ggplot2)\nlibrary(random1)\np::f()\ntest1()', 'unused-import',
 				[unused('ggplot2', [2, 1, 2, 16])], undefined, { sigDb });
+		});
+
+		describe('an attach inside an expression is unused all the same, but cannot be cut out', () => {
+			assertLinter('an assigned result', parser, 'ok <- require(ggplot2)', 'unused-import',
+				[unused('ggplot2', [1, 7, 1, 22], false)], undefined, { sigDb });
+
+			assertLinter('a tested result', parser, 'if(!require(ggplot2)) install.packages("ggplot2")', 'unused-import',
+				[unused('ggplot2', [1, 5, 1, 20], false)], undefined, { sigDb });
+
+			assertLinter('the argument of a call nothing binds', parser, 'hugobar(require(ggplot2))', 'unused-import',
+				[unused('ggplot2', [1, 9, 1, 24], false)], undefined, { sigDb });
+
+			assertLinter('the argument of a wrapper silencing it', parser, 'suppressPackageStartupMessages(library(ggplot2))', 'unused-import',
+				[unused('ggplot2', [1, 32, 1, 47], false)], undefined, { sigDb });
+
+			assertLinter('in parentheses', parser, '(library(ggplot2))', 'unused-import',
+				[unused('ggplot2', [1, 2, 1, 17], false)], undefined, { sigDb });
 		});
 
 		describe('quick fix', () => {

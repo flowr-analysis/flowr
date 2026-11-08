@@ -5,7 +5,7 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
 import { SourceRange } from '../../util/range';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
@@ -15,11 +15,9 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
-import { log } from '../../util/log';
+import { searchLogger } from '../search-logger';
 import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
-
-export const searchLogger = log.getSubLogger({ name: 'search' });
 
 /**
  * This is a union of all possible generator node types
@@ -32,9 +30,6 @@ export type FlowrSearchGeneratorNode = {
 }[GeneratorNames];
 
 export type GeneratorNames = keyof typeof generators;
-
-export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode & { name: Name };
-
 
 /**
  * All supported generators!
@@ -78,7 +73,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 
 	if(line && line < 0) {
 		guard(normalize.ast.files.length === 1, 'Currently, negative line numbers are only supported for single-file inputs');
-		const maxLines = normalize.ast.files[0].root.info.fullRange?.[2] ??
+		const maxLines = SourceRange.getEndLine(normalize.ast.files[0].root.info.fullRange) ??
 			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0
@@ -128,8 +123,11 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		}
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
-		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from, args.certainty)) {
-			nodes.add({ node: idMap.get(node) as RNode<ParentInformation> });
+		for(const id of (queryDef.flattenInvolvedNodes?.(content as BaseQueryResult, args.from, args.certainty) ?? [])) {
+			const node = NodeId.nodeOf(id, idMap);
+			if(node !== undefined) {
+				nodes.add({ node });
+			}
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}
@@ -146,7 +144,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	})));
 }
 
-async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
 		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);

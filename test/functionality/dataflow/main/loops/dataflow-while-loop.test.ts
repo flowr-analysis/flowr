@@ -44,6 +44,7 @@ describe('While', { concurrent: false }, withShell(shell => {
 		.calls('6', NodeId.toBuiltIn('<-'))
 		.call('7', '(', [argumentInCall('6')], { returns: ['6'], reads: [NodeId.toBuiltIn('(')], origin: [BuiltInProcName.Default] })
 		.calls('7', NodeId.toBuiltIn('('))
+		.reads('7', '6')
 		.call('9', '>', [argumentInCall('7'), argumentInCall('8')], { returns: [], reads: [NodeId.toBuiltIn('>'), '7', '8'], onlyBuiltIn: true, origin: [BuiltInProcName.Default] })
 		.calls('9', NodeId.toBuiltIn('>'))
 		.call('13', '{', [argumentInCall('12')], { returns: ['12'], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 14, when: true }], environment: defaultEnv().defineVariable('x', '2', '6'), origin: [BuiltInProcName.ExpressionList] })
@@ -72,8 +73,8 @@ while (x < 10) {
 print(x)`, emptyGraph()
 		.reads('4@[2]x', '3@x')
 		.reads('3@[2]x', '1@x')
-		.reads('3@[2]x', '4@x')
-	, {
+		.reads('3@[2]x', '4@x'),
+	{
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
 		mustNotHaveEdges:      [['4@[2]x', '1@x'], ['4@[2]x', '4@x']]
@@ -91,8 +92,8 @@ while (TRUE) {
 		.reads('4@[2]a', '6@[1]a')
 		.reads('6@[2]a', '1@a')
 		.reads('6@[2]a', '4@[1]a')
-		.reads('6@[2]a', '6@[1]a')
-	, {
+		.reads('6@[2]a', '6@[1]a'),
+	{
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
 	});
@@ -110,8 +111,8 @@ while (TRUE) {
 		.reads('4@[2]a', '1@a')
 		.reads('4@[2]a', '8@[1]a')
 		.reads('6@[2]a', '1@a')
-		.reads('6@[2]a', '8@[1]a')
-	, {
+		.reads('6@[2]a', '8@[1]a'),
+	{
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
 		mustNotHaveEdges:      [['4@[2]a', '4@[1]a'], ['4@[2]a', '6@[1]a'], ['6@[2]a', '4@[1]a'], ['6@[2]a', '6@[1]a']]
@@ -139,8 +140,8 @@ while (TRUE) {
 		.reads('10@[2]a', '1@a')
 		.reads('10@[2]a', '5@[1]a')
 		.reads('10@[2]a', '7@[1]a')
-		.reads('10@[2]a', '10@[1]a')
-	, {
+		.reads('10@[2]a', '10@[1]a'),
+	{
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
 	});
@@ -159,8 +160,8 @@ while (TRUE) {
 		.reads('5@[2]a', '7@[1]a')
 		.reads('7@[2]a', '1@a')
 		.reads('7@[2]a', '5@[1]a')
-		.reads('7@[2]a', '7@[1]a')
-	, {
+		.reads('7@[2]a', '7@[1]a'),
+	{
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
 	});

@@ -85,6 +85,11 @@ export interface RNumberValue {
 	complexNumber: boolean
 }
 
+/**
+ * What an {@link RNumberValue} is: R's number as it was written, its integer marker (`1L`) and its complex
+ * flag (`1i`) included.
+ * @helper values
+ */
 export const RNumberValue = {
 	name: 'RNumberValue',
 	fromRLexeme(this: void, value: string): RNumberValue {
@@ -153,6 +158,7 @@ export interface RStringValue {
 
 /**
  * Checks whether the given string is an R string literal (including raw strings).
+ * @helper values
  */
 export const RStringValue = {
 	name: 'RStringValue',

@@ -47,7 +47,7 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean;
 
 /**
  * Deterministically retrieve a unique id for a given object.
- * @param obj - The object to retrieve the id for
+ * @param obj     - The object to retrieve the id for
  * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
 export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string;
@@ -62,7 +62,7 @@ export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => Conte
  */
 export function defaultQuadIdGenerator(): QuadIdRetriever {
 	let counter = 0;
-	const idMap = new DefaultMap<unknown, number>( () => counter++ );
+	const idMap = new DefaultMap<unknown, number>(() => counter++);
 	return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`;
 }
 
@@ -118,7 +118,7 @@ const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Qua
  * Serializes the given object or array to rdf quads.
  * @param obj    - The object to serialize (must be a Record and no array etc.)
  * @param config - Further configuration options
- * @returns the serialized quads
+ * @returns      the serialized quads
  * @see graph2quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
@@ -186,7 +186,7 @@ function processArrayEntries(key: string, values: unknown[], obj: DataForQuad, q
 			serializeObject(element as DataForQuad, quads, config);
 		} else {
 			// for the time being, the index does not seem of interest for the graph summary team.
-			processLiteralEntry(element, key, obj, quads, config, undefined);
+			processLiteralEntry(element, key, obj, quads, config);
 		}
 	}
 }
@@ -214,37 +214,14 @@ function objToType(value: unknown): NamedNode | undefined {
 	return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined;
 }
 
-function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>, index: number | undefined) {
+function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
 	const context = retrieveContext(config.context, obj);
-	// we have to create an object if there is an index, so that we can link the index!
-	if(index !== undefined) {
-		const newId = `${key}-${index}`;
-		quads.push(quad(
-			namedNode(domain + config.getId(obj, context)),
-			namedNode(domain + key),
-			namedNode(domain + config.getId(newId, context)),
-			namedNode(context)
-		));
-		quads.push(quad(
-			namedNode(domain + config.getId(newId, context)),
-			namedNode(domain + 'value'),
-			literal(String(value), objToType(value)),
-			namedNode(context)
-		));
-		quads.push(quad(
-			namedNode(domain + newId),
-			namedNode(domain + 'order'),
-			literal(String(index), namedNode('http://www.w3.org/2001/XMLSchema#integer')),
-			namedNode(context)
-		));
-	} else {
-		quads.push(quad(
-			namedNode(domain + config.getId(obj, context)),
-			namedNode(domain + key),
-			literal(String(value), objToType(value)),
-			namedNode(context)
-		));
-	}
+	quads.push(quad(
+		namedNode(domain + config.getId(obj, context)),
+		namedNode(domain + key),
+		literal(String(value), objToType(value)),
+		namedNode(context)
+	));
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
@@ -267,7 +244,7 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 			processObjectEntries(key, value, obj, quads, config);
 		}
 	} else {
-		processLiteralEntry(value, key, obj, quads, config, undefined);
+		processLiteralEntry(value, key, obj, quads, config);
 	}
 }
 

@@ -9,6 +9,7 @@ import { slicerLogger } from '../static/static-slicer';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /** An optional `(file-regex)` suffix restricting a criterion to nodes stemming from a matching file. */
 type FileFilterSuffix = '' | `(${string})`;
@@ -18,11 +19,28 @@ export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${num
 	| `${number}^${FileFilterSuffix}` | `${number}@${string}` | `$${NodeId | number}`;
 
 /**
- * The helper object associated with {@link SlicingCriterion} which makes it easy
- * to parse, validate, and resolve slicing criteria.
+ * The helper object for slicing criteria: parsing, validating and resolving them, one
+ * ({@link SlicingCriterion.parse}) or several ({@link SlicingCriterion.decodeAll}) at a time.
+ * @helper location
  */
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',
+	/**
+	 * Decodes several criteria to their node ids at once.
+	 * @throws CriteriaParseError if any of the criteria can not be resolved
+	 * @see {@link SlicingCriterion.convertAll} - which keeps a criterion it cannot resolve
+	 */
+	decodeAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
+		return criteria.map(l => ({ criterion: l, id: SlicingCriterion.parse(l, decorated) }));
+	},
+	/**
+	 * Converts several criteria to their id in the AST if possible, keeping the original criterion where it
+	 * cannot be resolved.
+	 * @see {@link SlicingCriterion.decodeAll} - which throws instead
+	 */
+	convertAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): NodeId[] {
+		return criteria.map(l => SlicingCriterion.tryParse(l, decorated) ?? l);
+	},
 	/**
 	 * Checks whether a value has a valid slicing criterion syntax.
 	 * This does not check whether the slicing criterion exists (represents a valid node ID).
@@ -89,6 +107,20 @@ export const SlicingCriterion = {
 		}
 	},
 	/**
+	 * The line and the name a `<line>@<name>` criterion points at, `undefined` for every other form.
+	 * The counterpart of writing such a criterion down as a template literal.
+	 */
+	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: string } | undefined {
+		const split = splitFileFilter(criterion);
+		const at = split?.rest.indexOf('@') ?? -1;
+		if(split === undefined || at <= 0) {
+			return undefined;
+		}
+		const line = split.rest.slice(0, at);
+		const name = split.rest.slice(at + 1);
+		return /^\d+$/.test(line) && name.length > 0 && !name.startsWith('[') ? { line: Number(line), name } : undefined;
+	},
+	/**
 	 * Converts a node id to a slicing criterion in the form of `$id`
 	 */
 	fromId(this: void, id: NodeId): SlicingCriterion {
@@ -97,7 +129,7 @@ export const SlicingCriterion = {
 } as const;
 
 /** several {@link SlicingCriterion}s, all of which are sliced for at once */
-export type SlicingCriteria = SlicingCriterion[];
+export type SlicingCriteria = readonly SlicingCriterion[];
 
 
 export interface DecodedCriterion {
@@ -106,28 +138,6 @@ export interface DecodedCriterion {
 }
 
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
-
-/**
- * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate, and resolve slicing criteria.
- */
-export const SlicingCriteria = {
-	name: 'SlicingCriteria',
-	/**
-	 * Decodes all slicing criteria to their corresponding node ids
-	 * @throws CriteriaParseError if any of the criteria can not be resolved
-	 * @see {@link SlicingCriteria.convertAll}
-	 */
-	decodeAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
-		return criteria.map(l => ({ criterion: l, id: SlicingCriterion.parse(l, decorated) }));
-	},
-	/**
-	 * Converts all criteria to their id in the AST if possible, this keeps the original criterion if it can not be resolved.
-	 * @see {@link SlicingCriteria.decodeAll}
-	 */
-	convertAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): NodeId[] {
-		return criteria.map(l => SlicingCriterion.tryParse(l, decorated) ?? l);
-	}
-} as const;
 
 /**
  * Thrown if the given slicing criteria can not be found
@@ -174,18 +184,6 @@ function fuzzyLocationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: A
 	return (candidates.find(n => RFunctionCall.is(n)) ?? candidates[0])?.info.id;
 }
 
-/** Walks up to the statement `node` belongs to: the outermost node still below the root of its file. */
-function enclosingTopLevelStatement<OtherInfo>(node: RNodeWithParent<OtherInfo>, idMap: AstIdMap<OtherInfo>): RNodeWithParent<OtherInfo> {
-	let current = node;
-	for(;;) {
-		const parent = current.info.parent !== undefined ? idMap.get(current.info.parent) : undefined;
-		if(parent === undefined || parent.info.parent === undefined) {
-			return current;
-		}
-		current = parent;
-	}
-}
-
 /**
  * Resolves a `line^` criterion: the top-level statement covering the line, which is what has to be excised to
  * remove that line from the program. Unlike {@link fuzzyLocationToId} this widens rather than narrows, so an
@@ -196,7 +194,7 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
 	let best: RNodeWithParent<OtherInfo> | undefined;
 	let bestRange: SourceRange | undefined;
 	for(const node of SourceRange.nodesContaining(potentials, line)) {
-		const statement = enclosingTopLevelStatement(node, idMap);
+		const statement = RNode.topLevelStatement(node, idMap);
 		const range = SourceRange.fromNode(statement);
 		/* several statements may cover the line (`a <- 1; b <- 2`), the one starting first wins */
 		if(range !== undefined && (bestRange === undefined || SourceRange.compare(range, bestRange) < 0)) {

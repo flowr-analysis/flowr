@@ -1,4 +1,3 @@
-import path from 'path';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
@@ -7,17 +6,16 @@ import { happensBefore } from '../../../control-flow/happens-before';
 import { Ternary } from '../../../util/logic';
 import { Identifier } from '../../environments/identifier';
 import { getArgumentStringValue } from './resolve-argument';
-import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import { isAbsolutePath } from '../../../util/text/strings';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { ControlDependency, negateControlDependency } from '../../info';
-import { DfEdge, EdgeType } from '../../graph/edge';
+import { EdgeType } from '../../graph/edge';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../util/collections/defaultmap';
-import { toPosixPath } from '../../../util/files';
-import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
-import { NoEdges } from '../../graph/graph';
-import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RPath } from '../../../util/files';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { Dataflow } from '../../graph/df-helper';
 
 /** a resolved `setwd`-style call: its `dir` is `undefined` when it cannot be determined statically */
 export interface WorkingDirectoryChange {
@@ -50,10 +48,7 @@ const CandidateCap = 64;
 
 type Guards = readonly ControlDependency[];
 
-function matchSpec(name: Identifier | undefined): WdChangeSpec | undefined {
-	if(name === undefined) {
-		return undefined;
-	}
+function matchSpec(name: Identifier): WdChangeSpec | undefined {
 	const bare = Identifier.getName(name);
 	const ns = Identifier.getNamespace(name);
 	return ChangeFunctions.find(s => s.name === bare && (ns === undefined || ns === s.namespace));
@@ -65,12 +60,11 @@ function isAbsoluteDir(dir: string): boolean {
 
 /** apply one `setwd(dir)`: an absolute (or `~`-rooted) `dir` replaces `current`, a relative `dir` joins onto it */
 function applyChange(current: string, dir: string): string {
-	const d = toPosixPath(dir);
-	return isAbsoluteDir(dir) ? path.posix.normalize(d) : path.posix.join(toPosixPath(current), d);
+	return isAbsoluteDir(dir) ? RPath.normalize(dir) : RPath.join(current, dir);
 }
 
 function guardIn(g: ControlDependency, set: Guards): boolean {
-	return set.some(b => b.id === g.id && b.when === g.when);
+	return set.some(b => ControlDependency.same(b, g));
 }
 function subsumed(inner: Guards, outer: Guards): boolean {
 	return inner.every(g => guardIn(g, outer));
@@ -100,15 +94,7 @@ function topoOrder(changes: readonly WorkingDirectoryChange[], cfg: ControlFlowG
 }
 
 function enclosingFunction(idMap: DataflowGraph['idMap'], id: NodeId): NodeId | undefined {
-	let cursor = idMap?.get(id)?.info.parent;
-	while(cursor !== undefined) {
-		const node = idMap?.get(cursor);
-		if(RFunctionDefinition.is(node)) {
-			return node.info.id;
-		}
-		cursor = node?.info.parent;
-	}
-	return undefined;
+	return idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(id, idMap);
 }
 
 function isIterated(cds: Guards, idMap: DataflowGraph['idMap']): boolean {
@@ -177,10 +163,7 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 	// a function's setwd is propagated to its call sites; only a lone unconditional setwd has a site-independent effect
 	for(const [fn, setwds] of byFn.entries()) {
 		const net = setwds.length === 1 && setwds[0].cds.length === 0 && !setwds[0].iterated ? setwds[0].dir : undefined;
-		for(const [site, edge] of graph.ingoingEdges(fn) ?? NoEdges) {
-			if(!DfEdge.includesType(edge, EdgeType.Calls)) {
-				continue;
-			}
+		for(const site of Dataflow.sourcesOf(graph, fn, EdgeType.Calls)) {
 			const cds = graph.getVertex(site)?.cds ?? [];
 			out.push({ id: site, dir: net, cds, iterated: isIterated(cds, graph.idMap), enclosedInFunction: enclosingFunction(graph.idMap, site) !== undefined });
 		}
@@ -192,9 +175,14 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 export const WorkingDirectory = {
 	collect,
 	resolveAt,
-	/** reusable `(callId, scriptFile?) => candidate roots`, collecting the changes once for the whole graph */
-	rootsResolver(graph: DataflowGraph, cfg: ControlFlowGraph, ctx: ReadOnlyFlowrAnalyzerContext): (id: NodeId, file?: string) => readonly string[] {
+	applyChange,
+	/** reusable `(callId, scriptFile?) => candidate roots`, collecting the changes once for the whole graph; `pinned` when a `setwd` decides them */
+	rootsResolver(graph: DataflowGraph, cfg: ControlFlowGraph, ctx: ReadOnlyFlowrAnalyzerContext): (id: NodeId, file?: string) => { roots: readonly string[], pinned: boolean } {
 		const changes = collect(graph, ctx);
-		return (id, file) => resolveAt(id, graph.getVertex(id)?.cds ?? [], file ? platformDirname(file) : '.', changes, cfg).candidates;
+		return (id, file) => {
+			const base = file ? RPath.dirname(file) : '.';
+			const roots = resolveAt(id, graph.getVertex(id)?.cds ?? [], base, changes, cfg).candidates;
+			return { roots, pinned: roots.length > 0 && (roots.length > 1 || roots[0] !== base) };
+		};
 	}
 } as const;

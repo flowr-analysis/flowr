@@ -1,7 +1,8 @@
 import type { PackageSignatureSource } from './reader';
+import { compareByCodeUnit } from '../../util/text/strings';
 import type { VersionRelease } from './sigdb-version';
 import type { LibraryExports } from './schema';
-import type { ResolvedDependency } from './decode';
+import type { DecodedFunction, ResolvedDependency } from './decode';
 import { RVersion } from '../../util/r-version';
 import { classOwnerIndexFor } from './reader';
 import { baseRPackages } from '../../util/r-base-packages';
@@ -21,6 +22,8 @@ export interface MemoryPackage {
 	readonly deps?:       readonly ResolvedDependency[];
 	/** when that version was released, which is what makes it a release rather than a label */
 	readonly released?:   Date;
+	/** the functions the package defines, exported or not, for the per-function view, absent if unknown */
+	readonly functions?:  readonly DecodedFunction[];
 }
 
 /** what {@link LibraryExports.version} says when the source was given no version to claim */
@@ -55,6 +58,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return this.hasVersion(pkg, version);
 	}
 
+	/** an in-memory source states no repository */
+	public sourceOf(): undefined {
+		return undefined;
+	}
+
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
 		const found = this.packages.get(pkg);
 		/* a source given no version has one answer and gives it whatever is asked for: it cannot say no */
@@ -75,7 +83,7 @@ export class MemorySignatureSource implements PackageSignatureSource {
 	public packagesExporting(name: string): readonly string[] {
 		return [...this.packages]
 			.filter(([, p]) => p.exported.includes(name))
-			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || an.localeCompare(bn))
+			.sort(([an, a], [bn, b]) => (b.downloads ?? 0) - (a.downloads ?? 0) || compareByCodeUnit(an, bn))
 			.map(([pkg]) => pkg);
 	}
 
@@ -90,13 +98,14 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return this.classIndex.get(className);
 	}
 
-	/** no blobs to decode, so the rich per-function view has nothing to give */
-	public functions(): undefined {
-		return undefined;
+	/** the functions a package was given with, the per-function view stays empty for the others */
+	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+		const found = this.packages.get(pkg);
+		return found?.functions === undefined || !this.answersFor(pkg, version) ? undefined : [...found.functions];
 	}
 
-	public functionByName(): undefined {
-		return undefined;
+	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+		return this.functions(pkg, version)?.find(f => f.name === name);
 	}
 
 	public transitiveCallees(): undefined {
@@ -109,6 +118,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 			return undefined;
 		}
 		return [...found.deps ?? []];
+	}
+
+	/** an in-memory package states its exports, never its class relations */
+	public classes(): undefined {
+		return undefined;
 	}
 
 	public packageNames(): string[] {

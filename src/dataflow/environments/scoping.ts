@@ -1,8 +1,9 @@
-import { type REnvironmentInformation, Environment } from './environment';
+import { type REnvironmentInformation, Environment, REnvironment } from './environment';
 import { guard } from '../../util/assert';
 
 /**
  * Add a new local environment scope to the stack, returns the modified variant (shares the original stack, no deep-clone).
+ * @useInstead {@link REnvironment.pushLocal}
  * @see {@link popLocalEnvironment} - to remove the local scope again
  */
 export function pushLocalEnvironment({ level, current }: REnvironmentInformation): REnvironmentInformation {
@@ -14,6 +15,7 @@ export function pushLocalEnvironment({ level, current }: REnvironmentInformation
 
 /**
  * Remove the top local environment scope from the stack, returns the modified variant (shares the original stack, no deep-clone).
+ * @useInstead {@link REnvironment.popLocal}
  * @see {@link pushLocalEnvironment} - to add a local scope
  */
 export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
@@ -35,4 +37,16 @@ export function padToCommonScope(base: REnvironmentInformation, next: REnvironme
 		base = pushLocalEnvironment(base);
 	}
 	return { base, next };
+}
+
+/**
+ * The environment's search path with an empty global frame: attached packages stay visible, the global frame's
+ * binds do not. Prefer this over `makeCleanEnv` wherever an environment is at hand; the chain below is shared.
+ * @useInstead {@link REnvironment.cleanOf}
+ */
+export function cleanEnvOf({ current }: REnvironmentInformation): REnvironmentInformation {
+	const inner = REnvironment.findGlobal(current);
+	const global = new Environment(inner.parent).asGlobal();
+	global.n = inner.n;
+	return { level: 0, current: global };
 }

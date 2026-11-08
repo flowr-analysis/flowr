@@ -8,13 +8,23 @@ import {
 	linkFlowRSourceFile,
 	RemoteFlowrFilePathBaseRef
 } from './doc-util/doc-files';
-import { block } from './doc-util/doc-structure';
+import { block, details } from './doc-util/doc-structure';
 import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import { DfEdge } from '../dataflow/graph/edge';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import { ChainedWith, MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
+import { linkToQueryOfName } from './doc-util/doc-query';
+
+/** the categories of the passes, the passes of each in a collapsed list with what each does */
+function mutationCategories(): string {
+	const categories = Object.values(MutationCategory);
+	const list = categories.map(c => `\`${c}\``).join(', ');
+	return `The passes fall into ${categories.length} categories: ${list}.\n\n` + categories.map(category => details(`${category} (${MutationPasses.filter(p => p.category === category).length})`,
+		MutationPasses.filter(p => p.category === category).map(p => `- \`${p.name}\`: ${p.description}`).join('\n'))).join('\n');
+}
 
 
 /**
@@ -37,6 +47,7 @@ for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'be
     - [🖋️ Writing a Test](#writing-a-test)
     - [🤏 Running Only Some Tests](#running-only-some-tests)
   - [💽 System Tests](#system-tests)
+  - [🧬 Mutation Tests](#mutation-tests)
   - [💃 Performance Tests](#performance-tests)
   - [📝 Testing Within Your IDE](#testing-within-your-ide)
     - [VS Code](#vs-code)
@@ -57,12 +68,13 @@ for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'be
 <a id='testing-suites'></a>
 ## 🏨 Testing Suites
 
-Currently, flowR contains three testing suites: one for [functionality](#functionality-tests), 
-one for [system tests](#system-tests), and one for [performance](#performance-tests). We explain each of them in the following.
+Currently, flowR contains four testing suites: one for [functionality](#functionality-tests),
+one for [system tests](#system-tests), one for [mutation tests](#mutation-tests), and one for [performance](#performance-tests).
 In addition to running those tests, you can use the more generalized \`npm run checkup\`.
-This command includes the construction of the docker image, the generation of the wiki pages, and the linter.
+This command includes the construction of the docker image, the generation of the wiki and landing pages, and the linter.
 It runs these jobs concurrently but caps the test workers so the combined run fits the machine (it splits the
 available cores across the parallel \`vitest\` jobs via \`--maxWorkers\` instead of letting each grab every core).
+The landing pages wait for the functionality and mutation tests, which record their test labels, so the capabilities page always shows their full results.
 Pass job ids to run a subset (e.g. \`npm run checkup -- lint tests\`) or \`--no-docker\` to skip the image build.
 
 <a id='functionality-tests'></a>
@@ -127,9 +139,9 @@ The set of currently supported capabilities and their IDs can be found in ${getF
 
 The resulting labels are used in the test report that is generated as part of the test output. 
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
-The report can be found on the wiki's ${ctx.linkPage('wiki/Capabilities', 'capabilities page')}.
+The report can be found on flowR's ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 
-To add new labels, simply add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
+To add new labels, add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
 
 <a id='writing-a-test'></a>
 #### 🖋️ Writing a Test
@@ -188,7 +200,57 @@ to check basic availability of *flowR*'s core features (as we test the functiona
 with the [functionality tests](#functionality-tests)).
 
 Have a look at the [test/system-tests](${RemoteFlowrFilePathBaseRef}test/system-tests) folder for more information.
- 
+
+<a id='mutation-tests'></a>
+### 🧬 Mutation Tests
+
+A metamorphic mutation rewrites an R program without changing what it means, so flowR's answer must not
+change either: the same dependencies are found, the same slice comes out. This finds bugs without a
+hand-written expectation for every program, checking a rewrite of a program the suite already knows the
+answer for rather than the program itself.
+
+Run the suite with:
+
+${codeBlock('shell', 'npm run test:mutations')}
+
+It lives in its own set (${linkFlowRSourceFile('test/mutations')}, with its own \`vitest.config.mts\`) and is
+deliberately excluded from \`npm run test\`, the same arrangement as the [system tests](#system-tests), so
+the default suite stays fast. It is wired into CI (see [🪈 CI Pipeline](#ci-pipeline)) and into \`npm run
+checkup\`, where \`npm run checkup -- mutations\` runs just this job.
+
+The suite has three pieces:
+
+- the ${MutationPasses.length} passes, ${ctx.link('MutationPasses')} in ${linkFlowRSourceFile('test/functionality/_helper/mutation')}.
+- the corpus of programs and the invariant checks run against their mutants, in ${linkFlowRSourceFile('test/mutations/counterexample-checks.ts')}.
+- pass-level unit tests, in ${linkFlowRSourceFile('test/mutations/r-mutations.test.ts')}, checking each pass on its own rather than against the corpus.
+
+Every program in the corpus is a counterexample flowR once sliced wrongly (a function called through a list, a
+value read back through an environment, a closure over a super-assignment, and so on), or a representative program
+of what the functionality tests cover. Each is run in R once for what it prints and once more for what its slice
+prints. Every pass is then tried on it: a pass with nothing to rewrite skips the program, and every mutant it does
+produce is checked the same way, and must leave the results of the queries unchanged.
+
+Every program and every mutant also goes through the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')}:
+${ctx.replCmd('query')} with the ${linkToQueryOfName('static-slice')} has to print a slice that prints what the program prints,
+the ${linkToQueryOfName('dependencies')} and the ${linkToQueryOfName('linter')} have to give the same answer for the
+mutant as for the program (a pass that adds code may only add linter findings), and for a pass that only renames
+or moves code, ${linkToQueryOfName('resolve-value')}, ${ctx.replCmd('dataflow')}, ${ctx.replCmd('normalize')} and
+${ctx.replCmd('controlflow')} have to print the same, up to the positions and names the pass changed.
+
+${mutationCategories()}
+
+Besides, every mutant and every chain of a pass and the ${ChainedWith} passes after it is analyzed in full and asked
+every query on tree-sitter, without R, in ${linkFlowRSourceFile('test/mutations/robustness.ts')}: none of these
+tens of thousands of programs may make flowR fail, overflow the stack, or hang.
+
+A pass is a ${ctx.link('MutationPass')} and sees the program as a ${ctx.link('MutationProgram')}: its normalized
+AST and dataflow graph, and what the built-in configuration states about each call. It edits the code through
+a ${ctx.link('Rewrite')}, which moves the criterion along with the lines the edits add or remove.
+
+A complete run writes how many passes, counterexamples and mutants it checked, and
+${linkFlowRSourceFile('scripts/test-label-counts.ts')} adds these numbers to the
+${ctx.linkPage('flowr:benchmarks', 'benchmark page')}.
+
 <a id='performance-tests'></a>
 ### 💃 Performance Tests
 
@@ -228,10 +290,10 @@ Otherwise, the tests will not be instantiated.
 ## 🪈 CI Pipeline
 
 We have several workflows defined in ${linkFlowRSourceFile('.github/workflows')}.
-We explain the most important workflows in the following:
+The most important ones:
 
 - ${linkFlowRSourceFile('.github/workflows/qa.yaml')} is the main workflow that will run different steps depending on several factors. It is responsible for:
-  - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
+  - running the [functionality](#functionality-tests), [system](#system-tests), [mutation](#mutation-tests), and [performance tests](#performance-tests)
     - uploading the results to the ${ctx.linkPage('flowr:benchmarks', 'benchmark page')} for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage

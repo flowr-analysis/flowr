@@ -1,17 +1,31 @@
-import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryMeta, type BasicQueryData } from '../../base-query-format';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import { EdgeType } from '../../../dataflow/graph/edge';
+import { DataFrameFunctions } from '../../../abstract-interpretation/data-frame/dataframe-semantics';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { queryHeader } from '../../query-print';
 import type { SupportedQuery } from '../../query';
 import { bold, faint, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
 import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
-import { ReadFunctions } from './function-info/read-functions';
-import { WriteFunctions } from './function-info/write-functions';
+import { computeReadFunctions } from './function-info/read-functions';
+import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
+import { transformFunctions } from './function-info/transform-functions';
 import { statisticsFunctions } from './function-info/statistics-functions';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
@@ -25,30 +39,129 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { compactRecord } from '../../../util/objects';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { collectImplicitEchoes } from './implicit-echo';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
+import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
+import { memoize } from '../../../util/collections/defaultmap';
+import { SourceRange } from '../../../util/range';
+import { Constant, StdOut, Unknown } from './dependency-values';
+export { Constant, Unknown } from './dependency-values';
 
-/** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
-export const Unknown = 'unknown';
-/** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
-export const Constant = 'constant';
+/** {@link DependencyInfo#functionName} for an assumed base package: nothing in the code names it, so there is no call to report as `functionName`. */
+export const Attached = '<attached>';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
-	functions:           FunctionInfo[]
+	functions:           readonly FunctionInfo[]
 	/** this describes the global default value for this category, e.g., 'stdout' for write operations, please be aware, that this can be overwritten by a by-function default value */
 	defaultValue?:       string
 	/**
 	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
 	 * To add or modify dependency info entries, simply modify the `result` array.
-	 * @param data  - The basic query data.
+	 * @param data          - The basic query data.
 	 * @param ignoreDefault - Whether the default functions were ignored.
-	 * @param functions - The functions used for this category.
-	 * @param queryResults - The results of the call context query.
-	 * @param result - The current result array to which additional dependency info can be added.
+	 * @param functions     - The functions used for this category.
+	 * @param queryResults  - The results of the call context query.
+	 * @param result        - The current result array to which additional dependency info can be added.
 	 */
-	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
+	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: readonly FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
-export const DefaultDependencyCategories = {
+/** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
+export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
+export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
+
+/** a definition or call reached again while working it out makes nothing new */
+const NothingNew = { answer: false } as const;
+
+/**
+ * Tells whether the variable read at an id holds a data frame: it is defined by a call the data frame shape inference
+ * knows to return one ({@link DataFrameFunctions}, like `read.csv` or `merge`), by a call handing back what it is
+ * given (`(` in `d <- (data.frame(a = 1))`), by a copy of a variable holding one (`k <- d`), or by an assignment
+ * into a part of one. What each definition and call
+ * makes is only worked out once.
+ */
+function dataFrameHolders(graph: DataflowGraph): (id: NodeId) => boolean {
+	/* all of it starts at a call making a data frame, without one nothing holds one */
+	if(!graph.verticesOfType(VertexType.FunctionCall).some(([id]) => callsDataFrameFunction(graph, id))) {
+		return () => false;
+	}
+	const holds = (id: NodeId): boolean => (Dataflow.origin(graph, id) ?? []).some(origin => (origin.type === OriginType.ReadVariableOrigin || origin.type === OriginType.WriteVariableOrigin)
+		&& defines(origin.id));
+	const defines = memoize((definition: NodeId) => Dataflow.targetsOf(graph, definition, EdgeType.DefinedBy).some(makes), NothingNew);
+	const makes = memoize((by: NodeId): boolean => {
+		const vertex = graph.getVertex(by);
+		if(DfgVertex.isUse(vertex)) {
+			/* a copy, `k <- d`, or what a call hands back, `(d)` */
+			return holds(by);
+		} else if(!DfgVertex.isFunctionCall(vertex)) {
+			return false;
+		} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement)) {
+			const target = graph.idMap?.get(by);
+			return RAccess.is(target) && holds((target.accessed as RNode<ParentInformation>).info.id);
+		}
+		return callsDataFrameFunction(graph, by) || Dataflow.targetsOf(graph, by, EdgeType.Returns).some(makes);
+	}, NothingNew);
+	return holds;
+}
+
+/** whether the call is one the data frame shape inference knows to return a data frame, see {@link DataFrameFunctions} */
+function callsDataFrameFunction(graph: DataflowGraph, call: NodeId): boolean {
+	const qualified = Dataflow.qualify(call, graph);
+	const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+	return qualified !== undefined && namespace !== undefined && DataFrameFunctions.has(`${namespace}::${Identifier.getName(qualified)}`);
+}
+
+/** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
+const GroupingArguments: ReadonlySet<string> = new Set(['by', 'keyby']);
+
+/** an entry for a call transforming the data the symbol `target` holds */
+function transformOf(nodeId: NodeId, functionName: Identifier, target: RSymbol<ParentInformation>): DependencyInfo {
+	const name = Identifier.getName(target.content);
+	return { nodeId, functionName, assignedTo: name, inputVariables: [name] };
+}
+
+/**
+ * What transforms data by its syntax rather than by a function: data.table's update by reference (`dt[, z := x + 1]`)
+ * and grouping (`dt[, mean(x), by = g]`), and an assignment into a part of a data frame, like `d$y <- d$x * 2` or
+ * `d[d$x > 1, "z"] <- 0`. The last only where the target is a data frame, see {@link dataFrameHolders}, as `x[1] <- 2`
+ * on a vector transforms no data.
+ */
+async function dataFrameParts(data: BasicQueryData): Promise<DependencyInfo[]> {
+	const [dataflow, ast] = await Promise.all([data.analyzer.dataflow(), data.analyzer.normalize()]);
+	/* an update by reference or a grouping */
+	const groups = (a: RArgument<ParentInformation> | typeof EmptyArgument) => a !== EmptyArgument && ((a.name !== undefined && GroupingArguments.has(Identifier.getName(a.name.content)))
+		|| (a.value !== undefined && DfgVertex.hasOrigin(dataflow.graph.getVertex(a.value.info.id), BuiltInProcName.TableAssignment)));
+	const byTable: DependencyInfo[] = [];
+	RProject.visitAst(ast.ast, n => {
+		if(RAccess.is(n) && n.operator === '[' && RSymbol.is(n.accessed) && n.access.some(groups)) {
+			/* an update by reference changes the table itself, a grouping yields a new one */
+			const updates = n.access.some(a => a !== EmptyArgument && a.value !== undefined && DfgVertex.hasOrigin(dataflow.graph.getVertex(a.value.info.id), BuiltInProcName.TableAssignment));
+			const name = Identifier.getName(n.accessed.content);
+			byTable.push({ nodeId: n.info.id, functionName: '[', inputVariables: [name], ...updates ? { assignedTo: name } : {} });
+		}
+	});
+	const parts = dataflow.graph.verticesOfType(VertexType.FunctionCall)
+		.filter(([, call]) => DfgVertex.hasOrigin(call, BuiltInProcName.Replacement))
+		.flatMap(([id, call]) => {
+			const node = ast.idMap.get(id);
+			return RAccess.is(node) && RSymbol.is(node.accessed) ? [{ id, functionName: call.name, target: node.accessed }] : [];
+		}).toArray();
+	if(parts.length === 0) {
+		return byTable;
+	}
+	const holds = dataFrameHolders(dataflow.graph);
+	return [...byTable, ...parts.filter(p => holds(p.target.info.id)).map(p => transformOf(p.id, p.functionName, p.target))];
+}
+
+/**
+ * The categories flowR searches for by default. The functions of the categories flowR derives from its
+ * built-ins follow the ones the analyzer registered, so a configured built-in is searched for and a dropped
+ * one is not; the result is shared per configuration.
+ */
+export const defaultDependencyCategories = (ctx: ReadOnlyFlowrAnalyzerContext): Record<DefaultDependencyCategoryName, DependencyCategorySettings> => ctx.env.derive(dependencyCategoriesOf);
+
+const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): Record<DefaultDependencyCategoryName, DependencyCategorySettings> => ({
 	'library': {
 		queryDisplayName:   'Libraries',
 		functions:          LibraryFunctions,
@@ -95,13 +208,13 @@ export const DefaultDependencyCategories = {
 	},
 	'read': {
 		queryDisplayName: 'Read Data',
-		functions:        ReadFunctions,
+		functions:        env.deriveFromDefinitions(computeReadFunctions),
 		defaultValue:     Unknown
 	},
 	'write': {
 		queryDisplayName:   'Outputs',
-		functions:          WriteFunctions,
-		defaultValue:       'stdout',
+		functions:          env.derive(writeFunctionsOf),
+		defaultValue:       StdOut,
 		/* what the top level prints on its own is an output like any other, marked {@link DependencyInfo#implicit} */
 		additionalAnalysis: async(data, ignoreDefault, _functions, queryResults, result) => {
 			/* without implicit echo (e.g. in a package, whose top-level code runs at install time) nothing is auto-printed */
@@ -109,50 +222,81 @@ export const DefaultDependencyCategories = {
 				return;
 			}
 			const [ast, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
-			/* a call another category reports belongs to that category, except for a statistical test: what it
-			   is asked for is the statistic it prints, so a top-level one is an output like any other */
-			const accountedFor = new Set(Object.entries(queryResults?.kinds ?? {})
-				.filter(([kind]) => kind !== 'statistics')
-				.flatMap(([, k]) => Object.values(k.subkinds).flat()).map(r => r.id));
-			collectImplicitEchoes(ast, dataflow, accountedFor, result);
+			/* a call reported as an output already is not repeated, any other still prints a visible result */
+			const accountedFor = new Set(Object.values(queryResults?.kinds['write']?.subkinds ?? {}).flat().map(r => r.id));
+			const invisible = Object.values(defaultDependencyCategories(data.analyzer.inspectContext())).flatMap(c => c.functions.filter(f => f.invisible));
+			collectImplicitEchoes(ast, dataflow, accountedFor, invisible, result);
 		}
 	},
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
 	},
+	'transform': {
+		queryDisplayName:   'Data Transformations',
+		functions:          transformFunctions(env.builtInIndex),
+		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
+			if(!ignoreDefault) {
+				result.push(...await dataFrameParts(data));
+			}
+		}
+	},
 	'test': {
 		queryDisplayName: 'Tests',
 		functions:        TestFunctions
 	},
 	'statistics': {
-		queryDisplayName: 'Statistical Tests',
-		functions:        statisticsFunctions()
+		queryDisplayName: 'Statistics',
+		functions:        statisticsFunctions(env.builtInIndex)
 	}
-} as const satisfies Record<string, DependencyCategorySettings>;
-export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;
+});
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;
 
-export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${DefaultDependencyCategoryName}Functions`, FunctionInfo[]>> {
+export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${DefaultDependencyCategoryName}Functions`, readonly FunctionInfo[]>> {
 	readonly type:                    'dependencies'
-	readonly enabledCategories?:      DependencyCategoryName[]
+	readonly enabledCategories?:      readonly DependencyCategoryName[]
 	readonly ignoreDefaultFunctions?: boolean
 	/** Naming a built-in category extends it; use `ignoreDefaultFunctions` to drop the built-in functions. */
 	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
+	/**
+	 * Also report the base packages R attaches on startup (see `attachedBasePackages`) that the code calls into
+	 * but never asks for via `library()`/`require()`/`::`, as `library` entries marked {@link DependencyInfo#implicit}.
+	 * `base` is among them, flagged {@link DependencyInfo#alwaysAttached} because it cannot be detached.
+	 * Off by default: for most callers these are noise, not a dependency they need to act on.
+	 */
+	readonly assumedPackages?:        boolean
+	/**
+	 * Focus on the dependencies at these criteria, like `2@read.csv`: the answer names every node that takes part in them,
+	 * what they depend on and what depends on them, in {@link DependenciesQueryMeta#focus}, so a client can gray out the rest.
+	 */
+	readonly focus?:                  readonly SlicingCriterion[]
 }
 
-export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
+export interface DependenciesQueryMeta extends BaseQueryMeta {
+	/** the nodes taking part in the dependencies the query {@link DependenciesQuery#focus|focuses} on */
+	readonly focus?: readonly NodeId[]
+}
+
+export type DependenciesQueryResult = { readonly '.meta': DependenciesQueryMeta } & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
-export interface DependencyInfo extends Record<string, unknown>{
-	nodeId:              NodeId
+export interface DependencyInfo extends Record<string, unknown> {
+	nodeId?:             NodeId
+	alwaysAttached?:     boolean
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
 	/**
+	 * Set on a call of a function of the program that does what this entry reports, transitively: the call of
+	 * `report()` writes what the `cat()` in its body writes. It names the entry within the called function. The
+	 * {@link value} is the one of this call, `save("a.csv")` writes `a.csv` even if other calls of `save` name other files.
+	 */
+	via?:                NodeId
+	/**
 	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
 	 * file, the device opener and closer around it. Answers *which statements produce this output* without
-	 * rebuilding it from {@link linkedIds}.
+	 * rebuilding it from {@link linkedIds}. A part is reported as an entry of its own as well, so to count
+	 * plots rather than graphics calls, count the entries no other entry lists in its parts.
 	 */
 	parts?:              readonly NodeId[]
 	/**
@@ -164,6 +308,22 @@ export interface DependencyInfo extends Record<string, unknown>{
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
+	/**
+	 * The variables the result of the call is computed from, resolved through the dataflow graph: `df` for
+	 * `df |> filter(x > 1)` (where `x` names a column) and `a`, `b` for `left_join(a, b)`; an addon to a plot draws its
+	 * data. Reported for the `write`, `visualize` and `transform` categories.
+	 */
+	inputVariables?:     readonly string[]
+	/**
+	 * The variable the result of the call is assigned to, following every call that hands it on (a pipe into a call,
+	 * `( )`, a `+` adding to a plot) up to `<-`, `=` or `->`.
+	 * Reported for the `read`, `visualize` and `transform` categories.
+	 */
+	assignedTo?:         string
+	/** for a plot, the title its `ggtitle`, `labs(title = )` or `main =` states */
+	title?:              string
+	/** for a plot, the file it is written to by `ggsave` or by a graphics device open when it is drawn */
+	savedTo?:            string
 	/** the output is not written by a call asking for it: R echoes the top-level statement on its own */
 	implicit?:           boolean
 	versionConstraints?: readonly Range[],
@@ -182,11 +342,17 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	result.push(`   ${bold(title, formatter)} ${faint(`(${infos.length})`, formatter)}`);
 	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
 	for(const i of infos) {
-		const fn = Identifier.getName(i.functionName);
 		/* neither names a resource: inline data is resolved but no path, `unknown` is a path we could not resolve */
 		const stands = i.value === Constant ? '<inline data>' : i.value === Unknown || i.value === undefined ? '<unresolved>' : undefined;
 		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
+		if(i.nodeId === undefined) {
+			const uses = i.linkedIds?.length ? `, used at ${i.linkedIds.join(', ')}` : '';
+			const how = i.alwaysAttached ? 'always attached by R' : 'attached by R at startup';
+			result.push(`     ${value}${version} ${faint(`${how}${uses}`, formatter)}`);
+			continue;
+		}
+		const fn = Identifier.getName(i.functionName);
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		/* an output nothing asked for reads like every other one, so it says that it is the top level echoing */
 		const how = i.implicit ? 'auto-printed by' : 'via';
@@ -198,8 +364,8 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
  * Gets all dependency categories, including user-defined additional categories.
  * A category named like a built-in one extends it instead of replacing it.
  */
-export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
-	const categories: Record<DependencyCategoryName, DependencyCategorySettings> = { ...DefaultDependencyCategories };
+export function getAllCategories(queries: readonly DependenciesQuery[], ctx: ReadOnlyFlowrAnalyzerContext): Record<DependencyCategoryName, DependencyCategorySettings> {
+	const categories: Record<DependencyCategoryName, DependencyCategorySettings> = { ...defaultDependencyCategories(ctx) };
 	for(const query of queries) {
 		for(const [name, settings] of Object.entries(query.additionalCategories ?? {})) {
 			const known = categories[name];
@@ -213,6 +379,11 @@ export function getAllCategories(queries: readonly DependenciesQuery[]): Record<
 	return categories;
 }
 
+/** every category a set of queries reports on, which is what the results are keyed by; no built-in has to be read for that */
+export function getAllCategoryNames(queries: readonly DependenciesQuery[]): DependencyCategoryName[] {
+	return uniqueArrayMerge(DefaultDependencyCategoryNames, queries.flatMap(query => Object.keys(query.additionalCategories ?? {})));
+}
+
 const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 	name:    Joi.string().required().description('The name of the library function.'),
 	package: Joi.string().optional().description('The package name of the library function'),
@@ -223,19 +394,30 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 export const DependenciesQueryDefinition = {
 	title:           'Dependencies Query',
 	executor:        executeDependenciesQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result, queries) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
-		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[]))) {
+		result.push(queryHeader('dependencies', formatter, out['.meta'].timing));
+		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[], analyzer.inspectContext()))) {
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
+		}
+		const focus = out['.meta'].focus;
+		if(focus !== undefined) {
+			const { idMap } = await analyzer.normalize();
+			const lines = uniqueArray(focus.flatMap(id => SourceRange.getStartLine(idMap.get(id)?.location) ?? [])).sort((a, b) => a - b);
+			result.push(`   ${bold('focus', formatter)} ${faint('the lines taking part:', formatter)} ${lines.join(', ')}`);
 		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine:  filterLineParser('dependencies', 'focus'),
+	completer: criteriaQueryCompleter,
+	syntax:    '@dependencies (<crit>;...) <code | file://path>',
+	schema:    Joi.object({
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
-		...Object.fromEntries(Object.keys(DefaultDependencyCategories).map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
+		...Object.fromEntries(DefaultDependencyCategoryNames.map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
 		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
+		focus:                  Joi.array().items(Joi.string()).optional().description('Focus on the dependencies at these slicing criteria: the result names every node taking part in them in `.meta.focus`.'),
+		assumedPackages:        Joi.boolean().optional().description('Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false.'),
 		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),
@@ -244,6 +426,6 @@ export const DependenciesQueryDefinition = {
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults, query): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;
-		return Object.keys(getAllCategories(query as DependenciesQuery[])).flatMap(c => out[c] ?? []).map(o => o.nodeId);
+		return getAllCategoryNames(query as DependenciesQuery[]).flatMap(c => out[c] ?? []).map(o => o.nodeId).filter((id): id is NodeId => id !== undefined);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

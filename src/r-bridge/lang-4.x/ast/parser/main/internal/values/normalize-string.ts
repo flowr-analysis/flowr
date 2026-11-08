@@ -1,5 +1,5 @@
 import type { NormalizerData } from '../../normalizer-data';
-import { retrieveMetaStructure } from '../../normalize-meta';
+import { retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import type { RString } from '../../../../model/nodes/r-string';
 import { RType } from '../../../../model/type';
@@ -28,10 +28,6 @@ export function normalizeString(data: NormalizerData, obj: JsonEntry): RString {
 		location,
 		content: RStringValue.fromRLexeme(stringContent),
 		lexeme:  stringContent,
-		info:    {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:    currentSourceInfo(data)
 	};
 }

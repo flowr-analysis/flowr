@@ -7,18 +7,20 @@ import {
 	namespaceFileLog
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 
-export enum FunctionTypes {
-	Function = 'function',
-	ExportTypes = 'exportTypes',
-	S3 = 'S3'
-}
-
 export interface FunctionInfo {
 	name:            string;
 	packageOrigin:   string;
 	isExported:      boolean;
 	isS3Generic:     boolean;
 	s3TypeDispatch?: string;
+	/**
+	 * The name is an S4 method the package registered (its NAMESPACE `exportMethods()`): it is exported because
+	 * the package answers a generic for one of its classes, not because it defines a function of its own.
+	 * The S4 counterpart of {@link isS3Generic}/{@link s3TypeDispatch}.
+	 */
+	isS4Method?:     boolean;
+	/** The name is an S4 class the package owns, i.e. its NAMESPACE lists it in `exportClasses()`. */
+	isS4Class?:      boolean;
 	inferredType?:   string;
 }
 
@@ -32,7 +34,7 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 
 	/**
 	 * Get the function information for the given function name and optional class name.
-	 * @param name - The name of the function to get information for.
+	 * @param name      - The name of the function to get information for.
 	 * @param className - The optional class name (e.g., for S3 generics).
 	 */
 	getFunctionInfo(name: string, className?: string): FunctionInfo | FunctionInfo[] | undefined;
@@ -90,12 +92,14 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 
 		functionInfo.isExported ||= other.isExported;
 		functionInfo.isS3Generic ||= other.isS3Generic;
+		functionInfo.isS4Method ||= other.isS4Method;
+		functionInfo.isS4Class ||= other.isS4Class;
 	}
 
 	public getFunctionInfo(pkg: string, name: string, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
 		if(s3TypeDispatch) {
 			return this.functionInfo.get(name)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
-		} else if(name.includes('.')){
+		} else if(name.includes('.')) {
 			const parts = name.split('.');
 			s3TypeDispatch = parts.pop();
 			const splitName = parts.join('.');

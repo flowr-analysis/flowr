@@ -14,18 +14,18 @@ import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { guard } from '../../../util/assert';
 
 /**
- * Helper function for {@link processNamedCall} using the given `functionName` as the name of the function.
+ * Helper function for {@link processNamedCall} using the given `content` as the name of the function.
  */
 export function processAsNamedCall<OtherInfo>(
 	{ info, lexeme, location }: RNode<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: Identifier,
+	content: Identifier,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	return processNamedCall({
-		type:    RType.Symbol,
+		type: RType.Symbol,
 		info,
-		content: name,
+		content,
 		lexeme,
 		location,
 	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), info.id, data);
@@ -59,7 +59,7 @@ function isChainNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | und
 function chainLhsRaw<OtherInfo>(node: ChainNode<OtherInfo>): RNode<OtherInfo & ParentInformation> | undefined {
 	if(RFunctionCall.is(node)) {
 		const arg = node.arguments[0];
-		return RArgument.isEmpty(arg) ? undefined : arg.value;
+		return RArgument.valueOf(arg);
 	}
 	return RArgument.is(node.lhs) ? node.lhs.value : node.lhs;
 }

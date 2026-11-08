@@ -1,22 +1,22 @@
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { type IdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import type {
 	Environment,
 	IEnvironment,
 	REnvironmentInformation
 } from '../../../../src/dataflow/environments/environment';
-import { define } from '../../../../src/dataflow/environments/define';
-import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
-import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
 import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
+import { REnvironment } from '../../../../src/dataflow/environments/environment';
 
 
 /**
- *
+ * A variable definition, for an environment a test states by hand.
+ * @param name      - the name it binds
+ * @param definedAt - the node that writes it
  */
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, cds: undefined };
@@ -24,7 +24,9 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
 
 
 /**
- *
+ * A function definition, for an environment a test states by hand.
+ * @param name      - the name it binds
+ * @param definedAt - the node that writes it
  */
 export function asFunction(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Function, nodeId: '_0', definedAt, cds: undefined };
@@ -32,7 +34,7 @@ export function asFunction(name: string, definedAt: NodeId): IdentifierDefinitio
 
 /**
  * Provides a FunctionArgument to use with function call vertices.
- * @param nodeId - AST Node ID
+ * @param nodeId  - AST Node ID
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, cds?: ControlDependency[] }): FunctionArgument {
@@ -69,79 +71,74 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Defines a new argument in the current environment.
-	 * @param name - Argument name
-	 * @param nodeId - AST Node ID of usage
+	 * Defines a new identifier of the given `type` in the current environment.
+	 * @param type      - Reference type to define the identifier as
+	 * @param name      - Identifier name
+	 * @param nodeId    - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param cds - Control dependencies
+	 * @param cds       - Control dependencies
 	 */
-	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
+	private defineAs(type: InGraphReferenceType, name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
-			type: ReferenceType.Argument,
+			type,
 			name,
 			definedAt,
 			nodeId,
-			cds });
+			cds
+		});
+	}
+
+	/**
+	 * Defines a new argument in the current environment.
+	 * @param name      - Argument name
+	 * @param nodeId    - AST Node ID of usage
+	 * @param definedAt - AST Node ID of definition
+	 * @param cds       - Control dependencies
+	 */
+	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
+		return this.defineAs(ReferenceType.Argument, name, nodeId, definedAt, cds);
 	}
 
 	/**
 	 * Defines a new function in the current environment.
-	 * @param name - Function name
-	 * @param nodeId - AST Node ID of usage
+	 * @param name      - Function name
+	 * @param nodeId    - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param cds - Control dependencies
+	 * @param cds       - Control dependencies
 	 */
 	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Function,
-			name,
-			definedAt,
-			nodeId,
-			cds
-		});
+		return this.defineAs(ReferenceType.Function, name, nodeId, definedAt, cds);
 	}
 
 	/**
 	 * Defines a new parameter in the current environment.
-	 * @param name - Parameter name
-	 * @param nodeId - AST Node ID of usage
+	 * @param name      - Parameter name
+	 * @param nodeId    - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param cds - Control dependencies
+	 * @param cds       - Control dependencies
 	 */
 	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Parameter,
-			name,
-			definedAt,
-			nodeId,
-			cds
-		});
+		return this.defineAs(ReferenceType.Parameter, name, nodeId, definedAt, cds);
 	}
 
 	/**
 	 * Defines a new variable in the current environment.
-	 * @param name - Variable name
-	 * @param nodeId - AST Node ID of usage
+	 * @param name      - Variable name
+	 * @param nodeId    - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param cds - Control dependencies
+	 * @param cds       - Control dependencies
 	 */
 	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Variable,
-			name,
-			definedAt,
-			nodeId,
-			cds
-		});
+		return this.defineAs(ReferenceType.Variable, name, nodeId, definedAt, cds);
 	}
 
 	/**
 	 * Adds definitions to the current environment.
-	 * @param def - Definition to add.
+	 * @param def             - Definition to add.
 	 * @param superAssignment - If true, the definition is treated as if defined by a super assignment.
 	 */
 	defineInEnv(def: IdentifierDefinition, superAssignment = false) {
-		const envWithDefinition = define({
+		const envWithDefinition = REnvironment.define({
 			...def,
 			definedAt: NodeId.normalize(def.definedAt),
 			nodeId:    NodeId.normalize(def.nodeId),
@@ -154,7 +151,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Adds a new, local environment on the environment stack and returns it.
 	 */
 	pushEnv(): EnvironmentBuilder {
-		const newEnvironment = pushLocalEnvironment(this);
+		const newEnvironment = REnvironment.pushLocal(this);
 		return new EnvironmentBuilder(newEnvironment.current, this.builtInEnv, newEnvironment.level);
 	}
 
@@ -162,7 +159,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Pops the last environment (must be local) from the environment stack.
 	 */
 	popEnv(): EnvironmentBuilder {
-		const underlyingEnv = popLocalEnvironment(this);
+		const underlyingEnv = REnvironment.popLocal(this);
 		return new EnvironmentBuilder(underlyingEnv.current, this.builtInEnv, underlyingEnv.level);
 	}
 
@@ -172,7 +169,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param other - The next environment.
 	 */
 	appendWritesOf(other: REnvironmentInformation) {
-		const appendedEnv = appendEnvironment(this, other);
+		const appendedEnv = REnvironment.append(this, other);
 		return new EnvironmentBuilder(appendedEnv.current, this.builtInEnv, appendedEnv.level);
 	}
 }

@@ -69,9 +69,9 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
+ * @lintIgnore use-instead
  * @see Slicer
  * The re-parse below measures the raw parser on the sliced output, the analyzer's pipeline would measure something else.
- * @lintIgnore use-instead
  */
 export async function summarizeSlicerStats(
 	stats: SlicerStats,
@@ -183,7 +183,7 @@ export async function summarizeSlicerStats(
 				normalized: reconstructTime / numberOfNormalizedTokens
 			});
 			totalTimes.push({
-				raw:        (sliceTime + reconstructTime ) / numberOfRTokens,
+				raw:        (sliceTime + reconstructTime) / numberOfRTokens,
 				normalized: (sliceTime + reconstructTime) / numberOfNormalizedTokens
 			});
 		} catch{

@@ -1,17 +1,17 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeConfigQuery } from './config-query-executor';
+import { queryHeader } from '../../query-print';
 import { bold, italic, voidFormatter, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { FlowrConfig } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
+import { type CommandCompletions, describeCompletion } from '../../../cli/repl/completion';
 import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
-import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
+import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/strings';
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
@@ -113,7 +113,7 @@ function configGlobMatcher(pattern: string): (path: readonly string[]) => boolea
 		if(segments[i] === '**') {
 			regex += last ? '[^.]+(?:\\.[^.]+)*' : '(?:[^.]+\\.)*';
 		} else {
-			regex += segments[i].split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^.]*') + (last ? '' : '\\.');
+			regex += segments[i].split('*').map(part => escapeRegex(part)).join('[^.]*') + (last ? '' : '\\.');
 		}
 	}
 	const matches = new RegExp(regex + '$');
@@ -323,7 +323,7 @@ export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;
-		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('config', formatter, out['.meta'].timing));
 		const configQueries = queries.filter(q => q.type === 'config');
 		const inspects = configQueries.filter(q => q.inspect).map(q => q.inspect as readonly string[]);
 		if(configQueries.some(q => q.reset)) {
@@ -368,6 +368,5 @@ export const ConfigQueryDefinition = {
 		update:  Joi.object().optional().description('An optional partial configuration to update the current configuration with before returning it. Only the provided fields will be updated, all other fields will remain unchanged.'),
 		inspect: Joi.array().items(Joi.string()).optional().description('An optional `.`-separated path (as a string array) to read a single configuration value instead of returning the whole configuration.'),
 		reset:   Joi.boolean().optional().description('If true, discard every prior update and revert to the config the analyzer was created with, before returning it.')
-	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.'),
-	flattenInvolvedNodes: () => []
+	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.')
 } as const satisfies SupportedQuery<'config'>;

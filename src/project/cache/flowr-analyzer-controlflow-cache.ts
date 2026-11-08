@@ -37,42 +37,19 @@ export class FlowrAnalyzerControlFlowCache {
 		simplifications ??= [];
 		const orderedSimplifications = this.normalizeSimplificationOrder(simplifications);
 
-		const cached = force ?
-			{ cfg: undefined, missingSimplifications: orderedSimplifications }
-			: this.tryGetCachedCfg(orderedSimplifications);
-		let cfg = cached.cfg;
-
-		if(!cfg) {
-			cfg = extractCfg(await cfgCacheInfo.dfg());
-			this.cache.set([[]], cfg);
+		const known = force ? undefined : this.cache.get([orderedSimplifications]);
+		if(known !== undefined) {
+			return known;
 		}
-
-		if(cached.missingSimplifications.length > 0) {
+		/* passes like `analyze-dead-code` change the graph in place, so they start from a view of their own rather than one cached for fewer passes */
+		let cfg = extractCfg(await cfgCacheInfo.dfg());
+		if(orderedSimplifications.length > 0) {
 			const cfgPassInfo = { dfg: (await cfgCacheInfo.dfg()).graph, ctx: cfgCacheInfo.ctx, ast: await cfgCacheInfo.ast() };
-			cfg = simplifyControlFlowInformation(cfg, cfgPassInfo, cached.missingSimplifications);
+			cfg = simplifyControlFlowInformation(cfg, cfgPassInfo, orderedSimplifications);
 		}
 
 		this.cache.set([orderedSimplifications], cfg);
 		return cfg;
-	}
-
-	/**
-	 * Try to get a cached CFG with some of the requested simplifications already applied.
-	 * Matches the longest prefix of simplifications available.
-	 * @returns The cached CFG and the missing simplifications to be applied, or `undefined` if no cached CFG is available.
-	 */
-	private tryGetCachedCfg(simplifications: readonly CfgSimplificationPassName[]): { cfg: ControlFlowInformation | undefined, missingSimplifications: readonly CfgSimplificationPassName[] } {
-		for(let prefixLen = simplifications.length; prefixLen >= 0; prefixLen--) {
-			const prefix = simplifications.slice(0, prefixLen);
-			const cached = this.cache.get([prefix]);
-			if(cached !== undefined) {
-				return {
-					cfg:                    cached,
-					missingSimplifications: simplifications.slice(prefixLen)
-				};
-			}
-		}
-		return { cfg: undefined, missingSimplifications: simplifications };
 	}
 
 	/**

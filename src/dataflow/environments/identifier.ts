@@ -1,7 +1,9 @@
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
+import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
-import { startAndEndsWith } from '../../util/text/strings';
+import { escapeRegex } from '../../util/text/strings';
 import { baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
@@ -26,11 +28,17 @@ export type BrandedNamespace = string & { __brand?: 'namespace' };
  */
 export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean];
 
+/**
+ * A string type representing a namespaced identifier in the format `pkg::name`.
+ */
+export type IdentifierString = `${string}::${string}`;
+
 const dotDotDotAccess = /^\.\.\d+$/;
 
 /**
  * Helper functions to work with {@link Identifier|identifiers}.
  * Use {@link Identifier.matches} to check if two identifiers match according to R's scoping rules!
+ * @helper values
  * @example
  * ```ts
  * const id1 = Identifier.make('a', 'pkg');
@@ -47,14 +55,11 @@ export const Identifier = {
 	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
-		if(startAndEndsWith(name, '`')) {
-			name = name.slice(1, -1);
+		const split = RString.splitQuotes(name);
+		if(split.quote === '`') {
+			name = split.content;
 		}
-		if(namespace) {
-			return [name, namespace, internal];
-		} else {
-			return name;
-		}
+		return namespace ? [name, namespace, internal] : name;
 	},
 	/**
 	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
@@ -84,20 +89,27 @@ export const Identifier = {
 		return ids;
 	},
 	/**
+	 * The names as every one of the given packages exports them, for a function one package owns and others
+	 * re-export unchanged (`dplyr::%>%` is `magrittr::%>%`).
+	 * @example
+	 * ```ts
+	 * Identifier.fromAllIn(['magrittr', 'dplyr'], ['%>%']) // [['%>%', 'magrittr'], ['%>%', 'dplyr']]
+	 * ```
+	 */
+	fromAllIn(this: void, namespaces: readonly BrandedNamespace[], names: readonly BrandedIdentifier[]): Identifier[] {
+		return namespaces.flatMap(namespace => names.map((name): Identifier => [name, namespace]));
+	},
+	/**
 	 * Verify whether an unknown element has a valid identifier shape!
 	 */
 	is(this: void, id: unknown): id is Identifier {
 		if(typeof id === 'string') {
 			return true;
 		}
-		if(Array.isArray(id)) {
-			if(id.length === 2) {
-				return typeof id[0] === 'string' && typeof id[1] === 'string';
-			} else if(id.length === 3) {
-				return typeof id[0] === 'string' && typeof id[1] === 'string' && typeof id[2] === 'boolean';
-			}
+		if(!Array.isArray(id) || typeof id[0] !== 'string' || typeof id[1] !== 'string') {
+			return false;
 		}
-		return false;
+		return id.length === 2 || (id.length === 3 && typeof id[2] === 'boolean');
 	},
 	/**
 	 * Parse an identifier from its string representation,
@@ -113,21 +125,19 @@ export const Identifier = {
 		return [str.slice(at + (internal ? 3 : 2)), str.slice(0, at), internal] as Identifier;
 	},
 	/**
-	 * Get the name part of the identifier
+	 * Get the name part of the identifier, `undefined` if there is no identifier.
 	 */
-	getName(this: void, id: Identifier): BrandedIdentifier {
-		return Array.isArray(id) ? id[0] : id;
-	},
+	getName: ((id?: Identifier) => Array.isArray(id) ? id[0] : id) as Accessor<Identifier, BrandedIdentifier>,
 	/**
-	 * Get the namespace part of the identifier, undefined if there is none
+	 * Get the namespace part of the identifier, `undefined` if there is none (or no identifier).
 	 */
-	getNamespace(this: void, id: Identifier): BrandedNamespace | undefined {
+	getNamespace(this: void, id: Identifier | undefined): BrandedNamespace | undefined {
 		return Array.isArray(id) ? id[1] : undefined;
 	},
 	/**
-	 * Check if the identifier accesses internal objects (`:::`)
+	 * Check if the identifier accesses internal objects (`:::`), `undefined` if it says nothing about it.
 	 */
-	accessesInternal(this: void, id: Identifier): boolean | undefined {
+	accessesInternal(this: void, id: Identifier | undefined): boolean | undefined {
 		return Array.isArray(id) ? id[2] : undefined;
 	},
 
@@ -141,19 +151,14 @@ export const Identifier = {
 	 * Identifier.toString(['a', 'pkg:::internal', true]) // '"pkg:::internal":::a'
 	 * ```
 	 */
-	toString(this: void, id: Identifier): string {
-		if(Array.isArray(id)) {
-			if(id[1].includes('::')) {
-				return `${JSON.stringify(id[1])}${id[2] ? ':::' : '::'}${id[0]}`;
-			}
-			return `${id[1]}${id[2] ? ':::' : '::'}${id[0]}`;
-		} else {
-			if(id.includes('::')) {
-				return JSON.stringify(id);
-			}
-			return id;
+	toString: ((id?: Identifier) => {
+		if(id === undefined) {
+			return undefined;
+		} else if(Array.isArray(id)) {
+			return `${id[1].includes('::') ? JSON.stringify(id[1]) : id[1]}${id[2] ? ':::' : '::'}${id[0]}`;
 		}
-	},
+		return id.includes('::') ? JSON.stringify(id) : id;
+	}) as Accessor<Identifier, string>,
 	/**
 	 * Check if two identifiers match.
 	 * This differs from eq!
@@ -165,29 +170,30 @@ export const Identifier = {
 		const idName = Identifier.getName(id);
 		const targetName = Identifier.getName(target);
 		if(idName !== targetName) {
-			return s3 ? targetName.startsWith(idName + '.') : false;
+			return s3 && targetName.startsWith(idName + '.');
 		}
 		const idNs = Identifier.getNamespace(id);
 		if(idNs === undefined) {
 			return true;
 		}
-		const targetNs = Identifier.getNamespace(target);
-		if(idNs !== targetNs) {
+		if(idNs !== Identifier.getNamespace(target)) {
 			return false;
 		}
-		const idInternal = Identifier.accessesInternal(id);
-		if(idInternal === true) {
+		if(Identifier.accessesInternal(id) === true) {
 			return true;
 		}
 		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
-		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+		return Identifier.accessesInternal(target) !== true;
 	},
 	/**
 	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
 	 */
 	regex(this: void, ...identifiers: readonly Identifier[]): RegExp {
 		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
-		return new RegExp(`^(${identifiers.map(i => `(${Identifier.getNamespace(i) ?? '.+'}:::?)?${Identifier.getName(i)}`).join('|')})$`);
+		return new RegExp(`^(${identifiers.map(i => {
+			const namespace = Identifier.getNamespace(i);
+			return `(${namespace === undefined ? '.+' : escapeRegex(namespace)}:::?)?${escapeRegex(Identifier.getName(i))}`;
+		}).join('|')})$`);
 	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {
@@ -204,39 +210,27 @@ export const Identifier = {
 	 * Functor over the name of the identifier
 	 */
 	mapName(this: void, id: Identifier, fn: (name: BrandedIdentifier) => BrandedIdentifier): Identifier {
-		if(Array.isArray(id)) {
-			return [fn(id[0]), id[1], id[2]];
-		} else {
-			return fn(id);
-		}
+		return Array.isArray(id) ? [fn(id[0]), id[1], id[2]] : fn(id);
 	},
 	/**
 	 * Functor over the namespace of the identifier
 	 */
 	mapNamespace(this: void, id: Identifier, fn: (ns: BrandedNamespace) => BrandedNamespace): Identifier {
-		if(Array.isArray(id)) {
-			return [id[0], fn(id[1]), id[2]];
-		} else {
-			return id;
-		}
+		return Array.isArray(id) ? [id[0], fn(id[1]), id[2]] : id;
 	},
 	/**
 	 * Convert the identifier to its array representation
 	 */
 	toArray(this: void, id: Identifier): [BrandedIdentifier, BrandedNamespace | undefined, boolean | undefined] {
-		if(Array.isArray(id)) {
-			return [id[0], id[1], id[2]];
-		} else {
-			return [id, undefined, undefined];
-		}
+		return Array.isArray(id) ? [id[0], id[1], id[2]] : [id, undefined, undefined];
 	},
 	/**
 	 * The package-qualified identifier of a call, resolved in order of decreasing certainty:
 	 * 1. a package export the {@link Origin|origins} resolve to (`map()` with `purrr` loaded yields `purrr::map`),
 	 * 2. an already-namespaced `name` returned unchanged (an explicit `pkg::fn` call),
 	 * 3. with `qualifyBaseR`, a bare base-R call qualified from its exporting package via {@link baseRExportOwner}
-	 *    (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
-	 *    a user definition, so a local `sd()` stays bare.
+	 * (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
+	 * a user definition, so a local `sd()` stays bare.
 	 *
 	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
 	 * @param origins      - the origins of the call to qualify
@@ -254,26 +248,113 @@ export const Identifier = {
 				} else if(Identifier.getNamespace(origin.fn.name) !== undefined) {
 					return origin.fn.name;
 				}
-			} else {
+			} else if(!NodeId.isBuiltIn(origin.id)) {
+				/* a read that lands on a built-in (e.g. the constant `pi`) is no user definition and must not block step 3 */
 				sawUserDefinition = true;
 			}
 		}
-		if(name === undefined) {
-			return undefined;
-		}
-		if(Identifier.getNamespace(name) !== undefined) {
+		if(name === undefined || Identifier.getNamespace(name) !== undefined) {
 			return name;
 		}
-		if(qualifyBaseR && !sawUserDefinition) {
-			const bare = Identifier.getName(name);
-			const owner = baseRExportOwner(bare);
-			if(owner !== undefined) {
-				return Identifier.make(bare, owner);
-			}
+		if(!qualifyBaseR || sawUserDefinition) {
+			return undefined;
 		}
-		return undefined;
-	}
+		const bare = Identifier.getName(name);
+		const owner = baseRExportOwner(bare);
+		return owner === undefined ? undefined : Identifier.make(bare, owner);
+	},
+	/**
+	 * Wraps the identifier in an {@link IdentifierView|view} offering property access (`id.name`, `id.namespace`)
+	 * and methods. The view does not copy anything; see {@link IdentifierView} for when to use it.
+	 */
+	view: ((id?: Identifier) => id === undefined ? undefined : new IdentifierView(id)) as Accessor<Identifier, IdentifierView>
 } as const;
+
+/**
+ * An object-oriented read-only view on an {@link Identifier}.
+ *
+ * The view holds a reference to the identifier it was created from and copies nothing, so it costs one small
+ * object and every accessor is a plain read. {@link IdentifierView.toJSON|Serializing} it yields the identifier
+ * again, so a view may be handed to `JSON.stringify` in its place.
+ *
+ * The bare {@link Identifier} remains the representation that is stored and sent over the wire; create a view
+ * where you *read* one and drop it afterwards rather than keeping one per binding.
+ * @example
+ * ```ts
+ * const id = Identifier.view(Dataflow.qualify(callId, graph));
+ * console.log(id?.name, id?.namespace, id?.toString());
+ * ```
+ */
+export class IdentifierView {
+	/** @param raw - the underlying identifier; use it whenever you need the plain representation back */
+	constructor(readonly raw: Identifier) {}
+
+	/** the name part, so the `fn` of a `pkg::fn` */
+	get name(): BrandedIdentifier {
+		return Identifier.getName(this.raw);
+	}
+
+	/** the namespace part, `undefined` for a name written without one */
+	get namespace(): BrandedNamespace | undefined {
+		return Identifier.getNamespace(this.raw);
+	}
+
+	/** whether the identifier reaches for an internal object (`:::`), `undefined` if it says nothing about it */
+	get isInternal(): boolean | undefined {
+		return Identifier.accessesInternal(this.raw);
+	}
+
+	/** whether the identifier names its package, i.e. whether it carries a namespace */
+	get isQualified(): boolean {
+		return Array.isArray(this.raw);
+	}
+
+	/** whether this is the `...` argument or one of its accesses (`..1`, `..2`, ...) */
+	get isDotDotDot(): boolean {
+		return Identifier.isDotDotDotAccess(this.raw);
+	}
+
+	/** @see {@link Identifier.matches} */
+	matches(target: IdentifierLike, s3 = false): boolean {
+		return Identifier.matches(this.raw, rawIdentifier(target), s3);
+	}
+
+	/** Whether both name the very same thing, namespace and `:::` flag included. */
+	equals(other: IdentifierLike): boolean {
+		const target = rawIdentifier(other);
+		return this.name === Identifier.getName(target)
+			&& this.namespace === Identifier.getNamespace(target)
+			&& (this.isInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+	}
+
+	/** @see {@link Identifier.mapName} */
+	mapName(fn: (name: BrandedIdentifier) => BrandedIdentifier): IdentifierView {
+		return new IdentifierView(Identifier.mapName(this.raw, fn));
+	}
+
+	/** @see {@link Identifier.mapNamespace} */
+	mapNamespace(fn: (ns: BrandedNamespace) => BrandedNamespace): IdentifierView {
+		return new IdentifierView(Identifier.mapNamespace(this.raw, fn));
+	}
+
+	/** @see {@link Identifier.toString} - the **valid R** spelling, so `pkg::fn` for a qualified name */
+	toString(): string {
+		return Identifier.toString(this.raw);
+	}
+
+	/** Serializes to the underlying identifier, so a view is interchangeable with one in JSON output. */
+	toJSON(): Identifier {
+		return this.raw;
+	}
+}
+
+/** An {@link Identifier} or a {@link IdentifierView} of one. Accepted wherever an identifier is only read. */
+export type IdentifierLike = Identifier | IdentifierView;
+
+/** Unwraps an {@link IdentifierView} to its identifier, passing bare identifiers through unchanged. */
+function rawIdentifier(of: IdentifierLike): Identifier {
+	return of instanceof IdentifierView ? of.raw : of;
+}
 
 /** The index of the `::` separating namespace from name, skipping backtick-quoted spans; `-1` if there is none. */
 function namespaceSeparatorAt(str: string): number {
@@ -299,73 +380,196 @@ export const enum PkgName {
 	Graphics    = 'graphics',
 	GrDevices   = 'grDevices',
 	Methods     = 'methods',
+	Parallel    = 'parallel',
 	Stats       = 'stats',
 	Utils       = 'utils',
 	/* CRAN / third-party */
+	AnnotationHub = 'AnnotationHub',
+	Ape          = 'ape',
+	Archive      = 'archive',
+	Arrow        = 'arrow',
 	AssertThat   = 'assertthat',
+	Audio        = 'audio',
+	Av           = 'av',
+	AwsS3        = 'aws.s3',
+	BiocManager  = 'BiocManager',
 	Box          = 'box',
+	Brew         = 'brew',
+	Callr        = 'callr',
 	Car          = 'car',
+	Claddis      = 'Claddis',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
+	Corrplot     = 'corrplot',
+	Cowplot      = 'cowplot',
+	Config       = 'config',
+	Conflicted   = 'conflicted',
+	Curl         = 'curl',
 	DataTable    = 'data.table',
 	Dbi          = 'DBI',
 	DbPlyr       = 'dbplyr',
 	Devtools     = 'devtools',
+	DiagrammeR   = 'DiagrammeR',
+	DoFuture     = 'doFuture',
+	DoMc         = 'doMC',
+	DoParallel   = 'doParallel',
+	DoSnow       = 'doSNOW',
+	Downloader   = 'downloader',
+	Dotenv       = 'dotenv',
 	Dplyr        = 'dplyr',
+	EasyPackages = 'easypackages',
+	EbImage      = 'EBImage',
+	Emmeans      = 'emmeans',
+	ExperimentHub = 'ExperimentHub',
+	Expss        = 'expss',
+	FastUtils    = 'FastUtils',
+	Feather      = 'feather',
+	Fields       = 'fields',
+	Fixest       = 'fixest',
+	Foreach      = 'foreach',
+	Forecats     = 'forcats',
+	Foreign      = 'foreign',
 	Fs           = 'fs',
+	Fst          = 'fst',
 	Functools    = 'functools',
+	Furrr        = 'furrr',
+	Future       = 'future',
+	FutureApply  = 'future.apply',
+	FutureCallr  = 'future.callr',
+	Geomorph     = 'geomorph',
 	GgPlot2      = 'ggplot2',
+	GgPubr       = 'ggpubr',
+	Gifski       = 'gifski',
+	Glue         = 'glue',
+	GoogleCloudStorageR = 'googleCloudStorageR',
+	GoogleDrive  = 'googledrive',
+	Haven        = 'haven',
+	Groundhog    = 'groundhog',
 	Here         = 'here',
 	Hmisc        = 'Hmisc',
 	HtmlTools    = 'htmltools',
 	HtmlWidgets  = 'htmlwidgets',
+	Httr         = 'httr',
+	Httr2        = 'httr2',
+	Imager       = 'imager',
 	Import       = 'import',
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
+	Jpeg         = 'jpeg',
 	Jsonlite     = 'jsonlite',
+	Knitr        = 'knitr',
 	Lattice      = 'lattice',
+	Librarian    = 'librarian',
+	Lim          = 'LIM',
+	Lme4         = 'lme4',
 	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
+	Maptools     = 'maptools',
+	Mass         = 'MASS',
+	Meltr        = 'meltr',
+	Mirai        = 'mirai',
+	Mockery      = 'mockery',
 	Msgr         = 'msgr',
 	Multcomp     = 'multcomp',
+	Needs        = 'needs',
+	Ncdf4        = 'ncdf4',
 	NorTest      = 'nortest',
+	OpenImageR   = 'OpenImageR',
+	OpenXlsx     = 'openxlsx',
+	Osfr         = 'osfr',
+	Pak          = 'pak',
+	Pacman       = 'pacman',
+	Parallelly   = 'parallelly',
+	Patchwork    = 'patchwork',
+	Piggyback    = 'piggyback',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
+	Png          = 'png',
 	Processx     = 'processx',
+	Promises     = 'promises',
 	Purrr        = 'purrr',
-	Ragg         = 'ragg',
+	Qs           = 'qs',
+	Quarto       = 'quarto',
 	R6           = 'R6',
+	Ragg         = 'ragg',
+	Raster       = 'raster',
 	RasterPdf    = 'rasterpdf',
+	Rbdat        = 'rBDAT',
 	Rcpp         = 'Rcpp',
+	RcppParallel = 'RcppParallel',
+	Rcurl        = 'RCurl',
+	ReadOds      = 'readODS',
+	Readr        = 'readr',
+	Readstata13  = 'readstata13',
+	Readxl       = 'readxl',
 	Remotes      = 'remotes',
+	Reshape2     = 'reshape2',
+	Rgdal        = 'rgdal',
+	Rhdf5        = 'rhdf5',
+	Rio          = 'rio',
 	Rlang        = 'rlang',
+	Rmatlab      = 'R.matlab',
 	RmethodsS3   = 'R.methodsS3',
+	Renv         = 'renv',
+	Reticulate   = 'reticulate',
+	Rmarkdown    = 'rmarkdown',
+	Rnetcdf      = 'RNetCDF',
 	Roo          = 'R.oo',
+	Rprintf      = 'rprintf',
+	RsConnect    = 'rsconnect',
+	Rsqlite      = 'RSQLite',
 	Rstatix      = 'rstatix',
 	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
+	Rvest        = 'rvest',
 	S7           = 'S7',
+	Seewave      = 'seewave',
+	Seqinr       = 'seqinr',
+	Sf           = 'sf',
 	Shiny        = 'shiny',
 	ShinyCohortBuilder = 'shinyCohortBuilder',
 	ShinyFiles   = 'shinyFiles',
 	ShinyJs      = 'shinyjs',
+	SimPhe       = 'SimPhe',
+	SjPlot       = 'sjPlot',
 	Soda         = 'SoDA',
+	Sourcetools  = 'sourcetools',
 	Sqldf        = 'sqldf',
-	SvDialogs    = 'svDialogs',
-	Sys          = 'sys',
-	Tcltk        = 'tcltk',
-	Testthat     = 'testthat',
-	TidyR        = 'tidyr',
-	Tibble       = 'tibble',
-	Glue         = 'glue',
+	Stargazer    = 'stargazer',
+	Stars        = 'stars',
+	Stringmagic  = 'stringmagic',
 	Stringr      = 'stringr',
+	Survival     = 'survival',
+	SvDialogs    = 'svDialogs',
+	Svglite      = 'svglite',
+	Sys          = 'sys',
+	Targets      = 'targets',
+	Tcltk        = 'tcltk',
+	Terra        = 'terra',
+	Texreg       = 'texreg',
+	Testthat     = 'testthat',
+	Tibble       = 'tibble',
+	TidyR        = 'tidyr',
+	Tiff         = 'tiff',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
 	Tseries      = 'tseries',
+	TuneR        = 'tuneR',
+	UseThis      = 'usethis',
+	VisNetwork   = 'visNetwork',
+	Vroom        = 'vroom',
+	Whisker      = 'whisker',
 	Withr        = 'withr',
-	Forecats     = 'forcats',
-	Readr        = 'readr'
+	Wrapr        = 'wrapr',
+	Writexl      = 'writexl',
+	Xfun         = 'xfun',
+	XlConnect    = 'XLConnect',
+	Xlsx         = 'xlsx',
+	Xml2         = 'xml2',
+	Yaml         = 'yaml',
+	Zen4R        = 'zen4R',
+	Zip          = 'zip',
 }
 
 /**
@@ -452,7 +656,7 @@ export interface IdentifierReference {
 	 * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
 	 * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	cds?:            ControlDependency[] | undefined
+	cds?:            readonly ControlDependency[] | undefined
 }
 
 /**
@@ -484,6 +688,8 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
 	 */
 	readonly envState?:        REnvironmentInformation
+	/** Names the environment object {@link envState} tracks, so that every variable aliasing it sees the same writes. */
+	readonly envId?:           NodeId
 	/**
 	 * If this is a function that returns a tracked environment, stores the envState
 	 * that the function returns (best-effort: only set when statically detectable).
@@ -494,6 +700,11 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * `for` loop's variable does: it takes one element of that sequence at a time.
 	 */
 	readonly iterated?:        boolean
+}
+
+/** Whether a definition holds a tracked environment, i.e. carries an {@link InGraphIdentifierDefinition#envState}. */
+export function hasEnvState(definition: IdentifierDefinition | undefined): definition is InGraphIdentifierDefinition & { envState: REnvironmentInformation } {
+	return (definition as InGraphIdentifierDefinition | undefined)?.envState !== undefined;
 }
 
 /**

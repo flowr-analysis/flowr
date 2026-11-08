@@ -68,6 +68,25 @@ describe('RShell sessions', { concurrent: false }, withShell(shell => {
 			})
 		).rejects.toThrow();
 	});
+	testWithShell('a request that outlives its own timeout must not leak into the next request', async shell => {
+		await shell.sendCommandWithOutput('Sys.sleep(0.3); cat("stale-output\\n")', {
+			timeout: {
+				ms:             10,
+				resetOnNewData: false
+			}
+		}).catch(() => { /* expected to reject, we only care about what happens next */ });
+
+		const lines = await shell.sendCommandWithOutput('cat("fresh-output\\n")');
+		assert.deepStrictEqual(lines, ['fresh-output']);
+	});
+	testWithShell('two overlapping requests on the same shell must not cross-attribute their responses', async shell => {
+		const slow = shell.sendCommandWithOutput('Sys.sleep(0.2); cat("slow-output\\n")');
+		const fast = shell.sendCommandWithOutput('cat("fast-output\\n")');
+
+		const [slowLines, fastLines] = await Promise.all([slow, fast]);
+		assert.deepStrictEqual(slowLines, ['slow-output']);
+		assert.deepStrictEqual(fastLines, ['fast-output']);
+	});
 	test('send multiple commands', async() => {
 		shell.sendCommands('a <- 1', 'b <- 2', 'c <- a + b');
 

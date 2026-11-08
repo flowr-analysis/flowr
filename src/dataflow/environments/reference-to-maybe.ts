@@ -3,10 +3,10 @@ import { Identifier, ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
-import { appendCds, withCds } from '../info';
+import { withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
-import { ValueVertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import { Resolve } from './resolve-helper';
 
 /** copy of the definition with the given cds attached, marking it as maybe */
@@ -29,23 +29,17 @@ function replaceDefinitions(env: Environment, key: BrandedIdentifier, toUpdate: 
  * Copy-on-write: definitions are replaced, never mutated in place, so previously cloned
  * environments (e.g., snapshots stored in the dataflow graph) keep their state.
  */
-function applyCdsToDefinitions(environments: REnvironmentInformation, name: Identifier, type: ReferenceType, definitions: readonly IdentifierDefinition[], nodeId: NodeId, defaultCd: readonly ControlDependency[] | undefined): void {
-	const toUpdate = new Set<IdentifierDefinition>();
-	for(const definition of definitions) {
-		if(definition.nodeId === nodeId
-			&& definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant
-			&& (defaultCd !== undefined || definition.cds === undefined)) {
-			toUpdate.add(definition);
-		}
-	}
+export function applyCdsToDefinitions(environments: REnvironmentInformation, name: Identifier, type: ReferenceType, definitions: readonly IdentifierDefinition[], nodeId: NodeId, defaultCd: readonly ControlDependency[] | undefined): void {
+	const toUpdate = new Set(definitions.filter(definition => definition.nodeId === nodeId
+		&& definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant
+		&& (defaultCd !== undefined || definition.cds === undefined)));
 	if(toUpdate.size === 0) {
 		return;
 	}
 	const [plainName] = Identifier.toArray(name);
 	const prefix = type === ReferenceType.S3MethodPrefix ? plainName + '.'
 		: type === ReferenceType.S7MethodPrefix ? plainName + S7DispatchSeparator : undefined;
-	let current: Environment = environments.current;
-	while(!current.builtInEnv) {
+	for(let current: Environment = environments.current; !current.builtInEnv; current = current.parent) {
 		if(prefix === undefined) {
 			replaceDefinitions(current, plainName, toUpdate, defaultCd);
 		} else {
@@ -55,8 +49,11 @@ function applyCdsToDefinitions(environments: REnvironmentInformation, name: Iden
 				}
 			}
 		}
-		current = current.parent;
 	}
+}
+
+function addCds(target: { cds?: readonly ControlDependency[] }, cds: readonly ControlDependency[] | undefined): void {
+	target.cds = withCds(target.cds, cds);
 }
 
 /**
@@ -73,20 +70,12 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	}
 	const node = graph.getVertex(ref.nodeId);
 	if(node) {
-		if(node.cds) {
-			appendCds(node.cds, defaultCd);
-		} else {
-			node.cds = defaultCd ? Array.from(defaultCd) : [];
-		}
+		addCds(node, defaultCd);
 	}
-	if(ref.cds) {
-		if(defaultCd) {
-			return { ...ref, cds: withCds(ref.cds, defaultCd) };
-		}
-	} else {
+	if(ref.cds === undefined) {
 		return { ...ref, cds: defaultCd ? Array.from(defaultCd) : [] };
 	}
-	return ref;
+	return defaultCd ? { ...ref, cds: withCds(ref.cds, defaultCd) } : ref;
 }
 
 /**
@@ -94,10 +83,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
  * @see {@link makeReferenceMaybe}
  */
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, applyCds: ControlDependency[] | undefined = undefined): IdentifierReference[] {
-	if(references === undefined || references.length === 0) {
-		return [];
-	}
-	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds));
+	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds)) ?? [];
 }
 
 /**
@@ -105,21 +91,12 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
  */
 export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
 	for(const [,v] of graph.vertices(true)) {
-		if(ValueVertex.is(v)) {
-			continue;
-		}
-		if(v.cds) {
-			appendCds(v.cds, cds);
-		} else {
-			v.cds = Array.from(cds);
+		if(!DfgVertex.isValue(v)) {
+			addCds(v, cds);
 		}
 	}
 	for(const ref of references) {
-		if(ref.cds) {
-			appendCds(ref.cds, cds);
-		} else {
-			ref.cds = Array.from(cds);
-		}
+		addCds(ref, cds);
 	}
 }
 
@@ -127,14 +104,9 @@ export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, reference
  * apply the given cds to all given references, but not to the graph. This is useful if we want to mark the references as maybe without marking all other nodes in the graph as maybe.
  */
 export function applyCdToReferences(references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
-	if(cds.length === 0) {
-		return;
-	}
-	for(const ref of references) {
-		if(ref.cds) {
-			appendCds(ref.cds, cds);
-		} else {
-			ref.cds = Array.from(cds);
+	if(cds.length > 0) {
+		for(const ref of references) {
+			addCds(ref, cds);
 		}
 	}
 }

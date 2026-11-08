@@ -1,4 +1,5 @@
 import { SourceLocation, SourceRange } from '../../../../util/range';
+import type { Accessor } from '../../../../util/accessor';
 import { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
 import type { RNumber } from './nodes/r-number';
@@ -13,7 +14,7 @@ import type { RForLoop } from './nodes/r-for-loop';
 import type { RRepeatLoop } from './nodes/r-repeat-loop';
 import type { RWhileLoop } from './nodes/r-while-loop';
 import type { RIfThenElse } from './nodes/r-if-then-else';
-import type { RFunctionDefinition } from './nodes/r-function-definition';
+import { RFunctionDefinition } from './nodes/r-function-definition';
 import type { EmptyArgument, RFunctionCall } from './nodes/r-function-call';
 import type { RParameter } from './nodes/r-parameter';
 import type { RArgument } from './nodes/r-argument';
@@ -89,8 +90,7 @@ export interface WithChildren<Info, Children extends RAstNodeBase<Info, string |
  * as it is equivalent to the {@link RAstNodeBase} interface.
  * It is intended to help humans understand the code.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface Leaf<Info = NoInfo, LexemeType = string> extends RAstNodeBase<Info, LexemeType> {}
+export type Leaf<Info = NoInfo, LexemeType = string> = RAstNodeBase<Info, LexemeType>;
 
 /**
  * Indicates, that the respective {@link RAstNodeBase} node has known source code
@@ -118,6 +118,7 @@ export type NamespaceIdentifier = string;
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>;
 /**
  * Helper object to provide helper functions for {@link RConstant|RConstants}.
+ * @helper ast
  * @see {@link RNode} - for more general helper functions for all nodes
  */
 export const RConstant = {
@@ -127,11 +128,7 @@ export const RConstant = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RNumber.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstant<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.Number || t === RType.String || t === RType.Logical;
+		return node !== undefined && RConstant.constantTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of constants in the normalized AST, i.e. number, string, and logical constants.
@@ -145,6 +142,7 @@ export const RConstant = {
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
 /**
  * Represents a leaf node in the normalized AST, i.e. a node that does not have any children. This includes comment, symbol, constant, break, next, and line directive nodes.
+ * @helper ast
  */
 export const RSingleNode = {
 	name: 'RSingleNode',
@@ -153,11 +151,7 @@ export const RSingleNode = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RComment.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RSingleNode<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.Comment || t === RType.Symbol || RConstant.constantTypes.has(t) || t === RType.Break || t === RType.Next || t === RType.LineDirective;
+		return node !== undefined && RSingleNode.singleNodeTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next, and line directive nodes.
@@ -168,6 +162,10 @@ export const RSingleNode = {
  * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
  */
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>;
+/**
+ * Helper for working with {@link RLoopConstructs} AST nodes.
+ * @helper ast
+ */
 export const RLoopConstructs = {
 	name: 'RLoopConstructs',
 	/**
@@ -175,22 +173,27 @@ export const RLoopConstructs = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RForLoop.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLoopConstructs<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.ForLoop || t === RType.RepeatLoop || t === RType.WhileLoop;
+		return node !== undefined && RLoopConstructs.loopConstructTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of loop constructs in the normalized AST, i.e. for, repeat and while loops.
 	 */
-	loopConstructTypes: new Set([RType.ForLoop, RType.RepeatLoop, RType.WhileLoop]) as ReadonlySet<RType>
+	loopConstructTypes: new Set([RType.ForLoop, RType.RepeatLoop, RType.WhileLoop]) as ReadonlySet<RType>,
+	/** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
+	encloses<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>): boolean {
+		const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.is(n));
+		return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
+	}
 } as const;
 /**
  * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes
  * the {@link RIfThenElse} construct as well.
  */
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>;
+/**
+ * Helper for working with {@link RConstructs} AST nodes.
+ * @helper ast
+ */
 export const RConstructs = {
 	name: 'RConstructs',
 	/**
@@ -198,11 +201,7 @@ export const RConstructs = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RForLoop.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstructs<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return RLoopConstructs.loopConstructTypes.has(t) || t === RType.IfThenElse;
+		return node !== undefined && RConstructs.constructTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of constructs in the normalized AST, i.e. for, repeat and while loops and if-then-else constructs.
@@ -214,6 +213,10 @@ export const RConstructs = {
  * (calls and definitions) in the normalized AST.
  */
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>;
+/**
+ * Helper for working with {@link RFunctions} AST nodes.
+ * @helper ast
+ */
 export const RFunctions = {
 	name: 'RFunctions',
 	/**
@@ -221,11 +224,7 @@ export const RFunctions = {
 	 * If you need the specific type, please either use the respective type guards (e.g., {@link RFunctionDefinition.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctions<Info> {
-		if(!node) {
-			return false;
-		}
-		const t = node.type;
-		return t === RType.FunctionDefinition || t === RType.FunctionCall || t === RType.Parameter || t === RType.Argument;
+		return node !== undefined && RFunctions.functionTypes.has(node.type);
 	},
 	/**
 	 * A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters, and arguments.
@@ -237,6 +236,10 @@ export const RFunctions = {
  * nodes in the normalized AST. At the moment these are the comment-like nodes.
  */
 export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
+/**
+ * Helper for working with {@link ROther} AST nodes.
+ * @helper ast
+ */
 export const ROther = {
 	name: 'ROther',
 	/**
@@ -274,6 +277,7 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
  * For the individual type checks, please consult the individual vertices, e.g. {@link RPipe.is}.
  * Some vertices also have a {@link RPipe.availableFromRVersion} property that indicates from which R version they are available,
  * so you can check for that as well if needed.
+ * @helper ast
  */
 export const RNode = {
 	name: 'RNode',
@@ -281,15 +285,13 @@ export const RNode = {
 	 * A helper function to retrieve the location of a given node, if available.
 	 * @see SourceLocation.fromNode
 	 */
-	getLocation(this: void, node: RNode): SourceLocation | undefined {
+	getLocation(this: void, node: RNode | undefined): SourceLocation | undefined {
 		return SourceLocation.fromNode(node);
 	},
 	/**
-	 * A helper function to retrieve the id of a given node, if available.
+	 * A helper function to retrieve the id of a given node, `undefined` if there is no node.
 	 */
-	getId(this: void, node: RNode<ParentInformation>): NodeId {
-		return node.info.id;
-	},
+	getId: ((node?: RNode<ParentInformation>) => node?.info.id) as Accessor<RNode<ParentInformation>, NodeId>,
 	/**
 	 * An identity for `node` that two analyses of the same source agree on, unlike {@link RNode.getId|the numeric
 	 * id}, which only means something within the analysis that handed it out. Made of the file the node came
@@ -298,9 +300,9 @@ export const RNode = {
 	 * This survives re-analyzing the same text, not editing it -- an edit above the node moves it.
 	 * `undefined` for a node that carries no location (an artificial node, e.g. a built-in).
 	 */
-	stableId(this: void, node: RNode<ParentInformation>): string | undefined {
-		const location = node.location;
-		return location === undefined ? undefined : `${node.info.file ?? ''}:${location[0]}:${location[1]}:${node.type}`;
+	stableId(this: void, node: RNode<ParentInformation> | undefined): string | undefined {
+		const location = node?.location;
+		return location === undefined ? undefined : `${node?.info.file ?? ''}:${location[0]}:${location[1]}:${node?.type}`;
 	},
 	/**
 	 * The source range the whole subtree of `node` covers, from the first position any of its nodes starts at to
@@ -335,6 +337,23 @@ export const RNode = {
 		}
 	},
 	/**
+	 * Walks up from `id` along the AST parent chain (itself included), returning the id of the first node for
+	 * which `isTarget` holds, `undefined` if the walk reaches the root of the file without a match.
+	 */
+	findEnclosing<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>, isTarget: (node: RNode<OtherInfo & ParentInformation>) => boolean): NodeId | undefined {
+		for(let node = idMap.get(id); node !== undefined; node = RNode.directParent(node, idMap)) {
+			if(isTarget(node)) {
+				return node.info.id;
+			}
+		}
+		return undefined;
+	},
+	/** The function definition strictly enclosing `id`, i.e., `id` itself excluded. */
+	strictlyEnclosingFunction<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>): NodeId | undefined {
+		const parent = idMap.get(id)?.info.parent;
+		return parent === undefined ? undefined : RNode.findEnclosing(parent, idMap, RFunctionDefinition.is);
+	},
+	/**
 	 * A helper function to retrieve the type of a given node.
 	 */
 	getType(this: void, node: RNode): RType {
@@ -342,9 +361,9 @@ export const RNode = {
 	},
 	/**
 	 * Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.
-	 * @param nodes          - The root id nodes to start collecting from
-	 * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
-	 * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
+	 * @param nodes   - The root id nodes to start collecting from
+	 * @param onVisit - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+	 * @param onExit  - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
 	 * @see {@link RProject.visitAst} - to visit all nodes in a project
 	 */
 	visitAst<OtherInfo = NoInfo>(this: void, nodes: SingleOrArrayOrNothing<RNode<OtherInfo>>, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
@@ -395,22 +414,16 @@ export const RNode = {
 	 * @see {@link iterateParents} - to get all parents of a node
 	 */
 	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: AstIdMap<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
-		const parentId = node.info.parent;
-		if(parentId === undefined) {
-			return undefined;
-		}
-		return idMap.get(parentId);
+		return node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
 	},
 	/**
 	 * Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node.
 	 */
 	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: AstIdMap<OtherInfo & ParentInformation>): Generator<RNode<OtherInfo & ParentInformation>> {
-		let currentNode: RNode<OtherInfo & ParentInformation> | undefined = node;
-		while(currentNode) {
-			currentNode = RNode.directParent(currentNode, idMap);
-			if(currentNode) {
-				yield currentNode;
-			}
+		let current = node === undefined ? undefined : RNode.directParent(node, idMap);
+		while(current !== undefined) {
+			yield current;
+			current = RNode.directParent(current, idMap);
 		}
 	},
 	/**
@@ -418,10 +431,8 @@ export const RNode = {
 	 * this function calculates the depth of a node by counting the number of parents until the root node is reached.
 	 */
 	depth(this: void, node: RNode<ParentInformation>, idMap: AstIdMap<ParentInformation>): number {
-		let depth = 0;
-		let currentNode: RNode | undefined = node;
-		while(currentNode) {
-			currentNode = RNode.directParent(currentNode as RNode<ParentInformation>, idMap);
+		let depth = 1;
+		for(const _ of RNode.iterateParents(node, idMap)) {
 			depth++;
 		}
 		return depth;
@@ -431,7 +442,7 @@ export const RNode = {
 	 * <p>
 	 * This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.
 	 * @param nodes - The root id nodes to start collecting from
-	 * @param stop - A function that determines whether to stop collecting at a given node, does not stop by default
+	 * @param stop  - A function that determines whether to stop collecting at a given node, does not stop by default
 	 * @see {@link collectAllIds} - to collect all ids without stopping
 	 * @see {@link RProject.collectAllIdsWithStop} - to collect all ids within a project with stopping
 	 */
@@ -447,11 +458,20 @@ export const RNode = {
 		return ids;
 	},
 	/**
-	 * A helper function to retrieve the lexeme of a given node, if available.
+	 * The code a given node spans, if available.
 	 * If the `fullLexeme` is available, it will be returned, otherwise the `lexeme` will be returned.
+	 * @see {@link RNode.ownLexeme} - for the token the node is made of
 	 */
 	lexeme<R extends RNode<ParentInformation>>(this: void, node: R | undefined): R extends { lexeme: string } ? string : string | undefined {
 		return node?.info.fullLexeme ?? node?.lexeme as string;
+	},
+	/**
+	 * The lexeme of the token the node is made of, e.g., the name of a call rather than the call as a whole.
+	 * Only if the node has none of its own, the `fullLexeme` is used.
+	 * @see {@link RNode.lexeme} - for the code the node spans
+	 */
+	ownLexeme(this: void, node: RNode<ParentInformation> | undefined): string | undefined {
+		return node?.lexeme ?? node?.info.fullLexeme;
 	},
 	/**
 	 * Return the (roxygen) documentation associated with the given node, if available.

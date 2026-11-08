@@ -1,3 +1,4 @@
+import { withoutTimings } from '../doc-util/doc-timings';
 import type { PathLike } from 'fs';
 import type { GeneralDocContext } from './doc-context';
 import type { RShell } from '../../r-bridge/shell';
@@ -32,9 +33,24 @@ export enum WikiChangeType {
 	Identical
 }
 
-/** Strips `\r` so generated files stay consistent regardless of OS/checkout settings. */
+/** Runs of blank lines render as one, so a page carries one; what is inside a code fence is content and stays. */
+function collapseBlankLines(text: string): string {
+	const out: string[] = [];
+	let inFence = false;
+	for(const line of text.split('\n')) {
+		if(/^\s*(?:`{3,}|~{3,})/.test(line)) {
+			inFence = !inFence;
+		} else if(!inFence && line.trim() === '' && out[out.length - 1]?.trim() === '') {
+			continue;
+		}
+		out.push(line);
+	}
+	return out.join('\n');
+}
+
+/** Strips `\r`, the blank lines that render as one, and the measurements of {@link withoutTimings} so a regenerated page only differs when its content does. */
 export function normalizeLineEndings(text: string): string {
-	return text.replace(/\r\n/g, '\n');
+	return withoutTimings(collapseBlankLines(text.replace(/\r\n/g, '\n')));
 }
 
 export interface DocMakerLike<Target extends string = string> {
@@ -51,8 +67,7 @@ const UrlEncodedHomePath = /(?:[a-z]%3A)?(%2F|%5C)(?:home|users)\1(?:[\w.%-]+\1)
 const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	// mute signature database load time variance in wiki table (before the `ms` rule, which would eat half of it)
 	[/≈\s*<?[\d.]+\s*[µm]s/g, ''],
-	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
-	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
+	[/\d+(\.\d+)?(\u2009|\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"?(timing|searchTimeMs|processTimeMs|id|tsId)"?:\s*\d+(\.\d)?,?/g, ''],
 	[/"format":"compact"[^\n\r]*/giu, ''],

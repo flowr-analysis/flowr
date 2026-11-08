@@ -6,7 +6,7 @@ import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/defa
 import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
-import { SourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
+import { buildSourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
 import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
@@ -16,7 +16,7 @@ import { RFunctionCall } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 
 /** force-select every named `source()` call so the inlining recursion is exercised regardless of what the slice pulls in */
 function selectSourceCalls(node: RNode<ParentInformation>): boolean {
-	return RFunctionCall.isNamed(node) && node.functionName.lexeme === 'source';
+	return RFunctionCall.isNamed(node, 'source');
 }
 
 async function run(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria) {
@@ -28,7 +28,7 @@ async function run(input: string, files: FlowrInlineTextFile[], criteria: Slicin
 		context,
 		criterion: criteria
 	}).allRemainingSteps();
-	const map = SourceInlineMap.build(res.normalize, res.dataflow.graph);
+	const map = buildSourceInlineMap(res.normalize, res.dataflow.graph);
 	const inlined = reconstructToCode(res.normalize, {
 		nodes:         res.slice.result,
 		inlineSources: true,
@@ -59,8 +59,8 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 	afterAll(() => { /* nothing to clean up */ });
 
-	test('SourceInlineMap.build links the source() call to the sourced file', async() => {
-		const { res, map } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+	test('buildSourceInlineMap links the source() call to the sourced file', async() => {
+		const { res, map } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		expect(res.normalize.ast.files.length).toBe(2);
 		expect(map.size).toBe(1);
 		// the single mapping must point at file index 1 (the sourced file)
@@ -71,7 +71,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('single inline splices the sourced definition and drops the source() call', async() => {
-		const { inlined } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const { inlined } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		const code = inlined.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
@@ -151,7 +151,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('respects the exact reconstruction for a plain single inline', async() => {
-		const { inlined } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const { inlined } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		assert.strictEqual(inlined.code, 'N <- 9\nN');
 	});
 
@@ -166,7 +166,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('the reconstruct pipeline step inlines sources when the inlineSources input is set (backward)', async() => {
-		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		const code = reconstruct.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
@@ -196,6 +196,40 @@ describe('inline source()', { concurrent: false }, () => {
 		const code = entry.reconstruct.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
+		expect(entry.reconstruct.inlineWarnings).toEqual([]);
+	});
+	test('the program starts in the file no other one sources, even when a sourced one is loaded first', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addFile(new FlowrInlineTextFile('helpers.R', 'twice <- function(x) x * 2'), new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(twice(2))'));
+		analyzer.addRequest({ request: 'file', content: 'helpers.R' }, { request: 'file', content: 'main.R' });
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
+	});
+	test('banners mark where a spliced file begins and ends', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addRequest('source("a")\ncat(N)');
+		analyzer.addFile(new FlowrInlineTextFile('a', 'N <- 9'));
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@N'], inlineSources: 'banner' }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('# ---- a ----\nN <- 9\n# ---- end of a ----\nN');
+	});
+	test('a sourced file the project also analyzes on its own is still inlined', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addFile(new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(twice(2))'), new FlowrInlineTextFile('helpers.R', 'twice <- function(x) x * 2'));
+		analyzer.addRequest({ request: 'file', content: 'main.R' }, { request: 'file', content: 'helpers.R' });
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
 		expect(entry.reconstruct.inlineWarnings).toEqual([]);
 	});
 });

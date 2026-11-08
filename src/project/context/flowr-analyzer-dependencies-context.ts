@@ -1,8 +1,7 @@
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import {
-	FlowrAnalyzerPackageVersionsPlugin,
-	type SigDbLoadedInfo
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import { Package } from '../plugins/package-version-plugins/package';
 import type { PackageSignatureSource } from '../sigdb/reader';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -37,7 +36,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * comes from the declared constraints.
 	 * @param name    - The name of the dependency to get.
 	 * @param version - Optional version constraint to pin the resolution to (exact version string or a {@link Range}).
-	 * @returns The dependency with the given name, or undefined if it does not exist.
+	 * @returns       The dependency with the given name, or undefined if it does not exist.
 	 */
 	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
 
@@ -100,7 +99,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * const db = analyzer.inspectContext().deps.signatures();
 	 * db.versionOf('dplyr');                              // the version the analysis assumes
 	 * db.functionOf(Identifier.make('lead', 'dplyr'));    // its database entry
-	 * db.parametersOf(Identifier.make('lead', 'dplyr'));  // its formals, ready for MatchArgs.toNames
+	 * db.parametersOf(Identifier.make('lead', 'dplyr'));  // its formals, ready for FunctionSemantics.call.match.toNames
 	 * ```
 	 */
 	signatures(): SignatureDb;
@@ -115,7 +114,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * The signature-database entry for the qualified call `id` (a `pkg::fn` {@link Identifier}) from the first
 	 * {@link signatureSources|source} that has it, resolving the package version from the project's dependency info
 	 * unless `version` overrides it. This is the easy way to obtain a function's parameters from a context: pass
-	 * `fn.signature` to {@link MatchArgs.toNames}. `undefined` if `id` is unqualified or no loaded source defines it.
+	 * `fn.signature` to {@link FunctionSemantics.call.match.toNames}. `undefined` if `id` is unqualified or no loaded source defines it.
 	 * @useInstead {@link SignatureDb.functionOf}
 	 */
 	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
@@ -228,6 +227,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		for(const p of this.plugins) {
 			await p.addDatabaseSource(source);
 		}
+	}
+
+	/** Lets every version plugin wait for what the dataflow of `ast` will ask of it, see {@link FlowrAnalyzerPackageVersionsPlugin#prepare}. */
+	public async prepare(ast: NormalizedAst): Promise<void> {
+		await Promise.all(this.plugins.map(p => p.prepare(this.ctx, ast)));
+		/* a package a plugin could not name before may resolve now */
+		this.resolvedMisses.clear();
 	}
 
 	/** Eagerly mount every version plugin's signature database up front (see `solver.sigdb.eagerlyLoad`). */

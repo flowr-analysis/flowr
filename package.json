@@ -187,7 +187,7 @@
     "@codemirror/view": "^6.43.15",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-angular": "^21.2.4",
-    "@eagleoutice/eslint-config-flowr": "^2.1.12",
+    "@eagleoutice/eslint-config-flowr": "^2.1.13",
     "@jupyterlab/nbformat": "^4.5.4",
     "@lezer/highlight": "^1.2.5",
     "@types/command-line-args": "^5.2.3",

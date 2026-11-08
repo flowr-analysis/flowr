@@ -45,7 +45,7 @@ export default [...flowr, {
 	plugins: { local },
 	rules:   { 'local/no-orphaned-doc-comment': 'error' },
 }, {
-	/* a semantic type must not silently turn into a plain string or number; tests compare against literals */
-	files: ['src/**/*.ts'],
+	/* a semantic type must not silently turn into a plain string or number */
+	files: ['src/**/*.ts', 'test/**/*.ts'],
 	rules: { 'flowr/no-semantic-widening': 'error' },
 }];

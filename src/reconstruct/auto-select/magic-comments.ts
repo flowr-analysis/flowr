@@ -27,8 +27,8 @@ const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	},
 	'include_end': (n: RComment, stack: number[]) => {
 		const to = rangeOf(n)[0];
-		guard(stack.length >= 1, `mismatched magic start and end at ${to}`);
-		const from = stack.pop() as number;
+		const from = stack.pop();
+		guard(from !== undefined, `mismatched magic start and end at ${to}`);
 		const ret = new Array<number>(to - from - 1);
 		for(let i = from; i < to; i++) {
 			ret[i - from] = i;

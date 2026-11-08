@@ -10,7 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType, EnvStateRole, type ClassName } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -110,8 +110,8 @@ interface TransitiveCallee<Fn = DataflowGraphVertexInfo> {
 function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<TransitiveCallee<DataflowGraphVertexFunctionDefinition>> {
 	const seen = new Set<NodeId>();
 	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));
-	while(stack.length > 0) {
-		const { fn, direct, chain, cds } = stack.pop() as TransitiveCallee;
+	for(let next = stack.pop(); next !== undefined; next = stack.pop()) {
+		const { fn, direct, chain, cds } = next;
 		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
@@ -282,7 +282,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 							/* what a call of the list writes is written by the list, a later read of it looks no further */
 							listEnvironments.add(def.nodeId);
-							if((def as InGraphIdentifierDefinition).envRole === EnvStateRole.Writes) {
+							if((def as InGraphIdentifierDefinition).envWrites === true) {
 								envWrites.push(def);
 							}
 						}

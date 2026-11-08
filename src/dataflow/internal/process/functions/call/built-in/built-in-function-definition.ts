@@ -975,8 +975,8 @@ function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierRefere
 	});
 	/* a call reads several states under its own id (`#wd`, `#file:f`), so a read is told apart by its name as well */
 	const seen = new DefaultMap<NodeId, DefaultMap<NodeId, Set<string>>>(() => new DefaultMap(() => new Set()));
-	while(lifted.length > 0) {
-		const [definition, read, holder] = lifted.pop() as [NodeId, IdentifierReference, NodeId];
+	for(let next = lifted.pop(); next !== undefined; next = lifted.pop()) {
+		const [definition, read, holder] = next;
 		if(read.name === undefined) {
 			continue;
 		}

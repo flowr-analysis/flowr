@@ -397,8 +397,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: BrandedNamespac
 	const edges: string[] = [];
 	const seen = new Set<string>();
 	const queue: { owner: BrandedNamespace, ver?: string, name: BrandedIdentifier, id: string }[] = [{ owner: pkg, ver: version, name: root, id: rootId }];
-	while(queue.length > 0 && nodes.size < maxNodes) {
-		const cur = queue.pop() as { owner: BrandedNamespace, ver?: string, name: BrandedIdentifier, id: string };
+	for(let cur = queue.pop(); cur !== undefined && nodes.size < maxNodes; cur = queue.pop()) {
 		const key = `${cur.owner}::${cur.name}`;
 		if(seen.has(key)) {
 			continue;

@@ -183,8 +183,8 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 	/* we store the current call name alongside each id */
 	const queue = new ArrayQueue<readonly [string, NodeId]>([[NodeId.recoverContent(nodeId, graph) ?? '', nodeId]]);
 
-	while(!queue.isEmpty()) {
-		const [str, id] = queue.dequeue() as readonly [string, NodeId];
+	for(let next = queue.dequeue(); next !== undefined; next = queue.dequeue()) {
+		const [str, id] = next;
 		if(visited.has(id)) {
 			continue;
 		}

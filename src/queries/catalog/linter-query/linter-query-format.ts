@@ -80,7 +80,8 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	let tags: LintingRuleTag[] | undefined = undefined;
 	const rest = [...line];
 	while(rest.length > 0 && [rulesPrefix, formatPrefix, tagsPrefix].some(p => rest[0].startsWith(p))) {
-		const argument = rest.shift() as string;
+		const argument = rest[0];
+		rest.shift();
 		if(argument.startsWith(formatPrefix)) {
 			format = formatFromInput(output, argument);
 			continue;

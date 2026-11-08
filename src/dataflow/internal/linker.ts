@@ -464,8 +464,8 @@ export function getAllLinkedFunctionDefinitions(
 		}
 	};
 
-	while(potential.length !== 0) {
-		const [cid, viaAccess, call] = potential.pop() as [NodeId, boolean, NodeId | undefined];
+	for(let item = potential.pop(); item !== undefined; item = potential.pop()) {
+		const [cid, viaAccess, call] = item;
 		const done = expanded[viaAccess ? 1 : 0];
 		const calls = done.get(cid);
 		/* without a call nothing restricts the walk, so that visit covers those under any call */

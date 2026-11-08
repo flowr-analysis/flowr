@@ -141,7 +141,7 @@ export class DispatchNarrower {
 			return registration === undefined ? undefined : vector[0];
 		};
 		const bound = created === undefined ? boundArguments(call, formals, this.info.idMap) : undefined;
-		const tuples = created !== undefined ? (created.classes.length === 1 ? [[created.classes[0]]] : undefined) : bound === undefined ? undefined : s4ActualClasses(bound, info, s3Class);
+		const tuples = created !== undefined ? (created.length === 1 ? [[created[0]]] : undefined) : bound === undefined ? undefined : s4ActualClasses(bound, info, s3Class);
 		if(tuples === undefined) {
 			return { excluded: new Set(), next };
 		}

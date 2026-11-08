@@ -20,8 +20,7 @@ import { ArgProp } from '../environments/built-in-props';
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
 	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId)).filter(isNotUndefined);
 	const seen = new Set<NodeId>();
-	while(workingQueue.length > 0) {
-		const current = workingQueue.pop() as DataflowGraphVertexArgument;
+	for(let current = workingQueue.pop(); current !== undefined; current = workingQueue.pop()) {
 		if(seen.has(current.id)) {
 			continue;
 		}

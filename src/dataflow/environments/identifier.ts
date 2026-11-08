@@ -314,13 +314,6 @@ export interface IdentifierReference {
 /** The name of an S4, S7, reference, or R6 class. */
 export type ClassName = string & { __brand?: 'class' };
 
-/** What the {@link InGraphIdentifierDefinition#envState|tracked environment} of a variable stands for, if not an environment the variable holds. */
-export enum EnvStateRole {
-	/** Only the writes a function makes into the environment a free variable names: the environment itself is the one the name is bound to where the function is called, which adds these writes to it. */
-	Writes = 'writes',
-	/** The frame of the closure the variable holds (`environment(fn)`). */
-	ClosureFrame = 'closure-frame'
-}
 
 /** The definition of an {@link Identifier|identifier} within the {@link DataflowGraph|graph}. */
 export interface InGraphIdentifierDefinition extends IdentifierReference {
@@ -333,8 +326,10 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly envState?:        REnvironmentInformation
 	/** Names the environment object {@link envState} tracks, so that every variable aliasing it sees the same writes. */
 	readonly envId?:           NodeId
-	/** What {@link envState} stands for, if not an environment the variable holds. */
-	readonly envRole?:         EnvStateRole
+	/** Whether {@link envState} holds only the writes a function makes into the environment a free variable names: the environment itself is the one the name is bound to where the function is called, which adds these writes to it. */
+	readonly envWrites?:       true
+	/** Whether {@link envState} tracks the frame of the closure this variable holds (`environment(fn)`), rather than an environment it holds. */
+	readonly closureFrame?:    true
 	/** If this is a function that returns a tracked environment, stores the envState that the function returns (best-effort: only set when statically detectable). */
 	readonly returnsEnvState?: REnvironmentInformation
 	/** Whether {@link value} names the sequence this identifier iterates over rather than what it holds, as a `for` loop's variable does: it takes one element of that sequence at a time. */

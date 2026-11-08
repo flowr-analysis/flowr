@@ -183,8 +183,7 @@ function callStep(vertex: DataflowGraphVertexFunctionCall, info: ClassFlowInfo):
 	const { graph } = info;
 	const id = vertex.id;
 	if(vertex.instantiates !== undefined) {
-		const { classes } = vertex.instantiates;
-		return classes.length === 1 ? { source: ClassSource.Instance, classes } : undefined;
+		return vertex.instantiates.length === 1 ? { source: ClassSource.Instance, classes: vertex.instantiates } : undefined;
 	}
 	const node = info.idMap.get(id);
 	const targets = Dataflow.targetsOf(graph, id, EdgeType.Calls);

@@ -104,7 +104,8 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	readNames(info, rootId, classes.map(s4ClassName), ReferenceType.Variable, data);
 	const vertex = config.instantiates ? info.graph.getVertex(rootId) : undefined;
 	if(config.instantiates && DfgVertex.isFunctionCall(vertex)) {
-		vertex.instantiates = { classes, initializer: config.instantiates.initializer };
+		vertex.instantiates = classes;
+		vertex.initializer = config.instantiates.initializer;
 		for(const { nodeId } of Resolve.byNameAndType(config.instantiates.initializer, data.environment, ReferenceType.Function) ?? []) {
 			if(!NodeId.isBuiltIn(nodeId)) {
 				info.graph.addEdge(rootId, nodeId, EdgeType.Calls);
@@ -213,12 +214,12 @@ export function linkInstantiations(graph: DataflowGraph): void {
 	const classes = validators.size === 0 ? undefined : declaredClassesImpl(graph);
 	let byName: ReturnType<typeof Dataflow.definitionsByName> | undefined;
 	for(const [id, vertex] of instantiations) {
-		if(vertex.instantiates !== undefined && !graph.isRoot(id)) {
-			for(const definition of (byName ??= Dataflow.definitionsByName(graph)).get(vertex.instantiates.initializer)) {
+		if(vertex.initializer !== undefined && !graph.isRoot(id)) {
+			for(const definition of (byName ??= Dataflow.definitionsByName(graph)).get(vertex.initializer)) {
 				graph.addEdge(id, definition, EdgeType.Calls);
 			}
 		}
-		const created = vertex.instantiates?.classes ?? [];
+		const created = vertex.instantiates ?? [];
 		const checked = classes === undefined ? [] : created.length === 0 ? [...validators.keys()] : created.flatMap(cls => [cls, ...superClassesOfImpl(cls, classes)]);
 		for(const validity of checked.flatMap(cls => validators.get(cls) ?? [])) {
 			graph.addEdge(id, validity, EdgeType.Calls);

@@ -848,8 +848,8 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientS
 	/* the bodies of nested definitions, exit hooks among them, are no part of the scope (`collectAllIds` misses the hooks) */
 	const bodies = new Set<NodeId>();
 	const definitions = [...ids];
-	while(definitions.length > 0) {
-		const vertex = graph.getVertex(definitions.pop() as NodeId);
+	for(let id = definitions.pop(); id !== undefined; id = definitions.pop()) {
+		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionDefinition(vertex)) {
 			for(const inner of vertex.subflow.graph) {
 				if(!bodies.has(inner)) {

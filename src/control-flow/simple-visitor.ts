@@ -55,8 +55,7 @@ export function visitCfgInOrder(
 	const visited = new Set<NodeId>();
 	const queue = new ArrayQueue(startNodes);
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(!queue.isEmpty()) {
-		const current = queue.dequeue() as NodeId;
+	for(let current = queue.dequeue(); current !== undefined; current = queue.dequeue()) {
 		if(visited.has(current)) {
 			continue;
 		}

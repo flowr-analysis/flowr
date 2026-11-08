@@ -72,8 +72,10 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	newEnvParent?: REnvironmentInformation
 	/** For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`, `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and whether it can be instantiated. */
 	classDecl?:    ClassDeclaration
-	/** For an S4 instantiation (`new("P")`): what it creates and runs */
-	instantiates?: S4Instantiation
+	/** For an S4 instantiation (`new("P")`): the classes it creates an instance of, whose validity functions it runs */
+	instantiates?: readonly ClassName[]
+	/** For an S4 instantiation: the generic whose methods initialize the new object (`initialize`) */
+	initializer?:  BrandedIdentifier
 	/** For a `setMethod`: the generic it adds a method to and the signature the method is registered for */
 	s4Method?:     S4MethodRegistration
 	/** The method definitions the dispatch of the call rules out for the classes its arguments have, which a lookup by name still finds */
@@ -84,12 +86,6 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	found?:        readonly NodeId[]
 	/** For a lookup of a function body whose name or environment only a call knows (`get(n, envir = e)`, `e$x` with a free `e`): what it finds for each call */
 	foundOnCall?:  readonly FoundOnCall[]
-}
-
-/** What an S4 instantiation does: it creates instances of `classes`, running their validity functions and the methods of the generic `initializer`. */
-export interface S4Instantiation {
-	readonly classes:     readonly ClassName[]
-	readonly initializer: BrandedIdentifier
 }
 
 /** The method definitions a dispatch rules out when the call `call` of the function holding it runs it, and `within`, per call of the function holding `call` in turn, what it further rules out when that call runs that one. */
@@ -148,16 +144,17 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	returnEnvState?: REnvironmentInformation
 	/** The calls of the body whose environment operation depends on the call of the function, see {@link DeferredEnvOp}. */
 	envOps?:         readonly DeferredEnvOp[]
-	/** Whether a call of the closure reads writes into the frame it holds, see {@link EnvStateRole.ClosureFrame}. */
+	/** Whether a call of the closure reads writes into the frame it holds, see {@link InGraphIdentifierDefinition#closureFrame}. */
 	framed?:         true
 }
 
 /** The object system whose dispatch a function definition (potentially) takes part in. */
-export enum FunctionDispatch {
-	S3 = 's3',
-	S4 = 's4',
-	S7 = 's7'
-}
+export const FunctionDispatch = {
+	S3: 's3',
+	S4: 's4',
+	S7: 's7'
+} as const;
+export type FunctionDispatch = typeof FunctionDispatch[keyof typeof FunctionDispatch];
 
 /** What a call does to the variable it names in an environment. */
 export enum EnvOpKind {

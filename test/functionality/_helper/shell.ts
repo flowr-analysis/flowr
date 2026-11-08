@@ -820,7 +820,6 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 /** asserts that the slice for `criterion`, run by {@link printedByR}, prints `lastLine` last, as the whole program does */
 export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string, config?: Partial<TestConfiguration>) {
 	test.skipIf(skipTestBecauseConfigNotMet(config, code))(name, async({ skip }) => {
-		await skipWithoutRPackages(code, skip);
 		const slice = await sliceOf(parser, code, criterion);
 		/* the program goes first, as a failing slice must not hide that an old R cannot run the program either */
 		const running = printedByR(slice);
@@ -834,28 +833,42 @@ export function assertSliceRunsInR(name: string, parser: KnownParser, code: stri
 
 const execFileAsync = promisify(execFile);
 
-/** what `Rscript` prints for `code` in a fresh directory, failing on an error or after 20 seconds; the code goes through a file, as windows cuts `-e` at the first line break */
-export async function printedByR(code: string): Promise<string> {
+/**
+ * What `Rscript` prints for `code` in a fresh directory holding `files`, failing on an error or after 20 seconds.
+ * The code goes through a file, as windows cuts `-e` at the first line break.
+ * Use {@link printedByProgram} for the program of a test, as not every R can run it.
+ */
+export async function printedByR(code: string, files: Readonly<Record<string, string>> = {}): Promise<string> {
 	const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'flowr-r-'));
 	const cwd = path.join(root, 'work');
 	const script = path.join(root, 'script.R');
 	try {
 		await fs.promises.mkdir(cwd);
 		await fs.promises.writeFile(script, code);
-		return (await execFileAsync('Rscript', ['--vanilla', script], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.replace(/\r\n/g, '\n').trimEnd();
+		await Promise.all(Object.entries(files).map(([name, content]) => fs.promises.writeFile(path.join(cwd, name), content)));
+		const running = execFileAsync('Rscript', ['--vanilla', script], { cwd, maxBuffer: 1 << 24 });
+		/* not the `timeout` of execFile: when a blocked event loop (e.g., loading the signature database) runs it late, it drops the output of an R that finished long ago and reports success */
+		const timer = setTimeout(() => running.child.kill('SIGKILL'), 20_000);
+		try {
+			return (await running).stdout.replace(/\r\n/g, '\n').trimEnd();
+		} finally {
+			clearTimeout(timer);
+		}
 	} finally {
 		await fs.promises.rm(root, { recursive: true, force: true });
 	}
 }
 
 /**
- * What the program `code` prints, skipping the test when an R other than the one CI mainly tests (`ACTION_R_VERSION`)
- * cannot run the program itself: base functions differ between versions (e.g., `untar`), which says nothing about the
- * slice. The main R, and any run without that variable (e.g., locally), still fails.
+ * What the program `code` prints, skipping the test when this R lacks a package it loads (see {@link skipWithoutRPackages})
+ * or when an R other than the one CI mainly tests (`ACTION_R_VERSION`) cannot run the program itself: base functions
+ * differ between versions (e.g., `untar`), which says nothing about flowR. The main R, and any run without that
+ * variable (e.g., locally), still fails.
  */
-async function printedByProgram(code: string, skip: (condition: boolean, note?: string) => void): Promise<string> {
+export async function printedByProgram(code: string, skip: (condition: boolean, note?: string) => void, files?: Readonly<Record<string, string>>): Promise<string> {
+	await skipWithoutRPackages(code, skip);
 	try {
-		return await printedByR(code);
+		return await printedByR(code, files);
 	} catch(e) {
 		const main = process.env.ACTION_R_VERSION, version = globalThis.rVersion;
 		if(main && version && !semver.eq(version, main)) {
@@ -889,7 +902,6 @@ export async function skipWithoutRPackages(code: string, skip: (condition: boole
  */
 export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, dropped, whole, sigdb }: { criterion?: SlicingCriterion, dropped?: string, whole?: boolean, sigdb?: boolean } = {}) {
 	test.skipIf(skipTestBecauseConfigNotMet(undefined, code))(name, async({ skip }) => {
-		await skipWithoutRPackages(code, skip);
 		const lines = code.split('\n');
 		const disabled = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
 		if(sigdb) {

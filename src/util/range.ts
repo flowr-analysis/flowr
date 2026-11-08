@@ -3,6 +3,11 @@ import type { Accessor } from './accessor';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
+/** A 1-based line in a source file. */
+export type Line = number & { __brand?: 'line' };
+/** A 1-based column in a source line. */
+export type Column = number & { __brand?: 'column' };
+
 /**
  * A source position in a file.
  *
@@ -12,12 +17,12 @@ import type { RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/
  * {@link SourceRange.getEnd} hand one out and {@link SourceRange.formatPosition} prints it.
  * @see {@link SourceRange|source ranges} for describing ranges of source positions.
  */
-export type SourcePosition = [
+export type SourcePosition = [/** starts with 1 */
+	line:   Line,
 	/** starts with 1 */
-	line:   number,
-	/** starts with 1 */
-	column: number
+	column: Column
 ];
+
 
 /**
  * **Please note** that for multi-file projects we also have a {@link SourceLocation|source location} type that includes the file name.
@@ -30,11 +35,11 @@ export type SourcePosition = [
  */
 export type SourceRange = readonly [
 	/** inclusive start position */
-	startLine:   number,
-	startColumn: number,
+	startLine: Line,
+	startColumn: Column,
 	/** inclusive end position */
-	endLine:     number,
-	endColumn:   number
+	endLine: Line,
+	endColumn: Column
 ];
 
 /**
@@ -91,11 +96,11 @@ export const SourceRange = {
 	/**
 	 * Returns the start line of a source range, or `undefined` if there is no range.
 	 */
-	getStartLine:   ((range?: SourceLocation) => range?.[0]) as Accessor<SourceLocation, number>,
+	getStartLine:   ((range?: SourceLocation) => range?.[0]) as Accessor<SourceLocation, Line>,
 	/**
 	 * Returns the start column of a source range, or `undefined` if there is no range.
 	 */
-	getStartColumn: ((range?: SourceLocation) => range?.[1]) as Accessor<SourceLocation, number>,
+	getStartColumn: ((range?: SourceLocation) => range?.[1]) as Accessor<SourceLocation, Column>,
 	/**
 	 * Returns the end position of a source range, or `undefined` if there is no range.
 	 */
@@ -103,11 +108,11 @@ export const SourceRange = {
 	/**
 	 * Returns the end line of a source range, or `undefined` if there is no range.
 	 */
-	getEndLine:     ((range?: SourceLocation) => range?.[2]) as Accessor<SourceLocation, number>,
+	getEndLine:     ((range?: SourceLocation) => range?.[2]) as Accessor<SourceLocation, Line>,
 	/**
 	 * Returns the end column of a source range, or `undefined` if there is no range.
 	 */
-	getEndColumn:   ((range?: SourceLocation) => range?.[3]) as Accessor<SourceLocation, number>,
+	getEndColumn:   ((range?: SourceLocation) => range?.[3]) as Accessor<SourceLocation, Column>,
 	/**
 	 * Creates a source range from the given line and column numbers.
 	 * @param sl - start line
@@ -251,7 +256,7 @@ export const SourceRange = {
 	 * "Fuzzy" position match, as opposed to requiring a node to *start* exactly at the position.
 	 * @see {@link SourceRange.innermostNodes} to narrow the result down to the deepest matches
 	 */
-	nodesContaining<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], line: number, column?: number): RNodeWithParent<OtherInfo>[] {
+	nodesContaining<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], line: Line, column?: Column): RNodeWithParent<OtherInfo>[] {
 		return nodes.filter(node => {
 			const range = SourceRange.fromNode(node);
 			if(range === undefined) {
@@ -478,22 +483,22 @@ export class SourceLocationView {
 	}
 
 	/** inclusive line the location starts on (starts with 1) */
-	get startLine(): number {
+	get startLine(): Line {
 		return this.raw[0];
 	}
 
 	/** inclusive column the location starts at (starts with 1) */
-	get startColumn(): number {
+	get startColumn(): Column {
 		return this.raw[1];
 	}
 
 	/** inclusive line the location ends on */
-	get endLine(): number {
+	get endLine(): Line {
 		return this.raw[2];
 	}
 
 	/** inclusive column the location ends at */
-	get endColumn(): number {
+	get endColumn(): Column {
 		return this.raw[3];
 	}
 

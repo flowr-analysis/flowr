@@ -33,6 +33,7 @@ import { Identifier } from '../dataflow/environments/identifier';
 import { type InlineWarning, sourcePathOf } from './inline/source-inline-map';
 import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
 import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/base-operators';
+import type { Line } from '../util/range';
 
 /**
  * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
@@ -628,7 +629,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 	}
 
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
-	const linesWithAutoSelected = new Set<number>();
+	const linesWithAutoSelected = new Set<Line>();
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node, ast);
 		if(result && node.location) {

@@ -406,11 +406,10 @@ More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/li
 /** runs the linter query on a rule's wiki example, refusing an example that shows no finding or an error */
 async function exampleQuery(parser: KnownParser, name: LintingRuleNames, example: string | PackageExample, config: object = {}): Promise<string> {
 	const queries = [{ type: 'linter', rules: [{ name, config: config as never }] }] as const;
-	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { collapseQuery: true, withJson: false })
+	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { withJson: false })
 		: await showQuery(parser, `${fileProtocol}${ExampleRoot}/R/code.R`, queries, {
-			collapseQuery: true,
-			withJson:      false,
-			files:         [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
+			withJson: false,
+			files:    [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
 		});
 	if(shown.includes('_no findings_') || shown.includes('Error during execution of rule') || shown.includes('rules failed to execute')) {
 		throw new Error(`the wiki example of ${name} must show a finding: ${shown}`);
@@ -497,7 +496,7 @@ For example:
 
 ${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
-	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseResult: false });
 	return `Running ${getReplCommand('query')} with \`@linter ${JSON.stringify(code)}\` analyzes the code and returns any issues found.
 Formatted more nicely, this returns:
 

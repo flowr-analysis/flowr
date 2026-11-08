@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-04, 11:08:39 UTC (v2.17.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -17,18 +17,7 @@ f("1 + 1")
 the following query checks whether the call to `f` calls `eval`:
 
 ```json
-[
-  {
-    "type": "does-call",
-    "queryId": "calls-eval",
-    "call": "2@f",
-    "calls": {
-      "type": "name",
-      "name": "eval",
-      "nameExact": true
-    }
-  }
-]
+[ { "type": "does-call",   "queryId": "calls-eval",   "call": "2@f",   "calls": { "type": "name",    "name": "eval",    "nameExact": true } } ]
 ```
 
 (This can be shortened to `@does-call (2@f:"eval")` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Call-Graph Query">Call-Graph Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the call graph of the given code.\
@@ -26,18 +26,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-graph": {
-    ".meta": {},
-    "graph": {
-      "rootVertices": [2],
-      "vertexInformation": [[2,{"tag":"fcall","id":2,"name":"+","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:d"]}]],
-      "edgeInformation": [[2,[["built-in:d",{"types":4}]]]],
-      "_unknownSideEffects": []
-    }
-  },
-  ".meta": {}
-}
+{"call-graph":{".meta":{},"graph":{"rootVertices":[2],"vertexInformation":[[2,{"tag":"fcall","id":2,"name":"+","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[["built-in:d",{"types":4}]]]],"_unknownSideEffects":[]}},".meta":{}}
 ```
 
 </details>

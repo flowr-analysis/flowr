@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-03, 10:21:01 UTC (v2.16.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Taint Analysis Query">Taint Analysis Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the taint values inferred for every expression.\
@@ -13,7 +13,7 @@ For example, you can use the following query to get the results of the normaliza
 
 _Results (prettified and summarized):_
 
-Query: **taint** (12 ms)\
+Query: **taint** (32 ms)\
 &nbsp;&nbsp;&nbsp;╰ **normalization-constant**:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ mean calculated on normalized data yields a known result [6.30-36] \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Known summary statistic calculated on normalized data [6.25] \
@@ -31,24 +31,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "taint": {
-    "results": [
-      [
-        "normalization-constant",
-        {
-          "domains": {"0":"top","12":"top","14":"z-Score","18":"z-Score","20":"bottom","24":"bottom"},
-          "findings": [
-            {"nodeId":24,"loc":[6,30,6,36],"msg":"mean calculated on normalized data yields a known result [6.30-36]"},
-            {"nodeId":20,"loc":[6,25,6,25],"msg":"Known summary statistic calculated on normalized data [6.25]"}
-          ]
-        }
-      ]
-    ],
-    ".meta": {}
-  },
-  ".meta": {}
-}
+{"taint":{"results":[["normalization-constant",{"domains":{"0":"top","12":"top","14":"z-Score","18":"z-Score","20":"bottom","24":"bottom"},"findings":[{"nodeId":24,"loc":[6,30,6,36],"msg":"mean calculated on normalized data yields a known result [6.30-36]"},{"nodeId":20,"loc":[6,25,6,25],"msg":"Known summary statistic calculated on normalized data [6.25]"}]}]],".meta":{}},".meta":{}}
 ```
 
 </details>

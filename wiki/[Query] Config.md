@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -28,114 +28,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "config": {
-    ".meta": {},
-    "config": {
-      "logLevel": "fatal",
-      "ignoreSourceCalls": true,
-      "ignoreLoadCalls": false,
-      "semantics": {"environment":{"overwriteBuiltIns":{"loadDefaults":true,"definitions":[]}},"ambient":{"drawingWritesDevice":false}},
-      "defaultPlugins": [
-        "file:description",
-        "versions:description",
-        "versions:sigdb",
-        "versions:library",
-        "versions:on-demand",
-        "versions:namespace",
-        "versions:renv",
-        "versions:rv",
-        "versions:uvr",
-        "versions:rig",
-        "versions:packrat",
-        "versions:session-info",
-        "loading-order:description",
-        "loading-order:implicit-sources",
-        "loading-order:rprofile",
-        "loading-order:included-files",
-        "meta:description",
-        "meta:rproject",
-        "meta:uvr",
-        "meta:rig",
-        "meta:rig-script",
-        "file-roles:vignette",
-        "file-roles:test",
-        "file-roles:inst",
-        "file:rmd",
-        "file:qmd",
-        "file:rnw",
-        "file:ipynb",
-        "file:namespace",
-        "file:news",
-        "file:rd-macros",
-        "file:rd",
-        "file:rd-index",
-        "file:rd-topics",
-        "file:rd-meta",
-        "file:datalist",
-        "file:sysdata",
-        "file:rda",
-        "file:license",
-        "file:virtualenv",
-        "file:rproject",
-        "file:uvr",
-        "file:rig",
-        "file:rprofile"
-      ],
-      "repl": {"quickStats":false,"dfProcessorHeat":false,"hints":true,"plugins":["flowr:default"],"autoUseFileProtocol":true,"queryStats":true,"showPlugins":false},
-      "project": {"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false,"assumeImplicitEcho":true},
-      "linter": {"disabledRules":["software-has-license","software-has-tests"],"disabledTags":["cmd-check"]},
-      "specializeConfig": {
-        "package": {"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledRules":[],"disabledTags":[]}},
-        "project": {"solver":{"resolveSource":{"assumeFilesExist":true}}},
-        "shiny-app": {"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},
-        "script": {"inherit":"unknown"},
-        "notebook": {"inherit":"unknown"},
-        "unknown": {"linter":{"disabledRules":["software-has-license","software-has-tests"]}}
-      },
-      "engines": [],
-      "defaultEngine": "tree-sitter",
-      "solver": {
-        "variables": "alias",
-        "evalStrings": true,
-        "trackEnvironments": true,
-        "sigdb": {
-          "enabled": true,
-          "loadProjectDependencies": true,
-          "eagerlyLoad": false,
-          "eagerlyLoadExports": false,
-          "blobCacheBudgetMb": 16,
-          "assumedRVersion": "auto",
-          "linkBaseR": false,
-          "linkDescriptionDependencies": false,
-          "linkBaseRCalls": false,
-          "linkPackageCalls": false,
-          "warmInBackground": false,
-          "additionalPaths": [],
-          "autoSync": false,
-          "versionSelection": "newest",
-          "versionOverrides": {},
-          "installedLibrary": {"enabled":false,"paths":[],"useEnvironment":true,"useProjectLibrary":true,"maxDepth":3,"packages":[]},
-          "onDemand": {"enabled":false}
-        },
-        "versionManagement": {"linkedVersionGroups":[]},
-        "resolveSource": {"dropPaths":"no","ignoreCapitalization":true,"inferWorkingDirectory":"active-script","searchPath":[],"repeatedSourceLimit":2,"assumeFilesExist":false},
-        "transitiveSideEffectRounds": 32,
-        "maxOverlayDepth": 4,
-        "instrument": {},
-        "slicer": {"threshold":50,"autoExtend":false}
-      },
-      "abstractInterpretation": {"wideningThreshold":4,"followCalls":true,"dataFrame":{"maxColNames":50,"readLoadedData":{"readExternalFiles":true,"maxReadLines":1000000}}},
-      "incremental": {
-        "alwaysIncremental": false,
-        "parsing": {"activated":false,"heuristics":{"activated":true,"mtime":true,"linesFrom":500,"bytesFrom":50000,"alwaysWithEdits":false,"minFiles":1}}
-      },
-      "gas": {"thresholds":{"memory":{"problematic":0.7,"critical":0.9},"timeMs":{"problematic":100000,"critical":120000}},"features":{}}
-    },
-    "specialization": {"kind":"unknown","overwrite":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}}
-  },
-  ".meta": {}
-}
+{"config":{".meta":{},"config":{"logLevel":"fatal","ignoreSourceCalls":true,"ignoreLoadCalls":false,"semantics":{"environment":{"overwriteBuiltIns":{"loadDefaults":true,"definitions":[]}},"ambient":{"drawingWritesDevice":false}},"defaultPlugins":["file:description","versions:description","versions:sigdb","versions:library","versions:on-demand","versions:namespace","versions:renv","versions:rv","versions:uvr","versions:rig","versions:packrat","versions:session-info","loading-order:description","loading-order:implicit-sources","loading-order:rprofile","loading-order:included-files","meta:description","meta:rproject","meta:uvr","meta:rig","meta:rig-script","file-roles:vignette","file-roles:test","file-roles:inst","file:rmd","file:qmd","file:rnw","file:ipynb","file:namespace","file:news","file:rd-macros","file:rd","file:rd-index","file:rd-topics","file:rd-meta","file:datalist","file:sysdata","file:rda","file:license","file:virtualenv","file:rproject","file:uvr","file:rig","file:rprofile"],"repl":{"quickStats":false,"dfProcessorHeat":false,"hints":true,"plugins":["flowr:default"],"autoUseFileProtocol":true,"queryStats":true,"showPlugins":false},"project":{"resolveUnknownPathsOnDisk":true,"failOnInaccessiblePath":false,"assumeImplicitEcho":true},"linter":{"disabledRules":["software-has-license","software-has-tests"],"disabledTags":["cmd-check"]},"specializeConfig":{"package":{"project":{"assumeImplicitEcho":false},"solver":{"resolveSource":{"assumeFilesExist":true}},"linter":{"disabledRules":[],"disabledTags":[]}},"project":{"solver":{"resolveSource":{"assumeFilesExist":true}}},"shiny-app":{"project":{"implicitSources":["global.R","R/*.R","ui.R","server.R","app.R"]},"solver":{"resolveSource":{"assumeFilesExist":true}}},"script":{"inherit":"unknown"},"notebook":{"inherit":"unknown"},"unknown":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}},"engines":[],"defaultEngine":"tree-sitter","solver":{"variables":"alias","evalStrings":true,"trackEnvironments":true,"sigdb":{"enabled":true,"loadProjectDependencies":true,"eagerlyLoad":false,"eagerlyLoadExports":false,"blobCacheBudgetMb":16,"assumedRVersion":"auto","linkBaseR":false,"linkDescriptionDependencies":false,"linkBaseRCalls":false,"linkPackageCalls":false,"warmInBackground":false,"additionalPaths":[],"autoSync":false,"versionSelection":"newest","versionOverrides":{},"installedLibrary":{"enabled":false,"paths":[],"useEnvironment":true,"useProjectLibrary":true,"maxDepth":3,"packages":[]},"onDemand":{"enabled":false}},"versionManagement":{"linkedVersionGroups":[]},"resolveSource":{"dropPaths":"no","ignoreCapitalization":true,"inferWorkingDirectory":"active-script","searchPath":[],"repeatedSourceLimit":2,"assumeFilesExist":false},"transitiveSideEffectRounds":32,"maxOverlayDepth":4,"instrument":{},"slicer":{"threshold":50,"autoExtend":false}},"abstractInterpretation":{"wideningThreshold":4,"followCalls":true,"dataFrame":{"maxColNames":50,"readLoadedData":{"readExternalFiles":true,"maxReadLines":1000000}}},"incremental":{"alwaysIncremental":false,"parsing":{"activated":false,"heuristics":{"activated":true,"mtime":true,"linesFrom":500,"bytesFrom":50000,"alwaysWithEdits":false,"minFiles":1}}},"gas":{"thresholds":{"memory":{"problematic":0.7,"critical":0.9},"timeMs":{"problematic":100000,"critical":120000}},"features":{}}},"specialization":{"kind":"unknown","overwrite":{"linter":{"disabledRules":["software-has-license","software-has-tests"]}}}},".meta":{}}
 ```
 
 </details>
@@ -146,7 +39,7 @@ Please note that, in the REPL, a special syntax starting with `+` (which should 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.17.3, R v4.6.1 (r-shell engine)
+flowR repl v2.17.4, R v4.6.1 (r-shell engine)
 R> :query @config +solver.slicer.threshold=10000
 ```
 
@@ -169,7 +62,7 @@ one path segment, `**` any number. This only reads: setting a value still names 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.17.3, R v4.6.1 (r-shell engine)
+flowR repl v2.17.4, R v4.6.1 (r-shell engine)
 R> :query @config **.enabled
 ```
 

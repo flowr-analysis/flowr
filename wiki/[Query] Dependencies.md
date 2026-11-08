@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -49,7 +49,7 @@ For a script reading `library(x)`, the following query returns the loaded librar
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (69 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_
 
@@ -60,21 +60,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dependencies": {
-    ".meta": {},
-    "library": [{"nodeId":3,"functionName":"library","value":"x"}],
-    "remote": [],
-    "source": [],
-    "read": [],
-    "write": [],
-    "visualize": [],
-    "transform": [],
-    "test": [],
-    "statistics": []
-  },
-  ".meta": {}
-}
+{"dependencies":{".meta":{},"library":[{"nodeId":3,"functionName":"library","value":"x"}],"remote":[],"source":[],"read":[],"write":[],"visualize":[],"transform":[],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>
@@ -108,7 +94,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (10 ms)\
+Query: **dependencies** (6 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -129,24 +115,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dependencies": {
-    ".meta": {},
-    "library": [{"nodeId":8,"functionName":"loadNamespace","value":"bar"},{"nodeId":32,"functionName":"::","value":"better"}],
-    "remote": [],
-    "source": [{"nodeId":3,"functionName":"source","value":"sample.R"}],
-    "read": [{"nodeId":14,"functionName":"read.csv","assignedTo":"data","value":"data.csv"}],
-    "write": [{"nodeId":41,"functionName":"print","value":"stdout"}],
-    "visualize": [
-      {"nodeId":28,"functionName":"ggplot","inputVariables":["data","x","y"],"parts":[30]},
-      {"nodeId":30,"functionName":"geom_point","linkedIds":[28],"inputVariables":["data","x","y"]}
-    ],
-    "transform": [],
-    "test": [],
-    "statistics": []
-  },
-  ".meta": {}
-}
+{"dependencies":{".meta":{},"library":[{"nodeId":8,"functionName":"loadNamespace","value":"bar"},{"nodeId":32,"functionName":"::","value":"better"}],"remote":[],"source":[{"nodeId":3,"functionName":"source","value":"sample.R"}],"read":[{"nodeId":14,"functionName":"read.csv","assignedTo":"data","value":"data.csv"}],"write":[{"nodeId":41,"functionName":"print","value":"stdout"}],"visualize":[{"nodeId":28,"functionName":"ggplot","inputVariables":["data","x","y"],"parts":[30]},{"nodeId":30,"functionName":"geom_point","linkedIds":[28],"inputVariables":["data","x","y"]}],"transform":[],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>
@@ -159,31 +128,14 @@ We welcome any feedback on this (consider opening a [new issue](https://github.c
 In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
 
 ```json
-[
-  {
-    "type": "dependencies",
-    "ignoreDefaultFunctions": true,
-    "enabledCategories": [
-      "library"
-    ],
-    "libraryFunctions": [
-      {
-        "package": "base",
-        "name": "print",
-        "argIdx": 0,
-        "argName": "library",
-        "resolveValue": true
-      }
-    ]
-  }
-]
+[ { "type": "dependencies",   "ignoreDefaultFunctions": true,   "enabledCategories": [ "library" ],   "libraryFunctions": [ { "package": "base",     "name": "print",     "argIdx": 0,     "argName": "library",     "resolveValue": true } ] } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (0 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_
 
@@ -194,21 +146,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dependencies": {
-    ".meta": {},
-    "library": [{"nodeId":41,"functionName":"print","value":"hello world!"}],
-    "remote": [],
-    "source": [],
-    "read": [],
-    "write": [],
-    "visualize": [],
-    "transform": [],
-    "test": [],
-    "statistics": []
-  },
-  ".meta": {}
-}
+{"dependencies":{".meta":{},"library":[{"nodeId":41,"functionName":"print","value":"hello world!"}],"remote":[],"source":[],"read":[],"write":[],"visualize":[],"transform":[],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>
@@ -224,20 +162,12 @@ Set `assumedPackages` to have those reported as well, as `library` entries marke
 `linkedIds`:
 
 ```json
-[
-  {
-    "type": "dependencies",
-    "assumedPackages": true,
-    "enabledCategories": [
-      "library"
-    ]
-  }
-]
+[ { "type": "dependencies",   "assumedPackages": true,   "enabledCategories": [ "library" ] } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (1 ms)\
+Query: **dependencies** (0 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**base** _always attached by R, used at 8_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stats** _attached by R at startup, used at 10_
@@ -249,24 +179,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dependencies": {
-    ".meta": {},
-    "library": [
-      {"functionName":"<attached>","value":"base","implicit":true,"alwaysAttached":true,"linkedIds":[8]},
-      {"functionName":"<attached>","value":"stats","implicit":true,"linkedIds":[10]}
-    ],
-    "remote": [],
-    "source": [],
-    "read": [],
-    "write": [],
-    "visualize": [],
-    "transform": [],
-    "test": [],
-    "statistics": []
-  },
-  ".meta": {}
-}
+{"dependencies":{".meta":{},"library":[{"functionName":"<attached>","value":"base","implicit":true,"alwaysAttached":true,"linkedIds":[8]},{"functionName":"<attached>","value":"stats","implicit":true,"linkedIds":[10]}],"remote":[],"source":[],"read":[],"write":[],"visualize":[],"transform":[],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>
@@ -336,24 +249,14 @@ dependency depends on and every node that depends on it, so a client can gray ou
 criteria go in parentheses, as with <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> `@dependencies (3@read.csv)`, which prints the lines taking part:
 
 ```json
-[
-  {
-    "type": "dependencies",
-    "focus": [
-      "3@read.csv"
-    ],
-    "enabledCategories": [
-      "read"
-    ]
-  }
-]
+[ { "type": "dependencies",   "focus": [ "3@read.csv" ],   "enabledCategories": [ "read" ] } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Read Data** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**a.csv** _via read.csv (node 10)_\
 &nbsp;&nbsp;&nbsp;**focus** _the lines taking part:_ 1, 3, 5
@@ -365,21 +268,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dependencies": {
-    ".meta": {"focus":[10,8,0,2,1,11,6,18,20]},
-    "library": [],
-    "remote": [],
-    "source": [],
-    "read": [{"nodeId":10,"functionName":"read.csv","assignedTo":"d","value":"a.csv"}],
-    "write": [],
-    "visualize": [],
-    "transform": [],
-    "test": [],
-    "statistics": []
-  },
-  ".meta": {}
-}
+{"dependencies":{".meta":{"focus":[10,8,0,2,1,11,6,18,20]},"library":[],"remote":[],"source":[],"read":[{"nodeId":10,"functionName":"read.csv","assignedTo":"d","value":"a.csv"}],"write":[],"visualize":[],"transform":[],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>
@@ -548,7 +437,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\
@@ -564,28 +453,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dependencies": {
-    ".meta": {},
-    "library": [],
-    "remote": [],
-    "source": [],
-    "read": [],
-    "write": [],
-    "visualize": [
-      {"nodeId":38,"functionName":["ggplot","ggplot2",false],"inputVariables":["small"],"assignedTo":"p","parts":[40,45],"title":"Small"},
-      {"nodeId":40,"functionName":["geom_point","ggplot2",false],"linkedIds":[38],"assignedTo":"p","inputVariables":["small"]},
-      {"nodeId":45,"functionName":["ggtitle","ggplot2",false],"linkedIds":[38],"assignedTo":"p","inputVariables":["small"]}
-    ],
-    "transform": [
-      {"nodeId":16,"functionName":["filter","dplyr",false],"inputVariables":["measurements"]},
-      {"nodeId":24,"functionName":["select","dplyr",false],"inputVariables":["measurements"],"assignedTo":"small"}
-    ],
-    "test": [],
-    "statistics": []
-  },
-  ".meta": {}
-}
+{"dependencies":{".meta":{},"library":[],"remote":[],"source":[],"read":[],"write":[],"visualize":[{"nodeId":38,"functionName":["ggplot","ggplot2",false],"inputVariables":["small"],"assignedTo":"p","parts":[40,45],"title":"Small"},{"nodeId":40,"functionName":["geom_point","ggplot2",false],"linkedIds":[38],"assignedTo":"p","inputVariables":["small"]},{"nodeId":45,"functionName":["ggtitle","ggplot2",false],"linkedIds":[38],"assignedTo":"p","inputVariables":["small"]}],"transform":[{"nodeId":16,"functionName":["filter","dplyr",false],"inputVariables":["measurements"]},{"nodeId":24,"functionName":["select","dplyr",false],"inputVariables":["measurements"],"assignedTo":"small"}],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>

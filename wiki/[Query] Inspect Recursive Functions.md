@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-07, 14:38:02 UTC (v2.17.3), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Inspect Recursive Functions Query">Inspect Recursive Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are recursive\
@@ -187,14 +187,7 @@ end
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 
 ```json
-[
-  {
-    "type": "inspect-recursion",
-    "filter": [
-      "1@function"
-    ]
-  }
-]
+[ { "type": "inspect-recursion",   "filter": [ "1@function" ] } ]
 ```
 
 (This can be shortened to `@inspect-recursion (1@function) "fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).

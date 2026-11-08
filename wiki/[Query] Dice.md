@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
@@ -27,17 +27,7 @@ Asking what connects the definition of `x` to the definition of `z` drops `y <- 
 as well as `w <- z * 2` and `print(z)` (they are not on a path _into_ the `to` criterion):
 
 ```json
-[
-  {
-    "type": "dice",
-    "from": [
-      "1@x"
-    ],
-    "to": [
-      "3@z"
-    ]
-  }
-]
+[ { "type": "dice",   "from": [ "1@x" ],   "to": [ "3@z" ] } ]
 ```
 
 (This can be shortened to `@dice (1@x->3@z) "x <- 1\ny <- 2\nz <- x + y\nw <- z * 2\nprint(z)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -54,18 +44,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dice": {
-    ".meta": {},
-    "results": {
-      "1@x->3@z": {
-        "slice": {"timesHitThreshold":0,"result":[0,2,7,9,10,6],"slicedFor":[0,6],".meta":{}},
-        "reconstruct": {"code":"x <- 1\nz <- x + y","files":[{"code":"x <- 1\nz <- x + y"}],"linesWithAutoSelected":0,".meta":{}}
-      }
-    }
-  },
-  ".meta": {}
-}
+{"dice":{".meta":{},"results":{"1@x->3@z":{"slice":{"timesHitThreshold":0,"result":[0,2,7,9,10,6],"slicedFor":[0,6],".meta":{}},"reconstruct":{"code":"x <- 1\nz <- x + y","files":[{"code":"x <- 1\nz <- x + y"}],"linesWithAutoSelected":0,".meta":{}}}}},".meta":{}}
 ```
 
 </details>
@@ -79,18 +58,7 @@ Beyond `from` and `to`, the dice query understands the same options as the [Stat
 Each side accepts several criteria, which are seeded together:
 
 ```json
-[
-  {
-    "type": "dice",
-    "from": [
-      "1@x",
-      "2@y"
-    ],
-    "to": [
-      "5@print"
-    ]
-  }
-]
+[ { "type": "dice",   "from": [ "1@x",    "2@y" ],   "to": [ "5@print" ] } ]
 ```
 
 _Results (prettified and summarized):_
@@ -107,18 +75,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "dice": {
-    ".meta": {},
-    "results": {
-      "1@x,2@y->5@print": {
-        "slice": {"timesHitThreshold":0,"result":[0,3,5,8,9,10,6,17,19,2,7],"slicedFor":[0,3,19],".meta":{}},
-        "reconstruct": {"code":"x <- 1\ny <- 2\nz <- x + y\nprint(z)","files":[{"code":"x <- 1\ny <- 2\nz <- x + y\nprint(z)"}],"linesWithAutoSelected":0,".meta":{}}
-      }
-    }
-  },
-  ".meta": {}
-}
+{"dice":{".meta":{},"results":{"1@x,2@y->5@print":{"slice":{"timesHitThreshold":0,"result":[0,3,5,8,9,10,6,17,19,2,7],"slicedFor":[0,3,19],".meta":{}},"reconstruct":{"code":"x <- 1\ny <- 2\nz <- x + y\nprint(z)","files":[{"code":"x <- 1\ny <- 2\nz <- x + y\nprint(z)"}],"linesWithAutoSelected":0,".meta":{}}}}},".meta":{}}
 ```
 
 </details>

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 10:46:55 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Input Sources Query">Input Sources Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Classify the input sources of function calls\
@@ -20,19 +20,14 @@ f <- function(x) {
 If you are interested in the input-sources of the `print` call, you can use:
 
 ```json
-[
-  {
-    "type": "input-sources",
-    "criterion": "3@print"
-  }
-]
+[ { "type": "input-sources",   "criterion": "3@print" } ]
 ```
 
 (This can be shortened to `@input-sources (3@print) "f <- function(x) {\n	x <- x * 2\n	print(x)\n}"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (4 ms)\
+Query: **input-sources** (17 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 3@print\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 3.15 (id: 11), type: ["param","const","dconst"], trace: alias
 
@@ -59,19 +54,14 @@ server <- function(input, output, session) {
 ```
 
 ```json
-[
-  {
-    "type": "input-sources",
-    "criterion": "2@system"
-  }
-]
+[ { "type": "input-sources",   "criterion": "2@system" } ]
 ```
 
 (This can be shortened to `@input-sources (2@system) "server <- function(input, output, session) {\n	system(paste("convert", input$file))\n}"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (4 ms)\
+Query: **input-sources** (27 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 2@system\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 2.16-43 (id: 18), type: ["const","param","dconst"], trace: known
 

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-03, 10:21:01 UTC (v2.16.8), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
@@ -13,7 +13,7 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (4 ms)\
+Query: **absint** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])
@@ -158,13 +158,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "absint": {
-    ".meta": {},
-    "result": [["1@df",{"colnames":{"must":["id"],"may":[]},"cols":[1,1],"rows":[0,3]}],["1@data.frame",{"colnames":{"must":["id"],"may":[]},"cols":[1,1],"rows":[3,3]}]]
-  },
-  ".meta": {}
-}
+{"absint":{".meta":{},"result":[["1@df",{"colnames":{"must":["id"],"may":[]},"cols":[1,1],"rows":[0,3]}],["1@data.frame",{"colnames":{"must":["id"],"may":[]},"cols":[1,1],"rows":[3,3]}]]},".meta":{}}
 ```
 
 </details>

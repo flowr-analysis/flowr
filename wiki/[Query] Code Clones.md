@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Code Clones Query">Code Clones Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.\
@@ -25,22 +25,14 @@ A later query can pass such indices as `against` to search new code in a corpus 
 Use `config` to tune the thresholds of each algorithm, and `maxPairs` to limit the number of reported pairs, as `n` copies of the same function already form `n(n-1)/2` pairs.
 
 ```json
-[
-  {
-    "type": "code-clones",
-    "algorithms": [
-      "gst",
-      "winnowing"
-    ]
-  }
-]
+[ { "type": "code-clones",   "algorithms": [ "gst",    "winnowing" ] } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **code-clones** (5 ms)\
+Query: **code-clones** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ 2 clone pairs in 1 file\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [gst 1.00] **normalize** _<input 0>:1.14-4.1_ ~ **scale_it** _<input 0>:5.13-8.1_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [winnowing 1.00] **normalize** _<input 0>:1.14-4.1_ ~ **scale_it** _<input 0>:5.13-8.1_
@@ -52,31 +44,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "code-clones": {
-    ".meta": {},
-    "pairs": [
-      {
-        "algorithm": "gst",
-        "similarity": 1,
-        "containment": [1,1],
-        "a": {"file":"<input 0>","id":23,"loc":[1,14,4,1,"<input 0>"],"name":"normalize"},
-        "b": {"file":"<input 0>","id":48,"loc":[5,13,8,1,"<input 0>"],"name":"scale_it"},
-        "matches": [{"a":[1,14,3,16],"b":[5,13,7,27]}]
-      },
-      {
-        "algorithm": "winnowing",
-        "similarity": 1,
-        "containment": [1,1],
-        "a": {"file":"<input 0>","id":23,"loc":[1,14,4,1,"<input 0>"],"name":"normalize"},
-        "b": {"file":"<input 0>","id":48,"loc":[5,13,8,1,"<input 0>"],"name":"scale_it"},
-        "matches": [{"a":[2,3,3,16],"b":[6,3,7,20]}]
-      }
-    ],
-    "stats": {"files":1,"units":{"gst":2,"winnowing":2},"comparisons":{"gst":1,"winnowing":1}}
-  },
-  ".meta": {}
-}
+{"code-clones":{".meta":{},"pairs":[{"algorithm":"gst","similarity":1,"containment":[1,1],"a":{"file":"<input 0>","id":23,"loc":[1,14,4,1,"<input 0>"],"name":"normalize"},"b":{"file":"<input 0>","id":48,"loc":[5,13,8,1,"<input 0>"],"name":"scale_it"},"matches":[{"a":[1,14,3,16],"b":[5,13,7,27]}]},{"algorithm":"winnowing","similarity":1,"containment":[1,1],"a":{"file":"<input 0>","id":23,"loc":[1,14,4,1,"<input 0>"],"name":"normalize"},"b":{"file":"<input 0>","id":48,"loc":[5,13,8,1,"<input 0>"],"name":"scale_it"},"matches":[{"a":[2,3,3,16],"b":[6,3,7,20]}]}],"stats":{"files":1,"units":{"gst":2,"winnowing":2},"comparisons":{"gst":1,"winnowing":1}}},".meta":{}}
 ```
 
 </details>

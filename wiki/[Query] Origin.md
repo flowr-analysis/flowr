@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
@@ -12,19 +12,14 @@ Using the example code `x <- 1
 print(x)` (with the `print(x)` in the second line), the following query returns the origins of `x` in the code:
 
 ```json
-[
-  {
-    "type": "origin",
-    "criterion": "2@x"
-  }
-]
+[ { "type": "origin",   "criterion": "2@x" } ]
 ```
 
 (This can be shortened to `@origin (2@x) "x <- 1\nprint(x)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **origin** (4 ms)\
+Query: **origin** (14 ms)\
 &nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}
 

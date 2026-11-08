@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Id-Map Query">Id-Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the id-map of the normalized AST of the given code.\
@@ -26,91 +26,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "id-map": {
-    ".meta": {},
-    "idMap": {
-      "k2v": [
-        [
-          0,
-          {
-            "type": "RSymbol",
-            "location": [1,1,1,1],
-            "content": "x",
-            "lexeme": "x",
-            "info": {"fullRange":[1,1,1,1],"adToks":[],"id":0,"parent":2,"role":"bin-l","index":0,"nest":0}
-          }
-        ],
-        [
-          1,
-          {
-            "location": [1,5,1,5],
-            "lexeme": "1",
-            "info": {"fullRange":[1,5,1,5],"adToks":[],"id":1,"parent":2,"role":"bin-r","index":1,"nest":0},
-            "type": "RNumber",
-            "content": {"num":1,"complexNumber":false,"markedAsInt":false}
-          }
-        ],
-        [
-          2,
-          {
-            "type": "RBinaryOp",
-            "location": [1,3,1,3],
-            "lhs": {
-              "type": "RSymbol",
-              "location": [1,1,1,1],
-              "content": "x",
-              "lexeme": "x",
-              "info": {"fullRange":[1,1,1,1],"adToks":[],"id":0,"parent":2,"role":"bin-l","index":0,"nest":0}
-            },
-            "rhs": {
-              "location": [1,5,1,5],
-              "lexeme": "1",
-              "info": {"fullRange":[1,5,1,5],"adToks":[],"id":1,"parent":2,"role":"bin-r","index":1,"nest":0},
-              "type": "RNumber",
-              "content": {"num":1,"complexNumber":false,"markedAsInt":false}
-            },
-            "operator": "+",
-            "lexeme": "+",
-            "info": {"fullRange":[1,1,1,5],"adToks":[],"id":2,"parent":3,"nest":0,"index":0,"role":"el-c"}
-          }
-        ],
-        [
-          3,
-          {
-            "type": "RExpressionList",
-            "children": [
-              {
-                "type": "RBinaryOp",
-                "location": [1,3,1,3],
-                "lhs": {
-                  "type": "RSymbol",
-                  "location": [1,1,1,1],
-                  "content": "x",
-                  "lexeme": "x",
-                  "info": {"fullRange":[1,1,1,1],"adToks":[],"id":0,"parent":2,"role":"bin-l","index":0,"nest":0}
-                },
-                "rhs": {
-                  "location": [1,5,1,5],
-                  "lexeme": "1",
-                  "info": {"fullRange":[1,5,1,5],"adToks":[],"id":1,"parent":2,"role":"bin-r","index":1,"nest":0},
-                  "type": "RNumber",
-                  "content": {"num":1,"complexNumber":false,"markedAsInt":false}
-                },
-                "operator": "+",
-                "lexeme": "+",
-                "info": {"fullRange":[1,1,1,5],"adToks":[],"id":2,"parent":3,"nest":0,"index":0,"role":"el-c"}
-              }
-            ],
-            "info": {"adToks":[],"id":3,"nest":0,"role":"root","index":0}
-          }
-        ]
-      ],
-      "eager": false
-    }
-  },
-  ".meta": {}
-}
+{"id-map":{".meta":{},"idMap":{"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"adToks":[],"id":0,"parent":2,"role":"bin-l","index":0,"nest":0}}],[1,{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"adToks":[],"id":1,"parent":2,"role":"bin-r","index":1,"nest":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"adToks":[],"id":0,"parent":2,"role":"bin-l","index":0,"nest":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"adToks":[],"id":1,"parent":2,"role":"bin-r","index":1,"nest":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"adToks":[],"id":2,"parent":3,"nest":0,"index":0,"role":"el-c"}}],[3,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"adToks":[],"id":0,"parent":2,"role":"bin-l","index":0,"nest":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"adToks":[],"id":1,"parent":2,"role":"bin-r","index":1,"nest":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"adToks":[],"id":2,"parent":3,"nest":0,"index":0,"role":"el-c"}}],"info":{"adToks":[],"id":3,"nest":0,"role":"root","index":0}}]],"eager":false}},".meta":{}}
 ```
 
 </details>

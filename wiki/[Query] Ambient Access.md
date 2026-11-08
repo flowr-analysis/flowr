@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Ambient Access Query">Ambient Access Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 What code reads and writes of the global state\
@@ -21,7 +21,7 @@ Without criteria, the query answers for every file and for the whole project (`<
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (34 ms)\
+Query: **ambient-access** (33 ms)\
 &nbsp;&nbsp;&nbsp;╰ **<file 1>**: reads: #option:*, #option:digits, #options writes: #env, #env:A, #option:digits, #options\
 &nbsp;&nbsp;&nbsp;╰ **<project>**: reads: #option:*, #option:digits, #options writes: #env, #env:A, #option:digits, #options
 
@@ -32,16 +32,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "ambient-access": {
-    ".meta": {},
-    "results": {
-      "<file 1>": {"reads":["#option:*","#option:digits","#options"],"writes":["#env","#env:A","#option:digits","#options"],"assumed":[],"variables":[],"draws":[]},
-      "<project>": {"reads":["#option:*","#option:digits","#options"],"writes":["#env","#env:A","#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}
-    }
-  },
-  ".meta": {}
-}
+{"ambient-access":{".meta":{},"results":{"<file 1>":{"reads":["#option:*","#option:digits","#options"],"writes":["#env","#env:A","#option:digits","#options"],"assumed":[],"variables":[],"draws":[]},"<project>":{"reads":["#option:*","#option:digits","#options"],"writes":["#env","#env:A","#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}}},".meta":{}}
 ```
 
 </details>
@@ -152,22 +143,14 @@ With slicing criteria, it answers for each criterion with all the code its node 
 Set `functions` to also learn what calling each function accesses:
 
 ```json
-[
-  {
-    "type": "ambient-access",
-    "criteria": [
-      "2^"
-    ],
-    "functions": true
-  }
-]
+[ { "type": "ambient-access",   "criteria": [ "2^" ],   "functions": true } ]
 ```
 
 (This can be shortened to `@ambient-access (2^) "f <- function() options(digits = 3)\nf()\nSys.setenv(A = "1")"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (15 ms)\
+Query: **ambient-access** (17 ms)\
 &nbsp;&nbsp;&nbsp;╰ **2^**: reads: #option:*, #option:digits, #options writes: #option:digits, #options\
 &nbsp;&nbsp;&nbsp;╰ **function 7**: reads: #option:*, #option:digits writes: #option:digits, #options
 
@@ -178,14 +161,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "ambient-access": {
-    ".meta": {},
-    "results": {"2^":{"reads":["#option:*","#option:digits","#options"],"writes":["#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}},
-    "functions": {"7":{"reads":["#option:*","#option:digits"],"writes":["#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}}
-  },
-  ".meta": {}
-}
+{"ambient-access":{".meta":{},"results":{"2^":{"reads":["#option:*","#option:digits","#options"],"writes":["#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}},"functions":{"7":{"reads":["#option:*","#option:digits"],"writes":["#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}}},".meta":{}}
 ```
 
 </details>

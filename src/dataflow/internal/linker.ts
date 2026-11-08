@@ -447,8 +447,44 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 }
 
 /** Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved the accessed objects (first layer of reads/returns/calls/...). */
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
-	return new LinkedFunctionResolver(dataflowGraph).resolve(functionDefinitionReadIds);
+export function getAllLinkedFunctionDefinitions(
+	functionDefinitionReadIds: ReadonlySet<NodeId>,
+	dataflowGraph: DataflowGraph
+): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
+	const result = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
+	const builtIns = new Set<BuiltIn>();
+	const potential: [NodeId, boolean, NodeId | undefined][] = Array.from(functionDefinitionReadIds, id => [id, false, undefined]);
+	/* the calls each vertex was expanded under, by whether an access led to it */
+	const expanded = [new Map<NodeId, Set<NodeId | undefined>>(), new Map<NodeId, Set<NodeId | undefined>>()] as const;
+	const scopes: CallScopes = new Map();
+	const next = (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => {
+		if(expanded[viaAccess ? 1 : 0].get(id)?.has(call) !== true) {
+			potential.push([id, viaAccess, call]);
+		}
+	};
+
+	while(potential.length !== 0) {
+		const [cid, viaAccess, call] = potential.pop() as [NodeId, boolean, NodeId | undefined];
+		const done = expanded[viaAccess ? 1 : 0];
+		const calls = done.get(cid);
+		/* without a call nothing restricts the walk, so that visit covers those under any call */
+		if(calls === undefined) {
+			done.set(cid, new Set([call]));
+		} else if(calls.has(call) || calls.has(undefined)) {
+			continue;
+		} else {
+			calls.add(call);
+		}
+		const end = walkLinkedDefinitions(dataflowGraph, cid, viaAccess, call, scopes, next);
+		if(end === undefined) {
+			continue;
+		} else if(NodeId.isBuiltIn(end)) {
+			builtIns.add(end);
+		} else {
+			result.add(dataflowGraph.getVertex(end) as Required<DataflowGraphVertexFunctionDefinition>);
+		}
+	}
+	return [result, builtIns];
 }
 
 /** One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition. */

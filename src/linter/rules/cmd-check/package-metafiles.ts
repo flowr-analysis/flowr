@@ -12,7 +12,7 @@ import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-arg
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { projectNodes } from './cmd-check-util';
 import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
 import type { PackageFiles } from './package-files';
@@ -70,7 +70,7 @@ const CitEntryFormals = ['entry', 'textVersion', 'header', 'footer'] as const;
 const BibEntryFormals = ['bibtype', 'textVersion', 'header', 'footer', 'other'] as const;
 
 /** the citation functions with a newer replacement, the replacement's name */
-const SupersededCitation: ReadonlyMap<string, string> = new Map([
+const SupersededCitation: ReadonlyMap<BrandedIdentifier, string> = new Map([
 	['citEntry', 'bibentry'],
 	['citHeader', 'bibentry'],
 	['citFooter', 'bibentry'],

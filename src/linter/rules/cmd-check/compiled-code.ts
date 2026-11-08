@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
@@ -282,7 +283,7 @@ function cxxRequirements(sysReq: string, config: CompiledCodeConfig): string[] {
 }
 
 /** The line-based checks as data, for the files of a package. */
-function rulesFor(files: PackageFiles, config: CompiledCodeConfig, sysReq: string, linkingTo: readonly string[], anyFile: (p: RegExp) => boolean, have: Readonly<Record<string, boolean>>, isBad: (flag: string) => boolean): Rule[] {
+function rulesFor(files: PackageFiles, config: CompiledCodeConfig, sysReq: string, linkingTo: readonly BrandedNamespace[], anyFile: (p: RegExp) => boolean, have: Readonly<Record<string, boolean>>, isBad: (flag: string) => boolean): Rule[] {
 	const seen = new Set<string>();
 	const fresh = (key: string, message: string) => seen.has(key) ? undefined : (seen.add(key), message);
 	const known = new Set(files.entries.filter(e => !e.isDirectory).map(e => e.relative));

@@ -19,7 +19,7 @@ import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { RS3Generics } from '../../data/r-s3-generics.generated';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
@@ -39,7 +39,7 @@ import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { isTop } from '../../dataflow/eval/values/r-value';
 
 export interface UnusedDefinitionResult extends LintingResult {
-	variableName?: string
+	variableName?: BrandedIdentifier
 }
 
 export interface UnusedDefinitionConfig extends MergeableRecord {
@@ -66,13 +66,13 @@ const DotsParameter = '...';
  * (`print(x)` on an object of that class), so it is used without a textual call. Kept per configuration,
  * as a process-wide memo would let the first analyzer's built-ins answer for every later one.
  */
-function knownS3Generics(index: BuiltInIndex): ReadonlySet<string> {
+function knownS3Generics(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
 	return new Set([...Object.keys(RS3Generics.genericFormals), ...Object.keys(RGroupGenerics),
 		...index.with(CallProp.Generic).map(g => Identifier.getName(g))]);
 }
 
 /** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
-function isDispatched(generic: string, called: ReadonlySet<string>): boolean {
+function isDispatched(generic: BrandedIdentifier, called: ReadonlySet<BrandedIdentifier>): boolean {
 	const group = s3GroupGenericMembers(generic);
 	return called.has(generic) || (group?.some(member => called.has(member)) ?? false);
 }
@@ -87,9 +87,9 @@ const PackageHookFunctions = new Set<string>([
 
 interface PackageInfo {
 	/** all names the project exports via its `NAMESPACE` (functions, symbols, patterns, S3 methods as `generic.class`) */
-	readonly exported:   ReadonlySet<string>
+	readonly exported:   ReadonlySet<BrandedIdentifier>
 	/** S3 generics the project's `NAMESPACE` declares methods for (via `S3method(generic, class)`) */
-	readonly s3Generics: ReadonlySet<string>
+	readonly s3Generics: ReadonlySet<BrandedIdentifier>
 }
 
 /** Gathers the analyzed project's own `NAMESPACE` exports and declared S3 generics (empty when it is not a package). */
@@ -102,12 +102,12 @@ function collectPackageInfo(data: ReadonlyFlowrAnalysisProvider): PackageInfo {
 }
 
 /** Collects the names of every function call in the graph, so we can tell whether an S3 generic is dispatched anywhere. */
-export function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
+export function collectCalledNames(dfg: DataflowGraph): ReadonlySet<BrandedIdentifier> {
 	return new Set(dfg.verticesOfType(VertexType.FunctionCall).map(([, vertex]) => Identifier.getName(vertex.name)));
 }
 
 /** S3 (`UseMethod`) and S4/S7 (`standardGeneric`) generic dispatchers, invoked indirectly by R's dispatch. */
-const GenericDispatchers = new Set<string>(['UseMethod', 'standardGeneric']);
+const GenericDispatchers = new Set<BrandedIdentifier>(['UseMethod', 'standardGeneric']);
 
 /** Whether a function body is a single call to a generic dispatcher. */
 function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
@@ -123,7 +123,7 @@ function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
 }
 
 /** Whether `name` reads as `generic.class` for a generic that is known, declared, or called, so R dispatches to it by that name. */
-export function isS3MethodName(name: string, ctx: ReadOnlyFlowrAnalyzerContext, called: ReadonlySet<string>, declared: ReadonlySet<string> = new Set()): boolean {
+export function isS3MethodName(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext, called: ReadonlySet<BrandedIdentifier>, declared: ReadonlySet<BrandedIdentifier> = new Set()): boolean {
 	/* every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`) */
 	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
 		const generic = name.slice(0, dot);
@@ -139,7 +139,7 @@ export function isS3MethodName(name: string, ctx: ReadOnlyFlowrAnalyzerContext, 
  * an S3 method for a dispatched generic, or - when {@link UnusedDefinitionConfig#excludeExportedDefinitions} is set -
  * a package export.
  */
-function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<string>, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+function isConsideredUsed(lexeme: BrandedIdentifier | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<BrandedIdentifier>, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	if(lexeme === undefined) {
 		return false;
 	}
@@ -171,7 +171,7 @@ function hasContractedSignature(
 	ast: NormalizedAst,
 	config: UnusedDefinitionConfig,
 	pkg: PackageInfo,
-	called: ReadonlySet<string>,
+	called: ReadonlySet<BrandedIdentifier>,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): boolean {
 	let inParameter = false;

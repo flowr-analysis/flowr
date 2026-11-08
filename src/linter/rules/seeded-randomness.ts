@@ -44,7 +44,7 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 * Each entry has a `type`, which is either `function` or `assignment`, and a `name`, which is the name of the function or variable.
 	 * The default value for this is the function `set.seed` and the variable `.Random.seed`.
 	 */
-	randomnessProducers: { type: 'function' | 'assignment', name: string }[]
+	randomnessProducers: { type: 'function' | 'assignment', name: BrandedIdentifier }[]
 	/**
 	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
 	 */
@@ -66,7 +66,7 @@ export const SEEDED_RANDOMNESS = {
 		const ctx = data.inspectContext();
 		const functionProducers = new Set(config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name));
 		const assignmentProducers = new Set(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
-		const consumers = new Set(config.randomnessConsumers);
+		const consumers = new Set<BrandedIdentifier>(config.randomnessConsumers);
 		const assignmentArgIndexes = ctx.env.deriveFromDefinitions(assignmentTargetIndexes);
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:                 0,
@@ -227,18 +227,18 @@ function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunction
 		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
-function assignmentTargetIndexes(definitions: BuiltInDefinitions): Map<string, number> {
+function assignmentTargetIndexes(definitions: BuiltInDefinitions): Map<BrandedIdentifier, number> {
 	return new Map(getDefaultAssignments(definitions).flatMap(a => {
 		const targetIndex = a.config?.swapSourceAndTarget ? 1 : 0;
 		return a.names.map(n => [Identifier.getName(n), targetIndex] as const);
 	}));
 }
 
-function randomnessSetters(index: BuiltInIndex): string[] {
+function randomnessSetters(index: BuiltInIndex): BrandedIdentifier[] {
 	return index.withAll([SemanticCallTag.Random, CallProp.Configures]).map(Identifier.getName);
 }
 
-function randomnessConsumers(index: BuiltInIndex): string[] {
+function randomnessConsumers(index: BuiltInIndex): BrandedIdentifier[] {
 	const setters = new Set(randomnessSetters(index));
 	return index.with(SemanticCallTag.Random).map(Identifier.getName).filter(n => !setters.has(n));
 }

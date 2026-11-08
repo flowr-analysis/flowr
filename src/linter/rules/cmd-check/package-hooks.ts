@@ -3,7 +3,7 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation, SourceRange } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../dataflow/environments/identifier';
 import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
 import { ArgProp, CallProps, type FnSig, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
@@ -35,10 +35,10 @@ export type PackageHookIssue =
 
 export interface PackageHooksResult extends CmdCheckResult {
 	/** the hook, e.g. `.onLoad` */
-	readonly hook:  string
+	readonly hook:  BrandedIdentifier
 	readonly issue: PackageHookIssue
 	/** the offending function called, if the issue is a call */
-	readonly call?: string
+	readonly call?: BrandedIdentifier
 }
 
 export interface PackageHooksConfig extends MergeableRecord {
@@ -54,27 +54,27 @@ export interface PackageHooksConfig extends MergeableRecord {
 
 export interface PackageHooksMetadata extends MergeableRecord {
 	/** the hooks the package defines */
-	readonly hooks: readonly string[]
+	readonly hooks: readonly BrandedIdentifier[]
 }
 
 /** the hooks R calls as the package is loaded or attached */
-const StartupHooks: ReadonlySet<string> = new Set(['.onLoad', '.onAttach', '.First.lib']);
+const StartupHooks: ReadonlySet<BrandedIdentifier> = new Set(['.onLoad', '.onAttach', '.First.lib']);
 /** the hooks R calls as the package is detached */
-const DetachHooks: ReadonlySet<string> = new Set(['.onDetach', '.Last.lib']);
+const DetachHooks: ReadonlySet<BrandedIdentifier> = new Set(['.onDetach', '.Last.lib']);
 /** the calls that belong into another hook: where they are wrong and where they belong */
-const MisplacedCalls: Readonly<Record<string, { readonly in: readonly string[], readonly instead: string }>> = {
+const MisplacedCalls: Readonly<Record<string, { readonly in: readonly BrandedIdentifier[], readonly instead: string }>> = {
 	'library.dynam':        { in: ['.onAttach'], instead: '.onLoad' },
 	'library.dynam.unload': { in: ['.onDetach', '.Last.lib'], instead: '.onUnload' }
 };
 
 interface ReachedCall {
 	readonly id:   NodeId
-	readonly name: string
+	readonly name: BrandedIdentifier
 	/** the call of a package function through which the call is reached, `undefined` if it is in the hook itself */
 	readonly via?: NodeId
 }
 
-const BranchingCalls: ReadonlySet<string> = new Set(['switch', 'tryCatch']);
+const BranchingCalls: ReadonlySet<BrandedIdentifier> = new Set(['switch', 'tryCatch']);
 
 /** the constructs whose body may or may not run */
 function isConditional(node: RNode<ParentInformation>, graph: DataflowGraph): boolean {
@@ -130,7 +130,7 @@ function writesToResource(id: NodeId, df: DataflowInformation, sig: FnSig | unde
 }
 
 /** whether the call states an argument named `name` */
-function hasNamedArgument(id: NodeId, df: DataflowInformation, name: string): boolean {
+function hasNamedArgument(id: NodeId, df: DataflowInformation, name: BrandedIdentifier): boolean {
 	const vertex = df.graph.getVertex(id);
 	return DfgVertex.isFunctionCall(vertex) && vertex.args.some(a => a !== EmptyArgument && a.name === name);
 }
@@ -157,11 +157,11 @@ export const PACKAGE_HOOKS = {
 		const hooks = topLevelDefinitions(ast, n => StartupHooks.has(n) || DetachHooks.has(n))
 			.filter(h => pkg.isPackageCode(h.def.info.file));
 		const results: PackageHooksResult[] = [];
-		const startupMessages = new Set(config.startupMessageFunctions);
-		const allowedOutput = new Set(config.allowedOutput);
-		const unsafe = new Set(config.unsafeCalls);
+		const startupMessages = new Set<BrandedIdentifier>(config.startupMessageFunctions);
+		const allowedOutput = new Set<BrandedIdentifier>(config.allowedOutput);
+		const unsafe = new Set<BrandedIdentifier>(config.unsafeCalls);
 		for(const { name: hook, def } of hooks) {
-			const report = (issue: PackageHookIssue, message: string, id: NodeId = def.info.id, call?: string, certain = true, quickFix?: LintQuickFixReplacement[]) => results.push({
+			const report = (issue: PackageHookIssue, message: string, id: NodeId = def.info.id, call?: BrandedIdentifier, certain = true, quickFix?: LintQuickFixReplacement[]) => results.push({
 				...at(idMap.get(id) ?? def, certain),
 				hook,
 				issue,

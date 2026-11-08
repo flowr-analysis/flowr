@@ -3,7 +3,7 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
@@ -30,7 +30,7 @@ export type ForeignFunctionCallIssue =
 export interface ForeignFunctionCallsResult extends CmdCheckResult {
 	readonly issue:    ForeignFunctionCallIssue
 	/** the foreign function interface called, e.g. `.Call` */
-	readonly call:     string
+	readonly call:     BrandedIdentifier
 	/** the routine the call names, if flowR can tell */
 	readonly routine?: string
 	/** the `PACKAGE` the call names, for all issues but a missing one */

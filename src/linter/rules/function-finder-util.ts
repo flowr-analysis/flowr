@@ -87,7 +87,7 @@ export const functionFinderUtil = {
 	),
 	async requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
-		pool: ReadonlyMap<string, FunctionInfo>,
+		pool: ReadonlyMap<BrandedIdentifier, FunctionInfo>,
 		analyzer: ReadonlyFlowrAnalysisProvider,
 		requireValue: RegExp | string | undefined,
 		identifier: Identifier | undefined
@@ -114,7 +114,7 @@ export const functionFinderUtil = {
 };
 
 
-function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: string | undefined): boolean {
+function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: BrandedIdentifier | undefined): boolean {
 	return call.args.some((arg, index) => arg !== EmptyArgument
 		&& (argName !== undefined ? arg.name === argName : index === argIdx));
 }
@@ -128,7 +128,7 @@ export function hasArgumentValue(
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	dataflow: DataflowGraph,
 	resolveValue: boolean | 'library' | undefined,
-	argName?: string,
+	argName?: BrandedIdentifier,
 	argIdx?: number | 'unnamed'): Ternary {
 	const args = getArgumentStringValue(
 		analyzer.flowrConfig.solver.variables,

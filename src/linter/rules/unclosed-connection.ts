@@ -61,8 +61,7 @@ function handleArguments(vertex: DataflowGraphVertexFunctionCall, sig: FnSig | u
 function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlySet<NodeId>, out: Set<NodeId>): void {
 	const visited = new Set<NodeId>([start]);
 	const pending = [start];
-	while(pending.length > 0) {
-		const current = pending.pop() as NodeId;
+	for(let current; (current = pending.pop()) !== undefined;) {
 		if(opens.has(current)) {
 			out.add(current);
 			continue;

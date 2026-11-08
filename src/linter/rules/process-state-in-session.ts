@@ -20,7 +20,7 @@ import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { at, builtInOf } from '../linter-util';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { uniqueArray } from '../../util/collections/arrays';
@@ -37,22 +37,22 @@ export enum ProcessStateChange {
 export interface ProcessStateInSessionResult extends LintingResult {
 	readonly change:     ProcessStateChange
 	/** the function or variable changing the state */
-	readonly name:       string
+	readonly name:       BrandedIdentifier
 	/** what to use instead */
 	readonly suggestion: string
 }
 
 export interface ProcessStateInSessionConfig extends MergeableRecord {
 	/** parameter lists marking a session function (Shiny server or module), all of one must be present */
-	readonly sessionSignatures: readonly (readonly string[])[]
+	readonly sessionSignatures: readonly (readonly BrandedIdentifier[])[]
 	/** process-wide setters, with what to use instead */
 	readonly settings:          Readonly<Record<string, string>>
 	/** functions creating state, shared when called at the top level */
-	readonly sharedState:       readonly string[]
+	readonly sharedState:       readonly BrandedIdentifier[]
 	/** cache constructors */
-	readonly caches:            readonly string[]
+	readonly caches:            readonly BrandedIdentifier[]
 	/** memoisers */
-	readonly memoisers:         readonly string[]
+	readonly memoisers:         readonly BrandedIdentifier[]
 }
 
 export interface ProcessStateInSessionMetadata extends MergeableRecord {
@@ -64,7 +64,7 @@ type Node = RNode<ParentInformation>;
 
 const SessionLocal = 'session$userData or a value created within the server function';
 /** the functions reading what a setter changes */
-const SettingReaders: Readonly<Record<string, readonly string[]>> = { 'options': ['getOption', 'options'], 'Sys.setenv': ['Sys.getenv'], 'Sys.unsetenv': ['Sys.getenv'], 'setwd': ['getwd'], 'Sys.setlocale': ['Sys.getlocale'] };
+const SettingReaders: Readonly<Record<string, readonly BrandedIdentifier[]>> = { 'options': ['getOption', 'options'], 'Sys.setenv': ['Sys.getenv'], 'Sys.unsetenv': ['Sys.getenv'], 'setwd': ['getwd'], 'Sys.setlocale': ['Sys.getlocale'] };
 const MagrittrPipe = new Set(['%>%']);
 
 const parentOf = RNode.directParent<ParentInformation>;
@@ -76,7 +76,7 @@ const references = (node: Node, graph: DataflowGraph): NodeId[] => [node.info.id
 const extendsPath = (path: string, prefix: string) => path.startsWith(prefix) && (path.length === prefix.length || '$('.includes(path[prefix.length]));
 
 /** whether the call is undone when its function exits, as in `op <- options(x = 1); on.exit(options(op))` */
-function restoredOnExit(call: Node, name: string, idMap: AstIdMap): boolean {
+function restoredOnExit(call: Node, name: BrandedIdentifier, idMap: AstIdMap): boolean {
 	const fn = idMap.get(RNode.strictlyEnclosingFunction(call.info.id, idMap) ?? -1);
 	let restored = false;
 	RNode.visitAst(RFunctionDefinition.is(fn) ? fn.body : undefined, n => {
@@ -91,7 +91,7 @@ function restoredOnExit(call: Node, name: string, idMap: AstIdMap): boolean {
 }
 
 /** variables bound at the top level to a call of `creators`, by id */
-function topLevelOf(nodes: readonly Node[], idMap: AstIdMap, creators: readonly string[]): Map<NodeId, string> {
+function topLevelOf(nodes: readonly Node[], idMap: AstIdMap, creators: readonly BrandedIdentifier[]): Map<NodeId, BrandedIdentifier> {
 	return new Map(nodes.flatMap(n => RBinaryOp.is(n) && ['<-', '='].includes(n.operator) && RSymbol.is(n.lhs) && RFunctionCall.isNamed(n.rhs, new Set(creators))
 		&& RNode.strictlyEnclosingFunction(n.info.id, idMap) === undefined ? [[n.lhs.info.id, Identifier.getName(n.lhs.content)] as const] : []));
 }
@@ -100,7 +100,7 @@ const fieldName = (access: RAccess<ParentInformation>) => access.access.length =
 
 /** the path a symbol is read by, e.g., `session$user$name` or `rv()` */
 function readPath(symbol: RSymbol<ParentInformation>, idMap: AstIdMap): string {
-	let path = Identifier.getName(symbol.content);
+	let path = String(Identifier.getName(symbol.content));
 	for(let cur: Node = symbol, parent = parentOf(cur, idMap); parent !== undefined; cur = parent, parent = parentOf(cur, idMap)) {
 		const field = RAccess.is(parent) && parent.accessed === cur ? fieldName(parent) : undefined;
 		const read = RFunctionCall.isNamed(parent) && parent.functionName === cur && parent.arguments.length === 0;
@@ -113,7 +113,7 @@ function readPath(symbol: RSymbol<ParentInformation>, idMap: AstIdMap): string {
 }
 
 /** session values (parameters, reactive state, globals and settings a session writes) an expression reads, as paths; definitions are followed */
-function sessionDependence(graph: DataflowGraph, idMap: AstIdMap, sessions: readonly NodeId[], stateCreators: ReadonlySet<string>, writtenGlobals: ReadonlySet<string>, changedSettings: ReadonlySet<string>) {
+function sessionDependence(graph: DataflowGraph, idMap: AstIdMap, sessions: readonly NodeId[], stateCreators: ReadonlySet<BrandedIdentifier>, writtenGlobals: ReadonlySet<BrandedIdentifier>, changedSettings: ReadonlySet<BrandedIdentifier>) {
 	const inSession = (id: NodeId) => sessions.some(s => isWithin(id, s, idMap));
 	const isSessionValue = (def: NodeId): boolean => {
 		const node = idMap.get(def);
@@ -183,7 +183,7 @@ function pipedInto(call: Node, idMap: AstIdMap): Node | undefined {
 }
 
 /** a write to a shared cache: by `bindCache`, a function a memoiser wraps, or `$set` of a cache */
-function cacheWrite(node: Node, graph: DataflowGraph, idMap: AstIdMap, inSession: (id: NodeId) => boolean, caches: ReadonlyMap<NodeId, string>, memoisers: ReadonlySet<string>) {
+function cacheWrite(node: Node, graph: DataflowGraph, idMap: AstIdMap, inSession: (id: NodeId) => boolean, caches: ReadonlyMap<NodeId, BrandedIdentifier>, memoisers: ReadonlySet<BrandedIdentifier>) {
 	if(RFunctionCall.isNamed(node, new Set(['bindCache']))) {
 		const args = node.arguments.filter(a => a === EmptyArgument || a.name?.content !== 'cache').map(argValue);
 		const piped = pipedInto(node, idMap);
@@ -197,7 +197,7 @@ function cacheWrite(node: Node, graph: DataflowGraph, idMap: AstIdMap, inSession
 		const wrapped = argValue(memo.arguments[0]);
 		const fn = RSymbol.is(wrapped) ? Dataflow.targetsOf(graph, wrapped.info.id, EdgeType.Reads).map(d => assigned(d, graph, idMap)).find(RFunctionDefinition.is) : wrapped;
 		const args = direct ? memo.arguments.slice(1) : node.arguments;
-		const omitted = new Set<string>();
+		const omitted = new Set<BrandedIdentifier>();
 		RNode.visitAst(argumentValue(memo, 'omit_args'), n => {
 			if(RString.is(n)) {
 				omitted.add(n.content.str);
@@ -228,7 +228,7 @@ export const PROCESS_STATE_IN_SESSION = {
 		const shared = topLevelOf(nodes, idMap, config.sharedState);
 		const scopes = new Map<NodeId, ReadonlySet<string>>();
 		const results: ProcessStateInSessionResult[] = [];
-		const add = (node: Node, change: ProcessStateChange, name: string, suggestion: string) => results.push({ ...at(node), change, name, suggestion });
+		const add = (node: Node, change: ProcessStateChange, name: BrandedIdentifier, suggestion: string) => results.push({ ...at(node), change, name, suggestion });
 
 		for(const [id, vertex] of df.graph.verticesOfType(VertexType.FunctionCall)) {
 			const node = idMap.get(id);

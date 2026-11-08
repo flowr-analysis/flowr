@@ -1,8 +1,9 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
+import { DefaultMap } from '../../util/collections/defaultmap';
 import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Identifier, PkgName } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier, PkgName } from '../../dataflow/environments/identifier';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
@@ -188,10 +189,9 @@ function getCriticalTargets(
 ): CriticalTarget[] {
 	const criticalCalls = Map.groupBy(getEnabledCriticalCalls(config, builtIns), call => Identifier.getName(call.name));
 	const targets: CriticalTarget[] = [];
-	const seen = new Set<string>();
 	const ids = new Set(elements.map(({ node }) => node.info.id));
 	/* calls of an alias (`s <- system; s(x)`) link to the built-in they resolve to */
-	const aliases = new Map(graph.verticesOfType(VertexType.FunctionCall).map(([id]) => [id, new Set([...linkedBuiltIns(graph, id, EdgeType.Calls), ...wrappedBuiltIns(graph, id)])] as const));
+	const aliases = new Map(graph.verticesOfType(VertexType.FunctionCall).map(([id]) => [id, new Set<BrandedIdentifier>([...linkedBuiltIns(graph, id, EdgeType.Calls), ...wrappedBuiltIns(graph, id)])] as const));
 	for(const [id, names] of aliases) {
 		if(names.values().some(name => criticalCalls.has(name))) {
 			ids.add(id);
@@ -207,7 +207,8 @@ function getCriticalTargets(
 		if(!DfgVertex.isFunctionCall(call)) {
 			continue;
 		}
-		const aliased = aliases.get(id) ?? new Set<string>();
+		const aliased = aliases.get(id) ?? new Set<BrandedIdentifier>();
+		const seen = new DefaultMap<UnescapedArgumentCategory, Set<NodeId>>(() => new Set());
 		for(const { category, name, signature } of [Identifier.getName(call.name), ...aliased].flatMap(n => criticalCalls.get(n) ?? [])) {
 			const viaAlias = !Identifier.matches(name, call.name) && !Identifier.matches(call.name, name);
 			/* a function handed on (`purrr::map(x, system)`) is called where it lands, not here */
@@ -216,9 +217,8 @@ function getCriticalTargets(
 			}
 			for(const arg of FunctionSemantics.call.match.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
 				const location = locate(arg);
-				const key = `${category}-${call.id}-${arg}`;
-				if(location !== undefined && !seen.has(key)) {
-					seen.add(key);
+				if(location !== undefined && !seen.get(category).has(arg)) {
+					seen.get(category).add(arg);
 					targets.push({ category, call, signature, arg, location });
 				}
 			}
@@ -273,13 +273,13 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 }
 
 /** The names of the built-ins `id` links to with an edge of the given type, none if it may link to anything else (a closure checked where its body calls them) */
-function linkedBuiltIns(graph: DataflowGraph, id: NodeId, type: EdgeType): string[] {
+function linkedBuiltIns(graph: DataflowGraph, id: NodeId, type: EdgeType): BrandedIdentifier[] {
 	const linked = Dataflow.targetsOf(graph, id, type);
 	return linked.every(NodeId.isBuiltIn) ? linked.map(NodeId.fromBuiltIn) : [];
 }
 
 /** the built-ins handed to the call a called variable holds the result of, as `p` holds `purrr::partial(system)` */
-function wrappedBuiltIns(graph: DataflowGraph, id: NodeId): string[] {
+function wrappedBuiltIns(graph: DataflowGraph, id: NodeId): BrandedIdentifier[] {
 	return Dataflow.targetsOf(graph, id, EdgeType.Reads).flatMap(v => DfgVertex.isVariableDefinition(graph.getVertex(v)) ? Dataflow.targetsOf(graph, v, EdgeType.DefinedBy) : [])
 		.flatMap(w => {
 			const wrapper = graph.getVertex(w);
@@ -299,11 +299,10 @@ function mapInputSourceToArgs(call: DataflowGraphVertexFunctionCall, sources: In
  * Whether anything `start` reads is a parameter of an enclosing function. What the call sites happen to pass says
  * nothing here: the function escapes its parameter, and it is one call away from being handed anything at all.
  */
-function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: ReadonlySet<string>): boolean {
+function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: ReadonlySet<BrandedIdentifier>): boolean {
 	const seen = new Set<NodeId>([start]);
 	const queue = [start];
-	while(queue.length > 0) {
-		const id = queue.pop() as NodeId;
+	for(let id; (id = queue.pop()) !== undefined;) {
 		if(graph.idMap?.get(id)?.info.role === RoleInParent.ParameterName) {
 			return true;
 		}

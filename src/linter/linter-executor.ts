@@ -1,5 +1,5 @@
-import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
-import type { LintingResult, LintingResults, LintingRule } from './linter-format';
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, getLintingRule } from './linter-rules';
+import type { LintingResult, LintingResults } from './linter-format';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
@@ -38,7 +38,7 @@ function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap)
  */
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
-		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+		const rule = getLintingRule(ruleName);
 		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig(input.inspectContext()), withoutUntrustedRegexes(ruleName, lintingRuleConfig));
 
 		const ruleSearch = rule.createSearch(fullConfig, input);

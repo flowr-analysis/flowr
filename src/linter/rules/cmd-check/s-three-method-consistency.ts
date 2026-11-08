@@ -3,7 +3,7 @@ import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { fnEntry, fnInfo } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
 import { callsBuiltIn } from '../../linter-util';
@@ -31,9 +31,9 @@ export type S3MethodIssue =
 export interface S3MethodConsistencyResult extends CmdCheckResult {
 	readonly kind:     S3MethodIssue
 	/** the offending function, e.g. `print.foo` or `foo<-` */
-	readonly function: string
+	readonly function: BrandedIdentifier
 	/** the generic the function is a method of, absent for a replacement function that is no method */
-	readonly generic?: string
+	readonly generic?: BrandedIdentifier
 }
 
 export interface S3MethodConsistencyConfig extends MergeableRecord {
@@ -58,18 +58,18 @@ export interface S3MethodConsistencyMetadata extends MergeableRecord {
 
 
 /** the formals of a definition, without the backticks of non-syntactic names */
-function formalNames(def: RFunctionDefinition<ParentInformation>): string[] {
+function formalNames(def: RFunctionDefinition<ParentInformation>): BrandedIdentifier[] {
 	return rawFormalNames(def).map(n => n.replace(/^`(.*)`$/, '$1'));
 }
 
 /** the subsetting generics dispatch internally on an argument list that varies by method, so a method may take any */
-const SubsetGenerics: ReadonlySet<string> = new Set(['[', '[[', '$']);
+const SubsetGenerics: ReadonlySet<BrandedIdentifier> = new Set(['[', '[[', '$']);
 
 /** the operators for which a method with as many arguments as the generic is fine whatever their names */
-const OperatorGenerics: ReadonlySet<string> = new Set(['+', '-', '*', '/', '^', '%%', '%/%', '&', '|', '!', '==', '!=', '<', '<=', '>=', '>']);
+const OperatorGenerics: ReadonlySet<BrandedIdentifier> = new Set(['+', '-', '*', '/', '^', '%%', '%/%', '&', '|', '!', '==', '!=', '<', '<=', '>=', '>']);
 
 /** whether a method with the formals `mArgs` is consistent with the generic `gName` of formals `gArgs` (`tools::checkS3methods`) */
-function consistent(gName: string, gArgs: readonly string[], mName: string, mArgs: readonly string[]): boolean {
+function consistent(gName: BrandedIdentifier, gArgs: readonly BrandedIdentifier[], mName: BrandedIdentifier, mArgs: readonly BrandedIdentifier[]): boolean {
 	if(gName === 'round' && mArgs[0] === 'x') {
 		return true;
 	}
@@ -94,7 +94,7 @@ function consistent(gName: string, gArgs: readonly string[], mName: string, mArg
 	return (positionalOk && takesAll && onlyKnown) || (OperatorGenerics.has(gName) && generic.length === mArgs.length);
 }
 
-function formatFormals(name: string, formals: readonly string[]): string {
+function formatFormals(name: BrandedIdentifier, formals: readonly BrandedIdentifier[]): string {
 	return `${name}:\n  function(${formals.join(', ')})`;
 }
 
@@ -105,16 +105,16 @@ function nameNodeOf(def: RFunctionDefinition<ParentInformation>, idMap: AstIdMap
 }
 
 interface Generic {
-	readonly formals: readonly string[]
+	readonly formals: readonly BrandedIdentifier[]
 	/** defined by the package itself, as opposed to a function of base R */
 	readonly local:   boolean
 }
 
 /** the package functions that call `UseMethod` on their own account, i.e. the generics the package defines */
-function localGenerics(defs: readonly { name: string, def: RFunctionDefinition<ParentInformation> }[], ast: NormalizedAst, graph: DataflowGraph): Map<string, Generic> {
+function localGenerics(defs: readonly { name: BrandedIdentifier, def: RFunctionDefinition<ParentInformation> }[], ast: NormalizedAst, graph: DataflowGraph): Map<BrandedIdentifier, Generic> {
 	const idMap = ast.idMap;
-	const byId = new Map<NodeId, { name: string, def: RFunctionDefinition<ParentInformation> }>(defs.map(d => [d.def.info.id, d]));
-	const generics = new Map<string, Generic>();
+	const byId = new Map<NodeId, { name: BrandedIdentifier, def: RFunctionDefinition<ParentInformation> }>(defs.map(d => [d.def.info.id, d]));
+	const generics = new Map<BrandedIdentifier, Generic>();
 	const seen = new Set<NodeId>();
 	for(const node of projectNodes(ast)) {
 		if(seen.has(node.info.id) || !RFunctionCall.is(node) || !callsBuiltIn(graph, node.info.id, 'UseMethod')) {
@@ -131,8 +131,8 @@ function localGenerics(defs: readonly { name: string, def: RFunctionDefinition<P
 }
 
 /** the functions and operators the package code calls, by name */
-function calledNames(ast: NormalizedAst): Set<string> {
-	const called = new Set<string>();
+function calledNames(ast: NormalizedAst): Set<BrandedIdentifier> {
+	const called = new Set<BrandedIdentifier>();
 	for(const node of projectNodes(ast)) {
 		if(RFunctionCall.isNamed(node)) {
 			called.add(Identifier.getName(node.functionName.content));
@@ -162,11 +162,11 @@ export const S3_METHOD_CONSISTENCY = {
 		const idMap = ast.idMap;
 		const pkg = packageInfo(ctx);
 		const ns = pkg.namespace;
-		const notMethods = new Set(RS3Generics.nonS3Methods[pkg.name ?? ''] ?? []);
+		const notMethods = new Set<BrandedIdentifier>(RS3Generics.nonS3Methods[pkg.name ?? ''] ?? []);
 		const defs = topLevelDefinitions(ast, () => true).filter(d => pkg.isPackageCode(d.def.info.file));
 		const defined = new Set(defs.map(d => d.name));
 		const local = localGenerics(defs, ast, graph);
-		const generics = new Map<string, Generic>(local);
+		const generics = new Map<BrandedIdentifier, Generic>(local);
 		/* a function of the package named like a generic of base hides it, unless it is a generic itself */
 		const genericNames = new Set(ctx.env.deriveFromIndex(index => index.with(CallProp.Generic).map(g => Identifier.getName(g))));
 		for(const name of genericNames) {
@@ -182,12 +182,12 @@ export const S3_METHOD_CONSISTENCY = {
 		}
 		const called = calledNames(ast);
 		/* like `R CMD check`, an unregistered method of a generic from base R only matters if the package calls the generic */
-		const dispatched = (generic: string) => called.has(generic) || (s3GroupGenericMembers(generic)?.some(m => called.has(m)) ?? false);
+		const dispatched = (generic: BrandedIdentifier) => called.has(generic) || (s3GroupGenericMembers(generic)?.some(m => called.has(m)) ?? false);
 		const byLength = [...generics.keys()].sort((a, b) => b.length - a.length);
 		const results: S3MethodConsistencyResult[] = [];
 		let methods = 0;
 		let replacements = 0;
-		const report = (def: RFunctionDefinition<ParentInformation>, kind: S3MethodIssue, name: string, generic: string | undefined, certain: boolean, message: string) => {
+		const report = (def: RFunctionDefinition<ParentInformation>, kind: S3MethodIssue, name: BrandedIdentifier, generic: BrandedIdentifier | undefined, certain: boolean, message: string) => {
 			results.push({
 				...at(nameNodeOf(def, idMap), certain),
 				kind,
@@ -196,13 +196,13 @@ export const S3_METHOD_CONSISTENCY = {
 				message
 			});
 		};
-		const registered = (generic: string, name: string) => ns?.exportS3Generics.get(generic)?.includes(name.slice(generic.length + 1)) ?? false;
+		const registered = (generic: BrandedIdentifier, name: BrandedIdentifier) => ns?.exportS3Generics.get(generic)?.includes(name.slice(generic.length + 1)) ?? false;
 		/* a function flowR knows as ordinary function of a package (`t.test`) is no method of the generic it starts with */
-		const ordinary = (name: string) => {
+		const ordinary = (name: BrandedIdentifier) => {
 			const known = fnInfo(Identifier.make(name), ctx);
 			return known !== undefined && known.entry?.props.includes('s3-method') !== true;
 		};
-		const replacementCheck = (def: RFunctionDefinition<ParentInformation>, name: string, generic: string | undefined, certain: boolean) => {
+		const replacementCheck = (def: RFunctionDefinition<ParentInformation>, name: BrandedIdentifier, generic: BrandedIdentifier | undefined, certain: boolean) => {
 			replacements++;
 			const formals = formalNames(def);
 			if(formals.length > 0 && formals[formals.length - 1] !== 'value') {

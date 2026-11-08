@@ -9,7 +9,7 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { uniqueArrayMerge } from '../../../util/collections/arrays';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { baseRExportOwner, isBaseRPackage } from '../../../util/r-base-packages';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
@@ -115,7 +115,7 @@ type RdText = Extract<RdNode, { type: 'text' }>;
 type RdGroup = Extract<RdNode, { type: 'group' }>;
 /** a finding inside a page, with the `checkRd` level: below the configured minimum it is dropped, `prepare_Rd` messages are always kept */
 type Diag = { readonly line: number, readonly level: number, readonly kind: RdFilesKind, readonly text: string };
-type RdLink = { readonly line: number, readonly topic: string, readonly pkg: string | undefined, readonly shown: string };
+type RdLink = { readonly line: number, readonly topic: BrandedIdentifier, readonly pkg: BrandedNamespace | undefined, readonly shown: string };
 type PageSettings = { readonly defEnc: boolean, readonly macros: ReadonlyMap<string, number>, readonly lenient: boolean };
 type Handler = (m: RdMacroUse, tag: string) => void;
 
@@ -523,7 +523,9 @@ function firstErrorRow(root: { isError: boolean, isMissing: boolean, children: r
 }
 
 /** the file argument of the functions that write one: its name and its position among the unnamed arguments */
-const FileWriters: ReadonlyMap<string, readonly [string, number]> = new Map(([
+const RestoringCalls: readonly BrandedIdentifier[] = ['on.exit', 'with_dir', 'withr::with_dir'];
+
+const FileWriters: ReadonlyMap<BrandedIdentifier, readonly [string, number]> = new Map(([
 	['file', 1, 'write.csv write.csv2 write.table saveRDS write dput dump'], ['file', -1, 'save cat'], ['file', 0, 'save.image sink pdf postscript'], ['filename', 0, 'png jpeg bmp tiff svg cairo_pdf'],
 	['con', 1, 'writeLines'], ['', 0, 'file.create'], ['path', 0, 'dir.create'], ['destfile', 1, 'download.file'], ['path', 1, 'write_rds']
 ] as const).flatMap(([name, at, fns]) => fns.split(' ').map(fn => [fn, [name, at] as const] as const)));
@@ -563,7 +565,7 @@ function examples(p: Page, { data }: Env): Finding[] {
 			found.push(['rd-example-quit', lineOf(node), `Examples call ${name}(), which ends the R session`]);
 		}
 		setwds += name === 'setwd' ? 1 : 0;
-		restores ||= ['on.exit', 'with_dir', 'withr::with_dir'].includes(name);
+		restores ||= RestoringCalls.includes(name);
 		const [argName, position] = FileWriters.get(name) ?? ['', -1];
 		const args = node.arguments.filter(RArgument.isNotEmpty);
 		const value = ((argName === '' ? undefined : args.find(a => a.name?.content === argName)) ?? args.filter(a => a.name === undefined)[position])?.value;
@@ -622,11 +624,11 @@ function checkMetadata(pages: readonly Page[], pkg: string | undefined, add: Add
 
 /** `checking Rd cross-references`: where each link of the pages points */
 function checkCrossReferences(pages: readonly Page[], ctx: ReadOnlyFlowrAnalyzerContext, info: ReturnType<typeof packageInfo>, uncertain: boolean, add: Add): void {
-	const own = new Set(pages.flatMap(p => p.aliases));
+	const own = new Set<BrandedIdentifier>(pages.flatMap(p => p.aliases));
 	const linked = new Set([...info.declared.get('Depends') ?? [], ...info.declared.get('Imports') ?? []]);
 	const declared = new Set(DependencyFields.flatMap(f => info.declared.get(f) ?? []));
 	const sigdb = ctx.deps.hasSignatureDatabase();
-	const reported = new Set<string>();
+	const reported = new Set<BrandedNamespace>();
 	for(const page of pages) {
 		for(const { pkg, topic, line, shown } of page.links) {
 			const checkable = uncertain && /^[A-Za-z.][A-Za-z0-9._]*$/.test(topic);

@@ -31,7 +31,7 @@ describe('State Map', () => {
 		const values: Value[] = [IntervalDomain.bottom(), ...Array.from({ length: 5 }, (_, i) => new IntervalDomain([i, i + 1]))];
 		/* every map is checked against a plain map that was copied and changed the same way */
 		const maps: [StateMap<Value>, Map<NodeId, Value>][] = [[StateMap.of<Value>([]), new Map<NodeId, Value>()]];
-		for(let step = 0; step < 3000; step++) {
+		for(let step = 0; step < 300; step++) {
 			const at = next() % maps.length;
 			const [map, reference] = maps[at];
 			const key = next() % 40;

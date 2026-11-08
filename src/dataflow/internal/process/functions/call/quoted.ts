@@ -8,12 +8,12 @@ import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import { MatchArgs } from '../../../../graph/match-args';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from '../../../../environments/identifier';
+import type { NodesByName, BrandedIdentifier, IdentifierReference } from '../../../../environments/identifier';
 import { hasEnvState, Identifier, ReferenceType } from '../../../../environments/identifier';
 import { Resolve } from '../../../../environments/resolve-helper';
 import { ProgramOrder } from '../../../program-order';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
+import { isBuiltInProcName, BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../../../graph/edge';
 import { Dataflow } from '../../../../graph/df-helper';
 import type { DataflowGraph } from '../../../../graph/graph';
@@ -32,9 +32,9 @@ import { DefaultMap } from '../../../../../util/collections/defaultmap';
 type Reach = NonNullable<ForceSites['reach']>;
 
 /** Calls capturing every argument as a language object, unlike `quote` marking the one it captures. */
-export const CapturingCalls: ReadonlySet<string> = new Set(['expression']);
+export const CapturingCalls: ReadonlySet<BrandedIdentifier> = new Set(['expression']);
 /** Calls capturing an expression as a promise, forced at some later read of the variable they bind. */
-const DelayingCalls: ReadonlySet<string> = new Set(['delayedAssign']);
+const DelayingCalls: ReadonlySet<BrandedIdentifier> = new Set(['delayedAssign']);
 const DelayedAssignFormals = ['x', 'value', 'eval.env', 'assign.env'];
 /** How a value reaches its use: `DefinedByOnCall` is the hop from a parameter to its argument, and an argument counts because a call handing back one of them, a container included, must not hide the capture inside. */
 const ValueFlow: EdgeType = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall | EdgeType.Returns | EdgeType.Argument;
@@ -86,7 +86,7 @@ export const Quoted = {
 		graph.trackIncomingReads(true);
 		let names: ReturnType<typeof Deferred.indexOf> | undefined;
 		const namesOnce = () => names ??= Deferred.indexOf(graph, idMap);
-		let bindings: ReadonlyMap<string, NodeId[]> | undefined;
+		let bindings: NodesByName | undefined;
 		let cfg: ControlFlowGraph | undefined | null = null;
 		const cfgOnce = () => (cfg === null ? (cfg = controlFlow()) : cfg);
 		const masking: MaskingCall[] = [];
@@ -97,7 +97,7 @@ export const Quoted = {
 		/* every call of a function forces its parameters at the same sites, so this pass works them out once */
 		const forcing = new Map<NodeId, { readonly version: number, readonly reads: number, readonly forces: ForceSites | undefined }>();
 		/* evaluations within one function and forces of one parameter share their sites, and with them what reaches them */
-		const reaches = new DefaultMap<string, Reach>(() => ({}));
+		const reaches = new DefaultMap<BrandedIdentifier, Reach>(() => ({}));
 		const reachOf = (sites: readonly NodeId[]): Reach => reaches.get(sites.join('\0'));
 		let enclosing: ReadonlyMap<NodeId, readonly NodeId[]> | undefined;
 		/* every call of a function lists the arguments of all its calls, so each is linked once per forces it meets */
@@ -296,7 +296,7 @@ function mayReachFrom(sites: readonly NodeId[] | undefined, cfg: ControlFlowGrap
 }
 
 /** The names the frames we know do not bind: a capture forced inside a closure may see bindings the caller made after the closure was written, so every reachable definition of the name stays a candidate. */
-function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierReference[], bindings: ReadonlyMap<string, NodeId[]>, sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined, reach: Reach): void {
+function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierReference[], bindings: NodesByName, sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined, reach: Reach): void {
 	const mayReach = mayReachFrom(sites, cfg, reach);
 	for(const reference of open) {
 		if(reference.name === undefined) {
@@ -311,7 +311,7 @@ function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierRe
 }
 
 /** Links a capture handed to an evaluating call, in that call's scope. */
-function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, bindings: ReadonlyMap<string, NodeId[]>, cfg: ControlFlowGraph | undefined, reachOf: (sites: readonly NodeId[]) => Reach, enclosing: ReadonlyMap<NodeId, readonly NodeId[]>, evaluated: NodeId[]): void {
+function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, bindings: NodesByName, cfg: ControlFlowGraph | undefined, reachOf: (sites: readonly NodeId[]) => Reach, enclosing: ReadonlyMap<NodeId, readonly NodeId[]>, evaluated: NodeId[]): void {
 	const id = call.id;
 	const sources = sourcesHandedTo(graph, call, idMap);
 	const environment = call.environment;
@@ -354,15 +354,14 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation): boolean {
 	const seen = new Set<NodeId>();
 	const todo = [expr];
-	while(todo.length > 0) {
-		const id = todo.pop() as NodeId;
+	for(let id = todo.pop(); id !== undefined; id = todo.pop()) {
 		if(seen.has(id) || NodeId.isBuiltIn(id)) {
 			continue;
 		}
 		seen.add(id);
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isFunctionCall(vertex)) {
-			const builtIn = Array.isArray(vertex.origin) && vertex.origin.every(o => String(o).startsWith('builtin:') && o !== BuiltInProcName.Function && o !== BuiltInProcName.Eval);
+			const builtIn = Array.isArray(vertex.origin) && vertex.origin.every(o => isBuiltInProcName(o) && o !== BuiltInProcName.Function && o !== BuiltInProcName.Eval);
 			if(!builtIn || CallProps.hasAny(callFnProps(id, { graph, environment }), [CallProp.Configures, SemanticCallTag.Random, SemanticCallTag.AttachesPackage, SemanticCallTag.DetachesPackage])) {
 				return true;
 			}

@@ -11,7 +11,7 @@ import { DfgVertex } from '../../../../../graph/vertex';
 import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/default-builtin-config';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -23,7 +23,7 @@ type StackEnvContext = Pick<DataflowProcessorInformation<never>, 'environment' |
 const EnvPronoun = '.env';
 
 /** The stack env kind a builtin/constant `name` denotes, or `undefined`. */
-function stackEnvKind(name: string): StackEnvKind | undefined {
+function stackEnvKind(name: BrandedIdentifier): StackEnvKind | undefined {
 	return (StackEnvBuiltins as Readonly<Record<string, StackEnvKind>>)[name];
 }
 

@@ -10,7 +10,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
+import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, InGraphReferenceType } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
@@ -108,7 +108,7 @@ export function processLoadCall<OtherInfo>(
 				return fn.information;
 			}
 
-			const named = variables.filter((v): v is RObjectData & { name: string } => v.name !== undefined);
+			const named = variables.filter((v): v is RObjectData & { name: BrandedIdentifier } => v.name !== undefined);
 			return withLoaded(named, rootId, fn, [...(data.cds ?? []), { id: rootId, when: true, file: filepath }], data, envirResolution);
 		}
 		/* a file the program saves itself holds the variables it saved */
@@ -131,8 +131,8 @@ export function processLoadCall<OtherInfo>(
  * (every writer surely ran, so no older content remains); `undefined` if another call may have written them or a
  * name is unknown.
  */
-function savedInto<OtherInfo>(paths: readonly string[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): { names: string[], complete: boolean } | undefined {
-	const names = new Set<string>();
+function savedInto<OtherInfo>(paths: readonly string[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): { names: BrandedIdentifier[], complete: boolean } | undefined {
+	const names = new Set<BrandedIdentifier>();
 	let complete = true;
 	for(const path of paths) {
 		const stem = RString.unquote(path).split(/[/\\]/).at(-1)?.split('.')[0];
@@ -154,8 +154,8 @@ function savedInto<OtherInfo>(paths: readonly string[], data: DataflowProcessorI
 }
 
 /** The variables `save(...)` names: its unnamed symbols and strings, and the strings `list` holds; `undefined` if one is unknown. */
-function namesSavedBy<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
-	const names: string[] = [];
+function namesSavedBy<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): BrandedIdentifier[] | undefined {
+	const names: BrandedIdentifier[] = [];
 	for(const arg of args) {
 		if(arg === EmptyArgument || arg.value === undefined) {
 			continue;
@@ -185,7 +185,7 @@ function namesSavedBy<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherI
  * environment it names (routed there like any other write into it, so the caller keeps its own bindings).
  */
 function withLoaded<OtherInfo>(
-	variables: readonly (RObjectData & { name: string })[],
+	variables: readonly (RObjectData & { name: BrandedIdentifier })[],
 	rootId: NodeId,
 	fn: { information: DataflowInformation },
 	loadCds: ControlDependency[],
@@ -205,14 +205,14 @@ function withLoaded<OtherInfo>(
 }
 
 function defineLoadedVariable<OtherInfo>(
-	variable: RObjectData & { name: string },
+	variable: RObjectData & { name: BrandedIdentifier },
 	rootId: NodeId,
 	fn: { information: DataflowInformation },
 	envir: REnvironmentInformation,
 	loadLocation: SourceRange,
 	loadCds: ControlDependency[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-): [REnvironmentInformation, InGraphIdentifierDefinition & { name: string }] {
+): [REnvironmentInformation, NamedInGraphIdentifierDefinition<BrandedIdentifier>] {
 	const syntheticId = `${rootId}:loaded:${variable.name}`;
 	const isClosure = variable.type === SexpType.CloSxp;
 	const rootInfo = data.completeAst.idMap.get(rootId)?.info;
@@ -220,7 +220,7 @@ function defineLoadedVariable<OtherInfo>(
 	data.completeAst.idMap.set(syntheticId, {
 		type:      RType.Symbol,
 		content:   variable.name,
-		lexeme:    variable.name,
+		lexeme:    String(variable.name),
 		location:  loadLocation,
 		namespace: undefined,
 		info:      {
@@ -252,8 +252,8 @@ function defineLoadedVariable<OtherInfo>(
 }
 
 function defineLoadedClosure<OtherInfo>(
-	syntheticId: string,
-	variable: RObjectData & { name: string },
+	syntheticId: NodeId,
+	variable: RObjectData & { name: BrandedIdentifier },
 	fn: { information: DataflowInformation },
 	envir: REnvironmentInformation,
 	loadLocation: SourceRange,
@@ -284,7 +284,7 @@ function defineLoadedClosure<OtherInfo>(
 	data.completeAst.idMap.set(fdefId, {
 		type:       RType.FunctionDefinition,
 		parameters: [],
-		lexeme:     variable.name,
+		lexeme:     String(variable.name),
 		location:   loadLocation,
 		body,
 		info:       {

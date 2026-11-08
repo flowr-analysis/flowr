@@ -235,7 +235,7 @@ function readGlobally(result: DataflowInformation, call: DataflowInformation): P
 const includedFiles = new WeakSet<RProjectFile<unknown>>();
 
 /** Processes a source request with the given dataflow processor information and existing dataflow information Otherwise, this can be an {@link RProjectFile} representing a standalone source file */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false): DataflowInformation {
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false, rootIsCall = true): DataflowInformation {
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
 	let filePath: string | undefined;
@@ -301,7 +301,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	}
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
-	if(!String(rootId).startsWith('file-')) {
+	if(rootIsCall) {
 		if(evaluatedByRoot) {
 			/* the call evaluates the code and builds its result from it, so the value flows into the call */
 			for(const exit of dataflow.exitPoints) {
@@ -356,7 +356,7 @@ export function standaloneSourceFile<OtherInfo>(
 		...data,
 		environment:    information.environment,
 		referenceChain: [file.filePath]
-	}, information, false);
+	}, information, false, undefined, false, false);
 }
 
 /** Folds the results of analyzing sourced code back into the information of the call that asked for it, which `eval` and the string templates both need: the code contributes everything it reads, writes, and leaves open. */

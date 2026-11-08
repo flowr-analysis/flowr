@@ -10,7 +10,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isNotUndefined } from '../../../../../../util/assert';
-import { Identifier } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -44,7 +44,7 @@ export function processStopIfNot<OtherInfo>(
 
 	// R only allows ... or exprs or exprObject, not all, but we over-approximate and collect all, given that they are after '...'
 	// we can safely extract named args by full name
-	const argMap = new DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
+	const argMap = new DefaultMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
 	for(const arg of args) {
 		const name = (RArgument.isEmpty(arg) ? undefined : arg.name)?.content;
 		if(name === 'exprObject' || name === 'exprs' || name === 'local') {
@@ -115,7 +115,7 @@ export function processStopIfNot<OtherInfo>(
 }
 
 /** Generator so we can early exit on first always-false */
-function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	yield* argMap.get('...')
 		.map(a => RArgument.isEmpty(a) ? undefined : a.value?.info.id)
 		.filter(isNotUndefined)

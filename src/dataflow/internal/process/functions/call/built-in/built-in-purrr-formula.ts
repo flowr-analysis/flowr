@@ -1,3 +1,4 @@
+import { Identifier, ReferenceType  } from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -7,8 +8,7 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../../../graph/df-helper';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { convertFnArguments } from '../common';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -25,9 +25,9 @@ import { ClosureRefs } from '../../../../linker';
 
 interface BuiltInPurrrFormulaConfiguration {
 	/** Maps the created variable/variable to bind in the formula, to the argument that produces it. */
-	args:       Record<string, { index: number, name: string }>,
+	args:       Record<string, { index: number, name: BrandedIdentifier }>,
 	/** This represents the special argument that represents the formula. We map all additional arguments that are not in `ignore` to this list. */
-	'.f':       { index: number; name: string };
+	'.f':       { index: number; name: BrandedIdentifier };
 	/** arguments to additionally ignore when mapping the formulae */
 	ignore?:    string[];
 	/** if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return */
@@ -81,7 +81,7 @@ export function processPurrrFormula<OtherInfo>(
 ): DataflowInformation {
 	const { information, callArgs } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.PurrrFormula });
 
-	const params: Record<string, string> = {};
+	const params: Record<string, BrandedIdentifier> = {};
 	for(const key of Object.keys(config.args)) {
 		params[config.args[key].name] = config.args[key].name;
 	}
@@ -173,15 +173,15 @@ export function processPurrrFormula<OtherInfo>(
 		}
 	}
 
-	const ignore = new Set(config.ignore ?? []);
+	const ignore = new Set<BrandedIdentifier>(config.ignore ?? []);
 	RNode.visitAst<ParentInformation & OtherInfo>(formulaNode, (node) => {
 		if(RSymbol.is(node)) {
 			const sym = node;
-			const name = sym.content as unknown as string;
+			const name = Identifier.getName(sym.content);
 			if(ignore.has(name)) {
 				return false;
 			}
-			const mappingKey = config.args[name]?.name;
+			const mappingKey = Object.hasOwn(config.args, name) ? config.args[name].name : undefined;
 			if(mappingKey) {
 				const pid = (argMaps.get(mappingKey) ?? [])[0];
 				if(!pid) {

@@ -11,7 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { EdgeType } from '../../../../../graph/edge';
-import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -26,7 +26,7 @@ import { DotsParameterName } from '../../../../../../util/arg-matching';
 interface S3DispatchConfig {
 	/** absent for a next-method call (`callNextMethod(...)`, `NextMethod(...)`) */
 	args?: {
-		generic: string,
+		generic: BrandedIdentifier,
 		object:  string
 	},
 	/** the call hands on to the next method of the dispatch running the function it is in (`NextMethod`): it continues along the class vector of that dispatch, so neither the generic nor the object it names changes what runs (only in a function called directly does it dispatch the generic it names) */

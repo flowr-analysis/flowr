@@ -15,7 +15,7 @@ import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/proc
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, isInGraphDefinition, ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
@@ -30,7 +30,7 @@ import { FunctionSemantics } from '../../../../../fn/function-semantics';
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
 	args: {
-		name:        string,
+		name:        BrandedIdentifier,
 		dispatchArg: string | undefined,
 		fun:         string
 	},
@@ -106,7 +106,7 @@ export function processMakeConstructor<OtherInfo>(
 	config?: {
 		readonly mode?:      readonly ('s7' | 's3' | 's4')[],
 		readonly wrapIndex?: number,
-		readonly wrapName?:  string,
+		readonly wrapName?:  BrandedIdentifier,
 		/** what the call declares about a class, see {@link classDeclarationOfImpl} */
 		readonly classDecl?: ClassDeclarationConfig
 	}
@@ -147,7 +147,7 @@ function linkWrappedFunction<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	wrapIndex: number,
-	wrapName: string | undefined,
+	wrapName: BrandedIdentifier | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): void {
 	const wrapped = argForImpl(args, { name: wrapName, idx: wrapIndex });
@@ -158,7 +158,7 @@ function linkWrappedFunction<OtherInfo>(
 	const body = rootId + '-s7-new-generic-fun-body';
 	/* the wrapper runs what it wraps, so a call of it does what the wrapped function does */
 	const targets = resolved.anonymous ? [resolved.functionId] : (Resolve.byNameAndType(resolved.functionName, data.environment, ReferenceType.Function) ?? [])
-		.flatMap(d => d.type === ReferenceType.BuiltInFunction ? [d.nodeId] : (d as { value?: NodeId[] }).value ?? []);
+		.flatMap(d => d.type === ReferenceType.BuiltInFunction ? [d.nodeId] : isInGraphDefinition(d) ? d.value ?? [] : []);
 	for(const target of targets) {
 		info.graph.addEdge(body, target, EdgeType.Calls);
 	}
@@ -191,8 +191,8 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 	const info = (id: NodeId, role: RoleInParent, parent: NodeId, index = 0) => (
 		{ id, nest: name.info.nest, role, fullRange: r, adToks: undefined, file: name.info.file, parent, index }
 	);
-	const symbol = (id: NodeId, lexeme: string, role: RoleInParent, parent: NodeId, index = 0) => (
-		{ type: RType.Symbol, lexeme, content: lexeme, info: info(id, role, parent, index), location: r }
+	const symbol = (id: NodeId, lexeme: BrandedIdentifier, role: RoleInParent, parent: NodeId, index = 0) => (
+		{ type: RType.Symbol, lexeme: lexeme as string, content: lexeme as string, info: info(id, role, parent, index), location: r }
 	) satisfies RSymbol<ParentInformation, string>;
 	const argName = symbol(rootId + '-s7-new-generic-fun-arg-name', 'fun', RoleInParent.ArgumentName, rootId);
 	idMap.set(argName.info.id, argName);

@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -21,8 +22,8 @@ import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 import { linkS4Declaration } from './built-in-s-four';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
-const MethodListArguments = ['public', 'methods'];
-const FieldListArguments = ['fields', 'private'];
+const MethodListArguments: readonly BrandedIdentifier[] = ['public', 'methods'];
+const FieldListArguments: readonly BrandedIdentifier[] = ['fields', 'private'];
 
 /** Processes an `R6Class`/`setRefClass` generator call, tagging it so the assignment layer can record its method list. */
 export function processClassGenerator<OtherInfo>(

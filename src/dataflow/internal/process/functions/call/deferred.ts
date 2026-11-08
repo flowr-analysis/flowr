@@ -2,7 +2,7 @@ import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier } from '../../../../environments/identifier';
+import { type BrandedIdentifier, type NodesByName, Identifier } from '../../../../environments/identifier';
 import { EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
@@ -28,8 +28,8 @@ export interface ForceSites {
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
 export
 interface NameIndex {
-	readonly definitions: ReadonlyMap<string, NodeId[]>
-	readonly uses:        ReadonlyMap<string, NodeId[]>
+	readonly definitions: NodesByName
+	readonly uses:        NodesByName
 }
 
 /** The vertices of `type` by their unquoted name. */
@@ -39,8 +39,8 @@ export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idM
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
-function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, string, boolean])[] {
-	const names: (readonly [NodeId, string, boolean])[] = [];
+function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, BrandedIdentifier, boolean])[] {
+	const names: (readonly [NodeId, BrandedIdentifier, boolean])[] = [];
 	const callees = new Set<NodeId>();
 	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
 		/* a definition only creates its closure, the body runs when it is called and that call carries its effects */

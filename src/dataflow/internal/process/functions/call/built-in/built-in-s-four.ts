@@ -11,7 +11,7 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem, declaredClassesImpl, superClassesOfImpl } from '../../../../../fn/class-declaration';
-import { type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, type S4SignatureEntry, VertexType } from '../../../../../graph/vertex';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -31,7 +31,7 @@ type Args<O> = readonly PotentiallyEmptyRArgument<O & ParentInformation>[];
 const S4ClassMark = '﹕s4class﹕';
 
 /** The registry name of the S4 class `cls`, see {@link S4ClassMark}. */
-export function s4ClassName(cls: string): Identifier {
+export function s4ClassName(cls: BrandedIdentifier): Identifier {
 	return S4ClassMark + cls;
 }
 
@@ -148,7 +148,7 @@ export function linkS4Declaration<O>(info: DataflowInformation, rootId: NodeId, 
 }
 
 /** Records that the call registers the S4 generics it names, which `setMethod` and a call of the name depend on. */
-export function linkS4Generic<O>(info: DataflowInformation, rootId: NodeId, names: readonly string[], data: Data<O>): void {
+export function linkS4Generic<O>(info: DataflowInformation, rootId: NodeId, names: readonly BrandedIdentifier[], data: Data<O>): void {
 	for(const name of names) {
 		defineOut(info, rootId, name, ReferenceType.Function, data);
 	}
@@ -205,7 +205,7 @@ export function linkInstantiations(graph: DataflowGraph): void {
 	if(instantiations.length === 0) {
 		return;
 	}
-	const validators = new Map<string, NodeId[]>();
+	const validators = new Map<BrandedIdentifier, NodeId[]>();
 	for(const [, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(classDecl?.validity !== undefined && classDecl.name !== undefined) {
 			validators.set(classDecl.name, [...validators.get(classDecl.name) ?? [], classDecl.validity]);

@@ -360,7 +360,7 @@ export const SourceLocation = {
 	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
 	 */
 	from(this: void, range: SourceRange, file?: string): SourceLocation {
-		return file !== undefined ? [...range, file] : range;
+		return file !== undefined ? [...range, file] : [...range];
 	},
 	/**
 	 * The {@link SourceLocation|source location} of an AST node, file included.

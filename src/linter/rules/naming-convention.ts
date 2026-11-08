@@ -182,13 +182,12 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 		const quote = written.quote ?? '';
 		const loc = SourceLocation.fromNode(node);
 		if(loc) {
-			// In case of a function call we only need to include the name, not the '()'
-			loc[3] = loc[1] + node.lexeme.length - 1;
 			result.push({
 				type:        'replace',
 				replacement: `${quote}${replacement}${quote}`,
 				description: `Rename to match naming convention ${conv}`,
-				loc
+				// In case of a function call we only need to include the name, not the '()'
+				loc:         SourceLocation.from([loc[0], loc[1], loc[2], loc[1] + node.lexeme.length - 1], loc[4])
 			});
 		}
 	}

@@ -2,7 +2,7 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
-import { SourceRange } from '../../util/range';
+import { SourceRange, type Line } from '../../util/range';
 import type { AutoSelectPredicate } from './auto-select-defaults';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
@@ -12,7 +12,7 @@ function rangeOf(node: RNode): SourceRange {
 	return loc;
 }
 
-type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined;
+type MagicCommentConsumer = (n: RComment, stack: Line[]) => Line[] | undefined;
 
 const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	'include_next_line': (n: RComment) => {
@@ -21,15 +21,15 @@ const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	'include_this_line': (n: RComment) => {
 		return [rangeOf(n)[0]];
 	},
-	'include_start': (n: RComment, stack: number[]) => {
+	'include_start': (n: RComment, stack: Line[]) => {
 		stack.push(rangeOf(n)[0] + 1);
 		return undefined;
 	},
-	'include_end': (n: RComment, stack: number[]) => {
+	'include_end': (n: RComment, stack: Line[]) => {
 		const to = rangeOf(n)[0];
-		guard(stack.length >= 1, `mismatched magic start and end at ${to}`);
-		const from = stack.pop() as number;
-		const ret = new Array<number>(to - from - 1);
+		const from = stack.pop();
+		guard(from !== undefined, `mismatched magic start and end at ${to}`);
+		const ret = new Array<Line>(to - from - 1);
 		for(let i = from; i < to; i++) {
 			ret[i - from] = i;
 		}
@@ -54,11 +54,11 @@ const commentTriggerRegex = /# flowr@(\w+)/;
  *              {@link doNotAutoSelect}.
  */
 export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPredicate {
-	let lines: Set<number> | undefined = undefined;
+	let lines: Set<Line> | undefined = undefined;
 	return (node: RNode<ParentInformation>, normalizedAst: NormalizedAst) => {
 		if(!lines) {
-			lines = new Set<number>();
-			const startLineStack: number[] = [];
+			lines = new Set<Line>();
+			const startLineStack: Line[] = [];
 			RProject.visitAst(normalizedAst.ast, n => {
 				const comments = n.info.adToks;
 				if(!comments) {
@@ -75,7 +75,7 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 					const ls = idMapper(c, startLineStack);
 					if(ls !== undefined) {
 						for(const l of ls) {
-							(lines as Set<number>).add(l);
+							(lines as Set<Line>).add(l);
 						}
 					}
 				}

@@ -171,7 +171,7 @@ export class Frame implements MemoryView {
 
 	public forEach(fn: (defs: IdentifierDefinition[], name: BrandedIdentifier, map: MemoryView) => void, thisArg?: unknown): void {
 		if(this.base === undefined) {
-			this.bindings.forEach(fn as never, thisArg);
+			this.bindings.forEach(fn, thisArg);
 			return;
 		}
 		for(const [name, defs] of this.entries()) {

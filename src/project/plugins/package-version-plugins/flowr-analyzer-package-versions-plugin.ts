@@ -1,5 +1,6 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { PackageSignatureSource } from '../../sigdb/reader';
 import type { FlowrConfig } from '../../../config';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
@@ -33,7 +34,7 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	}
 
 	/** Packages known to this plugin that export `name` (empty for plugins without a database). */
-	public packagesExporting(_name: string): readonly string[] {
+	public packagesExporting(_name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return [];
 	}
 

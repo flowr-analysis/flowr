@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../environments/identifier';
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { contentOf, stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
@@ -38,7 +39,7 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
 }
 /** One element of a {@link ValueList}, `name` is `undefined` for an element without one (`list(1)`). */
 export interface ValueListElement {
-	readonly name:  string | undefined
+	readonly name:  BrandedIdentifier | undefined
 	readonly value: Value
 }
 /** An R list with known elements in their order, each of which may still be unknown (`list(a = f(), b = 2)`). */

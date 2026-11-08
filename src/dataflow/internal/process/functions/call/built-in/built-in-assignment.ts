@@ -1,3 +1,7 @@
+import type { AstIdMap,
+	ParentInformation,
+	RNodeWithParent
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -8,10 +12,6 @@ import { DataMaskingFunctionNames } from '../../../../../environments/data-maski
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
 import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
-import type {
-	ParentInformation,
-	RNodeWithParent
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type Location, type RAstNodeBase, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -20,7 +20,7 @@ import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../..
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -96,10 +96,10 @@ export interface AssignmentConfiguration {
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
-	readonly source:       { idx?: number, name: string };
-	readonly target:       { idx?: number, name: string };
+	readonly source:       { idx?: number, name: BrandedIdentifier };
+	readonly target:       { idx?: number, name: BrandedIdentifier };
 	/** the class of the S3 method the call binds as `<target>.<class>`, like `.S3method("f", "b", m)` binds `f.b` */
-	readonly targetClass?: { idx?: number, name: string };
+	readonly targetClass?: { idx?: number, name: BrandedIdentifier };
 	/** binds at the top level wherever the call runs, as registering a method (`setMethod`) does */
 	readonly registers?:   boolean;
 }
@@ -165,7 +165,7 @@ export function processAssignmentLike<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: ExtendedAssignmentConfiguration
 ): DataflowInformation {
-	const argsWithNames = new Map<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>();
+	const argsWithNames = new Map<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>();
 	const argsWithoutNames: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] = [];
 	for(const arg of args) {
 		const name = RArgument.isEmpty(arg) ? undefined : arg.name?.content;
@@ -175,7 +175,7 @@ export function processAssignmentLike<OtherInfo>(
 			argsWithNames.set(name, arg);
 		}
 	}
-	const argOf = ({ idx, name }: { idx?: number, name: string }) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
+	const argOf = ({ idx, name }: { idx?: number, name: BrandedIdentifier }) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
 	const source = argOf(config.source);
 	const target = argOf(config.target);
 	const classArg = config.targetClass === undefined ? undefined : argOf(config.targetClass);
@@ -187,7 +187,7 @@ export function processAssignmentLike<OtherInfo>(
 		handleUnknownSideEffect(info.graph, info.environment, rootId);
 		return info;
 	}
-	return processAssignment<OtherInfo>(name, normalizedArgs, rootId, data, {
+	return assignOrdered<OtherInfo>(name, normalizedArgs, rootId, data, {
 		...config,
 		mayHaveMoreArgs: true,
 		targetSuffix:    cls === undefined ? config.targetSuffix : `.${cls}`,
@@ -228,10 +228,31 @@ function processMaskedNamePair<OtherInfo>(
 	return information;
 }
 
+/** The arguments of a call naming what it assigns by its signature, like `assign("f", envir = e, value = v)`, with the target and source first, as an operator has them. */
+function targetAndSourceFirst<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], { targetVariable, sig }: AssignmentConfiguration): readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] {
+	if(!targetVariable || sig === undefined || args.every(a => RArgument.isEmpty(a) || a.name === undefined)) {
+		return args;
+	}
+	const formals = sig.map(([formal]) => formal);
+	const bound = FunctionSemantics.call.match.toNames(args, formals);
+	const [target, source] = [bound.get(formals[0]), bound.get(formals[1])];
+	return target === undefined || source === undefined ? args : [target, source, ...args.filter(a => a !== target && a !== source)];
+}
+
 /** Processes an assignment `<target> <- <source>` as the function call \`&lt;-\` `(<target>, <source>)`, including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`). */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation {
+	return assignOrdered(name, targetAndSourceFirst(args, config), rootId, data, config);
+}
+
+function assignOrdered<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -373,9 +394,23 @@ function processAssignmentTarget<OtherInfo>(
 	return info;
 }
 
+/** A variable of the code named like a part of the ambient state only shares the name, so as a maybe definition it replaces none of what the state holds. */
+function besideAmbientState<Definition extends NamedInGraphIdentifierDefinition>(definition: Definition): Definition {
+	return AmbientStateName.is(Identifier.getName(definition.name)) ? { ...definition, cds: definition.cds ?? [] } : definition;
+}
+
+/** Whether the reference is what the target reads of the ambient state, rather than a variable of the code that is named like a part of it. */
+function isAmbientRead(ref: IdentifierReference, idMap: AstIdMap): boolean {
+	if(!AmbientStateName.is(ref.name)) {
+		return false;
+	}
+	const node = idMap.get(ref.nodeId);
+	return !RSymbol.is(node) || Identifier.getName(node.content) !== ref.name;
+}
+
 /** Promotes the ingoing/unknown references of target (an assignment) to definitions. */
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: Identifier })[] {
-	return [...target.in, ...target.unknownReferences].filter(ref => !AmbientStateName.is(ref.name)).map(ref => ({
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (NamedInGraphIdentifierDefinition)[] {
+	return [...target.in, ...target.unknownReferences].filter(ref => !isAmbientRead(ref, data.completeAst.idMap)).map(ref => ({
 		nodeId:    ref.nodeId,
 		name:      ref.name as Identifier,
 		type:      referenceType,
@@ -442,7 +477,7 @@ function tryRouteFieldEnvAssign<OtherInfo>(
 	const fieldName = (RString.is(fieldNode) ? fieldNode.content.str : fieldNode.lexeme) as Identifier;
 
 	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.beforeDefine);
-	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
+	const fieldDef: NamedInGraphIdentifierDefinition = {
 		type:      holdsFunction(source, data.environment) ? ReferenceType.Function : ReferenceType.Variable,
 		name:      fieldName,
 		nodeId:    source.info.id,
@@ -538,8 +573,8 @@ export function processDefineArgument<OtherInfo>(
 	const info = res.information;
 	const formals = config.sig ?? [];
 	const bound = matchArgumentsToParameters(args.map(a => RArgument.isEmpty(a) ? undefined : a.name?.content), formals.map(([f]) => f));
-	const defineByCall = (node: InGraphIdentifierDefinition & { name: Identifier }) => {
-		info.environment = REnvironment.define(node, config.superAssignment, info.environment);
+	const defineByCall = (node: NamedInGraphIdentifierDefinition) => {
+		info.environment = REnvironment.define(besideAmbientState(node), config.superAssignment, info.environment);
 		/* defined by the call; the read edge is left intact */
 		if(node.nodeId !== rootId) {
 			info.graph.setDefinitionOfVertex(node, [rootId]);
@@ -574,7 +609,7 @@ export function markAsAssignment<OtherInfo>(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: InGraphIdentifierDefinition & { name: Identifier },
+	nodeToDefine: NamedInGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	data: DataflowProcessorInformation<OtherInfo>,
@@ -589,7 +624,7 @@ export function markAsAssignment<OtherInfo>(
 			}
 		}
 	}
-	information.environment = REnvironment.define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
+	information.environment = REnvironment.define(besideAmbientState(nodeToDefine), assignmentConfig?.superAssignment, information.environment);
 	information.environment = ambientWritesOfAssignment(information.graph, information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
 	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
 	const nid = nodeToDefine.nodeId;
@@ -620,7 +655,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		definedAt: rootId,
 		cds:       data.cds ?? (makeMaybe ? [] : undefined),
 		value:     aliases
-	} satisfies InGraphIdentifierDefinition & { name: Identifier }]
+	} satisfies NamedInGraphIdentifierDefinition]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	let copied: (InGraphIdentifierDefinition & { envState: REnvironmentInformation }) | undefined;

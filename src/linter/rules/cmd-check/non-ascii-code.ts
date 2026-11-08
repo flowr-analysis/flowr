@@ -89,7 +89,7 @@ export const NON_ASCII_CODE = {
 					});
 				}
 			} else if(RSymbol.is(node)) {
-				const characters = nonAsciiCharacters(Identifier.getName(node.content));
+				const characters = nonAsciiCharacters(String(Identifier.getName(node.content)));
 				if(characters.length > 0) {
 					results.push({
 						...at(node),

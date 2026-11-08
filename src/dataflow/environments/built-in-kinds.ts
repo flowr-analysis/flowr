@@ -3,6 +3,14 @@
 /** Options that affect how values are printed and formatted (read by `print`, `format`, and `cat`). */
 export const PrintingOptions: readonly string[] = ['digits', 'width', 'max.print', 'digits.secs', 'useFancyQuotes'];
 
+/** The parts of the ambient state with a single value a scoped call (`withr::with_dir`) may change, other than the entries of a {@link KeyedState}. */
+export enum AmbientSingleState {
+	Graphics = 'graphics',
+	Device = 'device',
+	Rng = 'rng',
+	WorkingDirectory = 'wd'
+}
+
 /** How a call accesses the {@link AmbientStateName|ambient state}. */
 export const enum AmbientStateAccessType {
 	/** `options(...)`: named arguments set options, unnamed strings query them, anything else sets unknown options */

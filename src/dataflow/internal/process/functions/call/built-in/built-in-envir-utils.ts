@@ -5,7 +5,7 @@ import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { type EnvHolderDefinition, type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
@@ -42,7 +42,7 @@ export interface EnvirResolution<OtherInfo> {
 	/** `data` with its `environment` replaced by the resolved `envState` for in-env lookups. */
 	readonly envirData:   DataflowProcessorInformation<OtherInfo & ParentInformation>;
 	/** The definition of the variable that holds the environment */
-	readonly envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+	readonly envDef:      EnvHolderDefinition;
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
 	readonly envirNodeId: NodeId;
 	/** which real stack env this resolves to, absent for a tracked custom env; only `'global'` reaches the real frame chain */
@@ -67,7 +67,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(defs: readonly IdentifierDefini
 	for(let i = 1; i < inDefs.length; i++) {
 		for(const [name, varDefs] of (inDefs[i].envState).current.memory) {
 			for(const varDef of varDefs) {
-				const named = varDef as InGraphIdentifierDefinition & { name: Identifier };
+				const named = varDef as NamedInGraphIdentifierDefinition;
 				if(named.name !== undefined && !mergedEnvState.current.memory.get(name)?.some(d => d.nodeId === named.nodeId)) {
 					mergedEnvState = REnvironment.define({ ...named, cds: named.cds ?? [] }, false, mergedEnvState);
 				}
@@ -189,14 +189,14 @@ function freeEnvirResolution<OtherInfo>(name: Identifier, nodeId: NodeId, data: 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
 function stackEnvirResolution<OtherInfo>(envState: REnvironmentInformation, nodeId: NodeId, lexeme: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
-	const envDef = { name: lexeme, nodeId, type: ReferenceType.Variable, definedAt: nodeId, envState } as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+	const envDef = { name: lexeme, nodeId, type: ReferenceType.Variable, definedAt: nodeId, envState } as EnvHolderDefinition;
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: envState.current.globalEnv === true ? 'global' : 'base' };
 }
 
 /** The slots `envir` falls back to (`envir = as.environment(pos)`), so an environment handed to one of them is the target as well. */
-export const EnvirPositionFormals: readonly string[] = ['pos', 'where'];
+export const EnvirPositionFormals: readonly BrandedIdentifier[] = ['pos', 'where'];
 
-function envirArgOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], bound: BoundFormals<OtherInfo> | undefined, formal: string): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
+function envirArgOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], bound: BoundFormals<OtherInfo> | undefined, formal: BrandedIdentifier): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
 	if(bound !== undefined) {
 		return bound.get(formal);
 	}
@@ -208,7 +208,7 @@ function envirArgOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInf
 	return undefined;
 }
 
-type BoundFormals<OtherInfo> = ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>;
+type BoundFormals<OtherInfo> = ReadonlyMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>;
 
 function bindFormals<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], sig: FnSig | undefined): BoundFormals<OtherInfo> | undefined {
 	return sig === undefined ? undefined : MatchArgs.toNames(args, FnSig.layout(sig).names);
@@ -221,7 +221,7 @@ export function resolveEnvirArgOrAmbiguous<OtherInfo>(args: readonly Potentially
 }
 
 /** Whether the call supplies an argument for any of `formals` at all, however it resolves. */
-export function suppliesArg<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], sig: FnSig | undefined, formals: readonly string[]): boolean {
+export function suppliesArg<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], sig: FnSig | undefined, formals: readonly BrandedIdentifier[]): boolean {
 	const bound = bindFormals(args, sig);
 	return formals.some(formal => envirArgOf(args, bound, formal) !== undefined);
 }
@@ -236,12 +236,12 @@ function globalPositionOf<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & 
 }
 
 /** The environment the argument `arg` given for `formal` names, where a position formal may name the global environment by its number. */
-export function resolveEnvirOrPosition<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, formal: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
+export function resolveEnvirOrPosition<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, formal: BrandedIdentifier, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
 	return envirOf(resolveArgToEnvirOrAmbiguous(arg, data)) ?? (EnvirPositionFormals.includes(formal) ? globalPositionOf(arg, data) : undefined);
 }
 
 /** The first of `formals` whose argument resolves to a tracked environment; ambiguity is left to the caller. */
-export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sig: FnSig | undefined, formals: readonly string[]): EnvirResolution<OtherInfo> | undefined {
+export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sig: FnSig | undefined, formals: readonly BrandedIdentifier[]): EnvirResolution<OtherInfo> | undefined {
 	const bound = bindFormals(args, sig);
 	for(const formal of formals) {
 		const arg = envirArgOf(args, bound, formal);
@@ -278,14 +278,14 @@ function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): 
 	);
 }
 
-function holdersOf(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }): readonly (NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation })[] {
+function holdersOf(environment: REnvironmentInformation, envDef: EnvHolderDefinition): readonly (EnvHolderDefinition)[] {
 	const holders = [envDef];
 	for(let env: Environment | undefined = environment.current; env !== undefined && !env.builtInEnv; env = env.globalEnv ? undefined : env.parent) {
 		for(const defs of env.memory.values()) {
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				/* a copy (`g <- e`) holds the same environment object, even once one of them saw a write, as does the variable it was copied from */
 				if((def.envState === envDef.envState || (def.envId !== undefined && def.envId === envDef.envId) || def.nodeId === envDef.envId) && def.name !== undefined && def.nodeId !== envDef.nodeId) {
-					holders.push(def as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation });
+					holders.push(def as EnvHolderDefinition);
 				}
 			}
 		}
@@ -293,7 +293,7 @@ function holdersOf(environment: REnvironmentInformation, envDef: NamedInGraphIde
 	return holders;
 }
 
-function routeWrittenToCustomEnv(result: DataflowInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, newDefAt: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
+function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderDefinition, newDefAt: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
 	const written = writtenDefinitionsOf(result, definedAt);
 
 	let newEnvState = envDef.envState;
@@ -316,7 +316,7 @@ function routeWrittenToCustomEnv(result: DataflowInformation, envDef: NamedInGra
 }
 
 /** The calls that look up bindings in an environment they are given, or write into it, see {@link readEnvironmentContents}. */
-export const EnvironmentLookups: ReadonlySet<string> = new Set([
+export const EnvironmentLookups: ReadonlySet<BrandedIdentifier> = new Set([
 	BuiltInProcName.Access, BuiltInProcName.Assignment, BuiltInProcName.Attach, BuiltInProcName.EnvContents, BuiltInProcName.Get,
 	BuiltInProcName.Local, BuiltInProcName.NewEnv, BuiltInProcName.Replacement, BuiltInProcName.Rm, BuiltInProcName.With
 ]);
@@ -369,7 +369,7 @@ export function rebindAliases(environment: REnvironmentInformation, name: Identi
 }
 
 /** Binds every variable holding the environment of `envDef` to its new state, where that variable is bound. */
-export function rebindHolders(environment: REnvironmentInformation, envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
+export function rebindHolders(environment: REnvironmentInformation, envDef: EnvHolderDefinition, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
 	for(const holder of holdersOf(environment, envDef)) {
 		/* a holder bound in an enclosing frame is updated there, so the write escapes the function like a `<<-` */
 		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState, ...envDef.closureFrame ? { closureFrame: true } as const : {} }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
@@ -403,7 +403,7 @@ export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], ca
 					}
 				}
 			}
-			caller = rebindHolders(caller, holder as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation }, envState, call);
+			caller = rebindHolders(caller, holder as EnvHolderDefinition, envState, call);
 		}
 	}
 	return [callee, caller];

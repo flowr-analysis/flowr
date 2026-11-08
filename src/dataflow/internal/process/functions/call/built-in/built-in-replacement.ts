@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -98,7 +99,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 	const targetVert = res.graph.getVertex(RArgument.valueOf(args[0])?.info.id as NodeId);
 	if(DfgVertex.isVariableDefinition(targetVert)) {
-		(targetVert as { par: boolean }).par = true;
+		(targetVert as Writable<typeof targetVert>).par = true;
 	}
 
 	/* an assignment that never defines a symbol target does not reach the hook, so the indices are processed here */
@@ -175,7 +176,7 @@ export function processReplacementFunction<OtherInfo>(
 	const own = Resolve.byNameAndType(name.content, data.environment, ReferenceType.Function);
 	const fns = own !== undefined && own.length > 0 && own.every(d => !NodeId.isBuiltIn(d.nodeId)) ? [] : res.in.filter(i => i.nodeId === rootId);
 	for(const fn of fns) {
-		(fn as { type: ReferenceType }).type = ReferenceType.S3MethodPrefix;
+		(fn as Writable<typeof fn>).type = ReferenceType.S3MethodPrefix;
 	}
 	// link the built-in replacement op
 	res.graph.addEdge(rootId, NodeId.toBuiltIn(Identifier.getName(name.content)), EdgeType.Calls | EdgeType.Reads);

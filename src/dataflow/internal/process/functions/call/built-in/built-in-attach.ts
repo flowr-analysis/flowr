@@ -7,7 +7,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier, ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -17,9 +17,9 @@ import { AmbientStateAccessType } from './built-in-ambient-state';
 import { keysOf } from './built-in-ambient-keys';
 import { UnknownKey } from '../../../../../environments/ambient-state-name';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { AmbientConfig } from '../../../../../environments/built-in';
+import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 
-const AttachableLiterals: ReadonlySet<string> = new Set(['list', 'data.frame']);
+const AttachableLiterals: ReadonlySet<BrandedIdentifier> = new Set(['list', 'data.frame']);
 
 /** Processes `attach(what, ...)`, injecting the tracked env's known definitions into a new scope layer below `.GlobalEnv`. */
 export function processAttach<OtherInfo>(
@@ -27,8 +27,8 @@ export function processAttach<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	/* the search path it writes is applied by the registration, see {@link AmbientConfig} */
-	_config: AmbientConfig = {}
+	/* the search path it writes is applied by the registration, see {@link BuiltInFnInfo} */
+	_config: BuiltInFnInfo = {}
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Attach }).information;
 
@@ -78,14 +78,14 @@ export function processAttach<OtherInfo>(
 /**
  * Processes `detach(name)` and `unloadNamespace(ns)`: the search path entry named (`package:x`, `"x"`, a position, the
  * topmost one if nothing is given) is removed, uncovering what it masked. The entry is read with the keys of the
- * call's search path {@link AmbientConfig|ambient} write.
+ * call's search path {@link BuiltInFnInfo|ambient} write.
  */
 export function processDetach<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: AmbientConfig = {}
+	config: BuiltInFnInfo = {}
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Detach }).information;
 	const keys = [config.ambient ?? []].flat().flatMap(a => a.type === AmbientStateAccessType.SetKeyed ? keysOf(a.keys, args, data) : []);

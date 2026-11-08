@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeProjectQuery } from './project-query-executor';
 import { queryHeader } from '../../query-print';
@@ -37,7 +38,7 @@ export interface ProjectDependencyStats {
 	/** How many of the non-base runtime dependencies are covered by the loaded signature database(s). */
 	readonly covered:   number;
 	/** The first few runtime dependencies with the version the signature database resolved them to, if any. */
-	readonly first:     { name: string, base: boolean, dbVersion?: string }[];
+	readonly first:     { name: BrandedNamespace, base: boolean, dbVersion?: string }[];
 	/** The required R version derived from the `Depends` field, if declared. */
 	readonly rVersion?: string;
 }

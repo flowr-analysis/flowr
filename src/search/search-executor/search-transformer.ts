@@ -43,13 +43,13 @@ export const transformers = {
 } as const;
 
 /**
- * Gets a search-api transformer function for the given name.
+ * Runs the search-api transformer described by the given node
  */
-export function getTransformer<Name extends TransformerNames>(name: Name): typeof transformers[Name] {
-	if(!transformers[name]) {
-		throw new Error(`Unknown transformer: ${name}`);
+export function runTransformer(node: FlowrSearchTransformerNode, input: ReadonlyFlowrAnalysisProvider, elements: FlowrSearchElements<ParentInformation>): FlowrSearchElements<ParentInformation> | Promise<FlowrSearchElements<ParentInformation>> {
+	if(!transformers[node.name]) {
+		throw new Error(`Unknown transformer: ${node.name}`);
 	}
-	return transformers[name];
+	return (transformers[node.name] as (input: ReadonlyFlowrAnalysisProvider, elements: FlowrSearchElements<ParentInformation>, args: typeof node.args) => FlowrSearchElements<ParentInformation> | Promise<FlowrSearchElements<ParentInformation>>)(input, elements, node.args);
 }
 
 function compareByLocation({ node: a }: FlowrSearchElement<ParentInformation>, { node: b }: FlowrSearchElement<ParentInformation>): number {

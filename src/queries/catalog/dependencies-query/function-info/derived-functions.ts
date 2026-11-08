@@ -1,13 +1,13 @@
 import type { FunctionInfo } from './function-info';
 import { FunctionSemantics } from '../../../../dataflow/fn/function-semantics';
-import type { BuiltInFnInfo, PropSelector } from '../../../../dataflow/environments/built-in-props';
+import type { PropSelector } from '../../../../dataflow/environments/built-in-props';
 import { ArgProp, CallProp, FnSig, SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { builtInNames } from '../../../../dataflow/environments/query-fn-props';
 import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
-import { Identifier } from '../../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../../dataflow/environments/identifier';
 
 /** what an entry links to, like `sink` for `cat`: the link reports it already, so it is not an entry of its own */
-function linkTargets(f: FunctionInfo): string[] {
+function linkTargets(f: FunctionInfo): BrandedIdentifier[] {
 	return (f.linkTo ?? []).flatMap(l => typeof l.callName === 'string' ? [l.callName]
 		: Array.isArray(l.callName) ? l.callName.map(n => Identifier.getName(n as Identifier)) : []);
 }
@@ -34,7 +34,7 @@ export function functionInfosFromProps(props: PropSelector, except: readonly Fun
 	const found: FunctionInfo[] = [];
 	const written = Array.isArray(props) ? props.includes(SemanticCallTag.Writes) : props === SemanticCallTag.Writes;
 	for(const d of definitions) {
-		const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
+		const info = d.type !== 'constant' ? d.config : undefined;
 		if(info?.sig === undefined || !FunctionSemantics.call.props.hasAny(info) || !FunctionSemantics.call.props.hasAll(info, props)) {
 			continue;
 		}
@@ -61,7 +61,7 @@ export function functionInfosFromProps(props: PropSelector, except: readonly Fun
 export function readingAndWritingApart(entries: readonly FunctionInfo[], definitions: BuiltInDefinitions): ReadonlySet<FunctionInfo> {
 	const apart = new Set<string>();
 	for(const d of definitions) {
-		const sig = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config?.sig : undefined;
+		const sig = d.type !== 'constant' ? d.config?.sig : undefined;
 		if(sig !== undefined && FnSig.resources(sig, true) !== sig) {
 			builtInNames(d).forEach(id => apart.add(Identifier.toString(id)));
 		}

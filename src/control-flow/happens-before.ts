@@ -7,8 +7,8 @@ function walkBack(cfg: ControlFlowGraph, b: NodeId, stop: (current: NodeId, cd: 
 	const visited = new Set<NodeId>();
 	/* the first is the id we are currently at, the second one the vertex the current largest cd scope joins on */
 	const stack: [NodeId, NodeId | undefined][] = [[b, undefined]];
-	while(stack.length > 0) {
-		const [current, cd] = stack.pop() as [NodeId, NodeId | undefined];
+	for(let next = stack.pop(); next !== undefined; next = stack.pop()) {
+		const [current, cd] = next;
 		if(stop(current, cd)) {
 			return true;
 		} else if(visited.has(current)) {
@@ -83,8 +83,8 @@ export function firstOnSomePath(cfg: ControlFlowGraph, candidates: ReadonlySet<N
 function closure(seeds: Iterable<NodeId>, step: (id: NodeId) => Iterable<NodeId>): ReadonlySet<NodeId> {
 	const seen = new Set<NodeId>(seeds);
 	const stack = [...seen];
-	while(stack.length > 0) {
-		for(const next of step(stack.pop() as NodeId)) {
+	for(let at = stack.pop(); at !== undefined; at = stack.pop()) {
+		for(const next of step(at)) {
 			if(!seen.has(next)) {
 				seen.add(next);
 				stack.push(next);

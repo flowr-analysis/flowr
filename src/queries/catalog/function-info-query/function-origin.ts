@@ -1,5 +1,5 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../../../dataflow/environments/built-in-config';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
@@ -10,7 +10,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 export interface BuiltinModel {
 	readonly kind:            'function' | 'constant' | 'replacement';
 	/** the package the entry names it under, e.g. `stats` for `sd`; `undefined` for an unqualified entry like most of `base` */
-	readonly namespace?:      string;
+	readonly namespace?:      BrandedNamespace;
 	/** {@link BuiltInProcName} value, for a `function` entry */
 	readonly processor?:      string;
 	readonly assumePrimitive: boolean;
@@ -22,7 +22,7 @@ export interface BuiltinModel {
 	readonly configKeys:      readonly string[];
 }
 
-function toModel(def: AnyBuiltInDefinition, namespace: string | undefined): BuiltinModel {
+function toModel(def: AnyBuiltInDefinition, namespace: BrandedNamespace | undefined): BuiltinModel {
 	switch(def.type) {
 		case 'function':
 			return {
@@ -47,13 +47,13 @@ function toModel(def: AnyBuiltInDefinition, namespace: string | undefined): Buil
 	}
 }
 
-function byBareName(definitions: BuiltInDefinitions): Map<string, Map<string | undefined, BuiltinModel>> {
-	const known = new Map<string, Map<string | undefined, BuiltinModel>>();
+function byBareName(definitions: BuiltInDefinitions): Map<BrandedIdentifier, Map<BrandedNamespace | undefined, BuiltinModel>> {
+	const known = new Map<BrandedIdentifier, Map<BrandedNamespace | undefined, BuiltinModel>>();
 	for(const def of definitions as readonly AnyBuiltInDefinition[]) {
 		for(const id of def.names) {
 			const bare = Identifier.getName(id);
 			const namespace = Identifier.getNamespace(id);
-			const byNamespace = known.get(bare) ?? new Map<string | undefined, BuiltinModel>();
+			const byNamespace = known.get(bare) ?? new Map<BrandedNamespace | undefined, BuiltinModel>();
 			known.set(bare, byNamespace);
 			byNamespace.set(namespace, toModel(def, namespace));
 		}
@@ -62,6 +62,6 @@ function byBareName(definitions: BuiltInDefinitions): Map<string, Map<string | u
 }
 
 /** every built-in the analyzer states for the bare name `name`, one entry per namespace it is declared under, empty when it states none */
-export function builtinModelsOf(name: string, ctx: ReadOnlyFlowrAnalyzerContext): readonly BuiltinModel[] {
+export function builtinModelsOf(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly BuiltinModel[] {
 	return [...(ctx.env.deriveFromDefinitions(byBareName).get(name)?.values() ?? [])];
 }

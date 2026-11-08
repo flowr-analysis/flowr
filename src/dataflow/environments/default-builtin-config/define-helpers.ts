@@ -14,14 +14,14 @@ export const Primitive = { assumePrimitive: true } as const;
 export const Overrides = { overrides: true } as const;
 
 /** The `names` exported by `namespace`, e.g. `pkg(PkgName.Haven, 'read_sas')`. */
-export function pkg(namespace: PkgName | string, ...names: string[]): Identifier[] {
-	return names.map(n => [n as BrandedIdentifier, namespace as BrandedNamespace]);
+export function pkg(namespace: PkgName | BrandedNamespace, ...names: BrandedIdentifier[]): Identifier[] {
+	return names.map(n => [n, namespace as BrandedNamespace]);
 }
 
-export const base = (...names: string[]): Identifier[] => pkg('base', ...names);
-export const utils = (...names: string[]): Identifier[] => pkg('utils', ...names);
-export const stats = (...names: string[]): Identifier[] => pkg('stats', ...names);
-export const methods = (...names: string[]): Identifier[] => pkg('methods', ...names);
+export const base = (...names: BrandedIdentifier[]): Identifier[] => pkg('base', ...names);
+export const utils = (...names: BrandedIdentifier[]): Identifier[] => pkg('utils', ...names);
+export const stats = (...names: BrandedIdentifier[]): Identifier[] => pkg('stats', ...names);
+export const methods = (...names: BrandedIdentifier[]): Identifier[] => pkg('methods', ...names);
 
 /** A built-in function: its names, the processor handling its calls and that processor's configuration (a function without `sig` reads plain values). */
 export function fn<P extends Processor>(names: readonly Identifier[], processor: P, config?: FnConfig<P>, more?: FnMore<P>): BuiltInFunctionDefinition<P> {

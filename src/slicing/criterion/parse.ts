@@ -1,4 +1,5 @@
-import { SourceRange, type SourcePosition } from '../../util/range';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { SourceRange, type SourcePosition, type Column, type Line } from '../../util/range';
 import { expensiveTrace } from '../../util/log';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
@@ -110,7 +111,7 @@ export const SlicingCriterion = {
 	 * The line and the name a `<line>@<name>` criterion points at, `undefined` for every other form.
 	 * The counterpart of writing such a criterion down as a template literal.
 	 */
-	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: string } | undefined {
+	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: BrandedIdentifier } | undefined {
 		const split = splitFileFilter(criterion);
 		const at = split?.rest.indexOf('@') ?? -1;
 		if(split === undefined || at <= 0) {
@@ -211,7 +212,7 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
  * originating from a matching file. The regex may contain escaped parentheses (`3^(a\(b\)\.R)`).
  * Returns `undefined` if the regex is malformed.
  */
-function splitFileFilter(criterion: string): { rest: string, file: RegExp | undefined } | undefined {
+function splitFileFilter<S extends string>(criterion: S): { rest: string, file: RegExp | undefined } | undefined {
 	const match = /^([^()]*)\(((?:\\.|[^()])*)\)$/.exec(criterion);
 	if(match === null) {
 		return { rest: criterion, file: undefined };
@@ -231,8 +232,8 @@ function matchesFile<OtherInfo>(nodeInfo: RNodeWithParent<OtherInfo>, file: RegE
 /**
  * The last line covered by the given AST (restricted to `file`), used to resolve lines counted from the end.
  */
-function lastLineOf<OtherInfo>(dataflowIdMap: AstIdMap<OtherInfo>, file: RegExp | undefined): number {
-	let last = 0;
+function lastLineOf<OtherInfo>(dataflowIdMap: AstIdMap<OtherInfo>, file: RegExp | undefined): Line {
+	let last: Line = 0;
 	for(const nodeInfo of dataflowIdMap.values()) {
 		const range = SourceRange.fromNode(nodeInfo);
 		if(range !== undefined && range[2] > last && matchesFile(nodeInfo, file)) {
@@ -271,7 +272,7 @@ function parseLocation<OtherInfo>(criterion: string, separator: string, dataflow
  * thus one and the same occurrence.
  */
 function nthOccurrenceToId<OtherInfo>(line: number, name: string, dataflowIdMap: AstIdMap<OtherInfo>, nth: number, file?: RegExp): NodeId | undefined {
-	const byColumn = new Map<number, RNodeWithParent<OtherInfo>>();
+	const byColumn = new Map<Column, RNodeWithParent<OtherInfo>>();
 
 	for(const nodeInfo of dataflowIdMap.values()) {
 		if(nodeInfo.location === undefined || nodeInfo.location[0] !== line || nodeInfo.lexeme !== name || !matchesFile(nodeInfo, file)) {

@@ -110,8 +110,8 @@ function resolveIdToArgument(id: NodeId | RArgument<ParentInformation> | undefin
  * Removes a leading and trailing quote like `` ` ``, `"`, `'` from a string argument
  */
 export function unquoteArgument(argument: undefined): undefined;
-export function unquoteArgument(argument: string): string;
-export function unquoteArgument(argument: string | undefined): string | undefined;
+export function unquoteArgument<S extends string>(argument: S): string;
+export function unquoteArgument<S extends string>(argument: S | undefined): string | undefined;
 export function unquoteArgument(argument: string | undefined): string | undefined {
 	if(argument === undefined) {
 		return undefined;

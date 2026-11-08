@@ -41,7 +41,7 @@ export const RString = {
 	 * The text without the R quotes (double, single, or backtick) around it; unchanged if it has none.
 	 * @see {@link RString.splitQuotes} - to learn which quote was used
 	 */
-	unquote(this: void, str: string): string {
+	unquote<S extends string>(this: void, str: S): string {
 		return RString.splitQuotes(str).content;
 	},
 	/**

@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { convertFnArguments } from '../common';
@@ -17,12 +18,12 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
-import { hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType, FunctionDispatch } from '../../../../../graph/vertex';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
-import { callsNextMethod, type DispatchContext, DispatchNarrower, internalGenericMethods, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
+import { type NextMethods, callsNextMethod, type DispatchContext, DispatchNarrower, internalGenericMethods, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { EnvType, REnvironment } from '../../../../../environments/environment';
@@ -82,7 +83,7 @@ export function processFunctionDefinition<OtherInfo>(name: RSymbol<OtherInfo & P
 		const read = processed.in.concat(processed.unknownReferences);
 		allParameterReads.push(...read);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		(data as { environment: REnvironmentInformation }).environment = REnvironment.overwrite(data.environment, processed.environment);
+		(data as Writable<typeof data>).environment = REnvironment.overwrite(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
@@ -176,7 +177,7 @@ export function processFunctionDefinition<OtherInfo>(name: RSymbol<OtherInfo & P
 		}
 		/* an on.exit hook's `<<-` escapes like a body `<<-` */
 		for(const read of vert.subflow.in) {
-			for(const { nodeId } of Resolve.byName(read.name as string, outEnvironment) ?? []) {
+			for(const { nodeId } of Resolve.byName(read.name, outEnvironment) ?? []) {
 				if(subgraph.hasVertex(nodeId)) {
 					subgraph.addEdge(read.nodeId, nodeId, EdgeType.Reads);
 				}
@@ -317,7 +318,7 @@ function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[]
 
 /** Resolves `refs` (open reads of a nested definition or call) against `environment`; `onResolved` handles each resolved reference and says whether it should stay in the returned "still open" list. */
 function resolveIngoingRefs(refs: readonly IdentifierReference[], environment: REnvironmentInformation, onResolved: (ingoing: IdentifierReference, resolved: readonly IdentifierReference[]) => boolean, method?: { readonly fn: NodeId, readonly graph: DataflowGraph }): IdentifierReference[] {
-	let instance: readonly string[] | undefined | null = null;
+	let instance: readonly BrandedIdentifier[] | undefined | null = null;
 	return refs.filter(ingoing => {
 		instance ??= method?.graph.idMap === undefined ? undefined : instanceBindingsOfMethod(method.fn, method.graph, method.graph.idMap);
 		if(instance !== undefined && ingoing.name !== undefined && instance.includes(Identifier.getName(ingoing.name))) {
@@ -420,17 +421,17 @@ function* superAssignedTargets(graph: DataflowGraph, nodes: Iterable<NodeId>): G
 /** What one walk over the environments the analyzed code populates yields, see {@link namesShadowingBuiltIns}. */
 interface NamesOfInterest {
 	/** the names the code binds itself, so a call within a body may land on one of them */
-	readonly shadowing: ReadonlySet<string>
+	readonly shadowing: ReadonlySet<BrandedIdentifier>
 	/** the generic halves of every `<generic>.<class>` the code binds, so a dispatch on one may reach a method */
-	readonly generics:  ReadonlySet<string>
+	readonly generics:  ReadonlySet<BrandedIdentifier>
 }
 
 /** The names the analyzed code binds that a built-in also goes by, so a call that resolved to only that built-in may still land on one of them: a body looks its callee up when it runs, not when it is written. */
 function namesShadowingBuiltIns(environment: REnvironmentInformation, graph: DataflowGraph): NamesOfInterest {
-	const shadowing = new Set<string>();
-	const generics = new Set<string>();
+	const shadowing = new Set<BrandedIdentifier>();
+	const generics = new Set<BrandedIdentifier>();
 	/* `as.character.zz` may be a method of `as` or of `as.character`, so every prefix is a candidate */
-	const methodOf = (name: string) => {
+	const methodOf = (name: BrandedIdentifier) => {
 		for(let dot = name.indexOf('.', 1); dot > 0; dot = name.indexOf('.', dot + 1)) {
 			generics.add(name.slice(0, dot));
 		}
@@ -491,7 +492,7 @@ function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifie
 }
 
 /** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
-function s3MethodPrefixesOf(name: Identifier): readonly string[] {
+function s3MethodPrefixesOf(name: Identifier): readonly BrandedIdentifier[] {
 	const plain = Identifier.getName(name);
 	const group = s3GroupGenericOf(plain);
 	return group === undefined ? [plain] : [plain, group];
@@ -600,7 +601,7 @@ function narrowedDispatchOf(narrower: DispatchNarrower, vertex: DataflowGraphVer
 }
 
 /** Links each next-method call to what it may run: the methods `next` names for the method it is in, and the methods those run in turn, or else every target of the dispatching call. */
-function linkNextMethods(graph: DataflowGraph, collected: ReadonlyMap<NodeId, NodeId>, targets: ReadonlySet<NodeId>, next: ReadonlyMap<NodeId, readonly NodeId[]> | undefined): void {
+function linkNextMethods(graph: DataflowGraph, collected: ReadonlyMap<NodeId, NodeId>, targets: ReadonlySet<NodeId>, next: NextMethods | undefined): void {
 	const todo = [...collected];
 	const visited = new Set(collected.values());
 	for(let item = todo.pop(); item !== undefined; item = todo.pop()) {
@@ -672,7 +673,7 @@ function nextMethodsPerCall(next: NodeId, owner: NodeId, dispatch: NodeId, conte
  */
 export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironmentInformation, ctx: FlowrAnalyzerContext) {
 	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment, graph);
-	let rootDefinitions: DefaultMap<string, NodeId[]> | undefined;
+	let rootDefinitions: DefaultMap<BrandedIdentifier, NodeId[]> | undefined;
 	const calls = graph.verticesOfType(VertexType.FunctionCall).toArray();
 	/* the calls that wait for the parameters they call through to be bound, and whether a call was linked since they began to */
 	let waiting: typeof calls = [];
@@ -744,8 +745,8 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
 
 		/* the dispatch is decided anew, from every method the name may reach */
-		delete (vertex as { ruledOut?: unknown }).ruledOut;
-		delete (vertex as { ruledOutAt?: unknown }).ruledOutAt;
+		delete (vertex as Partial<Writable<typeof vertex>>).ruledOut;
+		delete (vertex as Partial<Writable<typeof vertex>>).ruledOutAt;
 		const targets = new Set(callBoundInScope(id, graph) ? linkedFunctionIds(new Set(Dataflow.targetsOf(graph, id, EdgeType.Reads)), graph) : Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a dispatch depends on the classes of its arguments, so it waits for the value flow to be linked */
 		const dispatches = origin.includes(BuiltInProcName.S3Dispatch) || narrower.reachesS4Method(targets) || mayDispatch && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf);
@@ -843,10 +844,10 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 			if(named !== undefined) {
 				linkNamedNextMethods(graph, target, named, effectiveEnvironment, narrower, ctx);
 			}
-			if(treatAsS3 || targetVertex.mode?.includes('s4')) {
+			if(treatAsS3 || targetVertex.mode?.includes(FunctionDispatch.S4)) {
 				targetVertex.mode ??= [];
-				if(treatAsS3 && !targetVertex.mode.includes('s3')) {
-					targetVertex.mode.push('s3');
+				if(treatAsS3 && !targetVertex.mode.includes(FunctionDispatch.S3)) {
+					targetVertex.mode.push(FunctionDispatch.S3);
 				}
 				for(const [next, v] of Dataflow.callsIn(targetVertex, graph)) {
 					if(DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)) {
@@ -925,7 +926,7 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 		if(ruledOut.length > 0) {
 			vertex.ruledOutAt = ruledOut;
 		} else {
-			delete (vertex as { ruledOutAt?: unknown }).ruledOutAt;
+			delete (vertex as Partial<Writable<typeof vertex>>).ruledOutAt;
 		}
 	}
 	/* the dots a call hands on stand for what the calls of the function around hand over, all of them linked by now */
@@ -973,15 +974,18 @@ function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierRefere
 		return calls;
 	});
 	/* a call reads several states under its own id (`#wd`, `#file:f`), so a read is told apart by its name as well */
-	const seen = new DefaultMap<NodeId, Set<string>>(() => new Set());
-	while(lifted.length > 0) {
-		const [definition, read, holder] = lifted.pop() as [NodeId, IdentifierReference, NodeId];
-		const known = seen.get(definition);
-		const key = `${String(read.nodeId)}|${read.name === undefined ? '' : Identifier.toString(read.name)}`;
-		if(known.has(key) || read.name === undefined) {
+	const seen = new DefaultMap<NodeId, DefaultMap<NodeId, Set<string>>>(() => new DefaultMap(() => new Set()));
+	for(let next = lifted.pop(); next !== undefined; next = lifted.pop()) {
+		const [definition, read, holder] = next;
+		if(read.name === undefined) {
 			continue;
 		}
-		known.add(key);
+		const known = seen.get(definition).get(read.nodeId);
+		const name = Identifier.toString(read.name);
+		if(known.has(name)) {
+			continue;
+		}
+		known.add(name);
 		/* the function the read is lifted to may write the variable itself before its call runs (`k <<- 2; g()`) */
 		const fn = graph.getVertex(definition);
 		for(const write of DfgVertex.isFunctionDefinition(fn) ? fn.subflow.graph : []) {

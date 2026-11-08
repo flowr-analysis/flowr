@@ -5,6 +5,7 @@ import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
 import { ClassSystem, MemberVisibility } from '../built-in-kinds';
 import type { AnyBuiltInDefinition } from '../built-in-config';
+import { FunctionDispatch } from '../../graph/vertex';
 
 /** The built-in definitions of the class systems (methods/S4, S7, R6, R.oo). */
 export const ClassesDefinitions = [
@@ -21,12 +22,12 @@ export const ClassesDefinitions = [
 		{ tags: [SemanticCallTag.Declares], classDecl: { system: ClassSystem.S4, nameArg: { idx: 0, name: 'class1' }, containsArg: { idx: 1, name: 'class2' }, relation: 'is' }, props: CallProp.Scope | CallProp.Invisible, sig: sig({ class1: ArgProp.NoDefault, class2: ArgProp.NoDefault, test: 0, coerce: 0, replace: 0, by: 0, where: 0, classDef: 0, extensionObject: 0, doComplete: 0 }) },
 		Primitive),
 	fn(methods('setMethod'), BuiltInProcName.ClassRelation,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], /* a method joins the methods of its generic rather than replacing them */ assignmentLike: { targetVariable: true, makeMaybe: true, registers: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] }, genericArg: { idx: 0, name: 'f' }, classArgs: [{ idx: 1, name: 'signature' }], registersMethod: true, sig: sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 }) },
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], /* a method joins the methods of its generic rather than replacing them */ assignmentLike: { targetVariable: true, makeMaybe: true, registers: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: [FunctionDispatch.S4] }, genericArg: { idx: 0, name: 'f' }, classArgs: [{ idx: 1, name: 'signature' }], registersMethod: true, sig: sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 }) },
 		Primitive),
 	/* reaches the method `setMethod` registered for a superclass, which receives the arguments given or else the formals of the calling method */
 	fn(methods('callNextMethod'), BuiltInProcName.S3Dispatch, { props: CallProp.Generic, sig: sig({ '...': 0 }) }),
 	fn(methods('setReplaceMethod'), BuiltInProcName.ClassRelation,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], assignmentLike: { targetVariable: true, makeMaybe: true, registers: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] }, genericArg: { idx: 0, name: 'f' }, genericSuffix: '<-', classArgs: [{ idx: 1, name: 'signature' }], registersMethod: true, sig: sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 }) },
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], assignmentLike: { targetVariable: true, makeMaybe: true, registers: true, canBeReplacement: false, targetSuffix: '<-', target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: [FunctionDispatch.S4] }, genericArg: { idx: 0, name: 'f' }, genericSuffix: '<-', classArgs: [{ idx: 1, name: 'signature' }], registersMethod: true, sig: sig({ f: ArgProp.NoDefault, signature: 0, definition: ArgProp.NoDefault, where: 0, valueClass: 0, sealed: 0 }) },
 		Primitive),
 	fn(pkg(PkgName.R6, 'R6Class'), BuiltInProcName.ClassGenerator,
 		{ classDecl: { system: ClassSystem.R6, nameArg: { idx: 0, name: 'classname' }, /* R6 inherits from the *generator object*, so the superclass arrives as a variable, not a string */ containsArg: { name: 'inherit' }, instanceBindings: ['self', 'private'], memberArgs: [{ idx: 1, name: 'public', visibility: MemberVisibility.Public }, { name: 'private', visibility: MemberVisibility.Private }, { name: 'active', visibility: MemberVisibility.Active }] } }),
@@ -51,10 +52,10 @@ export const ClassesDefinitions = [
 	fn(methods('getMethod', 'selectMethod'), BuiltInProcName.S4Use,
 		{ genericArg: { idx: 0, name: 'f' }, classArgs: [{ idx: 1, name: 'signature' }], returnsMethod: true, sig: sig({ f: ArgProp.NoDefault, signature: 0, '...': 0 }) }),
 	fn(methods('setClass'), BuiltInProcName.S7MakeConstructor,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], mode: ['s4'], classDecl: { system: ClassSystem.S4, nameArg: { idx: 0, name: 'Class' }, containsArg: { name: 'contains' }, /* the modern `slots=` and the historical `representation()` state the same thing */ memberArgs: [{ idx: 1, name: 'representation', typed: true }, { name: 'slots', typed: true }], prototypeArg: { idx: 2, name: 'prototype' }, validityArg: { idx: 4, name: 'validity' } }, sig: sig({ Class: ArgProp.NoDefault, representation: 0, prototype: 0, contains: 0, validity: 0, access: 0, where: 0, version: 0, sealed: 0, package: 0, S3methods: 0, slots: ArgProp.NoDefault }) },
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], mode: [FunctionDispatch.S4], classDecl: { system: ClassSystem.S4, nameArg: { idx: 0, name: 'Class' }, containsArg: { name: 'contains' }, /* the modern `slots=` and the historical `representation()` state the same thing */ memberArgs: [{ idx: 1, name: 'representation', typed: true }, { name: 'slots', typed: true }], prototypeArg: { idx: 2, name: 'prototype' }, validityArg: { idx: 4, name: 'validity' } }, sig: sig({ Class: ArgProp.NoDefault, representation: 0, prototype: 0, contains: 0, validity: 0, access: 0, where: 0, version: 0, sealed: 0, package: 0, S3methods: 0, slots: ArgProp.NoDefault }) },
 		Primitive),
 	fn(methods('setClassUnion'), BuiltInProcName.S7MakeConstructor,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], mode: ['s4'], classDecl: { system: ClassSystem.S4, nameArg: { idx: 0, name: 'name' }, /* a union is a virtual class its members become subclasses of */ unionArg: { idx: 1, name: 'members' } }, sig: sig({ name: ArgProp.NoDefault, members: 0, where: 0 }) },
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Declares], mode: [FunctionDispatch.S4], classDecl: { system: ClassSystem.S4, nameArg: { idx: 0, name: 'name' }, /* a union is a virtual class its members become subclasses of */ unionArg: { idx: 1, name: 'members' } }, sig: sig({ name: ArgProp.NoDefault, members: 0, where: 0 }) },
 		Primitive),
 	replacement(pkg(PkgName.S7, 'method'), ['<-', '<<-'], { readIndices: true, constructName: 's7' }),
 ] as const satisfies AnyBuiltInDefinition[];

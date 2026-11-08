@@ -1,7 +1,7 @@
 import { type FlowrSearch, type FlowrSearchLike, type SearchOutput, getFlowrSearch } from './flowr-search-builder';
 import type { FlowrSearchElements } from './flowr-search';
-import { getGenerator } from './search-executor/search-generators';
-import { getTransformer } from './search-executor/search-transformer';
+import { runGenerator } from './search-executor/search-generators';
+import { runTransformer } from './search-executor/search-transformer';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
@@ -16,10 +16,10 @@ export async function runSearch<S extends FlowrSearchLike>(
 ): Promise<GetSearchElements<SearchOutput<S>>> {
 	const s = getFlowrSearch(search);
 
-	let acc: FlowrSearchElements<ParentInformation> = await getGenerator(s.generator.name)(input, s.generator.args as never);
+	let acc: FlowrSearchElements<ParentInformation> = await runGenerator(s.generator, input);
 
 	for(const transformer of s.search) {
-		acc = await getTransformer(transformer.name)(input, acc, transformer.args as never);
+		acc = await runTransformer(transformer, input, acc);
 	}
 
 	return acc as GetSearchElements<SearchOutput<S>>;

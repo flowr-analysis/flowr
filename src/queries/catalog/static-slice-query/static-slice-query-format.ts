@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type {
@@ -36,7 +37,7 @@ export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
 export type StaticSliceResult = Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>
 	& Partial<Pick<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, 'reconstruct'>>
 	/** the packages the slice calls into, only set with {@link SliceQueryOptions#reportPackages} */
-	& { packages?: readonly string[] };
+	& { packages?: readonly BrandedNamespace[] };
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
 	/**

@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import { namesAnErrorHandler } from '../../../../../fn/condition-handlers';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowProcessorInformation } from '../../../../../processor';
@@ -16,7 +17,7 @@ import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -77,7 +78,7 @@ export function processTryCatch<OtherInfo>(
 		raising.push(...order(blockAst, []));
 	}
 	/* a handler runs only if something the block runs may signal what it handles, one for the session may run anywhere after */
-	const runs = (condition: string) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
+	const runs = (condition: BrandedIdentifier) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
 	const errorRuns = error !== undefined && errorArg.size > 0 && runs(error);
 	/* if the block raises an error in every case, the error handler is not constrained by it */
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
@@ -143,7 +144,7 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 	/* The rewritten exit points describe what the call passes on to its own callers; control flow still leaves the construct on the call itself, whether the block completed or a handler took over. */
-	(info as { cfgExit?: NodeId }).cfgExit = rootId;
+	(info as Writable<typeof info>).cfgExit = rootId;
 	const entryOfArg = (of: ReadonlySet<NodeId>) => {
 		const arg = res.processedArguments.find(a => a !== undefined && of.has(a.entryPoint));
 		return arg && ControlFlow.entryOf(arg);
@@ -280,7 +281,7 @@ interface TryConfig {
 function tryConfigOf(call: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation): TryConfig | undefined {
 	const target = (Resolve.byNameAndType(call.name, call.environment ?? environment, ReferenceType.Function) ?? [])
 		.find(d => d.type === ReferenceType.BuiltInFunction && d.processorName === BuiltInProcName.Try);
-	return target?.type === ReferenceType.BuiltInFunction ? target.config as TryConfig | undefined : undefined;
+	return target?.type === ReferenceType.BuiltInFunction && target.processorName === BuiltInProcName.Try ? target.config : undefined;
 }
 
 /** Which of the arguments `args` of a construct configured by `config` are its block and its handlers. */

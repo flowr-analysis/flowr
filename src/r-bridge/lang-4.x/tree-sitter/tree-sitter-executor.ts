@@ -1,7 +1,7 @@
 import Parser from 'web-tree-sitter';
 import type { Query, QueryCapture } from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
-import type { SyncParser, TreeSitterInformation } from '../../parser';
+import { type SyncParser, type TreeSitterInformation, ParserName } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
@@ -27,7 +27,7 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
  * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
  */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
-	public readonly name = 'tree-sitter';
+	public readonly name = ParserName.TreeSitter;
 	private readonly parser: Parser;
 	public readonly incremental = true;
 	private static language: Parser.Language;
@@ -68,7 +68,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public information(analyzer: ReadonlyFlowrAnalysisProvider): TreeSitterInformation {
 		return {
-			name:            'tree-sitter',
+			name:            ParserName.TreeSitter,
 			grammarVersion:  this.treeSitterVersion(),
 			treeSitterQuery: async(source: Query | string, force?: boolean) => {
 				return this.query(source, ...(await analyzer.parse(force)).files.map(p => p.parsed) as Parser.Tree[]);

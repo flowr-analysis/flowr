@@ -63,8 +63,7 @@ function collectBodies(graph: ReadOnlyControlFlowGraph): Map<NodeId, NodeId[]> {
 		}
 		const body = new Set<NodeId>();
 		const stack = [...children];
-		while(stack.length > 0) {
-			const current = stack.pop() as NodeId;
+		for(let current; (current = stack.pop()) !== undefined;) {
 			if(body.has(current)) {
 				continue;
 			}

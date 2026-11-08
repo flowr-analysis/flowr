@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -21,11 +22,11 @@ export interface RegisterHookConfig {
 	hook: KnownHooks;
 	args: {
 		/** the expression to register as hook */
-		expr:   { idx?: number, name: string },
+		expr:   { idx?: number, name: BrandedIdentifier },
 		/** argument to control whether to add or replace the current hook */
-		add?:   { idx?: number, name: string, default: boolean },
+		add?:   { idx?: number, name: BrandedIdentifier, default: boolean },
 		/** argument to control whether to run the hook before or after other hooks */
-		after?: { idx?: number, name: string, default: boolean },
+		after?: { idx?: number, name: BrandedIdentifier, default: boolean },
 	}
 }
 
@@ -37,7 +38,7 @@ export function processRegisterHook<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RegisterHookConfig
 ): DataflowInformation {
-	const params = {
+	const params: Record<BrandedIdentifier, string> = {
 		[config.args.expr.name]: 'expr',
 	};
 	if(config.args.add) {

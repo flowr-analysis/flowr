@@ -1,4 +1,4 @@
-import { Identifier } from '../../../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
 import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';
@@ -53,8 +53,8 @@ export type RNamedFunctionCallOf<Info = NoInfo> = RNamedFunctionCall<Info> & { r
  * a namespaced `Identifier.make('foo', 'pkg')` only for `pkg::foo()`. A set holds plain names, compared without namespace.
  */
 function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info>;
-function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name: Identifier | ReadonlySet<string>): node is RNamedFunctionCallOf<Info>;
-function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name?: Identifier | ReadonlySet<string>): boolean {
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name: Identifier | ReadonlySet<BrandedIdentifier>): node is RNamedFunctionCallOf<Info>;
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name?: Identifier | ReadonlySet<BrandedIdentifier>): boolean {
 	if(!RFunctionCall.is(node) || node.named !== true) {
 		return false;
 	} else if(name === undefined) {
@@ -94,9 +94,9 @@ export const RFunctionCall = {
 	 * layer exists, so importing the wall from here would drag it into the AST model at load time.
 	 * @useInstead {@link FunctionSemantics.call.match.toNames}
 	 */
-	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
+	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly BrandedIdentifier[]): ReadonlyMap<BrandedIdentifier, RArgument<Info>> {
 		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);
-		const bound = new Map<string, RArgument<Info>>();
+		const bound = new Map<BrandedIdentifier, RArgument<Info>>();
 		for(let i = 0; i < args.length; i++) {
 			const arg = args[i], param = matched[i];
 			if(arg !== EmptyArgument && param !== undefined) {

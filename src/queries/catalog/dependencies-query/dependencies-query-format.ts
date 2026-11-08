@@ -32,7 +32,7 @@ import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { TestFunctions } from './function-info/test-functions';
-import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
@@ -113,7 +113,7 @@ function callsDataFrameFunction(graph: DataflowGraph, call: NodeId): boolean {
 }
 
 /** data.table's arguments of `[` that group what `j` computes, `dt[, mean(x), by = g]` */
-const GroupingArguments: ReadonlySet<string> = new Set(['by', 'keyby']);
+const GroupingArguments: ReadonlySet<BrandedIdentifier> = new Set(['by', 'keyby']);
 
 /** an entry for a call transforming the data the symbol `target` holds */
 function transformOf(nodeId: NodeId, functionName: Identifier, target: RSymbol<ParentInformation>): DependencyInfo {
@@ -177,7 +177,7 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 						result.push({
 							nodeId:             node.info.id,
 							functionName:       RNode.lexeme(node).includes(':::') ? ':::' : '::',
-							value:              ns,
+							value:              String(ns),
 							versionConstraints: dep?.versionConstraints,
 							derivedRange:       dep?.effectiveRange,
 							namespaceInfo:      dep?.namespaceInfo
@@ -313,13 +313,13 @@ export interface DependencyInfo extends Record<string, unknown> {
 	 * `df |> filter(x > 1)` (where `x` names a column) and `a`, `b` for `left_join(a, b)`; an addon to a plot draws its
 	 * data. Reported for the `write`, `visualize` and `transform` categories.
 	 */
-	inputVariables?:     readonly string[]
+	inputVariables?:     readonly BrandedIdentifier[]
 	/**
 	 * The variable the result of the call is assigned to, following every call that hands it on (a pipe into a call,
 	 * `( )`, a `+` adding to a plot) up to `<-`, `=` or `->`.
 	 * Reported for the `read`, `visualize` and `transform` categories.
 	 */
-	assignedTo?:         string
+	assignedTo?:         BrandedIdentifier
 	/** for a plot, the title its `ggtitle`, `labs(title = )` or `main =` states */
 	title?:              string
 	/** for a plot, the file it is written to by `ggsave` or by a graphics device open when it is drawn */

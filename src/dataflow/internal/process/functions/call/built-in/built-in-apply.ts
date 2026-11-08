@@ -12,7 +12,7 @@ import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { ClosureRefs } from '../../../../linker';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -276,7 +276,7 @@ export function callNamedFunction<OtherInfo>(
 }
 
 /** The entry points of the arguments that fill the `formals` of `sig`. */
-function foldedArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo>[], processed: readonly (DataflowInformation | undefined)[], sig: FnSig, formals: readonly string[]): NodeId[] {
+function foldedArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo>[], processed: readonly (DataflowInformation | undefined)[], sig: FnSig, formals: readonly BrandedIdentifier[]): NodeId[] {
 	const slots = FnSig.slots(FnSig.layout(sig), args.map(a => RArgument.isEmpty(a) || a.name === undefined ? undefined : Identifier.getName(a.name.content)));
 	return slots.flatMap((slot, i) => formals.includes(sig[slot]?.[0]) && processed[i] !== undefined ? [processed[i].entryPoint] : []);
 }

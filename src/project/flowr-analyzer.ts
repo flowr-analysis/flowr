@@ -1,6 +1,6 @@
 import type { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
-import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
+import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
 import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -305,7 +305,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
-		if(this.parser.name === 'tree-sitter') {
+		if(this.parser.name === ParserName.TreeSitter) {
 			return this.parser.parse(request, this.ctx);
 		} else {
 			const ts = new TreeSitterExecutor();

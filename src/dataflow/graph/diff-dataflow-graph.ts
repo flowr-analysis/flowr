@@ -17,7 +17,7 @@ import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 import { DfgVertex } from './vertex';
-import { AmbientAccessRecord } from './ambient-access';
+import { AmbientAccess } from './ambient-access';
 
 
 /** This is the underlying function to calculate the difference based on a given context. Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs. */
@@ -55,10 +55,10 @@ function diffAmbientAccess(ctx: GraphDiffContext): void {
 	const right = new Set(ctx.right.ambientAccessIds());
 	setDifference(left, right, { ...ctx, position: `${ctx.position}Calls accessing the ambient state differ in graphs. ` });
 	for(const id of left.intersection(right)) {
-		const a = ctx.left.ambientAccessOf(id) as AmbientAccessRecord;
-		const b = ctx.right.ambientAccessOf(id) as AmbientAccessRecord;
-		if(!AmbientAccessRecord.equals(a, b)) {
-			reportDiffering(ctx, id, `${ctx.position}Ambient access of ${id} differs. `, a, b);
+		const a = ctx.left.ambientAccessOf(id) as AmbientAccess;
+		const b = ctx.right.ambientAccessOf(id) as AmbientAccess;
+		if(!AmbientAccess.equals(a, b)) {
+			reportDiffering(ctx, id, `${ctx.position}Ambient access of ${id} differs. `, AmbientAccess.names(a), AmbientAccess.names(b));
 		}
 	}
 }
@@ -133,10 +133,10 @@ export function diffVertices(ctx: GraphDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			const lname = (lInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.left.idMap) ?? '??';
-			const rname = (rInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.right.idMap) ?? '??';
+			const lname = lInfo.name === undefined ? NodeId.recoverName(id, ctx.left.idMap) ?? '??' : Identifier.toString(lInfo.name as Identifier);
+			const rname = rInfo.name === undefined ? NodeId.recoverName(id, ctx.right.idMap) ?? '??' : Identifier.toString(rInfo.name as Identifier);
 			if(lname !== rname) {
-				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
+				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lname} vs ${ctx.rightname}: ${rname}`, {
 					tag: 'vertex',
 					id
 				});
@@ -145,7 +145,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in cds. ` });
 		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
 			// compare arrays
-			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
+			const equalArrays = lInfo.origin === rInfo.origin || (Array.isArray(lInfo.origin) && Array.isArray(rInfo.origin) && arrayEqual(lInfo.origin, rInfo.origin));
 			if(!equalArrays) {
 				reportDiffering(ctx, id, `Vertex ${id} differs in origin. `, lInfo.origin, rInfo.origin);
 			}

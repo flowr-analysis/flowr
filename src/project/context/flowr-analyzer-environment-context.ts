@@ -5,7 +5,7 @@ import type { DeepReadonly } from 'ts-essentials';
 import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import type { BrandedIdentifier, IdentifierDefinition } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier, BrandedNamespace, IdentifierDefinition } from '../../dataflow/environments/identifier';
 import { Identifier, ReferenceType } from '../../dataflow/environments/identifier';
 import type { BuiltInIdentifierDefinition, BuiltInMemory, BuiltIns } from '../../dataflow/environments/built-in';
 import type { Fingerprint } from '../../slicing/static/fingerprint';
@@ -72,7 +72,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	makeEmptyEnv(): REnvironmentInformation;
 
 	/** What the configuration states about `pkg`'s exports, `undefined` when it states nothing (these are not in the built-in environment: attaching the package brings them into scope). */
-	statedFor(pkg: string): BuiltInMemory | undefined;
+	statedFor(pkg: BrandedNamespace): BuiltInMemory | undefined;
 
 	/** The definitions the configuration states for `name` without any package attached: its namespace's when it names one, otherwise what every package together states for the bare name. */
 	statedDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] | undefined;
@@ -105,7 +105,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	private index:                      BuiltInIndex | undefined;
 
 	/** what the configuration states about packages R does not attach on startup, see {@link statedFor} */
-	private readonly stated: ReadonlyMap<string, BuiltInMemory>;
+	private readonly stated: ReadonlyMap<BrandedNamespace, BuiltInMemory>;
 
 	private builtInEnvFingerprint: Fingerprint | undefined;
 	/** the packages {@link knowsPackage} answers for, collected from the built-in environment on first use */
@@ -119,10 +119,10 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		this.builtIns = builtIns;
 		this.builtInDefinitions = definitions;
 
-		this.builtInEnv = new Environment(undefined as unknown as Environment, true);
+		this.builtInEnv = Environment.root();
 		this.builtInEnv.adoptMap(builtIns.builtInMemory);
 
-		this.emptyBuiltInEnv = new Environment(undefined as unknown as Environment, true);
+		this.emptyBuiltInEnv = Environment.root();
 		this.emptyBuiltInEnv.adoptMap(builtIns.emptyBuiltInMemory);
 
 		this.stated = builtIns.packageMemory;
@@ -151,7 +151,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		return this.derive(compute, this.builtInDefinitions);
 	}
 
-	public statedFor(pkg: string): BuiltInMemory | undefined {
+	public statedFor(pkg: BrandedNamespace): BuiltInMemory | undefined {
 		return this.stated.get(pkg);
 	}
 
@@ -238,7 +238,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public makeEmptyEnv(): REnvironmentInformation {
 		return {
-			current: new Environment(undefined as unknown as Environment, true),
+			current: Environment.root(),
 			level:   0
 		};
 	}

@@ -14,7 +14,7 @@ import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { isBaseRPackage } from '../../../util/r-base-packages';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { prettyPrint, type LintingResult } from '../../linter-format';
 export { at } from '../../linter-util';
@@ -36,7 +36,7 @@ export interface PackageInfo {
 	readonly name?:         string
 	readonly description:   FlowrDescriptionFile | undefined
 	/** the package names each dependency field declares (without `R` itself) */
-	readonly declared:      ReadonlyMap<DependencyField, readonly string[]>
+	readonly declared:      ReadonlyMap<DependencyField, readonly BrandedNamespace[]>
 	readonly namespace:     NamespaceInfo | undefined
 	/** whether `file` (as a node's `info.file` gives it) lives in the `R/` folder */
 	readonly isPackageCode: (file: string | undefined) => boolean
@@ -72,7 +72,7 @@ export function packageInfo(ctx: ReadOnlyFlowrAnalyzerContext): PackageInfo {
 }
 
 /** All packages the DESCRIPTION declares in any dependency field. */
-export function allDeclared(info: PackageInfo): Set<string> {
+export function allDeclared(info: PackageInfo): Set<BrandedNamespace> {
 	return new Set([...info.declared.values()].flat());
 }
 
@@ -95,8 +95,8 @@ export function projectNodes(ast: NormalizedAst): RNode<ParentInformation>[] {
 }
 
 /** The function definitions bound to `name` at the top level of the analyzed code. */
-export function topLevelDefinitions(ast: NormalizedAst, name: (n: string) => boolean): { name: string, def: RFunctionDefinition<ParentInformation> }[] {
-	const result: { name: string, def: RFunctionDefinition<ParentInformation> }[] = [];
+export function topLevelDefinitions(ast: NormalizedAst, name: (n: BrandedIdentifier) => boolean): { name: BrandedIdentifier, def: RFunctionDefinition<ParentInformation> }[] {
+	const result: { name: BrandedIdentifier, def: RFunctionDefinition<ParentInformation> }[] = [];
 	const idMap = ast.idMap;
 	for(const node of projectNodes(ast)) {
 		if(!RFunctionDefinition.is(node)) {
@@ -111,7 +111,7 @@ export function topLevelDefinitions(ast: NormalizedAst, name: (n: string) => boo
 }
 
 /** The formal parameter names of a function definition, in order. */
-export function formalNames(def: RFunctionDefinition<ParentInformation>): string[] {
+export function formalNames(def: RFunctionDefinition<ParentInformation>): BrandedIdentifier[] {
 	return def.parameters.map(p => p.name.content);
 }
 
@@ -148,7 +148,7 @@ export function isQuoted(graph: DataflowGraph, id: NodeId, idMap: AstIdMap): boo
 }
 
 /** The packages `R CMD check` takes as declared without a DESCRIPTION entry: the base packages but `methods` and `stats4`. */
-export function isStandardPackage(pkg: string): boolean {
+export function isStandardPackage(pkg: BrandedNamespace): boolean {
 	return isBaseRPackage(pkg) && pkg !== 'methods' && pkg !== 'stats4';
 }
 
@@ -158,7 +158,7 @@ export function printer<R extends CmdCheckResult>(query: (r: R) => string) {
 }
 
 /** The calls (by name, if given) of package code, with the node and vertex of each; those resolving to a built-in, named by it. */
-export function* packageCalls(graph: DataflowGraph, idMap: AstIdMap, pkg: PackageInfo, names?: ReadonlySet<string>): Generator<{ id: NodeId, name: string, node: RNode<ParentInformation>, vertex: DataflowGraphVertexFunctionCall }> {
+export function* packageCalls(graph: DataflowGraph, idMap: AstIdMap, pkg: PackageInfo, names?: ReadonlySet<BrandedIdentifier>): Generator<{ id: NodeId, name: BrandedIdentifier, node: RNode<ParentInformation>, vertex: DataflowGraphVertexFunctionCall }> {
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const node = idMap.get(id);
 		const resolved = builtInOf(graph, id);

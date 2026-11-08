@@ -139,7 +139,7 @@ function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 describe('Lockfile versions', () => {
 	test(label('rv.lock pins every package, including builtin ones', ['version-manager-rv'], ['other']), () => {
 		const ctx = ctxWith('rv.lock', rvLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		// `7.3-65` is an R version, where `-` separates a component just like `.` does
 		assert.sameDeepMembers(got, [['R6', '2.6.1'], ['MASS', '7.3.65'], ['ggplot2', '3.5.1']]);
 	});
@@ -150,7 +150,7 @@ describe('Lockfile versions', () => {
 
 	test(label('uvr.lock pins every package, including the dev ones', ['version-manager-uvr'], ['other']), () => {
 		const ctx = ctxWith('uvr.lock', uvrLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['ggplot2', '3.4.4'], ['dplyr', '1.1.4'], ['testthat', '3.2.1']]);
 	});
 
@@ -166,13 +166,13 @@ describe('Lockfile versions', () => {
 
 	test(label('renv.lock pins every package', ['version-manager-renv'], ['other']), () => {
 		const ctx = ctxWith('renv.lock', renvLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R6', '2.5.1'], ['cli', '3.6.4']]);
 	});
 
 	test(label('packrat.lock pins every package', ['version-manager-packrat'], ['other']), () => {
 		const ctx = ctxWith('packrat.lock', packratLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R6', '2.1.2'], ['ggplot2', '2.1.0']]);
 	});
 
@@ -182,7 +182,7 @@ describe('Lockfile versions', () => {
 
 	test(label('rproj.lock pins what its single target resolved, and its R version', ['version-manager-rig'], ['other']), () => {
 		const ctx = ctxWith('rproj.lock', rigLock([['4.5.1', [['dplyr', '1.1.4'], ['vctrs', '0.6-5']]]]));
-		assert.sameDeepMembers(ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]), [['dplyr', '1.1.4'], ['vctrs', '0.6.5']]);
+		assert.sameDeepMembers(ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]), [['dplyr', '1.1.4'], ['vctrs', '0.6.5']]);
 		assert.strictEqual(ctx.meta.getRVersion(), '4.5.1');
 	});
 
@@ -191,7 +191,7 @@ describe('Lockfile versions', () => {
 			['4.5.1', [['dplyr', '1.1.4'], ['cli', '3.6.5']]],
 			['4.4.3', [['dplyr', '1.1.3'], ['cli', '3.6.5'], ['only44', '1.0']]]
 		]));
-		assert.sameDeepMembers(ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]), [['cli', '3.6.5'], ['only44', '1.0']]);
+		assert.sameDeepMembers(ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]), [['cli', '3.6.5'], ['only44', '1.0']]);
 		assert.isUndefined(ctx.meta.getRVersion());
 	});
 

@@ -1,9 +1,9 @@
+import { type NamedInGraphIdentifierDefinition, ReferenceType } from '../../../environments/identifier';
 import { type DataflowInformation, ExitPointType } from '../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
 import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierDefinition, ReferenceType } from '../../../environments/identifier';
 import { EdgeType } from '../../../graph/edge';
 import { ControlFlow } from '../../control-flow';
 import { Ternary } from '../../../../util/logic';
@@ -36,7 +36,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	/* keep the default's environment so its escaping (`<<-`) writes are carried on */
 	let environment = defaultValue?.environment ?? name.environment;
 	for(const reference of name.unknownReferences) {
-		const written = { ...reference, type: ReferenceType.Parameter, definedAt: parameter.info.id } as IdentifierDefinition & { name: string };
+		const written = { ...reference, type: ReferenceType.Parameter, definedAt: parameter.info.id } as NamedInGraphIdentifierDefinition;
 		graph.setDefinitionOfVertex(written, defaultValue === undefined ? [] : [defaultValue.entryPoint]);
 		environment = REnvironment.define(written, false, environment);
 		for(const node of definedBy) {

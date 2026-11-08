@@ -100,7 +100,7 @@ export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, {
 		}
 		/* a guarded call is only ever reached through the construct guarding it, which ends the walk of its own */
 		return graph.edgesFrom(current).keys().filter(n => !isGuarded(n));
-	}, n => own.get(n), RaisesNothing, joinRaised);
+	}, n => own.get(n), { empty: RaisesNothing, concat: joinRaised });
 	const result: ExceptionsByFunction = { [id]: [...raised.of(id).values()] };
 	for(const def of defs) {
 		result[def] = [...raised.of(def).values()];

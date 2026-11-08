@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import { hooksUnder } from '../../../../../hooks';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
@@ -18,11 +19,10 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { IdentifierDefinition } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -94,10 +94,10 @@ export function processForLoop<OtherInfo>(
 			type:      ReferenceType.Unknown,
 			value:     [vectorArg.info.id],
 			iterated:  true
-		} as IdentifierDefinition & { name: string };
+		} as IdentifierDefinition & { name: BrandedIdentifier };
 		headEnvironments = REnvironment.define(definition, false, headEnvironments);
 	}
-	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
+	(data as Writable<typeof data>).environment = headEnvironments;
 
 	const body = processDataflowFor(bodyArg, data);
 	const cd = [{ id: name.info.id, when: true }];

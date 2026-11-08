@@ -1,5 +1,6 @@
 /** What a class declaration states across R's object systems (S4, RC, S7, R6) and how declarations relate; which argument means what is configured per built-in in {@link ClassDeclarationConfig}, not guessed. */
 
+import type { BrandedIdentifier, BrandedNamespace, ClassName } from '../environments/identifier';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -23,7 +24,7 @@ export { ClassSystem, MemberVisibility } from '../environments/built-in-kinds';
 export interface ClassMember {
 	readonly name:        string;
 	/** the member's declared type, when one is stated (S4/RC/S7); R6 declares no types */
-	readonly type?:       string;
+	readonly type?:       ClassName;
 	/** whether the member is a function, i.e. a method rather than a field (R6/RC, where both share one list) */
 	readonly method?:     boolean;
 	readonly visibility?: MemberVisibility;
@@ -33,33 +34,33 @@ export interface ClassMember {
 export interface ClassDeclaration {
 	readonly system:            ClassSystem;
 	/** the declared class name, absent when the naming argument does not resolve to a literal */
-	readonly name?:             string;
+	readonly name?:             ClassName;
 	/** the direct superclasses, in the order the declaration lists them (S7/R6 have at most one) */
-	readonly contains:          readonly string[];
+	readonly contains:          readonly ClassName[];
 	/** the slots/properties/fields the declaration states, in order */
 	readonly members:           readonly ClassMember[];
 	/** the class cannot be instantiated: `representation("VIRTUAL")`, `contains = "VIRTUAL"`, S7 `abstract = TRUE`, or a class union */
 	readonly virtual?:          boolean;
 	/** the members of a `setClassUnion`, which are subclasses of it rather than superclasses */
-	readonly union?:            readonly string[];
+	readonly union?:            readonly ClassName[];
 	/** the members the `prototype` gives a default for; the defaults themselves are values, which no declaration model carries */
-	readonly prototype?:        readonly string[];
+	readonly prototype?:        readonly ClassName[];
 	/** the declaration only *relates* two existing classes (`setIs`) or attaches a validator (`setValidity`), it declares no class of its own */
 	readonly relation?:         'is' | 'validity';
 	/** names the declaration references rather than states as literals, e.g. an R6 `inherit = Generator` */
-	readonly byVariable:        readonly string[];
+	readonly byVariable:        readonly BrandedIdentifier[];
 	/** the function checking every new instance of the class, the id of the argument value stating it */
 	readonly validity?:         NodeId;
 	/** the names the methods of the class see the instance they are called on by, see {@link ClassDeclarationConfig.instanceBindings} */
-	readonly instanceBindings?: readonly string[];
+	readonly instanceBindings?: readonly BrandedIdentifier[];
 	/** the S3 class vector `setOldClass` registers as S4 classes, each extending the next, empty if it does not resolve */
-	readonly oldClasses?:       readonly string[];
+	readonly oldClasses?:       readonly ClassName[];
 }
 
 /** Which argument of a class-declaring built-in says what; `idx` is the position when the call names no argument. */
 export interface ClassArgRef {
 	readonly idx?:  number;
-	readonly name?: string;
+	readonly name?: BrandedIdentifier;
 }
 
 /** A member-carrying argument, plus how its entries are to be read. */
@@ -92,7 +93,7 @@ export interface ClassDeclarationConfig {
 	/** the argument carrying the function checking every new instance (S4 `validity`) */
 	readonly validityArg?:      ClassArgRef;
 	/** the names the methods of the class see the instance they are called on by (R6 `self` and `private`, RC `.self`), so writing through them changes that instance */
-	readonly instanceBindings?: readonly string[];
+	readonly instanceBindings?: readonly BrandedIdentifier[];
 	/** the S3 class vector to register as S4 classes (`setOldClass`), and the arguments that make the classes of an object decide instead */
 	readonly oldClass?:         { readonly classesArg: ClassArgRef, readonly openArgs: readonly ClassArgRef[] };
 }
@@ -122,9 +123,9 @@ function literal<Info>(node: RNode<Info & ParentInformation> | undefined): strin
 }
 
 /** The character vector a node states: a literal, or the literals of a `c(...)`/`list(...)` around them. */
-function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined): { values: string[], byVariable: string[] } {
+function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined): { values: string[], byVariable: BrandedIdentifier[] } {
 	const values: string[] = [];
-	const byVariable: string[] = [];
+	const byVariable: BrandedIdentifier[] = [];
 	const collect = (n: RNode<Info & ParentInformation> | undefined): void => {
 		const str = literal(n);
 		if(str !== undefined) {
@@ -215,18 +216,18 @@ export interface DeclaredClass extends ClassDeclaration {
 	/** the id of the declaring call */
 	readonly id:   NodeId;
 	/** the class name, which a {@link DeclaredClass} always has (an unnamed declaration is not one) */
-	readonly name: string;
+	readonly name: ClassName;
 }
 
 /** Every class the graph declares, keyed by name. A later declaration of the same name wins, as it would in R. */
-export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredClass> {
-	const classes = new Map<string, DeclaredClass>();
+export function declaredClassesImpl(graph: DataflowGraph): Map<ClassName, DeclaredClass> {
+	const classes = new Map<ClassName, DeclaredClass>();
 	for(const [id, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(classDecl?.name !== undefined && classDecl.relation === undefined) {
 			classes.set(classDecl.name, { ...classDecl, id, name: classDecl.name });
 		}
 	}
-	const addSuper = (sub: string, sup: string | undefined) => {
+	const addSuper = (sub: ClassName, sup: ClassName | undefined) => {
 		const existing = classes.get(sub);
 		if(existing !== undefined && sup !== undefined && !existing.contains.includes(sup)) {
 			classes.set(sub, { ...existing, contains: [...existing.contains, sup] });
@@ -258,9 +259,9 @@ export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredC
 }
 
 /** Variable name to the class its generator declares, for the `Cls <- R6Class(...)`/`Cls <- new_class(...)` bindings. */
-function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, DeclaredClass>): Map<string, string> {
+function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<ClassName, DeclaredClass>): Map<BrandedIdentifier, ClassName> {
 	const classOfId = new Map(classes.values().map(d => [d.id, d.name] as const));
-	const generators = new Map<string, string>();
+	const generators = new Map<BrandedIdentifier, ClassName>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
 		const lexeme = NodeId.recoverName(id, graph.idMap);
 		if(lexeme === undefined) {
@@ -277,7 +278,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
 }
 
 /** The transitive superclasses of `name` among `classes`, nearest first and each named once. */
-export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
+export function superClassesOfImpl(name: ClassName, classes: ReadonlyMap<ClassName, ClassDeclaration>): ClassName[] {
 	const seen = new Set([name]);
 	/* a set iteration also visits what is added during it, so this walks the hierarchy breadth first */
 	for(const next of seen) {
@@ -290,7 +291,7 @@ export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, Cl
 }
 
 /** The {@link SigClassInfo} records the signature database stores for the classes an analysis found. */
-export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
+export function toSigClassesImpl(classes: ReadonlyMap<ClassName, DeclaredClass>, ownerOf?: (name: ClassName) => BrandedNamespace | undefined): SigClassInfo[] {
 	const records: SigClassInfo[] = classes.values().map(declared => compactRecord({
 		name:    declared.name,
 		system:  declared.system,
@@ -313,7 +314,7 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 }
 
 /** The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them. */
-export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly string[] | undefined {
+export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly BrandedIdentifier[] | undefined {
 	for(let node = idMap.get(fn); node !== undefined; node = RNode.directParent(node, idMap)) {
 		const vertex = RFunctionCall.is(node) ? graph.getVertex(node.info.id) : undefined;
 		if(DfgVertex.isFunctionCall(vertex) && vertex.classDecl?.instanceBindings !== undefined) {

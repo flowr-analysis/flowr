@@ -2,7 +2,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import { Identifier } from '../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../dataflow/environments/identifier';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
 import { CallProp } from '../dataflow/environments/built-in-props';
@@ -42,8 +42,8 @@ function statementWithin(node: RNodeWithParent, list: NodeId, idMap: AstIdMap): 
 }
 
 /** the names assigned (or read, with `assigned = false`) in `nodes`, and whether all calls in them are pure */
-function namesOf(nodes: RNodeWithParent | readonly RNodeWithParent[], assigned: boolean, graph: DataflowGraph, environment: REnvironmentInformation | undefined): { names: Set<string>, pure: boolean } {
-	const names = new Set<string>();
+function namesOf(nodes: RNodeWithParent | readonly RNodeWithParent[], assigned: boolean, graph: DataflowGraph, environment: REnvironmentInformation | undefined): { names: Set<BrandedIdentifier>, pure: boolean } {
+	const names = new Set<BrandedIdentifier>();
 	let pure = true;
 	RNode.visitAst(nodes, n => {
 		const symbol = assigned ? assignment(n)?.target : n;

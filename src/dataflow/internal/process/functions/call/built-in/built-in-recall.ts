@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -11,7 +12,6 @@ import { log } from '../../../../../../util/log';
 import { EdgeType } from '../../../../../graph/edge';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -68,8 +68,8 @@ export function processRecall<OtherInfo>(
 		// also kill the name of the recall function
 		const r = information.graph.getVertex(rootId);
 		if(DfgVertex.isFunctionCall(r)) {
-			(r as { name: string }).name = UnnamedFunctionCallPrefix + rootId + '-' + Identifier.toString(r.name);
-			(r as { environment: REnvironmentInformation }).environment = information.environment;
+			(r as Writable<typeof r>).name = UnnamedFunctionCallPrefix + rootId + '-' + Identifier.toString(r.name);
+			(r as Writable<typeof r>).environment = information.environment;
 		}
 	} else {
 		log.warn('No enclosing function closure found for recall at node', rootId);

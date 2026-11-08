@@ -1,4 +1,4 @@
-import { SourceRange } from '../../../src/util/range';
+import { SourceRange, type Line, type Column } from '../../../src/util/range';
 import type { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -64,7 +64,7 @@ export function parameter(name: string, location: SourceRange, defaultValue?: RN
 }
 
 /** Where a token sits: `[line, column]` for a token on one line (its end follows from the lexeme) or `[line, column, endLine, endColumn]`. */
-export type Pos = readonly [line: number, col: number] | readonly [line: number, col: number, endLine: number, endCol: number];
+export type Pos = readonly [line: Line, col: Column] | readonly [line: Line, col: Column, endLine: Line, endCol: Column];
 
 /** Turns a {@link Pos} and the token's lexeme into the range the normalizer reports. */
 export function rangeOf(pos: Pos, lexeme: string): SourceRange {

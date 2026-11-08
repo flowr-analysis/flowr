@@ -3,7 +3,7 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { Identifier } from '../environments/identifier';
+import type { BrandedIdentifier, Identifier, ClassName } from '../environments/identifier';
 import type { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { Value } from '../eval/values/r-value';
 import type { ClassDeclaration } from '../fn/class-declaration';
@@ -73,9 +73,9 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	/** For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`, `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and whether it can be instantiated. */
 	classDecl?:    ClassDeclaration
 	/** For an S4 instantiation (`new("P")`): the classes it creates an instance of, whose validity functions it runs */
-	instantiates?: readonly string[]
+	instantiates?: readonly ClassName[]
 	/** For an S4 instantiation: the generic whose methods initialize the new object (`initialize`) */
-	initializer?:  string
+	initializer?:  BrandedIdentifier
 	/** For a `setMethod`: the generic it adds a method to and the signature the method is registered for */
 	s4Method?:     S4MethodRegistration
 	/** The method definitions the dispatch of the call rules out for the classes its arguments have, which a lookup by name still finds */
@@ -103,13 +103,13 @@ export interface FoundOnCall {
 
 /** One entry of an S4 method signature: the class, and the formal it is for when the signature names it. */
 export interface S4SignatureEntry {
-	readonly cls:   string
-	readonly name?: string
+	readonly cls:   ClassName
+	readonly name?: BrandedIdentifier
 }
 
 /** What a `setMethod` registers: the method of `generic` for `signature`, absent when the signature does not resolve. */
 export interface S4MethodRegistration {
-	readonly generic:    string
+	readonly generic:    BrandedIdentifier
 	readonly signature?: readonly S4SignatureEntry[]
 }
 
@@ -139,7 +139,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
 	environment?:    REnvironmentInformation
 	/** If the function is a (potential) S3/S4/S7 dispatch Please note that flowR may create these flags *on use* (e.g. `s3` as otherwise any func with a `.` would be considered S3). */
-	mode?:           ('s3' | 's4' | 's7')[];
+	mode?:           FunctionDispatch[];
 	/** If this function statically returns a tracked environment, stores the envState it returns. */
 	returnEnvState?: REnvironmentInformation
 	/** The calls of the body whose environment operation depends on the call of the function, see {@link DeferredEnvOp}. */
@@ -147,6 +147,14 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	/** Whether a call of the closure reads writes into the frame it holds, see {@link InGraphIdentifierDefinition#closureFrame}. */
 	framed?:         true
 }
+
+/** The object system whose dispatch a function definition (potentially) takes part in. */
+export const FunctionDispatch = {
+	S3: 's3',
+	S4: 's4',
+	S7: 's7'
+} as const;
+export type FunctionDispatch = typeof FunctionDispatch[keyof typeof FunctionDispatch];
 
 /** What a call does to the variable it names in an environment. */
 export enum EnvOpKind {
@@ -169,7 +177,7 @@ export interface DeferredEnvOp {
 	/** the expressions giving the names by their value */
 	readonly names:        readonly NodeId[]
 	/** the names written down as they are, as `rm` takes its `...` */
-	readonly literals:     readonly string[]
+	readonly literals:     readonly BrandedIdentifier[]
 	readonly envir:        NodeId
 	/** the value a definition binds */
 	readonly value?:       NodeId

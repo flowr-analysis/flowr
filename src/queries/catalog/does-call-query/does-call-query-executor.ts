@@ -81,8 +81,7 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraints: CheckCallMatch, expandDeps?: ReadOnlyFlowrAnalyzerDependenciesContext): FindAllCallsResult | false {
 	const visited = new Set<NodeId>();
 	const toVisit: NodeId[] = [start];
-	while(toVisit.length > 0) {
-		const cur = toVisit.pop() as NodeId;
+	for(let cur; (cur = toVisit.pop()) !== undefined;) {
 		if(visited.has(cur)) {
 			continue;
 		}

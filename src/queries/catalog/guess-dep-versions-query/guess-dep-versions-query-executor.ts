@@ -1,3 +1,4 @@
+import type { BrandedNamespace, BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import type { Range } from 'semver';
 import { compareByCodeUnit } from '../../../util/text/strings';
 import type { BasicQueryData } from '../../base-query-format';
@@ -41,8 +42,8 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { SourceRange } from '../../../util/range';
 
 /** flowR's curated builtin-library function to package map (e.g. `ggplot` to `ggplot2`), disambiguating an orphan call several packages re-export */
-const BuiltinLibraryByFunction: ReadonlyMap<string, string> = new Map(
-	VisualizeFunctions.filter(f => f.package !== undefined).map(f => [f.name, f.package as string])
+const BuiltinLibraryByFunction: ReadonlyMap<BrandedIdentifier, BrandedNamespace> = new Map(
+	VisualizeFunctions.filter(f => f.package !== undefined).map(f => [f.name, f.package as BrandedNamespace])
 );
 
 /** the sources `query` disables: `clean` is sugar for disabling `declared`+`transitive`, `disabled` adds any others by name */
@@ -86,7 +87,7 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 	if(queries.length === 1) {
 		return queries[0];
 	}
-	const packages = new Set<string>();
+	const packages = new Set<BrandedNamespace>();
 	let anyAll = false;
 	let earliestDate: string | undefined, earliestTime = Infinity, anyDate: string | undefined;
 	let maxCandidates: number | undefined;
@@ -137,7 +138,7 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 }
 
 /** format version range string from survivors and declared constraints, honest about gaps */
-function rangeString(survivors: readonly string[], nonContiguous: boolean, unsatisfiable: boolean, declaredRange: Range | undefined, declaredConstraints: readonly string[], cap: number): string {
+function rangeString(survivors: readonly string[], { nonContiguous, unsatisfiable }: { readonly nonContiguous: boolean, readonly unsatisfiable: boolean }, declaredRange: Range | undefined, declaredConstraints: readonly string[], cap: number): string {
 	if(survivors.length === 0) {
 		if(unsatisfiable) {
 			return declaredConstraints.join(' ') || '<contradiction>';
@@ -158,10 +159,10 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 /** what a guessed package is related to: the packages it shares a version with, and those its choice interacts with */
 interface PackageRelations {
 	readonly used:                boolean;
-	readonly linkedWith?:         readonly string[];
+	readonly linkedWith?:         readonly BrandedNamespace[];
 	readonly coupledWith?:        readonly string[];
 	/** the undefined orphan functions that inferred this package (e.g. `ggplot()` inferring `ggplot2`), if any */
-	readonly orphanFunctions?:    readonly string[];
+	readonly orphanFunctions?:    readonly BrandedIdentifier[];
 	/** per such function, where the undefined call is and why it was pinned on this package */
 	readonly orphanEvidence?:     readonly OrphanEvidenceView[];
 	/** the other packages exporting those functions, each with the versions of it that would fit the calls */
@@ -169,7 +170,7 @@ interface PackageRelations {
 }
 
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions, orphanEvidence, orphanAlternatives }: PackageRelations): GuessedDependency {
+function guessPackage(name: BrandedNamespace, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions, orphanEvidence, orphanAlternatives }: PackageRelations): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -182,7 +183,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		package:            name,
 		base:               surviving.base,
 		declaredConstraints,
-		range:              rangeString(survivors, nonContiguous, unsatisfiable, declaredRange, declaredConstraints, cap),
+		range:              rangeString(survivors, { nonContiguous, unsatisfiable }, declaredRange, declaredConstraints, cap),
 		minVersion:         survivors.length > 0 ? survivors[0] : undefined,
 		maxVersion:         survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
 		candidateCount:     survivors.length,
@@ -242,7 +243,7 @@ export async function executeGuessDepVersionsQuery(
 	const usage = collectUsage(graph, deps);
 	// fold orphan calls (`ggplot()` with ggplot2 neither declared nor loaded) into usage; a package the project does
 	// not already know is flagged for downstream attachment (see collectOrphanUsage)
-	const known = new Set<string>([...deps.getDependencies().map(d => d.name), ...deps.declaredPackageNames()]);
+	const known = new Set<BrandedNamespace>([...deps.getDependencies().map(d => d.name), ...deps.declaredPackageNames()]);
 	const orphans = collectOrphanUsage(graph, deps, usage, pkg => known.has(pkg), { self, builtinLibraryOf: name => BuiltinLibraryByFunction.get(name) });
 	const sorted = (query.packages && query.packages.length > 0 ? [...query.packages] : defaultTargets(deps, usage)).filter(name => name !== self).sort();
 
@@ -262,7 +263,7 @@ export async function executeGuessDepVersionsQuery(
 
 	const initial = new Map(guessedAll.map(g => [g.name, g.surviving.survivors]));
 	const { survivors: pruned, blockers } = query.clean || disabled.has('indirect')
-		? { survivors: initial, blockers: new Map<string, Map<string, string>>() }
+		? { survivors: initial, blockers: new Map<BrandedNamespace, Map<BrandedNamespace, string>>() }
 		: enforceArcConsistency(space, initial, maxIterations);
 	guessedAll.forEach(g => {
 		g.surviving = { ...g.surviving, survivors: pruned.get(g.name) ?? g.surviving.survivors };
@@ -275,12 +276,12 @@ export async function executeGuessDepVersionsQuery(
 	});
 
 	// linked packages share one version: base/R group and configured groups; intersect survivor sets to keep them consistent
-	const groups = [
+	const groups: readonly (readonly BrandedNamespace[])[] = [
 		guessedAll.filter(g => g.surviving.base).map(g => g.name),
 		...(ctx.config.solver.versionManagement?.linkedVersionGroups ?? [])
 	];
-	const linkedGroups: string[][] = [];
-	const linkedWith = new Map<string, string[]>();
+	const linkedGroups: BrandedNamespace[][] = [];
+	const linkedWith = new Map<BrandedNamespace, BrandedNamespace[]>();
 	for(const group of groups) {
 		const members = guessedAll.filter(g => group.includes(g.name));
 		if(members.length > 1) {
@@ -314,7 +315,7 @@ export async function executeGuessDepVersionsQuery(
 	const anyDeclared = !disabled.has('declared') && representatives.some(g => g.surviving.declaredConstraints.length > 0);
 	const declaredCombinations = anyDeclared ? representatives.reduce((p, g) => p * g.surviving.declared, 1) : undefined;
 	// a coupled package's version is not free: report the partners, flagging one that only some versions impose
-	const coupledWith = new Map<string, string[]>();
+	const coupledWith = new Map<BrandedNamespace, string[]>();
 	for(const c of couplings) {
 		for(const [pkg, partner] of [[c.a, c.b], [c.b, c.a]]) {
 			coupledWith.set(pkg, [...coupledWith.get(pkg) ?? [], c.always ? partner : `${partner} (partial)`]);
@@ -325,13 +326,13 @@ export async function executeGuessDepVersionsQuery(
 	// does not turn them into dependencies of the project; built only when an orphan actually had a choice
 	const altSpace = orphans.alternativeUsage.size > 0
 		? new VersionSpace({ deps, usage: orphans.alternativeUsage, cutoff, rVersion, disabled }) : undefined;
-	const orphanAlternatives = (pkg: string): OrphanAlternativeView[] =>
+	const orphanAlternatives = (pkg: BrandedNamespace): OrphanAlternativeView[] =>
 		(orphans.alternatives.get(pkg) ?? []).map(alt => {
 			const s = (altSpace as VersionSpace).survivors(alt, []);
 			const versions = s.survivors.map(e => e.ver);
 			return compactRecord({
 				package:        alt,
-				range:          rangeString(versions, false, s.unsatisfiable, s.declaredRange, s.declaredConstraints, cap),
+				range:          rangeString(versions, { nonContiguous: false, unsatisfiable: s.unsatisfiable }, s.declaredRange, s.declaredConstraints, cap),
 				minVersion:     versions[0],
 				maxVersion:     versions[versions.length - 1],
 				candidateCount: versions.length,

@@ -392,12 +392,12 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 	return state.solver.of(id);
 }
 
-function parametersOf(id: NodeId, graph: DataflowGraph): readonly string[] {
+function parametersOf(id: NodeId, graph: DataflowGraph): readonly NodeId[] {
 	const vertex = graph.getVertex(id);
 	return DfgVertex.isFunctionDefinition(vertex) ? Object.keys(vertex.params) : [];
 }
 
-function uniform(params: readonly string[], value: Ternary): FunctionStrictness {
+function uniform(params: readonly NodeId[], value: Ternary): FunctionStrictness {
 	return { strict: value, parameters: Object.fromEntries(params.map(param => [param, value])) };
 }
 

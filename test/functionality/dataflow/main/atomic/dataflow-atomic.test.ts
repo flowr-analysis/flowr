@@ -16,7 +16,7 @@ import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
-import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
+import { ReferenceType, type BrandedIdentifier } from '../../../../../src/dataflow/environments/identifier';
 import { assert, describe, test } from 'vitest';
 import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
@@ -27,7 +27,7 @@ import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
-function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | object {
+function getSuperAssignOrigin(op: BrandedIdentifier): { origin: BuiltInProcName[] } | object {
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
 }
 
@@ -212,7 +212,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 
 	// these will be more interesting whenever we have more information on the edges (like modification etc.)
 	describe('Non-Assignment Binary Operators', () => {
-		for(const op of BinaryNonAssignmentOperators.filter(x => !startAndEndsWith(x, '%'))) {
+		for(const op of BinaryNonAssignmentOperators.filter(x => !startAndEndsWith(String(x), '%'))) {
 			describe(`${op}`, () => {
 				const inputDifferent = `x ${op} y`;
 				const inputSame = `x ${op} x`;

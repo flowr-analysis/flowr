@@ -19,7 +19,7 @@ import { execFileSync } from 'child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { type BrandedNamespace, type BrandedIdentifier, Identifier } from '../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo } from '../../../src/dataflow/environments/built-in-props';
@@ -1389,13 +1389,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Package attribution', () => {
 		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
-		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
+		const recordedElsewhere = new Set<BrandedIdentifier>(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
 
 		test('every entry names a package that exports it', async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 			analyzer.addRequest('1');
 			const sources = analyzer.inspectContext().deps.signatureSources();
-			const exportsOf = (pkg: string): string[] => sources.filter(s => s.packageNames().includes(pkg))
+			const exportsOf = (pkg: BrandedNamespace): BrandedIdentifier[] => sources.filter(s => s.packageNames().includes(pkg))
 				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);
 			for(const [category, { functions }] of Object.entries(defaultDependencyCategories(defaultCtx))) {
 				for(const f of functions) {

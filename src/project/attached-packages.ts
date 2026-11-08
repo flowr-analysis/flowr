@@ -2,6 +2,7 @@ import { DepType } from './sigdb/schema';
 import type { PackageSignatureSource } from './sigdb/reader';
 import { uniqueArray } from '../util/collections/arrays';
 import { RVersion } from '../util/r-version';
+import type { BrandedNamespace } from '../dataflow/environments/identifier';
 
 /**
  * Packages that attach further packages from their `.onAttach` hook, which no package metadata records: their core
@@ -11,7 +12,7 @@ import { RVersion } from '../util/r-version';
  * on top of the last), as read from the hook's source in every CRAN release.
  * `Depends` is handled generally by {@link attachedAlongside} and hence not repeated here.
  */
-const MetaPackageCores: ReadonlyMap<string, readonly (readonly [since: string, core: readonly string[]])[]> = new Map([
+const MetaPackageCores: ReadonlyMap<BrandedNamespace, readonly (readonly [since: string, core: readonly BrandedNamespace[]])[]> = new Map([
 	['tidyverse', [
 		['1.0.0', ['ggplot2', 'tibble', 'tidyr', 'readr', 'purrr', 'dplyr']],
 		['1.2.0', ['ggplot2', 'tibble', 'tidyr', 'readr', 'purrr', 'dplyr', 'stringr', 'forcats']],
@@ -40,7 +41,7 @@ const MetaPackageCores: ReadonlyMap<string, readonly (readonly [since: string, c
  * The core set the {@link MetaPackageCores|meta-package} `pack` attaches from its `.onAttach` hook at `version`
  * (the newest release's when unknown, the oldest one's for a version predating every recorded release), empty for any other package.
  */
-export function metaPackageCore(pack: string, version?: string): readonly string[] {
+export function metaPackageCore(pack: BrandedNamespace, version?: string): readonly BrandedNamespace[] {
 	const releases = MetaPackageCores.get(pack) ?? [];
 	const matching = version === undefined ? releases : releases.filter(([since]) => RVersion.compare(since, version) <= 0);
 	return (matching.at(-1) ?? releases[0])?.[1] ?? [];
@@ -49,16 +50,16 @@ export function metaPackageCore(pack: string, version?: string): readonly string
 /** What attaching a package puts on the search path with it, in the order R attaches them. */
 export interface AttachedAlongside {
 	/** what it `Depends` on: R attaches these first, so they end up below it */
-	readonly depends:  readonly string[];
+	readonly depends:  readonly BrandedNamespace[];
 	/** the core set a {@link MetaPackageCores|meta-package} attaches from its `.onAttach` hook, above it */
-	readonly onAttach: readonly string[];
+	readonly onAttach: readonly BrandedNamespace[];
 }
 
 /**
  * The packages that end up on the search path alongside `pack` when it is attached: everything it `Depends` on
  * (which R attaches with it) and, for a {@link MetaPackageCores|meta-package}, the core set it attaches itself.
  */
-export function attachedAlongside(pack: string, sources: readonly PackageSignatureSource[], version?: string): AttachedAlongside {
+export function attachedAlongside(pack: BrandedNamespace, sources: readonly PackageSignatureSource[], version?: string): AttachedAlongside {
 	const depends = sources
 		.flatMap(src => src.dependencies(pack, version) ?? [])
 		.filter(d => d.type === DepType.Depends && d.name !== 'R')

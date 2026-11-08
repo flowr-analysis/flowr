@@ -108,7 +108,7 @@ function printReferenceSections(output: ReplOutput, sections: readonly Reference
 	}
 }
 
-function mermaidCommand(description: string, usageExample: string, aliases: string[], url: boolean, simplified: boolean): ReplCodeCommand {
+function mermaidCommand(description: string, usageExample: string, aliases: string[], { url, simplified }: { readonly url: boolean, readonly simplified: boolean }): ReplCodeCommand {
 	return clipboardCommand(description, usageExample, aliases, async analyzer => {
 		const result = await analyzer.dataflow();
 		const qualifyBaseR = isSigDbEnabled(analyzer.flowrConfig);
@@ -118,9 +118,9 @@ function mermaidCommand(description: string, usageExample: string, aliases: stri
 	});
 }
 
-export const dataflowCommand = mermaidCommand('Get mermaid code for the dataflow graph', ':dataflow', ['d', 'df'], false, false);
+export const dataflowCommand = mermaidCommand('Get mermaid code for the dataflow graph', ':dataflow', ['d', 'df'], { url: false, simplified: false });
 
-export const dataflowStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflow*', ['d*', 'df*'], true, false);
+export const dataflowStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflow*', ['d*', 'df*'], { url: true, simplified: false });
 
 export const dataflowAsciiCommand = codeCommand('Returns an ASCII representation of the dataflow graph', ':dataflowascii', ['df!'], async({ output, analyzer }) => {
 	const result = await analyzer.dataflow();
@@ -155,6 +155,6 @@ export const dataflowSilentCommand = codeCommand('Just calculates the DFG, but o
 });
 
 
-export const dataflowSimplifiedCommand = mermaidCommand('Get mermaid code for the simplified dataflow graph', ':dataflowsimple', ['ds', 'dfs'], false, true);
+export const dataflowSimplifiedCommand = mermaidCommand('Get mermaid code for the simplified dataflow graph', ':dataflowsimple', ['ds', 'dfs'], { url: false, simplified: true });
 
-export const dataflowSimpleStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflowsimple*', ['ds*', 'dfs*'], true, true);
+export const dataflowSimpleStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflowsimple*', ['ds*', 'dfs*'], { url: true, simplified: true });

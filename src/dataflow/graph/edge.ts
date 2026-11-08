@@ -143,7 +143,7 @@ export const DfEdge = {
 	 * Otherwise, use {@link DfEdge#typesToNames} which handles these cases.
 	 */
 	typeToName(this: void, type: EdgeType): string {
-		return edgeTypeToHumanReadableName.get(type) as string;
+		return edgeTypeToHumanReadableName.get(type) ?? String(type);
 	},
 	/**
 	 * Check if the given-edge type has any of the given types.

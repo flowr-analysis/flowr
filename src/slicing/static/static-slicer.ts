@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { assertUnreachable, guard } from '../../util/assert';
 import { log } from '../../util/log';
 import type { NodeToSlice, SliceResult } from './slicer-types';
@@ -374,7 +375,7 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 			}
 			for(const [innerCall, vertex] of Dataflow.callsIn(callee, graph)) {
 				/* a function run again by other calls decides its dispatches anew */
-				const key = `${innerCall}:${chain.join(',')}`;
+				const key = JSON.stringify([innerCall, ...chain]);
 				if(first || ((vertex.ruledOutAt !== undefined || contexts.has(innerCall)) && !decided.has(key))) {
 					decided.add(key);
 					calls.push([innerCall, chain]);
@@ -412,8 +413,8 @@ function definitionWithHolders(definition: NodeId | undefined, idMap: AstIdMap, 
  * undefined, and so does one that reads nothing at all (a name the program never defines). Reading a built-in
  * is no such case, as those are there whatever the slice contains.
  */
-function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly string[] {
-	const free = new Set<string>();
+function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly BrandedIdentifier[] {
+	const free = new Set<BrandedIdentifier>();
 	for(const id of slice) {
 		if(!DfgVertex.isUse(graph.getVertex(id))) {
 			continue;

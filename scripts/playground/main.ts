@@ -2884,7 +2884,7 @@ async function analyze(): Promise<number> {
 	const parts = sliced[0]?.reconstruct?.files?.filter(f => f.code.trim() !== '').map(f => ({ path: f.path ?? 'unknown', code: f.code }));
 	const reconstructed = sliced[0]?.reconstruct?.code;
 	const code: Rebuilt | undefined = parts ?? (typeof reconstructed === 'object' ? reconstructed.join('\n') : reconstructed);
-	const linesOf = (result: Iterable<string | number> = []) => uniqueArray([...result]
+	const linesOf = (result: Iterable<NodeId | number> = []) => uniqueArray([...result]
 		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
 		.filter((l): l is number => typeof l === 'number'));
 	const sliceLinesOf = sliced.map(r => linesOf(r.slice?.result)).reduce<number[] | undefined>((a, b) => a?.filter(l => b.includes(l)) ?? b, undefined) ?? [];

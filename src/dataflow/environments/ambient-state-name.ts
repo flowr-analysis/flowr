@@ -1,4 +1,4 @@
-import type { Identifier } from './identifier';
+import type { Identifier, BrandedIdentifier } from './identifier';
 
 /** The states made of named entries: setting one entry replaces its pseudo variable `#<state>:<key>`, adds to the accumulating `all` of the state, and an entry we cannot name adds to `#<state>:*` instead (`options(op)`, `Sys.setenv(...)`). */
 export enum KeyedState {
@@ -15,7 +15,7 @@ export enum KeyedState {
 }
 
 /** The pseudo variable all writes to a {@link KeyedState} add to. */
-const AllOfKeyedState: Readonly<Record<KeyedState, string>> = {
+const AllOfKeyedState: Readonly<Record<KeyedState, AmbientStateName>> = {
 	[KeyedState.Option]:     '#options',
 	[KeyedState.Env]:        '#env',
 	[KeyedState.Locale]:     '#locale',
@@ -30,6 +30,9 @@ const EntryPrefix: Readonly<Partial<Record<KeyedState, string>>> = {
 
 /** The key standing for any entry of a {@link KeyedState} we cannot name. */
 export const UnknownKey = '*';
+
+/** The name of a global pseudo variable tracking a part of the global state, see the helper of the same name. */
+export type AmbientStateName = `#${string}` & BrandedIdentifier;
 
 /** Graphics parameters, options and other global state, tracked as global pseudo variables (`#...`) so readers link to the calls that set them. */
 export const AmbientStateName = {
@@ -75,40 +78,31 @@ export const AmbientStateName = {
 	/** the finalizers registered (`reg.finalizer`) and the removals that may release their objects, which `gc()` may run */
 	finalizers:           '#finalizers',
 	/** marks `name` as bound to a text connection opened for writing, whose writes change it */
-	textConnection(this: void, name: string): string {
-		return `#text-connection:${name}`;
+	textConnection(this: void, name: BrandedIdentifier): AmbientStateName {
+		return `#text-connection:${name}` as const;
 	},
 	/** the file named `stem` (`data` for `out/data.csv`), so a read of a named file only sees writes that may hit it */
-	file(this: void, stem: string): string {
-		return `#file:${stem}`;
+	file(this: void, stem: string): AmbientStateName {
+		return `#file:${stem}` as const;
 	},
 	/** the pseudo variable holding the option `key`; setting the option replaces it */
-	option(this: void, key: string): string {
+	option(this: void, key: BrandedIdentifier): AmbientStateName {
 		return AmbientStateName.keyed(KeyedState.Option, key);
 	},
 	/** the pseudo variable of the entry `key` of a state, like `#env:PATH`; setting the entry replaces it */
-	keyed(this: void, state: KeyedState, key: string): string {
+	keyed(this: void, state: KeyedState, key: BrandedIdentifier): AmbientStateName {
 		const prefix = EntryPrefix[state];
-		return `#${state}:${prefix !== undefined && key.startsWith(prefix) ? key.slice(prefix.length) : key}`;
+		return `#${state}:${prefix !== undefined && key.startsWith(prefix) ? key.slice(prefix.length) : key}` as const;
 	},
 	/** the pseudo variable every write to the state adds to, like `#env` */
-	allOf(this: void, state: KeyedState): string {
+	allOf(this: void, state: KeyedState): AmbientStateName {
 		return AllOfKeyedState[state];
 	},
-	/** the entry of a state a pseudo variable stands for (`#env:PATH` is `PATH` of `env`), `undefined` for any other */
-	entryOf(this: void, name: string): { readonly state: KeyedState, readonly key: string } | undefined {
-		for(const state of Object.values(KeyedState)) {
-			if(name.startsWith(`#${state}:`)) {
-				return { state, key: name.slice(state.length + 2) };
-			}
-		}
-		return undefined;
-	},
 	/** whether `name` is one of these pseudo variables */
-	is(this: void, name: Identifier | undefined): name is string {
+	is(this: void, name: Identifier | undefined): name is AmbientStateName {
 		return typeof name === 'string' && name.startsWith('#');
 	}
 } as const;
 
 /** The pseudo variables that only grow, because every write to their state adds to them. */
-export const KeyedAccumulators: readonly string[] = Object.values(KeyedState).flatMap(state => [AmbientStateName.allOf(state), AmbientStateName.keyed(state, UnknownKey)]);
+export const KeyedAccumulators: readonly AmbientStateName[] = Object.values(KeyedState).flatMap(state => [AmbientStateName.allOf(state), AmbientStateName.keyed(state, UnknownKey)]);

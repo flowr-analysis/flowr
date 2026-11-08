@@ -13,7 +13,7 @@ import { runInterpreter } from './inference';
 import { FlowrConfig } from '../../../src/config';
 import { FunctionArgument } from '../../../src/dataflow/graph/graph';
 import type { OnCall } from '../../../src/control-flow/semantic-cfg-guided-visitor';
-import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../src/dataflow/environments/identifier';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 
 /** The single abstract domain of the analyses below, i.e. an interval per AST node */
@@ -99,7 +99,7 @@ class CallFollowingVisitor extends AbstractInterpreter<IntervalDomains> {
 
 /** Records every call the analysis is handed, whether or not the traversal steps into it. */
 class CallCountingVisitor extends AbstractInterpreter<IntervalDomains> {
-	public readonly calls: string[] = [];
+	public readonly calls: BrandedIdentifier[] = [];
 
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, IntervalAnalysis);

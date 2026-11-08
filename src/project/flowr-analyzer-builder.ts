@@ -1,5 +1,4 @@
-import { type ConfigValueAt, type EngineConfig, type EngineConfigPath, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
-import type { DeepWritable } from 'ts-essentials';
+import { type WritableFlowrConfig, type ConfigValueAt, type EngineConfig, type EngineConfigPath, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -35,7 +34,7 @@ import { makePlugin } from './plugins/plugin-registry';
  * ```
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig:                 DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private flowrConfig:                 WritableFlowrConfig = FlowrConfig.default();
 	private parser?:                     KnownParser;
 	private input?:                      Omit<NormalizeRequiredInput, 'context'>;
 	private readonly plugins:            Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
@@ -64,7 +63,7 @@ export class FlowrAnalyzerBuilder {
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
-	public amendConfig(func: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): this {
+	public amendConfig(func: (config: WritableFlowrConfig) => FlowrConfig | void): this {
 		this.flowrConfig = FlowrConfig.amend(this.flowrConfig, func);
 		return this;
 	}

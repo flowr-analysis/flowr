@@ -1,9 +1,9 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition, BuiltInReplacementDefinition } from '../built-in-config';
 import { OperatorDefinitions } from './base-operators';
 import { UnnamedFunctionCallPrefix } from '../built-in-kinds';
-import { Identifier, PkgName } from '../identifier';
+import { Identifier, PkgName, type BrandedIdentifier } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
-import { ArgProps, CallProps, type FnSig, type StatedProps } from '../built-in-props';
+import { ArgProps, CallProps } from '../built-in-props';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import type { StatedSignature } from './shared-configs';
 import { statedSignatureOf, markGenerics, markPrimitives } from './shared-configs';
@@ -31,10 +31,10 @@ export type { StatedSignature } from './shared-configs';
 export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics } from './shared-configs';
 
 /** What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be defined for several packages, so all of them are here; {@link statedSignatureOf} picks by package). */
-export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig): Map<string, StatedSignature[]> {
-	const stated = new Map<string, StatedSignature[]>();
+export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig): Map<BrandedIdentifier, StatedSignature[]> {
+	const stated = new Map<BrandedIdentifier, StatedSignature[]>();
 	for(const definition of definitions) {
-		const info = (definition as { config?: StatedProps & { sig?: FnSig } }).config;
+		const info = definition.type === 'constant' ? undefined : definition.config;
 		for(const id of definition.names) {
 			const name = String(Identifier.getName(id));
 			const pkg = String(Identifier.getNamespace(id) ?? PkgName.Base);
@@ -82,7 +82,7 @@ export const WrittenBuiltinDefinitions = [
 export const DefaultBuiltinConfig = markPrimitives(markGenerics(WrittenBuiltinDefinitions));
 
 /** Expensive and naive lookup of the default processor for a built-in function name */
-export function getDefaultProcessor(name: string): BuiltInProcName | undefined {
+export function getDefaultProcessor(name: BrandedIdentifier): BuiltInProcName | undefined {
 	if(name.startsWith(UnnamedFunctionCallPrefix)) {
 		return BuiltInProcName.Unnamed;
 	}
@@ -90,7 +90,7 @@ export function getDefaultProcessor(name: string): BuiltInProcName | undefined {
 	const named = (n: Identifier, base: boolean) => Identifier.getName(n) === name && (!base || AttachedBasePackageSet.has(Identifier.getNamespace(n) ?? PkgName.Base));
 	const matches = (base: boolean) => (def: typeof DefaultBuiltinConfig[number]) =>
 		((def.names as readonly Identifier[]).some(n => named(n, base)) && def.type !== 'constant')
-		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${Identifier.getName(n)}${d}`)).includes(name));
+		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map((n): BrandedIdentifier => `${Identifier.getName(n)}${d}`)).includes(name));
 	const fn = (DefaultBuiltinConfig.find(matches(true)) ?? DefaultBuiltinConfig.find(matches(false))) as BuiltInFunctionDefinition<BuiltInProcName.Default | BuiltInProcName.DefaultReadAllArgs> | BuiltInReplacementDefinition | undefined;
 	if(fn?.type === 'replacement') {
 		return BuiltInProcName.Replacement;

@@ -14,7 +14,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { EdgeType } from '../../dataflow/graph/edge';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { ArgProp, type FnSig } from '../../dataflow/environments/built-in-props';
 import { type AmbientStateAccess, AmbientStateAccessType } from '../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
 import { OperatorUsedAs } from '../../dataflow/environments/default-builtin-config/base-operators';
@@ -28,7 +28,7 @@ export interface RemovalSliceResult {
 }
 
 type StatedConfig = { readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[], readonly sig?: FnSig };
-function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<string> {
+function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<BrandedIdentifier> {
 	return new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function' && stated((d.config ?? {}) as StatedConfig) ? d.names.map(name => String(Identifier.getName(name))) : []));
 }
 const accesses = (type: AmbientStateAccessType) => (config: StatedConfig) => [config.ambient ?? []].flat().some(access => access.type === type);
@@ -72,7 +72,7 @@ function callOf(node: RNodeWithParent | undefined): RNodeWithParent | undefined 
 	return node;
 }
 
-const isNamed = (node: RNodeWithParent | undefined, names: ReadonlySet<string>) => RFunctionCall.isNamed(callOf(node), names);
+const isNamed = (node: RNodeWithParent | undefined, names: ReadonlySet<BrandedIdentifier>) => RFunctionCall.isNamed(callOf(node), names);
 
 /** the calls from a device to its `dev.off()` around each criterion, assignments in between stay as the rest may use them */
 function deviceWindows(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNodeWithParent>, ids: readonly NodeId[]): NodeId[] {

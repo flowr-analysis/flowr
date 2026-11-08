@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_32_of_32_the_32_Analyzer)  
@@ -25,7 +25,7 @@ _<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-anal
 <h2 id="Overview">Overview</h2>
 
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
-your journey starts with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L37"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> (further described in [Builder Configuration](#Builder_Configuration) below).
+your journey starts with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L36"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> (further described in [Builder Configuration](#Builder_Configuration) below).
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
 what [engine](https://github.com/flowr-analysis/flowr/wiki/Engines) to use for the analysis.
 
@@ -38,9 +38,9 @@ When building the <a href="https://github.com/flowr-analysis/flowr/tree/main/src
 
 The builder provides two methods for building the analyzer:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L181"><code><span title="Create the FlowrAnalyzer instance using the given information. Please note that the only reason this is async is that if no parser is set, we need to retrieve the default engine instance which is an async operation. If you have already initialized the engine (e.g., with TreeSitterExecutor#initTreeSitter ), you can use the synchronous version FlowrAnalyzerBuilder#buildSync instead.">FlowrAnalyzerBuilder::<b>build</b></span></code></a>\
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L180"><code><span title="Create the FlowrAnalyzer instance using the given information. Please note that the only reason this is async is that if no parser is set, we need to retrieve the default engine instance which is an async operation. If you have already initialized the engine (e.g., with TreeSitterExecutor#initTreeSitter ), you can use the synchronous version FlowrAnalyzerBuilder#buildSync instead.">FlowrAnalyzerBuilder::<b>build</b></span></code></a>\
 	for an asynchronous build process that also initializes the engine if needed
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L202"><code><span title="Synchronous version of FlowrAnalyzerBuilder#build , please only use this if you have set the parser using FlowrAnalyzerBuilder#setParser before, otherwise an error will be thrown.">FlowrAnalyzerBuilder::<b>buildSync</b></span></code></a>\
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L201"><code><span title="Synchronous version of FlowrAnalyzerBuilder#build , please only use this if you have set the parser using FlowrAnalyzerBuilder#setParser before, otherwise an error will be thrown.">FlowrAnalyzerBuilder::<b>buildSync</b></span></code></a>\
 	for a synchronous build process,
 	which requires that the engine (e.g., TreeSitter) has already been initialized before calling this method.
 	Yet, as Engines only have to be initialized once per process, this method is often more convenient to use.
@@ -118,14 +118,14 @@ The following sections highlight some of the most important configuration option
 <h3 id="Configuring_32_flowR">Configuring flowR</h3>
 
 You can fundamentally change the behavior of flowR using the [config file](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr),
-embedded in the interface <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L119"><code><span title="The configuration file format for flowR.">FlowrConfig</span></code></a>.
+embedded in the interface <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L125"><code><span title="The configuration file format for flowR.">FlowrConfig</span></code></a>.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L78"><code><span title="Overwrite the configuration used by the resulting analyzer. This also unloads all default plugins and reloads them as set in the new config if the withDefaultPlugins flag was set in the constructor">FlowrAnalyzerBuilder::<b>setConfig</b></span></code></a> to set a complete configuration
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L101"><code><span title="Set a specific value in the configuration used by the resulting analyzer. Besides the configuration's own paths this takes an EngineConfigPath , so an engine option that lives in an array entry is reachable the same way as everything else:">FlowrAnalyzerBuilder::<b>configure</b></span></code></a> to set the value of a specific key in the config
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L67"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a> to amend the default configuration
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L77"><code><span title="Overwrite the configuration used by the resulting analyzer. This also unloads all default plugins and reloads them as set in the new config if the withDefaultPlugins flag was set in the constructor">FlowrAnalyzerBuilder::<b>setConfig</b></span></code></a> to set a complete configuration
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L100"><code><span title="Set a specific value in the configuration used by the resulting analyzer. Besides the configuration's own paths this takes an EngineConfigPath , so an engine option that lives in an array entry is reachable the same way as everything else:">FlowrAnalyzerBuilder::<b>configure</b></span></code></a> to set the value of a specific key in the config
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L66"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a> to amend the default configuration
 
-By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L624"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
+By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L630"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
 
 > [!NOTE]
 > During the analysis with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L240"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can also access the configuration with
@@ -136,19 +136,19 @@ By default, the builder uses flowR's standard configuration obtained with <a hre
 FlowR supports multiple [engines](https://github.com/flowr-analysis/flowr/wiki/Engines) for parsing and analyzing R code.
 With the builder, you can select the engine to use with:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L129"><code><span title="Set the engine and hence the parser that will be used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setParser if you do not have a parser instance at hand.">FlowrAnalyzerBuilder::<b>setEngine</b></span></code></a> to set the desired engine.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L118"><code><span title="Set the parser instance used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setEngine if you already have a parser instance. Please be aware, that if you want to parallelize multiple analyzers, there should be separate parser instances.">FlowrAnalyzerBuilder::<b>setParser</b></span></code></a> to set a specific parser implementation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L128"><code><span title="Set the engine and hence the parser that will be used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setParser if you do not have a parser instance at hand.">FlowrAnalyzerBuilder::<b>setEngine</b></span></code></a> to set the desired engine.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L117"><code><span title="Set the parser instance used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setEngine if you already have a parser instance. Please be aware, that if you want to parallelize multiple analyzers, there should be separate parser instances.">FlowrAnalyzerBuilder::<b>setParser</b></span></code></a> to set a specific parser implementation.
 
 By default, the builder uses the TreeSitter engine with the TreeSitter parser.
 The builder also takes care to initialize the engine if needed during the asynchronous build process
-with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L181"><code><span title="Create the FlowrAnalyzer instance using the given information. Please note that the only reason this is async is that if no parser is set, we need to retrieve the default engine instance which is an async operation. If you have already initialized the engine (e.g., with TreeSitterExecutor#initTreeSitter ), you can use the synchronous version FlowrAnalyzerBuilder#buildSync instead.">FlowrAnalyzerBuilder::<b>build</b></span></code></a>.
-If you want to use the synchronous build process with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L202"><code><span title="Synchronous version of FlowrAnalyzerBuilder#build , please only use this if you have set the parser using FlowrAnalyzerBuilder#setParser before, otherwise an error will be thrown.">FlowrAnalyzerBuilder::<b>buildSync</b></span></code></a>,
+with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L180"><code><span title="Create the FlowrAnalyzer instance using the given information. Please note that the only reason this is async is that if no parser is set, we need to retrieve the default engine instance which is an async operation. If you have already initialized the engine (e.g., with TreeSitterExecutor#initTreeSitter ), you can use the synchronous version FlowrAnalyzerBuilder#buildSync instead.">FlowrAnalyzerBuilder::<b>build</b></span></code></a>.
+If you want to use the synchronous build process with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L201"><code><span title="Synchronous version of FlowrAnalyzerBuilder#build , please only use this if you have set the parser using FlowrAnalyzerBuilder#setParser before, otherwise an error will be thrown.">FlowrAnalyzerBuilder::<b>buildSync</b></span></code></a>,
 please ensure that the engine has already been initialized before calling this method.
 
 <h3 id="Configuring_32_Plugins">Configuring Plugins</h3>
 
 There are various ways for you to register plugins with the builder, exemplified by the following snippet
-relying on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L150"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a> method:
+relying on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L149"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a> method:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder(false)
@@ -170,8 +170,8 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., `['file:rmd', [/.*.rmd/i]]` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin.ts#L9"><code><span title="The plugin provides support for R Markdown (.rmd) files">FlowrAnalyzerRmdFilePlugin</span></code></a>).\
    This will also use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L187"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> function under the hood to create the plugin instance.
 
-Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L468"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
-If you want to unregister specific plugins, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L164"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a> method.
+Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L474"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
+If you want to unregister specific plugins, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L163"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a> method.
 
 > [!NOTE]
 > If you directly access the API, please prefer creating the objects yourself by instantiating the respective classes instead of relying on the plugin registry.
@@ -186,7 +186,7 @@ For more information on the different plugin types and how to create new plugins
 
 The builder provides a plethora of methods to configure the resulting analyzer instance:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L67"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L66"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a>\
 Apply an amendment to the configuration the builder currently holds.
 This is mostly intended for more complex logic to transform the config.
 Please consider using
@@ -195,13 +195,13 @@ to set/amend individual values
 Per default, the value returned by
 <code>FlowrConfig.default</code>
 is used.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L101"><code><span title="Set a specific value in the configuration used by the resulting analyzer. Besides the configuration's own paths this takes an EngineConfigPath , so an engine option that lives in an array entry is reachable the same way as everything else:">FlowrAnalyzerBuilder::<b>configure</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L100"><code><span title="Set a specific value in the configuration used by the resulting analyzer. Besides the configuration's own paths this takes an EngineConfigPath , so an engine option that lives in an array entry is reachable the same way as everything else:">FlowrAnalyzerBuilder::<b>configure</b></span></code></a>\
 Set a specific value in the configuration used by the resulting analyzer.
 Besides the configuration's own paths this takes an
 <code>EngineConfigPath</code>
 , so an engine option that
 lives in an array entry is reachable the same way as everything else:
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L150"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L149"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a>\
 Register one or multiple additional plugins.
 For the default plugin set, please refer to
 <code>FlowrDefaultPlugins</code>
@@ -209,29 +209,29 @@ For the default plugin set, please refer to
 by passing `true` to the
 <code>FlowrAnalyzerBuilder</code>
 constructor.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L78"><code><span title="Overwrite the configuration used by the resulting analyzer. This also unloads all default plugins and reloads them as set in the new config if the withDefaultPlugins flag was set in the constructor">FlowrAnalyzerBuilder::<b>setConfig</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L77"><code><span title="Overwrite the configuration used by the resulting analyzer. This also unloads all default plugins and reloads them as set in the new config if the withDefaultPlugins flag was set in the constructor">FlowrAnalyzerBuilder::<b>setConfig</b></span></code></a>\
 Overwrite the configuration used by the resulting analyzer.
 This also unloads all default plugins and reloads them as set in the new config
 if the withDefaultPlugins flag was set in the constructor
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L129"><code><span title="Set the engine and hence the parser that will be used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setParser if you do not have a parser instance at hand.">FlowrAnalyzerBuilder::<b>setEngine</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L128"><code><span title="Set the engine and hence the parser that will be used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setParser if you do not have a parser instance at hand.">FlowrAnalyzerBuilder::<b>setEngine</b></span></code></a>\
 Set the engine and hence the parser that will be used by the analyzer.
 This is an alternative to
 <code>FlowrAnalyzerBuilder#setParser</code>
 if you do not have a parser instance at hand.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L138"><code><span title="Additional parameters for the analyses.">FlowrAnalyzerBuilder::<b>setInput</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L137"><code><span title="Additional parameters for the analyses.">FlowrAnalyzerBuilder::<b>setInput</b></span></code></a>\
 Additional parameters for the analyses.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L118"><code><span title="Set the parser instance used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setEngine if you already have a parser instance. Please be aware, that if you want to parallelize multiple analyzers, there should be separate parser instances.">FlowrAnalyzerBuilder::<b>setParser</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L117"><code><span title="Set the parser instance used by the analyzer. This is an alternative to FlowrAnalyzerBuilder#setEngine if you already have a parser instance. Please be aware, that if you want to parallelize multiple analyzers, there should be separate parser instances.">FlowrAnalyzerBuilder::<b>setParser</b></span></code></a>\
 Set the parser instance used by the analyzer.
 This is an alternative to
 <code>FlowrAnalyzerBuilder#setEngine</code>
 if you already have a parser instance.
 Please be aware, that if you want to parallelize multiple analyzers, there should be separate parser instances.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L164"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L163"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a>\
 Remove one or multiple plugins.
 
 To build the analyzer after you have configured the builder, you can use one of the following:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L181"><code><span title="Create the FlowrAnalyzer instance using the given information. Please note that the only reason this is async is that if no parser is set, we need to retrieve the default engine instance which is an async operation. If you have already initialized the engine (e.g., with TreeSitterExecutor#initTreeSitter ), you can use the synchronous version FlowrAnalyzerBuilder#buildSync instead.">FlowrAnalyzerBuilder::<b>build</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L180"><code><span title="Create the FlowrAnalyzer instance using the given information. Please note that the only reason this is async is that if no parser is set, we need to retrieve the default engine instance which is an async operation. If you have already initialized the engine (e.g., with TreeSitterExecutor#initTreeSitter ), you can use the synchronous version FlowrAnalyzerBuilder#buildSync instead.">FlowrAnalyzerBuilder::<b>build</b></span></code></a>\
 Create the
 <code>FlowrAnalyzer</code>
 instance using the given information.
@@ -243,7 +243,7 @@ If you have already initialized the engine (e.g., with
 you can use the synchronous version
 <code>FlowrAnalyzerBuilder#buildSync</code>
 instead.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L202"><code><span title="Synchronous version of FlowrAnalyzerBuilder#build , please only use this if you have set the parser using FlowrAnalyzerBuilder#setParser before, otherwise an error will be thrown.">FlowrAnalyzerBuilder::<b>buildSync</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L201"><code><span title="Synchronous version of FlowrAnalyzerBuilder#build , please only use this if you have set the parser using FlowrAnalyzerBuilder#setParser before, otherwise an error will be thrown.">FlowrAnalyzerBuilder::<b>buildSync</b></span></code></a>\
 Synchronous version of
 <code>FlowrAnalyzerBuilder#build</code>
 , please only use this if you have set the parser using
@@ -304,7 +304,7 @@ Currently, flowR supports the following plugin types built-in:
 | <code>project-discovery:ignore-files</code> | <code>project-discovery</code> | Wraps a project discovery plugin and filters results by .gitignore and .Rbuildignore rules. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin.ts#L52"><code><span title="Decorator around any FlowrAnalyzerProjectDiscoveryPlugin that filters the discovered files by the ignore files found at the project root. Ignore files that do not exist are skipped, so with none of them present the inner plugin's results are returned unchanged. Use FlowrAnalyzerGitignoreProjectDiscoveryPlugin ('project-discovery:gitignore'), FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin ('projec...">FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin</span></code></a> |
 | <code>project-discovery:rbuildignore</code> | <code>project-discovery</code> | Wraps a project discovery plugin and filters results by .Rbuildignore rules. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin.ts#L100"><code><span title="Filters the discovered files by the .Rbuildignore at the package root, see FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin .">FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin</span></code></a> |
 | <code>versions:description</code> | <code>package-versions</code> | Extracts package versions from DESCRIPTION files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin.ts#L11"><code><span title="This plugin extracts package versions from R DESCRIPTION files. It looks at the Depends and Imports fields to find package names and their version constraints.">FlowrAnalyzerPackageVersionsDescriptionFilePlugin</span></code></a> |
-| <code>versions:library</code> | <code>package-versions</code> | Recovers the exports of packages no database knows from their installed copy. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-library-plugin.ts#L77"><code><span title="Fills in packages no signature database knows from the copy installed on this machine: a package that CRAN archived (maptools, rgdal, ...) is in no database, but if it is installed, its NAMESPACE states its exports just as well. Off unless solver.sigdb.installedLibrary.enabled says otherwise, and consulted only for a package nothing else could resolve, so it never overrides a database entry.">FlowrAnalyzerPackageVersionsLibraryPlugin</span></code></a> |
+| <code>versions:library</code> | <code>package-versions</code> | Recovers the exports of packages no database knows from their installed copy. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-library-plugin.ts#L78"><code><span title="Fills in packages no signature database knows from the copy installed on this machine: a package that CRAN archived (maptools, rgdal, ...) is in no database, but if it is installed, its NAMESPACE states its exports just as well. Off unless solver.sigdb.installedLibrary.enabled says otherwise, and consulted only for a package nothing else could resolve, so it never overrides a database entry.">FlowrAnalyzerPackageVersionsLibraryPlugin</span></code></a> |
 | <code>versions:namespace</code> | <code>package-versions</code> | Extracts package versions from NAMESPACE files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin.ts#L10"><code>FlowrAnalyzerPackageVersionsNamespaceFilePlugin</code></a> |
 | <code>versions:on-demand</code> | <code>package-versions</code> | Fetches the sources of packages no database knows from CRAN, Bioconductor, or GitHub. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-on-demand-plugin.ts#L123"><code><span title="Recovers packages no signature database knows from their sources when the analyzed code uses them: before the dataflow is built it fetches the source of every package the code loads or names with :: that nothing else resolves, from GitHub (the repository the project installs it from or the configuration names), CRAN, or Bioconductor, and serves their exports and the formals of their functions. Off...">FlowrAnalyzerPackageVersionsOnDemandPlugin</span></code></a> |
 | <code>versions:packrat</code> | <code>package-versions</code> | Extracts package versions from a packrat.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L53"><code><span title="Reads package versions from a packrat.lock (multi-record DCF, metadata first). packrat pins are exact.">FlowrAnalyzerPackageVersionsPackratPlugin</span></code></a> |
@@ -312,7 +312,7 @@ Currently, flowR supports the following plugin types built-in:
 | <code>versions:rig</code> | <code>package-versions</code> | Extracts package versions from a rig rproj.lock or script lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L157"><code><span title="Reads package versions from a rig lockfile (TOML). rig solves one target per R version and platform, and the targets may pin a package (or R) differently, so only what all targets listing it agree on is a pin.">FlowrAnalyzerPackageVersionsRigPlugin</span></code></a> |
 | <code>versions:rv</code> | <code>package-versions</code> | Extracts package versions from an rv.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L108"><code><span title="Reads package versions from an rv.lock (the resolved rv project lockfile, TOML). rv pins are exact.">FlowrAnalyzerPackageVersionsRvPlugin</span></code></a> |
 | <code>versions:session-info</code> | <code>package-versions</code> | Extracts package and R versions from a pasted sessionInfo() output block. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-session-info-plugin.ts#L26"><code><span title="Reads package (and R) versions from a pasted sessionInfo() output block within a source file (typically inside a comment). This is how R users record a reproducible environment, so when present it pins exact versions, just like a lockfile. Detection is conservative: we only act once we see the R version line and/or one of sessionInfo()'s package-listing headers, and additionally require at least o...">FlowrAnalyzerPackageVersionsSessionInfoPlugin</span></code></a> |
-| <code>versions:sigdb</code> | <code>package-versions</code> | Resolves library exports (and versioned base R) from precomputed flowr-sigdb databases. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L104"><code><span title="Resolves library(pkg) / use(pkg, fn) from precomputed flowr-sigdb databases via the PackageSignatureSource contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a .br/manifest source needs preload ; on by default.">FlowrAnalyzerPackageVersionsSigDbPlugin</span></code></a> |
+| <code>versions:sigdb</code> | <code>package-versions</code> | Resolves library exports (and versioned base R) from precomputed flowr-sigdb databases. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin.ts#L107"><code><span title="Resolves library(pkg) / use(pkg, fn) from precomputed flowr-sigdb databases via the PackageSignatureSource contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a .br/manifest source needs preload ; on by default.">FlowrAnalyzerPackageVersionsSigDbPlugin</span></code></a> |
 | <code>versions:uvr</code> | <code>package-versions</code> | Extracts package versions from a uvr.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L125"><code><span title="Reads package versions from a uvr.lock (TOML). uvr pins are exact, the dev-dependencies among them.">FlowrAnalyzerPackageVersionsUvrPlugin</span></code></a> |
 
 <h3 id="Plugin_32_Types">Plugin Types</h3>
@@ -368,7 +368,7 @@ This information is then used to setup the R environment for the analysis correc
 For example, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin.ts#L11"><code><span title="This plugin extracts package versions from R DESCRIPTION files. It looks at the Depends and Imports fields to find package names and their version constraints.">FlowrAnalyzerPackageVersionsDescriptionFilePlugin</span></code></a> extracts package version information from `DESCRIPTION` files
 to identify the required packages and their versions.
 
-All dependency identification plugins should conform to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin.ts#L23"><code><span title="This is the base class for all plugins that identify package and dependency versions used in the project. These plugins interplay with the FlowrAnalyzerDependenciesContext to gather information about the packages used in the project. See DefaultFlowrAnalyzerPackageVersionsPlugin for the no-op default implementation.">FlowrAnalyzerPackageVersionsPlugin</span></code></a> base class.
+All dependency identification plugins should conform to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin.ts#L24"><code><span title="This is the base class for all plugins that identify package and dependency versions used in the project. These plugins interplay with the FlowrAnalyzerDependenciesContext to gather information about the packages used in the project. See DefaultFlowrAnalyzerPackageVersionsPlugin for the no-op default implementation.">FlowrAnalyzerPackageVersionsPlugin</span></code></a> base class.
 
 <h4 id="Loading_32_Order">Loading Order</h4>
 
@@ -387,7 +387,7 @@ In general, most plugins operate on the [context information](#Context_Informati
 Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
 
 Once you have your plugin you should register it with a sensible name using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L158"><code><span title="Register a new Flowr Analyzer plugin for the registry, to be used by the FlowrAnalyzerBuilder and FlowrAnalyzer .">registerPluginMaker</span></code></a> function.
-This will allow users to register your plugin easily by name using the builder's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L150"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a> method.
+This will allow users to register your plugin easily by name using the builder's <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L149"><code><span title="Register one or multiple additional plugins. For the default plugin set, please refer to FlowrDefaultPlugins , they can be registered by passing true to the FlowrAnalyzerBuilder constructor.">FlowrAnalyzerBuilder::<b>registerPlugins</b></span></code></a> method.
 Otherwise, users will have to provide an instance of your plugin class directly.
 
 <h2 id="Context_32_Information">Context Information</h2>
@@ -569,9 +569,9 @@ that allows you to query for a specific dependency by name.
 <h3 id="Functions_32_Context">Functions Context</h3>
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L126"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> also provides access to the associated
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L49"><code><span title="This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata. It works in conjunction with FlowrAnalyzerPackageVersionsPlugin s to gather and maintain this information. If you are interested in inspecting these functions, refer to ReadOnlyFlowrAnalyzerFunctionsContext .">FlowrAnalyzerFunctionsContext</span></code></a> via its `functionsContext` attribute.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L51"><code><span title="This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata. It works in conjunction with FlowrAnalyzerPackageVersionsPlugin s to gather and maintain this information. If you are interested in inspecting these functions, refer to ReadOnlyFlowrAnalyzerFunctionsContext .">FlowrAnalyzerFunctionsContext</span></code></a> via its `functionsContext` attribute.
 
- * [FlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L49)   
+ * [FlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L51)   
    This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata.
    It works in conjunction with
    <code>FlowrAnalyzerPackageVersionsPlugin</code>
@@ -579,7 +579,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
    If you are interested in inspecting these functions, refer to
    <code>ReadOnlyFlowrAnalyzerFunctionsContext</code>
    .
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L49">src/project/context/flowr-analyzer-functions-context.ts#L49</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L51">src/project/context/flowr-analyzer-functions-context.ts#L51</a>)</i>
    
     <details><summary>View more (AbstractFlowrAnalyzerContext, ReadOnlyFlowrAnalyzerFunctionsContext)</summary>
 
@@ -597,7 +597,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
      to access the full project context.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/abstract-flowr-analyzer-context.ts#L12">src/project/context/abstract-flowr-analyzer-context.ts#L12</a>)</i>
      
-   * **[ReadOnlyFlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L32)**   
+   * **[ReadOnlyFlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L33)**   
      This is a read-only interface to the
      <code>FlowrAnalyzerFunctionsContext</code>
      .
@@ -609,12 +609,12 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/conte
      and want to modify the functions, you can use the
      <code>FlowrAnalyzerFunctionsContext</code>
      directly.
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L32">src/project/context/flowr-analyzer-functions-context.ts#L32</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L33">src/project/context/flowr-analyzer-functions-context.ts#L33</a>)</i>
      
     </details>
 
 Probably the most important method is
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L99"><code>FlowrAnalyzerFunctionsContext::<i>getFunctionInfo</i></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L101"><code>FlowrAnalyzerFunctionsContext::<i>getFunctionInfo</i></code></a>
 that allows you to query for a specific function by name.
 
 <h3 id="Environment_32_Context">Environment Context</h3>

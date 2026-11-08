@@ -10,7 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -52,7 +52,7 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 }
 
 /** @returns whether `read` sees a definition */
-function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: DefaultMap<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: DefaultMap<BrandedIdentifier | undefined, IdentifierReference[]>, nextGraph: DataflowGraph, activeReads: IdentifierReference[]): boolean {
 	const readName = Identifier.boundAs(read.name);
 	const probableTarget = readName ? Resolve.byNameAndType(readName, scopeOf(read, environments), read.type) : undefined;
 
@@ -110,8 +110,8 @@ interface TransitiveCallee<Fn = DataflowGraphVertexInfo> {
 function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<TransitiveCallee<DataflowGraphVertexFunctionDefinition>> {
 	const seen = new Set<NodeId>();
 	const stack: TransitiveCallee[] = initial.map(fn => ({ fn, direct: true }));
-	while(stack.length > 0) {
-		const { fn, direct, chain, cds } = stack.pop() as TransitiveCallee;
+	for(let next = stack.pop(); next !== undefined; next = stack.pop()) {
+		const { fn, direct, chain, cds } = next;
 		if(!DfgVertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
@@ -209,7 +209,7 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 }
 
 /** Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run, with any that is no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it. */
-function printedBy(classes: readonly (readonly string[])[], found: readonly IdentifierDefinition[], graph: DataflowGraph): IdentifierDefinition[] {
+function printedBy(classes: readonly (readonly ClassName[])[], found: readonly IdentifierDefinition[], graph: DataflowGraph): IdentifierDefinition[] {
 	const methodOf = (d: IdentifierDefinition) => d.name === undefined ? undefined : /^print\.(.+)$/.exec(Identifier.getName(d.name))?.[1];
 	const { runs, next } = s3Dispatch(classes, found, methodOf);
 	for(const [method, after] of next) {
@@ -299,7 +299,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			const shadowing = localDefs.filter(d => isNotUndefined(d.name) && idMap.has(functionCall) && RNode.findEnclosing(d.nodeId, idMap, n => n.info.id === functionCall) === undefined);
 			if(shadowing.length > 0) {
 				environment = {
-					current: environment.current.removeAll(shadowing as { name: string }[]),
+					current: environment.current.removeAll(shadowing as { name: BrandedIdentifier }[]),
 					level:   environment.level
 				};
 			}
@@ -321,7 +321,7 @@ export function processExpressionList<OtherInfo>(
 	const idMap = data.completeAst.idMap;
 	/* the writes of this list, to detect whether a read sees one of them */
 	const listEnvironments = new Set<NodeId>();
-	const remainingRead = new DefaultMap<string | undefined, IdentifierReference[]>(() => []);
+	const remainingRead = new DefaultMap<BrandedIdentifier | undefined, IdentifierReference[]>(() => []);
 	const nextGraph = new DataflowGraph(idMap);
 	const out: IdentifierReference[] = [];
 	/* lazily created - `rm` is rare, so rm-free lists never allocate this */

@@ -1,7 +1,7 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../dataflow/environments/identifier';
 import { builtInOf, callsBuiltIn, namesWith } from '../linter-util';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
@@ -29,11 +29,11 @@ export type UndefinedSymbolKind = 'function' | 'variable';
 
 export interface UndefinedSymbolResult extends LintingResult {
 	/** the name that could not be resolved */
-	name:                 string
+	name:                 BrandedIdentifier
 	/** whether the name is used as a function call or as a variable read */
 	kind:                 UndefinedSymbolKind
 	/** packages that export this name - a hint that a `library()`/`::` might be missing (empty if none known) */
-	availableInPackages?: readonly string[]
+	availableInPackages?: readonly BrandedNamespace[]
 }
 
 export interface UndefinedSymbolConfig extends MergeableRecord {
@@ -84,8 +84,8 @@ const DispatchVariables = ['.Generic', '.Method', '.Class'] as const;
  * The names declared by the `utils::globalVariables(names)` calls of the code (resolved by flowR), which is how a
  * package tells `R CMD check` about names it uses through non-standard evaluation, and the variables of R's dispatch.
  */
-function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<string> {
-	const names = new Set<string>(DispatchVariables);
+function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> {
+	const names = new Set<BrandedIdentifier>(DispatchVariables);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const callee = builtInOf(graph, id);
 		const [name, ns] = callee === undefined ? [] : Identifier.toArray(callee);
@@ -109,8 +109,8 @@ const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
  * The names bound by the `assign(name, value)` calls of the code, as far as flowR resolves `name`:
  * `assign(paste0("year", i), ...)` in a loop over `2000:2025` binds `year2000` to `year2025`.
  */
-function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<string> {
-	const names = new Set<string>();
+function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> {
+	const names = new Set<BrandedIdentifier>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(!callsBuiltIn(graph, id, NameBindingFunctions)) {
 			continue;
@@ -126,7 +126,7 @@ function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext):
 }
 
 /** calls that load or attach a package; an unresolved one means we cannot enumerate all exports in scope */
-function libraryLoadFunctions(index: BuiltInIndex): ReadonlySet<string> {
+function libraryLoadFunctions(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
 	return new Set([...namesWith(index, SemanticCallTag.LoadsPackage), ...namesWith(index, SemanticCallTag.AttachesPackage)]);
 }
 
@@ -134,7 +134,7 @@ function libraryLoadFunctions(index: BuiltInIndex): ReadonlySet<string> {
 const ImplicitTestFrameworks = ['testthat', 'tinytest', 'RUnit'];
 
 /** whether name is an export of a default-attached base package (needs no library()) */
-function isAttachedBaseName(name: string): boolean {
+function isAttachedBaseName(name: BrandedIdentifier): boolean {
 	if(BaseDatasets.has(name)) {
 		return true;
 	}
@@ -178,7 +178,7 @@ export const UNDEFINED_SYMBOL = {
 		const testFiles = new Set(ctx.files.getFilesByRole(FileRole.Test).map(f => f.path()));
 		const testExports = new Set(testFiles.size === 0 ? [] : deps.signatureSources().flatMap(
 			src => ImplicitTestFrameworks.flatMap(pkg => src.lookup(pkg)?.exported ?? [])));
-		const isImplicitTestExport = (name: string, file: string | undefined): boolean =>
+		const isImplicitTestExport = (name: BrandedIdentifier, file: string | undefined): boolean =>
 			file !== undefined && testFiles.has(file) && testExports.has(name);
 
 		/* a library() we could not resolve could export any bare name, so such names are suppressed rather than guessed */
@@ -204,16 +204,16 @@ export const UNDEFINED_SYMBOL = {
 		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
 		const src = deps.signatures().sources();
 		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
-		const isExportedByLoadedPackage = memoize((name: string): boolean =>
+		const isExportedByLoadedPackage = memoize((name: BrandedIdentifier): boolean =>
 			loadedPackages.some(p => p.has(name)) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
 
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);
-		const hintPackagesFor = (name: string): string[] =>
+		const hintPackagesFor = (name: BrandedIdentifier): BrandedNamespace[] =>
 			deps.packagesExporting(name).filter(p => !attached.has(p)).slice(0, MaxHintPackages);
 
 		/** shared resolution logic for a name used either as a function call or a variable */
-		const check = (node: RNodeWithParent, name: string, namespace: string | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined => {
+		const check = (node: RNodeWithParent, name: BrandedIdentifier, namespace: BrandedNamespace | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined => {
 			const id = node.info.id;
 			// resolved by flowR itself (local/param/builtin) - never a candidate, so not counted as suppressed
 			if(kind === 'variable' ? useResolvesToDefinitionOrBuiltin(graph, id) : (Dataflow.origin(graph, id)?.length ?? 0) > 0) {

@@ -121,3 +121,14 @@ export enum BuiltInProcName {
 	/** for `with` calls that evaluate an expression inside a named environment, see {@link processWithEnv} */
 	With = 'builtin:with',
 }
+const ProcNamePrefix = 'builtin:';
+
+/** Whether an origin of a call is the name of a built-in processor, rather than, for example, `'function'`. */
+export function isBuiltInProcName(this: void, origin: string): origin is BuiltInProcName {
+	return origin.startsWith(ProcNamePrefix);
+}
+
+/** The processor name without what marks it as one, as the id of the processor's built-in is made from it. */
+export function bareProcName(this: void, proc: BuiltInProcName): string {
+	return proc.slice(ProcNamePrefix.length);
+}

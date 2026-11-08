@@ -1,3 +1,4 @@
+import type { BrandedNamespace, BrandedIdentifier } from '../../../src/dataflow/environments/identifier';
 import {
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
@@ -41,11 +42,11 @@ export function withSigDb(builder: FlowrAnalyzerBuilder, sigDb: SigDbSource): Fl
 }
 
 /** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
-export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
-export function controlledSigDb(pkg: string, exports: readonly string[]): PackageSignatureSource;
-export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PackageSignatureSource {
+export function controlledSigDb(pkgs: Record<BrandedNamespace, readonly BrandedIdentifier[]>): PackageSignatureSource;
+export function controlledSigDb(pkg: BrandedNamespace, exports: readonly BrandedIdentifier[]): PackageSignatureSource;
+export function controlledSigDb(pkgOrPkgs: BrandedNamespace | Record<BrandedNamespace, readonly BrandedIdentifier[]>, exports?: readonly BrandedIdentifier[]): PackageSignatureSource {
 	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
-	const view = (pkg: string): LibraryExports | undefined => pkg in pkgs
+	const view = (pkg: BrandedNamespace): LibraryExports | undefined => pkg in pkgs
 		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], s3Classes: [], s4Classes: [], cran: true }
 		: undefined;
 	return {

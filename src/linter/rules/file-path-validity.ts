@@ -11,7 +11,7 @@ import { happensBefore, happensBeforeEach } from '../../control-flow/happens-bef
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
@@ -71,8 +71,10 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
+const PackageArguments: readonly BrandedIdentifier[] = ['package', 'lib.loc'];
+
 function namesPackage(node: RNode<ParentInformation>): boolean {
-	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && ['package', 'lib.loc'].includes(Identifier.getName(a.name.content)));
+	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && PackageArguments.includes(Identifier.getName(a.name.content)));
 }
 
 async function urlExists(url: string): Promise<boolean> {

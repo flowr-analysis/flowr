@@ -425,8 +425,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		this.stack = Array.from(start);
 		const queued = new Set(this.stack);
 
-		while(this.stack.length > 0) {
-			const current = this.stack.pop() as NodeId;
+		for(let current = this.stack.pop(); current !== undefined; current = this.stack.pop()) {
 			queued.delete(current);
 
 			if(!this.visitNode(current)) {

@@ -1,3 +1,5 @@
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
@@ -237,5 +239,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:            [1, 1, 1, 8],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase, ignorePrefix: '_' });
+	});
+
+	test('a quick fix leaves the code it fixes as it is', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest(requestFromInput('my_fun <- function() 1\nmy_fun( 1 ,  2  )'));
+		const call = (await analyzer.normalize()).ast.files[0].root.children[1];
+		const before = structuredClone(call.info.fullRange);
+		await analyzer.query({ type: 'linter', rules: [{ name: 'naming-convention' as const, config: { caseing: CasingConvention.CamelCase } }] });
+		assert.deepStrictEqual(call.info.fullRange, before);
 	});
 }));

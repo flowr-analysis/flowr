@@ -20,6 +20,7 @@ import { isValue, RValue, type Lift, type Value } from '../../../../src/dataflow
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { uniqueArray } from '../../../../src/util/collections/arrays';
 import { SourceRange } from '../../../../src/util/range';
+import type { BrandedIdentifier } from '../../../../src/dataflow/environments/identifier';
 
 /**
  * How a case relates to R: `red` names what R does and what flowR does instead when flowR is wrong (the test is
@@ -207,7 +208,7 @@ export function writesLikeR(parser: KnownParser, name: string, code: string, lin
 		assert.isNotEmpty(scope, `nothing on line ${line}`);
 		const access = Dataflow.sideEffects.ambientAccess(info, scope);
 		assert.strictEqual((await printedByR(code)).split('\n').at(-1), 'ok');
-		const written = [...access.writes, ...access.variables];
+		const written: BrandedIdentifier[] = [...access.writes.keys(), ...access.variables.keys()];
 		/* an imprecise case may only know that some option, variable, ... changes (`#option:*`) */
 		const missing = writes.filter(w => !written.includes(w) && !(verdict.imprecise !== undefined && written.includes(w.replace(/:.*$/, ':*'))));
 		assert.isEmpty(missing, JSON.stringify(written));

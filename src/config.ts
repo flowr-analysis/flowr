@@ -27,6 +27,7 @@ import type { InputClassifierConfig } from './queries/catalog/input-sources-quer
 import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
 import { SecureMode } from './util/secure-mode';
+import type { BrandedNamespace } from './dataflow/environments/identifier';
 
 /** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
 function securitySensitive<T extends Joi.Schema>(schema: T): T {
@@ -106,6 +107,11 @@ export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
 
 /** One {@link FlowrConfig.specializeConfig} entry: a config overwrite, optionally `inherit`ing another kind's overwrite (own keys win). */
 export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inherit?: ProjectKind };
+
+/** A config to amend, in which the built-in definitions stay as stated: they are replaced as a whole, not edited. */
+type Writable<T> = T extends string | BuiltInDefinitions | RegExp | ((...args: never[]) => unknown) ? T
+	: T extends object ? { -readonly [K in keyof T]: K extends 'specializeConfig' ? T[K] : Writable<T[K]> } : T;
+export type WritableFlowrConfig = Writable<FlowrConfig>;
 
 /**
  * The configuration file format for flowR.
@@ -233,7 +239,7 @@ export interface FlowrConfig {
 			readonly autoSync?:                   boolean
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
-			readonly versionOverrides?:           Record<string, string>
+			readonly versionOverrides?:           Record<BrandedNamespace, string>
 			/**
 			 * Recovering a package no signature database knows (e.g. `maptools`) from its local install: `DESCRIPTION`
 			 * states the version, `NAMESPACE` the exports. Opt-in, since it reads outside the analyzed project.
@@ -982,7 +988,7 @@ export const FlowrConfig = {
 	 * Creates a new flowr config that has the updated values.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
-	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
+	amend(this: void, config: FlowrConfig, amendmentFunc: (config: WritableFlowrConfig) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig) ?? newConfig;
 	},

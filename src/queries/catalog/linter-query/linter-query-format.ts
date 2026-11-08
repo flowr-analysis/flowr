@@ -5,18 +5,16 @@ import Joi from 'joi';
 import { LintingRuleTag } from '../../../linter/linter-tags';
 import { executeLinterQuery } from './linter-query-executor';
 import {
-	type LintingRuleConfig,
-	type LintingRuleMetadata,
 	type LintingRuleNames,
 	type LintingRuleResult,
-	LintingRules
+	LintingRules,
+	getLintingRule
 } from '../../../linter/linter-rules';
 import { type LintingResultsError,
 	type ConfiguredLintingRule,
 	LintingPrettyPrintContext,
 	LintingResultCertainty,
-	LintingResults,
-	type LintingRule
+	LintingResults
 } from '../../../linter/linter-format';
 import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
 import type { FlowrConfig } from '../../../config';
@@ -82,7 +80,8 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	let tags: LintingRuleTag[] | undefined = undefined;
 	const rest = [...line];
 	while(rest.length > 0 && [rulesPrefix, formatPrefix, tagsPrefix].some(p => rest[0].startsWith(p))) {
-		const argument = rest.shift() as string;
+		const argument = rest[0];
+		rest.shift();
 		if(argument.startsWith(formatPrefix)) {
 			format = formatFromInput(output, argument);
 			continue;
@@ -216,7 +215,7 @@ export const LinterQueryDefinition = {
 const MaxFindingsShown = 10;
 
 function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[], formatter: OutputFormatter) {
-	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+	const rule = getLintingRule(ruleName);
 	const header = `${bold(rule.info.name, formatter)} (${ruleName})`;
 
 	if(LintingResults.isError(results)) {

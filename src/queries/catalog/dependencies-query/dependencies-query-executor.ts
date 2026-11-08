@@ -5,7 +5,7 @@ import { Attached, defaultDependencyCategories, type DefaultDependencyCategoryNa
 import { ConsoleStreams, Constant, Unknown } from './dependency-values';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
+import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -199,7 +199,7 @@ export interface QueryRun {
 	readonly normalize: NormalizedAst
 	readonly memo:      FlowMemo
 	/** the formals of the call, give its qualified name if known already */
-	readonly formals:   (vertex: DataflowGraphVertexFunctionCall, qualified?: Identifier) => readonly string[] | undefined
+	readonly formals:   (vertex: DataflowGraphVertexFunctionCall, qualified?: Identifier) => readonly BrandedIdentifier[] | undefined
 	/** how the values of the entries of a call come about, so a call of the function around it can ask again for its own */
 	readonly revalue:   Map<NodeId, Revalue>
 	/** what the arguments read from, asked for again with every call context */
@@ -225,7 +225,7 @@ function callsDefinition(dfg: DataflowGraph, id: NodeId): boolean {
  * may reach a definition of the code is asked directly, its formals are in the AST.
  */
 function formalsLookup(dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): QueryRun['formals'] {
-	const byFunction = new Map<string, readonly string[] | undefined>();
+	const byFunction = new Map<string, readonly BrandedIdentifier[] | undefined>();
 	return (vertex, qualified) => {
 		const call = dfg.idMap?.get(vertex.id);
 		if(!RFunctionCall.is(call)) {
@@ -242,8 +242,8 @@ function formalsLookup(dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Q
 }
 
 /** One implicit `library` entry per attached base package that the graph uses but that is not loaded explicitly. */
-function assumedBasePackageEntries(dfg: DataflowGraph, rVersion: string, explicit: ReadonlySet<string>): DependencyInfo[] {
-	const used: { id: NodeId, pkg: string }[] = [];
+function assumedBasePackageEntries(dfg: DataflowGraph, rVersion: string, explicit: ReadonlySet<BrandedNamespace>): DependencyInfo[] {
+	const used: { id: NodeId, pkg: BrandedNamespace }[] = [];
 	for(const [id, qualified] of Dataflow.qualifyAll(dfg, true)) {
 		const pkg = Identifier.getNamespace(qualified);
 		if(pkg !== undefined && !explicit.has(pkg) && AttachedBasePackageSet.has(pkg)) {
@@ -253,7 +253,7 @@ function assumedBasePackageEntries(dfg: DataflowGraph, rVersion: string, explici
 	const usedBy = Map.groupBy(used, u => u.pkg);
 	return attachedBasePackages(rVersion).filter(pkg => usedBy.has(pkg)).map(pkg => compactRecord({
 		functionName:   Attached,
-		value:          pkg,
+		value:          String(pkg),
 		implicit:       true,
 		alwaysAttached: pkg === PkgName.Base ? true : undefined,
 		linkedIds:      usedBy.get(pkg)?.map(u => u.id)
@@ -301,7 +301,7 @@ function dataFlowOf(kind: DependencyCategoryName, call: DataflowGraphVertexFunct
  * the base package exporting it (`stats` for `filter`), unless the project loads a package the category declares
  * the name for, which then masks the base one as in R.
  */
-function namespaceOf(id: NodeId, functionName: Identifier, dfg: DataflowGraph, candidates: readonly FunctionInfo[], isLoaded: (pkg: string) => boolean): string | undefined {
+function namespaceOf(id: NodeId, functionName: Identifier, dfg: DataflowGraph, candidates: readonly FunctionInfo[], isLoaded: (pkg: BrandedNamespace) => boolean): BrandedNamespace | undefined {
 	const written = Identifier.getNamespace(functionName);
 	if(written !== undefined || candidates.some(c => c.package !== undefined && isLoaded(c.package))) {
 		return written;
@@ -328,7 +328,7 @@ const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
  * A call qualified to a package no entry declares is none of them, an unqualified call that cannot be pinned
  * down goes to the entry of a package the project loads, and only then to the first one able to apply.
  */
-function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: string | undefined, isLoaded: (pkg: string) => boolean): FunctionInfo | undefined {
+function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: BrandedNamespace | undefined, isLoaded: (pkg: BrandedNamespace) => boolean): FunctionInfo | undefined {
 	if(callNamespace !== undefined) {
 		return candidates.find(c => c.package === callNamespace) ?? candidates.find(c => c.package === undefined);
 	} else if(candidates.length === 1) {

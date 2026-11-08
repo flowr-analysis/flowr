@@ -1,4 +1,4 @@
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { groupGenericOf } from '../../dataflow/environments/group-generics';
 import type { DecodedFunction } from './decode';
@@ -33,15 +33,15 @@ export interface SignatureDb {
 	 * The version the analysis assumes for `pkg`, `undefined` if flowR could not pin one down. This is what every
 	 * lookup here uses when no version is given.
 	 */
-	versionOf(this: void, pkg: string): string | undefined;
+	versionOf(this: void, pkg: BrandedNamespace): string | undefined;
 	/** Whether the database can resolve `pkg` at all, at any version. */
-	has(this: void, pkg: string): boolean;
+	has(this: void, pkg: BrandedNamespace): boolean;
 	/**
 	 * The export view of a package.
 	 * @param pkg     - The package to look up.
 	 * @param version - The version to answer for, {@link versionOf} if omitted.
 	 */
-	exportsOf(this: void, pkg: string, version?: string): LibraryExports | undefined;
+	exportsOf(this: void, pkg: BrandedNamespace, version?: string): LibraryExports | undefined;
 	/**
 	 * The database entry for a *qualified* call, i.e. a `pkg::fn` {@link Identifier}. Decodes only that one
 	 * function rather than the whole package.
@@ -69,9 +69,9 @@ export interface SignatureDb {
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */
-	parametersOf(this: void, id: Identifier, version?: string): readonly string[] | undefined;
+	parametersOf(this: void, id: Identifier, version?: string): readonly BrandedIdentifier[] | undefined;
 	/** The packages exporting `name`, ordered by downloads, see {@link PackageSignatureSource.packagesExporting}. */
-	packagesExporting(this: void, name: string): readonly string[];
+	packagesExporting(this: void, name: BrandedIdentifier): readonly BrandedNamespace[];
 	/** Every loaded source as one, for the questions this interface does not ask. */
 	sources(this: void): PackageSignatureSource;
 }
@@ -91,8 +91,8 @@ const signatureDbLog = log.getSubLogger({ name: 'signature-db' });
  */
 export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): SignatureDb {
 	const merged = () => new MergedSignatureSource(deps.signatureSources());
-	const versionOf = (pkg: string) => deps.getDependency(pkg)?.resolvedVersion;
-	const answerFor = <T>(pkg: string, version: string | undefined, ask: (src: PackageSignatureSource, v: string | undefined) => T | undefined): T | undefined => {
+	const versionOf = (pkg: BrandedNamespace) => deps.getDependency(pkg)?.resolvedVersion;
+	const answerFor = <T>(pkg: BrandedNamespace, version: string | undefined, ask: (src: PackageSignatureSource, v: string | undefined) => T | undefined): T | undefined => {
 		const src = merged();
 		const assumed = version ?? versionOf(pkg);
 		const found = ask(src, assumed);

@@ -4,7 +4,7 @@ import { prettyPrint, type LintingRule, LintingRuleCertainty } from '../../linte
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { SourceLocation } from '../../../util/range';
+import { SourceLocation, type Line } from '../../../util/range';
 import { RFunctionCall, EmptyArgument, type PotentiallyEmptyRArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MatchArgs } from '../../../dataflow/graph/match-args';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
@@ -12,7 +12,7 @@ import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-arg
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { projectNodes } from './cmd-check-util';
 import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
 import type { PackageFiles } from './package-files';
@@ -70,7 +70,7 @@ const CitEntryFormals = ['entry', 'textVersion', 'header', 'footer'] as const;
 const BibEntryFormals = ['bibtype', 'textVersion', 'header', 'footer', 'other'] as const;
 
 /** the citation functions with a newer replacement, the replacement's name */
-const SupersededCitation: ReadonlyMap<string, string> = new Map([
+const SupersededCitation: ReadonlyMap<BrandedIdentifier, string> = new Map([
 	['citEntry', 'bibentry'],
 	['citHeader', 'bibentry'],
 	['citFooter', 'bibentry'],
@@ -83,7 +83,7 @@ const LinkedDocument = /^(README|NEWS)\.md$|^vignettes\/.*\.(Rmd|md)$/;
 /** a markdown link `](target)` or an HTML `href`/`src` attribute, the target in the first or second group */
 const LinkTarget = /\]\(\s*<?([^)\s>]*)>?(?:\s+"[^"]*")?\s*\)|\b(?:href|src)\s*=\s*"([^"]*)"/g;
 
-type Report = (kind: PackageMetafilesKind, file: string, line: number, message: string) => void;
+type Report = (kind: PackageMetafilesKind, file: string, line: Line, message: string) => void;
 
 /** the entries of an index file, as `R`'s `tools:::read.00Index` reads them: paragraphs of `item<spaces>description` lines */
 function readIndex(text: string): { item: string, description: string }[] {

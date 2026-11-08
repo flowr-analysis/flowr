@@ -6,7 +6,7 @@
 import type { LintingResult } from './linter-format';
 import { LintQuickFix, LintingResults } from './linter-format';
 import type { LintResultsByRule } from './linter-output';
-import { SourceLocation, SourceRange } from '../util/range';
+import { SourceLocation, SourceRange, type Column, type Line } from '../util/range';
 import { guard, isNotUndefined } from '../util/assert';
 
 /** one fix as an edit of the text: the span it covers, and what stands there instead */
@@ -21,7 +21,7 @@ interface Edit {
  * The offset `line:column` sits at, both counted from one. A place beyond the text is pulled back into it, so a
  * range that outruns its line cuts at the line's end rather than reaching into the ones after it.
  */
-function offsetOf(code: string, lineStarts: readonly number[], line: number, column: number): number {
+function offsetOf(code: string, lineStarts: readonly number[], line: Line, column: Column): number {
 	const at = Math.min(Math.max(line, 1), lineStarts.length);
 	/* the last place on the line is its final character: the break after it separates lines, it is not one */
 	const beyond = at < lineStarts.length ? lineStarts[at] - 1 : code.length;

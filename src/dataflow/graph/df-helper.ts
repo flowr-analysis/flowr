@@ -1,13 +1,13 @@
 import { DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
-import type { AmbientAccessRecord } from './ambient-access';
+import { AmbientAccess } from './ambient-access';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg, type Origin } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
-import { ambientAccessOf, ambientAccessOfFunctions, ambientWritesOfFunctions, computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
+import { ambientAccessOf, ambientAccessOfFunctions, computeCallGraphSummaries, foldCallGraph, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
-import { Identifier } from '../environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../environments/identifier';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { AttachedBasePackageSet, baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
 import { getCallables, importOrigin } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
@@ -48,8 +48,8 @@ export const Dataflow = {
 		return graph.qualifyAll(qualifyBaseR, resolveQualification);
 	},
 	/** The packages the given nodes call into, as {@link Dataflow.qualify} resolves every call among them. */
-	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<string> {
-		const packages = new Set<string>();
+	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<BrandedNamespace> {
+		const packages = new Set<BrandedNamespace>();
 		for(const id of nodes) {
 			if(!DfgVertex.isFunctionCall(graph.getVertex(id))) {
 				continue;
@@ -188,8 +188,8 @@ export const Dataflow = {
 	},
 
 	/** Every variable definition of the graph by its unquoted name, in a single pass. */
-	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<string, NodeId[]> {
-		const byName = new DefaultMap<string, NodeId[]>(() => []);
+	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<BrandedIdentifier, NodeId[]> {
+		const byName = new DefaultMap<BrandedIdentifier, NodeId[]>(() => []);
 		for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
 			const name = NodeId.recoverBareName(id, graph.idMap);
 			if(name !== undefined) {
@@ -206,15 +206,11 @@ export const Dataflow = {
 	sideEffects: {
 		propagateTransitive:      propagateTransitiveSideEffects,
 		callGraphSummaries:       computeCallGraphSummaries,
+		foldCallGraph:            foldCallGraph,
 		/** What running the given code reads and writes of the global state (pseudo variables like `#option:digits`, see {@link AmbientStateName}), the global variables the functions it calls bind, and its drawing calls (`SemanticCallTag.Graphics`), including what the functions it calls access. */
 		ambientAccess:            ambientAccessOf,
 		/** {@link Dataflow.sideEffects.ambientAccess} for every function definition when it is called, including what the functions it calls access. */
 		ambientAccessOfFunctions: ambientAccessOfFunctions,
-		/**
-		 * The global state each function may leave changed when called, as pseudo variable names ({@link AmbientStateName}), including what the functions it calls change, with what is only assumed of a body flowR cannot see (`f()` for a parameter `f`) and the global variables it binds apart.
-		 * @useInstead {@link Dataflow.sideEffects.ambientAccessOfFunctions}
-		 */
-		ambientWrites:            ambientWritesOfFunctions,
 	},
 	/** Only returns the sub-part of the graph that is determined by the given selection. */
 	reduceGraph<G extends DataflowGraph>(this: void, graph: G, select: ReadonlySet<NodeId>, includeMissingTargets = false): G {
@@ -227,7 +223,7 @@ export const Dataflow = {
 			if(select.has(id)) {
 				df.addVertex(
 					vtx,
-					vtx.environment as unknown as REnvironmentInformation,
+					vtx.environment,
 					forceRoot || roots.has(id)
 				);
 			}
@@ -252,7 +248,7 @@ export const Dataflow = {
 		}
 		for(const id of graph.ambientAccessIds()) {
 			if(select.has(id)) {
-				df.recordAmbientAccess(id, graph.ambientAccessOf(id) as AmbientAccessRecord);
+				df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
 			}
 		}
 		return df as G;
@@ -285,7 +281,7 @@ export const Dataflow = {
 		}
 		for(const id of graph.ambientAccessIds()) {
 			if(select.has(id)) {
-				df.recordAmbientAccess(id, graph.ambientAccessOf(id) as AmbientAccessRecord);
+				df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
 			}
 		}
 		return df as G;
@@ -368,12 +364,12 @@ function aliasedBaseR(graph: DataflowGraph, id: NodeId, origins: readonly Origin
 }
 
 /** The layers `library(pkg)` puts on an empty search path, innermost first, built by the {@link attachLibrary} the analysis uses: per attached package its namespace (exports) and imports layer, or for an unresolved one what flowR states about it or a bare {@link EnvType.LoadedNamespace}. */
-function libraryLayersOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, spec?: AttachSpec): readonly Environment[] {
+function libraryLayersOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace, spec?: AttachSpec): readonly Environment[] {
 	return [...REnvironment.searchPath(attachLibrary(pkg, ctx.deps.getDependency(pkg), ctx.env.makeCleanEnv(), ctx, spec).current)];
 }
 
 /** The `search()` entries `library(pkg)` adds, in `search()` order: `pkg`, its `Depends` and a meta-package's core set, recursively. */
-function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, spec?: AttachSpec): readonly string[] {
+function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace, spec?: AttachSpec): readonly BrandedNamespace[] {
 	if(spec?.namespaceOnly) {
 		return []; // loading a namespace puts nothing on the search path
 	}
@@ -382,9 +378,9 @@ function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: string, s
 }
 
 /** The exports of `pkg` it re-exports from another package, mapped to that package (`%>%` of dplyr to `magrittr`). */
-function libraryReexportsOf(this: void, ctx: FlowrAnalyzerContext, pkg: string): ReadonlyMap<string, string> {
+function libraryReexportsOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace): ReadonlyMap<BrandedIdentifier, BrandedNamespace> {
 	const ns = ctx.deps.getDependency(pkg)?.namespaceInfo;
-	const reexports = new Map<string, string>();
+	const reexports = new Map<BrandedIdentifier, BrandedNamespace>();
 	if(ns === undefined) {
 		return reexports;
 	}
@@ -398,7 +394,7 @@ function libraryReexportsOf(this: void, ctx: FlowrAnalyzerContext, pkg: string):
 }
 
 /** The packages loading `pkg` loads directly: its `Depends` and `Imports`, its `NAMESPACE` imports, and a meta-package's core set. */
-function directLoadsOf(ctx: FlowrAnalyzerContext, pkg: string): string[] {
+function directLoadsOf(ctx: FlowrAnalyzerContext, pkg: BrandedNamespace): BrandedNamespace[] {
 	const db = ctx.deps.signatures();
 	const dependency = ctx.deps.getDependency(pkg);
 	return [
@@ -411,7 +407,7 @@ function directLoadsOf(ctx: FlowrAnalyzerContext, pkg: string): string[] {
 }
 
 /** The namespaces `library(pkg)` loads, `pkg` first: the closure over {@link directLoadsOf} at the versions the analysis assumes. */
-function libraryLoadsOf(this: void, ctx: FlowrAnalyzerContext, pkg: string): readonly string[] {
+function libraryLoadsOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace): readonly BrandedNamespace[] {
 	const loaded = new Set([pkg]);
 	for(const p of loaded) {
 		for(const d of directLoadsOf(ctx, p)) {

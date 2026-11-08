@@ -1,3 +1,5 @@
+import type { AmbientStateName } from '../../../dataflow/environments/ambient-state-name';
+import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import Joi from 'joi';
 import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import type { SupportedQuery } from '../../query';
@@ -31,10 +33,10 @@ export interface AmbientAccessQuery extends BaseQueryFormat {
 
 /** {@link AmbientAccess} as plain, sorted lists */
 export interface AmbientAccessSummary {
-	readonly reads:     readonly string[]
-	readonly writes:    readonly string[]
-	readonly assumed:   readonly string[]
-	readonly variables: readonly string[]
+	readonly reads:     readonly AmbientStateName[]
+	readonly writes:    readonly AmbientStateName[]
+	readonly assumed:   readonly AmbientStateName[]
+	readonly variables: readonly BrandedIdentifier[]
 	readonly draws:     readonly NodeId[]
 }
 

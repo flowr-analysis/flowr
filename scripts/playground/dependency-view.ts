@@ -4,7 +4,7 @@ import type { AstIdMap, NormalizedAst, ParentInformation } from '../../src/r-bri
 import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DependencyInfo } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { Unknown } from '../../src/queries/catalog/dependencies-query/dependency-values';
-import { Identifier } from '../../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../src/dataflow/environments/identifier';
 import { EmptyArgument, RFunctionCall } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -157,7 +157,7 @@ export interface ViewContext {
 
 const Combinators = new Set(['+', '%>%', '|>']);
 
-function assignedName(ids: AstIdMap, id: NodeId): string | undefined {
+function assignedName(ids: AstIdMap, id: NodeId): BrandedIdentifier | undefined {
 	let node: RNode<ParentInformation> | undefined = ids.get(id);
 	/* flowR may point at the called name instead of the call */
 	const callParent = node?.info.parent === undefined ? undefined : ids.get(node.info.parent);
@@ -204,7 +204,7 @@ function renderFunctionName(fn: Identifier | undefined): string {
 	}
 }
 
-function packageOf(e: DependencyInfo): string | undefined {
+function packageOf(e: DependencyInfo): BrandedNamespace | undefined {
 	try {
 		return Identifier.getNamespace(e.functionName);
 	} catch{

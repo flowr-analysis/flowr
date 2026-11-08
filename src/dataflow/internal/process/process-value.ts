@@ -4,7 +4,6 @@ import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/proce
 import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
 import { ReferenceType } from '../../environments/identifier';
-import type { REnvironmentInformation } from '../../environments/environment';
 
 
 /**
@@ -21,7 +20,7 @@ export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { cds
 			tag: VertexType.Value,
 			id,
 			cds
-		}, undefined as unknown as REnvironmentInformation),
+		}, undefined),
 		exitPoints: [{ nodeId: id, type: ExitPointType.Default, cds }],
 		entryPoint: id,
 		hooks:      []

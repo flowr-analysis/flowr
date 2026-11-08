@@ -9,7 +9,7 @@ import { Ternary } from '../../util/logic';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import { writeFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { MergeableRecord } from '../../util/objects';
 import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
@@ -46,7 +46,7 @@ export interface NetworkFunction extends MergeableRecord {
 const UrlPattern = /^(https?|ftps?|sftp|scp|wss?):\/\//;
 
 /** the parameter names that mean "the address", preferred over any other resource the same call names */
-const AddressNames: ReadonlySet<string> = new Set(['url', 'urls', 'uri', 'href', 'link', 'address', 'repo', 'repo_spec', 'pull']);
+const AddressNames: ReadonlySet<BrandedIdentifier> = new Set(['url', 'urls', 'uri', 'href', 'link', 'address', 'repo', 'repo_spec', 'pull']);
 
 /**
  * The resource parameter of a call that carries its address: the one named like an address where the call has
@@ -65,9 +65,9 @@ function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
  * parameter and it shows up here; nothing is listed twice.
  */
 export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
-	const resources = new Map<string, BuiltInParam[]>();
+	const resources = new Map<BrandedIdentifier, BuiltInParam[]>();
 	/* the calls with a destination they save to, like the `destfile` of a download, which is a path rather than an address */
-	const saving = new Set<string>();
+	const saving = new Set<BrandedIdentifier>();
 	for(const param of index.params(ArgProp.Resource)) {
 		const key = Identifier.toString(param.call);
 		/* R opens a path it writes to as a local file (or a `|` pipe), never as a url, and a command is no address either */
@@ -81,7 +81,7 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 		}
 		resources.set(key, [...resources.get(key) ?? [], param]);
 	}
-	const names = new Map(index.with(SemanticCallTag.Network).map(call => [Identifier.toString(call), call]));
+	const names = new Map<BrandedIdentifier, Identifier>(index.with(SemanticCallTag.Network).map(call => [Identifier.toString(call), call]));
 	for(const [key, [param]] of resources) {
 		if(!names.has(key)) {
 			names.set(key, param.call);
@@ -104,12 +104,12 @@ export function networkFunctions(index: BuiltInIndex): NetworkFunction[] {
 export const NETWORK_FUNCTIONS = {
 	createSearch:        config => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
 	processSearchResult: async(e, c, d) => {
-		const fnPool = new Map<string, FunctionInfo>([
+		const fnPool = new Map<BrandedIdentifier, FunctionInfo>([
 			...writeFunctions(d.inspectContext()).concat(readFunctions(d.inspectContext()), SourceFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
 			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, { name: Identifier.toString(f.name), ...f.info }] as const))
 		]);
 		/* a call whose package flowR cannot name still answers to the entry for its bare name */
-		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, f.onlyTriggerWithArgument] as const)));
+		const onlyTriggerLookup = new Map<BrandedIdentifier, RegExp | string | undefined>(c.fns.flatMap(f => Identifier.is(f) ? [] : [Identifier.getName(f.name), Identifier.toString(f.name)].map(key => [key, f.onlyTriggerWithArgument] as const)));
 		return functionFinderUtil.processSearchResult(e, c, d,
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];

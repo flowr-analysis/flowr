@@ -20,13 +20,13 @@ import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/fu
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
 import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
-import { Identifier, PkgName } from '../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } from '../src/dataflow/environments/identifier';
 import { baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
 
 export interface PackageEntry {
-	readonly name:      string;
+	readonly name:      BrandedNamespace;
 	readonly version:   string;
 	readonly base:      boolean;
 	/** monthly CRAN downloads, the one popularity number the database carries */
@@ -68,7 +68,7 @@ export interface SigIndex {
 	/** whether {@link topics} is that full set: without an R to read the alias tables from it holds the primitives alone */
 	readonly topicsComplete: boolean;
 	/** the S4 group generic a name belongs to (`sin` to `Math`), see {@link S4GroupOfMember} */
-	readonly groups:         ReadonlyMap<string, string>;
+	readonly groups:         ReadonlyMap<BrandedIdentifier, string>;
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -122,13 +122,13 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 	const all: PackageEntry[] = [];
 	/* the names something dispatches on, so `is.datacggm` is not read as a method of `is`, which dispatches
 	   nothing. R's own are known; a package's are whatever the database records as a generic */
-	const generics = new Set<string>([...RBasePackageStore.generics, ...Object.keys(RGroupGenerics)]);
+	const generics = new Set<BrandedIdentifier>([...RBasePackageStore.generics, ...Object.keys(RGroupGenerics)]);
 	for(const name of db.packageNames()) {
 		const library = db.lookup(name);
 		if(library === undefined) {
 			continue;
 		}
-		const exports = new Map<string, ExportEntry>();
+		const exports = new Map<BrandedIdentifier, ExportEntry>();
 		/* the same handful of paths carry a whole package, so each is named once and pointed at by position */
 		const files = new Map<string, number>();
 		for(const fn of db.functions(name) ?? []) {
@@ -179,7 +179,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 	}
 	/* the formals of base R, which is the part of the database small enough for a page to carry: nothing
 	   else can tell a reader what `stats::filter(x, filter, method, ...)` takes */
-	const formals = new Map<string, [pkg: string, params: string][]>();
+	const formals = new Map<BrandedIdentifier, [pkg: string, params: string][]>();
 	for(const pkg of db.packageNames().filter(name => db.isBaseR(name))) {
 		const exported = new Set(db.lookup(pkg)?.exported ?? []);
 		for(const fn of db.functions(pkg) ?? []) {
@@ -227,12 +227,12 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
  * Without an alias table to check against (no R at hand) nothing is corrected: the export lists alone would
  * throw out `NULL`, `TRUE` and the rest of what R documents but no NAMESPACE carries.
  */
-function statedWithRealPackages(baseNames: ReadonlySet<string>, topics: ReadonlyMap<string, string>, complete: boolean): ReadonlyMap<string, StatedSignature[]> {
+function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics: ReadonlyMap<string, string>, complete: boolean): ReadonlyMap<BrandedIdentifier, StatedSignature[]> {
 	const stated = statedSignatures();
 	if(!complete) {
 		return stated;
 	}
-	const settled = (name: string, entry: StatedSignature): StatedSignature => {
+	const settled = (name: BrandedIdentifier, entry: StatedSignature): StatedSignature => {
 		const owner = baseRExportOwner(name);
 		if(owner !== undefined) {
 			return owner === entry.pkg ? entry : { ...entry, pkg: owner };
@@ -290,7 +290,7 @@ function builtInKinds(): Map<string, string[]> {
  * produces a dead link (flowR states `sinkplot`, R has never had it).
  * @returns the map, and whether an alias table was read at all
  */
-function baseTopics(packages: readonly string[]): { topics: ReadonlyMap<string, string>, complete: boolean } {
+function baseTopics(packages: readonly BrandedNamespace[]): { topics: ReadonlyMap<string, string>, complete: boolean } {
 	/* what flowR states itself, which is the part that never depends on an R being around */
 	const topics = new Map<string, string>(
 		Object.entries(BasePrimitiveTopics).map(([name, topic]) => [`${PkgName.Base}::${name}`, topic]));

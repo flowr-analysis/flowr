@@ -12,9 +12,9 @@ import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { REnvironment } from '../../../../../environments/environment';
-import { Identifier } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../../environments/identifier';
 
-const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
+const EmptyParentEnvFunctions = new Set<BrandedIdentifier>(['emptyenv', 'baseenv']);
 
 /**
  * Processes `new.env()` and `rlang::new_environment()`.

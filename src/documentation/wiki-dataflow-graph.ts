@@ -1211,7 +1211,7 @@ as they see fit.
 ### Ambient Access
 
 Calls reading or changing global state (options, environment variables, the working directory, graphics devices, files, ...) are recorded in the graph with the pseudo variables (\`#option:digits\`, \`#wd\`, ...) they read and write (\`_ambientAccess\` if serialized as JSON).
-Use \`Dataflow.sideEffects.ambientAccess(graph, scope)\` to aggregate this for a file, a block, or any other set of ids (including what the functions called there access) and \`Dataflow.sideEffects.ambientAccessOfFunctions(graph)\` for every function.
+Use \`Dataflow.sideEffects.ambientAccess(graph, scope)\` to aggregate this for a file, a block, or any other set of ids (including what the functions called there access) and \`Dataflow.sideEffects.ambientAccessOfFunctions(graph)\` for every function. All of them, just like \`graph.ambientAccessOf(id)\` for a single call, answer with an \`AmbientAccess\` that maps the accessed state to the ids of the calls accessing it.
 Graphics calls are reported as \`draws\`. Set ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')} to also let them write the pseudo variable \`#canvas\`, which models what is drawn on the device.
 
 The \`load\` call above degrades to an unknown side effect only because the file could not be found.

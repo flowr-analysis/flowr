@@ -187,7 +187,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			c.supers.map(sup => strings.str(sup)),
 			c.slots.map(sl => sl.type === undefined ? strings.str(sl.name) : [strings.str(sl.name), strings.str(sl.type)] as [number, number])
 		];
-		const rec: SigClass = c.package !== undefined ? [...head, strings.str(c.package)] : head;
+		const rec: SigClass = c.package !== undefined ? [...head, strings.str(String(c.package))] : head;
 		return classes.intern(JSON.stringify(rec), rec);
 	};
 

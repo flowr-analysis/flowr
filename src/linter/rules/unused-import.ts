@@ -7,7 +7,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { type DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex } from '../../dataflow/graph/vertex';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,14 +24,14 @@ import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name'
 
 export interface UnusedImportResult extends LintingResult {
 	/** the package the flagged call attaches */
-	readonly package: string
+	readonly package: BrandedNamespace
 	/** the version whose exports the finding was checked against, as the signature database resolved it */
 	readonly version: string
 }
 
 export interface UnusedImportConfig extends MergeableRecord {
 	/** packages that do their work on load and hence should never be reported, however unused they look */
-	whitelist: readonly string[]
+	whitelist: readonly BrandedNamespace[]
 }
 
 export interface UnusedImportMetadata extends MergeableRecord {
@@ -50,16 +50,16 @@ interface Attachment {
 	readonly id:       NodeId;
 	readonly node:     RNode<ParentInformation>;
 	readonly loc:      SourceLocation;
-	readonly name:     string;
+	readonly name:     BrandedNamespace;
 	readonly version:  string;
 	/** the exports a bare call in this program could bind to */
-	readonly callable: ReadonlySet<string>;
+	readonly callable: ReadonlySet<BrandedIdentifier>;
 	/** the packages it imports from, whose exports it may re-export, as dplyr does tibble's `glimpse` */
-	readonly imports:  ReadonlySet<string>;
+	readonly imports:  ReadonlySet<BrandedNamespace>;
 }
 
 /** The packages `name` imports from apart from base R, whose exports it may re-export. */
-export function nonBaseImports(src: PackageSignatureSource, name: string, version?: string): string[] {
+export function nonBaseImports(src: PackageSignatureSource, name: BrandedNamespace, version?: string): BrandedNamespace[] {
 	return src.dependencies(name, version)?.filter(d => d.type === DepType.Imports && !src.isBaseR(d.name)).map(d => d.name) ?? [];
 }
 
@@ -99,7 +99,7 @@ function isReadFrom(graph: DataflowGraph, id: NodeId): boolean {
  * Which of the `attachments` the program never makes use of. A call that resolves names its package outright;
  * one that does not bind yet (a call in a function body) keeps every attached package exporting its name.
  */
-function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph, src: PackageSignatureSource): ReadonlySet<string> {
+function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph, src: PackageSignatureSource): ReadonlySet<BrandedNamespace> {
 	const pending = new Set(attachments.map(a => a.name));
 	for(const [, qualified] of Dataflow.qualifyAll(graph)) {
 		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
@@ -120,8 +120,8 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		}
 	}
 	/* what each imported package exports, read once: asking which packages export a name searches the whole database */
-	const exportsOf = new Map<string, ReadonlySet<string>>();
-	const exports = (pkg: string) => {
+	const exportsOf = new Map<BrandedNamespace, ReadonlySet<BrandedIdentifier>>();
+	const exports = (pkg: BrandedNamespace) => {
 		let found = exportsOf.get(pkg);
 		if(found === undefined) {
 			found = new Set(src.lookup(pkg)?.exported);
@@ -130,7 +130,7 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		return found;
 	};
 	for(const { name, callable, imports } of attachments) {
-		const usesPackage = (call: string) => callable.has(call) || imports.values().some(p => exports(p).has(call));
+		const usesPackage = (call: BrandedIdentifier) => callable.has(call) || imports.values().some(p => exports(p).has(call));
 		if(pending.has(name) && unbound.values().some(usesPackage)) {
 			pending.delete(name);
 		}
@@ -207,7 +207,7 @@ export const UNUSED_IMPORT = {
 		const idMap = (await data.normalize()).idMap;
 		/* code a `source()` flowR could not resolve runs as well and may use any attached package */
 		const unseen = graph.unknownSideEffects.values().some(e => DfgVertex.hasOrigin(graph.getVertex(UnknownSideEffect.id(e)), BuiltInProcName.Source));
-		const unused = unseen ? new Set<string>() : unusedPackages(attachments, graph, src);
+		const unused = unseen ? new Set<BrandedNamespace>() : unusedPackages(attachments, graph, src);
 
 		const results = attachments.filter(
 			({ id, name }) => unused.has(name) && !isReadFrom(graph, id)

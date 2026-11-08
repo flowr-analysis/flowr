@@ -50,7 +50,7 @@ describe('Fixpoint', () => {
 		const graph: Graph = { a: ['b'], b: ['c', 'a'], c: ['d'], d: [] };
 		const own: Record<string, ReadonlySet<string>> = { a: new Set(['x']), c: new Set(['y']), d: new Set(['z']) };
 		test('joins what each node reaches, sharing the value within a cycle', () => {
-			const summaries = new ReachSummaries<string, ReadonlySet<string>>(n => graph[n] ?? [], n => own[n], new Set(), unionOfSets);
+			const summaries = new ReachSummaries<string, ReadonlySet<string>>(n => graph[n] ?? [], n => own[n], { empty: new Set(), concat: unionOfSets });
 			assert.deepStrictEqual([...summaries.of('b')].sort(), ['x', 'y', 'z']);
 			assert.strictEqual(summaries.of('a'), summaries.of('b'));
 			assert.deepStrictEqual([...summaries.of('c')].sort(), ['y', 'z']);

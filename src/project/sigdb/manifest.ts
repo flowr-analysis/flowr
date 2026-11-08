@@ -93,7 +93,7 @@ export function readManifestDate(manifestFile: string): string | undefined {
 }
 
 /** breadth/temporal scope of a bundled sigdb: base R only, `current` (latest CRAN + base R), or the `full` history */
-export type SigDbScope = 'base' | 'current' | 'full';
+export type SigDbScope = 'base' | SigDbTier;
 /** richest first: a container shipping the full set uses it, else the slim `current`, else the `base` floor */
 const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
 /** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist`, and data-dir layouts */

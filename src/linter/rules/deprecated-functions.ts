@@ -94,8 +94,8 @@ interface ConditionalEntry {
 }
 
 /** The entries by bare name, as a call names its package only when written `pkg::fn`. */
-function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<string, ConditionalEntry[]> {
-	const index = new Map<string, ConditionalEntry[]>();
+function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<BrandedIdentifier, ConditionalEntry[]> {
+	const index = new Map<BrandedIdentifier, ConditionalEntry[]>();
 	for(const [key, info] of Object.entries(conditionally)) {
 		const id = Identifier.parse(key);
 		const name = Identifier.getName(id);
@@ -111,7 +111,7 @@ function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditional
 }
 
 /** The entry for `target`: its own package's, else a bare one; a call naming no package takes the first. */
-function conditionalFor(index: ReadonlyMap<string, ConditionalEntry[]>, target: Identifier): ConditionalEntry | undefined {
+function conditionalFor(index: ReadonlyMap<BrandedIdentifier, ConditionalEntry[]>, target: Identifier): ConditionalEntry | undefined {
 	const found = index.get(Identifier.getName(target));
 	if(found === undefined) {
 		return undefined;
@@ -121,8 +121,8 @@ function conditionalFor(index: ReadonlyMap<string, ConditionalEntry[]>, target: 
 }
 
 /** The packages each `always` name belongs to; `undefined` for an entry claiming none. */
-function indexAlways(always: readonly Identifier[]): Map<string, (BrandedNamespace | undefined)[]> {
-	const index = new Map<string, (BrandedNamespace | undefined)[]>();
+function indexAlways(always: readonly Identifier[]): Map<BrandedIdentifier, (BrandedNamespace | undefined)[]> {
+	const index = new Map<BrandedIdentifier, (BrandedNamespace | undefined)[]>();
 	for(const entry of always) {
 		const name = Identifier.getName(entry);
 		const known = index.get(name);
@@ -137,8 +137,8 @@ function indexAlways(always: readonly Identifier[]): Map<string, (BrandedNamespa
 }
 
 /** The packages the code attaches; `undefined` when one of them cannot be named, so nothing is ruled out. */
-async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<string> | undefined> {
-	const attached = new Set<string>();
+async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<BrandedNamespace> | undefined> {
+	const attached = new Set<BrandedNamespace>();
 	for(const lib of (await analyzer.query({ type: 'dependencies', enabledCategories: ['library'] })).library) {
 		if(lib.value === undefined || lib.value === Unknown) {
 			return undefined;
@@ -149,7 +149,7 @@ async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<Known
 }
 
 /** A call naming its package, or whose package is attached, is that function; any other is a guess. */
-function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<string> | undefined): LintingResultCertainty {
+function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<BrandedNamespace> | undefined): LintingResultCertainty {
 	const namespace = Identifier.getNamespace(target);
 	const sure = owners.some(owner => owner === undefined || owner === namespace || attached === undefined || attached.has(owner));
 	return sure ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
@@ -224,7 +224,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
 		// even when it is not part of the hardcoded `fns` list above
 		const alreadyFlagged = new Set(results.map(r => r.involvedId));
-		const deprecatedByName = new Map<string, boolean>();
+		const deprecatedByName = new Map<BrandedIdentifier, boolean>();
 		const sigdbFlagged: DeprecatedFunctionRuleResult[] = [];
 		for(const element of elements.getElements()) {
 			const id = element.node.info.id;
@@ -382,7 +382,7 @@ function renamableCallee(node: RNode<ParentInformation>): RNode<ParentInformatio
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
-function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, entry: ConditionalEntry, packageVersions: PackageVersionMap, attached: ReadonlySet<string> | undefined): DeprecatedFunctionRuleResult[] {
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, entry: ConditionalEntry, packageVersions: PackageVersionMap, attached: ReadonlySet<BrandedNamespace> | undefined): DeprecatedFunctionRuleResult[] {
 	const { info, pkg } = entry;
 	const results: DeprecatedFunctionRuleResult[] = [];
 	const derivedRange = pkg === undefined ? undefined : packageVersions.get(pkg);
@@ -460,7 +460,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.always} map.
  * A call naming a package the list does not have under that name is another function and is left alone.
  */
-function deprecateFunctionAlways(candidate: PotentialFunction, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<string> | undefined): DeprecatedFunctionResult[] {
+function deprecateFunctionAlways(candidate: PotentialFunction, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<BrandedNamespace> | undefined): DeprecatedFunctionResult[] {
 	const namespace = Identifier.getNamespace(candidate.target);
 	if(namespace !== undefined && !owners.some(owner => owner === undefined || owner === namespace)) {
 		return [];

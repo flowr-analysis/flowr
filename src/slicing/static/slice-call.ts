@@ -9,7 +9,7 @@ import { type DataflowGraph, FunctionArgument, type ReadonlyOutgoingEdges } from
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { ReferenceType } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, ReferenceType } from '../../dataflow/environments/identifier';
 import { callBoundInScope, retrieveActiveEnvironment } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -27,12 +27,12 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
-const linkedByGraph = new WeakMap<DataflowGraph, Map<string, ReadonlySet<DataflowGraphVertexInfo>>>();
+const linkedByGraph = new WeakMap<DataflowGraph, Map<BrandedIdentifier, ReadonlySet<DataflowGraphVertexInfo>>>();
 
 function linkedFunctionsOf(defs: readonly NodeId[], graph: DataflowGraph): ReadonlySet<DataflowGraphVertexInfo> {
 	let known = linkedByGraph.get(graph);
 	if(known === undefined) {
-		linkedByGraph.set(graph, known = new Map<string, ReadonlySet<DataflowGraphVertexInfo>>());
+		linkedByGraph.set(graph, known = new Map<BrandedIdentifier, ReadonlySet<DataflowGraphVertexInfo>>());
 	}
 	const key = defs.join(';');
 	let linked = known.get(key);

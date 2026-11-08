@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 /**
  * A bundle's string dictionary, held as the bytes of its names rather than as an array of strings.
  * Split apart, a dictionary of 1.4 million names cost a slice object per name and kept the text alive
@@ -75,7 +76,7 @@ export class SigDict implements Iterable<string> {
 	}
 
 	/** The group `name` would be in, so a lookup only compares the names that could match it. */
-	public static keyOf(name: string): number {
+	public static keyOf(name: BrandedIdentifier): number {
 		const bytes = Buffer.from(name, 'utf8');
 		return group(bytes.length, bytes[0]);
 	}

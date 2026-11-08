@@ -1,4 +1,4 @@
-import type { IdentifierString } from '../dataflow/environments/identifier';
+import type { BrandedIdentifier, IdentifierString } from '../dataflow/environments/identifier';
 import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { DfgVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
@@ -73,7 +73,7 @@ type CallSemanticsApplier<Semantics> = Semantics extends Record<IdentifierString
  * @template Domain - Type of the state abstract domain the semantics are defined for
  */
 type CallSemanticsDefinition<Domain extends StateDomain> = {
-	readonly [Key in keyof CallSemantics<Domain>]: ReadonlyMap<string, CallSemanticsEntry<Domain, Key>[]>;
+	readonly [Key in keyof CallSemantics<Domain>]: ReadonlyMap<BrandedIdentifier, CallSemanticsEntry<Domain, Key>[]>;
 };
 
 /**
@@ -109,7 +109,7 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	constructor({ constants, ...callSemantics }: SemanticsDefinition<Domain>) {
 		this.constantSemantics = constants;
 		this.callSemantics = Record.mapPartialProps(callSemantics, semantics => {
-			const map = new Map<string, CallSemanticsEntry<Domain>[]>();
+			const map = new Map<BrandedIdentifier, CallSemanticsEntry<Domain>[]>();
 
 			for(const [key, applier] of Record.entries(semantics)) {
 				const identifier = Identifier.parse(key);

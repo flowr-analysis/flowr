@@ -114,12 +114,12 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 	for(const [from, edges] of dfg.edges()) {
 		longestId = Math.max(longestId, String(from).length);
 		for(const [to, e] of edges) {
-			if(!g.hasNode(String(from)) || !g.hasNode(String(to)) || edgesDone.has(`${to}-${from}`)) {
+			if(!g.hasNode(String(from)) || !g.hasNode(String(to)) || edgesDone.has(JSON.stringify([String(to), String(from)]))) {
 				continue;
 			}
 			longestId = Math.max(longestId, String(to).length);
 			g.setEdge(String(from), String(to), { names: DfEdge.typesToNames(e) });
-			edgesDone.add(`${from}-${to}`);
+			edgesDone.add(JSON.stringify([String(from), String(to)]));
 		}
 	}
 	layout(g, {

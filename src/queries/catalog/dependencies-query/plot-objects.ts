@@ -2,7 +2,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -20,7 +20,7 @@ export function callIdentifierOf(node: RFunctionCall<ParentInformation>, dataflo
 		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 }
 
-const GgPlotComponents: ReadonlySet<string> = new Set(GgPlotImplicitAddons);
+const GgPlotComponents: ReadonlySet<BrandedIdentifier> = new Set(GgPlotImplicitAddons);
 
 /**
  * Whether the value is a plot, which printing draws rather than writes: a call returning one, a `+` chain adding
@@ -59,7 +59,7 @@ function isPlotNode(node: RNode<ParentInformation>, dataflow: DataflowInformatio
 }
 
 /** whether the node calls one of the given graphics functions */
-function isPlotCall(node: RNode<ParentInformation>, dataflow: DataflowInformation, among: ReadonlySet<string>): boolean {
+function isPlotCall(node: RNode<ParentInformation>, dataflow: DataflowInformation, among: ReadonlySet<BrandedIdentifier>): boolean {
 	const name = RFunctionCall.is(node) ? callIdentifierOf(node, dataflow) : undefined;
 	if(name === undefined || !among.has(Identifier.getName(name))) {
 		return false;

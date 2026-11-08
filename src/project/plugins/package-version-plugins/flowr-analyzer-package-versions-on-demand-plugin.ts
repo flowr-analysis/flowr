@@ -19,20 +19,20 @@ import { DescriptionFile } from '../file-plugins/flowr-analyzer-description-file
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { isBaseRPackage } from '../../../util/r-base-packages';
 import { SecureMode } from '../../../util/secure-mode';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
 /** the calls naming the packages to load in their arguments */
-const Loaders: ReadonlySet<string> = new Set(['library', 'require', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'use', 'p_load', 'pkg_attach', 'pkg_attach2']);
+const Loaders: ReadonlySet<BrandedIdentifier> = new Set(['library', 'require', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'use', 'p_load', 'pkg_attach', 'pkg_attach2']);
 /** the calls installing packages from where their arguments name, like `remotes::install_github("masurp/ggmirt")` */
-const Installers: ReadonlySet<string> = new Set(['install_github', 'install_gitlab', 'pkg_install', 'pak', 'p_load_gh', 'p_install_gh', 'install']);
+const Installers: ReadonlySet<BrandedIdentifier> = new Set(['install_github', 'install_gitlab', 'pkg_install', 'pak', 'p_load_gh', 'p_install_gh', 'install']);
 
 /** a name or string literal as the text it stands for */
 function literalText(node: RNode<ParentInformation> | undefined): string | undefined {
 	if(RSymbol.is(node)) {
-		return Identifier.getName(node.content);
+		return String(Identifier.getName(node.content));
 	} else if(RString.is(node)) {
 		return node.content.str;
 	}
@@ -40,9 +40,9 @@ function literalText(node: RNode<ParentInformation> | undefined): string | undef
 }
 
 /** What the code says about the packages it uses: their names, and the repositories it installs some of them from. */
-export function packagesNamedIn(ast: NormalizedAst): { names: Set<string>, github: Map<string, string> } {
-	const names = new Set<string>();
-	const github = new Map<string, string>();
+export function packagesNamedIn(ast: NormalizedAst): { names: Set<BrandedNamespace>, github: Map<BrandedNamespace, string> } {
+	const names = new Set<BrandedNamespace>();
+	const github = new Map<BrandedNamespace, string>();
 	for(const node of ast.idMap.values()) {
 		if(RSymbol.is(node)) {
 			const ns = Identifier.getNamespace(node.content);
@@ -81,7 +81,7 @@ const SecurityRelevant = [
  * export one of these: `library(evil)` exporting `system` would otherwise turn every later `system(cmd)` into a
  * call of `evil::system`, which no analysis looking for `system` would see.
  */
-export function shieldedNames(index: BuiltInIndex): ReadonlySet<string> {
+export function shieldedNames(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
 	return new Set([
 		...index.with(SecurityRelevant), ...index.with(CallProp.Ffi),
 		...index.params(ArgProp.Injectable | ArgProp.Resource).map(p => p.call)
@@ -128,11 +128,11 @@ export class FlowrAnalyzerPackageVersionsOnDemandPlugin extends FlowrAnalyzerPac
 	private readonly overrides?:   Partial<OnDemandOptions>;
 	private readonly extraSources: readonly OnDemandSource[];
 	private readonly fetchBytes:   FetchBytes | undefined;
-	private readonly recovered = new Map<string, RecoveredPackage>();
+	private readonly recovered = new Map<BrandedNamespace, RecoveredPackage>();
 	private source:                MemorySignatureSource | undefined;
 	private recoverer:             OnDemandRecoverer | undefined;
 	private parser:                TreeSitterExecutor | undefined;
-	private shielded:              ReadonlySet<string> | undefined;
+	private shielded:              ReadonlySet<BrandedIdentifier> | undefined;
 
 	/**
 	 * @param overrides    - options replacing what `solver.sigdb.onDemand` states, `enabled` included
@@ -175,7 +175,7 @@ export class FlowrAnalyzerPackageVersionsOnDemandPlugin extends FlowrAnalyzerPac
 	}
 
 	/** whether the options allow recovering `name` at all */
-	private static wanted(opts: OnDemandOptions, name: string): boolean {
+	private static wanted(opts: OnDemandOptions, name: BrandedNamespace): boolean {
 		return !isBaseRPackage(name) && (opts.packages === undefined || opts.packages.length === 0 || opts.packages.some(p => new RegExp(p).test(name)));
 	}
 
@@ -216,7 +216,7 @@ export class FlowrAnalyzerPackageVersionsOnDemandPlugin extends FlowrAnalyzerPac
 			return;
 		}
 		const { names, github } = packagesNamedIn(ast);
-		const remotes = new Map([...descriptionRemotes(ctx), ...github, ...Object.entries(opts.repositories ?? {})]);
+		const remotes = new Map<BrandedNamespace, string>([...descriptionRemotes(ctx), ...github, ...Object.entries(opts.repositories ?? {})]);
 		const known = ctx.deps.signatures();
 		const requests: PackageRequest[] = [...names]
 			.filter(n => FlowrAnalyzerPackageVersionsOnDemandPlugin.wanted(opts, n) && !this.recovered.has(n) && !known.has(n))
@@ -242,7 +242,7 @@ export class FlowrAnalyzerPackageVersionsOnDemandPlugin extends FlowrAnalyzerPac
 		return [this.source];
 	}
 
-	public override packagesExporting(name: string): readonly string[] {
+	public override packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return [...this.recovered.values()].filter(p => p.exported.includes(name)).map(p => p.name);
 	}
 }

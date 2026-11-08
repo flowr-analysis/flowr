@@ -107,7 +107,7 @@ describe('On-demand package sources', withTreeSitter(parser => {
 			assert.strictEqual(pkg?.version, '0.1.0');
 			assert.sameMembers([...pkg?.exported ?? []], ['tracePlot', 'itemInfoPlot', '%>%']);
 			const trace = pkg?.functions.find(f => f.name === 'tracePlot');
-			assert.deepStrictEqual(trace?.signature.map(p => [p.name, p.default]), [['model', undefined], ['items', 'NULL'], ['theta_range', 'c(-4,4)'], ['title', '"Item Char…']]);
+			assert.deepStrictEqual(trace?.signature.map(p => [String(p.name), p.default]), [['model', undefined], ['items', 'NULL'], ['theta_range', 'c(-4,4)'], ['title', '"Item Char…']]);
 			assert.isTrue(trace?.exported);
 			assert.strictEqual(trace?.file, 'R/tracePlot.r');
 			assert.isFalse(pkg?.functions.find(f => f.name === 'helper')?.exported);

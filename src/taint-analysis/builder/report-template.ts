@@ -1,7 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SourceLocation } from '../../util/range';
+import type { SourceLocation, Column, Line } from '../../util/range';
 import { SourceLocation as SourceLocationOps } from '../../util/range';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
@@ -18,9 +18,9 @@ export interface FindingContext {
 	/** The formatted source location, if resolvable */
 	readonly locString?:    string;
 	/** 1-based start line of the finding, if known */
-	readonly line?:         number;
+	readonly line?:         Line;
 	/** 1-based start column of the finding, if known */
-	readonly column?:       number;
+	readonly column?:       Column;
 	/** The source file of the finding, if known */
 	readonly file?:         string;
 	/** The node's lexeme, if known */

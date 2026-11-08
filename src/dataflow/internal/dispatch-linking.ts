@@ -7,7 +7,7 @@ import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { DfEdge, EdgeType } from '../graph/edge';
-import { type CallRuledOut, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, DfgVertex, VertexType } from '../graph/vertex';
+import { type CallRuledOut, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, DfgVertex, VertexType, FunctionDispatch } from '../graph/vertex';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from './program-order';
 import { isNotUndefined } from '../../util/assert';
@@ -23,7 +23,7 @@ import {
 } from '../fn/dispatch';
 import { getAllLinkedFunctionDefinitions } from './linker';
 import type { REnvironmentInformation } from '../environments/environment';
-import { type BrandedIdentifier, type IdentifierDefinition, type InGraphIdentifierDefinition, ReferenceType } from '../environments/identifier';
+import { type BrandedIdentifier, type IdentifierDefinition, type InGraphIdentifierDefinition, ReferenceType, type ClassName } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 
 /** The methods each method hands on to with `NextMethod()`, in the order they run. */
@@ -133,7 +133,7 @@ export class DispatchNarrower {
 			}
 		}
 		const reads: NodeId[] = [];
-		const s3Class = (vector: readonly string[]) => {
+		const s3Class = (vector: readonly ClassName[]) => {
 			const registration = this.oldClassRegistration(vector[0], all);
 			if(registration !== undefined) {
 				reads.push(registration);
@@ -141,7 +141,7 @@ export class DispatchNarrower {
 			return registration === undefined ? undefined : vector[0];
 		};
 		const bound = created === undefined ? boundArguments(call, formals, this.info.idMap) : undefined;
-		const tuples = created !== undefined ? (created.length === 1 ? [[created[0]]] : undefined) : bound === undefined ? undefined : s4ActualClasses(bound, info, s3Class);
+		const tuples = created !== undefined ? (created.classes.length === 1 ? [[created.classes[0]]] : undefined) : bound === undefined ? undefined : s4ActualClasses(bound, info, s3Class);
 		if(tuples === undefined) {
 			return { excluded: new Set(), next };
 		}
@@ -169,12 +169,12 @@ export class DispatchNarrower {
 	/** The formals of the generic among `targets` that `candidates` are methods of, which S4 dispatches on. */
 	private s4Formals(targets: ReadonlySet<NodeId>, candidates: readonly S4Method[]): readonly BrandedIdentifier[] | undefined {
 		const { byFunction } = this.s4Info();
-		const generics = [...targets].filter(t => !byFunction.has(t) && DfgVertex.isFunctionDefinition(this.graph.getVertex(t)) && (this.graph.getVertex(t) as DataflowGraphVertexFunctionDefinition).mode?.includes('s4'));
+		const generics = [...targets].filter(t => !byFunction.has(t) && DfgVertex.isFunctionDefinition(this.graph.getVertex(t)) && (this.graph.getVertex(t) as DataflowGraphVertexFunctionDefinition).mode?.includes(FunctionDispatch.S4));
 		return generics.length <= 1 ? s4DispatchFormals(generics[0], candidates, this.info.idMap) : undefined;
 	}
 
 	/** The `setOldClass` call registering the S3 class `cls` if S4 dispatch surely sees it: the only registration of `cls`, run once before any of `methods` is set. */
-	private oldClassRegistration(cls: BrandedIdentifier | undefined, methods: readonly S4Method[]): NodeId | undefined {
+	private oldClassRegistration(cls: ClassName | undefined, methods: readonly S4Method[]): NodeId | undefined {
 		const registrations = cls === undefined ? undefined : this.s4Info().hierarchy.oldClasses?.get(cls);
 		const registration = registrations?.length === 1 ? registrations[0] : undefined;
 		const at = registration === undefined ? undefined : ProgramOrder.runsOnceAt(registration, this.graph);
@@ -276,8 +276,8 @@ function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly 
 }
 
 /** The class the function `fn` is the S3 method of, for one of the generics `prefixes`, `undefined` unless every name it is bound to says the same. */
-function s3ClassOfMethod(fn: NodeId, prefixes: readonly BrandedIdentifier[], graph: DataflowGraph): BrandedIdentifier | undefined {
-	let cls: BrandedIdentifier | undefined;
+function s3ClassOfMethod(fn: NodeId, prefixes: readonly BrandedIdentifier[], graph: DataflowGraph): ClassName | undefined {
+	let cls: ClassName | undefined;
 	for(const def of Dataflow.sourcesOf(graph, fn, EdgeType.DefinedBy)) {
 		const name = NodeId.recoverBareName(def, graph.idMap);
 		const prefix = name === undefined ? undefined : prefixes.find(p => name.startsWith(p + '.'));

@@ -20,7 +20,7 @@ import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../..
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType, EnvStateRole } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -493,7 +493,7 @@ function tryRouteFieldEnvAssign<OtherInfo>(
 		return { ...normalResult, environment: REnvironment.define(definition, true, normalResult.environment) };
 	}
 	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
-	if(envirResolution.envDef.closureFrame === true) {
+	if(envirResolution.envDef.envRole === EnvStateRole.ClosureFrame) {
 		/* `environment(g)$v <- x` writes the frame, `g` still holds the same closure */
 		normalResult.graph.addEdge(normalResult.entryPoint, envirResolution.envirNodeId, EdgeType.Reads);
 		return { ...normalResult, environment: rebindHolders(normalResult.environment, envirResolution.envDef, newEnvState, rootId) };
@@ -705,7 +705,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	if(forces.length > 0) {
 		markForcing(data.environment);
 	}
-	const tracked = envState ? { envState, envId, ...frame !== undefined || copied?.closureFrame ? { closureFrame: true } as const : {} } : returnsEnvState ? { returnsEnvState } : envId === undefined ? {} : { envId };
+	const tracked = envState ? { envState, envId, ...frame !== undefined || copied?.envRole === EnvStateRole.ClosureFrame ? { envRole: EnvStateRole.ClosureFrame } : {} } : returnsEnvState ? { returnsEnvState } : envId === undefined ? {} : { envId };
 	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {} }));
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {

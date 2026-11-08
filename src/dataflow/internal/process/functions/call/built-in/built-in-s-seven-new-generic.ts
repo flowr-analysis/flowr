@@ -18,7 +18,7 @@ import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/n
 import { type BrandedIdentifier, Identifier, isInGraphDefinition, ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { VertexType, DfgVertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex, FunctionDispatch } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
@@ -84,7 +84,7 @@ export function processS7NewGeneric<OtherInfo>(
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
 	if(DfgVertex.isFunctionDefinition(fArg)) {
-		fArg.mode ??= ['s4', 's7'];
+		fArg.mode ??= [FunctionDispatch.S4, FunctionDispatch.S7];
 	}
 	if(config.binds) {
 		linkS4Generic(info, rootId, accessedIdentifiers, data);
@@ -104,7 +104,7 @@ export function processMakeConstructor<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config?: {
-		readonly mode?:      readonly ('s7' | 's3' | 's4')[],
+		readonly mode?:      readonly FunctionDispatch[],
 		readonly wrapIndex?: number,
 		readonly wrapName?:  BrandedIdentifier,
 		/** what the call declares about a class, see {@link classDeclarationOfImpl} */

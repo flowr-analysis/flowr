@@ -5,7 +5,7 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { REnvironment, type REnvironmentInformation } from '../environments/environment';
 import { anyRemovalMarker, removalMarkerOf } from '../environments/removal-marker';
-import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition } from '../environments/identifier';
+import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, EnvStateRole } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { DfEdge, EdgeType } from './edge';
 import type { DataflowGraph } from './graph';
@@ -13,7 +13,7 @@ import { DfgVertex } from './vertex';
 import { Dataflow } from './df-helper';
 import { ProgramOrder } from '../internal/program-order';
 
-/** What the frames of the closures one variable holds bind to a name, see {@link InGraphIdentifierDefinition#closureFrame}. */
+/** What the frames of the closures one variable holds bind to a name, see {@link EnvStateRole.ClosureFrame}. */
 export interface FrameWrites {
 	/** the definitions written into the frames */
 	readonly ids:      ReadonlySet<NodeId>
@@ -44,7 +44,7 @@ export interface FrameReads {
 
 const NoWrites: FrameWrites = { ids: new Set(), writers: new Set(), definite: false, entries: [] };
 
-/** The frame a closure holds (`environment(g)`) is the one the call creating it ran in, so writes into it reach only the calls of that very closure: they are tracked on the variables holding it (see {@link InGraphIdentifierDefinition#closureFrame}). */
+/** The frame a closure holds (`environment(g)`) is the one the call creating it ran in, so writes into it reach only the calls of that very closure: they are tracked on the variables holding it (see {@link EnvStateRole.ClosureFrame}). */
 export const ClosureFrames = {
 	/** What the frames of the closures `holder` holds in `environment` bind to `name`. */
 	writesOf(this: void, holder: Identifier, environment: REnvironmentInformation, name: BrandedIdentifier, closure: NodeId, graph: DataflowGraph): FrameWrites {
@@ -54,7 +54,7 @@ export const ClosureFrames = {
 		const entries: FrameWrite[] = [];
 		let definite = holders.length > 0;
 		for(const def of holders as readonly InGraphIdentifierDefinition[]) {
-			const frame = def.closureFrame === true && hasEnvState(def) ? def.envState : undefined;
+			const frame = def.envRole === EnvStateRole.ClosureFrame && hasEnvState(def) ? def.envState : undefined;
 			const written = frame?.current.lookup(name) ?? [];
 			const removals = frame === undefined || !anyRemovalMarker(name) ? [] : frame.current.memory.get(removalMarkerOf(name)) ?? [];
 			for(const w of written) {

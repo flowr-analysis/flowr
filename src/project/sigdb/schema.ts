@@ -307,7 +307,7 @@ export interface SigClassInfo {
 	/** the record is a class union, so {@link SigClassInfo.supers} are its members (see {@link ClassProp.Union}) */
 	readonly union?:   boolean;
 	/** The package defining the class, when not the one carrying the record (see {@link ClassProp.Foreign}); absent when self-defined. */
-	readonly package?: string;
+	readonly package?: BrandedNamespace;
 }
 
 /** one declared member of a {@link SigClassInfo}: an S4 slot, an S7 property, an RC field, or an R6 entry */

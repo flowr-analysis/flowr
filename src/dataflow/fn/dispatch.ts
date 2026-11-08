@@ -18,7 +18,7 @@ import { isValue } from '../eval/values/r-value';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { argForImpl, declaredClassesImpl } from './class-declaration';
 import { DotsParameterName } from '../../util/arg-matching';
-import type { BrandedIdentifier } from '../environments/identifier';
+import type { BrandedIdentifier, ClassName } from '../environments/identifier';
 import { s4GroupGenericsOf } from '../environments/group-generics';
 import { uniqueArray } from '../../util/collections/arrays';
 
@@ -35,7 +35,7 @@ export const enum ClassSource {
 /** The class vector one producer of a value gives it. */
 export interface ValueClass {
 	readonly source:  ClassSource
-	readonly classes: readonly string[]
+	readonly classes: readonly ClassName[]
 }
 
 /** What the class flow needs: a finished graph with its AST, and what value resolution needs. */
@@ -183,7 +183,8 @@ function callStep(vertex: DataflowGraphVertexFunctionCall, info: ClassFlowInfo):
 	const { graph } = info;
 	const id = vertex.id;
 	if(vertex.instantiates !== undefined) {
-		return vertex.instantiates.length === 1 ? { source: ClassSource.Instance, classes: vertex.instantiates } : undefined;
+		const { classes } = vertex.instantiates;
+		return classes.length === 1 ? { source: ClassSource.Instance, classes } : undefined;
 	}
 	const node = info.idMap.get(id);
 	const targets = Dataflow.targetsOf(graph, id, EdgeType.Calls);
@@ -224,13 +225,13 @@ function implicitClassOf(id: NodeId, info: ClassFlowInfo): FlowStep {
 }
 
 /** The class vectors S3 dispatch may see for the argument at `id`, `undefined` unless all are known. */
-export function s3DispatchClassesOf(id: NodeId, info: ClassFlowInfo): readonly (readonly string[])[] | undefined {
+export function s3DispatchClassesOf(id: NodeId, info: ClassFlowInfo): readonly (readonly ClassName[])[] | undefined {
 	const classes = classesOfValue(id, info);
 	return classes?.every(c => c.source !== ClassSource.Instance) ? classes.map(c => c.classes) : undefined;
 }
 
 /** The class S4 dispatch sees for a value: the class of an instance, or of a constant; for an S3 class vector, what `s3Class` makes of it, `undefined` by default. */
-function s4ClassOf({ source, classes }: ValueClass, s3Class: (vector: readonly string[]) => string | undefined): string | undefined {
+function s4ClassOf({ source, classes }: ValueClass, s3Class: (vector: readonly ClassName[]) => ClassName | undefined): ClassName | undefined {
 	switch(source) {
 		case ClassSource.Instance:
 			return classes[0];
@@ -242,7 +243,7 @@ function s4ClassOf({ source, classes }: ValueClass, s3Class: (vector: readonly s
 }
 
 /** The S3 methods a dispatch on the class vectors `classes` may run, in each vector the method of a class or else that of a later one, then the default, and for each such method what its `NextMethod()` may run: the methods of the classes after its own in a vector it was run for. */
-export function s3Dispatch<T>(classes: readonly (readonly string[])[], methods: readonly T[], methodOf: (m: T) => string | undefined): { readonly runs: Set<T>, readonly next: Map<T, Set<T>> } {
+export function s3Dispatch<T>(classes: readonly (readonly ClassName[])[], methods: readonly T[], methodOf: (m: T) => ClassName | undefined): { readonly runs: Set<T>, readonly next: Map<T, Set<T>> } {
 	const runs = new Set<T>();
 	const next = new Map<T, Set<T>>();
 	for(const vector of classes) {
@@ -276,11 +277,11 @@ const AnyDistance = 1_000_000;
 
 /** The class hierarchy S4 dispatch walks, with the classes whose superclasses are not all known (they come from packages). */
 export interface S4Hierarchy {
-	readonly supers:     ReadonlyMap<string, readonly string[]>
+	readonly supers:     ReadonlyMap<ClassName, readonly ClassName[]>
 	/** classes the program does not declare, whose superclasses (from base R or a package) are open */
-	readonly declared:   ReadonlySet<string>
+	readonly declared:   ReadonlySet<ClassName>
 	/** per S3 class `setOldClass` registers, the calls registering it; `undefined` if one registers classes not known */
-	readonly oldClasses: ReadonlyMap<BrandedIdentifier, readonly NodeId[]> | undefined
+	readonly oldClasses: ReadonlyMap<ClassName, readonly NodeId[]> | undefined
 }
 
 /** the virtual class every S3 class `setOldClass` registers extends last */
@@ -289,10 +290,10 @@ const OldClass = 'oldClass';
 /** The S4 class hierarchy the graph declares, with the superclasses `setClassUnion` and `setIs` give classes it does not declare, and the S3 classes `setOldClass` registers, each extending the next of its vector. */
 export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 	const classes = declaredClassesImpl(graph);
-	const supers = new Map<string, string[]>([...classes].map(([name, decl]) => [name, [...decl.contains]]));
+	const supers = new Map<ClassName, ClassName[]>([...classes].map(([name, decl]) => [name, [...decl.contains]]));
 	const declared = new Set(classes.keys());
-	let oldClasses: Map<string, NodeId[]> | undefined = new Map();
-	const add = (sub: string, sup: string | undefined) => {
+	let oldClasses: Map<ClassName, NodeId[]> | undefined = new Map();
+	const add = (sub: ClassName, sup: ClassName | undefined) => {
 		const list = supers.get(sub) ?? [];
 		if(sup !== undefined && sup !== sub && !list.includes(sup)) {
 			supers.set(sub, [...list, sup]);
@@ -330,8 +331,8 @@ export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 }
 
 /** Per class, the fewest steps from `cls` up to it, and the fewest to a class whose superclasses are open. */
-function distancesFrom(cls: string, hierarchy: S4Hierarchy): { readonly depth: ReadonlyMap<string, number>, readonly open: number | undefined } {
-	const depth = new Map<string, number>([[cls, 0]]);
+function distancesFrom(cls: ClassName, hierarchy: S4Hierarchy): { readonly depth: ReadonlyMap<ClassName, number>, readonly open: number | undefined } {
+	const depth = new Map<ClassName, number>([[cls, 0]]);
 	let open: number | undefined;
 	for(const [at, d] of depth) {
 		if(!hierarchy.declared.has(at)) {
@@ -347,8 +348,8 @@ function distancesFrom(cls: string, hierarchy: S4Hierarchy): { readonly depth: R
 }
 
 /** The classes a class with open superclasses may reach through them: the undeclared ones, and what the program places above an undeclared one. */
-function reachableThroughOpen(hierarchy: S4Hierarchy): ReadonlySet<string> {
-	const reachable = new Set<string>();
+function reachableThroughOpen(hierarchy: S4Hierarchy): ReadonlySet<ClassName> {
+	const reachable = new Set<ClassName>();
 	for(const [sub, sups] of hierarchy.supers) {
 		if(!hierarchy.declared.has(sub)) {
 			sups.forEach(s => reachable.add(s));
@@ -361,7 +362,7 @@ function reachableThroughOpen(hierarchy: S4Hierarchy): ReadonlySet<string> {
 }
 
 /** The range of distances R may see from the class `actual` of an argument to the class `wanted` of a signature, and whether it surely matches; `undefined` if it never matches. */
-function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, open: ReadonlySet<string>): [number, number, boolean] | undefined {
+function distanceRange(actual: ClassName, wanted: ClassName, hierarchy: S4Hierarchy, open: ReadonlySet<ClassName>): [number, number, boolean] | undefined {
 	if(wanted === 'ANY') {
 		return [AnyDistance, AnyDistance, true];
 	} else if(actual === wanted) {
@@ -379,7 +380,7 @@ function distanceRange(actual: string, wanted: string, hierarchy: S4Hierarchy, o
 }
 
 /** The methods R may select among `methods` for arguments of the classes `actual` (one per dispatched formal, `missing` for an argument not given): every applicable method whose least possible distance is no more than the greatest possible one of the closest; ties are kept, as R would pick among them. */
-export function selectS4Methods(methods: readonly S4Method[], formals: readonly BrandedIdentifier[], actual: readonly BrandedIdentifier[], hierarchy: S4Hierarchy): S4Method[] {
+export function selectS4Methods(methods: readonly S4Method[], formals: readonly BrandedIdentifier[], actual: readonly ClassName[], hierarchy: S4Hierarchy): S4Method[] {
 	const open = reachableThroughOpen(hierarchy);
 	const ranges: [S4Method, number, number, boolean][] = [];
 	for(const method of methods) {
@@ -405,8 +406,8 @@ export function selectS4Methods(methods: readonly S4Method[], formals: readonly 
 }
 
 /** The class a method's signature wants per dispatched formal, `ANY` where it states none; `undefined` if it names a formal not dispatched on. */
-export function signatureFor(method: Pick<S4Method, 'signature'>, formals: readonly BrandedIdentifier[]): BrandedIdentifier[] | undefined {
-	const wanted = formals.map((): BrandedIdentifier => 'ANY');
+export function signatureFor(method: Pick<S4Method, 'signature'>, formals: readonly BrandedIdentifier[]): ClassName[] | undefined {
+	const wanted = formals.map((): ClassName => 'ANY');
 	let position = 0;
 	for(const { cls, name } of method.signature ?? []) {
 		const at = name === undefined ? position : formals.indexOf(name);
@@ -461,14 +462,14 @@ export function s4CandidatesFor(name: BrandedIdentifier, methods: ReadonlyMap<Br
 }
 
 /** The classes an S4 call dispatches on, one tuple per combination the arguments may have, `undefined` unless all are known. */
-export function s4ActualClasses(bound: readonly (NodeId | undefined)[], info: ClassFlowInfo, s3Class: (vector: readonly string[]) => string | undefined): string[][] | undefined {
-	let tuples: string[][] = [[]];
+export function s4ActualClasses(bound: readonly (NodeId | undefined)[], info: ClassFlowInfo, s3Class: (vector: readonly ClassName[]) => ClassName | undefined): ClassName[][] | undefined {
+	let tuples: ClassName[][] = [[]];
 	for(const arg of bound) {
-		const classes = arg === undefined ? ['missing'] : classesOfValue(arg, info)?.map(c => s4ClassOf(c, s3Class));
+		const classes: readonly (ClassName | undefined)[] | undefined = arg === undefined ? ['missing'] : classesOfValue(arg, info)?.map(c => s4ClassOf(c, s3Class));
 		if(classes === undefined || classes.includes(undefined)) {
 			return undefined;
 		}
-		tuples = tuples.flatMap(t => uniqueArray(classes as string[]).map(c => [...t, c]));
+		tuples = tuples.flatMap(t => uniqueArray(classes as ClassName[]).map(c => [...t, c]));
 		if(tuples.length > MaxProducers) {
 			return undefined;
 		}

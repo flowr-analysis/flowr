@@ -14,7 +14,7 @@ import type { DataflowFunctionFlowInformation, DataflowGraph } from '../graph/gr
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType } from '../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType, FunctionDispatch } from '../graph/vertex';
 import { type Environment, REnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { ExitPoint } from '../info';
 import { ControlDependency, negateControlDependency, doesExitPointPropagateCalls } from '../info';
@@ -226,8 +226,8 @@ function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunct
 						graph.addEdge(id, v, EdgeType.Calls);
 						graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
 						const vInfo = graph.getVertex(v);
-						if(DfgVertex.isFunctionDefinition(vInfo) && !vInfo.mode?.includes('s7')) {
-							(vInfo.mode ??= []).push('s7');
+						if(DfgVertex.isFunctionDefinition(vInfo) && !vInfo.mode?.includes(FunctionDispatch.S7)) {
+							(vInfo.mode ??= []).push(FunctionDispatch.S7);
 						}
 					}
 				}

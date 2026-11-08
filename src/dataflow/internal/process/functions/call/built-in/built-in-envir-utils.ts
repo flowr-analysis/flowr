@@ -5,7 +5,7 @@ import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EnvHolderDefinition, type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { type EnvHolderDefinition, type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition, EnvStateRole } from '../../../../../environments/identifier';
 import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
@@ -146,7 +146,7 @@ export function closureFrameResolution<OtherInfo>(node: RNode<OtherInfo & Parent
 	if(def?.name === undefined || NodeId.isBuiltIn(def.definedAt)) {
 		return undefined;
 	}
-	const envDef = { ...def, envState: def.envState ?? REnvironment.pushLocal(data.environment), envId: def.envId ?? def.nodeId, closureFrame: true } as const;
+	const envDef = { ...def, envState: def.envState ?? REnvironment.pushLocal(data.environment), envId: def.envId ?? def.nodeId, envRole: EnvStateRole.ClosureFrame } as const;
 	return { envirData: { ...data, environment: envDef.envState }, envDef, envirNodeId: node.info.id };
 }
 
@@ -154,7 +154,7 @@ export function closureFrameResolution<OtherInfo>(node: RNode<OtherInfo & Parent
 export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation, graph: DataflowGraph): void {
 	const vertex = graph.getVertex(call);
 	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
-	if(name === undefined || !Resolve.byName(name, environment)?.some(d => (d as InGraphIdentifierDefinition).closureFrame === true)) {
+	if(name === undefined || !Resolve.byName(name, environment)?.some(d => (d as InGraphIdentifierDefinition).envRole === EnvStateRole.ClosureFrame)) {
 		return;
 	}
 	called.framed = true;
@@ -182,7 +182,7 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 /** A free variable of a function body names an environment bound only once the function is called: what the body writes into it escapes the function like a `<<-` would, and the call adds it to the environment the name holds there. */
 function freeEnvirResolution<OtherInfo>(name: Identifier, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> {
 	const envState = REnvironment.pushLocal(data.environment);
-	const envDef = { name, nodeId, type: ReferenceType.Variable, definedAt: nodeId, cds: data.cds, envState, envWrites: true } as const;
+	const envDef = { name, nodeId, type: ReferenceType.Variable, definedAt: nodeId, cds: data.cds, envState, envRole: EnvStateRole.Writes } as const;
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId };
 }
 
@@ -325,7 +325,7 @@ export const EnvironmentLookups: ReadonlySet<BrandedIdentifier> = new Set([
 export function readEnvironmentContents(graph: DataflowGraph, call: NodeId, holder: IdentifierDefinition): void {
 	const envState = (holder as InGraphIdentifierDefinition).envState;
 	/* a stack env or the frame of a function (`environment()`) holds variables the scoping links already */
-	if(envState === undefined || stackKindOf(envState) !== undefined || envState.current.closure !== undefined || (holder as InGraphIdentifierDefinition).closureFrame === true) {
+	if(envState === undefined || stackKindOf(envState) !== undefined || envState.current.closure !== undefined || (holder as InGraphIdentifierDefinition).envRole === EnvStateRole.ClosureFrame) {
 		return;
 	}
 	for(const fields of envState.current.memory.values()) {
@@ -372,12 +372,12 @@ export function rebindAliases(environment: REnvironmentInformation, name: Identi
 export function rebindHolders(environment: REnvironmentInformation, envDef: EnvHolderDefinition, envState: REnvironmentInformation, definedAt?: NodeId): REnvironmentInformation {
 	for(const holder of holdersOf(environment, envDef)) {
 		/* a holder bound in an enclosing frame is updated there, so the write escapes the function like a `<<-` */
-		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState, ...envDef.closureFrame ? { closureFrame: true } as const : {} }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
+		environment = REnvironment.define({ ...holder, definedAt: definedAt ?? holder.definedAt, envState, ...envDef.envRole === EnvStateRole.ClosureFrame ? { envRole: EnvStateRole.ClosureFrame } : {} }, environment.current.lookup(Identifier.getName(holder.name)) === undefined, environment);
 	}
 	return environment;
 }
 
-/** Adds the `writes` a called function made into environments its free variables name (see {@link InGraphIdentifierDefinition#envWrites}) to the environments the caller binds these names to; a name still free in a calling function body stays with the writes, so its own calls add them. */
+/** Adds the `writes` a called function made into environments its free variables name (see {@link EnvStateRole.Writes}) to the environments the caller binds these names to; a name still free in a calling function body stays with the writes, so its own calls add them. */
 export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], callee: REnvironmentInformation, caller: REnvironmentInformation, call: NodeId, graph: DataflowGraph): [REnvironmentInformation, REnvironmentInformation] {
 	for(const written of writes) {
 		if(!hasEnvState(written) || written.name === undefined) {

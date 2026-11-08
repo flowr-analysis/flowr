@@ -19,7 +19,7 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType, FunctionDispatch } from '../../../../../graph/vertex';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
@@ -844,10 +844,10 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 			if(named !== undefined) {
 				linkNamedNextMethods(graph, target, named, effectiveEnvironment, narrower, ctx);
 			}
-			if(treatAsS3 || targetVertex.mode?.includes('s4')) {
+			if(treatAsS3 || targetVertex.mode?.includes(FunctionDispatch.S4)) {
 				targetVertex.mode ??= [];
-				if(treatAsS3 && !targetVertex.mode.includes('s3')) {
-					targetVertex.mode.push('s3');
+				if(treatAsS3 && !targetVertex.mode.includes(FunctionDispatch.S3)) {
+					targetVertex.mode.push(FunctionDispatch.S3);
 				}
 				for(const [next, v] of Dataflow.callsIn(targetVertex, graph)) {
 					if(DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)) {

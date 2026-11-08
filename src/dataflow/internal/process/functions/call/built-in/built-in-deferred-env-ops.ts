@@ -19,7 +19,7 @@ import { Dataflow } from '../../../../../graph/df-helper';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { type EnvHolderDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type InGraphReferenceType, type NamedInGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
+import { type EnvHolderDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type InGraphReferenceType, type NamedInGraphIdentifierDefinition, ReferenceType, EnvStateRole } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { applyGlobalKills, applyKills } from '../../../../../environments/apply-kill';
 import type { KillReference } from '../../../../../info';
@@ -42,7 +42,7 @@ const OpOfProcessor: Partial<Record<BuiltInProcName, EnvOpKind>> = {
 /** The formal of `rm` naming what it removes by value, its `...` names them unevaluated. */
 const RemovedByValue = 'list';
 
-/** The calls of a function body `roots` whose environment operation depends on the call of the function: a name not written down, or a read or removal in an environment the body does not bind (what a body defines in such an environment under a name written down already reaches the caller, see {@link InGraphIdentifierDefinition#envWrites}). */
+/** The calls of a function body `roots` whose environment operation depends on the call of the function: a name not written down, or a read or removal in an environment the body does not bind (what a body defines in such an environment under a name written down already reaches the caller, see {@link EnvStateRole.Writes}). */
 export function deferredEnvOps<OtherInfo>(roots: Iterable<NodeId>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DeferredEnvOp[] | undefined {
 	let ops: DeferredEnvOp[] | undefined;
 	for(const id of roots) {
@@ -93,7 +93,7 @@ export function deferredEnvOps<OtherInfo>(roots: Iterable<NodeId>, graph: Datafl
 			id,
 			kind,
 			names:    named === undefined ? [] : [named.info.id],
-			literals: literals as string[],
+			literals: literals as BrandedIdentifier[],
 			envir:    envir.info.id,
 			value:    kind === EnvOpKind.Define ? RArgument.valueOf(bound.get(formals[1]))?.info.id : undefined,
 			returns:  config.returnsValue !== false
@@ -256,10 +256,10 @@ function envAtCall(envir: NodeId, environment: REnvironmentInformation, run: Run
 		/* the frame of the closure the variable holds, tracked on the variable, see `closureFrameResolution` */
 		const defs = Resolve.byName(held.content, environment);
 		const def = defs?.length === 1 && !NodeId.isBuiltIn(defs[0].definedAt) ? defs[0] as NamedInGraphIdentifierDefinition : undefined;
-		return def === undefined ? undefined : { holders: [{ ...def, envState: def.envState ?? REnvironment.pushLocal(environment), envId: def.envId ?? def.nodeId, closureFrame: true }] };
+		return def === undefined ? undefined : { holders: [{ ...def, envState: def.envState ?? REnvironment.pushLocal(environment), envId: def.envId ?? def.nodeId, envRole: EnvStateRole.ClosureFrame }] };
 	}
 	const holders = Resolve.byNameAndType(held.content, environment, ReferenceType.Variable);
-	if(holders === undefined || holders.length === 0 || !holders.every(h => hasEnvState(h) && h.name !== undefined && (h as InGraphIdentifierDefinition).closureFrame !== true)) {
+	if(holders === undefined || holders.length === 0 || !holders.every(h => hasEnvState(h) && h.name !== undefined && (h as InGraphIdentifierDefinition).envRole !== EnvStateRole.ClosureFrame)) {
 		return undefined;
 	}
 	return { holders: holders as (EnvHolderDefinition)[] };
@@ -278,7 +278,7 @@ function contextOfChain(calls: readonly NodeId[], fn: NodeId, idMap: AstIdMap): 
 }
 
 /** The names `name` computes in the run: a parameter takes what the call hands over, anything else is resolved for the call it runs in. */
-function namesAt(name: NodeId, run: Run, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+function namesAt(name: NodeId, run: Run, ctx: ReadOnlyFlowrAnalyzerContext): readonly BrandedIdentifier[] | undefined {
 	const node = run.idMap.get(name);
 	if(RString.is(node)) {
 		return [node.content.str];
@@ -288,7 +288,7 @@ function namesAt(name: NodeId, run: Run, ctx: ReadOnlyFlowrAnalyzerContext): str
 	if(parameter !== undefined) {
 		const handed = handedTo(parameter, run);
 		const names = handed.map(a => NodeValue.stringsOf(a, { ...info, callContext: run.context }));
-		return handed.length === 0 || names.includes(undefined) ? undefined : names.flat() as string[];
+		return handed.length === 0 || names.includes(undefined) ? undefined : names.flat() as BrandedIdentifier[];
 	}
 	return NodeValue.stringsOf(name, { ...info, callContext: run.context });
 }
@@ -309,10 +309,10 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 		}
 		const names = op.names.map(n => namesAt(n, run, ctx));
 		const at = envAtCall(op.envir, environment, run);
-		if(at === undefined || names.some(n => n === undefined || n.length === 0) || (op.kind === EnvOpKind.Replace && at !== StackEnvKind.CallerFrame && (typeof at !== 'object' || !at.holders.every(h => h.closureFrame === true || holdsValueOf(h, graph, EnvironmentProducers))))) {
+		if(at === undefined || names.some(n => n === undefined || n.length === 0) || (op.kind === EnvOpKind.Replace && at !== StackEnvKind.CallerFrame && (typeof at !== 'object' || !at.holders.every(h => h.envRole === EnvStateRole.ClosureFrame || holdsValueOf(h, graph, EnvironmentProducers))))) {
 			continue;
 		}
-		const all = [...op.literals, ...names.flat() as string[]];
+		const all = [...op.literals, ...names.flat() as BrandedIdentifier[]];
 		const holders = typeof at === 'object' ? at.holders : [];
 		/* with several names or environments, each is only maybe the one */
 		const cds = callCds ?? (all.length > 1 || holders.length > 1 ? [] : undefined);
@@ -378,7 +378,7 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly B
 		return update(environment, at === StackEnvKind.Global);
 	}
 	for(const holder of at.holders) {
-		environment = rebindHolders(environment, holder, update(holder.envState, false, holder.closureFrame === true), call);
+		environment = rebindHolders(environment, holder, update(holder.envState, false, holder.envRole === EnvStateRole.ClosureFrame), call);
 	}
 	return environment;
 }
@@ -426,7 +426,7 @@ export function linkCallerFrameWrites(call: NodeId, fn: DataflowGraphVertexFunct
 		if(names.includes(undefined)) {
 			continue;
 		}
-		const all = new Set([...op.literals, ...names.flat() as string[]]);
+		const all = new Set([...op.literals, ...names.flat() as BrandedIdentifier[]]);
 		const value = op.value === undefined ? op.id : valueAt(op.value, run);
 		graph.addEdge(value, call, EdgeType.SideEffectOnCall);
 		for(const id of RNode.collectAllIdsWithStop(frame.body, RFunctionDefinition.is)) {

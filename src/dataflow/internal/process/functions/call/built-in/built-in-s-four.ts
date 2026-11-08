@@ -11,7 +11,7 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { type ClassArgRef, argForImpl, ClassSystem, declaredClassesImpl, superClassesOfImpl } from '../../../../../fn/class-declaration';
-import { type BrandedIdentifier, type Identifier, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, type Identifier, type InGraphReferenceType, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, type S4SignatureEntry, VertexType } from '../../../../../graph/vertex';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -31,7 +31,7 @@ type Args<O> = readonly PotentiallyEmptyRArgument<O & ParentInformation>[];
 const S4ClassMark = '﹕s4class﹕';
 
 /** The registry name of the S4 class `cls`, see {@link S4ClassMark}. */
-export function s4ClassName(cls: BrandedIdentifier): Identifier {
+export function s4ClassName(cls: ClassName): Identifier {
 	return S4ClassMark + cls;
 }
 
@@ -48,14 +48,14 @@ export interface S4UseConfig {
 	/** the call hands back a method of the generic its {@link genericArg} names (`getMethod`, `selectMethod`) */
 	readonly returnsMethod?:   boolean;
 	/** the call creates an instance of the classes its {@link classArgs} name, running the methods of the `initializer` generic and their validity functions */
-	readonly instantiates?:    { readonly initializer: string };
+	readonly instantiates?:    { readonly initializer: BrandedIdentifier };
 	/** the call registers its definition as a method of the generic, for the signature the first of its {@link classArgs} states (`setMethod`) */
 	readonly registersMethod?: boolean;
 }
 
 
 /** The names an argument states, looking through the `c(...)`/`signature(...)` wrappers a signature may use. */
-function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly string[] {
+function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly ClassName[] {
 	const known = node === undefined ? [] : NodeValue.knownStringsOf(node.info.id, data);
 	if(known.length > 0 || !RFunctionCall.isNamed(node)) {
 		return known;
@@ -104,8 +104,7 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 	readNames(info, rootId, classes.map(s4ClassName), ReferenceType.Variable, data);
 	const vertex = config.instantiates ? info.graph.getVertex(rootId) : undefined;
 	if(config.instantiates && DfgVertex.isFunctionCall(vertex)) {
-		vertex.instantiates = classes;
-		vertex.initializer = config.instantiates.initializer;
+		vertex.instantiates = { classes, initializer: config.instantiates.initializer };
 		for(const { nodeId } of Resolve.byNameAndType(config.instantiates.initializer, data.environment, ReferenceType.Function) ?? []) {
 			if(!NodeId.isBuiltIn(nodeId)) {
 				info.graph.addEdge(rootId, nodeId, EdgeType.Calls);
@@ -205,7 +204,7 @@ export function linkInstantiations(graph: DataflowGraph): void {
 	if(instantiations.length === 0) {
 		return;
 	}
-	const validators = new Map<BrandedIdentifier, NodeId[]>();
+	const validators = new Map<ClassName, NodeId[]>();
 	for(const [, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(classDecl?.validity !== undefined && classDecl.name !== undefined) {
 			validators.set(classDecl.name, [...validators.get(classDecl.name) ?? [], classDecl.validity]);
@@ -214,12 +213,12 @@ export function linkInstantiations(graph: DataflowGraph): void {
 	const classes = validators.size === 0 ? undefined : declaredClassesImpl(graph);
 	let byName: ReturnType<typeof Dataflow.definitionsByName> | undefined;
 	for(const [id, vertex] of instantiations) {
-		if(vertex.initializer !== undefined && !graph.isRoot(id)) {
-			for(const definition of (byName ??= Dataflow.definitionsByName(graph)).get(vertex.initializer)) {
+		if(vertex.instantiates !== undefined && !graph.isRoot(id)) {
+			for(const definition of (byName ??= Dataflow.definitionsByName(graph)).get(vertex.instantiates.initializer)) {
 				graph.addEdge(id, definition, EdgeType.Calls);
 			}
 		}
-		const created = vertex.instantiates ?? [];
+		const created = vertex.instantiates?.classes ?? [];
 		const checked = classes === undefined ? [] : created.length === 0 ? [...validators.keys()] : created.flatMap(cls => [cls, ...superClassesOfImpl(cls, classes)]);
 		for(const validity of checked.flatMap(cls => validators.get(cls) ?? [])) {
 			graph.addEdge(id, validity, EdgeType.Calls);

@@ -10,7 +10,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType, EnvStateRole } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -176,7 +176,7 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly Cont
 
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
-	const closureFrame = envir.envDef.closureFrame === true;
+	const closureFrame = envir.envDef.envRole === EnvStateRole.ClosureFrame;
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId), closureFrame);
 	if(closureFrame) {
 		res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);

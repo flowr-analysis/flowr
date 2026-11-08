@@ -10,7 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType, EnvStateRole, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -209,7 +209,7 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 }
 
 /** Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run, with any that is no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it. */
-function printedBy(classes: readonly (readonly string[])[], found: readonly IdentifierDefinition[], graph: DataflowGraph): IdentifierDefinition[] {
+function printedBy(classes: readonly (readonly ClassName[])[], found: readonly IdentifierDefinition[], graph: DataflowGraph): IdentifierDefinition[] {
 	const methodOf = (d: IdentifierDefinition) => d.name === undefined ? undefined : /^print\.(.+)$/.exec(Identifier.getName(d.name))?.[1];
 	const { runs, next } = s3Dispatch(classes, found, methodOf);
 	for(const [method, after] of next) {
@@ -282,7 +282,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 							/* what a call of the list writes is written by the list, a later read of it looks no further */
 							listEnvironments.add(def.nodeId);
-							if((def as InGraphIdentifierDefinition).envWrites === true) {
+							if((def as InGraphIdentifierDefinition).envRole === EnvStateRole.Writes) {
 								envWrites.push(def);
 							}
 						}

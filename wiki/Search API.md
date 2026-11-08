@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-11-07, 22:50:29 UTC (v2.17.3, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
@@ -27,18 +27,7 @@ x <- x * x
 <details style="color:gray"> <summary>JSON Representation</summary>
 
 ```json
-{
-  "generator": {
-    "type": "generator",
-    "name": "get",
-    "args": {
-      "filter": {
-        "name": "x"
-      }
-    }
-  },
-  "search": []
-}
+{"generator":{"type":"generator","name":"get","args":{"filter":{"name":"x"}}},"search":[]}
 ```
 
 </details>
@@ -125,33 +114,7 @@ x <- 2
 <details style="color:gray"> <summary>JSON Representation</summary>
 
 ```json
-{
-  "generator": {
-    "type": "generator",
-    "name": "get",
-    "args": {
-      "filter": {
-        "name": "x"
-      }
-    }
-  },
-  "search": [
-    {
-      "type": "transformer",
-      "name": "filter",
-      "args": {
-        "filter": "vdef"
-      }
-    },
-    {
-      "type": "transformer",
-      "name": "skip",
-      "args": {
-        "count": 1
-      }
-    }
-  ]
-}
+{"generator":{"type":"generator","name":"get","args":{"filter":{"name":"x"}}},"search":[{"type":"transformer","name":"filter","args":{"filter":"vdef"}},{"type":"transformer","name":"skip","args":{"count":1}}]}
 ```
 
 </details>

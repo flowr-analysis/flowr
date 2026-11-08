@@ -90,7 +90,7 @@ export function getDefaultProcessor(name: BrandedIdentifier): BuiltInProcName | 
 	const named = (n: Identifier, base: boolean) => Identifier.getName(n) === name && (!base || AttachedBasePackageSet.has(Identifier.getNamespace(n) ?? PkgName.Base));
 	const matches = (base: boolean) => (def: typeof DefaultBuiltinConfig[number]) =>
 		((def.names as readonly Identifier[]).some(n => named(n, base)) && def.type !== 'constant')
-		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${Identifier.getName(n)}${d}`)).includes(String(name)));
+		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map((n): BrandedIdentifier => `${Identifier.getName(n)}${d}`)).includes(name));
 	const fn = (DefaultBuiltinConfig.find(matches(true)) ?? DefaultBuiltinConfig.find(matches(false))) as BuiltInFunctionDefinition<BuiltInProcName.Default | BuiltInProcName.DefaultReadAllArgs> | BuiltInReplacementDefinition | undefined;
 	if(fn?.type === 'replacement') {
 		return BuiltInProcName.Replacement;

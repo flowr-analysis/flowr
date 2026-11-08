@@ -389,7 +389,7 @@ export function selectS4Methods(methods: readonly S4Method[], formals: readonly 
 		let applies = true;
 		let surely = true;
 		for(let i = 0; i < formals.length && applies; i++) {
-			const range = distanceRange(String(actual[i]), String(wanted[i]), hierarchy, open);
+			const range = distanceRange(actual[i], wanted[i], hierarchy, open);
 			applies = range !== undefined;
 			low += range?.[0] ?? 0;
 			high += range?.[1] ?? 0;

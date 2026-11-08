@@ -92,7 +92,7 @@ function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'paramete
 	const looksUp = typeof keys.quoted === 'string' ? flagValue(bound.get(keys.quoted)?.value, data) : keys.quoted ? Ternary.Never : Ternary.Always;
 	const name = looksUp === Ternary.Always ? undefined : quotedName(value);
 	const values = looksUp === Ternary.Never && name !== undefined ? [] : stringValuesOf(value, data) ?? [UnknownKey];
-	return name === undefined ? values : [String(name), ...values];
+	return name === undefined ? values : [name, ...values];
 }
 
 /** The entries the call with the arguments `args` names, see {@link AmbientKeys}. */
@@ -106,7 +106,7 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 					return [];
 				} else if(a.name !== undefined) {
 					const name = Identifier.getName(a.name.content);
-					return keys.ignore?.includes(String(name)) ? [] : [String(name)];
+					return keys.ignore?.includes(name) ? [] : [name];
 				}
 				return RString.is(a.value) ? [] : [UnknownKey];
 			});

@@ -16,11 +16,14 @@ function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boo
 
 /** What the built-in environment states about `pkg::name` for a package nothing attached: `pkg::fn` reaches its package in R whether or not it is on the search path, so a namespaced name has to find it here. */
 function statedIn(builtIn: Environment, name: BrandedIdentifier, ns: BrandedNamespace | undefined): IdentifierDefinition[] | undefined {
-	const stated = ns === undefined ? undefined : builtIn.namespaces?.get(String(ns))?.get(name);
-	if(stated !== undefined || ns === undefined || isBaseRPackage(String(ns))) {
+	const stated = ns === undefined ? undefined : builtIn.namespaces?.get(ns)?.get(name);
+	if(stated !== undefined || ns === undefined || isBaseRPackage(ns)) {
 		return stated ?? builtIn.lookup(name);
 	}
-	const foreign = builtIn.lookup(name)?.filter(d => !isBaseRPackage(String(d.name === undefined ? undefined : Identifier.getNamespace(d.name))));
+	const foreign = builtIn.lookup(name)?.filter(d => {
+		const own = d.name === undefined ? undefined : Identifier.getNamespace(d.name);
+		return own === undefined || !isBaseRPackage(own);
+	});
 	return foreign?.length ? foreign : undefined;
 }
 

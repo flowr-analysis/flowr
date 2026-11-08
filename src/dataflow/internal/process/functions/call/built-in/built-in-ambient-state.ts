@@ -288,7 +288,7 @@ function setAmbient(environment: REnvironmentInformation, name: AmbientStateName
 /** A variable a text connection writes reads what is written to connections, `.Random.seed` reads the generator state, and `.Options` the options, see {@link optionsVariableReads}. */
 function ambientReadsOfSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, forcing: boolean): AmbientStateName[] {
 	const name = Identifier.getName(symbol.content);
-	if(forcing && Resolve.byName(AmbientStateName.textConnection(String(name)), data.environment)?.length) {
+	if(forcing && Resolve.byName(AmbientStateName.textConnection(name), data.environment)?.length) {
 		/* what is written to a connection we cannot name may be written to this one */
 		return [AmbientStateName.anyFile];
 	} else if(name === AmbientStateName.rngVariable) {
@@ -845,7 +845,7 @@ function setOptions<OtherInfo>(res: DataflowInformation, args: readonly Potentia
 		}
 		if(arg.name !== undefined) {
 			const key = Identifier.getName(arg.name.content);
-			written.push(AmbientStateName.option(String(key)));
+			written.push(AmbientStateName.option(key));
 			global ||= GlobalEffectOptions.has(key);
 			warnsAsErrors ||= key === 'warn' && !NodeValue.setOf(arg.value?.info.id, data)?.elements.every(value => value.type === 'logical' || (RValue.numberOf(value) ?? 2) < 2);
 		} else if(RString.is(arg.value)) {

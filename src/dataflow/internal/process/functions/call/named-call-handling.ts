@@ -188,7 +188,7 @@ export function processNamedCall<OtherInfo>(
 		alternatives.push(own.processor(name, args, rootId, data));
 		const pkg = own.name === undefined ? undefined : Identifier.getNamespace(own.name);
 		/* unless flowR states how it accesses the state, as for `withr::with_options`, or the export is a method the primitive dispatches to (lubridate's `rep`) */
-		packageFn ||= pkg !== undefined && own.config?.ambient === undefined && own.config?.scope === undefined && !isBaseRPackage(String(pkg))
+		packageFn ||= pkg !== undefined && own.config?.ambient === undefined && own.config?.scope === undefined && !isBaseRPackage(pkg)
 			&& !(own.name !== undefined && InternalGenerics.has(Identifier.getName(own.name)));
 	}
 	if(defaultProcessor && !shadowable) {

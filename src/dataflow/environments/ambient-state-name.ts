@@ -1,4 +1,4 @@
-import type { Identifier } from './identifier';
+import type { Identifier, BrandedIdentifier } from './identifier';
 
 /** The states made of named entries: setting one entry replaces its pseudo variable `#<state>:<key>`, adds to the accumulating `all` of the state, and an entry we cannot name adds to `#<state>:*` instead (`options(op)`, `Sys.setenv(...)`). */
 export enum KeyedState {
@@ -78,7 +78,7 @@ export const AmbientStateName = {
 	/** the finalizers registered (`reg.finalizer`) and the removals that may release their objects, which `gc()` may run */
 	finalizers:           '#finalizers',
 	/** marks `name` as bound to a text connection opened for writing, whose writes change it */
-	textConnection(this: void, name: string): AmbientStateName {
+	textConnection(this: void, name: BrandedIdentifier): AmbientStateName {
 		return `#text-connection:${name}`;
 	},
 	/** the file named `stem` (`data` for `out/data.csv`), so a read of a named file only sees writes that may hit it */
@@ -86,7 +86,7 @@ export const AmbientStateName = {
 		return `#file:${stem}`;
 	},
 	/** the pseudo variable holding the option `key`; setting the option replaces it */
-	option(this: void, key: string): AmbientStateName {
+	option(this: void, key: BrandedIdentifier): AmbientStateName {
 		return AmbientStateName.keyed(KeyedState.Option, key);
 	},
 	/** the pseudo variable of the entry `key` of a state, like `#env:PATH`; setting the entry replaces it */

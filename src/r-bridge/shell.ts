@@ -143,7 +143,7 @@ export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOpti
  */
 export class RShell implements AsyncParser<string> {
 
-	public readonly name = ParserName.Shell as const;
+	public readonly name = ParserName.Shell;
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	public readonly incremental = false;

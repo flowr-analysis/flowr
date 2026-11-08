@@ -27,7 +27,7 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
  * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
  */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
-	public readonly name = ParserName.TreeSitter as const;
+	public readonly name = ParserName.TreeSitter;
 	private readonly parser: Parser;
 	public readonly incremental = true;
 	private static language: Parser.Language;

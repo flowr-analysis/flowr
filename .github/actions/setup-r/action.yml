@@ -70,6 +70,17 @@ runs:
 
     # rmarkdown renders through pandoc, which only the linux package install brings along
     - name: "⬇️ Setup Pandoc"
+      id: setup-pandoc
+      continue-on-error: true
+      uses: r-lib/actions/setup-pandoc@v2
+
+    - name: "⏳ Back off (Pandoc)"
+      if: steps.setup-pandoc.outcome == 'failure'
+      shell: bash
+      run: sleep ${{ inputs.retry-delay }}
+
+    - name: "⬇️ Setup Pandoc (retry)"
+      if: steps.setup-pandoc.outcome == 'failure'
       uses: r-lib/actions/setup-pandoc@v2
 
     - name: "📋 List the R packages"

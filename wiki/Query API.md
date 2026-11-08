@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 11:35:56 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -1089,6 +1089,7 @@ mean`"]
     36[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *10.1-8* (**id: 36**)
     arg: (34)`"]]
+    style 36 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -1680,6 +1681,7 @@ print`"]
     67[["`*#91;RFunctionCall#93;* base#58;#58;**plot**
       *16.1-22* (**id: 67**)
     arg: (60, 65)`"]]
+    style 67 stroke:red,stroke-width:5px; 
     built-in:plot["`Built-In:
 plot`"]
     style built-in:plot stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -1716,6 +1718,7 @@ points`"]
     89[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *19.1-20* (**id: 89**)
     arg: (87)`"]]
+    style 89 stroke:red,stroke-width:5px; 
     1 -.->|"flow"| 3
     linkStyle 0 stroke:gray,color:gray;
     3 -->|"arg"| 1

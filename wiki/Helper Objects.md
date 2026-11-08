@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-08, 08:41:20 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-08, 11:35:56 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This page lists every important helper object of flowR.
 
@@ -51,7 +51,7 @@ This page lists every important helper object of flowR.
 
 | helper | what it is |
 | :-- | :-- |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/ambient-access.ts#L23"><code><span title="Helper functions for the AmbientAccessRecord , which the dataflow graph keeps for each call touching global state (see DataflowGraph#ambientAccessOf ).">AmbientAccessRecord</span></code></a> | Helper functions for the AmbientAccessRecord, which the dataflow graph keeps for each call touching global state (see DataflowGraph#ambientAccessOf). |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/ambient-access.ts#L56"><code><span title="Helper functions for the AmbientAccess .">AmbientAccess</span></code></a> | Helper functions for the AmbientAccess. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L252"><code><span title="Helper object for call-graphs, you can compute new call graphs based on CallGraph.compute .">CallGraph</span></code></a> | Helper object for call-graphs, you can compute new call graphs based on CallGraph.compute. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L46"><code><span title="Utility functions to work with control dependencies .">ControlDependency</span></code></a> | Utility functions to work with control dependencies. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L32"><code><span title="This is the root helper object to work with the DataflowGraph .">Dataflow</span></code></a> | This is the root helper object to work with the DataflowGraph. |

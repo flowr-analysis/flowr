@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's engines">Generated</span> from '[wiki-engine.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-engine.ts "src/documentation/wiki-engine.ts")' on 2026-10-15, 15:12:48 UTC (v2.16.0, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's engines">Generated</span> from '[wiki-engine.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-engine.ts "src/documentation/wiki-engine.ts")' on 2026-11-08, 14:25:27 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 To analyze R scripts, flowR needs to parse the R code and for that, we require a parser.
 Originally, flowR shipped with an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L144"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a>, an asynchronous interface to the R interpreter, still available today.
@@ -11,7 +11,7 @@ To allow users of R to freely choose their backend between the R interpreter and
 we provide the concept of engines.
 
 Engines can be loaded with [flowR's configuration file](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr), and an
-engine's own options are set on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L37"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> under the same names, so lax parsing (see
+engine's own options are set on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L36"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> under the same names, so lax parsing (see
 [below](#tree-sitter)) is one call:
 
 ```ts

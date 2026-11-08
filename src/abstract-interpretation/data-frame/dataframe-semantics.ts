@@ -26,7 +26,7 @@ import { ValueSemantics, type SemanticsDefinition } from '../value-semantics';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, matchedArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { DataFrameDomain } from './dataframe-domain';
 import { unescapeSpecialChars } from './resolve-args';
-import { applyDataFrameSemantics, ConstraintType, getConstraintType } from './semantics';
+import { applyDataFrameSemantics, ConstraintType, getConstraintType, JoinType } from './semantics';
 import type { DataFrameOperation, DataFrameOperations } from './shape-inference';
 
 /**
@@ -1413,7 +1413,7 @@ function mapDataFrameJoin(
 	const otherDataFrame = ctx.getAbstractValue(otherArg) ?? DataFrameDomain.top(info.ctx.config.abstractInterpretation.dataFrame.maxColNames);
 	let byCols: (string | number | undefined)[] | undefined;
 
-	const joinType = getJoinType(joinAll, joinLeft, joinRight);
+	const joinType = getJoinType(joinAll || joinLeft, joinAll || joinRight);
 
 	if(byArg !== undefined) {
 		const byValue = Resolve.argument.value(byArg, info);
@@ -2017,18 +2017,13 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 }
 
 /**
- * Gets the type of a join operation based on whether all rows of the left, the right, or both data frames are kept (see {@link mapDataFrameJoin}).
+ * Gets the type of a join operation based on whether all rows of the left and of the right data frame are kept (see {@link mapDataFrameJoin}).
  */
-function getJoinType(joinAll: boolean, joinLeft: boolean, joinRight: boolean): 'inner' | 'left' | 'right' | 'full' {
-	if(joinAll || (joinLeft && joinRight)) {
-		return 'full';
-	} else if(joinLeft) {
-		return 'left';
-	} else if(joinRight) {
-		return 'right';
-	} else {
-		return 'inner';
+function getJoinType(keepLeft: boolean, keepRight: boolean): JoinType {
+	if(keepLeft) {
+		return keepRight ? JoinType.Full : JoinType.Left;
 	}
+	return keepRight ? JoinType.Right : JoinType.Inner;
 }
 
 function isColName(this: void, value: unknown): value is string {

@@ -45,7 +45,7 @@ ${codeBlock('r', code)}
 
 <details style="color:gray"> <summary>JSON Representation</summary>
 
-${codeBlock('json', JSON.stringify(search, null, 2))}
+${codeBlock('json', JSON.stringify(search))}
 
 </details>
 

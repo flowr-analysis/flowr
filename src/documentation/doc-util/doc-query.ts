@@ -11,7 +11,6 @@ import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
-import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { docTook } from './doc-timings';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
@@ -101,7 +100,7 @@ ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-${await printDfGraphForCode(parser, code, { switchCodeAndGraph: true })}
+${codeBlock('r', code)}
 
 </details>
 	` : ''

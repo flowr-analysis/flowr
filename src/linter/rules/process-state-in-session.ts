@@ -46,7 +46,7 @@ export interface ProcessStateInSessionConfig extends MergeableRecord {
 	/** parameter lists marking a session function (Shiny server or module), all of one must be present */
 	readonly sessionSignatures: readonly (readonly BrandedIdentifier[])[]
 	/** process-wide setters, with what to use instead */
-	readonly settings:          Readonly<Record<string, string>>
+	readonly settings:          Readonly<Record<BrandedIdentifier, string>>
 	/** functions creating state, shared when called at the top level */
 	readonly sharedState:       readonly BrandedIdentifier[]
 	/** cache constructors */
@@ -64,7 +64,7 @@ type Node = RNode<ParentInformation>;
 
 const SessionLocal = 'session$userData or a value created within the server function';
 /** the functions reading what a setter changes */
-const SettingReaders: Readonly<Record<string, readonly BrandedIdentifier[]>> = { 'options': ['getOption', 'options'], 'Sys.setenv': ['Sys.getenv'], 'Sys.unsetenv': ['Sys.getenv'], 'setwd': ['getwd'], 'Sys.setlocale': ['Sys.getlocale'] };
+const SettingReaders: Readonly<Record<BrandedIdentifier, readonly BrandedIdentifier[]>> = { 'options': ['getOption', 'options'], 'Sys.setenv': ['Sys.getenv'], 'Sys.unsetenv': ['Sys.getenv'], 'setwd': ['getwd'], 'Sys.setlocale': ['Sys.getlocale'] };
 const MagrittrPipe = new Set(['%>%']);
 
 const parentOf = RNode.directParent<ParentInformation>;

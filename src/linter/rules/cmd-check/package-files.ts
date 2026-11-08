@@ -4,7 +4,7 @@ import { compileRegex } from '../../../util/text/regex';
 import { isNotUndefined } from '../../../util/assert';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { FileRole, type FlowrFileProvider } from '../../../project/context/flowr-file';
-import { SourceLocation } from '../../../util/range';
+import { SourceLocation, type Line } from '../../../util/range';
 import { RPath } from '../../../util/files';
 
 /**
@@ -31,7 +31,7 @@ export interface PackageFiles {
 	/** the text of a file given relative to the root, `undefined` if it does not exist or cannot be read */
 	readonly read:    (relative: string) => string | undefined
 	/** a location naming the file (and optionally a line) for a finding */
-	readonly locate:  (relative: string, line?: number, endLine?: number) => SourceLocation
+	readonly locate:  (relative: string, line?: Line, endLine?: Line) => SourceLocation
 }
 
 /** the version-control directories `R CMD build` drops (`tools:::.vc_dir_names`) */

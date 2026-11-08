@@ -13,7 +13,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { escapeRegex } from '../../util/text/strings';
 import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
@@ -132,7 +132,7 @@ function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexInfo 
 }
 
 export interface ProblematicInputsResult extends LintingResult {
-	name:         string
+	name:         BrandedIdentifier
 	sources:      InputSources
 	pipeCommand?: string
 }

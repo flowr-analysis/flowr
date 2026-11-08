@@ -19,6 +19,8 @@ import { s3GroupGenericMembers } from '../../../dataflow/environments/group-gene
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { at, type CmdCheckResult, printer, formalNames as rawFormalNames, packageInfo, projectNodes, topLevelDefinitions } from './cmd-check-util';
 
+const GenericFormals: Readonly<Record<BrandedIdentifier, readonly string[]>> = RS3Generics.genericFormals;
+
 /** what is wrong with the function */
 export type S3MethodIssue =
 	/** the method does not take the arguments of its generic */
@@ -170,7 +172,7 @@ export const S3_METHOD_CONSISTENCY = {
 		/* a function of the package named like a generic of base hides it, unless it is a generic itself */
 		const genericNames = new Set(ctx.env.deriveFromIndex(index => index.with(CallProp.Generic).map(g => Identifier.getName(g))));
 		for(const name of genericNames) {
-			const formals = RS3Generics.genericFormals[name] ?? fnEntry(Identifier.make(name), ctx).entry?.signature.map(p => p.name) ?? [];
+			const formals = GenericFormals[name] ?? fnEntry(Identifier.make(name), ctx).entry?.signature.map(p => p.name) ?? [];
 			if(!generics.has(name) && !defined.has(name) && !SubsetGenerics.has(name) && formals.length > 0) {
 				generics.set(name, { formals, local: false });
 			}

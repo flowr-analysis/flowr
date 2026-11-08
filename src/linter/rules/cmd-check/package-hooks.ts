@@ -62,7 +62,7 @@ const StartupHooks: ReadonlySet<BrandedIdentifier> = new Set(['.onLoad', '.onAtt
 /** the hooks R calls as the package is detached */
 const DetachHooks: ReadonlySet<BrandedIdentifier> = new Set(['.onDetach', '.Last.lib']);
 /** the calls that belong into another hook: where they are wrong and where they belong */
-const MisplacedCalls: Readonly<Record<string, { readonly in: readonly BrandedIdentifier[], readonly instead: string }>> = {
+const MisplacedCalls: Readonly<Record<BrandedIdentifier, { readonly in: readonly BrandedIdentifier[], readonly instead: string }>> = {
 	'library.dynam':        { in: ['.onAttach'], instead: '.onLoad' },
 	'library.dynam.unload': { in: ['.onDetach', '.Last.lib'], instead: '.onUnload' }
 };

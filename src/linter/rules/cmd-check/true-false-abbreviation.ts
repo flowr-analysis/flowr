@@ -7,7 +7,7 @@ import { Q } from '../../../search/flowr-search-builder';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -35,7 +35,7 @@ export interface TrueFalseAbbreviationMetadata extends MergeableRecord {
 	readonly locallyDefined: number
 }
 
-const Abbreviations: Readonly<Record<string, string>> = { T: 'TRUE', F: 'FALSE' };
+const Abbreviations: Readonly<Record<BrandedIdentifier, string>> = { T: 'TRUE', F: 'FALSE' };
 
 /**
  * Whether a read of `id` may reach the built-in constant and whether it may reach a definition of the code. As the

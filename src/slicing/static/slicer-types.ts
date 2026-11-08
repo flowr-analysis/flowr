@@ -1,5 +1,6 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 
 
 /**
@@ -57,5 +58,5 @@ export interface SliceResult {
 	 * The names the slice reads without defining them, so running it on its own would fail with
 	 * `object 'x' not found`. Empty when the slice is closed under the names it uses.
 	 */
-	readonly freeNames?:        readonly string[]
+	readonly freeNames?:        readonly BrandedIdentifier[]
 }

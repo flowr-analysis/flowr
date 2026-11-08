@@ -1,6 +1,6 @@
 import type { KnownParser } from '../../r-bridge/parser';
 import { retrieveVersionInformation } from '../../util/version';
-import { defaultSigDbPath, readManifestDate, type SigDbScope } from '../../project/sigdb/manifest';
+import { defaultSigDbPath, readManifestDate } from '../../project/sigdb/manifest';
 import { formatter, italic } from '../../util/text/ansi';
 import { pathToFileURL } from 'url';
 
@@ -34,7 +34,7 @@ function sigDbSummaryString(): string {
 	};
 	add('current', defaultSigDbPath('current'));
 	add('base', defaultSigDbPath('base'));
-	add('full-history', defaultSigDbPath('full') ?? defaultSigDbPath('history' as SigDbScope));
+	add('full-history', defaultSigDbPath('full') ?? defaultSigDbPath('history'));
 	if(entries.length === 0) {
 		return it('no sigdb');
 	}

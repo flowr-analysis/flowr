@@ -1,12 +1,12 @@
 import type { AbstractDomain, AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/arguments';
 import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
-import { Identifier } from '../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../dataflow/environments/identifier';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
 	public readonly mapper: TaintMappingInternal<Domain>[] = [];
 	/** the mappings by the name they map, in the order they were added; a mapping only ever applies to a call of its name */
-	private readonly byName = new Map<string, TaintMappingInternal<Domain>[]>();
+	private readonly byName = new Map<BrandedIdentifier, TaintMappingInternal<Domain>[]>();
 
 	constructor(mapper?: readonly TaintMappingInternal<Domain>[]) {
 		mapper?.forEach(m => this.add(m));

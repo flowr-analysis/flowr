@@ -18,8 +18,7 @@ export function visitCfgInReverseOrder(
 	const visited = new Set<NodeId>();
 	const queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(queue.length > 0) {
-		const current = queue.pop() as NodeId;
+	for(let current; (current = queue.pop()) !== undefined;) {
 		if(visited.has(current)) {
 			continue;
 		}

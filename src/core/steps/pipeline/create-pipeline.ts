@@ -72,8 +72,7 @@ function handleStep(step: IPipelineStep, init: PipelineStepName, visited: Set<Pi
 function topologicalSort(inits: PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, visited: Set<PipelineStepName>) {
 	const sorted: PipelineStepName[] = [];
 
-	while(inits.length > 0) {
-		const init = inits.pop() as PipelineStepName;
+	for(let init; (init = inits.pop()) !== undefined;) {
 		sorted.push(init);
 		visited.add(init);
 

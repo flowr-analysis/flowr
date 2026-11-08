@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { SourceRange, type SourcePosition } from '../../util/range';
 import { expensiveTrace } from '../../util/log';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -110,7 +111,7 @@ export const SlicingCriterion = {
 	 * The line and the name a `<line>@<name>` criterion points at, `undefined` for every other form.
 	 * The counterpart of writing such a criterion down as a template literal.
 	 */
-	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: string } | undefined {
+	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: BrandedIdentifier } | undefined {
 		const split = splitFileFilter(criterion);
 		const at = split?.rest.indexOf('@') ?? -1;
 		if(split === undefined || at <= 0) {
@@ -211,7 +212,7 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
  * originating from a matching file. The regex may contain escaped parentheses (`3^(a\(b\)\.R)`).
  * Returns `undefined` if the regex is malformed.
  */
-function splitFileFilter(criterion: string): { rest: string, file: RegExp | undefined } | undefined {
+function splitFileFilter<S extends string>(criterion: S): { rest: string, file: RegExp | undefined } | undefined {
 	const match = /^([^()]*)\(((?:\\.|[^()])*)\)$/.exec(criterion);
 	if(match === null) {
 		return { rest: criterion, file: undefined };

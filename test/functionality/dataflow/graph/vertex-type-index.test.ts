@@ -16,7 +16,7 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
  * that was never built hands out nothing at all. These pin all three.
  */
 describe('DataflowGraph vertex type index', () => {
-	const env = (): REnvironmentInformation => ({ current: new Environment(undefined as unknown as Environment), level: 0 });
+	const env = (): REnvironmentInformation => ({ current: Environment.root(), level: 0 });
 	const ids = (graph: DataflowGraph, type: VertexType): NodeId[] => [...graph.verticesOfType(type)].map(([id]) => id);
 
 	function withUse(id: NodeId): DataflowGraph {

@@ -126,8 +126,8 @@ export class BenchmarkSlicer {
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
-	private executor:            PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
-	private parser:              KnownParser  = null as unknown as KnownParser;
+	private executor!:           PipelineExecutor<SupportedPipelines>;
+	private parser!:             KnownParser;
 
 	constructor(parserName: KnownParserName) {
 		this.totalStopwatch = this.commonMeasurements.start('total');
@@ -280,7 +280,7 @@ export class BenchmarkSlicer {
 
 		const measurements = new Measurements<PerSliceMeasurements>();
 		const stats: PerSliceStats = {
-			measurements:                undefined as never,
+			measurements:                new Map(),
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,

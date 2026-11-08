@@ -1,5 +1,5 @@
 import { EdgeType } from '../../dataflow/graph/edge';
-import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
@@ -36,7 +36,7 @@ const LineTerminationRegex = /\r\n|\r|\n/;
  */
 export interface FunctionParameterLocation<T = never> {
 	pos:      number,
-	name?:    string
+	name?:    BrandedIdentifier
 	default?: T
 }
 
@@ -229,11 +229,11 @@ export function getVertexArguments(
 export function getUnresolvedSymbolsInExpression(
 	expression: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	dfg?: DataflowGraph
-): BrandedIdentifier[] {
+): string[] {
 	if(expression === undefined || RArgument.isEmpty(expression) || dfg === undefined) {
 		return [];
 	}
-	const unresolvedSymbols: BrandedIdentifier[] = [];
+	const unresolvedSymbols: string[] = [];
 
 	RNode.visitAst(expression, node => {
 		if(RSymbol.is(node)) {

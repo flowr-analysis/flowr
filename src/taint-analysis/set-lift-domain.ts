@@ -43,8 +43,11 @@ export class SetLiftDomain<
 			&& this.value.symmetricDifference(other.value).size === 0;
 	}
 
-	protected leqValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): boolean {
-		throw new Error('Method not implemented.');
+	protected leqValue(
+		this: SetLiftDomain<Top, Bottom, Elements>,
+		other: SetLiftDomain<Top, Bottom, Elements>
+	): boolean {
+		return this.reduce(this.value).isSubsetOf(this.reduce(other.value));
 	}
 
 	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, _other: SetLiftDomain<Top, Bottom, Elements>): this {

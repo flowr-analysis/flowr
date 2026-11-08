@@ -59,7 +59,7 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 		return this.value === other.value;
 	}
 
-	protected leqValue(this: FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): boolean {
+	public leqValue(this: FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): boolean {
 		return this.transitiveClosure(this.value).has(other.value);
 	}
 

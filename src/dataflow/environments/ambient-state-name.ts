@@ -32,7 +32,7 @@ const EntryPrefix: Readonly<Partial<Record<KeyedState, string>>> = {
 export const UnknownKey = '*';
 
 /** The name of a global pseudo variable tracking a part of the global state, see the helper of the same name. */
-export type AmbientStateName = `#${string}`;
+export type AmbientStateName = `#${string}` & BrandedIdentifier;
 
 /** Graphics parameters, options and other global state, tracked as global pseudo variables (`#...`) so readers link to the calls that set them. */
 export const AmbientStateName = {
@@ -79,11 +79,11 @@ export const AmbientStateName = {
 	finalizers:           '#finalizers',
 	/** marks `name` as bound to a text connection opened for writing, whose writes change it */
 	textConnection(this: void, name: BrandedIdentifier): AmbientStateName {
-		return `#text-connection:${name}`;
+		return `#text-connection:${name}` as const;
 	},
 	/** the file named `stem` (`data` for `out/data.csv`), so a read of a named file only sees writes that may hit it */
 	file(this: void, stem: string): AmbientStateName {
-		return `#file:${stem}`;
+		return `#file:${stem}` as const;
 	},
 	/** the pseudo variable holding the option `key`; setting the option replaces it */
 	option(this: void, key: BrandedIdentifier): AmbientStateName {
@@ -92,7 +92,7 @@ export const AmbientStateName = {
 	/** the pseudo variable of the entry `key` of a state, like `#env:PATH`; setting the entry replaces it */
 	keyed(this: void, state: KeyedState, key: BrandedIdentifier): AmbientStateName {
 		const prefix = EntryPrefix[state];
-		return `#${state}:${prefix !== undefined && key.startsWith(prefix) ? key.slice(prefix.length) : key}`;
+		return `#${state}:${prefix !== undefined && key.startsWith(prefix) ? key.slice(prefix.length) : key}` as const;
 	},
 	/** the pseudo variable every write to the state adds to, like `#env` */
 	allOf(this: void, state: KeyedState): AmbientStateName {

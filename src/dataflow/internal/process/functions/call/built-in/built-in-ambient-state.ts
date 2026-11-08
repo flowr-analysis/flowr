@@ -91,7 +91,7 @@ function optionReads(keys: readonly BrandedIdentifier[] | undefined): AmbientSta
 }
 
 /** Links `getOption(key)` to the values the calls it surely reads the option from set it to (`options(cb = function() 4)`), so it hands them back like a call hands back its result. */
-function linkOptionValue<OtherInfo>(res: DataflowInformation, rootId: NodeId, keys: readonly string[] | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
+function linkOptionValue<OtherInfo>(res: DataflowInformation, rootId: NodeId, keys: readonly BrandedIdentifier[] | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
 	if(keys?.length !== 1 || Resolve.byName(AmbientStateName.unknownOption, data.environment)?.some(d => !NodeId.isBuiltIn(d.nodeId))) {
 		return;
 	}

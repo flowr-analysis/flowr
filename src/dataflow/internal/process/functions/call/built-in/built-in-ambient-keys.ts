@@ -47,7 +47,7 @@ export type AmbientKeys = {
 };
 
 /** The strings the value at `value` may have, `undefined` if we do not know. */
-export function stringValuesOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+export function stringValuesOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): BrandedIdentifier[] | undefined {
 	if(value === undefined) {
 		return undefined;
 	} else if(RString.is(value)) {
@@ -113,7 +113,7 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 		case 'parameter':
 			return parameterKeys(keys, args, data);
 		case 'unnamed':
-			return args.flatMap(a => a === EmptyArgument || a.name !== undefined || a.value === undefined ? []
+			return args.flatMap((a): BrandedIdentifier | readonly BrandedIdentifier[] => a === EmptyArgument || a.name !== undefined || a.value === undefined ? []
 				: (keys.quoted ? quotedName(a.value) : undefined) ?? stringValuesOf(a.value, data) ?? [UnknownKey]);
 	}
 }

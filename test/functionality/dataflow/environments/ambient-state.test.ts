@@ -12,6 +12,7 @@ import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+import { VertexType } from '../../../../src/dataflow/graph/vertex';
 import { DataflowGraph, type DataflowGraphJson, UnknownSideEffect } from '../../../../src/dataflow/graph/graph';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
@@ -296,7 +297,6 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		});
 	});
 
-	describe('queries do not change the graph', () => {
 	describe('a variable named like a state stays a variable', () => {
 		test.each([
 			['the state written after', '`#wd` <- 1\nsetwd("a")\nprint(`#wd`)', '`#wd` <- 1'],
@@ -326,6 +326,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		});
 	});
 
+	describe('queries do not change the graph', () => {
 		test(label('ambientAccessOfFunctions is pure', ['name-normal', 'call-normal'], ['dataflow']), async() => {
 			const { graph } = await run('g <- function(f, ...) f(...)\na01 <- function() g(plot, 1)\na22 <- function() g(options, digits = 3)');
 			const before = JSON.stringify(graph.toJSON());

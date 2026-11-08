@@ -18,7 +18,7 @@ import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgum
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
 import { Dataflow } from '../graph/df-helper';
-import { FixpointSolver } from '../../util/fixpoint';
+import { ReachSummaries } from '../../util/fixpoint';
 
 /** What flowR infers about a set of definitions, see {@link inferFunctions}. */
 export interface InferredFunctions {
@@ -53,27 +53,19 @@ export function inferFunctions(this: void, definitions: readonly NodeId[], graph
 function callProps(definitions: readonly NodeId[], state: LookupState, strict: Record<NodeId, FunctionStrictness>): Record<NodeId, StatedProps> {
 	const { join, filter, hasAny } = FunctionSemantics.call.props;
 	const own = new Map<NodeId, StatedProps>();
-	const callees = new Map<NodeId, readonly NodeId[]>();
-	const solver = new FixpointSolver<NodeId, StatedProps>({
-		next: id => {
-			/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
-			const { stated, callees: called } = propsOf(id, state);
-			own.set(id, strict[id]?.strict === Ternary.Always ? join(stated, { props: CallProp.Strict }) : stated);
-			callees.set(id, called);
-			return called;
-		},
-		transfer: (id, valueOf) => {
-			const mine = own.get(id) as StatedProps;
-			let grown = mine;
-			for(const callee of callees.get(id) ?? []) {
-				grown = join(grown, filter(valueOf(callee), PropagatedProps));
-			}
-			return sameProps(grown, mine) ? mine : grown;
-		},
-		equals:  sameProps,
-		initial: id => own.get(id) as StatedProps
-	});
-	return Object.fromEntries(definitions.map(id => [id, solver.of(id)] as const).filter(([, props]) => hasAny(props)));
+	/* what a function carries over to its callers: its own propagated props and those of everything it reaches */
+	const carried = new ReachSummaries<NodeId, StatedProps>(id => {
+		/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
+		const { stated, callees } = propsOf(id, state);
+		own.set(id, strict[id]?.strict === Ternary.Always ? join(stated, { props: CallProp.Strict }) : stated);
+		return callees;
+	}, id => filter(own.get(id), PropagatedProps), {}, join);
+	return Object.fromEntries(definitions.map(id => {
+		const reached = carried.of(id);
+		const mine = own.get(id) as StatedProps;
+		const grown = join(mine, reached);
+		return [id, sameProps(grown, mine) ? mine : grown] as const;
+	}).filter(([, props]) => hasAny(props)));
 }
 
 /** Joining only ever adds, so the same bits and the same number of tags mean the same props. */

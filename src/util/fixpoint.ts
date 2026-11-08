@@ -1,5 +1,3 @@
-import { ArrayQueue } from './collections/queue';
-
 /** the number of a node whose component is complete, see {@link StronglyConnected} */
 const Complete = -1;
 
@@ -22,10 +20,6 @@ export class StronglyConnected<K> {
 	constructor(next: (node: K) => Iterable<K>, onComplete: (members: readonly K[], successorsOf: (member: K) => readonly K[]) => void) {
 		this.next = next;
 		this.onComplete = onComplete;
-	}
-
-	public isComplete(node: K): boolean {
-		return this.index.get(node) === Complete;
 	}
 
 	/** Completes the component of `start` and every component it leads to. */
@@ -132,68 +126,6 @@ export function unionOfSets<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): ReadonlySe
 		return b;
 	}
 	return a.union(b);
-}
-
-/** A monotone equation system over the nodes of a graph, each node's value depending on those of its successors. */
-export interface FixpointProblem<K, V> {
-	/** the nodes whose values the value of a node depends on, asked for once per node */
-	readonly next:     (node: K) => Iterable<K>
-	/** the value of a node given the current values of its successors (and only of those, or of itself) */
-	readonly transfer: (node: K, valueOf: (successor: K) => V) => V
-	readonly equals:   (a: V, b: V) => boolean
-	/** what a node of a cycle is assumed to hold before its first round */
-	readonly initial:  (node: K) => V
-}
-
-/** Solves a {@link FixpointProblem} for the nodes asked for and what they depend on, component by component in the order of {@link StronglyConnected}: a node outside any cycle is computed once, the nodes of a cycle are computed until no value changes, in a fixed order, recomputing a node only if one of its successors changed. */
-export class FixpointSolver<K, V> {
-	private readonly values = new Map<K, V>();
-	private readonly components: StronglyConnected<K>;
-	private readonly problem:    FixpointProblem<K, V>;
-
-	constructor(problem: FixpointProblem<K, V>) {
-		this.problem = problem;
-		this.components = new StronglyConnected(problem.next, (members, successorsOf) => this.settle(members, successorsOf));
-	}
-
-	public of(node: K): V {
-		this.components.visit(node);
-		return this.values.get(node) as V;
-	}
-
-	private settle(members: readonly K[], successorsOf: (member: K) => readonly K[]): void {
-		const { transfer, equals, initial } = this.problem;
-		const valueOf = (node: K) => this.values.get(node) as V;
-		const only = members[0];
-		if(members.length === 1 && !successorsOf(only).includes(only)) {
-			this.values.set(only, transfer(only, valueOf));
-			return;
-		}
-		const dependents = new Map<K, K[]>(members.map(m => [m, []]));
-		for(const m of members) {
-			this.values.set(m, initial(m));
-			for(const s of successorsOf(m)) {
-				dependents.get(s)?.push(m);
-			}
-		}
-		const pending = new ArrayQueue(members);
-		const queued = new Set(members);
-		while(!pending.isEmpty()) {
-			const node = pending.dequeue() as K;
-			queued.delete(node);
-			const value = transfer(node, valueOf);
-			if(equals(valueOf(node), value)) {
-				continue;
-			}
-			this.values.set(node, value);
-			for(const d of dependents.get(node) as K[]) {
-				if(!queued.has(d)) {
-					queued.add(d);
-					pending.enqueue(d);
-				}
-			}
-		}
-	}
 }
 
 /** An equation system whose dependencies show only as a node's value is computed, see {@link DemandSolver}. */

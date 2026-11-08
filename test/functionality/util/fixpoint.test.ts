@@ -1,6 +1,6 @@
 import { describe, test } from 'vitest';
 import { assert } from 'chai';
-import { DemandSolver, FixpointSolver, ReachSummaries, StronglyConnected, unionOfSets } from '../../../src/util/fixpoint';
+import { DemandSolver, ReachSummaries, StronglyConnected, unionOfSets } from '../../../src/util/fixpoint';
 
 type Graph = Readonly<Record<string, readonly string[]>>;
 
@@ -36,7 +36,6 @@ describe('Fixpoint', () => {
 			components.visit('a');
 			components.visit('b');
 			assert.deepStrictEqual(asked.sort(), ['a', 'b', 'c']);
-			assert.isTrue(components.isComplete('c'));
 		});
 
 		test('handles deep chains without recursion', () => {
@@ -56,27 +55,6 @@ describe('Fixpoint', () => {
 			assert.strictEqual(summaries.of('a'), summaries.of('b'));
 			assert.deepStrictEqual([...summaries.of('c')].sort(), ['y', 'z']);
 		});
-	});
-
-	describe('FixpointSolver', () => {
-		/* the length of the longest path, capped at 10 */
-		const longest = (graph: Graph) => new FixpointSolver<string, number>({
-			next:     n => graph[n] ?? [],
-			transfer: (n, valueOf) => Math.min(10, Math.max(0, ...(graph[n] ?? []).map(s => valueOf(s) + 1))),
-			equals:   (a, b) => a === b,
-			initial:  () => 0
-		});
-
-		test('computes acyclic nodes once', () => {
-			const solver = longest({ a: ['b', 'c'], b: ['c'], c: [] });
-			assert.deepStrictEqual(['a', 'b', 'c'].map(n => solver.of(n)), [2, 1, 0]);
-		});
-
-		test('iterates a cycle to its fixpoint', () => {
-			const solver = longest({ a: ['b'], b: ['a', 'c'], c: [] });
-			assert.deepStrictEqual(['a', 'b', 'c'].map(n => solver.of(n)), [10, 10, 0]);
-		});
-
 	});
 
 	describe('DemandSolver', () => {

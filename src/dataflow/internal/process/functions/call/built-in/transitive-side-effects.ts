@@ -25,7 +25,7 @@ import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { Ternary } from '../../../../../../util/logic';
 import { type DataflowInformation, ControlDependency, ExitPointType, happensInEveryBranch } from '../../../../../info';
-import { FixpointSolver, ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
+import { ReachSummaries, unionOfSets } from '../../../../../../util/fixpoint';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -432,12 +432,8 @@ function promiseOutlivesCall(graph: DataflowGraph, idMap: AstIdMap, forcing: (ho
 	}
 	const captured = (parameter: NodeId) => Dataflow.sourcesOf(graph, parameter, EdgeType.Reads)
 		.some(read => RNode.findEnclosing(read, idMap, RFunctionDefinition.is) !== ownerOf.get(parameter));
-	const outlives = new FixpointSolver<NodeId, boolean>({
-		next:     p => handedTo.get(p),
-		transfer: (p, valueOf) => forcing(p, p) !== Ternary.Always && (captured(p) || handedTo.get(p).some(valueOf)),
-		equals:   (a, b) => a === b,
-		initial:  () => false
-	});
+	const open = (p: NodeId) => forcing(p, p) !== Ternary.Always;
+	const outlives = new ReachSummaries<NodeId, boolean>(p => open(p) ? handedTo.get(p) : [], p => open(p) && captured(p), false, (a, b) => a || b);
 	return parameter => ownerOf.has(parameter) && outlives.of(parameter);
 }
 
@@ -512,14 +508,9 @@ function ownLibraryCalls(_id: NodeId, fdef: DataflowGraphVertexFunctionDefinitio
 	return packages;
 }
 
-/** The scopes outside a function's own frame, i.e. those a definition of its body can have escaped into. */
-function escapeTargetFrames(fdef: DataflowGraphVertexFunctionDefinition): Generator<Environment, void, undefined> {
-	return REnvironment.frames(fdef.subflow.environment.current.parent);
-}
-
 /** The non-built-in definitions a function body lets escape to an outer scope (e.g. a `<<-` super-assignment), as a callback for {@link computeCallGraphSummaries}. */
 function escapedDefinitions(this: void, graph: DataflowGraph, hidden: ReadonlyMap<NodeId, readonly NamedDefinition[]>): (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => readonly NodeId[] {
-	const perFrame = new Map<MemoryView, readonly NodeId[]>();
+	const perFrame = new Map<MemoryView, NodeId[]>();
 	/* the function an exit hook runs in folds the hook's writes into its final environment in the order R runs the hooks */
 	const hooks = new Set(graph.verticesOfType(VertexType.FunctionDefinition).flatMap(([, v]) => v.subflow.hooks.map(h => h.id)));
 	return (id, fdef) => {
@@ -527,24 +518,19 @@ function escapedDefinitions(this: void, graph: DataflowGraph, hidden: ReadonlyMa
 		if(hooks.has(id)) {
 			return defs;
 		}
-		for(const e of escapeTargetFrames(fdef)) {
+		for(const e of REnvironment.frames(fdef.subflow.environment.current.parent)) {
 			let escaped = perFrame.get(e.memory);
-			if(escaped === undefined && e.memory instanceof Frame && e.memory.lazy() !== undefined) {
-				/* an attached package binds nothing but its exports, which are built-ins */
+			if(escaped === undefined) {
 				escaped = [];
 				perFrame.set(e.memory, escaped);
-			} else if(escaped === undefined) {
-				/* a package frame holds thousands of entries and keeps none of them, so this walks them in place rather than through a spread/flatMap/filter/map chain that allocates an array per step */
-				const collected: NodeId[] = [];
-				for(const ds of e.memory.values()) {
+				/* an attached package binds nothing but its exports, which are built-ins, and a package frame holds thousands of entries, so this walks the others in place */
+				for(const ds of e.memory instanceof Frame && e.memory.lazy() !== undefined ? [] : e.memory.values()) {
 					for(const d of ds) {
 						if(!NodeId.isBuiltIn(d.nodeId)) {
-							collected.push(d.nodeId);
+							escaped.push(d.nodeId);
 						}
 					}
 				}
-				escaped = collected;
-				perFrame.set(e.memory, escaped);
 			}
 			for(const d of escaped) {
 				/* a package the caller attached is visible in the body, but only one the body attaches escapes it */
@@ -606,24 +592,10 @@ type NamedDefinition = InGraphIdentifierDefinition & { name: string };
 
 /** The ambient writes of body calls only linking resolved to a built-in (see {@link writesOfHiddenBuiltIn}), recording and linking their reads as well. */
 function hiddenBuiltInWrites(graph: DataflowGraph, environment: REnvironmentInformation, drawing: boolean): Map<NodeId, NamedDefinition[]> {
-	const { writes, reads, targets } = hiddenBuiltInAccess(graph, REnvironment.findBuiltIn(environment.current), drawing);
-	for(const [id, resolved] of targets) {
-		hiddenSideEffects(graph, environment, id, resolved);
-	}
-	for(const id of new Set([...writes.keys(), ...reads.keys()])) {
-		graph.recordAmbientAccess(id, { reads: reads.get(id), writes: writes.get(id)?.map(d => d.name) });
-	}
-	linkHiddenReads(graph, reads);
-	return writes;
-}
-
-/** The ambient writes and reads of body calls only linking resolved to a built-in, per call, with the built-ins each was resolved to. Does not change the graph. */
-function hiddenBuiltInAccess(graph: DataflowGraph, builtIns: Environment, drawing: boolean): { writes: Map<NodeId, NamedDefinition[]>, reads: Map<NodeId, string[]>, targets: [NodeId, readonly IdentifierDefinition[]][] } {
+	const builtIns = REnvironment.findBuiltIn(environment.current);
 	const writes = new Map<NodeId, NamedDefinition[]>();
 	const reads = new Map<NodeId, string[]>();
-	const resolvedTargets: [NodeId, readonly IdentifierDefinition[]][] = [];
-	const writesOf = new DefaultMap<NodeId, NamedDefinition[]>(() => [], writes);
-	const readsOf = new DefaultMap<NodeId, string[]>(() => [], reads);
+	const resolved: [NodeId, readonly IdentifierDefinition[]][] = [];
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(graph.isRoot(id) || !reachesBuiltInLate(vertex)) {
 			continue;
@@ -632,19 +604,26 @@ function hiddenBuiltInAccess(graph: DataflowGraph, builtIns: Environment, drawin
 		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Calls)) {
 			if(NodeId.isBuiltIn(target) && (own === undefined || NodeId.toBuiltIn(Identifier.getName(own)) !== target)) {
 				const targets = Resolve.byNameAndType(NodeId.fromBuiltIn(target), { current: builtIns, level: 0 }, ReferenceType.Function) ?? [];
-				resolvedTargets.push([id, targets]);
+				resolved.push([id, targets]);
 				const defs = targets.flatMap(d => writesOfHiddenBuiltIn(d, id, drawing));
 				if(defs.length > 0) {
-					writesOf.get(id).push(...defs);
+					writes.set(id, [...writes.get(id) ?? [], ...defs]);
 				}
 				const names = targets.flatMap(readsOfHiddenBuiltIn);
 				if(names.length > 0) {
-					readsOf.get(id).push(...names);
+					reads.set(id, [...reads.get(id) ?? [], ...names]);
 				}
 			}
 		}
 	}
-	return { writes, reads, targets: resolvedTargets };
+	for(const [id, targets] of resolved) {
+		hiddenSideEffects(graph, environment, id, targets);
+	}
+	for(const id of new Set([...writes.keys(), ...reads.keys()])) {
+		graph.recordAmbientAccess(id, { reads: reads.get(id), writes: writes.get(id)?.map(d => d.name) });
+	}
+	linkHiddenReads(graph, reads);
+	return writes;
 }
 
 /** A hidden call reads the state where the functions running it are called. */
@@ -677,7 +656,7 @@ function escapedDefinitionMap(graph: DataflowGraph, hidden: ReadonlyMap<NodeId, 
 	const definitionsOf = new DefaultMap<NodeId, NamedDefinition[]>(() => [], map);
 	const seen = new Set<MemoryView>();
 	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		const global = escapeTargetFrames(vertex).filter(e => e.t === undefined).reduce<Environment | undefined>((_, e) => e, undefined);
+		const global = REnvironment.frames(vertex.subflow.environment.current.parent).filter(e => e.t === undefined).reduce<Environment | undefined>((_, e) => e, undefined);
 		/* a frame shared with an already-visited definition contributes the same entries */
 		if(global !== undefined && !seen.has(global.memory)) {
 			seen.add(global.memory);
@@ -798,8 +777,8 @@ function accessOf(items: Iterable<string>, draws: ReadonlySet<NodeId>): AmbientA
 	return { ...access, assumed: access.assumed.difference(access.writes), draws };
 }
 
-function itemsOf(record: AmbientAccessRecord): string[] {
-	return [...record.reads.map(n => Reads + n), ...record.writes.map(n => Writes + n), ...record.assumed.map(n => Assumed + n)];
+function itemsOf(record: AmbientAccessRecord | AmbientAccess): string[] {
+	return [...[...record.reads].map(n => Reads + n), ...[...record.writes].map(n => Writes + n), ...[...record.assumed].map(n => Assumed + n)];
 }
 
 /** The dataflow graph of the whole program, with the environment of the analysis to know its configured built-ins (without, the defaults answer). */
@@ -944,7 +923,7 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientS
 		for(const callee of callees) {
 			const access = functions.get(callee);
 			if(access !== undefined) {
-				items.push(...access.reads.values().map(n => Reads + n), ...access.writes.values().map(n => Writes + n), ...access.assumed.values().map(n => Assumed + n), ...access.variables.values().map(n => Variable + n));
+				items.push(...itemsOf(access), ...access.variables.values().map(n => Variable + n));
 				access.draws.forEach(d => draws.add(d));
 			}
 		}

@@ -1,5 +1,5 @@
 import { Mermaid } from './mermaid';
-import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument, UnknownSideEffect } from '../../dataflow/graph/graph';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -234,7 +234,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
 	}
-	if(mermaid.rootGraph.unknownSideEffects.values().some(l => NodeId.normalize(l as string) === NodeId.normalize(origId))) {
+	if(mermaid.rootGraph.unknownSideEffects.values().some(l => NodeId.normalize(UnknownSideEffect.id(l)) === NodeId.normalize(origId))) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
 	if(DfgVertex.isFunctionDefinition(info)) {

@@ -2,9 +2,8 @@ import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/conv
 import { contentOf, stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { assertUnreachable, guard } from '../../../util/assert';
-
-export const Top = { type: Symbol('⊤') };
-export const Bottom = { type: Symbol('⊥') };
+import { Top, Bottom } from '../../environments/built-in-kinds';
+export { Top, Bottom } from '../../environments/built-in-kinds';
 
 export type Lift<N> = N | typeof Top | typeof Bottom;
 export type Unlift<N> = N extends typeof Top ? never : N extends typeof Bottom ? never : N;
@@ -17,9 +16,7 @@ export interface ValueInterval<Limit extends ValueNumber = ValueNumber> {
 	endInclusive:   boolean
 }
 
-/**
- * An R vector with either a known set of elements or a known domain.
- */
+/** An R vector with either a known set of elements or a known domain. */
 export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>, Domain extends Lift<Value> = Lift<Value>> {
 	type:          'vector'
 	elements:      Elements
@@ -92,9 +89,7 @@ export function isValue<V extends Lift<unknown>>(value: V): value is Unlift<V> {
 	return !isTop(value) && !isBottom(value);
 }
 
-/**
- * Treat a value as unlifted value, throws if it is top or bottom.
- */
+/** Treat a value as unlifted value, throws if it is top or bottom. */
 export function asValue<V extends Lift<unknown>>(value: V): Unlift<V> {
 	guard(isValue(value), 'Expected a value, but got a top or bottom value');
 	return value;
@@ -134,10 +129,7 @@ function renderString(value: RStringValue): string {
 }
 
 
-/**
- * A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well.
- * @param value - the value to print
- */
+/** A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well. */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
 		const t = v.type;
@@ -175,12 +167,7 @@ export function stringifyValue(value: Lift<Value>): string {
 	});
 }
 /**
- * Reads the plain TS value a {@link Value} stands for, `undefined` whenever it stands for more than one, for
- * none, or for another kind. Prefer these over reaching into a value's shape by hand.
- *
- * This is the constant-folding view: it answers "is this one known constant" and nothing else. It runs no
- * fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated
- * abstract interpretation in `src/abstract-interpretation/`.
+ * Reads the plain TS value a {@link Value} stands for, `undefined` whenever it stands for more than one, for none, or for another kind.
  * @helper values
  */
 export const RValue = {

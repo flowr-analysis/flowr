@@ -1,6 +1,7 @@
 import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';
+import { NamedAccessOperators } from '../../../../../dataflow/environments/built-in-kinds';
 import type { RArgument, RUnnamedArgument } from './r-argument';
 import type { EmptyArgument } from './r-function-call';
 
@@ -66,7 +67,7 @@ export const RAccess = {
 	 * const replacementNames: string[] = [...RAccess.namedOperators]; // ['$', '@']
 	 * ```
 	 */
-	namedOperators: ['$', '@'] as const,
+	namedOperators: NamedAccessOperators,
 	/**
 	 * Whether `operator` accesses by name, see {@link RAccess.namedOperators}. Use it for the operator string, and
 	 * {@link RAccess.isNamed} if you hold a node, since the latter narrows the node.

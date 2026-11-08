@@ -1,7 +1,4 @@
-/**
- * What a class declaration states across R's object systems (S4, RC, S7, R6) and how declarations relate;
- * which argument means what is configured per built-in in {@link ClassDeclarationConfig}, not guessed.
- */
+/** What a class declaration states across R's object systems (S4, RC, S7, R6) and how declarations relate; which argument means what is configured per built-in in {@link ClassDeclarationConfig}, not guessed. */
 
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -17,26 +14,10 @@ import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
 import { DfgVertex, VertexType } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
+import type { ClassSystem, MemberVisibility } from '../environments/built-in-kinds';
+export { ClassSystem, MemberVisibility } from '../environments/built-in-kinds';
 
-/** The object system a declaration belongs to. */
-export const enum ClassSystem {
-	/** `setClass`, `setClassUnion`, `setIs`, `setValidity` */
-	S4 = 's4',
-	/** Reference Classes, `setRefClass` */
-	RefClass = 'rc',
-	/** `S7::new_class` */
-	S7 = 's7',
-	/** `R6::R6Class` */
-	R6 = 'r6'
-}
 
-/** Where a member of an R6/Reference class lives; R6 also has active bindings, which read like fields. */
-export const enum MemberVisibility {
-	Public  = 'public',
-	Private = 'private',
-	/** an R6 active binding: a function that is read and written like a field */
-	Active  = 'active'
-}
 
 /** One declared member of a class: an S4 slot, an S7 property, an RC field, or an R6 public/private entry. */
 export interface ClassMember {
@@ -159,10 +140,7 @@ function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined):
 	return { values, byVariable };
 }
 
-/**
- * The members a `c(x = "numeric")` / `list(x = ...)` / `representation(...)` argument states, one per named
- * element, plus the bare strings such a call may carry (an RC `fields = c("x", "y")`, or a `"VIRTUAL"` marker).
- */
+/** The members a `c(x = "numeric")` / `list(x = ...)` / `representation(...)` argument states, one per named element, plus the bare strings such a call may carry (an RC `fields = c("x", "y")`, or a `"VIRTUAL"` marker). */
 function membersOf<Info>(node: RNode<Info & ParentInformation> | undefined, ref: ClassMemberArgRef): { members: ClassMember[], virtual: boolean } {
 	if(!RFunctionCall.isNamed(node)) {
 		return { members: [], virtual: literal(node) === VirtualClass };
@@ -197,10 +175,7 @@ function isTrue<Info>(node: RNode<Info & ParentInformation> | undefined): boolea
 	return node?.lexeme === 'TRUE' || node?.lexeme === 'T';
 }
 
-/**
- * Reads the {@link ClassDeclaration} a call states, following the argument mapping its built-in declares.
- * An argument that resolves to no literal contributes a {@link ClassDeclaration.byVariable|by-variable} name, or nothing.
- */
+/** Reads the {@link ClassDeclaration} a call states, following the argument mapping its built-in declares. */
 export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
 	const nameNode = argForImpl(args, config.nameArg);
 	const name = literal(nameNode);
@@ -257,8 +232,7 @@ export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredC
 			classes.set(sub, { ...existing, contains: [...existing.contains, sup] });
 		}
 	};
-	/* R6 and S7 name their parent by the generator *variable*, so `Employee <- R6Class(inherit = Person)`
-	   only says "Person"; the assignment that bound the generator says which class that is */
+	/* R6 and S7 name their parent by the generator *variable*, so `Employee <- R6Class(inherit = Person)` only says "Person"; the assignment that bound the generator says which class that is */
 	const byGenerator = generatorVariables(graph, classes);
 	for(const [name, declared] of classes) {
 		for(const sup of declared.byVariable.map(v => byGenerator.get(v))) {
@@ -302,10 +276,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
 	return generators;
 }
 
-/**
- * The transitive superclasses of `name` among `classes`, nearest first and each named once. A class the
- * analysis never saw declared ends the chain, so what another package contributes is simply not in the answer.
- */
+/** The transitive superclasses of `name` among `classes`, nearest first and each named once. */
 export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
 	const seen = new Set([name]);
 	/* a set iteration also visits what is added during it, so this walks the hierarchy breadth first */
@@ -318,10 +289,7 @@ export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, Cl
 	return [...seen];
 }
 
-/**
- * The {@link SigClassInfo} records the signature database stores for the classes an analysis found. A class
- * the analysis declared carries no `package`; a referenced class `ownerOf` can place becomes a `foreign` record.
- */
+/** The {@link SigClassInfo} records the signature database stores for the classes an analysis found. */
 export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
 	const records: SigClassInfo[] = classes.values().map(declared => compactRecord({
 		name:    declared.name,
@@ -334,8 +302,7 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 	if(ownerOf === undefined) {
 		return records;
 	}
-	/* a superclass the analysis never declared belongs to whoever does define it, which is what makes an
-	   inherited class distinguishable from one the package owns */
+	/* a superclass the analysis never declared belongs to whoever does define it, which is what makes an inherited class distinguishable from one the package owns */
 	for(const referenced of new Set(records.flatMap(r => r.supers))) {
 		const owner = classes.has(referenced) ? undefined : ownerOf(referenced);
 		if(owner !== undefined) {
@@ -345,15 +312,7 @@ export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ow
 	return records;
 }
 
-/**
- * The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them.
- * The walk goes up the AST from the function, so it costs the nesting depth of the method, and a function nested in a method still counts as its method.
- * @example
- * ```ts
- * // R6::R6Class("A", public = list(set = function(v) { self$x <- v }))
- * instanceBindingsOfMethod(setFunctionId, df.graph, idMap); // ['self', 'private']
- * ```
- */
+/** The names the method `fn` sees the instance it is called on by, `undefined` unless `fn` is defined within a class declaration that binds them. */
 export function instanceBindingsOfMethod(fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): readonly string[] | undefined {
 	for(let node = idMap.get(fn); node !== undefined; node = RNode.directParent(node, idMap)) {
 		const vertex = RFunctionCall.is(node) ? graph.getVertex(node.info.id) : undefined;

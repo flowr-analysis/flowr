@@ -36,11 +36,13 @@ import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientStateName, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 import { type AmbientKeys, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
-import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/operators';
+import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { DefaultBuiltInProcessorConfiguration } from '../../../../../environments/built-in';
 import { RWhileLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import { PrintingOptions, AmbientStateAccessType } from '../../../../../environments/built-in-kinds';
+export { PrintingOptions, AmbientStateAccessType } from '../../../../../environments/built-in-kinds';
 
 const ListConstructors: ReadonlySet<string> = new Set(['list', 'c']);
 
@@ -51,20 +53,13 @@ const Accumulating: ReadonlySet<string> = new Set([
 	AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers, ...KeyedAccumulators
 ]);
 
-/**
- * A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` may not happen.
- * An `assumed` write is one only assumed of a body flowR cannot see, see {@link isAssumedWrite}.
- */
+/** A write other than the default: `local` binds in the current frame only (`withr::local_options`), `reset` replaces an accumulating state (a new device), `maybe` may not happen. */
 interface AmbientWrite {
 	readonly name:     string
 	readonly mode:     'local' | 'reset' | 'maybe'
 	readonly assumed?: true
 }
 
-/** Whether `definition` is a write only assumed of a body flowR cannot see, like `#rng` for `function(f) f()`, other than the one of `set.seed(1)`. */
-export function isAssumedWrite(definition: IdentifierDefinition): boolean {
-	return (definition as { assumed?: true }).assumed === true;
-}
 
 /** a write that may not happen: it reads what was there, so it can still replace the state and keep everything before reachable */
 function maybe(name: string): AmbientWrite {
@@ -76,11 +71,7 @@ function optionReads(keys: readonly string[] | undefined): string[] {
 	return keys === undefined ? [AmbientStateName.allOptions] : [...keys.map(AmbientStateName.option), AmbientStateName.unknownOption];
 }
 
-/**
- * Links `getOption(key)` to the values the calls it surely reads the option from set it to (`options(cb = function() 4)`),
- * so it hands them back like a call hands back its result. Only where every such call names the option as an argument
- * and nothing sets options we cannot name, as the call may otherwise hand back anything.
- */
+/** Links `getOption(key)` to the values the calls it surely reads the option from set it to (`options(cb = function() 4)`), so it hands them back like a call hands back its result. */
 function linkOptionValue<OtherInfo>(res: DataflowInformation, rootId: NodeId, keys: readonly string[] | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
 	if(keys?.length !== 1 || Resolve.byName(AmbientStateName.unknownOption, data.environment)?.some(d => !NodeId.isBuiltIn(d.nodeId))) {
 		return;
@@ -109,10 +100,7 @@ export function hidesBody(definition: IdentifierDefinition): boolean {
 	return NodeId.isBuiltIn(definition.nodeId) || isReferenceType(definition.type, ReferenceType.Parameter | ReferenceType.Argument);
 }
 
-/**
- * Whether the call `call` of a function body reaches a built-in only once linked where the function is called, through a parameter
- * or a name the body cannot resolve. Through a variable (`p <- par; p(...)`) the body applied the built-in already, see {@link applyAmbientStateOfCalledBuiltIns}.
- */
+/** Whether the call `call` of a function body reaches a built-in only once linked where the function is called, through a parameter or a name the body cannot resolve. */
 export function reachesBuiltInLate(call: DataflowGraphVertexFunctionCall): boolean {
 	const definitions = call.environment === undefined ? [] : Resolve.byNameAndType(call.name, call.environment, ReferenceType.Function) ?? [];
 	return definitions.length === 0 || definitions.some(hidesBody);
@@ -323,55 +311,7 @@ function keyedReads(state: KeyedState, keys: readonly string[]): string[] {
 	return keys.length === 0 || keys.includes(UnknownKey) ? [AmbientStateName.allOf(state)] : [...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.keyed(state, UnknownKey)];
 }
 
-/** Options that affect how values are printed and formatted (read by `print`, `format`, and `cat`). */
-export const PrintingOptions: readonly string[] = ['digits', 'width', 'max.print', 'digits.secs', 'useFancyQuotes'];
 
-/** How a call accesses the {@link AmbientStateName|ambient state}. */
-export const enum AmbientStateAccessType {
-	/** `options(...)`: named arguments set options, unnamed strings query them, anything else sets unknown options */
-	SetOptions   = 'set-options',
-	/** `getOption(x)`: reads the option named by the first argument */
-	GetOption    = 'get-option',
-	/** reads the given options, like `cat` reads `digits` (see {@link AmbientStateAccess#dispatchOn} for `print`) */
-	ReadOptions  = 'read-options',
-	/** writes the graphics state, unless all arguments are unnamed strings (see {@link AmbientStateAccess#queryOnUnnamedStrings}) */
-	SetGraphics  = 'set-graphics',
-	/** writes the palette, which all devices share; without arguments it only reads it */
-	SetPalette   = 'set-palette',
-	/** reads the graphics state and the palette, like every plot does */
-	ReadGraphics = 'read-graphics',
-	/** opens a device, which starts with a fresh graphics state */
-	OpenDevice   = 'open-device',
-	/** closes a device (or all of them), returning to the state of another open device */
-	CloseDevice  = 'close-device',
-	/** makes another open device the active one */
-	SwitchDevice = 'switch-device',
-	/** sets the state of the random number generator, like `set.seed`, and its kind from the arguments at {@link AmbientStateAccess#kindFrom} on */
-	SetRng       = 'set-rng',
-	/** draws from the random number generator, which reads its state and advances it, like `runif` */
-	DrawRng      = 'draw-rng',
-	/** reads a file, like `read.csv`, so it sees what was written to the files before */
-	ReadFiles    = 'read-files',
-	/** writes a file, like `write.csv` */
-	WriteFiles   = 'write-files',
-	/** `setwd(dir)`: changes the working directory, returning the previous one */
-	SetWorkingDirectory = 'set-working-directory',
-	/** `getwd()`: reads the working directory */
-	GetWorkingDirectory = 'get-working-directory',
-	/** `textConnection(object, open)`: opened for writing, it binds the variable `object` names to what is written to it */
-	OpenTextConnection = 'open-text-connection',
-	/** `reg.finalizer(e, f)`: registers `f` to run once `e` is released */
-	RegisterFinalizer = 'register-finalizer',
-	/** `gc()`: may run every registered finalizer whose object is released */
-	RunFinalizers = 'run-finalizers',
-	/** sets entries of a keyed state, like `Sys.setenv(A = "1")` sets the environment variable `A`, see {@link AmbientKeys} */
-	SetKeyed     = 'set-keyed',
-	ReadKeyed    = 'read-keyed',
-	/** sets a state without entries, like `sink(file)` diverts the output */
-	SetState     = 'set-state',
-	/** reads a state without entries, like `search()` reads the search path */
-	ReadState    = 'read-state'
-}
 
 /** An {@link AmbientStateAccessType} together with what refines it for some of the types. */
 export type AmbientStateAccess = {
@@ -425,14 +365,7 @@ export type AmbientStateAccess = {
 	readonly queryLinksTo?:          LinkTo<RegExp | string>
 };
 
-/**
- * Whether a call drawing on a device writes its canvas, see `semantics.ambient.drawingWritesDevice`.
- * Ask this with the config of the analysis you process, not the default one, as the answer is the user's choice.
- * @example
- * ```ts
- * drawingWritesDevice(analyzer.flowrConfig) // false, unless configured
- * ```
- */
+/** Whether a call drawing on a device writes its canvas, see `semantics.ambient.drawingWritesDevice`. */
 export function drawingWritesDevice(config: FlowrConfig): boolean {
 	return config.semantics.ambient?.drawingWritesDevice === true;
 }
@@ -655,10 +588,7 @@ function namesNoFile<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<O
 		|| callsTagged(v, data, SemanticCallTag.Console));
 }
 
-/**
- * The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others).
- * Empty if the call names no file, as `cat(x)` and `writeLines(x, stdout())`, which print, do.
- */
+/** The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others). */
 function fileStems<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, { sig, numbered }: { readonly sig?: FnSig, readonly numbered?: boolean }): string[] | undefined {
 	const call = res.graph.getVertex(rootId);
 	if(sig === undefined || !DfgVertex.isFunctionCall(call)) {
@@ -784,8 +714,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 	const unnamedFile = kind === 'open' ? [] : [AmbientStateName.anyFile, AmbientStateName.files];
 	const cds = data.cds ? [...data.cds] : undefined;
 	if(data.environment.level > 0) {
-		/* a device the body opened itself is the one a later close in the same body closes:
-		   `f <- function() { pdf("a.pdf"); plot(1); dev.off() }` writes `a.pdf` and no other file */
+		/* a device the body opened itself is the one a later close in the same body closes: `f <- function() { pdf("a.pdf"); plot(1); dev.off() }` writes `a.pdf` and no other file */
 		const here = kind === 'close' ? res.environment.current.memory.get(AmbientStateName.deviceOpenedHere) ?? [] : [];
 		for(const open of here) {
 			res.graph.addEdge(open.nodeId, rootId, EdgeType.Reads);
@@ -852,10 +781,7 @@ export function applyAmbientStateOfCallee<OtherInfo>(res: DataflowInformation, c
 	return unknown ? readsAllAmbientState(res, callId, data, true) : res;
 }
 
-/**
- * The processors that write the environment from their arguments (define, remove, evaluate code): called through a
- * parameter, `do.call`, or an apply function, what they write is unknown, so the values known so far may be stale.
- */
+/** The processors that write the environment from their arguments (define, remove, evaluate code): called through a parameter, `do.call`, or an apply function, what they write is unknown, so the values known so far may be stale. */
 const WritesEnvironment: ReadonlySet<BuiltInProcName> = new Set([
 	BuiltInProcName.Source, BuiltInProcName.Load, BuiltInProcName.Rm, BuiltInProcName.ListToEnv,
 	BuiltInProcName.Assignment, BuiltInProcName.AssignmentLike, BuiltInProcName.SuperAssignment, BuiltInProcName.Eval, BuiltInProcName.Local
@@ -947,10 +873,7 @@ function setOptions<OtherInfo>(
 	return withAccess(res, rootId, data, reads, writes);
 }
 
-/**
- * Whether the call to `fn` only queries the state it may set, as `par("mar")`, `options("digits")` and `palette()`
- * do, which hand that state back visibly where setting it returns the previous one invisibly.
- */
+/** Whether the call to `fn` only queries the state it may set, as `par("mar")`, `options("digits")` and `palette()` do, which hand that state back visibly where setting it returns the previous one invisibly. */
 export function callOnlyQueries<OtherInfo>(fn: Identifier, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], environment: REnvironmentInformation): boolean {
 	const targets = Resolve.byNameAndType(fn, environment, ReferenceType.Function) ?? [];
 	return targets.length > 0 && targets.every(t => hiddenAccess(t).some(a => onlyQueries(a, args)));
@@ -1223,11 +1146,7 @@ export function errorsOfWarnings<OtherInfo>(block: RNode<OtherInfo & ParentInfor
 	});
 }
 
-/**
- * What may signal a condition of the class `name` when `block` runs, which a handler for it depends on: everything that may warn,
- * and for any class other than a warning also what muffles warnings, as that lets other conditions through. With `link`, only
- * the sites written in `block` are listed, a call among them reads what may signal in the body it runs; otherwise all are listed.
- */
+/** What may signal a condition of the class `name` when `block` runs, which a handler for it depends on: everything that may warn, and for any class other than a warning also what muffles warnings, as that lets other conditions through. */
 export function signalSites<OtherInfo>(block: RNode<OtherInfo & ParentInformation>, name: string, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, link: boolean): NodeId[] {
 	return warningSites(block, graph, data, new Map(), { muffled: name === 'warning', link });
 }
@@ -1235,21 +1154,7 @@ export function signalSites<OtherInfo>(block: RNode<OtherInfo & ParentInformatio
 /** the classes of an error R raises on its own, as for arguments a closure does not take */
 const ErrorClasses: readonly string[] = ['simpleError', 'error', 'condition'];
 
-/**
- * Whether running `block` may signal a condition a handler for the class `condition` catches, so whether the handler may run.
- * Everything that may signal anything counts: an operator, an access, a call of a built-in, a call flowR cannot resolve,
- * a variable that may force a promise or may not exist, a branch or loop on a value that is not constant, and what the
- * closures called run. Only a built-in stating the {@link DefaultBuiltInProcessorConfiguration#signals|classes it signals}
- * and handed nothing but constants is matched by its classes, a warning counting as an error if `warn` may be 2 or more
- * (`after` is the environment once `block` ran). An interrupt may arrive anywhere.
- * @example
- * ```ts
- * // tryCatch(1, error = h) never runs h, tryCatch(message("m"), warning = h) neither, tryCatch(f(), error = h) may
- * if(maySignal(blockAst, 'error', info.graph, data, info.environment)) {
- *     promoteCallToFunction(rootId, handler, info, data, cds);
- * }
- * ```
- */
+/** Whether running `block` may signal a condition a handler for the class `condition` catches, so whether the handler may run. */
 export function maySignal<OtherInfo>(block: RNode<OtherInfo & ParentInformation>, condition: string, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, after: REnvironmentInformation): boolean {
 	if(condition === 'interrupt') {
 		return true;
@@ -1258,10 +1163,7 @@ export function maySignal<OtherInfo>(block: RNode<OtherInfo & ParentInformation>
 	return warningSites(block, graph, data, new Map(), { muffled: condition === 'warning', link: false, signal }).length > 0;
 }
 
-/**
- * How {@link warningSites} collects: `muffled` leaves out what muffles warnings, `link` has a call read what may warn in the body it runs instead of listing that.
- * With `signal`, it collects what may signal a condition of that class instead, see {@link maySignal}.
- */
+/** How {@link warningSites} collects: `muffled` leaves out what muffles warnings, `link` has a call read what may warn in the body it runs instead of listing that. */
 interface WarningSiteMode {
 	readonly muffled: boolean
 	readonly link:    boolean

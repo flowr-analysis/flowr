@@ -4,8 +4,9 @@ import type { RStringValue } from '../../../convert-values';
 import { RType } from '../type';
 import { SemVer } from 'semver';
 import { MIN_VERSION_RAW_STABLE } from '../versions';
+import { splitRQuotes } from '../../../../../util/text/strings';
 
-export type RQuote = '"' | '\'' | '`';
+export type { RQuote } from '../../../../../util/text/strings';
 
 /**
  * Represents a string like `"hello"`, including raw strings like `r"(hello)"`.
@@ -35,13 +36,7 @@ export const RString = {
 	 * `content` is `str` itself if there are none. Escapes are not interpreted.
 	 * @see {@link RString.unquote} - if only the content matters
 	 */
-	splitQuotes(this: void, str: string): { readonly quote: RQuote | undefined, readonly content: string } {
-		const quote = str[0];
-		if(str.length > 1 && (quote === '"' || quote === '\'' || quote === '`') && str[str.length - 1] === quote) {
-			return { quote, content: str.slice(1, -1) };
-		}
-		return { quote: undefined, content: str };
-	},
+	splitQuotes: splitRQuotes,
 	/**
 	 * The text without the R quotes (double, single, or backtick) around it; unchanged if it has none.
 	 * @see {@link RString.splitQuotes} - to learn which quote was used

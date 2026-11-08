@@ -3,6 +3,7 @@ import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { Unquote, AmbientStateAccessType } from '../built-in-kinds';
+import { KeyedState } from '../ambient-state-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
 import { SigDataDots, sig, Forced } from './shared-signatures';
 import { TidyEvalPackages } from './shared-configs';
@@ -15,9 +16,9 @@ export const TidyverseDefinitions = [
 		{ markArgsAsMasked: NseArguments.AllButFirst, ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random, SemanticCallTag.Transforms] }, Overrides),
 	fn(pkg(PkgName.Dplyr, 'copy_to'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Database, SemanticCallTag.Writes], sig: sig({ dest: Forced.Handle, df: Forced.Value, name: Forced.Resource, '...': Forced.Value }) }),
-	fn(pkg(PkgName.Rlang, 'with_options'), BuiltInProcName.Default, { libFn: true, props: CallProp.Configures, scope: { state: 'options', params: ['.expr', '...'], code: '.expr' } }),
+	fn(pkg(PkgName.Rlang, 'with_options'), BuiltInProcName.Default, { libFn: true, props: CallProp.Configures, scope: { state: KeyedState.Option, params: ['.expr', '...'], code: '.expr' } }),
 	fn(pkg(PkgName.Rlang, 'local_options'), BuiltInProcName.Default,
-		{ libFn: true, props: CallProp.Configures | CallProp.Invisible, scope: { state: 'options', params: ['...', '.frame'] } }),
+		{ libFn: true, props: CallProp.Configures | CallProp.Invisible, scope: { state: KeyedState.Option, params: ['...', '.frame'] } }),
 	fn(pkg(PkgName.Functools, 'Lapply', 'Sapply', 'Vapply'), BuiltInProcName.Apply,
 		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure }),
 	fn(pkg(PkgName.Dplyr, 'if_else'), BuiltInProcName.IfThenElse, { args: { cond: 'condition', yes: 'true', no: 'false' }, props: CallProp.Pure }, Primitive),

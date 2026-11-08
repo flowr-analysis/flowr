@@ -2,14 +2,14 @@ import type { BasicQueryData } from '../../base-query-format';
 import { metaSince } from '../../query-meta';
 import { AmbientProjectKey, type AmbientAccessQuery, type AmbientAccessQueryResult, type AmbientAccessSummary } from './ambient-access-query-format';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import type { AmbientAccess } from '../../../dataflow/internal/process/functions/call/built-in/transitive-side-effects';
+import type { AmbientAccess } from '../../../dataflow/graph/ambient-access';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { log } from '../../../util/log';
 
 function summary(a: AmbientAccess): AmbientAccessSummary {
-	return { reads: [...a.reads].sort(), writes: [...a.writes].sort(), assumed: [...a.assumed].sort(), variables: [...a.variables].sort(), draws: [...a.draws] };
+	return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: [...a.draws] };
 }
 
 /**

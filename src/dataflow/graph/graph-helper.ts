@@ -5,7 +5,7 @@ import { GraphDiff, GraphDifferenceReport, initDiffContext } from '../../util/di
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
 import { DataflowGraph, UnknownSideEffect } from './graph';
-import type { AmbientAccessRecord } from './ambient-access';
+import { AmbientAccess } from './ambient-access';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -71,16 +71,16 @@ export const GraphHelper = {
 		const resolveMap = idMap ?? graph.idMap;
 		guard(resolveMap !== undefined, 'idMap must be provided to resolve the graph');
 
-		const cache = new Map<string, NodeId>();
+		const cache = new Map<NodeId, NodeId>();
 
-		const resolve = (id: string | NodeId): NodeId => {
-			const cached = cache.get(id as string);
+		const resolve = (id: NodeId): NodeId => {
+			const cached = cache.get(id);
 			if(cached !== undefined) {
 				return cached;
 			}
 			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id;
 
-			cache.set(id as string, resolved);
+			cache.set(id, resolved);
 			return resolved;
 		};
 
@@ -113,7 +113,7 @@ export const GraphHelper = {
 			resultGraph.markIdForUnknownSideEffects(resolve(id), linkTo);
 		}
 		for(const id of graph.ambientAccessIds()) {
-			resultGraph.recordAmbientAccess(resolve(id), graph.ambientAccessOf(id) as AmbientAccessRecord);
+			resultGraph.recordAmbientAccess(resolve(id), AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
 		}
 
 		return resultGraph as G;
@@ -143,8 +143,7 @@ export const GraphHelper = {
 	reachable<G extends DataflowGraph>(this: void, graph: G, seed: NodeId | Iterable<NodeId>, { follow, consider, cds, stopAt }: ReachOptions = {}): Set<NodeId> {
 		const pending: NodeId[] = typeof seed === 'object' ? [...seed] : [seed];
 		const visited = new Set<NodeId>();
-		while(pending.length > 0) {
-			const current = pending.pop() as NodeId;
+		for(let current = pending.pop(); current !== undefined; current = pending.pop()) {
 			if(visited.has(current) || (consider !== undefined && !consider.has(current))) {
 				continue;
 			}
@@ -169,8 +168,7 @@ export const GraphHelper = {
 		const visited: Set<NodeId> = new Set();
 		const toVisit: NodeId[] = [from];
 
-		while(toVisit.length > 0) {
-			const currentId = toVisit.pop() as NodeId;
+		for(let currentId = toVisit.pop(); currentId !== undefined; currentId = toVisit.pop()) {
 			if(visited.has(currentId)) {
 				continue;
 			}

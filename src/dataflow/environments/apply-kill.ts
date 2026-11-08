@@ -2,6 +2,7 @@
  * Applying {@link KillReference|kills} (e.g., produced by `rm`) to an {@link REnvironmentInformation}.
  * @module
  */
+import { AmbientStateName } from './ambient-state-name';
 import type { ControlDependency, KillReference } from '../info';
 import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
@@ -63,7 +64,7 @@ export function cancelRevivedKills(kills: readonly KillReference[], writes: read
 
 /** the options and graphics state flowR keeps as `#...` variables, which `rm(list = ls())` does not touch in R */
 function isAmbientState(key: BrandedIdentifier): boolean {
-	return key.startsWith('#');
+	return AmbientStateName.is(key);
 }
 
 function isBuiltInDef(d: IdentifierDefinition): boolean {

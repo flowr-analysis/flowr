@@ -16,10 +16,10 @@ import { DataflowGraph, type DataflowGraphJson, UnknownSideEffect } from '../../
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import type { BuiltInDefinition } from '../../../../src/dataflow/environments/built-in-config';
-import type { AmbientAccess, FunctionAmbientWrites } from '../../../../src/dataflow/internal/process/functions/call/built-in/transitive-side-effects';
+import type { AmbientAccess } from '../../../../src/dataflow/graph/ambient-access';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
-	type Kind = keyof FunctionAmbientWrites;
+	type Kind = 'writes' | 'assumed' | 'variables';
 
 	/** what each function, named by what it is assigned to, may leave changed (sorted) */
 	async function summaries(code: string, kind: Kind): Promise<Record<string, string[]>> {
@@ -28,16 +28,16 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		const dfi = await analyzer.dataflow();
 		const idMap = (await analyzer.normalize()).idMap;
 		const result: Record<string, string[]> = {};
-		for(const [id, writes] of Dataflow.sideEffects.ambientWrites(dfi)) {
+		for(const [id, writes] of Dataflow.sideEffects.ambientAccessOfFunctions(dfi)) {
 			const parent = RNode.directParent(idMap.get(id) as RNodeWithParent, idMap);
 			if(RBinaryOp.is(parent)) {
-				result[Identifier.getName((parent.lhs as { content: Identifier }).content)] = [...writes[kind]].sort();
+				result[Identifier.getName((parent.lhs as { content: Identifier }).content)] = [...writes[kind].keys()].sort();
 			}
 		}
 		return result;
 	}
 
-	function check(name: string, code: string, expected: Record<string, string[]>, kind: Kind = 'state'): void {
+	function check(name: string, code: string, expected: Record<string, string[]>, kind: Kind = 'writes'): void {
 		test(label(name, [], ['dataflow']), async() => {
 			assert.deepStrictEqual(await summaries(code, kind), Object.fromEntries(Object.entries(expected).map(([fn, w]) => [fn, [...w].sort()])));
 		});
@@ -159,9 +159,6 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 	describe('names', () => {
 		test(label('entries of a pseudo variable', [], ['dataflow']), () => {
-			assert.deepStrictEqual(AmbientStateName.entryOf('#env:PATH'), { state: KeyedState.Env, key: 'PATH' });
-			assert.deepStrictEqual(AmbientStateName.entryOf('#search-path:dplyr'), { state: KeyedState.SearchPath, key: 'dplyr' });
-			assert.isUndefined(AmbientStateName.entryOf('#sink'));
 			assert.strictEqual(AmbientStateName.keyed(KeyedState.SearchPath, 'package:dplyr'), '#search-path:dplyr');
 		});
 	});
@@ -183,7 +180,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 	}
 
 	function shown(a: AmbientAccess): Shown {
-		return { reads: [...a.reads].sort(), writes: [...a.writes].sort(), assumed: [...a.assumed].sort(), variables: [...a.variables].sort(), draws: a.draws.size };
+		return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: a.draws.size };
 	}
 
 	async function access(code: string, selector: Selector, drawing = false): Promise<Shown> {
@@ -260,7 +257,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		}, true);
 
 		test(label('a configured graphics built-in draws', [], ['dataflow']), async() => {
-			const myPlot: BuiltInDefinition = { type: 'function', names: [Identifier.from(['myPlot', 'base'])], processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.Graphics] }, assumePrimitive: false };
+			const myPlot = { type: 'function', names: [Identifier.from(['myPlot', 'base'])], processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.Graphics] }, assumePrimitive: false } satisfies BuiltInDefinition;
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).amendConfig(c => {
 				c.semantics.environment.overwriteBuiltIns.definitions = [myPlot];
 			}).build();
@@ -300,12 +297,40 @@ describe('Ambient access of code', withTreeSitter(ts => {
 	});
 
 	describe('queries do not change the graph', () => {
-		test(label('ambientWrites is pure', ['name-normal', 'call-normal'], ['dataflow']), async() => {
+	describe('a variable named like a state stays a variable', () => {
+		test.each([
+			['the state written after', '`#wd` <- 1\nsetwd("a")\nprint(`#wd`)', '`#wd` <- 1'],
+			['the state written before', 'setwd("a")\n`#wd` <- 1\nfile.exists("b")', 'setwd("a")'],
+			['an option', '`#option:digits` <- 5\noptions(digits = 3)\nprint(`#option:digits`)', '`#option:digits` <- 5']
+		])('%s', async(_, code, kept) => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addRequest(requestFromInput(code));
+			const { results } = (await analyzer.query([{ type: 'static-slice', criteria: [`${code.split('\n').length}:1`] }]))['static-slice'];
+			assert.include(Object.values(results)[0].reconstruct?.code, kept);
+		});
+	});
+
+	describe('every kind of access names the calls behind it', () => {
+		test(label('a call and the function around it answer in the same form', ['name-normal', 'call-normal'], ['dataflow']), async() => {
+			const { info, graph } = await run('f <- function() options(digits = 3)\nf()');
+			const [call] = [...graph.ambientAccessIds()].filter(id => graph.ambientAccessOf(id)?.writes.has('#option:digits'));
+			assert.deepStrictEqual(graph.ambientAccessOf(call)?.writes.get('#option:digits'), new Set([call]));
+			const [ofFunction] = Dataflow.sideEffects.ambientAccessOfFunctions(info).values();
+			assert.deepStrictEqual(ofFunction.writes.get('#option:digits'), new Set([call]));
+		});
+		test(label('a bound variable names its definition', ['name-normal', 'call-normal'], ['dataflow']), async() => {
+			const { info, graph } = await run('f <- function() x <<- 1');
+			const [ofFunction] = Dataflow.sideEffects.ambientAccessOfFunctions(info).values();
+			const [definition] = ofFunction.variables.get('x') ?? [];
+			assert.strictEqual(graph.getVertex(definition)?.tag, VertexType.VariableDefinition);
+		});
+	});
+
+		test(label('ambientAccessOfFunctions is pure', ['name-normal', 'call-normal'], ['dataflow']), async() => {
 			const { graph } = await run('g <- function(f, ...) f(...)\na01 <- function() g(plot, 1)\na22 <- function() g(options, digits = 3)');
 			const before = JSON.stringify(graph.toJSON());
 			const effects = [...graph.unknownSideEffects].map(UnknownSideEffect.id);
-			Dataflow.sideEffects.ambientWrites(graph);
-			Dataflow.sideEffects.ambientWrites(graph);
+			Dataflow.sideEffects.ambientAccessOfFunctions(graph);
 			Dataflow.sideEffects.ambientAccessOfFunctions(graph);
 			assert.strictEqual(JSON.stringify(graph.toJSON()), before);
 			assert.deepStrictEqual([...graph.unknownSideEffects].map(UnknownSideEffect.id), effects);

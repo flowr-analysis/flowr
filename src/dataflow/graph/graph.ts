@@ -15,7 +15,7 @@ import type { Writable } from 'ts-essentials';
 import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
 import { REnvironment } from '../environments/environment';
-import { AmbientAccessRecord } from './ambient-access';
+import { AmbientAccess, type AmbientAccessNames } from './ambient-access';
 import type { LinkedFunctionResolver } from '../internal/linker';
 
 /** Describes the information we store per function body. */
@@ -23,7 +23,7 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' 
 
 /** A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see {@link PositionalFunctionArgument}. */
 export interface NamedFunctionArgument extends IdentifierReference {
-	readonly name:    string
+	readonly name:    BrandedIdentifier
 	readonly valueId: NodeId | undefined
 }
 
@@ -66,7 +66,7 @@ export const FunctionArgument = {
 		return arg === EmptyArgument ? undefined : arg.nodeId;
 	},
 	/** The name of `arg` if named, `undefined` otherwise. */
-	getName(this: void, arg: FunctionArgument): string | undefined {
+	getName(this: void, arg: FunctionArgument): BrandedIdentifier | undefined {
 		return FunctionArgument.isNamed(arg) ? arg.name : undefined;
 	},
 	/** The value node id of a non-empty `arg`: its own id if positional, or its value's id (skipping the name) if named. */
@@ -77,7 +77,7 @@ export const FunctionArgument = {
 		return arg.name === undefined ? arg.nodeId : arg.valueId;
 	},
 	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link FunctionSemantics.call.match.toSpec} for that). */
-	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
+	hasName(this: void, arg: FunctionArgument, name: BrandedIdentifier | undefined): arg is NamedFunctionArgument {
 		return FunctionArgument.isNamed(arg) && arg.name === name;
 	}
 } as const;
@@ -112,7 +112,7 @@ export interface DataflowGraphJson {
 	readonly edgeInformation:     [NodeId, [NodeId, DfEdge][]][]
 	readonly _unknownSideEffects: UnknownSideEffect[]
 	/** the ambient access of the calls touching global state, absent if there is none */
-	readonly _ambientAccess?:     [NodeId, AmbientAccessRecord][]
+	readonly _ambientAccess?:     [NodeId, AmbientAccessNames][]
 }
 
 /** An unknown side effect describes something that we cannot handle correctly (in all cases). */
@@ -163,7 +163,7 @@ export class DataflowGraph<
 	private readonly _unknownSideEffects = new Set<UnknownSideEffect>();
 
 	/* sparse: only the calls touching the global state (options, devices, files, ...) have an entry */
-	private readonly _ambientAccess = new Map<NodeId, AmbientAccessRecord>();
+	private readonly _ambientAccess = new Map<NodeId, AmbientAccess>();
 
 	constructor(idMap: AstIdMap | undefined) {
 		this._idMap = idMap;
@@ -213,7 +213,7 @@ export class DataflowGraph<
 			/* mapping inside `Array.from`, a trailing `.map()` would build the outer array twice */
 			edgeInformation:     Array.from(this.edgeInformation, ([id, edges]) => [id, Array.from(edges)] as [NodeId, [NodeId, DfEdge][]]),
 			_unknownSideEffects: Array.from(this._unknownSideEffects),
-			...this._ambientAccess.size > 0 ? { _ambientAccess: Array.from(this._ambientAccess) } : {}
+			...this._ambientAccess.size > 0 ? { _ambientAccess: Array.from(this._ambientAccess, ([id, access]): [NodeId, AmbientAccessNames] => [id, AmbientAccess.names(access)]) } : {}
 		};
 	}
 
@@ -411,8 +411,8 @@ export class DataflowGraph<
 		return this._unknownSideEffects;
 	}
 
-	/** What the call `id` reads and writes of the global state, if it touches any, see {@link AmbientAccessRecord}. */
-	public ambientAccessOf(id: NodeId): AmbientAccessRecord | undefined {
+	/** What the call `id` reads and writes of the global state, if it touches any, see {@link AmbientAccess}. */
+	public ambientAccessOf(id: NodeId): AmbientAccess | undefined {
 		return this._ambientAccess.get(id);
 	}
 
@@ -422,9 +422,10 @@ export class DataflowGraph<
 	}
 
 	/** Records that the call `id` touches the global state like given, adding to what it is known to touch already. */
-	public recordAmbientAccess(id: NodeId, access: Partial<AmbientAccessRecord>): this {
+	public recordAmbientAccess(id: NodeId, access: AmbientAccessNames): this {
 		id = NodeId.normalize(id);
-		this._ambientAccess.set(id, AmbientAccessRecord.merge(this._ambientAccess.get(id), access));
+		const known = this._ambientAccess.get(id);
+		this._ambientAccess.set(id, known === undefined ? AmbientAccess.ofCall(id, access) : AmbientAccess.ofCall(id, AmbientAccess.names(known), access));
 		return this;
 	}
 
@@ -532,7 +533,7 @@ export class DataflowGraph<
 	}
 
 	/** Adds `vertex` to the graph, filling in `fallbackEnv` if it carries no environment. */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation | (() => REnvironmentInformation), asRoot = true, overwrite = false): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation | (() => REnvironmentInformation) | undefined, asRoot = true, overwrite = false): this {
 		const vid = vertex.id;
 		const previous = this.vertexInformation.get(vid);
 		if(previous !== undefined && !overwrite) {
@@ -551,7 +552,7 @@ export class DataflowGraph<
 			/* only here is a fallback wanted, so a thunk spares every other vertex one it would discard */
 			environment = typeof fallbackEnv === 'function' ? fallbackEnv() : fallbackEnv;
 		}
-		(vertex as { environment: REnvironmentInformation | undefined }).environment = environment;
+		(vertex as Writable<typeof vertex>).environment = environment;
 		this.vertexInformation.set(vid, vertex as Vertex);
 		activeDataflowBudget?.vertex();
 		/* an overwrite keeping the tag is indexed already */
@@ -642,7 +643,8 @@ export class DataflowGraph<
 			this._unknownSideEffects.add(unknown);
 		}
 		for(const [id, access] of otherGraph._ambientAccess) {
-			this._ambientAccess.set(id, AmbientAccessRecord.merge(this._ambientAccess.get(id), access));
+			const known = this._ambientAccess.get(id);
+			this._ambientAccess.set(id, known === undefined ? access : AmbientAccess.ofCall(id, AmbientAccess.names(known), AmbientAccess.names(access)));
 		}
 	}
 
@@ -760,7 +762,7 @@ export class DataflowGraph<
 			graph._unknownSideEffects.add(unknown);
 		}
 		for(const [id, access] of data._ambientAccess ?? []) {
-			graph._ambientAccess.set(id, access);
+			graph._ambientAccess.set(id, AmbientAccess.ofCall(id, access));
 		}
 		return graph;
 	}
@@ -804,7 +806,7 @@ interface REnvironmentInformationJson {
 function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
 	const env = new Environment(parent as Environment, json.builtInEnv);
-	(env as { id: NodeId }).id = json.id;
+	(env as Writable<typeof env>).id = json.id;
 	env.adoptMap(new Map(Object.entries(json.memory)));
 	env.n = json.n;
 	env.t = json.t;

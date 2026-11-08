@@ -17,7 +17,7 @@ import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 import { DfgVertex } from './vertex';
-import { AmbientAccessRecord } from './ambient-access';
+import { AmbientAccess } from './ambient-access';
 
 
 /** This is the underlying function to calculate the difference based on a given context. Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs. */
@@ -55,10 +55,10 @@ function diffAmbientAccess(ctx: GraphDiffContext): void {
 	const right = new Set(ctx.right.ambientAccessIds());
 	setDifference(left, right, { ...ctx, position: `${ctx.position}Calls accessing the ambient state differ in graphs. ` });
 	for(const id of left.intersection(right)) {
-		const a = ctx.left.ambientAccessOf(id) as AmbientAccessRecord;
-		const b = ctx.right.ambientAccessOf(id) as AmbientAccessRecord;
-		if(!AmbientAccessRecord.equals(a, b)) {
-			reportDiffering(ctx, id, `${ctx.position}Ambient access of ${id} differs. `, a, b);
+		const a = ctx.left.ambientAccessOf(id) as AmbientAccess;
+		const b = ctx.right.ambientAccessOf(id) as AmbientAccess;
+		if(!AmbientAccess.equals(a, b)) {
+			reportDiffering(ctx, id, `${ctx.position}Ambient access of ${id} differs. `, AmbientAccess.names(a), AmbientAccess.names(b));
 		}
 	}
 }

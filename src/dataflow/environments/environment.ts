@@ -578,7 +578,7 @@ function adoptSearchPathOf(this: void, target: Environment, source: Environment)
 }
 
 /** The 1-based `search()` position of the entry called `name` (`.GlobalEnv`, `package:x`, or a bare package name), or `undefined` if absent; `package:base` resolves to the built-in env at the bottom if base R is not attached as its own layer. */
-function searchPositionOf(this: void, env: Environment, name: string): number | undefined {
+function searchPositionOf(this: void, env: Environment, name: BrandedIdentifier): number | undefined {
 	const target = name.startsWith(SearchPathPackagePrefix) ? name.slice(SearchPathPackagePrefix.length) : name;
 	if(target === GlobalEnvEntryName) {
 		return 1;

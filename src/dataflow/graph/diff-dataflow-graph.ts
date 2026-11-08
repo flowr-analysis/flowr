@@ -133,10 +133,10 @@ export function diffVertices(ctx: GraphDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			const lname = (lInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.left.idMap) ?? '??';
-			const rname = (rInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.right.idMap) ?? '??';
+			const lname = lInfo.name === undefined ? NodeId.recoverName(id, ctx.left.idMap) ?? '??' : Identifier.toString(lInfo.name as Identifier);
+			const rname = rInfo.name === undefined ? NodeId.recoverName(id, ctx.right.idMap) ?? '??' : Identifier.toString(rInfo.name as Identifier);
 			if(lname !== rname) {
-				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
+				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lname} vs ${ctx.rightname}: ${rname}`, {
 					tag: 'vertex',
 					id
 				});
@@ -145,7 +145,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in cds. ` });
 		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
 			// compare arrays
-			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
+			const equalArrays = lInfo.origin === rInfo.origin || (Array.isArray(lInfo.origin) && Array.isArray(rInfo.origin) && arrayEqual(lInfo.origin, rInfo.origin));
 			if(!equalArrays) {
 				reportDiffering(ctx, id, `Vertex ${id} differs in origin. `, lInfo.origin, rInfo.origin);
 			}

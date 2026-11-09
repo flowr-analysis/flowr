@@ -4,7 +4,15 @@ import { argsOf, wordsOf } from './query';
 import { ExportFlag } from './export-flags';
 
 /** what a call has to fulfill: the whole condition, and the claims on each formal in a few words each */
-export type Guards = readonly [requires: string, claims: readonly (readonly [formal: string, words: readonly string[]])[], because?: readonly (readonly [requires: string, fails: string, via: string])[]];
+export type Guards = readonly [
+	requires: string,
+	claims: readonly (readonly [formal: string, words: readonly string[]])[],
+	because?: readonly (readonly [requires: string, fails: string, via: string, message: string])[],
+	/** the R version a contract was inferred from by reading the closure, empty for one flowR states of a function written in C */
+	readOff?: string,
+	/** comparisons relating formals, like `length(x) >= m`, with what lets a call through instead */
+	relations?: readonly (readonly [holds: string, unless: string])[]
+];
 import { FilterKind, filterOf } from './filters';
 
 /** the element the page template gives `id`, which it must have */
@@ -221,6 +229,7 @@ export class Entry {
 			case FilterKind.Arg:     return this.stated.some(entry => argsOf(entry.args).some(([, roles]) => roles.includes(key)));
 			case FilterKind.Kind:    return this.kinds.includes(key);
 			case FilterKind.Flag:    return this.flagged(key as ExportFlag);
+			case FilterKind.Contract: return this.owners.some(owner => (guards => guards !== undefined && (key === 'any' || (key === 'inferred') === ((guards[3] ?? '') !== '')))(this.guardsIn(owner.pkg.name)));
 			default:                 return false;
 		}
 	}

@@ -11,7 +11,8 @@ export enum FilterKind {
 	Name = 'name',
 	Kind = 'kind',
 	Prop = 'prop',
-	Arg = 'arg'
+	Arg = 'arg',
+	Contract = 'contract'
 }
 
 /** the boxes the chips are grouped in */
@@ -45,6 +46,9 @@ const Filters: readonly Filter[] = [
 	{ kind: FilterKind.Flag, key: ExportFlag.CallsDeprecated, label: 'calls depr.', about: 'calls deprecated: calls something deprecated, so it may stop working when that goes' },
 	{ kind: FilterKind.Flag, key: ExportFlag.Value, label: 'value', about: 'a value rather than a function, like pi or LETTERS' },
 	{ kind: FilterKind.Flag, key: ExportFlag.NoLocation, label: 'no loc', about: 'no location: the database records no file and line for it. Usually a constant, a dataset or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds' },
+	{ kind: FilterKind.Contract, key: 'any', label: 'contract', about: 'flowR knows what a call has to fulfill to return normally' },
+	{ kind: FilterKind.Contract, key: 'inferred', label: 'inferred contract', about: 'the contract was inferred by reading the R code of the function' },
+	{ kind: FilterKind.Contract, key: 'stated', label: 'stated contract', about: 'the contract is what flowR states of a function written in C' },
 	{ kind: FilterKind.Name, key: 'group', label: 'S4', about: 'S4 group member: a member of an S4 group generic (Math, Arith, Summary, ...), which a package usually exports because it answered the group for one of its classes' },
 	{ kind: FilterKind.Kind, key: 'read', label: 'read', about: 'reads data from somewhere outside the program, like read.csv' },
 	{ kind: FilterKind.Kind, key: 'write', label: 'write', about: 'writes data out of the program, like write.csv' },

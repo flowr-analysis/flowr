@@ -382,15 +382,19 @@ function conjuncts(condition: string): string[] {
 }
 
 /** What a call has to fulfill, closed until asked for: per formal a row of claims, then the whole condition one part per line. A default of a formal has no part in this */
-function contract(name: string, [requires, claims, because = []]: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
+function contract(name: string, [requires, claims, because = [], readOff = '', relations = []]: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
 	const hue = (formal: string) => hueOf(formals.indexOf(formal));
 	/* each formal in its own color, and a negation standing out, so a long condition reads at a glance */
 	const marked = (code: string): (string | HTMLElement)[] => code.split(/(\|\||&&|[<>=!]=|!|%in%|\b[A-Za-z.][A-Za-z0-9._]*\b)/).filter(part => part !== '').map(part =>
-		Operators[part] !== undefined ? titled(el('span', Operators[part][0], part), Operators[part][1]) : formals.includes(part) ? el('span', 'arg ' + hue(part), part) : part);
+		Operators[part] !== undefined ? titled(el('span', Operators[part][0], part), Operators[part][1]) : formals.includes(part) ? formalMark(el('span', 'arg ' + hue(part), part), part) : part);
+	const reasonOf = new Map(because.map(([holds, fails, via, message]) => [holds, fails + (via === '' ? '' : ', reached through ' + via) + (message === '' ? '' : ', saying "' + message + '"')]));
 	const box = el('details', 'contract');
 	box.addEventListener('click', event => event.stopPropagation());
 	const summary = titled(el('summary'), 'what a call of ' + name + ' has to fulfill to return normally; default values claim nothing, they only fill in what a call leaves out');
-	summary.append('contract', ...claims.map(([formal]) => el('code', hue(formal), formal)));
+	const origin = readOff === ''
+		? titled(el('span', 'origin stated', 'stated'), 'flowR states this of a function written in C')
+		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function in R ' + readOff + ', so another version of R may ask for less or more');
+	summary.append('contract', origin, ...claims.map(([formal]) => formalMark(el('code', hue(formal), formal), formal)));
 	box.append(summary);
 	if(owner !== undefined) {
 		const of = el('div', 'of');
@@ -403,28 +407,59 @@ function contract(name: string, [requires, claims, because = []]: Guards, formal
 	}
 	if(claims.length > 0) {
 		const table = el('dl');
-		table.append(...claims.flatMap(([formal, words]) => [el('dt', hue(formal), formal), (dd => (dd.append(...words.map(claimPill)), dd))(el('dd'))]));
+		table.append(...claims.flatMap(([formal, words]) => [formalMark(el('dt', hue(formal), formal), formal), (dd => (dd.append(...words.map(claimPill)), dd))(formalMark(el('dd'), formal))]));
 		box.append(table);
+	}
+	if(relations.length > 0) {
+		const related = el('ul', 'relations');
+		related.append(...relations.map(([holds, unless]) => {
+			const item = el('li');
+			item.append(...marked(holds), ...(unless === '' ? [] : [el('span', 'unless', ' unless '), ...marked(unless)]));
+			return item;
+		}));
+		box.append(related);
 	}
 	if(requires !== '') {
 		const condition = el('pre', 'requires');
-		condition.append(...conjuncts(requires).flatMap((part, at) => [at > 0 ? el('span', 'and', '&& ') : '', ...marked(part), '\n']));
+		condition.append(...conjuncts(requires).flatMap((part, at) => {
+			/* a part spelled exactly like a clause says why it is there on hover */
+			const line = titled(el('span', 'line'), reasonOf.get(part) ?? reasonOf.get(part.replace(/^\((.*)\)$/, '$1')));
+			line.append(...marked(part));
+			return [at > 0 ? el('span', 'and', '&& ') : '', line, '\n'];
+		}));
 		box.append(condition);
 	}
 	if(because.length > 0) {
 		const reasons = el('ol', 'because');
-		reasons.append(...because.map(([holds, fails, via]) => {
+		reasons.append(...because.map(([holds, fails, via, message]) => {
 			const item = el('li');
 			const code = el('code');
 			code.append(...marked(holds));
-			item.append(code, el('span', 'fails', fails), ...(via === '' ? [] : [el('span', 'via', 'through ' + via)]));
+			item.append(code, titled(el('span', 'fails', fails), message === '' ? undefined : 'the error says: ' + message), ...(via === '' ? [] : [el('span', 'via', 'through ' + via)]), ...(message === '' ? [] : [el('q', 'message', message)]));
 			return item;
 		}));
 		const why = el('details', 'why');
 		why.append(el('summary', undefined, 'why'), reasons);
 		box.append(why);
 	}
+	/* hovering a formal anywhere lights it up everywhere in the contract */
+	box.addEventListener('mouseover', event => light(box, (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-formal]')?.dataset.formal));
+	box.addEventListener('mouseout', () => light(box, undefined));
 	return box;
+}
+
+/** marks `node` as speaking of `formal`, see {@link light} */
+function formalMark<T extends HTMLElement>(node: T, formal: string): T {
+	node.dataset.formal = formal;
+	return node;
+}
+
+/** lights up everything in `box` that speaks of `formal`, and nothing if there is none */
+function light(box: HTMLElement, formal: string | undefined): void {
+	box.querySelectorAll('.lit').forEach(node => node.classList.remove('lit'));
+	if(formal !== undefined) {
+		box.querySelectorAll<HTMLElement>('[data-formal]').forEach(node => node.classList.toggle('lit', node.dataset.formal === formal));
+	}
 }
 
 /** the operators a condition is read by, each in a color of its own */
@@ -480,10 +515,20 @@ const ClaimAbout: Readonly<Record<string, string>> = {
 	callable:    'usable as a function: one, the name of one, or bound to one'
 };
 
-/** one claim, each word R gives a meaning to explained on hover */
+/** the words that turn a claim around or offer a choice */
+const Connectives: Readonly<Record<string, readonly [cls: string, about: string]>> = {
+	not:    ['not', 'not'],
+	but:    ['not', 'anything except what follows'],
+	or:     ['or', 'either one'],
+	unless: ['not', 'except']
+};
+
+/** one claim, each word R gives a meaning to explained on hover, its negations and choices standing out */
 function claimPill(words: string): HTMLElement {
 	const pill = el('span', 'claim');
-	pill.append(...words.split(/(\b[A-Za-z]+\b)/).filter(part => part !== '').map(part => ClaimAbout[part] === undefined ? part : titled(el('abbr', undefined, part), ClaimAbout[part])));
+	pill.append(...words.split(/(\b[A-Za-z]+\b)/).filter(part => part !== '').map(part =>
+		Connectives[part] !== undefined ? titled(el('span', Connectives[part][0], part), Connectives[part][1])
+			: ClaimAbout[part] === undefined ? part : titled(el('abbr', undefined, part), ClaimAbout[part])));
 	return pill;
 }
 

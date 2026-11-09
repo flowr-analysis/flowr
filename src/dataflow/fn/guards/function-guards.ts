@@ -184,10 +184,14 @@ function packageOf(this: void, facts: GuardFacts | undefined): BrandedNamespace 
 	return facts?.pkg;
 }
 
+/** Whether the call may run a function of the program, an operator linked to the `Ops` methods of the program still being the operator. */
+function mayRunOwn(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall, state: GuardState): boolean {
+	return DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && Dataflow.origin(state.graph, id)?.some(o => o.type !== OriginType.BuiltInFunctionOrigin) === true;
+}
+
 /** The name of the function a call runs, if it is what R or the named package ships with rather than something the program defines. */
 function knownNameOf(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall, state: GuardState): BrandedIdentifier | undefined {
-	/* an operator linked to the `Ops` methods of the program still is the operator, a function the program names the same way is not */
-	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && Dataflow.origin(state.graph, id)?.some(o => o.type !== OriginType.BuiltInFunctionOrigin)) {
+	if(mayRunOwn(id, vertex, state)) {
 		return undefined;
 	}
 	const qualified = Dataflow.qualify(id, state.graph, false) ?? vertex.name;
@@ -370,7 +374,10 @@ function leavesDotsUnnamed(this: void, vertex: DataflowGraphVertexFunctionCall, 
 /** The node of the value of an argument, a named argument being bound by the node that names it. */
 function valueOfArgument(this: void, argument: NodeId, vertex: DataflowGraphVertexFunctionCall, state: GuardState): RNodeWithParent | undefined {
 	const named = vertex.args.find(a => FunctionArgument.isNamed(a) && a.nodeId === argument);
-	return nodeOf(named !== undefined && FunctionArgument.isNamed(named) && named.valueId !== undefined ? named.valueId : argument, state);
+	const node = nodeOf(named !== undefined && FunctionArgument.isNamed(named) && named.valueId !== undefined ? named.valueId : argument, state);
+	/* `exists("x")` reads `x` through a symbol the dataflow made up, while the argument is what was written */
+	const written = node?.info.parent === undefined ? undefined : nodeOf(node.info.parent, state);
+	return written !== undefined && node !== undefined && !RNode.directChildren(written).includes(node) ? written : node;
 }
 
 /** A call of a program's own function as what its single expression says, which is how a predicate like `is_count(x)` is seen through. */
@@ -382,8 +389,12 @@ function inlined(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall
 	return term === undefined || callee === undefined ? undefined : GuardTerm.substitute(term, bindingOf(vertex, callee, scope, state, depth + 1));
 }
 
-function callTerm(this: void, id: NodeId, fn: string, args: readonly GuardArgument[], state: GuardState): GuardCall {
+function callTerm(this: void, id: NodeId, fn: string, args: readonly GuardArgument[], state: GuardState): GuardCall | undefined {
 	const vertex = callVertexOf(id, state);
+	/* `!x` with a `!` of the program's own reads like the one of R, so it cannot be written down */
+	if(vertex !== undefined && mayRunOwn(id, vertex, state) && state.info(vertex.name) !== undefined) {
+		return undefined;
+	}
 	const known = vertex === undefined ? undefined : knownNameOf(id, vertex, state);
 	/* what R ships with reads the same with or without the namespace, the rest keeps it to still be what the code says */
 	return known === undefined ? { kind: 'call', fn, args } : { kind: 'call', fn: packageOf(state.facts(known)) === undefined ? GuardTerm.bareName(fn) : fn, args, known: true };
@@ -400,8 +411,10 @@ function termOf(this: void, node: RNodeWithParent, scope: Scope, state: GuardSta
 			return { kind: 'constant', lexeme: node.lexeme ?? JSON.stringify(node.content.str), value: node.content.str };
 		case RType.Symbol:
 			return symbolTerm(node, scope, state, depth);
-		case RType.ExpressionList:
-			return node.children.length === 1 ? termOf(node.children[0], scope, state, depth) : undefined;
+		case RType.ExpressionList: {
+			const vertex = callVertexOf(node.info.id, state);
+			return node.children.length === 1 && (vertex === undefined || !mayRunOwn(node.info.id, vertex, state)) ? termOf(node.children[0], scope, state, depth) : undefined;
+		}
 		case RType.Argument:
 			return node.value === undefined ? undefined : termOf(node.value, scope, state, depth);
 		case RType.UnaryOp: {
@@ -581,7 +594,7 @@ function skipped(this: void, node: RNodeWithParent, path: Path, run: Run): Exit[
 		if(vertex === undefined || RSymbol.is(nodeOf(id, state))) {
 			continue;
 		}
-		if(runsBuiltIn(vertex, BuiltInProcName.Return) || Identifier.getName(vertex.name) === 'return_from') {
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || Identifier.getName(vertex.name) === 'return_from') {
 			exits.push({ path: [...path, UnknownStep], kind: 'return' });
 		}
 		run.effects ||= !onlyComputes(id, vertex, state);
@@ -898,7 +911,8 @@ function walkCall(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		const [value] = call.arguments;
 		const before = value === undefined || value === EmptyArgument || value.value === undefined ? [] : walk(value.value, path, run);
 		return [...before, { path, kind: 'return' }];
-	} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || runsBuiltIn(vertex, BuiltInProcName.Local)) {
+	} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || runsBuiltIn(vertex, BuiltInProcName.Local)) {
+		/* a `return` that may be one of the program's own may still be the one of R */
 		return skipped(node, path, run);
 	}
 	const name = knownNameOf(id, vertex, state);
@@ -960,8 +974,11 @@ function walkLoopBody(this: void, body: RNodeWithParent, path: Path, run: Run): 
 function walk(this: void, node: RNodeWithParent, path: Path, run: Run): Exit[] {
 	run.scope.frameIsOpen ||= run.openers.has(node.info.id);
 	switch(node.type) {
-		case RType.ExpressionList:
-			return walkSequence(node.children, path, run);
+		case RType.ExpressionList: {
+			/* a `(` or `{` of the program's own may not evaluate what it holds */
+			const vertex = callVertexOf(node.info.id, run.state);
+			return vertex !== undefined && mayRunOwn(node.info.id, vertex, run.state) ? skipped(node, path, run) : walkSequence(node.children, path, run);
+		}
 		case RType.Argument:
 			return node.value === undefined ? [] : walk(node.value, path, run);
 		case RType.Symbol:

@@ -30,8 +30,8 @@ export const AnyType: RValueTypes = (1 << 15) - 1;
 export interface TypePredicate {
 	/** the types it can be true for */
 	readonly yes:         RValueTypes
-	/** it tells these types and no other, so finding it false rules them out as well */
-	readonly exact?:      boolean
+	/** it tells these types and no other, so finding it false rules them out as well, or does so only for a value without a class attribute, as `is.integer` is false for a factor */
+	readonly exact?:      boolean | 'unclassed'
 	/** a value with a class attribute of these types passes as well, like an S4 object holding an environment does for `is.environment` */
 	readonly classedToo?: RValueTypes
 	/** true for every value of these types without attributes, other than `NULL` */

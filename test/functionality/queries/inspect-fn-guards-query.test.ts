@@ -195,10 +195,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(y = c("u", "v")) { y <- match.arg(y); y }; f <- function(x) { g(x); 1 }', 'succeeds(match.arg(x, c("u", "v")))');
 
 	/* redefinitions */
-	guards('is.numeric <- function(x) TRUE; f <- function(x) { if(!is.numeric(x)) stop("n"); 1 }', 'is.numeric(x)', '');
+	guards('is.numeric <- function(x) TRUE; f <- function(x) { if(!is.numeric(x)) stop("n"); 1 }', '');
 	guards('stop <- function(...) NULL; f <- function(x) { if(!is.character(x)) stop("n"); 1 }', '');
 	guards('f <- function(x) { stop <- function(...) 1; if(!is.character(x)) stop("n"); 1 }', '');
-	guards('f <- function(is.numeric) { if(!is.numeric(1)) stop("n"); 1 }', 'is.numeric(1)', '');
+	guards('f <- function(is.numeric) { if(!is.numeric(1)) stop("n"); 1 }', '');
 
 	/* what does not end in a failure, or may not be reached */
 	guards('f <- function(x) { if(is.null(x)) warning("w"); 1 }', '');
@@ -444,6 +444,18 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { stopifnot(is.environment(x)); 1 }', 'is.environment(x)');
 	guards('f <- function(x) { if(is.environment(x)) stop("e"); 1 }', '!is.environment(x)');
 	guards('f <- function(x) { stopifnot(inherits(x, "function")); 1 }', 'inherits(x, "function")');
+	guards('f <- function(x) { if(is.integer(x)) stop("a"); 1 }', '!is.integer(x)');
+	guards('f <- function(x) { if(any(x)) stop("a"); 1 }', '!any(x)');
+	guards('f <- function(x) { stopifnot(!x); 1 }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || length(x) == 0 || is.object(x)) && all(!x)');
+	guards('f <- function(x) { stopifnot(exists("x")); 1 }', 'exists("x")');
+	guards('f <- function(x) { if(!(exists("x"))) stop("a"); 1 }', 'exists("x")');
+	guards('f <- function(x) { `!` <- function(a) a; if(!is.numeric(x)) stop("a"); 1 }', '');
+	guards('f <- function(x) { `>` <- function(a, b) TRUE; stopifnot(x > 0); 1 }', '');
+	guards('f <- function(x) { `(` <- function(a) TRUE; stopifnot((is.numeric(x))); 1 }', '');
+	guards('f <- function(x, a) { if(a) is.numeric <- function(y) TRUE; stopifnot(is.numeric(x)); 1 }', 'length(a) == 1 && !is.na(a)');
+	guards('f <- function(x, return) { if(is.null(x)) return(1); stopifnot(is.numeric(x)); 1 }', 'is.null(x) || is.numeric(x)', '');
+	guards('f <- function(x, stop) { if(is.null(x)) stop("a"); 1 }', '');
+	guards('f <- function(x) { if(is.null(x)) stop("a"); stopifnot(!is.integer(x)); 1 }', '!is.null(x) && !is.integer(x)');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));

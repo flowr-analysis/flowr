@@ -161,7 +161,8 @@ function ofPredicate(this: void, call: GuardCall, formal: BrandedIdentifier, hol
 			const typed = predicate.callable ? { ...types, callable: true } : types;
 			return predicate.scalar ? both(typed, ofBound('length', 1, 1)) : typed;
 		}
-		const ruledOut = predicate.exact ? ofTypes(AnyType & ~predicate.yes) : Unconstrained;
+		const others = typeSet(AnyType & ~predicate.yes);
+		const ruledOut = predicate.exact === 'unclassed' ? { ...Unconstrained, plain: others } : predicate.exact ? { ...Unconstrained, types: others, plain: others } : Unconstrained;
 		/* whatever a string can be measured against, this is not one */
 		return call.fn === 'is.character' ? { ...ruledOut, values: NoValues.bottom() } : ruledOut;
 	} else if(isFormal(first, formal) && (holds ? name === 'is.finite' : name === 'is.na' || name === 'anyNA')) {

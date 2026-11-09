@@ -120,8 +120,12 @@ function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLoo
 	if(term.kind === 'constant' && typeof term.value === 'boolean') {
 		return term.value === holds ? True : False;
 	} else if(term.kind === 'formal' || term.kind === 'free') {
+		if(vector) {
+			/* `!x` of an empty vector of any type is `logical(0)`, so `all(!x)` holds where `!all(x)` does not */
+			return known('all', holds ? term : known('!', term));
+		}
 		/* a factor is its codes to `if`, while `as.logical` goes by the labels */
-		return leaf(vector ? known('all', term) : known('as.logical', known('unclass', term)), holds, false);
+		return leaf(known('as.logical', known('unclass', term)), holds, false);
 	} else if(!isCall(term) || !term.known) {
 		return leaf(term, holds, vector);
 	}
@@ -145,7 +149,8 @@ function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLoo
 		case 'all':
 			return operands.length === 1 && holds ? truth(first, true, facts, true) : leaf(term, holds, false);
 		case 'any':
-			return operands.length === 1 && !holds ? truth(first, false, facts, true) : leaf(term, holds, false);
+			/* `any(NULL)` is false while `!NULL` fails, so a formal keeps the `any` */
+			return operands.length === 1 && !holds && first.kind !== 'formal' ? truth(first, false, facts, true) : leaf(term, holds, false);
 		default:
 			if(NegatedComparison[term.fn] !== undefined && !holds) {
 				return leaf({ ...term, fn: NegatedComparison[term.fn] }, true, vector);

@@ -48,7 +48,7 @@ const CheckmateChecks: Readonly<Record<BrandedIdentifier, CheckingCall>> = {
 	string:      checkmateScalar(Character),
 	flag:        checkmateScalar(Logical),
 	function:    { ...Check, types: Fn },
-	environment: { ...Check, types: Environment },
+	environment: { ...Check, types: Environment | Other },
 	list:        { ...Check, types: List },
 	data_frame:  { ...Check, types: List, classed: true },
 	choice:      { ...Check, choices: 'choices' }
@@ -72,7 +72,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 	[PkgName.Base]: {
 		'is.null':           exact(Null),
 		'is.logical':        exact(Logical),
-		'is.integer':        exact(Integer),
+		'is.integer':        predicate(Integer, { exact: 'unclassed' }),
 		'is.double':         exact(Double),
 		'is.complex':        exact(Complex),
 		'is.character':      exact(Character),

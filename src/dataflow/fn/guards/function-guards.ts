@@ -31,7 +31,7 @@ import { definitionsBehind } from '../higher-order-function';
 import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant } from './guard-term';
 import type { GuardFacts, GuardFactsLookup } from '../../environments/guard-facts';
-import { callable, composesName, condition, defaultGuardFacts, Demands, getAsExists, guardFactsIn, logicalOperand, onlyComputesBy, succeeds } from './guard-knowledge';
+import { ConditionMessages, DemandMessages, NotCallableMessage, callable, composesName, condition, defaultGuardFacts, Demands, getAsExists, guardFactsIn, logicalOperand, onlyComputesBy, succeeds } from './guard-knowledge';
 import { claimsOf, conditionalClaimsOf, impliedBy, relationsOf, type ClaimedName, type ClaimedRelation, type ConditionalClaim, type FormalClaim } from './guard-claims';
 
 /** One condition every normal return of a function has passed; if it does not hold, the call fails. */
@@ -48,7 +48,7 @@ export interface GuardClause {
 	readonly pure:     boolean
 	/** the calls this was inherited through, outermost first, if the condition is that of a function called */
 	readonly via?:     readonly NodeId[]
-	/** what the failure says, if it is a literal message */
+	/** what the failure says: the literal message of a `stop`, or what R typically says when it rejects a value */
 	readonly message?: string
 }
 
@@ -688,7 +688,9 @@ function walkIf(this: void, condNode: RNodeWithParent, then: RNodeWithParent, ot
 	const term = termOf(condNode, run.scope, run.state);
 	const formal = formalOfNode(condNode, run);
 	if(formal !== undefined) {
-		addClause(run, atCondition, condition(formal), condNode.info.id, { kind: 'implicit' });
+		const [once, known] = GuardTerm.conjuncts(condition(formal));
+		addClause(run, atCondition, once, condNode.info.id, { kind: 'implicit', message: ConditionMessages.length });
+		addClause(run, atCondition, known, condNode.info.id, { kind: 'implicit', message: ConditionMessages.na });
 	}
 	const [yes, no] = stepsOf(term, run.state.facts);
 	return [
@@ -815,7 +817,7 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 	const sig = state.info(vertex.name)?.sig;
 	const formals = sig?.map(([formal]) => formal) ?? [...Object.keys(requirements ?? {}), ...(applied === undefined ? [] : [applied])];
 	const bound = boundArguments(vertex, formals, state);
-	const add = (condition: GuardTerm) => addClause(run, path, condition, vertex.id, { kind: 'implicit' });
+	const add = (condition: GuardTerm, message: string) => addClause(run, path, condition, vertex.id, { kind: 'implicit', message });
 	const termOfNode = (n: RNodeWithParent) => termOf(n, scope, state);
 	/* an operator also dispatches on its other operand, which has to be stated to be ruled out */
 	const operands = requirements !== undefined && Object.keys(requirements).length === 2 ? [...bound.values()].flat() : [];
@@ -827,7 +829,7 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 				const otherNode = operands.find(o => o !== value);
 				const other = otherNode === undefined ? undefined : termOfNode(otherNode);
 				if(otherNode === undefined || other !== undefined) {
-					add(requirement(term, other));
+					add(requirement(term, other), DemandMessages[demand]);
 				}
 			}
 		}
@@ -835,7 +837,7 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 	const handed = applied === undefined ? undefined : bound.get(applied)?.[0];
 	const term = handed === undefined ? undefined : termOfNode(handed);
 	if(term !== undefined) {
-		add(callable(term, n => isDefined(n, state)));
+		add(callable(term, n => isDefined(n, state)), `${GuardTerm.render(term)} ${NotCallableMessage}`);
 	}
 }
 

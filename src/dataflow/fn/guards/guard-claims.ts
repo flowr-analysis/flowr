@@ -490,9 +490,7 @@ export function claimConditions(this: void, formal: string, { types, plainTypes,
 	return [
 		...types === undefined ? [] : [ofTypes(types, false)],
 		...plainTypes === undefined ? [] : [ofTypes(plainTypes, true)],
-		...values === undefined ? [] : [partial
-			? `!is.na(pmatch(${formal}, c(${values.map(v => JSON.stringify(v)).join(', ')})))`
-			: `${formal} in ${setOf(values.map(v => JSON.stringify(v)))}`],
+		...values === undefined ? [] : [`${formal} ${partial ? 'matches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`],
 		...classes === undefined ? [] : [classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`],
 		...Object.entries(bounds ?? {}).flatMap(([measure, bound]) => range(measure, bound)),
 		...notNA ? [`!anyNA(${formal})`] : [],

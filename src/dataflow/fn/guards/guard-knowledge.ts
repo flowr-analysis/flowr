@@ -117,6 +117,29 @@ export const Demands: Readonly<Record<GuardDemand, Requirement>> = {
 	[GuardDemand.Named]:              Named
 };
 
+/** What R typically says when a {@link GuardDemand} fails, read off R itself. */
+export const DemandMessages: Readonly<Record<GuardDemand, string>> = {
+	[GuardDemand.Arithmetic]:         'non-numeric argument to binary operator',
+	[GuardDemand.Compared]:           'comparison is possible only for atomic and list types',
+	[GuardDemand.Mathematical]:       'non-numeric argument to mathematical function',
+	[GuardDemand.NotLogical]:         'invalid argument type',
+	[GuardDemand.Dollar]:             '$ operator is invalid for atomic vectors',
+	[GuardDemand.Subsettable]:        'object of type ... is not subsettable',
+	[GuardDemand.ElementSubsettable]: 'object of type ... is not subsettable',
+	[GuardDemand.Character]:          'non-character argument',
+	[GuardDemand.List]:               'second argument must be a list',
+	[GuardDemand.Logical]:            'argument is not logical',
+	[GuardDemand.Environment]:        'invalid envir argument',
+	[GuardDemand.HasDim]:             'incorrect number of dimensions',
+	[GuardDemand.Named]:              'invalid first argument'
+};
+
+/** What R says when a value handed over to be applied is no function. */
+export const NotCallableMessage = 'is not a function, character or symbol';
+
+/** What `if` and `while` say of a condition that is not one logical, see {@link condition}. */
+export const ConditionMessages = { length: 'argument is of length zero, or the condition has length > 1', na: 'missing value where TRUE/FALSE needed' } as const;
+
 /** What a boolean `||`/`&&` asks of each of its operands: one value at most, as an empty one still reads as `NA`, and no dispatch happens, but a class like `Date` may well hide a number from `is.numeric`. */
 export function logicalOperand(this: void, of: GuardTerm): GuardTerm {
 	const atMostOne = GuardTerm.known('<=', is('length', of), { kind: 'constant', lexeme: '1', value: 1 });

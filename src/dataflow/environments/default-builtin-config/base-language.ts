@@ -7,8 +7,9 @@ import { BuiltInEvalName } from '../built-in-eval-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { DataMaskingFunctionIdentifiers } from '../data-masking-functions';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, PlotCreateConfig, NewPlot, AddsToPlot, MayAddToPlot, BuildsPlot, NewGridPlot, ReadsLastPlot } from './shared-configs';
+import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, PlotCreateConfig, NewPlot, AddsToPlot, MayAddToPlot, BuildsPlot } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
+import { Ambient } from '../ambient-effect';
 
 /** What `$` and `@` share: they access a field by its name. */
 const NamedAccess = { treatIndicesAsString: true, resolveField: true, props: CallProp.Pure, sig: sig({ x: Forced.Value, name: ArgProp.Nse }) } as const;
@@ -27,7 +28,7 @@ export const LanguageDefinitions = [
 	/* they return a plot object instead of drawing at once */
 	fn(namespacePlotFunctions([...VisiblePlotCreate]), BuiltInProcName.Default, { ...PlotCreateConfig, ambient: BuildsPlot }, Primitive),
 	fn(namespacePlotFunctions(GgPlotCreate), BuiltInProcName.Default, PlotCreateConfig, Primitive),
-	fn(namespacePlotFunctions(['grid.arrange']), BuiltInProcName.Default, { ...PlotCreateConfig, props: CallProp.Invisible, ambient: NewGridPlot }, { overrides: true, assumePrimitive: true }),
+	fn(namespacePlotFunctions(['grid.arrange']), BuiltInProcName.Default, { ...PlotCreateConfig, props: CallProp.Invisible, ambient: Ambient.plot.resets }, { overrides: true, assumePrimitive: true }),
 	// graphics addons
 	fn(namespacePlotFunctions(GraphicsPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: AddsToPlot }, Primitive),
 	fn(namespacePlotFunctions([...PlotFunctionsWithAddParam]), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: MayAddToPlot }, { overrides: true, assumePrimitive: true }),
@@ -36,7 +37,7 @@ export const LanguageDefinitions = [
 	fn(namespacePlotFunctions(InvisibleGgPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: [], hasUnknownSideEffects: true }, Primitive),
 	// plot tags
 	fn(namespacePlotFunctions(GgPlotAddons), BuiltInProcName.Default,
-		{ libFn: true, ambient: [BuildsPlot, ReadsLastPlot], tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) },
+		{ libFn: true, ambient: [BuildsPlot, Ambient.lastPlot.reads], tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) },
 		Primitive),
 	fn(namespacePlotFunctions(TinyPlotAddons), BuiltInProcName.Default,
 		{ libFn: true, props: CallProp.Invisible, hasUnknownSideEffects: { type: 'link-to-last-call', callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons]) }, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) },

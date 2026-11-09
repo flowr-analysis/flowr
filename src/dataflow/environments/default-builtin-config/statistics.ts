@@ -3,7 +3,7 @@ import { fn, pkg, stats, Primitive, Overrides, readsFile, writesFile } from './d
 import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { AmbientStateAccessType } from '../built-in-kinds';
+import { Ambient } from '../ambient-effect';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of the stats package and statistical modeling packages. */
@@ -41,5 +41,5 @@ export const StatsDefinitions = [
 		{ overrides: true, assumePrimitive: true }),
 	fn([...stats('princomp'), Identifier.from(['rmvnorm', 'mvtnorm']), Identifier.from(['randomForest', 'randomForest']), Identifier.from(['rvonmises', 'circular']),
 		...Identifier.fromAll('permute', ['permute', 'shuffle', 'shuffleSet']), ...pkg(PkgName.Dplyr, 'sample_n', 'sample_frac')], BuiltInProcName.DefaultReadAllArgs,
-	{ ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random] }, Overrides),
+	{ ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random] }, Overrides),
 ] as const satisfies AnyBuiltInDefinition[];

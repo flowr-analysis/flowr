@@ -7,8 +7,9 @@ import { ArgProp, CallProp, type FnSig, SemanticCallTag, type SemanticCallTags }
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../util/r-base-packages';
 import { RBasePrimitives } from '../../../data/r-base-primitives.generated';
 import { RBasePackageStore } from '../../../data/r-base-packages.generated';
-import { AmbientStateAccessType, PlotDraw, PrintingOptions } from '../built-in-kinds';
-import { AmbientStateName, KeyedState, UnknownKey } from '../ambient-state-name';
+import { NumberFormatOptions, PrintingOptions } from '../built-in-kinds';
+import { KeyedState, UnknownKey } from '../ambient-state-name';
+import { Ambient, type AmbientFamilySummary, AmbientVerb } from '../ambient-effect';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -172,7 +173,7 @@ export const GgPlotCreate = ['ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', '
 	'plot_grpfrq', 'plot_likert', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab', 'EnhancedVolcano', 'centralityPlot',
 	'clusteringPlot'] as const;
 export const TinyPlotCrate = ['tinyplot', 'plt'] as const;
-export const GraphicsPlotCreate = ['plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'smoothScatter',
+export const GraphicsPlotCreate = ['plot', 'plot.new', 'filled.contour', 'cdplot', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'smoothScatter',
 	'contour', 'persp', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qqplot', 'qqPlot', 'boxPlot', 'bxp',
 	'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars', 'cotabplot',
 	'pheatmap', 'spineplot', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'coplot', 'histogram', 'splom', 'leaflet', 'tm_shape',
@@ -256,11 +257,11 @@ export const TidyEvalPackages = [PkgName.Rlang, PkgName.Dplyr, PkgName.GgPlot2] 
 /** the database a connection opens is a file: its tables are read and changed through the connection */
 export const DbConnectSig: FnSig = sig({ drv: Forced.Value, dbname: Forced.Resource, '...': Forced.Value });
 export const DbConnSig: FnSig = sig({ conn: Forced.Resource });
-export const DbReads = { type: AmbientStateAccessType.ReadFiles, sig: DbConnSig } as const;
-export const DbReadsWrites = (sig: FnSig) => [{ type: AmbientStateAccessType.ReadFiles, sig }, { type: AmbientStateAccessType.WriteFiles, sig }] as const;
+export const DbReads = { ...Ambient.files.reads, sig: DbConnSig } as const;
+export const DbReadsWrites = (sig: FnSig) => [{ ...Ambient.files.reads, sig }, { ...Ambient.files.writes, sig }] as const;
 export const DbPackages = [PkgName.Dbi, PkgName.Rsqlite, 'RPostgres', 'RMariaDB', 'odbc', 'pool'] as const;
 /** reads the files some arguments name and writes the ones its {@link ArgProp.Written} arguments name, like `file.copy` or `unzip` */
-export const SetsAnyEnvVar = [AmbientStateName.keyed(KeyedState.Env, UnknownKey), AmbientStateName.allOf(KeyedState.Env)].map(state => ({ type: AmbientStateAccessType.SetState, state }) as const);
+export const SetsAnyEnvVar = { ...Ambient.env.writes, member: { from: 'constant', keys: [UnknownKey] } } as const;
 export const CopiesFiles = [SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
 /** reads what its URL (or remote object) arguments name from the network and writes the file its {@link ArgProp.Written} arguments name, like `download.file` */
 export const Downloads = [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
@@ -290,13 +291,15 @@ export const WithSig: FnSig  = sig({ data: ArgProp.NoDefault | ArgProp.Written, 
 /** what flowR states about one of the functions it defines, in the words a page shows */
 export interface StatedSignature {
 	/** the package the definition is for, `base` when it names none */
-	readonly pkg:     BrandedNamespace;
+	readonly pkg:      BrandedNamespace;
 	/** The formals flowR models, `x, ...`, or `undefined` where it declares none (not R's own declaration). */
-	readonly params?: string;
-	/** what it does, from {@link CallProps.labels} */
-	readonly props:   readonly string[];
+	readonly params?:  string;
+	/** what it does, from {@link CallProps.labels}, `ambient state` for every function declaring an {@link AmbientEffect} */
+	readonly props:    readonly string[];
 	/** each formal with what it is used for, from {@link ArgProps.words}; the roles read like the types R has none of */
-	readonly args?:   readonly (readonly [name: string, roles: readonly string[]])[];
+	readonly args?:    readonly (readonly [name: string, roles: readonly string[]])[];
+	/** what it does to the global state, by part and access, see {@link ambientSummaryOf} */
+	readonly ambient?: readonly AmbientFamilySummary[];
 }
 
 /** The manual page documenting a base R primitive, for the ones not documented under their own name (a primitive is written in C, so no signature/source/help-topic extractor sees it; `sin` is documented under `Trig`). */
@@ -409,23 +412,19 @@ export function markPrimitives(definitions: BuiltInDefinitions): BuiltInDefiniti
 	return labelNames(definitions, CallProp.Primitive, n => RBasePrimitives.has(Identifier.getName(n)) && (Identifier.getNamespace(n) ?? PkgName.Base) === PkgName.Base);
 }
 
-/** a base graphics plot, which reads the graphics parameters, see {@link AmbientStateName.plot} */
-export const NewPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.New } as const;
-export const AddsToPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.Add } as const;
+/** what every base graphics plot reads */
+const BasePlot = [Ambient.par.reads, Ambient.palette.reads] as const;
+/** a base graphics plot, see {@link AmbientStateName.plot} */
+export const NewPlot = [Ambient.plot.resets, ...BasePlot] as const;
+export const AddsToPlot = [Ambient.plot.adds, ...BasePlot] as const;
 /** `curve(f, add = TRUE)` adds to the plot, `curve(f)` starts a new one */
-export const MayAddToPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.AddIfAsked } as const;
-/* grid-based plots ignore the base graphics parameters */
-export const NewGridPlot = { ...NewPlot, parameters: false } as const;
+export const MayAddToPlot = [{ ...Ambient.plot.adds, when: { flag: 'add' } }, { ...Ambient.plot.resets, unless: { flag: 'add' } }, ...BasePlot] as const;
 /** a plot object (`ggplot`, `xyplot`), which draws once printed */
-export const BuildsPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.Build, parameters: false } as const;
-/** what `last_plot()` and `ggsave` read */
-export const ReadsLastPlot = { type: AmbientStateAccessType.ReadState, state: AmbientStateName.lastPlot } as const;
+export const BuildsPlot = Ambient.plot.builds;
 /** what building or adding to a ggplot does: the plot (the `+` the call is part of) becomes what `last_plot()` returns */
-const BuildsGgPlot = [BuildsPlot, { type: AmbientStateAccessType.SetState, state: AmbientStateName.lastPlot, atPlotValue: true }] as const;
-/** a grid call drawing on the device without starting a new page */
-export const AddsToGridPlot = { ...AddsToPlot, parameters: false } as const;
+const BuildsGgPlot = [BuildsPlot, Ambient.lastPlot.writes] as const;
 /** what queries the coordinates of the plot (`strwidth`): it reads the plot and opens a device if none is open */
-export const ReadsPlot = AddsToPlot;
+export const ReadsPlot = [Ambient.plot.reads, ...BasePlot] as const;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
@@ -440,29 +439,26 @@ export const PlotAddonConfig = {
 /** the devices withr opens for a scope, as `with_<device>` and `local_<device>` */
 export const WithrDevices = ['bmp', 'cairo_pdf', 'cairo_ps', 'jpeg', 'pdf', 'png', 'svg', 'tiff', 'xfig', 'postscript'] as const;
 
-export const ReadPrintingOptions = { type: AmbientStateAccessType.ReadOptions, keys: PrintingOptions } as const;
-/* a method for the printed value may read any option, see {@link AmbientStateAccess} */
-export const PrintDispatched = { type: AmbientStateAccessType.ReadOptions, keys: PrintingOptions, dispatchOn: 0 } as const;
-export const OpenDevice = { type: AmbientStateAccessType.OpenDevice } as const;
-/** the devices that are open, which `dev.cur()` and `dev.list()` report */
-export const ReadDevices = [AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy].map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const);
-/** what the active device holds, which exporting it (`image_write`, `dev.capture`) reads */
-export const ReadDevice = { type: AmbientStateAccessType.ReadState, state: AmbientStateName.device } as const;
+export const ReadPrintingOptions = { ...Ambient.option.reads, member: { from: 'constant', keys: PrintingOptions } } as const;
+/* a method for the printed value may read any option, see {@link AmbientEffect#dispatchOn} */
+export const PrintDispatched = { ...ReadPrintingOptions, dispatchOn: 0 } as const;
+/** what turning a number into text reads */
+export const ReadsNumberFormat = { ...Ambient.option.reads, member: { from: 'constant', keys: NumberFormatOptions } } as const;
 /** sets the entries of an environment variable, a locale or a search path state that the call names with the parameter `name` of the given signature */
 export const SetsEntryNamedBy = (state: KeyedState, signature: readonly string[], name: string, rest: { readonly fallback?: string, readonly quoted?: boolean | string } = {}) =>
-	({ type: AmbientStateAccessType.SetKeyed, state, keys: { from: 'parameter', signature, names: [name], ...rest } }) as const;
-export const SetsEntry = (state: KeyedState, key: string) => ({ type: AmbientStateAccessType.SetKeyed, state, keys: { from: 'constant', key } }) as const;
+	({ family: state, access: AmbientVerb.Writes, member: { from: 'parameter', signature, names: [name], ...rest } }) as const;
+export const SetsEntry = (state: KeyedState, key: string) => ({ family: state, access: AmbientVerb.Writes, member: { from: 'constant', keys: [key] } }) as const;
 /** `library(pkg)` and `library("pkg")` name the package, `library(pkg, character.only = TRUE)` looks the variable up */
 export const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['package', 'help', 'pos', 'lib.loc', 'character.only'], 'package', { quoted: 'character.only' });
-export const LoaderSearchPath = (quoted: boolean) => ({ type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'unnamed', quoted } }) as const;
+export const LoaderSearchPath = (quoted: boolean) => ({ ...Ambient.searchPath.writes, member: { from: 'unnamed', quoted } }) as const;
 /* which entry a detach removes depends on every earlier attach, so it reads the search path as well */
 export const DetachSearchPath = [
-	{ ...SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }), removes: true },
-	{ type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.SearchPath) }
+	{ ...SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }), access: AmbientVerb.Kills },
+	Ambient.searchPath.reads
 ] as const;
 export const ImportSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['.from', '...', '.into', '.library', '.directory', '.all', '.except', '.chdir', '.character_only', '.S3'], '.into', { fallback: 'imports' });
 /** `attach(df)` is named `df`, `attach(df, name = "data")` is named `data` */
-export const AttachSearchPath = { type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'parameter', signature: ['what', 'pos', 'name', 'warn.conflicts'], names: ['name', 'what'], quoted: true } } as const;
+export const AttachSearchPath = { ...Ambient.searchPath.writes, member: { from: 'parameter', signature: ['what', 'pos', 'name', 'warn.conflicts'], names: ['name', 'what'], quoted: true } } as const;
 
 /** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
 export const PlotCreateConfig = {

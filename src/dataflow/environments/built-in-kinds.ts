@@ -1,7 +1,10 @@
 /* The kinds the built-in configuration states, kept free of runtime imports so loading the configuration stays cheap. */
 
 /** Options that affect how values are printed and formatted (read by `print`, `format`, and `cat`). */
-export const PrintingOptions: readonly string[] = ['digits', 'width', 'max.print', 'digits.secs', 'useFancyQuotes'];
+export const PrintingOptions: readonly string[] = ['digits', 'width', 'max.print', 'digits.secs', 'useFancyQuotes', 'scipen', 'OutDec'];
+
+/** Options that affect how a number turns into text, even outside printing (`paste(1e5)` reads `scipen`, `as.character(1.5)` reads `OutDec`). */
+export const NumberFormatOptions: readonly string[] = ['scipen', 'OutDec'];
 
 /** The parts of the ambient state with a single value a scoped call (`withr::with_dir`) may change, other than the entries of a {@link KeyedState}. */
 export enum AmbientSingleState {
@@ -11,65 +14,6 @@ export enum AmbientSingleState {
 	Sink = 'sink',
 	Rng = 'rng',
 	WorkingDirectory = 'wd'
-}
-
-/** How a call accesses the {@link AmbientStateName|ambient state}. */
-export const enum AmbientStateAccessType {
-	/** `options(...)`: named arguments set options, unnamed strings query them, anything else sets unknown options */
-	SetOptions   = 'set-options',
-	/** `getOption(x)`: reads the option named by the first argument */
-	GetOption    = 'get-option',
-	/** reads the given options, like `cat` reads `digits` (see {@link AmbientStateAccess#dispatchOn} for `print`) */
-	ReadOptions  = 'read-options',
-	/** writes the graphics state, unless all arguments are unnamed strings (see {@link AmbientStateAccess#queryOnUnnamedStrings}) */
-	SetGraphics  = 'set-graphics',
-	/** writes the palette, which all devices share; without arguments it only reads it */
-	SetPalette   = 'set-palette',
-	/** reads the graphics state and the palette, like every plot does, and draws on the active device as {@link PlotDraw} says */
-	ReadGraphics = 'read-graphics',
-	/** opens a device, which starts with a fresh graphics state, or an instance of another family (see {@link AmbientStateAccess#family}) */
-	OpenDevice   = 'open-device',
-	/** closes a device (or all of them), returning to the state of another open device */
-	CloseDevice  = 'close-device',
-	/** makes another open device the active one */
-	SwitchDevice = 'switch-device',
-	/** sets the state of the random number generator, like `set.seed`, and its kind from the arguments at {@link AmbientStateAccess#kindFrom} on */
-	SetRng       = 'set-rng',
-	/** draws from the random number generator, which reads its state and advances it, like `runif` */
-	DrawRng      = 'draw-rng',
-	/** reads a file, like `read.csv`, so it sees what was written to the files before */
-	ReadFiles    = 'read-files',
-	/** writes a file, like `write.csv` */
-	WriteFiles   = 'write-files',
-	/** `setwd(dir)`: changes the working directory, returning the previous one */
-	SetWorkingDirectory = 'set-working-directory',
-	/** `getwd()`: reads the working directory */
-	GetWorkingDirectory = 'get-working-directory',
-	/** `textConnection(object, open)`: opened for writing, it binds the variable `object` names to what is written to it */
-	OpenTextConnection = 'open-text-connection',
-	/** `reg.finalizer(e, f)`: registers `f` to run once `e` is released */
-	RegisterFinalizer = 'register-finalizer',
-	/** `gc()`: may run every registered finalizer whose object is released */
-	RunFinalizers = 'run-finalizers',
-	/** sets entries of a keyed state, like `Sys.setenv(A = "1")` sets the environment variable `A`, see {@link AmbientKeys} */
-	SetKeyed     = 'set-keyed',
-	ReadKeyed    = 'read-keyed',
-	/** sets a state without entries, like `sink(file)` diverts the output */
-	SetState     = 'set-state',
-	/** reads a state without entries, like `search()` reads the search path */
-	ReadState    = 'read-state'
-}
-
-/** How a drawing call changes the plot on the active device, which it opens if none is open. */
-export enum PlotDraw {
-	/** starts a new plot, like `plot` */
-	New = 'new',
-	/** adds to the current plot, like `points` */
-	Add = 'add',
-	/** adds to the current plot if its argument `add` is `TRUE`, and starts a new one otherwise, like `curve` */
-	AddIfAsked = 'add-if-asked',
-	/** builds a plot object that draws once printed (`ggplot(d) + geom_point()`), so the call itself leaves the device alone */
-	Build = 'build'
 }
 
 /** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */

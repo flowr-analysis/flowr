@@ -1,5 +1,6 @@
 import type { GuardFacts } from './guard-facts';
-import type { AmbientScope, AmbientStateAccess } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import type { AmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import type { AmbientEffects } from './ambient-effect';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
@@ -449,8 +450,8 @@ export const ArgProps = {
 
 /** Semantics of a built-in that hold no matter which processor handles the call. */
 export interface BuiltInFnInfo extends StatedProps {
-	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientStateAccess} */
-	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[]
+	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientEffect} */
+	readonly ambient?:               AmbientEffects
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
 	readonly scope?:                 AmbientScope
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>

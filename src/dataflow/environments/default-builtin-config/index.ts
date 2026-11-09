@@ -3,7 +3,8 @@ import { OperatorDefinitions } from './base-operators';
 import { UnnamedFunctionCallPrefix } from '../built-in-kinds';
 import { Identifier, PkgName, type BrandedIdentifier } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
-import { ArgProps, CallProps } from '../built-in-props';
+import { ArgProps, CallProp, CallProps } from '../built-in-props';
+import { ambientSummaryOf, declaresAmbient } from '../ambient-effect';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import type { StatedSignature } from './shared-configs';
 import { statedSignatureOf, markGenerics, markPrimitives } from './shared-configs';
@@ -36,6 +37,7 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 	const stated = new Map<BrandedIdentifier, StatedSignature[]>();
 	for(const definition of definitions) {
 		const info = definition.type === 'constant' ? undefined : definition.config;
+		const ambient = ambientSummaryOf(info);
 		for(const id of definition.names) {
 			const name = String(Identifier.getName(id));
 			const pkg = String(Identifier.getNamespace(id) ?? PkgName.Base);
@@ -43,8 +45,9 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 			const entry = {
 				pkg,
 				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
-				props:  CallProps.labels(info),
-				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined
+				props:  CallProps.labels(ambient.length > 0 || declaresAmbient(info) ? { ...info, props: (info?.props ?? 0) | CallProp.Ambient } : info),
+				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined,
+				...ambient.length > 0 ? { ambient } : {}
 			};
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */

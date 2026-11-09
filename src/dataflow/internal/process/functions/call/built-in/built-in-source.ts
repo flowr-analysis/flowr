@@ -1,5 +1,6 @@
 import type { IdentifierReference } from '../../../../../environments/identifier';
-import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
+import { applyAmbientEffects } from './built-in-ambient-state';
+import type { AmbientEffects } from '../../../../../environments/ambient-effect';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
@@ -138,7 +139,7 @@ export function processSourceCall<OtherInfo>(
 		includeFunctionCall?: boolean,
 		/** should this function call be followed, even when the configuration disables it? */
 		forceFollow?:         boolean
-		ambient?:             AmbientStateAccess | readonly AmbientStateAccess[]
+		ambient?:             AmbientEffects
 		/** the formals, to find the file and the environment however they are passed */
 		sig?:                 FnSig
 		/** the formal naming the environment to evaluate in, `local` for `source` (`TRUE`/`FALSE` there name the caller's frame or the global one) */
@@ -162,7 +163,7 @@ export function processSourceCall<OtherInfo>(
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: DataflowInformation.initialize(rootId, data);
-	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, config.ambient);
+	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientEffects(information, args, rootId, data, config.ambient);
 
 	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);

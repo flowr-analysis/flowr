@@ -3,12 +3,12 @@ import { fn, pkg, Primitive, readsFile, writesFile } from './define-helpers';
 import { PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { ReadDevice, OpenDevice } from './shared-configs';
+import { Ambient } from '../ambient-effect';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of images, audio, and video. */
 export const MediaDefinitions = [
-	fn(pkg(PkgName.Magick, 'image_graph', 'image_draw'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Configures, ambient: OpenDevice, tags: [SemanticCallTag.Graphics] },
+	fn(pkg(PkgName.Magick, 'image_graph', 'image_draw'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Configures, ambient: Ambient.device.opens, tags: [SemanticCallTag.Graphics] },
 		Primitive),
 	fn(pkg(PkgName.Magick, 'image_read', 'image_read_svg', 'image_read_pdf', 'image_read_video'), BuiltInProcName.DefaultReadAllArgs, readsFile('path')),
 	fn(pkg(PkgName.Jpeg, 'readJPEG'), BuiltInProcName.DefaultReadAllArgs, readsFile('source')),
@@ -46,9 +46,9 @@ export const MediaDefinitions = [
 	fn(pkg(PkgName.TuneR, 'writeWave'), BuiltInProcName.DefaultReadAllArgs, writesFile('filename', 'object')),
 	fn(pkg(PkgName.Audio, 'save.wave'), BuiltInProcName.DefaultReadAllArgs, writesFile('where', 'what')),
 	fn([...pkg(PkgName.Magick, 'image_capture'), ...pkg(PkgName.GrDevices, 'dev.capture')], BuiltInProcName.Default,
-		{ libFn: true, ambient: ReadDevice, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }, Primitive),
+		{ libFn: true, ambient: Ambient.device.reads, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }, Primitive),
 	/* they put what the device holds on disk */
 	fn(pkg(PkgName.Magick, 'image_write'), BuiltInProcName.Default,
-		{ libFn: true, props: CallProp.Invisible, ambient: ReadDevice, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ image: Forced.Value, path: Forced.Resource | ArgProp.Optional }) },
+		{ libFn: true, props: CallProp.Invisible, ambient: Ambient.device.reads, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ image: Forced.Value, path: Forced.Resource | ArgProp.Optional }) },
 		Primitive),
 ] as const satisfies AnyBuiltInDefinition[];

@@ -165,5 +165,18 @@ export const OutputSinks: AmbientFamily = {
 	openedHere: AmbientStateName.sinkOpenedHere
 };
 
+/** The diversion of messages, warnings, and errors (`sink(con, type = "message")`), which, other than that of the output, is no stack: `sink(type = "message")` returns to the console. */
+export const MessageSinks: AmbientFamily = {
+	states: [
+		['#message-sink', '#message-sink:other'],
+		['#message-sink:opener', '#message-sink:opener:other'],
+		['#message-sink:output', '#message-sink:output:other']
+	],
+	used:       '#message-sink:output',
+	opened:     '#message-sink:opener',
+	switched:   '#message-sink',
+	openedHere: '#message-sink:here'
+};
+
 /** The pseudo variables that only grow, because every write to their state adds to them. */
 export const KeyedAccumulators: readonly AmbientStateName[] = Object.values(KeyedState).flatMap(state => [AmbientStateName.allOf(state), AmbientStateName.keyed(state, UnknownKey)]);

@@ -13,7 +13,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { resolveAttachPosition, resolveSymbolToEnvir } from './built-in-envir-utils';
-import { AmbientStateAccessType } from './built-in-ambient-state';
+import { Ambient } from '../../../../../environments/ambient-effect';
 import { keysOf } from './built-in-ambient-keys';
 import { UnknownKey } from '../../../../../environments/ambient-state-name';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -88,7 +88,7 @@ export function processDetach<OtherInfo>(
 	config: BuiltInFnInfo = {}
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Detach }).information;
-	const keys = [config.ambient ?? []].flat().flatMap(a => a.type === AmbientStateAccessType.SetKeyed ? keysOf(a.keys, args, data) : []);
+	const keys = Ambient.list(config.ambient).flatMap(a => typeof a.member === 'object' ? keysOf(a.member, args, data) : []);
 	const first = RArgument.valueOf(args.find(a => a !== EmptyArgument));
 	const positions = first === undefined ? [DefaultAttachPosition]
 		: keys.includes(UnknownKey) ? [resolveAttachPosition(first.info.id, data)]

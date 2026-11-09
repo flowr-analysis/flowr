@@ -22,7 +22,7 @@ export const UtilsDefinitions = [
 	fn(utils('file_test'), BuiltInProcName.DefaultReadAllArgs,
 		{ tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ op: Forced.Flag, x: Forced.Resource, y: Forced.Resource }) }),
 	fn(utils('write.table', 'write.csv', 'write.csv2'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Value, file: Forced.Resource | ArgProp.Optional }) }),
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Value, file: Forced.Resource | ArgProp.Optional, append: Forced.Flag }) }),
 	fn(utils('read.table', 'read.delim', 'read.csv2', 'read.delim2'), BuiltInProcName.DefaultReadAllArgs,
 		{ tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ file: Forced.Resource }) }),
 	fn(utils('download.file'), BuiltInProcName.DefaultReadAllArgs,

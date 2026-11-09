@@ -178,7 +178,7 @@ export const BaseDefinitions = [
 	fn(base('save'), BuiltInProcName.DefaultReadAllArgs,
 		{ namesIn: ['...', 'list'], props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': Forced.Value, list: Forced.Value, file: Forced.Resource }) }),
 	fn(base('save.image'), BuiltInProcName.EnvContents, { props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ file: Forced.Resource }) }),
-	fn(base('dir.exists'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ path: Forced.Resource }) }),
+	fn(base('dir.exists'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ paths: Forced.Resource }) }),
 	fn(base('file.access'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ names: Forced.Resource, mode: Forced.Flag }) }),
 	fn([...base('normalizePath'), ...pkg(PkgName.Fs, 'path_abs', 'path_real')], BuiltInProcName.DefaultReadAllArgs,
 		{ ambient: Ambient.wd.reads, props: CallProp.Ambient, sig: sig({ path: Forced.Value, winslash: Forced.Flag, mustWork: Forced.Flag }) }),

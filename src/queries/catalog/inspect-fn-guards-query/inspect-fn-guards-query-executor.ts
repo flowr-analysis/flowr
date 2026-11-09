@@ -4,8 +4,10 @@ import { metaSince } from '../../query-meta';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { GuardTerm } from '../../../dataflow/fn/guards/guard-term';
+import { conditionsPerFormal } from '../../../dataflow/fn/guards/function-guards';
 import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
-import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
+import { builtInGuards, loadBaseGuards, type StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
 
 /** The part of the answer for one function a query asks for, `undefined` if that is nothing. */
 function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuardsQuery): FunctionGuards | undefined {
@@ -16,10 +18,21 @@ function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuar
 	const kept: FunctionGuards = {
 		...FunctionSemantics.guardSummary(clauses),
 		clauses,
-		formals:  named === undefined ? guards.formals : Object.fromEntries(Object.entries(guards.formals).filter(([name]) => named.has(name))),
-		required: guards.required.filter(f => named === undefined || named.has(f))
+		conditions: named === undefined ? conditionsPerFormal(clauses) : Object.fromEntries(Object.entries(conditionsPerFormal(clauses)).filter(([name]) => named.has(name))),
+		formals:    named === undefined ? guards.formals : Object.fromEntries(Object.entries(guards.formals).filter(([name]) => named.has(name))),
+		required:   guards.required.filter(f => named === undefined || named.has(f))
 	};
 	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 ? kept : undefined;
+}
+
+/** What R's functions of the given names ask for, the ones flowR knows nothing of left out. */
+async function statedFor(names: readonly string[]): Promise<Record<string, StatedGuards>> {
+	const table = await loadBaseGuards();
+	return Object.fromEntries(names.flatMap(name => {
+		const id = Identifier.parse(name);
+		const stated = builtInGuards(table, Identifier.getName(id), Identifier.getNamespace(id));
+		return stated === undefined ? [] : [[name, stated]];
+	}));
 }
 
 /** Execute function-guard inspection queries on the given analyzer. */
@@ -31,6 +44,7 @@ export async function executeFnGuardsQuery({ analyzer }: BasicQueryData, queries
 	const guards = FunctionSemantics.guards(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx: analyzer.inspectContext() });
 	return {
 		...metaSince(start),
+		...(query.builtIns === undefined ? {} : { builtIns: await statedFor(query.builtIns) }),
 		guards: Object.fromEntries(Object.entries(guards).flatMap(([id, of]) => {
 			const kept = keep(of, query);
 			return kept === undefined ? [] : [[id, kept]];

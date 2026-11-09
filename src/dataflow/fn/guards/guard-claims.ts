@@ -347,3 +347,25 @@ export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: 
 	}
 	return claims;
 }
+
+/** The given types, by what they leave out if that is the shorter way of saying it. */
+function typesInWords(this: void, types: readonly string[]): string {
+	const left = typeNames(AnyType).filter(t => !types.includes(t));
+	return left.length < types.length ? `not ${left.join('|')}` : types.join('|');
+}
+
+/** Reads a claim in a few words each, as a page or a terminal shows it. */
+export function claimWords(this: void, { types, plainTypes, values, partial, classes, bounds, notNA, callable, resolves }: FormalClaim): string[] {
+	const range = (what: string, [lower, upper]: ClaimedRange) => lower !== null && lower === upper ? `${what} = ${lower}`
+		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
+	return [
+		types === undefined ? '' : typesInWords(types),
+		plainTypes === undefined ? '' : `${typesInWords(plainTypes)} unless classed`,
+		values === undefined ? '' : `one of ${values.join(', ')}${partial ? ' (or a prefix)' : ''}`,
+		classes === undefined ? '' : `class ${classes.join('|')}`,
+		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure === 'value' ? 'value' : measure, bound)),
+		notNA ? 'not NA' : '',
+		callable ? 'callable' : '',
+		...(resolves ?? []).map(r => `${r.expression} exists`)
+	].filter(w => w !== '');
+}

@@ -4,6 +4,7 @@ import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/te
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
+import { claimWords } from '../../../dataflow/fn/guards/guard-claims';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
@@ -87,6 +88,12 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 		.map(([name, words]) => `${name}: ${words.join('+')}`);
 	if(roles.length > 0) {
 		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
+	}
+	for(const [formal, claim] of Object.entries(fn.guards?.formals ?? {})) {
+		result.push(`      ╰ ${italic('guard', f)}   ${formal}: ${claimWords(claim).join(', ')}`);
+	}
+	if(fn.guards?.requires) {
+		result.push(`      ╰ ${italic('requires', f)} ${fn.guards.requires}`);
 	}
 	if(fn.flowrOnly) {
 		// nothing below comes from the database, so say so instead of rendering its empty fields as facts

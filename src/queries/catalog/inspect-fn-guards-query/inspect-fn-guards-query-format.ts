@@ -9,6 +9,8 @@ import { SourceLocation } from '../../../util/range';
 import { FunctionFilterSchema } from '../../query-function-property';
 import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
 import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
+import type { StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
+import { claimWords } from '../../../dataflow/fn/guards/guard-claims';
 
 /** Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter. */
 export interface InspectFnGuardsQuery extends BaseQueryFormat {
@@ -20,11 +22,15 @@ export interface InspectFnGuardsQuery extends BaseQueryFormat {
 	readonly onlyPure?: boolean
 	/** keep only what is said about these formals */
 	readonly formals?:  readonly BrandedIdentifier[]
+	/** also state what these functions of R ask for, written `name` or `pkg::name` */
+	readonly builtIns?: readonly string[]
 }
 
 export interface InspectFnGuardsQueryResult extends BaseQueryResult {
 	/** per function definition with anything to say about it, what it asks for */
-	readonly guards: Record<NodeId, FunctionGuards>
+	readonly guards:    Record<NodeId, FunctionGuards>
+	/** what the functions {@link InspectFnGuardsQuery.builtIns} names ask for, those flowR knows nothing of left out */
+	readonly builtIns?: Record<string, StatedGuards>
 }
 
 export const InspectFnGuardsQueryDefinition = {
@@ -44,7 +50,19 @@ export const InspectFnGuardsQueryDefinition = {
 				result.push(`    a call has to supply: ${guards.required.join(', ')}`);
 			}
 			for(const [formal, claim] of Object.entries(guards.formals)) {
-				result.push(`    ${formal}: ${JSON.stringify(claim)}`);
+				result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
+			}
+			for(const [formal, conditions] of Object.entries(guards.conditions)) {
+				result.push(`    ${formal} is checked by: ${conditions.join(', ')}`);
+			}
+		}
+		for(const [name, guards] of Object.entries(out.builtIns ?? {})) {
+			result.push(`  - ${bold(name, formatter)} requires ${guards.requires === '' ? 'nothing' : guards.requires}`);
+			if(guards.required !== undefined) {
+				result.push(`    a call has to supply: ${guards.required.join(', ')}`);
+			}
+			for(const [formal, claim] of Object.entries(guards.formals ?? {})) {
+				result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
 			}
 		}
 		return true;
@@ -56,7 +74,8 @@ export const InspectFnGuardsQueryDefinition = {
 		filter:   FunctionFilterSchema,
 		kind:     Joi.string().valid('explicit', 'implicit').optional().description('Keep only the conditions the function checks itself, or only those R checks for it.'),
 		onlyPure: Joi.boolean().optional().description('Keep only the conditions failing before any side effect.'),
-		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only what is said about the formals written as one of these names.')
+		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only what is said about the formals written as one of these names.'),
+		builtIns: Joi.array().items(Joi.string()).min(1).optional().description('Also state what these functions of R ask for, written `name` or `pkg::name`.')
 	}).description('Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => Object.keys((queryResults as QueryResults<'inspect-fn-guards'>['inspect-fn-guards']).guards)
 } as const satisfies SupportedQuery<'inspect-fn-guards'>;

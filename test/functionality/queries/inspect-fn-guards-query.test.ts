@@ -12,6 +12,8 @@ import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { InspectFnGuardsQueryDefinition } from '../../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import type { KnownParser } from '../../../src/r-bridge/parser';
+import { RBaseGuards } from '../../../src/data/r-base-guards.generated';
+import { claimWords } from '../../../src/dataflow/fn/guards/guard-claims';
 
 /** The programs to check against R as well, with what the query made of them. */
 const Checked: { readonly code: string, readonly guards: FunctionGuards | undefined }[] = [];
@@ -419,6 +421,30 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x) { if(!is.numeric(x)) stop("n"); x + 1 }', { x: { types: ['integer', 'double'] } }, ['x']);
 	claims('f <- function(mode = c("fast", "slow")) { mode <- match.arg(mode); mode }', { mode: { types: ['NULL', 'character'], values: ['fast', 'slow'], partial: true } }, []);
 	claims('f <- function(x) { if(!(x %in% c("a", "b"))) stop("n"); x }', { x: { values: ['a', 'b'] } }, ['x']);
+
+	test('every condition a function checks itself is reported per formal', async() => {
+		const code = 'f <- function(x, y) { stopifnot(is.numeric(x), x > 0, x %% 2 == 0); if(y < x) stop("n"); x + y }';
+		const guards = await guardsOfF(parser, code);
+		assert.deepStrictEqual(guards?.conditions, { x: ['is.numeric(x)', 'all(x > 0)', 'all(x %% 2 == 0)', 'y >= x'], y: ['y >= x'] });
+	});
+
+	test('what functions of R ask for', async() => {
+		const { result } = await runQuery(parser, 'x', { type: 'inspect-fn-guards', builtIns: ['stats::cor', 'base::strsplit', 'base::sort', 'utils::combn', 'not::known', 'nonsense'] });
+		const { builtIns = {} } = result;
+		assert.deepStrictEqual(Object.keys(builtIns), ['stats::cor', 'base::strsplit', 'base::sort', 'utils::combn']);
+		assert.deepStrictEqual(builtIns['stats::cor'].formals?.method.values, ['pearson', 'kendall', 'spearman']);
+		assert.deepStrictEqual(builtIns['base::strsplit'].formals, { x: { types: ['character'] } });
+		assert.deepStrictEqual(builtIns['base::sort'].formals?.decreasing.types, ['logical']);
+		assert.deepStrictEqual(builtIns['utils::combn'].formals?.m.bounds, { length: [1, 1], value: [0, null] });
+		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer|double', 'length = 1', 'value >= 0']);
+	});
+
+	test('the table of the base packages takes nothing from a default', () => {
+		/* each of these only has a default of that type, and takes others just as well */
+		for(const [pkg, name, formal] of [['utils', 'head', 'n'], ['base', 'round', 'digits'], ['base', 'paste', 'sep'], ['base', 'nchar', 'type'], ['base', 'seq_len', 'length.out']]) {
+			assert.isUndefined(RBaseGuards[pkg]?.[name]?.formals?.[formal]?.types, `${pkg}::${name}`);
+		}
+	});
 
 	/* a default states what happens without an argument, nothing about the arguments a call may give */
 	claims('f <- function(x = 1) { x }', {}, []);

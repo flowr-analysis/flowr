@@ -5,6 +5,7 @@ import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
 import { guardsOfFunctions, summarizeClauses } from './guards/function-guards';
+import { builtInGuards, loadBaseGuards } from './guards/built-in-guards';
 import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOfImpl, toSigClassesImpl } from './class-declaration';
 import { DfgVertex } from '../graph/vertex';
 import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
@@ -43,6 +44,10 @@ export const FunctionSemantics = {
 	guards:          guardsOfFunctions,
 	/** The conditions of some clauses of a definition in R syntax. */
 	guardSummary:    summarizeClauses,
+	/** What a function of the base packages asks for, from the table {@link FunctionSemantics.loadBaseGuards} loads. */
+	builtInGuards,
+	/** Loads what the closures of the base packages ask for. */
+	loadBaseGuards,
 	/** The reflective argument bits of one definition. */
 	frameReflection: reflectiveRolesOf,
 	/** What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of them it does not simply evaluate. */

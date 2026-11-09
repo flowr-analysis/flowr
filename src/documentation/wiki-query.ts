@@ -1,3 +1,4 @@
+import { RBaseGuardsVersion } from '../data/r-base-guards.generated';
 import type { RShell } from '../r-bridge/shell';
 import { CloneAlgorithm } from '../clones/clone-detector';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -378,6 +379,10 @@ What counts as a guard:
 Every entry of ${ctx.link('FunctionGuards::clauses')} is a ${ctx.link('GuardClause')} with the condition both as R code and as a ${ctx.link('GuardTerm')} tree, in which \`succeeds(e)\` stands for \`e\` not raising an error.
 A clause is \`pure\` if the failure comes before anything other than computing a value, so a call failing on it leaves nothing behind, and ${ctx.link('FunctionGuards::pure')} is the conjunction of those clauses.
 On top of that ${ctx.link('FunctionGuards::formals')} holds what the conditions together claim about each formal, as a ${ctx.link('FormalClaim')}: its types, the values it can take, its bounds, the classes it inherits from, and so on.
+${ctx.link('FunctionGuards::conditions')} holds, per formal, the conditions the function checks itself as they read in R, so a \`stopifnot(x %% 2 == 0)\` is there even though no claim has words for it.
+A default value of a formal claims nothing, as it only fills in what a call leaves out: \`function(n = 5L)\` still takes \`n = 1.5\`, and only \`match.arg\` and \`rlang::arg_match\` read the default, namely as the values they allow.
+With a wrapper handing on dots, an argument given by position only stays in place if the dots name nothing, which is why \`f <- function(x, ...) g(x, ...)\` asks for \`!is.null(...names()) || is.list(x)\` unless the formals of \`g\` leave no room for anything else.
+With \`builtIns\` the query states the same for functions of R: what their closures check, read off R ${RBaseGuardsVersion} by \`scripts/gen-base-guards.ts\`, and what is known of those written in C. The signature query and the [signature browser](https://flowr-analysis.github.io/flowr/wiki/sigdb/) show these as well.
 ${ctx.link('FunctionGuards::required')} names the formals a call has to supply, which the \`inspect-fn-props\` query reports as ${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}, next to ${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')} for every formal a condition reads.
 
 Conditions speak about the values at the guard, so a formal that has been overwritten by then is read as what it was overwritten with.

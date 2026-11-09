@@ -53,15 +53,17 @@ export interface GuardClause {
 /** What a function asks for of the calls it can return from, see {@link guardsOfFunctions}. */
 export interface FunctionGuards {
 	/** every condition found */
-	readonly clauses:  readonly GuardClause[]
+	readonly clauses:    readonly GuardClause[]
 	/** per formal, what the conditions say about it */
-	readonly formals:  Readonly<Record<BrandedIdentifier, FormalClaim>>
+	readonly formals:    Readonly<Record<BrandedIdentifier, FormalClaim>>
+	/** per formal, the conditions the function checks itself that read it (from `stopifnot`, `if` and `stop`, ...), in R syntax: what {@link FunctionGuards.formals} has no words for, like `x %% 2 == 0`, is here as well */
+	readonly conditions: Readonly<Record<BrandedIdentifier, readonly string[]>>
 	/** the formals a call has to supply, as it fails otherwise */
-	readonly required: readonly BrandedIdentifier[]
+	readonly required:   readonly BrandedIdentifier[]
 	/** all conditions in R syntax, an empty string if there are none */
-	readonly requires: string
+	readonly requires:   string
 	/** the conditions that fail before any side effect in R syntax, an empty string if there are none: the tightest precondition that guarantees a clean failure */
-	readonly pure:     string
+	readonly pure:       string
 }
 
 /** One condition on the way to some code, with what is known either way about whether it held. */
@@ -1109,12 +1111,26 @@ export function guardsOfFunctions(this: void, definitions: readonly NodeId[], gr
 		const { clauses, required } = contractOf(id, state);
 		result[id] = {
 			clauses,
-			formals: withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()]), state),
+			formals:    withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()]), state),
+			conditions: conditionsPerFormal(clauses),
 			required,
 			...summarizeClauses(clauses)
 		};
 	}
 	return result;
+}
+
+/** The clauses a function checks itself, per formal they read. */
+export function conditionsPerFormal(this: void, clauses: readonly GuardClause[]): Record<BrandedIdentifier, string[]> {
+	const conditions: Record<BrandedIdentifier, string[]> = {};
+	for(const { kind, requires, rendered } of clauses) {
+		if(kind === 'explicit') {
+			for(const formal of GuardTerm.formalsOf(requires)) {
+				(conditions[formal] ??= []).push(rendered);
+			}
+		}
+	}
+	return conditions;
 }
 
 /** All of the given clauses and those failing cleanly, in R syntax. */

@@ -204,6 +204,9 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 /* what a call has to fulfill: a line within the row, the tables within its detail, laid out like the packages below them */
 #hits .hue0 { --hue: #3b73c4; } #hits .hue1 { --hue: #c27a12; } #hits .hue2 { --hue: #2f9e6a; }
 #hits .hue3 { --hue: #b4489a; } #hits .hue4 { --hue: #7a5cd6; } #hits .hue5 { --hue: #c2453b; }
+/* what a call returns is no formal, so it has a hue of its own */
+#hits .result { --hue: #5f7486; }
+#hits .contract .cond .result { color: color-mix(in srgb, var(--hue) 85%, var(--fg)); font-weight: 500; }
 #hits .teaser { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .3rem; font-size: .78rem; color: var(--muted); cursor: pointer; }
 #hits .teaser code, #hits .contract code.arg { font-size: .75rem; padding: 0 .3rem; border-radius: .3rem; color: color-mix(in srgb, var(--hue) 80%, var(--fg)); background: color-mix(in srgb, var(--hue) 12%, transparent); }
 #hits .label { font-variant: small-caps; letter-spacing: .04em; }
@@ -233,13 +236,14 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .from { display: flex; flex-direction: column; gap: .1rem; }
 #hits .contract .from .where { font-size: .72rem; }
 #hits .contract .from code.at { font-size: .72rem; color: color-mix(in srgb, var(--fg) 70%, var(--muted)); }
-/* operators set apart without shouting */
-#hits .contract .not { color: color-mix(in srgb, #d0453a 55%, var(--fg)); }
-#hits .contract .or { color: color-mix(in srgb, #c27a12 55%, var(--fg)); }
-#hits .contract .and, #hits .contract .cmp { color: var(--muted); }
-#hits .contract .claim .not, #hits .contract .claim .or { font-style: italic; }
+/* operators set apart without shouting and always upright, only the connectives written as words lean */
+#hits .contract .not, #hits .teaser .not { color: color-mix(in srgb, #c2453b 62%, var(--muted)); font-style: normal; }
+#hits .contract .or, #hits .teaser .or { color: color-mix(in srgb, #1f8a96 72%, var(--fg)); font-style: normal; font-weight: normal; margin: 0 .2em; }
+#hits .contract .and, #hits .contract .cmp, #hits .teaser .and { color: var(--muted); font-style: normal; }
+#hits .contract .word, #hits .teaser .word { font-style: italic; }
 #hits .contract .lit { background: color-mix(in srgb, var(--hue, var(--accent)) 20%, transparent); border-radius: .25rem; }
 #hits .stated .formal.guarded { text-decoration: underline dotted color-mix(in srgb, var(--accent) 60%, transparent); cursor: help; }
+#hits .stated .formal.quiet { color: color-mix(in srgb, var(--muted) 75%, transparent); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }

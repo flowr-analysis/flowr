@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
 import { assert, describe, test } from 'vitest';
+import { contractFormals, spokenOf } from '../../../scripts/sigdb-page/contract-formals';
 
 const Root = path.join(__dirname, '..', '..', '..');
 
@@ -14,6 +15,14 @@ describe('Signature database page', () => {
 		for(const id of Hooks) {
 			assert.include(template, `id="${id}"`);
 		}
+	});
+
+	test('a contract keeps every formal it speaks of, even one the stated signature misses', () => {
+		/* flowR states `commandArgs(...)` while R has `commandArgs(trailingOnly = FALSE)` */
+		const guards = ['is.logical(trailingOnly)', [['trailingOnly', ['typeof(trailingOnly) in logical']]], [], '4.5.0', [], [], [], ['trailingOnly', 'other']] as const;
+		const formals = contractFormals(['...'], ['trailingOnly'], guards);
+		assert.deepStrictEqual(formals, ['...', 'trailingOnly', 'other']);
+		assert.deepStrictEqual(spokenOf(guards, formals), ['trailingOnly', 'other']);
 	});
 
 	test('scripts/sigdb-page/main.ts bundles into a classic script that still reads every id', async() => {

@@ -1,6 +1,7 @@
 import { blank, el } from '../page-lib/dom';
 import { argsOf, norm, shortOf, wordsOf } from './query';
-import type { Entry, Guards, Owner, Package } from './database';
+import { db, Owner, type Entry, type Guards, type Package } from './database';
+import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 
 /** how a flag reads on the page, and what it says on hover where its name alone does not; a meta flag is about the database entry, not the function */
@@ -176,7 +177,8 @@ export class Hits {
 		}
 		const dispatches = entry.dispatches;
 		const said = dispatches.map(([system]) => system.toLowerCase() + ' method');
-		const args = own?.args || entry.declaredIn(chosen?.pkg.name) || '';
+		const declared = entry.declaredIn(chosen?.pkg.name);
+		const args = own?.args || declared || '';
 		const props = wordsOf(mergedWords(own?.props, flagWords(chosen?.flags ?? ''))).filter(word => !said.includes(word.toLowerCase())).join('|');
 		if(args !== '' || props !== '') {
 			head.append(this.signature(name, args, props, guards));
@@ -199,10 +201,11 @@ export class Hits {
 		}
 		head.append(list);
 		row.append(head);
+		const formals = guards === undefined ? [] : contractFormals(formalsOf(args), formalsOf(declared ?? ''), guards);
 		if(guards !== undefined) {
-			row.append(teaser(name, guards, formalsOf(args)));
+			row.append(teaser(name, guards, formals));
 		}
-		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formalsOf(args), chosen)));
+		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen)));
 		this.list.append(row);
 	}
 
@@ -330,7 +333,9 @@ export class Hits {
 		if(args !== '') {
 			const list = el('span', 'args');
 			const claimed = new Map(guards?.[1] ?? []);
-			list.append('(', ...argsOf(args).flatMap((arg, at) => [at > 0 ? ', ' : '', this.formal(arg, claimed.get(arg[0]), at)]), ')');
+			/* with a contract, what it says nothing about steps back so the rest stands out */
+			const spoken = guards === undefined ? undefined : new Set(spokenOf(guards, formalsOf(args)));
+			list.append('(', ...argsOf(args).flatMap((arg, at) => [at > 0 ? ', ' : '', this.formal(arg, claimed.get(arg[0]), at, spoken !== undefined && spoken.size > 0 && !spoken.has(arg[0]))]), ')');
 			said.append(list);
 		}
 		if(returns.length > 0) {
@@ -339,8 +344,8 @@ export class Hits {
 		return said;
 	}
 
-	private formal([name, roles]: readonly [string, readonly string[]], claims?: readonly string[], at = 0): HTMLSpanElement {
-		const part = el('span', 'formal', name);
+	private formal([name, roles]: readonly [string, readonly string[]], claims?: readonly string[], at = 0, quiet = false): HTMLSpanElement {
+		const part = el('span', quiet ? 'formal quiet' : 'formal', name);
 		if(claims !== undefined) {
 			part.classList.add('guarded', hueOf(at));
 			part.title = name + ' of a call that returns normally: ' + claims.join(', ');
@@ -378,10 +383,12 @@ function conjuncts(condition: string): string[] {
 }
 
 /** each formal in its own color and the operators set apart, so a long condition reads at a glance */
-function marker(formals: readonly string[]): (code: string) => (string | HTMLElement)[] {
+function marker(formals: readonly string[], result = false): (code: string) => (string | HTMLElement)[] {
 	return code => code.split(/(\|\||&&|[<>=!]=|!|%in%|\b[A-Za-z.][A-Za-z0-9._]*\b(?:\()?)/).filter(part => part !== '').flatMap(part => {
 		if(Operators[part] !== undefined) {
 			return [titled(el('span', Operators[part][0], part), Operators[part][1])];
+		} else if(result && part === 'result') {
+			return [titled(el('span', 'arg result', part), 'the value a call returns normally')];
 		} else if(formals.includes(part)) {
 			return [formalMark(el('span', 'arg ' + hueOf(formals.indexOf(part)), part), part)];
 		} else if(part.endsWith('(')) {
@@ -431,18 +438,18 @@ function originTag(readOff: string): HTMLElement {
 		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function in R ' + readOff + ', so another version of R may ask for less or more');
 }
 
-/** the formals a contract speaks of, in the order of the signature */
-function contracted([, claims, , , relations = [], required = []]: Guards, formals: readonly string[]): string[] {
-	const named = new Set([...required, ...claims.map(([formal]) => formal), ...relations.flatMap(([holds]) => formals.filter(f => new RegExp('\\b' + f.replace(/\./g, '\\.') + '\\b').test(holds)))]);
-	return formals.filter(f => named.has(f));
+/** the formals a relation speaks of, in the order of the signature */
+function related(holds: string, formals: readonly string[]): string[] {
+	return formals.filter(f => new RegExp('\\b' + f.replace(/\./g, '\\.') + '\\b').test(holds));
 }
 
 /** The contract within the row: where it comes from, the formals it speaks of, and what relates them; the row opens the rest */
 function teaser(name: string, guards: Guards, formals: readonly string[]): HTMLElement {
-	const [, , , readOff = ''] = guards;
+	const [, , , readOff = '', , , returns = []] = guards;
 	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
 	const line = el('div');
-	line.append(el('span', 'label', 'contract'), originTag(readOff), ...contracted(guards, formals).map(formal => formalMark(el('code', hueOf(formals.indexOf(formal)), formal), formal)));
+	line.append(el('span', 'label', 'contract'), originTag(readOff), ...spokenOf(guards, formals).map(formal => formalMark(el('code', hueOf(formals.indexOf(formal)), formal), formal)),
+		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
 	box.append(line);
 	return box;
 }
@@ -456,10 +463,10 @@ function contractRow(cls: string, ...cells: readonly (string | Node)[][]): HTMLE
 
 /** What a call has to fulfill: per formal what holds, then, opened on demand, each condition with what fails without it and where. A default of a formal has no part in this */
 function contract(name: string, guards: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
-	const [requires, stated, because = [], , relations = [], required = []] = guards;
+	const [requires, stated, because = [], , relations = [], required = [], returns = []] = guards;
 	const marked = marker(formals);
 	const chip = (formal: string) => formalMark(el('code', 'arg ' + hueOf(formals.indexOf(formal)), formal), formal);
-	const anded = (parts: readonly string[]) => parts.flatMap((part, at) => [...at > 0 ? [el('span', 'and', ' and ')] : [], ...marked(part)]);
+	const anded = (parts: readonly string[]) => parts.flatMap((part, at) => [...at > 0 ? [el('span', 'and word', ' and ')] : [], ...marked(part)]);
 	const box = el('div', 'contract');
 	const url = owner?.sourceUrl;
 	if(owner !== undefined && url !== undefined) {
@@ -470,16 +477,21 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 	const parts = new Map(stated.map(([formal, said]) => [formal, said]));
 	const rows = el('div', 'ctable');
 	rows.append(contractRow('chead', ['parameter'], ['must hold, or the call fails with an error']));
-	for(const formal of contracted(guards, formals).filter(f => required.includes(f) || parts.has(f))) {
+	for(const formal of spokenOf(guards, formals).filter(f => required.includes(f) || parts.has(f))) {
 		const said = el('code', 'cond');
 		said.append(...anded([...required.includes(formal) ? ['!missing(' + formal + ')'] : [], ...parts.get(formal) ?? []]));
 		rows.append(formalMark(contractRow('claim', [chip(formal)], [said]), formal));
 	}
 	for(const [holds, unless] of relations) {
 		const said = el('code', 'cond');
-		said.append(...marked(holds), ...(unless === '' ? [] : [el('span', 'unless', ' unless '), ...marked(unless)]));
-		const related = contracted([holds, [], [], '', [[holds, '']], []], formals);
-		rows.append(contractRow('claim relation', related.flatMap((f, at) => [...at > 0 ? [' '] : [], chip(f)]), [said]));
+		said.append(...marked(holds), ...(unless === '' ? [] : [el('span', 'unless word', ' unless '), ...marked(unless)]));
+		rows.append(contractRow('claim relation', related(holds, formals).flatMap((f, at) => [...at > 0 ? [' '] : [], chip(f)]), [said]));
+	}
+	if(returns.length > 0) {
+		const said = el('code', 'cond');
+		const result = marker(formals, true);
+		said.append(...returns.flatMap((part, at) => [...at > 0 ? [el('span', 'and word', ' and ')] : [], ...result(part)]));
+		rows.append(contractRow('claim result', [titled(el('code', 'arg result', 'result'), 'the value a call returns normally')], [said]));
 	}
 	box.append(rows);
 	const conditions = because.length > 0 ? because : conjuncts(requires).filter(part => part !== '').map(part => [part, '', '', '', ''] as const);
@@ -488,14 +500,18 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 		why.addEventListener('click', event => event.stopPropagation());
 		why.append(el('summary', undefined, 'detailed conditions and failures'));
 		const table = el('div', 'ctable');
-		table.append(...conditions.map(([holds, kind, fails, via, message]) => {
-			const code = el('code', 'cond');
-			code.append(...marked(holds));
+		table.append(...conditions.map(([holds, kind, fails, via, message, reads = '', brief = '']) => {
+			/* what reads better than flowR's notation is shown, the condition as R evaluates it on hover */
+			const code = titled(el('code', 'cond'), reads === '' ? undefined : holds);
+			code.append(...marked(reads === '' ? holds : reads));
+			const chain = via === '' ? [] : via.split(', ');
 			const from = el('span', 'from');
+			const shown = brief === '' ? fails : brief;
 			from.append(
 				...(message === '' ? [] : [el('q', 'message', message)]),
-				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), url === undefined ? el('code', 'at', fails) : blank(link('at', fails, url, 'in the implementation of ' + name + ', which starts here'))]),
-				...(via === '' ? [] : [el('span', 'via', ', reached through ' + via)])
+				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), url === undefined ? titled(el('code', 'at', shown), fails) : blank(link('at', shown, url, fails))]),
+				...(fails === '' ? [] : [' in ', ...located(chain.at(-1) ?? name, owner)]),
+				...(chain.length < 2 ? [] : [el('span', 'via', ', reached through '), ...chain.slice(0, -1).flatMap((fn, at) => [...at > 0 ? ['; '] : [], ...located(fn, owner)])])
 			);
 			return contractRow('condition', [code], [from]);
 		}));
@@ -506,6 +522,19 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 	box.addEventListener('mouseover', event => light(box, (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-formal]')?.dataset.formal));
 	box.addEventListener('mouseout', () => light(box, undefined));
 	return box;
+}
+
+/** a function by name, then where the database says it is written, linking there, `home` being the function the contract is of and where an unqualified name is looked for */
+function located(fn: string, home: Owner | undefined): Part[] {
+	const qualified = fn.indexOf('::');
+	const [pkg, name] = qualified < 0 ? [home?.pkg.name, fn] : [fn.slice(0, qualified), fn.slice(qualified + 2)];
+	const owner = db.ownersOf(name).split(',').map(entry => entry === '' ? undefined : Owner.parse(entry)).find(o => o?.pkg.name === pkg);
+	const { file, line, sourceUrl } = owner ?? {};
+	if(file === undefined) {
+		return [el('code', 'fn', name)];
+	}
+	const at = file + (line === undefined ? '' : ':' + line);
+	return [el('code', 'fn', name), ', ', sourceUrl === undefined ? at : blank(link('src', at, sourceUrl, 'where ' + (pkg ?? '') + '::' + name + ' is written'))];
 }
 
 /** marks `node` as speaking of `formal`, see {@link light} */
@@ -524,18 +553,18 @@ function light(box: HTMLElement, formal: string | undefined): void {
 
 /** the operators a condition is read by, each in a color of its own */
 const Operators: Readonly<Record<string, readonly [cls: string, about: string]>> = {
-	'!':       ['not', 'not'],
-	'&&':      ['and', 'and'],
-	'||':      ['or', 'or'],
-	'==':      ['cmp', 'equals'],
-	'!=':      ['cmp', 'differs from'],
-	'<=':      ['cmp', 'at most'],
-	'>=':      ['cmp', 'at least'],
-	'%in%':    ['cmp', 'is one of'],
-	'in':      ['cmp', 'is one of the set that follows'],
-	'and':     ['and', 'and'],
-	'matches': ['cmp', 'is one of the set that follows, or a prefix that picks out only one of them, as match.arg allows'],
-	'not':     ['not', 'not']
+	'!':        ['not', 'not'],
+	'&&':       ['and', 'and'],
+	'||':       ['or', 'or'],
+	'==':       ['cmp', 'equals'],
+	'!=':       ['cmp', 'differs from'],
+	'<=':       ['cmp', 'at most'],
+	'>=':       ['cmp', 'at least'],
+	'%in%':     ['cmp', 'is one of'],
+	'in':       ['cmp', 'is one of the set that follows'],
+	'and':      ['and word', 'and'],
+	'pmatches': ['cmp', 'is one of the set that follows, or a prefix that picks out only one of them, as pmatch and match.arg allow'],
+	'not':      ['not word', 'not']
 };
 
 const Hues = 6;

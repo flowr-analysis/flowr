@@ -7,13 +7,18 @@ import { ExportFlag } from './export-flags';
 export type Guards = readonly [
 	requires: string,
 	claims: readonly (readonly [formal: string, words: readonly string[]])[],
-	because?: readonly (readonly [requires: string, kind: string, fails: string, via: string, message: string])[],
+	/** each clause with why it is in effect, `reads` being it in words and `brief` the failing code shortened, both empty if there is nothing to add */
+	because?: readonly (readonly [requires: string, kind: string, fails: string, via: string, message: string, reads?: string, brief?: string])[],
 	/** the R version a contract was inferred from by reading the closure, empty for one flowR states of a function written in C */
 	readOff?: string,
 	/** comparisons relating formals, like `length(x) >= m`, with what lets a call through instead */
 	relations?: readonly (readonly [holds: string, unless: string])[],
 	/** the formals a call has to give */
-	required?: readonly string[]
+	required?: readonly string[],
+	/** what holds of the value a call returns normally, said of `result` */
+	returns?: readonly string[],
+	/** every formal the contract speaks of */
+	formals?: readonly string[]
 ];
 import { FilterKind, filterOf } from './filters';
 
@@ -267,6 +272,16 @@ class Database {
 
 	package(name: string | undefined): Package | undefined {
 		return name === undefined ? undefined : this.byName.get(name);
+	}
+
+	/** the packages exporting exactly `name`, as {@link names} lists them, empty if it does not */
+	ownersOf(name: string): string {
+		const line = this.names.startsWith(name + '\t') ? 0 : this.names.indexOf('\n' + name + '\t') + 1;
+		if(line === 0 && !this.names.startsWith(name + '\t')) {
+			return '';
+		}
+		const end = this.names.indexOf('\n', line);
+		return this.names.slice(line + name.length + 1, end < 0 ? this.names.length : end);
 	}
 }
 

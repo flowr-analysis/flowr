@@ -231,7 +231,7 @@ export class Entry {
 			case FilterKind.Arg:     return this.stated.some(entry => argsOf(entry.args).some(([, roles]) => roles.includes(key)));
 			case FilterKind.Kind:    return this.kinds.includes(key);
 			case FilterKind.Flag:    return this.flagged(key as ExportFlag);
-			case FilterKind.Contract: return this.owners.some(owner => (guards => guards !== undefined && (key === 'any' || (key === 'inferred') === ((guards[3] ?? '') !== '')))(this.guardsIn(owner.pkg.name)));
+			case FilterKind.Contract: return this.owners.some(owner => this.guardsIn(owner.pkg.name) !== undefined);
 			default:                 return false;
 		}
 	}

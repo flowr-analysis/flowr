@@ -1,7 +1,10 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
 import { PkgName } from '../../environments/identifier';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import type { FunctionGuards } from './function-guards';
+import type { FunctionGuards, GuardClause } from './function-guards';
+import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { claimsOf, type FormalClaim } from './guard-claims';
 import { defaultGuardFacts, Demands } from './guard-knowledge';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
@@ -16,6 +19,39 @@ export interface StatedGuards extends Pick<FunctionGuards, 'requires'> {
 	readonly formals?:  Readonly<Record<BrandedIdentifier, FormalClaim>>
 	/** the R version they were read off, for what a closure checks, which another version may check differently */
 	readonly readOff?:  string
+	/** why each part of {@link StatedGuards.requires} is in effect */
+	readonly because?:  readonly GuardReason[]
+}
+
+/** Why a condition is in effect: the code that fails if it does not hold, see {@link GuardClause}. */
+export interface GuardReason {
+	/** the condition in R syntax */
+	readonly requires: string
+	/** see {@link GuardClause.kind} */
+	readonly kind:     GuardClause['kind']
+	/** the code that fails, as it is written */
+	readonly fails:    string
+	/** the calls the condition is inherited through, outermost first, by the function they call */
+	readonly via?:     readonly string[]
+	/** see {@link GuardClause.message} */
+	readonly message?: string
+}
+
+const MaxReasonLength = 160;
+
+/** The {@link GuardReason} of each of the clauses, reading the code they point at from `idMap`. */
+export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: AstIdMap): GuardReason[] {
+	const written = (id: NodeId) => {
+		const text = RNode.lexeme(idMap.get(id))?.split('\n')[0] ?? '';
+		return text.length > MaxReasonLength ? `${text.slice(0, MaxReasonLength)}...` : text;
+	};
+	return clauses.map(({ rendered, kind, at, via, message }) => ({
+		requires: rendered,
+		kind,
+		fails:    written(at),
+		...(via === undefined || via.length === 0 ? {} : { via: via.map(id => RNode.ownLexeme(idMap.get(id)) ?? '') }),
+		...(message === undefined ? {} : { message })
+	}));
 }
 
 /** {@link StatedGuards} per package and name. */

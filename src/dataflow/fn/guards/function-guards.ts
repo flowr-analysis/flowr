@@ -476,10 +476,12 @@ function asksNothingOfCalls(this: void, term: GuardTerm, state: GuardState): boo
 }
 
 function addClause(this: void, run: Run, path: Path, condition: GuardTerm, at: NodeId, extra: Partial<Pick<GuardClause, 'via' | 'message' | 'pure'>> & Pick<GuardClause, 'kind'>): void {
-	const all = GuardTerm.any(...path.map(step => step.fails), condition);
-	if(run.scope.frameIsOpen) {
+	/* what R rejects on a path that has already made sure of it, like `x > 0` after `is.numeric(x) &&`, asks nothing */
+	const reached = path.flatMap(step => GuardTerm.conjuncts(step.holds));
+	if(run.scope.frameIsOpen || (extra.kind === 'implicit' && impliedBy(condition, reached, [...run.scope.formals.values()], run.state.facts))) {
 		return;
 	}
+	const all = GuardTerm.any(...path.map(step => step.fails), condition);
 	for(const requires of GuardTerm.conjuncts(all)) {
 		if(GuardTerm.isTrue(requires) || asksNothingOfCalls(requires, run.state)) {
 			continue;

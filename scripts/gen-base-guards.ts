@@ -14,7 +14,7 @@ import { requestFromInput } from '../src/r-bridge/retriever';
 import { RBinaryOp } from '../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { NodeId } from '../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from '../src/dataflow/fn/function-semantics';
-import type { StatedGuards } from '../src/dataflow/fn/guards/built-in-guards';
+import { reasonsOf, type StatedGuards } from '../src/dataflow/fn/guards/built-in-guards';
 
 const Target = path.join('src', 'data', 'r-base-guards.generated.ts');
 
@@ -52,7 +52,8 @@ async function guardsIn(code: string, names: ReadonlySet<string>, into: Record<s
 			into[name] = {
 				requires: FunctionSemantics.guardSummary(clauses).requires,
 				...(guard.required.length > 0 ? { required: guard.required } : {}),
-				...formals
+				...formals,
+				...(clauses.length > 0 ? { because: reasonsOf(clauses, idMap) } : {})
 			};
 		}
 	}

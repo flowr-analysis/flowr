@@ -74,11 +74,12 @@ export interface SigIndex {
 }
 
 /** What the page shows of the guards of the base packages, as `pkg::name -> [requires, [formal, claim][]]`. */
-export function guardsForPage(): Record<string, [requires: string, claims: [formal: string, claim: string][]]> {
+export function guardsForPage(): Record<string, [requires: string, claims: [formal: string, claim: string[]][], because: [requires: string, fails: string, via: string][]]> {
 	return Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
 		const stated = builtInGuards(name, pkg);
-		const claims = Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string] => [formal, claimWords(claim).join(', ')]);
-		return stated === undefined || (stated.requires === '' && claims.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims]]];
+		const claims = Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, claimWords(claim)]);
+		const because = (stated?.because ?? []).map(({ requires, kind, fails, via }): [string, string, string] => [requires, `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}`, via?.join(', ') ?? '']);
+		return stated === undefined || (stated.requires === '' && claims.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because]]];
 	}));
 }
 

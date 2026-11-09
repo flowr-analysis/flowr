@@ -458,6 +458,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(is.null(x)) stop("a"); stopifnot(!is.integer(x)); 1 }', '!is.null(x) && !is.integer(x)');
 	guards('f <- function(x, g) { Reduce(g, x) }', '');
 	guards('f <- function(x, g) { Filter(g, x) }', 'is.function(g) || is.character(g) && exists(g, mode = "function") || is.symbol(g) || exists("g", mode = "function")');
+	guards('f <- function(x) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- 1; x }', '');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
@@ -487,7 +488,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.deepStrictEqual(builtIns['base::strsplit'].formals, { x: { types: ['character'] } });
 		assert.deepStrictEqual(builtIns['base::sort'].formals?.decreasing.types, ['logical']);
 		assert.deepStrictEqual(builtIns['utils::combn'].formals?.m.bounds, { length: [1, 1], value: [0, null] });
-		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer|double', 'length = 1', 'value >= 0']);
+		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer or double', 'length = 1', 'value >= 0']);
 	});
 
 	test('a configuration teaches what a function checks', async() => {

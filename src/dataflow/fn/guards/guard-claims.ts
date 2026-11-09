@@ -389,10 +389,15 @@ export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: 
 	return claims;
 }
 
+/** `a`, `a or b`, `a, b, or c`. */
+function listed(this: void, words: readonly string[]): string {
+	return words.length <= 2 ? words.join(' or ') : `${words.slice(0, -1).join(', ')}, or ${words[words.length - 1]}`;
+}
+
 /** The given types, by what they leave out if that is the shorter way of saying it. */
 function typesInWords(this: void, types: readonly string[]): string {
 	const left = typeNames(AnyType).filter(t => !types.includes(t));
-	return left.length < types.length ? `not ${left.join('|')}` : types.join('|');
+	return left.length < types.length ? `anything but ${listed(left)}` : listed(types);
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */
@@ -401,9 +406,9 @@ export function claimWords(this: void, { types, plainTypes, values, partial, cla
 		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
 	return [
 		types === undefined ? '' : typesInWords(types),
-		plainTypes === undefined ? '' : `${typesInWords(plainTypes)} unless classed`,
+		plainTypes === undefined ? '' : `${typesInWords(plainTypes)}, unless classed`,
 		values === undefined ? '' : `one of ${values.join(', ')}${partial ? ' (or a prefix)' : ''}`,
-		classes === undefined ? '' : `class ${classes.join('|')}`,
+		classes === undefined ? '' : `class ${listed(classes)}`,
 		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure, bound)),
 		notNA ? 'not NA' : '',
 		callable ? 'callable' : '',

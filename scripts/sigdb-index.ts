@@ -83,7 +83,7 @@ export function guardsForPage(): Record<string, [requires: string, claims: [form
 			...(stated?.conditional ?? []).map(({ formal, claim, unless }): [string, string[]] => [formal, [`${unless} || ${claimConditions(formal, claim).join(' && ')}`]])
 		];
 		const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message }): [string, string, string, string, string] => [requires, kind, fails, via?.join(', ') ?? '', message ?? '']);
-		return stated === undefined || (stated.requires === '' && claims.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless }): [string, string] => [holds, unless ?? '']), [...stated.required ?? []]]]];
+		return stated === undefined || (stated.requires === '' && claims.length === 0 && (stated.required ?? []).length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []]]]];
 	}));
 }
 

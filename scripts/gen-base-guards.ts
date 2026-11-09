@@ -50,8 +50,7 @@ async function guardsIn(code: string, names: ReadonlySet<string>, into: Record<s
 		/* what R's internals are asked for says nothing to a reader, who cannot write it */
 		const clauses = guard.clauses.filter(c => !c.rendered.includes('.Internal('));
 		const formals = Object.keys(guard.formals).length > 0 ? { formals: guard.formals } : {};
-		/* a formal being required alone is what the signature already says of those without a default */
-		if(name !== undefined && names.has(name) && (clauses.length > 0 || formals.formals !== undefined)) {
+		if(name !== undefined && names.has(name) && (clauses.length > 0 || formals.formals !== undefined || guard.required.length > 0)) {
 			into[name] = {
 				requires: FunctionSemantics.guardSummary(clauses).requires,
 				...(guard.required.length > 0 ? { required: guard.required } : {}),

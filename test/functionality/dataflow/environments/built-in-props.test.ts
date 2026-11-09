@@ -67,11 +67,11 @@ const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
 /** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic]]],
-	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Forced | ArgProp.Value]]],
+	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Forced | ArgProp.Value], ['na.rm', ArgProp.Forced | ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
-	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Forced | ArgProp.Value], ['choices', ArgProp.Forced | ArgProp.Bounds]]],
+	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Forced | ArgProp.Value], ['choices', ArgProp.Forced | ArgProp.Bounds], ['several.ok', 0]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Forced | ArgProp.Resource], ['header', ArgProp.Forced | ArgProp.Flag],
 		['sep', ArgProp.Forced | ArgProp.Value], ['quote', ArgProp.Forced | ArgProp.Value], ['dec', ArgProp.Forced | ArgProp.Value],
 		['fill', ArgProp.Forced | ArgProp.Flag], ['comment.char', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]]]
@@ -333,12 +333,12 @@ describe('Built-in properties', () => {
 		const registered = new Map(DefaultBuiltinConfig.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
 		/* the two labeling passes the written definitions go through, and the only bits they may add */
 		const labeled = CallProp.Generic | CallProp.Primitive;
-		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits and the guard facts change', ['name-normal'], ['other']), () => {
+		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits, the guard facts and the formals of R change', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual([...registered.keys()].sort(), [...written.keys()].sort());
 			for(const [name, def] of registered) {
 				const before = written.get(name) as typeof def;
 				const info = (d: typeof def) => (d as { config?: BuiltInFnInfo }).config;
-				assert.deepStrictEqual({ ...info(def), props: undefined, guards: undefined }, { ...info(before), props: undefined, guards: undefined }, name);
+				assert.deepStrictEqual({ ...info(def), props: undefined, guards: undefined, sig: undefined }, { ...info(before), props: undefined, guards: undefined, sig: undefined }, name);
 				assert.deepStrictEqual(info(def)?.tags, info(before)?.tags);
 				assert.deepStrictEqual((def as { processor?: string }).processor, (before as { processor?: string }).processor, name);
 				assert.deepStrictEqual((def as { evalHandler?: string }).evalHandler, (before as { evalHandler?: string }).evalHandler, name);

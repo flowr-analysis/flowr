@@ -439,17 +439,11 @@ function contracted([, claims, , , relations = [], required = []]: Guards, forma
 
 /** The contract within the row: where it comes from, the formals it speaks of, and what relates them; the row opens the rest */
 function teaser(name: string, guards: Guards, formals: readonly string[]): HTMLElement {
-	const [, , , readOff = '', relations = []] = guards;
+	const [, , , readOff = ''] = guards;
 	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
 	const line = el('div');
 	line.append(el('span', 'label', 'contract'), originTag(readOff), ...contracted(guards, formals).map(formal => formalMark(el('code', hueOf(formals.indexOf(formal)), formal), formal)));
 	box.append(line);
-	const marked = marker(formals);
-	for(const [holds, unless] of relations) {
-		const related = el('div', 'related');
-		related.append(...marked(holds), ...(unless === '' ? [] : [el('span', 'unless', ' unless '), ...marked(unless)]));
-		box.append(related);
-	}
 	return box;
 }
 
@@ -492,7 +486,7 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 	if(conditions.length > 0) {
 		const why = el('details', 'why');
 		why.addEventListener('click', event => event.stopPropagation());
-		why.append(el('summary', undefined, conditions.length + (conditions.length === 1 ? ' condition' : ' conditions') + ' and what fails without them'));
+		why.append(el('summary', undefined, 'detailed conditions and failures'));
 		const table = el('div', 'ctable');
 		table.append(...conditions.map(([holds, kind, fails, via, message]) => {
 			const code = el('code', 'cond');
@@ -500,7 +494,7 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 			const from = el('span', 'from');
 			from.append(
 				...(message === '' ? [] : [el('q', 'message', message)]),
-				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), el('code', 'at', fails)]),
+				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), url === undefined ? el('code', 'at', fails) : blank(link('at', fails, url, 'in the implementation of ' + name + ', which starts here'))]),
 				...(via === '' ? [] : [el('span', 'via', ', reached through ' + via)])
 			);
 			return contractRow('condition', [code], [from]);
@@ -539,6 +533,7 @@ const Operators: Readonly<Record<string, readonly [cls: string, about: string]>>
 	'>=':      ['cmp', 'at least'],
 	'%in%':    ['cmp', 'is one of'],
 	'in':      ['cmp', 'is one of the set that follows'],
+	'and':     ['and', 'and'],
 	'matches': ['cmp', 'is one of the set that follows, or a prefix that picks out only one of them, as match.arg allows'],
 	'not':     ['not', 'not']
 };

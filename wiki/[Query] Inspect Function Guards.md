@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-09, 05:32:52 UTC (v2.17.5), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-09, 06:01:56 UTC (v2.17.5), do not edit directly._
 <h2 id="Inspect Function Guards Query">Inspect Function Guards Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Infer what functions ask of the calls they return from\
@@ -78,6 +78,6 @@ f <- function(x, type = c("a", "b")) {
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Inspect Function Guards Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-executor.ts#L39"><code><span title="Execute function-guard inspection queries on the given analyzer.">executeFnGuardsQuery</span></code></a>.
+The Inspect Function Guards Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-executor.ts#L40"><code><span title="Execute function-guard inspection queries on the given analyzer.">executeFnGuardsQuery</span></code></a>.
 
 </details>

@@ -263,7 +263,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		if(isSelected(config, ifThenElse)) {
 			return reconstructBodyWithHeader(
 				{ line: `if(${reconstructableSource(ifThenElse.condition)}) { } else`, indent: 0 },
-				then, '{}'
+				otherwise, '{}'
 			);
 		} else {
 			return otherwise;

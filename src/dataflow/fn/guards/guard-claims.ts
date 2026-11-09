@@ -30,6 +30,8 @@ export interface FormalClaim {
 	readonly notNA?:      boolean
 	/** must be usable as a function: being one, naming one, or being bound to a name another function can be found by */
 	readonly callable?:   boolean
+	/** every element is a whole number, as `trunc(x) == x` asks */
+	readonly whole?:      boolean
 	/** what the formal has to complete into a name that exists, like `paste0("f_", x)` */
 	readonly resolves?:   readonly ClaimedName[]
 }
@@ -58,6 +60,7 @@ interface Abstract {
 	readonly bounds:   ReadonlyMap<BrandedIdentifier, IntervalDomain>
 	readonly notNA:    boolean
 	readonly callable: boolean
+	readonly whole:    boolean
 	readonly resolves: ReadonlyMap<string, ClaimedName>
 }
 
@@ -81,7 +84,7 @@ function ofValues(this: void, values: ReadonlySet<string | number | boolean> | u
 	return values === undefined ? NoValues : NoValues.create(values);
 }
 
-const Unconstrained: Abstract = { types: typeSet(AnyType), plain: typeSet(AnyType), values: NoValues, partial: false, classes: undefined, bounds: new Map(), notNA: false, callable: false, resolves: new Map() };
+const Unconstrained: Abstract = { types: typeSet(AnyType), plain: typeSet(AnyType), values: NoValues, partial: false, classes: undefined, bounds: new Map(), notNA: false, callable: false, whole: false, resolves: new Map() };
 
 function ofTypes(this: void, types: RValueTypes, classed = false): Abstract {
 	return { ...Unconstrained, types: typeSet(types), plain: typeSet(classed ? 0 : types) };
@@ -118,6 +121,7 @@ function both(this: void, a: Abstract, b: Abstract): Abstract {
 		bounds:   combineMaps(a.bounds, b.bounds, true),
 		notNA:    a.notNA || b.notNA,
 		callable: a.callable || b.callable,
+		whole:    a.whole || b.whole,
 		resolves: new Map([...a.resolves, ...b.resolves])
 	};
 }
@@ -134,6 +138,7 @@ function either(this: void, a: Abstract, b: Abstract): Abstract {
 		bounds:   combineMaps(a.bounds, b.bounds, false),
 		notNA:    a.notNA && b.notNA,
 		callable: a.callable && b.callable,
+		whole:    a.whole && b.whole,
 		resolves: new Map([...a.resolves].filter(([expression]) => b.resolves.has(expression)))
 	};
 }
@@ -326,6 +331,9 @@ function abstractOf(this: void, term: GuardTerm, formal: BrandedIdentifier, fact
 		case '%in%':
 			return ofComparison(first, '%in%', second, formal, facts);
 		default:
+			if(term.fn === '==' && operands.length === 2 && isWholeTest(first, second, formal)) {
+				return { ...Unconstrained, whole: true };
+			}
 			if(Swapped[term.fn] !== undefined && operands.length === 2) {
 				return first.kind === 'constant' ? ofComparison(second, Swapped[term.fn], first, formal, facts) : ofComparison(first, term.fn, second, formal, facts);
 			}
@@ -364,18 +372,31 @@ function toClaim(this: void, abstract: Abstract): FormalClaim {
 		...(stated === undefined ? {} : { bounds: stated }),
 		...(notNA ? { notNA } : {}),
 		...(callable ? { callable } : {}),
+		...(abstract.whole ? { whole: true } : {}),
 		...(resolves.size === 0 ? {} : { resolves: [...resolves.values()] })
 	};
+}
+
+/** The functions that drop the fraction of a number, so `trunc(x) == x` holds only for a whole `x`. */
+const Rounding: ReadonlySet<BrandedIdentifier> = new Set(['trunc', 'round', 'floor', 'ceiling', 'as.integer']);
+
+/** Whether `a == b` asks the formal to be a whole number: `trunc(x) == x` either way around, or `x %% 1 == 0`. */
+function isWholeTest(this: void, a: GuardTerm, b: GuardTerm, formal: BrandedIdentifier): boolean {
+	const rounds = (r: GuardTerm, x: GuardTerm) => GuardTerm.isCall(r) && r.known === true && Rounding.has(r.fn) && r.args.length === 1 && isFormal(r.args[0].value, formal) && isFormal(x, formal);
+	const modulo = (m: GuardTerm, zero: GuardTerm) => GuardTerm.isCall(m, '%%') && m.known === true && isFormal(m.args[0]?.value, formal) && m.args[1]?.value.kind === 'constant' && m.args[1].value.value === 1 && zero.kind === 'constant' && zero.value === 0;
+	return rounds(a, b) || rounds(b, a) || modulo(a, b) || modulo(b, a);
 }
 
 /** A comparison relating what two formals hold, like `length(x) >= m`, which holds on a normal return unless something else let the call through. */
 export interface ClaimedRelation {
 	/** the comparison in R syntax */
-	readonly holds:   string
+	readonly holds:        string
 	/** the formals it relates */
-	readonly formals: readonly BrandedIdentifier[]
+	readonly formals:      readonly BrandedIdentifier[]
 	/** what lets a call through instead, in R syntax */
-	readonly unless?: string
+	readonly unless?:      string
+	/** the same, as a claim, if it speaks of a single formal */
+	readonly unlessClaim?: { readonly formal: BrandedIdentifier, readonly claim: FormalClaim }
 }
 
 /** The comparison within `term`, also within the `all` that `stopifnot` spells a vector of them with, `undefined` if it is none. */
@@ -385,7 +406,7 @@ function comparisonOf(this: void, term: GuardTerm): GuardCall | undefined {
 }
 
 /** The relations between formals the given conditions state, each one a comparison of two sides that read different formals. */
-export function relationsOf(this: void, conditions: readonly GuardTerm[]): ClaimedRelation[] {
+export function relationsOf(this: void, conditions: readonly GuardTerm[], facts: GuardFactsLookup): ClaimedRelation[] {
 	return conditions.flatMap(condition => {
 		const alternatives = GuardTerm.disjuncts(condition);
 		const relating = alternatives.filter(alternative => {
@@ -397,10 +418,14 @@ export function relationsOf(this: void, conditions: readonly GuardTerm[]): Claim
 		}
 		const [relation] = relating;
 		const others = alternatives.filter(alternative => alternative !== relation);
+		const unless = GuardTerm.any(...others);
+		const [only, ...more] = GuardTerm.formalsOf(unless);
+		const unlessClaim = only === undefined || more.length > 0 ? undefined : toClaim(abstractOf(unless, only, facts));
 		return [{
 			holds:   GuardTerm.render(relation),
 			formals: [...GuardTerm.formalsOf(relation)],
-			...(others.length === 0 ? {} : { unless: GuardTerm.render(GuardTerm.any(...others)) })
+			...(others.length === 0 ? {} : { unless: GuardTerm.render(unless) }),
+			...(unlessClaim === undefined || Object.keys(unlessClaim).length === 0 ? {} : { unlessClaim: { formal: only, claim: unlessClaim } })
 		}];
 	});
 }
@@ -476,7 +501,7 @@ function setOf(this: void, words: readonly (string | number | boolean)[]): strin
  * Reads a claim on `formal` as conditions written the way R would test them, all of which hold, like
  * `typeof(m) in {integer, double}`, `length(m) == 1`, and `m >= 0`.
  */
-export function claimConditions(this: void, formal: string, { types, plainTypes, values, partial, classes, bounds, notNA, callable, resolves }: FormalClaim): string[] {
+export function claimConditions(this: void, formal: string, { types, plainTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
 	const ofTypes = (named: readonly string[], unclassed: boolean) => {
 		const left = typeNames(AnyType).filter(t => !named.includes(t));
 		const said = left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
@@ -495,12 +520,13 @@ export function claimConditions(this: void, formal: string, { types, plainTypes,
 		...Object.entries(bounds ?? {}).flatMap(([measure, bound]) => range(measure, bound)),
 		...notNA ? [`!anyNA(${formal})`] : [],
 		...callable ? [`is.function(match.fun(${formal}))`] : [],
+		...whole ? [`trunc(${formal}) == ${formal}`] : [],
 		...(resolves ?? []).map(r => `exists(${r.expression})`)
 	];
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */
-export function claimWords(this: void, { types, plainTypes, values, partial, classes, bounds, notNA, callable, resolves }: FormalClaim): string[] {
+export function claimWords(this: void, { types, plainTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
 	const range = (what: string, [lower, upper]: ClaimedRange) => lower !== null && lower === upper ? `${what} = ${lower}`
 		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
 	return [
@@ -511,6 +537,7 @@ export function claimWords(this: void, { types, plainTypes, values, partial, cla
 		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure, bound)),
 		notNA ? 'not NA' : '',
 		callable ? 'callable' : '',
+		whole ? 'whole number' : '',
 		...(resolves ?? []).map(r => `${r.expression} exists`)
 	].filter(w => w !== '');
 }

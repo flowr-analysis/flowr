@@ -1200,7 +1200,7 @@ export function guardsOfFunctions(this: void, definitions: readonly NodeId[], gr
 			clauses,
 			formals:     withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()], state.facts), state),
 			conditions:  conditionsPerFormal(clauses),
-			relations:   relationsOf(clauses.map(c => c.requires)),
+			relations:   relationsOf(clauses.map(c => c.requires), state.facts),
 			conditional: conditionalClaimsOf(clauses.map(c => c.requires), [...scope.formals.values()], state.facts),
 			required,
 			...summarizeClauses(clauses)

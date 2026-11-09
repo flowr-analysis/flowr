@@ -499,10 +499,11 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 
 	test('a relation between formals', async() => {
 		const guards = await guardsOfF(parser, 'f <- function(x, m) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- seq_len(x); n <- length(x); if(n < m) stop("n < m"); stopifnot(m <= 10, length(x) > m || m == 0); 1 }');
-		assert.deepStrictEqual(guards?.relations, [
+		assert.deepStrictEqual(guards?.relations.map(({ holds, formals, unless }) => ({ holds, formals, unless })), [
 			{ holds: 'length(x) >= m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0' },
 			{ holds: 'length(x) > m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0 || m == 0' }
 		]);
+		assert.deepStrictEqual(guards?.relations[0].unlessClaim, { formal: 'x', claim: { types: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } } });
 	});
 
 	test('a claim that holds unless another formal lets the call through', async() => {

@@ -160,7 +160,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(c) { lapply(1:2, c) }', '');
 	guards('f <- function(what) { do.call(what, list()) }', 'is.function(what) || is.character(what) && exists(what, mode = "function") || is.symbol(what) || exists("what", mode = "function")');
 	guards('f <- function(FUN) { match.fun(FUN) }', 'is.function(FUN) || is.character(FUN) && exists(FUN, mode = "function") || is.symbol(FUN) || exists("FUN", mode = "function")');
-	guards('f <- function(FUN) { Reduce(FUN, 1:3) }', 'is.function(FUN) || is.character(FUN) && exists(FUN, mode = "function") || is.symbol(FUN) || exists("FUN", mode = "function")');
+	guards('f <- function(FUN) { Reduce(FUN, 1:3) }', '');
 
 	/* names spelled out at run time */
 	guards('fn_a <- function() 1\nf <- function(x) { do.call(paste0("fn_", x), list()) }', 'exists(paste0("fn_", x), mode = "function")');
@@ -456,6 +456,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x, return) { if(is.null(x)) return(1); stopifnot(is.numeric(x)); 1 }', 'is.null(x) || is.numeric(x)', '');
 	guards('f <- function(x, stop) { if(is.null(x)) stop("a"); 1 }', '');
 	guards('f <- function(x) { if(is.null(x)) stop("a"); stopifnot(!is.integer(x)); 1 }', '!is.null(x) && !is.integer(x)');
+	guards('f <- function(x, g) { Reduce(g, x) }', '');
+	guards('f <- function(x, g) { Filter(g, x) }', 'is.function(g) || is.character(g) && exists(g, mode = "function") || is.symbol(g) || exists("g", mode = "function")');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
@@ -491,8 +493,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test('a configuration teaches what a function checks', async() => {
 		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.semantics.environment.overwriteBuiltIns.definitions = [{ type:      'function', names:     ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
-				config:    { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
+			c.semantics.environment.overwriteBuiltIns.definitions = [{ type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+				config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
 		});
 		const taught = await guardsOfF(parser, code, config);
 		const plain = await guardsOfF(parser, code);

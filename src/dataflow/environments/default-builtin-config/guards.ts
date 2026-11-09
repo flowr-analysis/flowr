@@ -155,7 +155,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'vapply':            { applies: 'FUN' },
 		'mapply':            { applies: 'FUN' },
 		'Map':               { applies: 'f' },
-		'Reduce':            { applies: 'f' },
+		/* `Reduce` returns for an empty `x` before it looks at `f`, so it asks nothing of it */
 		'Filter':            { applies: 'f' },
 		'inherits':          SingleResult,
 		'identical':         SingleResult,

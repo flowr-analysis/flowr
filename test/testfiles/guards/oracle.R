@@ -16,31 +16,31 @@ succeeds <- function(e) {
   t <- typeof(v)
   if(t %in% c("closure", "builtin", "special")) "function" else if(t %in% c("S4", "externalptr")) "other" else t
 }
+.guards_unquoted <- function(v) if(is.call(v) && identical(v[[1]], as.name("quote"))) eval(v) else v
 .guards_claims <- function(args, formals, report) {
-  for(n in intersect(names(formals), names(args))) {
-    v <- args[[n]]
-    if(is.call(v) && identical(v[[1]], as.name("quote"))) v <- eval(v)
-    claim <- formals[[n]]
-    if(!is.null(claim$types) && !(.guards_type(v) %in% claim$types)) report("types", n, v)
-    if(!is.null(claim$plainTypes) && !is.object(v) && !(.guards_type(v) %in% claim$plainTypes)) report("plainTypes", n, v)
-    if(!is.null(claim$classes) && !any(class(v) %in% claim$classes) && !(isS4(v) && any(vapply(claim$classes, function(c) methods::is(v, c), logical(1))))) report("classes", n, v)
-    if(!is.null(claim$values) && is.character(v)) {
-      values <- as.character(claim$values)
-      fits <- if(isTRUE(claim$partial)) all(!is.na(pmatch(v, values, duplicates.ok = TRUE))) || identical(v, values) else all(v %in% values)
-      if(!fits) report("values", n, v)
-    }
-    if(isTRUE(claim$notNA) && isTRUE(tryCatch(anyNA(v), error = function(e) FALSE))) report("notNA", n, v)
-    for(m in names(claim$bounds)) {
-      if(m == "value" && (!is.numeric(v) || length(v) == 0)) next
-      got <- if(m == "value") v else get(m)(v)
-      if(is.null(got)) got <- NA
-      b <- claim$bounds[[m]]
-      if(!is.na(b[1]) && any(got < b[1]) %in% c(TRUE, NA)) report(paste("lower", m), n, v)
-      if(!is.na(b[2]) && any(got > b[2]) %in% c(TRUE, NA)) report(paste("upper", m), n, v)
-    }
-  }
+  for(n in intersect(names(formals), names(args))) .guards_claim(.guards_unquoted(args[[n]]), formals[[n]], n, report)
 }
-.guards_check <- function(code, clauses, formals, required) {
+.guards_claim <- function(v, claim, n, report) {
+  if(!is.null(claim$types) && !(.guards_type(v) %in% claim$types)) report("types", n, v)
+  if(!is.null(claim$plainTypes) && !is.object(v) && !(.guards_type(v) %in% claim$plainTypes)) report("plainTypes", n, v)
+  if(!is.null(claim$classes) && !any(class(v) %in% claim$classes) && !(isS4(v) && any(vapply(claim$classes, function(c) methods::is(v, c), logical(1))))) report("classes", n, v)
+  if(!is.null(claim$values) && is.character(v)) {
+    values <- as.character(claim$values)
+    fits <- if(isTRUE(claim$partial)) all(!is.na(pmatch(v, values, duplicates.ok = TRUE))) || identical(v, values) else all(v %in% values)
+    if(!fits) report("values", n, v)
+  }
+  if(isTRUE(claim$notNA) && isTRUE(tryCatch(anyNA(v), error = function(e) FALSE))) report("notNA", n, v)
+  for(m in names(claim$bounds)) {
+    if(m == "value" && (!is.numeric(v) || length(v) == 0)) next
+    got <- if(m == "value") v else get(m)(v)
+    if(is.null(got)) got <- NA
+    b <- claim$bounds[[m]]
+    if(!is.na(b[1]) && any(got < b[1]) %in% c(TRUE, NA)) report(paste("lower", m), n, v)
+    if(!is.na(b[2]) && any(got > b[2]) %in% c(TRUE, NA)) report(paste("upper", m), n, v)
+  }
+  if(isTRUE(claim$whole) && is.numeric(v) && !isTRUE(all(trunc(v) == v, na.rm = TRUE))) report("whole", n, v)
+}
+.guards_check <- function(code, clauses, formals, required, returns = NULL, passes = NULL) {
   found <- character(0)
   report <- function(what, n, v) found <<- c(found, paste0(what, " of ", n, " with ", paste(deparse(v), collapse = "")))
   env <- new.env(parent = globalenv())
@@ -57,9 +57,11 @@ succeeds <- function(e) {
   }
   for(args in sets) {
     sink(nullfile())
-    returned <- tryCatch({ suppressWarnings(suppressMessages(do.call(f, args))); TRUE }, error = function(e) FALSE)
+    returned <- tryCatch({ value <- suppressWarnings(suppressMessages(do.call(f, args))); TRUE }, error = function(e) FALSE)
     sink()
     if(!returned) next
+    if(!is.null(returns)) .guards_claim(value, returns, "result", report)
+    if(!is.null(passes) && passes %in% names(args) && !identical(value, .guards_unquoted(args[[passes]]))) report("passes", "result", value)
     for(i in seq_along(conditions)) {
       sink(nullfile())
       holds <- tryCatch(isTRUE(all(suppressWarnings(do.call(conditions[[i]], args)))), error = function(e) FALSE)

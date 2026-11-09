@@ -13,7 +13,8 @@ import { InspectFnGuardsQueryDefinition } from '../../../src/queries/catalog/ins
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { RBaseGuards } from '../../../src/data/r-base-guards.generated';
-import { claimWords } from '../../../src/dataflow/fn/guards/guard-claims';
+import { reasonsOf } from '../../../src/dataflow/fn/guards/built-in-guards';
+import { claimWords, returnConditions, returnWords } from '../../../src/dataflow/fn/guards/guard-claims';
 import { FlowrConfig } from '../../../src/config';
 import { RValueType } from '../../../src/dataflow/environments/guard-facts';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
@@ -48,6 +49,16 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 			if(required !== undefined) {
 				assert.deepStrictEqual(found?.required ?? [], required);
 			}
+		});
+	}
+
+	/** Compares what is claimed about the value `f` returns, and the formal it hands back unchanged. */
+	function returns(code: string, expected: FormalClaim | undefined, passes?: string) {
+		test(label(`returns of ${code}`, ['name-normal'], ['other']), async() => {
+			const found = await guardsOfF(parser, code);
+			Checked.push({ code, guards: found });
+			assert.deepStrictEqual(found?.returns, expected);
+			assert.strictEqual(found?.passes, passes);
 		});
 	}
 
@@ -465,6 +476,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(is.character(x)) x <- nchar(x); for(i in 1:2) x <- x + 1; stopifnot(x > 0); x }', '');
 	guards('f <- function(x, s) { if(is.numeric(x)) x <- seq_len(x); if(s) { if(is.factor(x)) x <- as.integer(x) }; x[1] }', '(is.numeric(x) || as.logical(unclass(s)) || !is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x)) && length(s) == 1 && !is.na(s)');
 	guards('f <- function(x, a, b) { if(a) x <- 1; if(b) x <- "z"; stopifnot(is.character(x)); x }', 'length(a) == 1 && !is.na(a) && (as.logical(unclass(a)) || as.logical(unclass(b)) || is.character(x)) && length(b) == 1 && !is.na(b)');
+	guards('f <- function(FUN, extra) { if(missing(extra)) FUN(1) else FUN(1, extra) }', 'is.function(FUN) || exists("FUN", mode = "function")');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
@@ -514,8 +526,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test('a configuration teaches what a function checks', async() => {
 		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.semantics.environment.overwriteBuiltIns.definitions = [{ type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
-				config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
+			c.semantics.environment.overwriteBuiltIns.definitions = [{ type:      'function', names:     ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+				config:    { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
 		});
 		const taught = await guardsOfF(parser, code, config);
 		const plain = await guardsOfF(parser, code);
@@ -606,6 +618,70 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('g <- function(y, z) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', {}, []);
 	claims('f <- function(x, y) { if(x) y; 1 }', { x: { bounds: { length: [1, 1] }, notNA: true } }, ['x']);
 	claims('f <- function(x = 1) { force(x) }', {}, []);
+
+	/* what two branches ask together, resolved */
+	guards('f <- function(FUN, extra) { if(missing(extra)) return(FUN(1)); FUN(1, extra) }', 'is.function(FUN) || exists("FUN", mode = "function")', '');
+	guards('f <- function(x, y) { if(is.null(y)) { if(!is.numeric(x)) stop("n") } else if(!is.numeric(x)) stop("m"); 1 }', 'is.numeric(x)');
+
+	/* what is claimed about the value a call returns */
+	const OneTruth = { types: ['logical'], bounds: { length: [1, 1] }, notNA: true } as const;
+	returns('f <- function(x) { stopifnot(is.numeric(x)); x }', { types: ['integer', 'double'] }, 'x');
+	returns('f <- function(x) { if(!is.character(x)) stop("n"); x }', { types: ['character'] }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x), length(x) == 1, x > 0); x }', { types: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } }, 'x');
+	returns('f <- function(x) { if(!inherits(x, "foo")) stop("n"); invisible(x) }', { classes: ['foo'] }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x)); y <- x; return(invisible(y)) }', { types: ['integer', 'double'] }, 'x');
+	returns('g <- function(y) y; f <- function(x) { g(x) }', undefined, 'x');
+	returns('f <- function(x) { if(is.numeric(x)) x else "a" }', { types: ['integer', 'double', 'character'] });
+	returns('f <- function(x) { if(is.numeric(x)) { x } else { if(is.character(x)) x else NULL } }', { types: ['NULL', 'integer', 'double', 'character'] });
+	returns('f <- function(x) { if(missing(x)) "none" else if(is.character(x)) x else stop("n") }', { types: ['character'] });
+	/* an `if` without an `else` returns `NULL` when not taken */
+	returns('f <- function(x) { if(is.numeric(x)) 1L }', { types: ['NULL', 'integer'], bounds: { length: [0, 1] } });
+	returns('f <- function(x) { if(x > 1) return(TRUE); length(x) }', { types: ['logical', 'integer', 'double'], bounds: { length: [1, 1] }, notNA: true });
+	returns('f <- function(x) { if(is.null(x)) return(NULL); as.character(x) }', { types: ['NULL', 'character'] });
+	returns('f <- function(x) { is.numeric(x) }', OneTruth);
+	returns('f <- function(x) { identical(x, 1) }', OneTruth);
+	returns('f <- function(x) { any(x) }', { types: ['logical'], bounds: { length: [1, 1] } });
+	returns('f <- function(x) { typeof(x) }', { types: ['character'], bounds: { length: [1, 1] }, notNA: true });
+	returns('f <- function(x) { nchar(x) }', { types: ['integer'] });
+	returns('f <- function(x) { nrow(x) }', { types: ['NULL', 'integer'], whole: true });
+	returns('f <- function(x) { stopifnot(is.character(x)); toupper(x) }', { types: ['character'] });
+	returns('f <- function(x) { paste0("a", x) }', { types: ['character'] });
+	returns('f <- function(x) { x <- as.integer(x); x }', { types: ['integer'] });
+	returns('f <- function(x) { list(x) }', { types: ['list'] });
+	returns('f <- function(x) { c(1, 2L) }', { types: ['double'], values: [1, 2], bounds: { length: [2, 2], value: [1, 2] }, notNA: true, whole: true });
+	returns('f <- function(x) { c("a", NA) }', { types: ['character'], bounds: { length: [2, 2] } });
+	returns('f <- function(x) { c() }', { types: ['NULL'], bounds: { length: [0, 0] } });
+	returns('f <- function(x) { NA }', { types: ['logical'], bounds: { length: [1, 1] } });
+	returns('f <- function(x) { 1i }', { types: ['complex'], bounds: { length: [1, 1] }, notNA: true });
+	/* a value that may be another, and ways out flowR does not see through */
+	returns('f <- function(x) { stopifnot(is.numeric(x)); x[1] <- "a"; x }', undefined);
+	returns('f <- function(x) { if(is.numeric(x)) x <- "a"; x }', undefined);
+	returns('f <- function(x) { y <- 1; if(x) y <- "a"; y }', undefined);
+	returns('f <- function(x) { inherits(x, "a", TRUE) }', undefined);
+	returns('f <- function(x) { if(x) print(1) else 2 }', undefined);
+	returns('f <- function(x) { switch(x, a = 1, 2) }', undefined);
+	returns('f <- function(x) { for(i in x) return(i); 1 }', undefined);
+	returns('f <- function(x) { tryCatch(return(1), error = function(e) 2); "a" }', undefined);
+	returns('f <- function(x) { on.exit(return(1)); stopifnot(is.character(x)); x }', undefined);
+	returns('f <- function(x) { e <- environment(); assign("x", 1, envir = e); x }', undefined);
+	returns('f.default <- function(x) 1; f <- function(x) UseMethod("f")', undefined);
+	returns('f <- function(x) { if(is.null(x)) stop("n") else stop("m") }', undefined);
+	returns('f <- function(x, type = "chars") .Internal(nchar(x, type, FALSE, NA))', { types: ['integer'] });
+	test(label('a reason reads in words and shows the failing code briefly', ['name-normal'], ['other']), async() => {
+		const { result, idMap } = await runQuery(parser, 'g <- function(z) { if(!is.list(z)) stop("needs a list"); z }\nf <- function(x, type = c("a", "b"), y) { type <- match.arg(type); if(y) 1; g(x) }', { type: 'inspect-fn-guards' });
+		const [, ofF] = Object.values(result.guards);
+		const reasons = reasonsOf(ofF.clauses, idMap, name => name === 'g' ? 'mine' : undefined);
+		assert.deepStrictEqual(reasons.map(r => [r.reads, r.brief, r.via, r.formals]), [
+			['type pmatches {"a", "b"}', undefined, undefined, ['type']],
+			[undefined, 'if (y) ...', undefined, ['y']],
+			[undefined, 'if (y) ...', undefined, ['y']],
+			[undefined, 'stop(...)', ['mine::g'], ['x']]
+		]);
+	});
+	test(label('what a call returns in words and conditions', ['name-normal'], ['other']), () => {
+		assert.deepStrictEqual(returnWords({ types: ['character'], bounds: { length: [1, 1] } }, 'x'), ['the value of x', 'character', 'length = 1']);
+		assert.deepStrictEqual(returnConditions({ types: ['character'] }, 'x'), ['identical(result, x)', 'typeof(result) in character']);
+	});
 
 	/* what fails before any side effect, and what does not */
 	guards('f <- function(x) { print(1); if(is.null(x)) stop("n"); 1 }', '!is.null(x)', '');
@@ -725,7 +801,8 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => {
 			if(NeedsPackage.test(code) || guards === undefined) {
 				continue;
 			}
-			const command = `.guards_check(${JSON.stringify(code)}, c(${guards.clauses.map(c => JSON.stringify(c.rendered)).join(', ')}), ${toR(guards.formals)}, c(${guards.required.map(r => JSON.stringify(r)).join(', ')}))`;
+			const returned = `${guards.returns === undefined ? 'NULL' : toR(guards.returns)}, ${guards.passes === undefined ? 'NULL' : JSON.stringify(guards.passes)}`;
+			const command = `.guards_check(${JSON.stringify(code)}, c(${guards.clauses.map(c => JSON.stringify(c.rendered)).join(', ')}), ${toR(guards.formals)}, c(${guards.required.map(r => JSON.stringify(r)).join(', ')}), ${returned})`;
 			const found = (await shell.sendCommandWithOutput(command)).filter(l => l.trim().length > 0);
 			if(found.length > 0) {
 				broken.push(`${code}\n  ${found.slice(0, 3).join('\n  ')}`);

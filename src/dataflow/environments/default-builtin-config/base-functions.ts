@@ -287,9 +287,11 @@ export const BaseDefinitions = [
 	fn([...pkg(PkgName.Rlang, 'abort'), ...pkg(PkgName.Cli, 'cli_abort'), ...pkg(PkgName.RmethodsS3, 'throw'), ...pkg(PkgName.Roo, 'throw'),
 		/* R.oo re-exports R.methodsS3::throw */ ...pkg(PkgName.Purrr, 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length')], BuiltInProcName.Default, Throws),
 	/* the block is evaluated whatever happens, the handlers only when something does, and an error keeps the value from coming back */
-	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, ambient: { ...Ambient.messageSink.adds, unless: { flag: 'silent' } }, sig: sig({ expr: Forced.Value }) }, Primitive),
+	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, ambient: [{ ...Ambient.messageSink.adds, unless: { flag: 'silent' } }, Ambient.errorMessage.adds], sig: sig({ expr: Forced.Value }) }, Primitive),
+	/* an error it catches may set the last error message */
 	fn([...base('tryCatch'), ...pkg(PkgName.TryCatchLog, 'tryCatchLog')], BuiltInProcName.Try,
-		{ block: 'expr', handlers: { error: 'error', finally: 'finally' }, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee, finally: ArgProp.Nse }) }, Primitive),
+		{ block: 'expr', handlers: { error: 'error', finally: 'finally' }, ambient: Ambient.errorMessage.adds, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee, finally: ArgProp.Nse }) }, Primitive),
+	fn(base('geterrmessage'), BuiltInProcName.Default, { ambient: Ambient.errorMessage.reads, props: CallProp.Ambient }),
 	fn(base('withCallingHandlers'), BuiltInProcName.Try, { block: 'expr', aborts: false, handlers: {}, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }, Primitive),
 	/* its handlers run on what the session signals from then on */
 	fn(base('globalCallingHandlers'), BuiltInProcName.Try, { aborts: false, handlers: {}, sig: sig({ '...': ArgProp.Callee }) }, Primitive),

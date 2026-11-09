@@ -23,6 +23,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
+import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
@@ -702,11 +703,13 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	}
 
 	const forces = quoteSource ? ambientWritesBetween(sourceArg.environment, data.environment) : [];
-	if(forces.length > 0) {
+	/* the promise reads the state where it is forced, not where it is bound */
+	const forcedReads = quoteSource ? uniqueArray([...sourceArg.in, ...sourceArg.unknownReferences].map(r => r.name).filter(AmbientStateName.is)) : [];
+	if(forces.length > 0 || forcedReads.length > 0) {
 		markForcing(data.environment);
 	}
 	const tracked = envState ? { envState, envId, ...frame !== undefined || copied?.closureFrame ? { closureFrame: true } as const : {} } : returnsEnvState ? { returnsEnvState } : envId === undefined ? {} : { envId };
-	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {} }));
+	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {}, ...forcedReads.length > 0 ? { forcedReads } : {} }));
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);

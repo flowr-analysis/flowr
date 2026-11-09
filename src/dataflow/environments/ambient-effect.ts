@@ -32,7 +32,9 @@ export enum AmbientPart {
 	/** the finalizers registered, which `gc()` runs */
 	Finalizers = 'finalizers',
 	/** the variable a text connection opened for writing binds */
-	TextConnection = 'text-connection'
+	TextConnection = 'text-connection',
+	/** the message of the last error, which `geterrmessage()` returns */
+	ErrorMessage = 'error-message'
 }
 
 /** A part of the global state, see {@link AmbientEffect}. */
@@ -130,6 +132,7 @@ export const Ambient = {
 	umask:          effectsOf(AmbientPart.Umask),
 	finalizers:     effectsOf(AmbientPart.Finalizers),
 	textConnection: effectsOf(AmbientPart.TextConnection),
+	errorMessage:   effectsOf(AmbientPart.ErrorMessage),
 	/** The effects of `effects` in a flat list. */
 	list(this: void, effects: AmbientEffects | undefined): readonly AmbientEffect[] {
 		return effects === undefined ? [] : 'family' in effects ? [effects] : effects;
@@ -220,7 +223,8 @@ export const AmbientFamilyInfo: Readonly<Record<AmbientFamilyName, AmbientFamily
 	[AmbientPart.LibPaths]:         { label: 'library paths', noun: 'library paths', description: 'Where packages are installed and loaded from, which .libPaths(new) changes.' },
 	[AmbientPart.Umask]:            { label: 'file creation mask', noun: 'file creation mask', description: 'The permissions every new file lacks, which Sys.umask sets.' },
 	[AmbientPart.Finalizers]:       { label: 'finalizers', noun: 'finalizers', description: 'The functions reg.finalizer registers to run once their object is released, which gc() may run.' },
-	[AmbientPart.TextConnection]:   { label: 'text connection', noun: 'text connection', description: 'The variable a text connection opened for writing binds, which every write to the connection changes.' }
+	[AmbientPart.TextConnection]:   { label: 'text connection', noun: 'text connection', description: 'The variable a text connection opened for writing binds, which every write to the connection changes.' },
+	[AmbientPart.ErrorMessage]:     { label: 'last error message', noun: 'last error message', description: 'The message of the last error, which an error sets and geterrmessage() returns, so code going on after try or tryCatch caught one may read it.' }
 };
 
 /** The words for every access verb, see {@link AmbientFamilyInfo}. */

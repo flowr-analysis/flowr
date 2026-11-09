@@ -20,6 +20,7 @@ import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/mod
 import { RValue } from '../../../../../eval/values/r-value';
 import { MatchArgs } from '../../../../../graph/match-args';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { printMethodsOf } from './built-in-expression-list';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { appliedArguments } from '../../../../../graph/applied-arguments';
@@ -291,8 +292,9 @@ export function mayForce(environment: REnvironmentInformation): boolean {
 export function ambientAccessOfSymbol<OtherInfo>(res: DataflowInformation, symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const forcing = mayForce(data.environment);
 	const definitions = forcing ? Resolve.byName(symbol.content, data.environment) ?? [] : [];
-	const forces = definitions.filter(isInGraphDefinition).flatMap(d => d.forces ?? []);
-	return withAccess(res, symbol.info.id, data, ambientReadsOfSymbol(symbol, data, forcing), forces.map(maybe));
+	const promises = definitions.filter(isInGraphDefinition);
+	const reads = uniqueArrayMerge(ambientReadsOfSymbol(symbol, data, forcing), promises.flatMap(d => d.forcedReads ?? []));
+	return withAccess(res, symbol.info.id, data, reads, promises.flatMap(d => d.forces ?? []).map(maybe));
 }
 
 /** Binds `name` (globally) to the given definitions, in addition to what it holds with `keep`, so `#graphics` can become what another state holds. */
@@ -384,7 +386,8 @@ const Families: Readonly<Record<AmbientFamilyName, FamilyState>> = {
 	[AmbientPart.LibPaths]:         { state: AmbientStateName.libPaths },
 	[AmbientPart.Umask]:            { state: AmbientStateName.umask },
 	[AmbientPart.Finalizers]:       { state: AmbientStateName.finalizers },
-	[AmbientPart.TextConnection]:   { state: AmbientStateName.anyFile }
+	[AmbientPart.TextConnection]:   { state: AmbientStateName.anyFile },
+	[AmbientPart.ErrorMessage]:     { state: AmbientStateName.errorMessage }
 };
 
 /** The state an {@link AmbientEffect} reads, writes, and ends. */
@@ -1048,10 +1051,18 @@ export function processAmbientScope<OtherInfo>(name: RSymbol<OtherInfo & ParentI
 		family !== undefined ? deviceAccess({ ...DataflowInformation.initialize(rootId, data), environment }, rootId, data, local ? DeviceAccess.Switch : DeviceAccess.Open, family).environment
 			: defineAmbient(environment, rootId, cds, writes);
 
-	const { information } = processKnownFunctionCall({
+	let { information } = processKnownFunctionCall({
 		name, args, rootId, data, origin:    BuiltInProcName.Default,
 		patchData: (d, i) => isCode(args[i]) ? { ...d, environment: apply(d.environment) } : d
 	});
+	/* `capture.output` prints every visible value of its code into the diversion, as the top level does */
+	for(const value of family === OutputSinks ? args.filter(isCode).map(RArgument.valueOf) : []) {
+		if(value !== undefined && autoPrints(value, information, data)) {
+			const environment = information.environment;
+			information = readsOfAutoPrint(information, value, { ...data, environment });
+			printMethodsOf(value.info.id, environment, information.graph, { graph: information.graph, idMap: data.completeAst.idMap, ctx: data.ctx, environment });
+		}
+	}
 	if(unknown) {
 		information.graph.markIdForUnknownSideEffects(rootId);
 	}
@@ -1178,7 +1189,7 @@ const InvisibleProcessors: ReadonlySet<string> = new Set([BuiltInProcName.ForLoo
 /** whether the value of the top-level `expression` is visible, so that R prints it, decided on its vertex */
 export function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInformation>, processed: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const vertex = processed.graph.getVertex(expression.info.id);
-	if(vertex === undefined || DfgVertex.isFunctionDefinition(vertex)) {
+	if(vertex === undefined) {
 		return false;
 	} else if(!DfgVertex.isFunctionCall(vertex)) {
 		return true;

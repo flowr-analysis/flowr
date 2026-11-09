@@ -10,7 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, isInGraphDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -176,8 +176,8 @@ function errorPassesThrough(parent: RNode<ParentInformation>, child: NodeId, gra
 
 const PrintName = Identifier.make('print');
 
-/** Printing a visible top-level value dispatches to the `print` methods in scope, so the expression calls them: those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known. */
-function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
+/** Printing a visible top-level value (or one `capture.output` captures) dispatches to the `print` methods in scope, so the expression calls them: those for the classes the value may have, and what their `NextMethod()` may run, every one if the classes are not known. */
+export function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph: DataflowGraph, info: ClassFlowInfo): ReturnType<typeof linkFunctionCalls> {
 	/* printing runs what `print` dispatches to on its own, like `show` for an S4 object */
 	const internal = internalGenericMethods(info.ctx.env.builtInFunctionOf(PrintName)?.config?.dispatches ?? [], environment, graph);
 	const all = (Resolve.byNameAndType('print', environment, ReferenceType.S3MethodPrefix)?.filter(d => !NodeId.isBuiltIn(d.nodeId)) ?? []).concat(internal);
@@ -190,6 +190,10 @@ function printMethodsOf(id: NodeId, environment: REnvironmentInformation, graph:
 		graph.addEdge(id, method.nodeId, EdgeType.Reads);
 	}
 	const called = [...getAllLinkedFunctionDefinitions(new Set(methods.map(m => m.nodeId)), graph)[0]];
+	/* a method bound outside the graph at hand (of the code `capture.output` prints) is the closure its binding holds */
+	for(const value of methods.flatMap(m => graph.hasVertex(m.nodeId) || !isInGraphDefinition(m) ? [] : m.value ?? [])) {
+		graph.addEdge(id, value, EdgeType.Calls);
+	}
 	/* what an internal generic returns, like `format` for a column, is what is printed */
 	const returning = new Set(linkedFunctionIds(new Set(internal.map(m => m.nodeId)), graph));
 	for(const method of called) {

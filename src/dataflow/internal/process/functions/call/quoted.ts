@@ -28,6 +28,7 @@ import type { REnvironmentInformation } from '../../../../environments/environme
 import { callFnProps } from '../../../../environments/query-fn-props';
 import { CallProp, CallProps, SemanticCallTag } from '../../../../environments/built-in-props';
 import { DefaultMap } from '../../../../../util/collections/defaultmap';
+import { PrintWrites } from './built-in/built-in-ambient-state';
 
 type Reach = NonNullable<ForceSites['reach']>;
 
@@ -130,7 +131,7 @@ export const Quoted = {
 				const forces = flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined;
 				Deferred.link(graph, promise, candidates, idMap, forces);
 				if(binding !== undefined) {
-					linkForcesToPromise(graph, binding, promise);
+					linkForcesToPromise(graph, binding, promise, sites ?? []);
 				}
 				if(evalEnv !== undefined) {
 					graph.addEdge(promise, evalEnv.info.id, EdgeType.Reads);
@@ -197,10 +198,14 @@ function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph
 }
 
 /** Every read of the delayed name takes the promised expression's value, so all of them get the link, not just whichever forces it first. */
-function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: NodeId): void {
+function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: NodeId, sites: readonly NodeId[]): void {
 	for(const reader of Dataflow.sourcesOf(graph, binding, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
 		if(reader !== promise) {
 			graph.addEdge(reader, promise, EdgeType.Reads);
+		}
+		/* a later read gets the value the read forcing the promise computed, with the state at that point */
+		for(const site of sites.includes(reader) ? [] : sites) {
+			graph.addEdge(reader, site, EdgeType.Reads);
 		}
 	}
 }
@@ -377,8 +382,10 @@ function mayConfigure(graph: DataflowGraph, expr: NodeId, environment: REnvironm
 
 /** An evaluation is assumed to write the options and graphics state until we know what it evaluates (see `evaluatesCapturedCode`); a captured call then no longer needs the evaluation either, `eval(quote(x <- 1))` slices to `x <- 1`. */
 function forgetStateWrites(graph: DataflowGraph, id: NodeId, evaluatedElsewhere: ReadonlySet<NodeId>): void {
+	/* printing the value it hands back at the top level is no assumption */
+	const printed = PrintWrites.filter(state => graph.ambientAccessOf(id)?.writes.has(state));
 	for(const [from, edge] of graph.edgesTo(id)) {
-		if(DfEdge.isOnlyType(edge, EdgeType.Reads) && DfgVertex.isFunctionCall(graph.getVertex(from)) && !evaluatedElsewhere.has(from)) {
+		if(DfEdge.isOnlyType(edge, EdgeType.Reads) && DfgVertex.isFunctionCall(graph.getVertex(from)) && !evaluatedElsewhere.has(from) && !printed.some(state => graph.ambientAccessOf(from)?.reads.has(state))) {
 			graph.removeEdgeType(from, id, EdgeType.Reads);
 		}
 	}

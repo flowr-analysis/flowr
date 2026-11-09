@@ -82,6 +82,8 @@ export const AmbientStateName = {
 	umask:                '#umask',
 	/** the state of the random number generator, which `set.seed` sets and every draw advances */
 	rng:                  '#rng',
+	/** the message of the last error, which `try` and `tryCatch` may have caught */
+	errorMessage:         '#error-message',
 	/** the kind of generator, which `set.seed` keeps unless it is given one */
 	rngKind:              '#rng:kind',
 	/** the global variable R keeps that state in, so assigning it sets {@link AmbientStateName.rng} as well */

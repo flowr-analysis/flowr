@@ -336,6 +336,8 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly iterated?:        boolean
 	/** The ambient state reading this identifier may change, as forcing a promise (`delayedAssign`) whose code writes it does. */
 	readonly forces?:          readonly AmbientStateName[]
+	/** The ambient state forcing the promise this identifier binds reads, which it reads where it is forced. */
+	readonly forcedReads?:     readonly AmbientStateName[]
 	/** Whether the ambient state is only assumed written, by a body flowR cannot see. */
 	readonly assumed?:         true
 	/** For a registered finalizer, the variable holding the object it is registered for. */

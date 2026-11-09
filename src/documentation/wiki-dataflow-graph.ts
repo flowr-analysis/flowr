@@ -38,6 +38,7 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { ambientStateSection } from './data/dfg/doc-ambient';
 import { mermaidNodeBrackets } from '../util/mermaid/dfg';
 import { Mermaid } from '../util/mermaid/mermaid';
 import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -1217,6 +1218,8 @@ Beside the state code \`reads\`, \`writes\` (only \`assumed\` to write for a bod
 The graphics devices form a family of states, one set per open device (see ${ctx.link('GraphicsDevices')}): \`#graphics\` holds the graphics parameters, \`#device\` the calls that opened the device and drew on it (a plot opens one if none is open), and \`#plot\` the calls drawing its current plot.
 A plot like \`plot\` starts a new \`#plot\`, an addon like \`points\` reads and adds to it, and closing the device with \`dev.off\` reads all of \`#device\`, so it links to the opening and everything drawn in between, while the other open devices keep their states in \`#graphics:other\`, \`#device:other\`, and \`#plot:other\`.
 Set ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')} to also let them write the pseudo variable \`#canvas\`, which models what is drawn on the device.
+
+${await ambientStateSection(treeSitter, ctx)}
 
 The \`load\` call above degrades to an unknown side effect only because the file could not be found.
 When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.

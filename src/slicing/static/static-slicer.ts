@@ -5,7 +5,7 @@ import { log } from '../../util/log';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { callsRuledOutAt, deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, ruledOutVia, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { assignmentHidingValue, callsRuledOutAt, deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, ruledOutVia, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import { MaxContextDepth, methodOnlyEdges } from '../../dataflow/internal/dispatch-linking';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
@@ -200,6 +200,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
 			sliceForCall(current, currentVertex, info, queue, ctx, ruledOut);
+			const hiding = direction === SliceDirection.Backward ? assignmentHidingValue(id, info, idMap) : undefined;
+			if(hiding !== undefined) {
+				enqueue(hiding, baseEnvironment, baseEnvFingerprint);
+			}
 			/* a built-in dispatching to a method of the program (`print(x)` running `print.foo`) changes the state as the calls within the method do */
 			const written = Array.isArray(currentVertex.origin) && !(currentVertex.origin as readonly string[]).includes('function') ? graph.ambientAccessOf(id)?.writes : undefined;
 			if(written !== undefined && written.size > 0) {

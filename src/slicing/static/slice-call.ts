@@ -24,6 +24,7 @@ import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { AmbientStateName, MessageSinks } from '../../dataflow/environments/ambient-state-name';
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
@@ -263,6 +264,8 @@ interface DeferringInfo {
 	readonly evaluates: boolean
 	/** the call does nothing but hand back its argument invisibly, as `invisible(x)` does, which keeps a slice from printing what the program does not */
 	readonly hides:     boolean
+	/** the call muffles conditions its argument signals, as `suppressMessages(x)` does, which decides whether what the argument reports reaches the message sink */
+	readonly muffles:   boolean
 }
 
 /**
@@ -282,7 +285,7 @@ export function deferringCall(id: NodeId, info: DataflowInformation, idMap: AstI
 		let known = sigs.get(call);
 		if(known === undefined) {
 			const props = callFnProps(call, info);
-			known = { sig: props?.sig, evaluates: props?.tags?.includes(SemanticCallTag.Eval) === true, hides: CallProps.hasAll(props, CallProp.Invisible | CallProp.Pure) };
+			known = { sig: props?.sig, evaluates: props?.tags?.includes(SemanticCallTag.Eval) === true, hides: CallProps.hasAll(props, CallProp.Invisible | CallProp.Pure), muffles: (props?.muffles?.length ?? 0) > 0 };
 			sigs.set(call, known);
 		}
 		/* quoted code the dataflow evaluates in place needs neither the quote nor the evaluating call */
@@ -290,10 +293,37 @@ export function deferringCall(id: NodeId, info: DataflowInformation, idMap: AstI
 			return undefined;
 		}
 		const prop = known.sig === undefined ? undefined : FnSig.propAt(FnSig.layout(known.sig), parent.arguments.indexOf(child));
-		const handsOn = known.hides && RArgument.valueOf(child)?.info.id === id && prop !== undefined && (prop & ArgProp.Alias) !== 0;
+		const handsOn = ((known.muffles && reports(id, info)) || (known.hides && RArgument.valueOf(child)?.info.id === id)) && prop !== undefined && (prop & ArgProp.Alias) !== 0;
 		if(known.evaluates || handsOn || (prop !== undefined && runsElsewhere(prop))) {
 			return call;
 		}
 	}
 	return undefined;
+}
+
+/** Whether running `id` may write into the message sink, as a message or a warning does, in the functions it calls as well. */
+function reports(id: NodeId, info: DataflowInformation): boolean {
+	return Dataflow.sideEffects.ambientAccess(info, [id]).writes.has(MessageSinks.used);
+}
+
+/** Whether the call `id` runs while the output is diverted (`sink(f)`), so that what it prints is part of what the program writes, `true` if it keeps no environment to tell. */
+function runsDiverted(id: NodeId, info: DataflowInformation): boolean {
+	const vertex = info.graph.getVertex(id);
+	const environment = DfgVertex.isFunctionCall(vertex) ? vertex.environment : undefined;
+	return environment === undefined || (Resolve.byName(AmbientStateName.sinkOpener, environment) ?? []).some(d => !NodeId.isBuiltIn(d.nodeId));
+}
+
+/**
+ * The top-level assignment `x <- call` the call `id` is the value of, if the call may hand back a visible value while the output is diverted, which R would print
+ * into the diversion once a slice dropped the assignment: it runs a closure (a method of the program `print` dispatches to among them), or a built-in not known to return invisibly.
+ */
+export function assignmentHidingValue(id: NodeId, info: DataflowInformation, idMap: AstIdMap): NodeId | undefined {
+	const node = idMap.get(id);
+	const parent = node === undefined ? undefined : RNode.directParent(node, idMap);
+	if(parent === undefined || RNode.topLevelStatement(parent, idMap) !== parent || !DfgVertex.hasOrigin(info.graph.getVertex(parent.info.id), BuiltInProcName.Assignment)
+		|| Dataflow.hasEdge(info.graph, parent.info.id, id, EdgeType.Returns)) {
+		return undefined;
+	}
+	const visible = Dataflow.calleeIdsOf(info.graph, id).some(t => !NodeId.isBuiltIn(t)) || !CallProps.hasAny(callFnProps(id, info), CallProp.Invisible);
+	return visible && runsDiverted(id, info) ? parent.info.id : undefined;
 }

@@ -1,6 +1,6 @@
 import { blank, el } from '../page-lib/dom';
 import { argsOf, norm, shortOf, wordsOf } from './query';
-import type { Entry, Package } from './database';
+import type { Entry, Guards, Owner, Package } from './database';
 import { ExportFlag } from './export-flags';
 
 /** how a flag reads on the page, and what it says on hover where its name alone does not; a meta flag is about the database entry, not the function */
@@ -179,7 +179,7 @@ export class Hits {
 		const args = own?.args || entry.declaredIn(chosen?.pkg.name) || '';
 		const props = wordsOf(mergedWords(own?.props, flagWords(chosen?.flags ?? ''))).filter(word => !said.includes(word.toLowerCase())).join('|');
 		if(args !== '' || props !== '') {
-			head.append(this.signature(name, args, props));
+			head.append(this.signature(name, args, props, guards));
 		}
 		for(const [system, generic] of dispatches) {
 			head.append(link('generic', system + ' method for ' + generic, search(generic), 'search for the generic this method dispatches for'));
@@ -200,7 +200,7 @@ export class Hits {
 		head.append(list);
 		row.append(head);
 		if(guards !== undefined) {
-			row.append(guardLine(name, guards));
+			row.append(contract(name, guards, formalsOf(args), chosen));
 		}
 		opens(row, () => this.owners(entry));
 		this.list.append(row);
@@ -251,11 +251,11 @@ export class Hits {
 			const marks = el('span', 'flags');
 			marks.append(...flagsOf(owner.flags).filter(flag => !said.has(flag.name)).map(flag => titled(el('span', 'flag', flag.name), flag.about)));
 			if(args !== '' || props !== '') {
-				marks.append(this.signature(name, args, props));
+				marks.append(this.signature(name, args, props, entry.guardsIn(pkg.name)));
 			}
 			const guardsHere = entry.guardsIn(pkg.name);
 			if(guardsHere !== undefined && entry.shown.length > 1) {
-				marks.append(guardLine(name, guardsHere));
+				marks.append(contract(name, guardsHere, formalsOf(args), owner));
 			}
 			const { file, line } = owner;
 			const src = blank(file === undefined
@@ -322,7 +322,7 @@ export class Hits {
 		return words.flatMap((word, at) => [at > 0 ? separator : '', asking.has(norm(raw[at])) ? el('mark', 'want ' + kind, word) : word]);
 	}
 
-	private signature(name: string, args: string, props: string): HTMLElement {
+	private signature(name: string, args: string, props: string, guards?: Guards): HTMLElement {
 		const said = titled(el('code', 'stated'), readable(name, args, props));
 		const { kind, returns } = parts(props);
 		said.append(el('b', undefined, name));
@@ -333,7 +333,8 @@ export class Hits {
 		}
 		if(args !== '') {
 			const list = el('span', 'args');
-			list.append('(', ...argsOf(args).flatMap((arg, at) => [at > 0 ? ', ' : '', this.formal(arg)]), ')');
+			const claimed = new Map(guards?.[1] ?? []);
+			list.append('(', ...argsOf(args).flatMap((arg, at) => [at > 0 ? ', ' : '', this.formal(arg, claimed.get(arg[0]), at)]), ')');
 			said.append(list);
 		}
 		if(returns.length > 0) {
@@ -342,8 +343,12 @@ export class Hits {
 		return said;
 	}
 
-	private formal([name, roles]: readonly [string, readonly string[]]): HTMLSpanElement {
+	private formal([name, roles]: readonly [string, readonly string[]], claims?: readonly string[], at = 0): HTMLSpanElement {
 		const part = el('span', 'formal', name);
+		if(claims !== undefined) {
+			part.classList.add('guarded', hueOf(at));
+			part.title = name + ' of a call that returns normally: ' + claims.join(', ');
+		}
 		if(roles.length > 0) {
 			const role = el('i', 'role');
 			role.append(': ', ...this.marks(roleWords(name, roles), '+', this.asked.roles, roles, 'role'));
@@ -353,11 +358,133 @@ export class Hits {
 	}
 }
 
-/** what a call has to fulfill: the claims per formal up front, the whole condition on hover. A default of a formal has no part in this */
-function guardLine(name: string, [requires, claims]: readonly [string, readonly (readonly [string, string])[]]): HTMLElement {
-	const line = titled(el('code', 'guards'), name + ' returns normally only if: ' + (requires === '' ? 'the formals named here were given' : requires) + '. Default values claim nothing: they only fill in what a call leaves out.');
-	line.append(...(claims.length > 0 ? claims.flatMap(([formal, claim], at) => [at > 0 ? '; ' : '', el('b', undefined, formal), ': ' + claim]) : [el('b', undefined, 'requires'), ': ' + requires]));
-	return line;
+/** The parts of `condition` joined by a `&&` outside of any parentheses, brackets, or strings. */
+function conjuncts(condition: string): string[] {
+	const parts: string[] = [];
+	let depth = 0, quote: string | undefined, start = 0;
+	for(let i = 0; i < condition.length; i++) {
+		const c = condition[i];
+		if(quote !== undefined) {
+			quote = c === '\\' ? (i++, quote) : c === quote ? undefined : quote;
+		} else if(c === '"' || c === "'" || c === '`') {
+			quote = c;
+		} else if('([{'.includes(c)) {
+			depth++;
+		} else if(')]}'.includes(c)) {
+			depth--;
+		} else if(depth === 0 && condition.startsWith(' && ', i)) {
+			parts.push(condition.slice(start, i));
+			start = i + 4;
+			i += 3;
+		}
+	}
+	return [...parts, condition.slice(start)];
+}
+
+/** What a call has to fulfill, closed until asked for: per formal a row of claims, then the whole condition one part per line. A default of a formal has no part in this */
+function contract(name: string, [requires, claims, because = []]: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
+	const hue = (formal: string) => hueOf(formals.indexOf(formal));
+	/* each formal in its own color, and a negation standing out, so a long condition reads at a glance */
+	const marked = (code: string): (string | HTMLElement)[] => code.split(/(\|\||&&|[<>=!]=|!|%in%|\b[A-Za-z.][A-Za-z0-9._]*\b)/).filter(part => part !== '').map(part =>
+		Operators[part] !== undefined ? titled(el('span', Operators[part][0], part), Operators[part][1]) : formals.includes(part) ? el('span', 'arg ' + hue(part), part) : part);
+	const box = el('details', 'contract');
+	box.addEventListener('click', event => event.stopPropagation());
+	const summary = titled(el('summary'), 'what a call of ' + name + ' has to fulfill to return normally; default values claim nothing, they only fill in what a call leaves out');
+	summary.append('contract', ...claims.map(([formal]) => el('code', hue(formal), formal)));
+	box.append(summary);
+	if(owner !== undefined) {
+		const of = el('div', 'of');
+		of.append('of ' + owner.pkg.name + '::' + name + ' ' + owner.pkg.version);
+		const url = owner.sourceUrl;
+		if(url !== undefined) {
+			of.append(' \u00b7 implemented in ', blank(link('src', (owner.file ?? 'the sources') + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + owner.pkg.name + '::' + name + ' is written')));
+		}
+		box.append(of);
+	}
+	if(claims.length > 0) {
+		const table = el('dl');
+		table.append(...claims.flatMap(([formal, words]) => [el('dt', hue(formal), formal), (dd => (dd.append(...words.map(claimPill)), dd))(el('dd'))]));
+		box.append(table);
+	}
+	if(requires !== '') {
+		const condition = el('pre', 'requires');
+		condition.append(...conjuncts(requires).flatMap((part, at) => [at > 0 ? el('span', 'and', '&& ') : '', ...marked(part), '\n']));
+		box.append(condition);
+	}
+	if(because.length > 0) {
+		const reasons = el('ol', 'because');
+		reasons.append(...because.map(([holds, fails, via]) => {
+			const item = el('li');
+			const code = el('code');
+			code.append(...marked(holds));
+			item.append(code, el('span', 'fails', fails), ...(via === '' ? [] : [el('span', 'via', 'through ' + via)]));
+			return item;
+		}));
+		const why = el('details', 'why');
+		why.append(el('summary', undefined, 'why'), reasons);
+		box.append(why);
+	}
+	return box;
+}
+
+/** the operators a condition is read by, each in a color of its own */
+const Operators: Readonly<Record<string, readonly [cls: string, about: string]>> = {
+	'!':    ['not', 'not'],
+	'&&':   ['and', 'and'],
+	'||':   ['or', 'or'],
+	'==':   ['cmp', 'equals'],
+	'!=':   ['cmp', 'differs from'],
+	'<=':   ['cmp', 'at most'],
+	'>=':   ['cmp', 'at least'],
+	'%in%': ['cmp', 'is one of']
+};
+
+const Hues = 6;
+
+/** the color class of the formal at the given position of the signature */
+function hueOf(at: number): string {
+	return 'hue' + String(Math.max(at, 0) % Hues);
+}
+
+/** the names of the formals of a signature, in order */
+function formalsOf(args: string): string[] {
+	return argsOf(args).map(([formal]) => formal);
+}
+
+/** what the words of a claim mean, so a reader need not know R's internals to read them */
+const ClaimAbout: Readonly<Record<string, string>> = {
+	NULL:        'NULL itself',
+	logical:     'TRUE, FALSE, or NA values',
+	integer:     'typeof is "integer", which includes factors',
+	double:      'typeof is "double", which includes Dates and times',
+	complex:     'complex numbers',
+	character:   'strings',
+	raw:         'raw bytes',
+	list:        'a list, which includes data frames',
+	pairlist:    'a pairlist, as formals() gives',
+	function:    'a closure, builtin, or special',
+	environment: 'an environment',
+	symbol:      'a name, like quote(a)',
+	language:    'a call, like quote(f(a))',
+	expression:  'an expression vector',
+	other:       'anything else, like an S4 object or an external pointer',
+	classed:     'with a class attribute, which may bring methods of its own',
+	length:      'what length() gives',
+	nchar:       'what nchar() gives for each element',
+	nrow:        'what nrow() gives, NULL for what has no dimensions',
+	ncol:        'what ncol() gives, NULL for what has no dimensions',
+	NROW:        'what NROW() gives, the length for a vector',
+	NCOL:        'what NCOL() gives, 1 for a vector',
+	value:       'the number itself',
+	NA:          'no element is NA',
+	callable:    'usable as a function: one, the name of one, or bound to one'
+};
+
+/** one claim, each word R gives a meaning to explained on hover */
+function claimPill(words: string): HTMLElement {
+	const pill = el('span', 'claim');
+	pill.append(...words.split(/(\b[A-Za-z]+\b)/).filter(part => part !== '').map(part => ClaimAbout[part] === undefined ? part : titled(el('abbr', undefined, part), ClaimAbout[part])));
+	return pill;
 }
 
 function packageLink(pkg: Package): HTMLAnchorElement {

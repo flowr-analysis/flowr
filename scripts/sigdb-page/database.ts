@@ -2,6 +2,9 @@ import type { RRepository } from '../../src/util/r-package-urls';
 import { baseManualIndexUrl, baseManualTopicUrl, cranMirrorSourceUrl, rdrrPackageUrl, rdrrTopicUrl, RRepositories, rSourceUrl } from '../../src/util/r-package-urls';
 import { argsOf, wordsOf } from './query';
 import { ExportFlag } from './export-flags';
+
+/** what a call has to fulfill: the whole condition, and the claims on each formal in a few words each */
+export type Guards = readonly [requires: string, claims: readonly (readonly [formal: string, words: readonly string[]])[], because?: readonly (readonly [requires: string, fails: string, via: string])[]];
 import { FilterKind, filterOf } from './filters';
 
 /** the element the page template gives `id`, which it must have */
@@ -180,7 +183,7 @@ export class Entry {
 	}
 
 	/** what a call of it has to fulfill in `pkg` */
-	guardsIn(pkg: string): readonly [requires: string, claims: readonly (readonly [formal: string, claim: string])[]] | undefined {
+	guardsIn(pkg: string): Guards | undefined {
 		return db.guards.get(pkg + '::' + this.name);
 	}
 
@@ -233,7 +236,7 @@ class Database {
 	readonly formals = readMap<[pkg: string, params: string][]>('formals');
 	readonly groups = readMap<string>('groups');
 	/** what a call of a base R function has to fulfill, by `pkg::name` */
-	readonly guards = readMap<[requires: string, claims: [formal: string, claim: string][]]>('guards');
+	readonly guards = readMap<Guards>('guards');
 
 	packages: readonly Package[] = [];
 	/** `name\towner,owner` per line, kept as the one string it arrives as since a search only slices out what it hits */

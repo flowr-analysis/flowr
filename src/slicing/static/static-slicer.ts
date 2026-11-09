@@ -127,7 +127,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 	/* a call asked about does what the functions it runs do, which includes what they print */
-	for(const id of outputWithinCallees(ids, graph)) {
+	for(const id of writesWithinCallees(ids, graph, PrintedOutput)) {
 		queue.add(id, emptyEnv, basePrint, false);
 	}
 
@@ -200,6 +200,13 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
 			sliceForCall(current, currentVertex, info, queue, ctx, ruledOut);
+			/* a built-in dispatching to a method of the program (`print(x)` running `print.foo`) changes the state as the calls within the method do */
+			const written = Array.isArray(currentVertex.origin) && !(currentVertex.origin as readonly string[]).includes('function') ? graph.ambientAccessOf(id)?.writes : undefined;
+			if(written !== undefined && written.size > 0) {
+				for(const inner of writesWithinCallees([id], graph, new Set(written.keys()), ruledOut)) {
+					enqueue(inner, emptyEnv, basePrint);
+				}
+			}
 			/* a call of a function joining the slice late lets the dispatches within run what it may run, once, as they may be such calls themselves */
 			const waiting = dispatchesOfCall.get(id) ?? [];
 			dispatchesOfCall.delete(id);
@@ -345,11 +352,13 @@ function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: Slic
 	};
 }
 
-/** The calls writing output (`cat`, `print`, ...: they print into {@link AmbientStateName.sinkOutput}) within the functions the `seeds` call (a printed value its `print` method), transitively. */
-function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): NodeId[] {
+const PrintedOutput: ReadonlySet<AmbientStateName> = new Set([AmbientStateName.sinkOutput]);
+
+/** The calls writing one of the `states` (`cat`, `print`, ...: they print into {@link AmbientStateName.sinkOutput}) within the functions the `seeds` call (a printed value its `print` method), transitively, but for the methods the slice rules out for the seeds (`ruledOutHere`). */
+function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, states: ReadonlySet<AmbientStateName>, ruledOutHere?: ReadonlySet<NodeId>): NodeId[] {
 	const writers = new Set<NodeId>();
 	for(const id of graph.ambientAccessIds()) {
-		if(graph.ambientAccessOf(id)?.writes.has(AmbientStateName.sinkOutput)) {
+		if(graph.ambientAccessOf(id)?.writes.keys().some(state => states.has(state))) {
 			writers.add(id);
 		}
 	}
@@ -367,7 +376,7 @@ function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): Nod
 		const [call, via] = next;
 		const ruledOut = ruledOutVia((graph.getVertex(call) as Partial<DataflowGraphVertexFunctionCall> | undefined)?.ruledOutAt, via);
 		const chain = [call, ...via].slice(0, MaxContextDepth);
-		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t))) {
+		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t) && (via.length > 0 || ruledOutHere?.has(t) !== true))) {
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
 			const first = !seen.has(target);
 			seen.add(target);

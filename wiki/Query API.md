@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 20:46:01 UTC (v2.17.5, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-09, 05:32:52 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -486,6 +486,9 @@ Valid item types:
                     Only allows: 'explicit', 'implicit'
                 - **onlyPure** [optional] _Keep only the conditions failing before any side effect._ (boolean)
                 - **formals** [optional] _Keep only what is said about the formals written as one of these names._ (array)
+                Valid item types:
+                    - (string)
+                - **builtIns** [optional] _Also state what these functions of R ask for, written `name` or `pkg::name`._ (array)
                 Valid item types:
                     - (string)
             - _What code reads and writes of the global state (options, environment variables, devices, ...)._ (object)

@@ -42,7 +42,11 @@ export enum ArgProp {
 	/** besides its value, the expression as written names a part of the result, like `a` in `data.frame(a)`, which becomes the column `a`; passing `identity(a)` instead changes the name */
 	Deparsed   = 1 << 16,
 	/** a {@link ArgProp.Resource} whose default names none, like `file` in `cat(..., file = "")`, which prints to the console, or in `capture.output(..., file = NULL)`; left out, the call accesses no file through it */
-	Optional   = 1 << 17
+	Optional   = 1 << 17,
+	/** a call leaving it out fails, as the body reads it on every way through; only inferred (see {@link FunctionSemantics.guards}) */
+	Required   = 1 << 18,
+	/** a call fails on some of what it could hold, as there are guards on it; only inferred (see {@link FunctionSemantics.guards}) */
+	Guarded    = 1 << 19
 }
 
 /** The properties of the behavior of a call, as a bitmask. */
@@ -403,7 +407,9 @@ const ArgPropWords: Readonly<Record<ArgProp, PropWord>> = {
 	[ArgProp.Lazy]:       { word: 'lazy', short: 'L', about: 'never evaluated' },
 	[ArgProp.Injectable]: { word: 'injectable', about: 'open to injection' },
 	[ArgProp.Deparsed]:   { word: 'deparsed', about: 'its expression names part of the result' },
-	[ArgProp.Optional]:   { word: 'optional', about: 'a resource whose default names none' }
+	[ArgProp.Optional]:   { word: 'optional', about: 'a resource whose default names none' },
+	[ArgProp.Required]:   { word: 'required', short: 'req', about: 'a call has to supply it' },
+	[ArgProp.Guarded]:    { word: 'guarded', about: 'a call fails on some values of it' }
 };
 
 /** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */

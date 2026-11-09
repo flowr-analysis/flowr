@@ -1,0 +1,349 @@
+import type { BrandedIdentifier } from '../../environments/identifier';
+import { IntervalDomain } from '../../../abstract-interpretation/domains/interval-domain';
+import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
+import { AnyType, Appliers, CheckingCalls, Measures, RValueType, TypePredicates, TypeReaders, typeNames, type RValueTypes } from './guard-knowledge';
+
+/** The inclusive bounds of a number, the upper one `Infinity` if there is none; JSON turns that into `null`, so it is stated as such. */
+export type ClaimedRange = readonly [lower: number | null, upper: number | null];
+
+/**
+ * What a call that returns normally has made sure of one of the formals of a function, each read off the guards.
+ * A field left out claims nothing.
+ */
+export interface FormalClaim {
+	/** the value has one of these types (see {@link RValueType}) */
+	readonly types?:      readonly string[]
+	/** the same, for a value without a class attribute, as those can bring methods of their own; only stated if it says more than {@link FormalClaim.types} */
+	readonly plainTypes?: readonly string[]
+	/** a character value holds only these, or abbreviates one of them if {@link FormalClaim.partial} is set */
+	readonly values?:     readonly (string | number | boolean)[]
+	/** the {@link FormalClaim.values} are matched partially, as `match.arg` does */
+	readonly partial?:    boolean
+	/** `class(x)` holds at least one of these */
+	readonly classes?:    readonly string[]
+	/** the bounds of what the formal measures: `value` for a number (compared as R compares), else `length`, `nchar`, `nrow`, `ncol`, `NROW`, or `NCOL` */
+	readonly bounds?:     Readonly<Record<string, ClaimedRange>>
+	/** no element is `NA` */
+	readonly notNA?:      boolean
+	/** must be usable as a function: being one, naming one, or being bound to a name another function can be found by */
+	readonly callable?:   boolean
+	/** what the formal has to complete into a name that exists, like `paste0("f_", x)` */
+	readonly resolves?:   readonly ClaimedName[]
+}
+
+/** A name a function looks up at run time, built from a formal. */
+export interface ClaimedName {
+	/** how the function spells it, in R syntax */
+	readonly expression:  string
+	/** what comes before the formal in the name, if that is known */
+	readonly prefix?:     string
+	/** what comes after the formal in the name, if that is known */
+	readonly suffix?:     string
+	/** the values of the formal that make it a function the program defines, which does not rule out functions from elsewhere */
+	readonly candidates?: readonly string[]
+}
+
+/** {@link FormalClaim} while it is being worked out, which is a lattice: every field goes from what is known towards nothing. */
+interface Abstract {
+	readonly types:    RValueTypes
+	readonly plain:    RValueTypes
+	/** `undefined` for no claim, as an empty set states that no character value passes */
+	readonly values:   ReadonlySet<string | number | boolean> | undefined
+	readonly partial:  boolean
+	readonly classes:  ReadonlySet<string> | undefined
+	readonly bounds:   ReadonlyMap<BrandedIdentifier, IntervalDomain>
+	readonly notNA:    boolean
+	readonly callable: boolean
+	readonly resolves: ReadonlyMap<string, ClaimedName>
+}
+
+const Unconstrained: Abstract = { types: AnyType, plain: AnyType, values: undefined, partial: false, classes: undefined, bounds: new Map(), notNA: false, callable: false, resolves: new Map() };
+
+function ofTypes(this: void, types: RValueTypes, classed = false): Abstract {
+	return { ...Unconstrained, types, plain: classed ? 0 : types };
+}
+
+function ofBound(this: void, measure: BrandedIdentifier, lower: number, upper: number): Abstract {
+	return { ...Unconstrained, bounds: new Map([[measure, new IntervalDomain([lower, upper])]]) };
+}
+
+function combineMaps(this: void, a: Abstract['bounds'], b: Abstract['bounds'], meet: boolean): Abstract['bounds'] {
+	const result = new Map<BrandedIdentifier, IntervalDomain>();
+	for(const key of new Set([...a.keys(), ...b.keys()])) {
+		const [left, right] = [a.get(key), b.get(key)];
+		if(left !== undefined && right !== undefined) {
+			result.set(key, meet ? left.meet(right) : left.join(right));
+		} else if(meet) {
+			result.set(key, (left ?? right) as IntervalDomain);
+		}
+	}
+	return result;
+}
+
+/** Both hold. */
+function both(this: void, a: Abstract, b: Abstract): Abstract {
+	const values = a.values === undefined ? b.values : b.values === undefined ? a.values : a.values.intersection(b.values);
+	return {
+		types:    a.types & b.types,
+		plain:    a.plain & b.plain,
+		values,
+		/* whichever narrowed it last keeps the exact values, those always pass the partial ones as well */
+		partial:  (a.values === undefined || a.partial) && (b.values === undefined || b.partial) && values !== undefined,
+		/* each of them holds, and a class set says "at least one of these": either answer is true, the smaller says more */
+		classes:  a.classes === undefined || (b.classes !== undefined && b.classes.size < a.classes.size) ? b.classes : a.classes,
+		bounds:   combineMaps(a.bounds, b.bounds, true),
+		notNA:    a.notNA || b.notNA,
+		callable: a.callable || b.callable,
+		resolves: new Map([...a.resolves, ...b.resolves])
+	};
+}
+
+/** At least one of the two holds. */
+function either(this: void, a: Abstract, b: Abstract): Abstract {
+	const values = a.values === undefined || b.values === undefined ? undefined : a.values.union(b.values);
+	return {
+		types:    a.types | b.types,
+		plain:    a.plain | b.plain,
+		values,
+		partial:  values !== undefined && (a.partial || b.partial),
+		classes:  a.classes === undefined || b.classes === undefined ? undefined : a.classes.union(b.classes),
+		bounds:   combineMaps(a.bounds, b.bounds, false),
+		notNA:    a.notNA && b.notNA,
+		callable: a.callable && b.callable,
+		resolves: new Map([...a.resolves].filter(([expression]) => b.resolves.has(expression)))
+	};
+}
+
+function isFormal(this: void, term: GuardTerm | undefined, formal: BrandedIdentifier): boolean {
+	return term?.kind === 'formal' && term.name === formal;
+}
+
+/** The value of a constant that is one, skipping `NA` and the like. */
+function valuesOf(this: void, constants: readonly GuardConstant[]): Set<string | number | boolean> | undefined {
+	const values = constants.map(c => c.value);
+	return values.every(v => v !== undefined) ? new Set(values) : undefined;
+}
+
+function ofPredicate(this: void, call: GuardCall, formal: BrandedIdentifier, holds: boolean): Abstract {
+	const [first, second] = call.args.map(a => a.value);
+	const name = GuardTerm.bareName(call.fn);
+	if(call.fn === 'isTRUE' || call.fn === 'isFALSE') {
+		return holds && isFormal(first, formal) ? both(ofTypes(RValueType.Logical), ofBound('length', 1, 1)) : Unconstrained;
+	}
+	const predicate = TypePredicates[name];
+	if(predicate !== undefined && isFormal(first, formal)) {
+		if(holds) {
+			const types = ofTypes(predicate.yes, predicate.classed);
+			const typed = name === 'is.function' || name === 'is.symbol' || name === 'is.name' || name === 'is_function' ? { ...types, callable: true } : types;
+			return predicate.scalar ? both(typed, ofBound('length', 1, 1)) : typed;
+		}
+		const ruledOut = predicate.exact ? ofTypes(AnyType & ~predicate.yes) : Unconstrained;
+		/* whatever a string can be measured against, this is not one */
+		return call.fn === 'is.character' ? { ...ruledOut, values: new Set() } : ruledOut;
+	} else if(isFormal(first, formal) && (holds ? name === 'is.finite' : name === 'is.na' || name === 'anyNA')) {
+		return { ...Unconstrained, notNA: true };
+	} else if(Measures.has(name) && isFormal(first, formal) && call.args.length === 1) {
+		return holds ? boundOf(name, '>=', 1) : boundOf(name, '==', 0);
+	} else if(holds && call.fn === 'inherits' && isFormal(first, formal) && call.args.length === 2) {
+		const classes = valuesOf(GuardTerm.constants(second) ?? []);
+		return classes?.size ? { ...Unconstrained, classes: new Set([...classes].map(String)) } : Unconstrained;
+	}
+	return Unconstrained;
+}
+
+/** The comparison operator read the other way around, `1 < x` being `x > 1`. */
+const Swapped: Readonly<Record<BrandedIdentifier, BrandedIdentifier>> = { '<': '>', '>': '<', '<=': '>=', '>=': '<=', '==': '==', '!=': '!=' };
+
+function boundOf(this: void, measure: BrandedIdentifier, op: BrandedIdentifier, value: number): Abstract {
+	/* a strict bound on what can only be whole steps up by one */
+	const step = measure === 'value' ? 0 : 1;
+	switch(op) {
+		case '==':
+			return ofBound(measure, value, value);
+		case '>':
+			return ofBound(measure, value + step, Infinity);
+		case '>=':
+			return ofBound(measure, value, Infinity);
+		case '<':
+			return ofBound(measure, -Infinity, value - step);
+		case '<=':
+			return ofBound(measure, -Infinity, value);
+		case '!=':
+			return measure !== 'value' && value === 0 ? ofBound(measure, 1, Infinity) : Unconstrained;
+		default:
+			return Unconstrained;
+	}
+}
+
+/** What `read op constants` says, `read` being a term reading something off the formal. */
+function ofComparison(this: void, read: GuardTerm, op: BrandedIdentifier, right: GuardTerm, formal: BrandedIdentifier): Abstract {
+	const constants = GuardTerm.constants(right);
+	if(GuardTerm.isCall(read) && read.known && isFormal(read.args[0]?.value, formal) && read.args.length === 1) {
+		const reader = TypeReaders[read.fn === 'storage.mode' ? 'typeof' : read.fn];
+		const values = (op === '==' || op === '%in%') && constants !== undefined ? valuesOf(constants) : undefined;
+		if(reader !== undefined && values !== undefined) {
+			const types = [...values].map(v => reader[String(v)]);
+			return types.every(t => t !== undefined) ? ofTypes(types.reduce((acc, t) => acc | t, 0)) : Unconstrained;
+		} else if(read.fn === 'class' && values !== undefined) {
+			return { ...Unconstrained, classes: new Set([...values].map(String)) };
+		}
+		const number = constants?.length === 1 ? constants[0].value : undefined;
+		return Measures.has(read.fn) && typeof number === 'number' ? boundOf(read.fn, op, number) : Unconstrained;
+	} else if(!isFormal(read, formal) || constants === undefined) {
+		return Unconstrained;
+	}
+	const number = constants.length === 1 ? constants[0].value : undefined;
+	if(op === '%in%' || (op === '==' && typeof number !== 'number')) {
+		const values = valuesOf(constants);
+		return values === undefined ? Unconstrained : { ...Unconstrained, values };
+	}
+	return typeof number === 'number' ? boundOf('value', op, number) : Unconstrained;
+}
+
+function ofCheck(this: void, call: GuardCall, formal: BrandedIdentifier): Abstract {
+	const name = GuardTerm.bareName(call.fn);
+	if(name === 'UseMethod') {
+		const [{ value: generic }, { value: object }] = call.args;
+		return isFormal(object, formal) && generic.kind === 'constant' ? { ...Unconstrained, resolves: new Map([[`${generic.lexeme}.class(${formal})`, { expression: `paste0(${generic.lexeme}, ".", class(${formal}))`, prefix: `${String(generic.value)}.`, suffix: '' }]]) } : Unconstrained;
+	}
+	if(Appliers[name] !== undefined && isFormal(call.args[0]?.value, formal)) {
+		return { ...Unconstrained, callable: true };
+	}
+	const check = CheckingCalls[name];
+	if(check === undefined || !isFormal(call.args[0]?.value, formal)) {
+		return Unconstrained;
+	}
+	let types = check.types ?? AnyType;
+	let loosened = false;
+	for(const [option, adds] of Object.entries(check.loosens ?? {})) {
+		const given = call.args.find(a => a.name === option)?.value;
+		/* left out, it stays at its default of not loosening anything */
+		if(given !== undefined && !(given.kind === 'constant' && given.value === false)) {
+			types |= adds;
+			loosened ||= (adds & RValueType.Null) !== 0;
+		}
+	}
+	const choices = check.choices === undefined ? undefined : call.args.find((a, i) => a.name === check.choices || (a.name === undefined && i === 1))?.value;
+	const values = choices === undefined ? undefined : valuesOf(GuardTerm.constants(choices) ?? []);
+	const claim = { ...ofTypes(types, check.classed), values, partial: values !== undefined && check.partial === true };
+	return check.scalar && !loosened ? both(claim, ofBound('length', 1, 1)) : claim;
+}
+
+/** What surrounds the formal in the `paste0`, `paste`, or `sprintf` that spells out a name, if that is all there is to it. */
+function surroundings(this: void, term: GuardTerm, formal: BrandedIdentifier): Pick<ClaimedName, 'prefix' | 'suffix'> {
+	if(!GuardTerm.isCall(term)) {
+		return {};
+	}
+	const texts = term.args.filter(a => a.name === undefined).map(a => a.value);
+	if(term.fn === 'sprintf') {
+		const [format, ...rest] = texts;
+		const parts = format?.kind === 'constant' && typeof format.value === 'string' ? format.value.split('%s') : [];
+		return parts.length === 2 && rest.length === 1 && isFormal(rest[0], formal) ? { prefix: parts[0], suffix: parts[1] } : {};
+	}
+	const separator = term.args.find(a => a.name === 'sep')?.value;
+	const glue = term.fn === 'paste0' ? '' : separator === undefined ? ' ' : separator.kind === 'constant' && typeof separator.value === 'string' ? separator.value : undefined;
+	const at = texts.findIndex(t => isFormal(t, formal));
+	const strings = texts.map(t => t.kind === 'constant' && typeof t.value === 'string' ? t.value : undefined);
+	if(glue === undefined || at < 0 || strings.some((t, i) => i !== at && t === undefined) || term.args.some(a => a.name === 'collapse')) {
+		return {};
+	}
+	const around = (from: readonly (string | undefined)[], outer: (text: string) => string) => from.length === 0 ? '' : outer(from.join(glue));
+	return { prefix: around(strings.slice(0, at), t => t + glue), suffix: around(strings.slice(at + 1), t => glue + t) };
+}
+
+function resolving(this: void, named: GuardTerm, formal: BrandedIdentifier): Abstract {
+	const expression = GuardTerm.render(named);
+	return { ...Unconstrained, resolves: new Map([[expression, { expression, ...surroundings(named, formal) }]]) };
+}
+
+function ofExists(this: void, call: GuardCall, formal: BrandedIdentifier): Abstract {
+	const [{ value: named }] = call.args;
+	const isFunctionMode = call.args.some(a => a.name === 'mode' && a.value.kind === 'constant' && a.value.value === 'function');
+	if(named.kind === 'constant' && named.value === formal) {
+		return { ...Unconstrained, callable: isFunctionMode };
+	}
+	if(!GuardTerm.formalsOf(named).has(formal)) {
+		return Unconstrained;
+	}
+	return isFormal(named, formal) ? { ...Unconstrained, callable: isFunctionMode } : resolving(named, formal);
+}
+
+function abstractOf(this: void, term: GuardTerm, formal: BrandedIdentifier): Abstract {
+	if(!GuardTerm.isCall(term) || !term.known) {
+		return Unconstrained;
+	}
+	const operands = term.args.map(a => a.value);
+	const [first, second] = operands;
+	switch(term.fn) {
+		case '&&':
+		case '&':
+			return both(abstractOf(first, formal), abstractOf(second, formal));
+		case '||':
+		case '|':
+			return either(abstractOf(first, formal), abstractOf(second, formal));
+		case 'all':
+			return operands.length === 1 ? abstractOf(first, formal) : Unconstrained;
+		case '!':
+			return GuardTerm.isCall(first) && first.known ? ofPredicate(first, formal, false) : Unconstrained;
+		case 'succeeds':
+			return GuardTerm.isCall(first) ? ofCheck(first, formal) : Unconstrained;
+		case 'exists':
+			return ofExists(term, formal);
+		case 'is.element':
+		case 'identical':
+			return operands.length === 2 ? ofComparison(first, term.fn === 'identical' ? '==' : '%in%', second, formal) : Unconstrained;
+		case '%in%':
+			return ofComparison(first, '%in%', second, formal);
+		default:
+			if(Swapped[term.fn] !== undefined && operands.length === 2) {
+				return first.kind === 'constant' ? ofComparison(second, Swapped[term.fn], first, formal) : ofComparison(first, term.fn, second, formal);
+			}
+			return ofPredicate(term, formal, true);
+	}
+}
+
+/** A bound the way {@link FormalClaim.bounds} states it, without one that is not known. */
+function boundsOf(this: void, bounds: Abstract['bounds']): Record<string, ClaimedRange> | undefined {
+	const kept = [...bounds].filter(([, domain]) => domain.isValue() && (Number.isFinite(domain.lower) || Number.isFinite(domain.upper)));
+	return kept.length === 0 ? undefined : Object.fromEntries(kept.map(([measure, { lower, upper }]) => {
+		const [low, high] = [lower as number, upper as number];
+		return [measure, [Number.isFinite(low) ? low : null, Number.isFinite(high) ? high : null]];
+	}));
+}
+
+function toClaim(this: void, abstract: Abstract): FormalClaim {
+	const { types, plain, values, partial, classes, bounds, notNA, callable, resolves } = abstract;
+	const stated = boundsOf(bounds);
+	return {
+		...(types === AnyType ? {} : { types: typeNames(types) }),
+		...(plain === types || plain === AnyType ? {} : { plainTypes: typeNames(plain) }),
+		...(values === undefined || values.size === 0 ? {} : { values: [...values], ...(partial ? { partial } : {}) }),
+		...(classes === undefined ? {} : { classes: [...classes] }),
+		...(stated === undefined ? {} : { bounds: stated }),
+		...(notNA ? { notNA } : {}),
+		...(callable ? { callable } : {}),
+		...(resolves.size === 0 ? {} : { resolves: [...resolves.values()] })
+	};
+}
+
+/** Whether every value passing `conditions` passes `implied` as far as the types can tell; as a wrong guess only loses a clause, not what is left. */
+export function impliedBy(this: void, implied: GuardTerm, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[]): boolean {
+	const mentioned = formals.filter(formal => GuardTerm.formalsOf(implied).has(formal));
+	return mentioned.length === 1 && GuardTerm.isCall(implied) && mentioned.every(formal => {
+		const known = conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal)), Unconstrained);
+		const { plain } = abstractOf(implied, formal);
+		return known.types !== AnyType && plain !== AnyType && (known.types & ~plain) === 0;
+	});
+}
+
+/** What the given conditions, all of which hold on a normal return, claim about each of the given formals; a formal without any claim is left out. */
+export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[]): Record<BrandedIdentifier, FormalClaim> {
+	const claims: Record<BrandedIdentifier, FormalClaim> = {};
+	for(const formal of formals) {
+		const claim = toClaim(conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal)), Unconstrained));
+		if(Object.keys(claim).length > 0) {
+			claims[formal] = claim;
+		}
+	}
+	return claims;
+}

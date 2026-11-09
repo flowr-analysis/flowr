@@ -7,13 +7,30 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefini
 import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
-import type { Identifier } from '../environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReachSummaries } from '../../util/fixpoint';
 import { Monoid } from '../../util/monoid';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
 export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
+
+/** the assignments binding in the frame they run in, which is a scope of the function's own */
+const FrameLocalBinders: ReadonlySet<BrandedIdentifier> = new Set(['<-', '=', '->', ':=', 'assign']);
+
+/** Whether the name is a replacement function binding in its own frame (`names(x) <- v`); the `<<-` twin does not. */
+function isFrameLocalReplacement(name: BrandedIdentifier): boolean {
+	return name.endsWith('<-') && !name.endsWith('<<-');
+}
+
+/** Whether the call binds a name beyond its own frame ({@link CallProp.Scope}): `y <<- 1`, `library(x)`, `assign` to an env do; `y <- 1` does not. */
+export function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnInfo | undefined): boolean {
+	const name = Identifier.getName(vertex.name);
+	if(!FrameLocalBinders.has(name) && !isFrameLocalReplacement(name)) {
+		return true;
+	}
+	return info?.sig !== undefined && Sig.posWith(Sig.layout(info.sig), vertex.args.length, ArgProp.Written).length > 0;
+}
 
 /** What to ask for beyond the definition itself, see {@link reflectiveRolesOf}. */
 export interface FrameReflectionOptions {

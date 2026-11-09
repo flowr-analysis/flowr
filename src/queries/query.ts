@@ -79,6 +79,8 @@ import type {
 import {
 	InspectFnPropsQueryDefinition
 } from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
+import type { InspectFnGuardsQuery } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
+import { InspectFnGuardsQueryDefinition } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
 import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
 import type {
@@ -133,6 +135,7 @@ export type Query = CallContextQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
 	| InspectFnPropsQuery
+	| InspectFnGuardsQuery
 	| AmbientAccessQuery
 	| ResolveValueQuery
 	| ProjectQuery
@@ -218,6 +221,7 @@ export const SupportedQueries = {
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'inspect-fn-props':     InspectFnPropsQueryDefinition,
+	'inspect-fn-guards':    InspectFnGuardsQueryDefinition,
 	'ambient-access':       AmbientAccessQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,

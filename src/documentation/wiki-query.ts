@@ -356,6 +356,42 @@ ${
 	}
 });
 
+registerQueryDocumentation('inspect-fn-guards', {
+	type:             'active',
+	shortDescription: 'Infer what functions ask of the calls they return from',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function(x, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  print(type)\n  sum(x)\n}';
+		return `
+This query works out the *preconditions* of the functions of a program from the guards in their bodies, which ${ctx.link('FunctionSemantics')} answers as well.
+A call returning normally has passed every condition reported for it, so each of them is a *necessary* condition, and a call breaking one fails.
+flowR only states what it can be sure of: whatever it cannot state exactly (a loop body, a variable with several definitions, an unknown function a condition depends on)
+weakens the condition or drops it, it never makes one stronger than what the code asks for.
+
+What counts as a guard:
+
+- \`stop\`, \`rlang::abort\`, and the other functions always failing, reached under any combination of \`if\`, \`&&\`, \`||\`, and \`switch\`, with what an earlier \`return\` skips being taken into account (\`a || is.numeric(x)\` for \`if(a) return(1); if(!is.numeric(x)) stop()\`)
+- \`stopifnot\`, \`assertthat::assert_that\`, \`match.arg\`, \`rlang::arg_match\`, and the \`assert_*\` functions of \`checkmate\`
+- what R itself fails on (the \`implicit\` kind), like \`strsplit\` for anything but a character vector, or \`x + 1\` for a value without a class that is no number
+- what a name has to resolve to: \`do.call(paste0("f_", x), list())\` needs \`exists(paste0("f_", x), mode = "function")\`, and \`UseMethod\` without a default needs a method
+- the conditions of the functions a body calls for sure, in terms of what was handed to them, as well as the single expression of predicates like \`is_count <- function(v) is.numeric(v) && v >= 0\`
+
+Every entry of ${ctx.link('FunctionGuards::clauses')} is a ${ctx.link('GuardClause')} with the condition both as R code and as a ${ctx.link('GuardTerm')} tree, in which \`succeeds(e)\` stands for \`e\` not raising an error.
+A clause is \`pure\` if the failure comes before anything other than computing a value, so a call failing on it leaves nothing behind, and ${ctx.link('FunctionGuards::pure')} is the conjunction of those clauses.
+On top of that ${ctx.link('FunctionGuards::formals')} holds what the conditions together claim about each formal, as a ${ctx.link('FormalClaim')}: its types, the values it can take, its bounds, the classes it inherits from, and so on.
+${ctx.link('FunctionGuards::required')} names the formals a call has to supply, which the \`inspect-fn-props\` query reports as ${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}, next to ${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')} for every formal a condition reads.
+
+Conditions speak about the values at the guard, so a formal that has been overwritten by then is read as what it was overwritten with.
+R 4.3 is assumed, as with older versions a condition of length two does not fail, and S3 methods for \`length\` and \`is.numeric\` are assumed to keep their contract.
+With \`kind\` the query keeps the conditions of one kind, \`onlyPure\` keeps the clean failures, and \`formals\` narrows the answer to the named formals.
+
+Using the example code the following query returns the guards of the function:
+${
+	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-guards' }], { showCode: true, ctx })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('inspect-exception', {
 	type:             'active',
 	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',

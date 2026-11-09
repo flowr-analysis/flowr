@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 11:35:56 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 20:46:01 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -78,6 +78,8 @@ We support the following **active** queries (which we refer to as a `query`):
     Determine what functions and their formals do
 1. [Inspect Exceptions of Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Exceptions-of-Functions) (`inspect-exception`):\
     Determine whether functions throw exceptions (known to flowR)
+1. [Inspect Function Guards Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Function-Guards) (`inspect-fn-guards`):\
+    Infer what functions ask of the calls they return from
 1. [Inspect Higher-Order Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Higher-Order-Functions) (`inspect-higher-order`):\
     Determine whether functions are higher-order functions
 1. [Inspect Recursive Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Recursive-Functions) (`inspect-recursion`):\
@@ -473,7 +475,19 @@ Valid item types:
                 - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Optional', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Console', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'DetachesPackage', 'Declares', 'Frames'
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Optional', 'Required', 'Guarded', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Console', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'DetachesPackage', 'Declares', 'Frames'
+            - _Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'inspect-fn-guards'
+                - **filter** [optional] _If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered._ (array)
+                Valid item types:
+                    - [required] (string)
+                - **kind** [optional] _Keep only the conditions the function checks itself, or only those R checks for it._ (string)
+                    Only allows: 'explicit', 'implicit'
+                - **onlyPure** [optional] _Keep only the conditions failing before any side effect._ (boolean)
+                - **formals** [optional] _Keep only what is said about the formals written as one of these names._ (array)
+                Valid item types:
+                    - (string)
             - _What code reads and writes of the global state (options, environment variables, devices, ...)._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'ambient-access'
@@ -1954,7 +1968,7 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))
 

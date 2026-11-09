@@ -1,0 +1,39 @@
+import type { InspectFnGuardsQuery, InspectFnGuardsQueryResult } from './inspect-fn-guards-query-format';
+import type { BasicQueryData } from '../../base-query-format';
+import { metaSince } from '../../query-meta';
+import { QueryFunctionFilter } from '../../query-function-filter';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
+import { GuardTerm } from '../../../dataflow/fn/guards/guard-term';
+import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
+import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
+
+/** The part of the answer for one function a query asks for, `undefined` if that is nothing. */
+function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuardsQuery): FunctionGuards | undefined {
+	const named: ReadonlySet<BrandedIdentifier> | undefined = formals && new Set(formals);
+	const wanted = (clause: GuardClause) => (kind === undefined || clause.kind === kind) && (!onlyPure || clause.pure)
+		&& (named === undefined || GuardTerm.formalsOf(clause.requires).values().some(f => named.has(f)));
+	const clauses = guards.clauses.filter(wanted);
+	const kept: FunctionGuards = {
+		...FunctionSemantics.guardSummary(clauses),
+		clauses,
+		formals:  named === undefined ? guards.formals : Object.fromEntries(Object.entries(guards.formals).filter(([name]) => named.has(name))),
+		required: guards.required.filter(f => named === undefined || named.has(f))
+	};
+	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 ? kept : undefined;
+}
+
+/** Execute function-guard inspection queries on the given analyzer. */
+export async function executeFnGuardsQuery({ analyzer }: BasicQueryData, queries: readonly InspectFnGuardsQuery[]): Promise<InspectFnGuardsQueryResult> {
+	const start = Date.now();
+	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
+	const [query = { type: 'inspect-fn-guards' }] = queries;
+	const graph = (await analyzer.dataflow()).graph;
+	const guards = FunctionSemantics.guards(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx: analyzer.inspectContext() });
+	return {
+		...metaSince(start),
+		guards: Object.fromEntries(Object.entries(guards).flatMap(([id, of]) => {
+			const kept = keep(of, query);
+			return kept === undefined ? [] : [[id, kept]];
+		}))
+	};
+}

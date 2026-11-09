@@ -96,8 +96,8 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		check('sink() ends the diversion, which finishes the file it wrote', 'a01 <- function() sink()', { a01: ['#sink', '#file:*', '#files'] });
 		check('Sys.umask sets the mask', 'a01 <- function() Sys.umask("022")', { a01: ['#umask'] });
 		check('Sys.umask() only queries', 'a01 <- function() Sys.umask()', { a01: [] });
-		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#file:a', '#files', '#graphics'] });
-		check('a device is closed', 'a01 <- function() dev.off()', { a01: ['#device', '#file:*', '#files', '#graphics'] });
+		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#file:a', '#files', '#graphics', '#plot'] });
+		check('a device is closed', 'a01 <- function() dev.off()', { a01: ['#device', '#file:*', '#files', '#graphics', '#plot'] });
 	});
 
 	describe('the search path', () => {
@@ -166,7 +166,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 }));
 
 describe('Ambient access of code', withTreeSitter(ts => {
-	type Selector = 'file' | 'first' | 'second' | 'block';
+	type Selector = 'file' | 'first' | 'second' | 'last' | 'block';
 	interface Shown { reads: BrandedIdentifier[], writes: BrandedIdentifier[], assumed: BrandedIdentifier[], variables: BrandedIdentifier[], draws: number }
 
 	async function run(code: string, drawing = false) {
@@ -188,7 +188,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		const { info, root } = await run(code, drawing);
 		const [first, second] = root.children;
 		const scope = selector === 'file' ? RNode.collectAllIds(root) : selector === 'first' ? RNode.collectAllIds(first)
-			: selector === 'second' ? RNode.collectAllIds(second) : first.info.id;
+			: selector === 'second' ? RNode.collectAllIds(second) : selector === 'last' ? RNode.collectAllIds(root.children[root.children.length - 1]) : first.info.id;
 		return shown(Dataflow.sideEffects.ambientAccess(info, scope));
 	}
 
@@ -246,15 +246,21 @@ describe('Ambient access of code', withTreeSitter(ts => {
 	});
 
 	describe('drawing', () => {
-		check('plot draws and writes no state by default', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], draws: 1 });
-		check('lines is a draw as well', 'plot(1)\nlines(1:2)', 'file', { reads: ['#graphics', '#palette'], draws: 2 });
-		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], draws: 1 });
-		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas'], draws: 1 }, true);
-		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#canvas'], draws: 1 }, true);
+		/* a plot draws on the active device, which it opens if there is none, and starts a new plot on it */
+		check('plot draws on the device', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#device', '#plot'], draws: 1 });
+		check('lines adds to the plot', 'lines(1:2)', 'file', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
+		check('curve adds only if asked', 'curve(sin)\ncurve(cos, add = TRUE)', 'second', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
+		check('ggplot ignores the graphics parameters', 'library(ggplot2)\nggplot(d)', 'second', { reads: ['#options'], writes: ['#device', '#plot'] });
+		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#device', '#plot'], draws: 1 });
+		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
+		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
+		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options'], writes: ['#device', '#graphics', '#plot'], draws: 1 });
+		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#graphics', '#palette', '#wd'], writes: ['#device', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
+		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#plot'], draws: 1 });
 		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#graphics', '#par:mfrow'], draws: 1 });
 
 		check('a draw through a parameter', 'g <- function(f, ...) f(...)\nh <- function() g(plot, 1)\nh()', 'file', {
-			reads: ['#env', '#graphics', '#options', '#palette', '#rng'], writes: ['#canvas'], assumed: ['#rng'], draws: 1
+			reads: ['#env', '#graphics', '#options', '#palette', '#plot', '#rng'], writes: ['#canvas', '#device', '#plot'], assumed: ['#rng'], draws: 1
 		}, true);
 
 		test(label('a configured graphics built-in draws', [], ['dataflow']), async() => {
@@ -271,7 +277,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		test(label('every function', [], ['dataflow']), async() => {
 			const { graph } = await run('a <- function() plot(1)\nb <- function() a()\nc <- function() 1');
 			const all = [...Dataflow.sideEffects.ambientAccessOfFunctions(graph).values()].map(shown);
-			assert.deepStrictEqual(all.map(a => [a.writes.length, a.draws]).sort(), [[0, 0], [0, 1], [0, 1]]);
+			assert.deepStrictEqual(all.map(a => [a.writes.length, a.draws]).sort(), [[0, 0], [2, 1], [2, 1]]);
 		});
 	});
 

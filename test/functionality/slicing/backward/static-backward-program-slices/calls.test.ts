@@ -195,7 +195,8 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('A numbered device file stands for others', [...caps]), shell, 'png("p%03d.png")\nplot(1)\ndev.off()\nr <- readBin("p001.png", "raw")\nprint(r)', ['5@r'], 'png("p%03d.png")\nplot(1)\ndev.off()\nr <- readBin("p001.png", "raw")\nr');
 		assertSliced(label('Closing a device writes only its file', [...caps]), shell, 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- read.csv("b.csv")\nprint(r)', ['5@r'], 'r <- read.csv("b.csv")\nr');
 		assertSliced(label('A read of the device file keeps the plot', [...caps]), shell, 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- readBin("a.pdf", "raw")\nprint(r)', ['5@r'], 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- readBin("a.pdf", "raw")\nr');
-		assertSliced(label('Closing a device within a function may write any file', [...caps, 'normal-definition']), shell, 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nprint(r)', ['6@r'], 'f <- function() dev.off()\nf()\nr <- readBin("b.png", "raw")\nr');
+		/* the file a close we cannot place writes may be the one of the device, which holds what is drawn on it */
+		assertSliced(label('Closing a device within a function may write any file', [...caps, 'normal-definition']), shell, 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nprint(r)', ['6@r'], 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nr');
 		const ggsave = 'library(ggplot2)\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("a.png")\nr <- read.csv("b.csv")\ns <- readBin("a.png", "raw")';
 		assertSliced(label('ggsave writes only its file', [...caps, 'library-loading']), shell, ggsave, ['4@r'], 'r <- read.csv("b.csv")');
 		assertSliced(label('ggsave saves the last plot', [...caps, 'library-loading']), shell, ggsave, ['5@s'], 'library(ggplot2)\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("a.png")\ns <- readBin("a.png", "raw")');

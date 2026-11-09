@@ -168,6 +168,25 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		graphicsCase('rm(list = ls()) keeps the graphics state', 'par(mfrow=c(1,2))\nrm(list=ls())\nplot(1)', '3@plot', 'par(mfrow=c(1,2))\nplot(1)');
 		graphicsCase('with_par restores what it set', 'par(mar=c(1,1,1,1))\nlibrary(withr)\nwith_par(list(mfrow=c(2,1)), plot(1))\nplot(2)', '4@plot', 'par(mar=c(1,1,1,1))\nplot(2)');
 		graphicsCase('with_par keeps what its code set', 'library(withr)\nwith_par(list(mfrow=c(2,1)), par(mar=c(1,1,1,1)))\nplot(2)', '3@plot', 'library(withr)\nwith_par(list(mfrow=c(2,1)), par(mar=c(1,1,1,1)))\nplot(2)');
+		/* a device holds what is drawn on it between its opening and its close, checked against R */
+		graphicsCase('an addon reads the last plot only', 'plot(1)\nplot(2)\npoints(3)', '3@points', 'plot(2)\npoints(3)');
+		graphicsCase('a plot does not depend on the one before', 'plot(1)\nplot(2)', '2@plot', 'plot(2)');
+		graphicsCase('addons chain', 'plot(1)\nlines(2)\npoints(3)', '3@points', 'plot(1)\nlines(2)\npoints(3)');
+		graphicsCase('add = TRUE adds to the plot', 'plot(1)\ncurve(sin, add=TRUE)', '2@curve', 'plot(1)\ncurve(sin, add=TRUE)');
+		graphicsCase('curve starts a new plot otherwise', 'plot(1)\ncurve(sin)', '2@curve', 'curve(sin)');
+		graphicsCase('a close keeps every page of its device', 'png("p%d.png")\nplot(1)\nplot(2)\ndev.off()', '4@dev.off', 'png("p%d.png")\nplot(1)\nplot(2)\ndev.off()');
+		graphicsCase('a close keeps nothing of another device', 'plot(0)\npng("a.png")\nplot(1)\ndev.off()', '4@dev.off', 'png("a.png")\nplot(1)\ndev.off()');
+		graphicsCase('a close of a device a plot opened', 'x <- 1\nhist(x)\ndev.off()', '3@dev.off', 'x <- 1\nhist(x)\ndev.off()');
+		graphicsCase('an addon after closing a nested device', 'png("a.png")\nplot(1)\npdf("b.pdf")\nplot(2)\ndev.off()\npoints(3)', '6@points', 'png("a.png")\nplot(1)\npoints(3)');
+		graphicsCase('an addon after switching devices', 'png("a.png")\nplot(1)\npng("b.png")\nplot(2)\ndev.set(2)\npoints(3)', '6@points', 'png("a.png")\nplot(1)\npng("b.png")\nplot(2)\ndev.set(2)\npoints(3)');
+		graphicsCase('dev.next switches nothing', 'png("a.png")\nplot(1)\nd <- dev.next()\npoints(2)', '4@points', 'png("a.png")\nplot(1)\npoints(2)');
+		graphicsCase('an addon after a plot in a function', 'f <- function() plot(1)\nf()\npoints(2)', '3@points', 'f <- function() plot(1)\nf()\npoints(2)');
+		graphicsCase('a function plotting is no dependency of a later plot', 'f <- function() {\n\tpar(mfrow=c(1,2))\n\tplot(1)\n}\nf()\nplot(2)', '6@plot', 'f <- function() par(mfrow=c(1,2))\nf()\nplot(2)');
+		graphicsCase('an addon after plots in a loop', 'for(i in 1:3) plot(i)\npoints(0)', '2@points', 'for(i in 1:3) plot(i)\npoints(0)');
+		graphicsCase('an addon after a conditional close', 'png("a.png")\nplot(1)\nif(u) dev.off()\npoints(2)', '4@points', 'png("a.png")\nplot(1)\nif(u) dev.off()\npoints(2)');
+		graphicsCase('an addon after a conditional device', 'plot(0)\nif(u) png("a.png")\npoints(1)', '3@points', 'plot(0)\nif(u) png("a.png")\npoints(1)');
+		graphicsCase('exporting a device keeps what is drawn on it', 'img <- magick::image_graph()\nplot(1)\nlines(2)\nr <- magick::image_write(img, "a.png")', '4@r', 'img <- magick::image_graph()\nplot(1)\nlines(2)\nr <- magick::image_write(img, "a.png")');
+		graphicsCase('ggplot draws on the device', 'library(ggplot2)\npng("a.png")\nggplot(d) + geom_point()\ndev.off()', '4@dev.off', 'library(ggplot2)\npng("a.png")\nggplot(d) + geom_point()\ndev.off()');
 		graphicsCase('ggplot ignores par', 'library(ggplot2)\npar(mfrow=c(1,2))\np <- ggplot(d)', '3@p', 'library(ggplot2)\np <- ggplot(d)');
 	});
 }));

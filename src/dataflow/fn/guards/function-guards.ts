@@ -32,7 +32,7 @@ import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant } from './guard-term';
 import type { GuardFacts, GuardFactsLookup } from '../../environments/guard-facts';
 import { callable, composesName, condition, defaultGuardFacts, Demands, getAsExists, guardFactsIn, logicalOperand, onlyComputesBy, succeeds } from './guard-knowledge';
-import { claimsOf, impliedBy, type ClaimedName, type FormalClaim } from './guard-claims';
+import { claimsOf, impliedBy, relationsOf, type ClaimedName, type ClaimedRelation, type FormalClaim } from './guard-claims';
 
 /** One condition every normal return of a function has passed; if it does not hold, the call fails. */
 export interface GuardClause {
@@ -58,6 +58,8 @@ export interface FunctionGuards {
 	readonly clauses:    readonly GuardClause[]
 	/** per formal, what the conditions say about it */
 	readonly formals:    Readonly<Record<BrandedIdentifier, FormalClaim>>
+	/** what the conditions say of formals relative to each other, like `length(x) >= m` */
+	readonly relations:  readonly ClaimedRelation[]
 	/** per formal, the conditions the function checks itself that read it (from `stopifnot`, `if` and `stop`, ...), in R syntax: what {@link FunctionGuards.formals} has no words for, like `x %% 2 == 0`, is here as well */
 	readonly conditions: Readonly<Record<BrandedIdentifier, readonly string[]>>
 	/** the formals a call has to supply, as it fails otherwise */
@@ -1191,6 +1193,7 @@ export function guardsOfFunctions(this: void, definitions: readonly NodeId[], gr
 			clauses,
 			formals:    withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()], state.facts), state),
 			conditions: conditionsPerFormal(clauses),
+			relations:  relationsOf(clauses.map(c => c.requires)),
 			required,
 			...summarizeClauses(clauses)
 		};

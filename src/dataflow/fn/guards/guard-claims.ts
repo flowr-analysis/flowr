@@ -3,6 +3,7 @@ import { IntervalDomain } from '../../../abstract-interpretation/domains/interva
 import { BoundedSetDomain } from '../../../abstract-interpretation/domains/bounded-set-domain';
 import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
 import { AnyType, RValueType, type GuardFactsLookup, type RValueTypes } from '../../environments/guard-facts';
+import { setEquals } from '../../../util/collections/set';
 import { typeNames } from './guard-knowledge';
 
 /** The inclusive bounds of a number, the upper one `Infinity` if there is none; JSON turns that into `null`, so it is stated as such. */
@@ -365,6 +366,43 @@ function toClaim(this: void, abstract: Abstract): FormalClaim {
 		...(callable ? { callable } : {}),
 		...(resolves.size === 0 ? {} : { resolves: [...resolves.values()] })
 	};
+}
+
+/** A comparison relating what two formals hold, like `length(x) >= m`, which holds on a normal return unless something else let the call through. */
+export interface ClaimedRelation {
+	/** the comparison in R syntax */
+	readonly holds:   string
+	/** the formals it relates */
+	readonly formals: readonly BrandedIdentifier[]
+	/** what lets a call through instead, in R syntax */
+	readonly unless?: string
+}
+
+/** The comparison within `term`, also within the `all` that `stopifnot` spells a vector of them with, `undefined` if it is none. */
+function comparisonOf(this: void, term: GuardTerm): GuardCall | undefined {
+	const inner = GuardTerm.isCall(term, 'all') && term.known && term.args.length === 1 ? term.args[0].value : term;
+	return GuardTerm.isCall(inner) && inner.known && Swapped[inner.fn] !== undefined && inner.args.length === 2 ? inner : undefined;
+}
+
+/** The relations between formals the given conditions state, each one a comparison of two sides that read different formals. */
+export function relationsOf(this: void, conditions: readonly GuardTerm[]): ClaimedRelation[] {
+	return conditions.flatMap(condition => {
+		const alternatives = GuardTerm.disjuncts(condition);
+		const relating = alternatives.filter(alternative => {
+			const sides = comparisonOf(alternative)?.args.map(a => GuardTerm.formalsOf(a.value));
+			return sides !== undefined && sides.every(side => side.size > 0) && !setEquals(sides[0], sides[1]);
+		});
+		if(relating.length !== 1) {
+			return [];
+		}
+		const [relation] = relating;
+		const others = alternatives.filter(alternative => alternative !== relation);
+		return [{
+			holds:   GuardTerm.render(relation),
+			formals: [...GuardTerm.formalsOf(relation)],
+			...(others.length === 0 ? {} : { unless: GuardTerm.render(GuardTerm.any(...others)) })
+		}];
+	});
 }
 
 /** Whether every value passing `conditions` passes `implied` as far as the types can tell; as a wrong guess only loses a clause, not what is left. */

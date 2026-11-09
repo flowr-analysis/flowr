@@ -7,6 +7,7 @@ import { GuardTerm } from '../../../dataflow/fn/guards/guard-term';
 import { conditionsPerFormal } from '../../../dataflow/fn/guards/function-guards';
 import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
 import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
+import { relationsOf } from '../../../dataflow/fn/guards/guard-claims';
 import { builtInGuards, type StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
 
 /** The part of the answer for one function a query asks for, `undefined` if that is nothing. */
@@ -21,6 +22,7 @@ function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuar
 		clauses,
 		conditions: onlyNamed(conditionsPerFormal(clauses)),
 		formals:    onlyNamed(guards.formals),
+		relations:  relationsOf(clauses.map(c => c.requires)),
 		required:   guards.required.filter(f => named === undefined || named.has(f))
 	};
 	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 ? kept : undefined;

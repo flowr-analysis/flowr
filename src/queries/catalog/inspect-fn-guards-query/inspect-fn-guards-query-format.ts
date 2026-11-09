@@ -34,12 +34,15 @@ export interface InspectFnGuardsQueryResult extends BaseQueryResult {
 }
 
 /** Adds what has to be supplied, and what is claimed about each formal. */
-function pushClaims(result: string[], { required = [], formals = {} }: StatedGuards): void {
+function pushClaims(result: string[], { required = [], formals = {}, relations = [] }: StatedGuards): void {
 	if(required.length > 0) {
 		result.push(`    a call has to supply: ${required.join(', ')}`);
 	}
 	for(const [formal, claim] of Object.entries(formals)) {
 		result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
+	}
+	for(const { holds, unless } of relations) {
+		result.push(`    relation: ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
 	}
 }
 

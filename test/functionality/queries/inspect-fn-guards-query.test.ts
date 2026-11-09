@@ -495,6 +495,14 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer or double', 'length = 1', 'value >= 0']);
 	});
 
+	test('a relation between formals', async() => {
+		const guards = await guardsOfF(parser, 'f <- function(x, m) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- seq_len(x); n <- length(x); if(n < m) stop("n < m"); stopifnot(m <= 10, length(x) > m || m == 0); 1 }');
+		assert.deepStrictEqual(guards?.relations, [
+			{ holds: 'length(x) >= m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0' },
+			{ holds: 'length(x) > m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0 || m == 0' }
+		]);
+	});
+
 	test('a configuration teaches what a function checks', async() => {
 		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {

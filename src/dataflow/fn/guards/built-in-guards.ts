@@ -12,7 +12,7 @@ import { RBaseGuards, RBaseGuardsVersion } from '../../../data/r-base-guards.gen
 import { GuardTerm } from './guard-term';
 
 /** What is known about a function without a program to read it from: {@link FunctionGuards} without the clauses, which point at code. */
-export interface StatedGuards extends Pick<FunctionGuards, 'requires'> {
+export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<Pick<FunctionGuards, 'relations'>> {
 	/** see {@link FunctionGuards.required} */
 	readonly required?: readonly BrandedIdentifier[]
 	/** see {@link FunctionGuards.formals} */

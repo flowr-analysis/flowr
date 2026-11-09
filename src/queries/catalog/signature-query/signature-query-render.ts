@@ -98,6 +98,9 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(fn.guards?.requires) {
 		result.push(`      ╰ ${italic('requires', f)} ${fn.guards.requires}`);
 	}
+	for(const { holds, unless } of fn.guards?.relations ?? []) {
+		result.push(`      ╰ ${italic('relation', f)} ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
+	}
 	for(const { requires, kind, fails, via } of fn.guards?.because ?? []) {
 		const where = `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}${via === undefined ? '' : `, reached through ${via.join(', ')}`}`;
 		result.push(`      ╰ ${italic('because', f)}  ${requires}: ${where}`);

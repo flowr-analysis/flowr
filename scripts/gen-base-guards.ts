@@ -53,6 +53,7 @@ async function guardsIn(code: string, names: ReadonlySet<string>, into: Record<s
 				requires: FunctionSemantics.guardSummary(clauses).requires,
 				...(guard.required.length > 0 ? { required: guard.required } : {}),
 				...formals,
+				...(guard.relations.length > 0 ? { relations: guard.relations } : {}),
 				...(clauses.length > 0 ? { because: reasonsOf(clauses, idMap) } : {})
 			};
 		}

@@ -29,3 +29,4 @@ src/data/sigdb/*.br binary -delta
 # generated pages, reviewed via their generators (`npm run wiki`, `scripts/gen-*.ts`) and not by hand
 wiki/**    linguist-generated=true
 index.html linguist-generated=true
+src/data/*.generated.ts linguist-generated=true

@@ -5,6 +5,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { claimWords } from '../../../dataflow/fn/guards/guard-claims';
+import { RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
@@ -88,6 +89,9 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 		.map(([name, words]) => `${name}: ${words.join('+')}`);
 	if(roles.length > 0) {
 		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
+	}
+	if(fn.guards && fn.version !== undefined && fn.version !== RBaseGuardsVersion) {
+		result.push(`      ╰ ${italic(`the guards below are those of R ${RBaseGuardsVersion}`, f)}`);
 	}
 	for(const [formal, claim] of Object.entries(fn.guards?.formals ?? {})) {
 		result.push(`      ╰ ${italic('guard', f)}   ${formal}: ${claimWords(claim).join(', ')}`);

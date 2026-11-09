@@ -256,6 +256,7 @@ function decodedToView(pkg: BrandedNamespace, fn: DecodedFunction, version: stri
 		properties: fn.props,
 		parameters: fn.signature.map(p => compactRecord({ name: p.name, props: p.props, default: p.default })),
 		callees:    fn.callees,
+		...(fn.guards === undefined ? {} : { guards: fn.guards }),
 		...locationFields(pkg, fn, version, opts)
 	};
 }
@@ -909,20 +910,12 @@ function collectShardStatus(sources: readonly PackageSignatureSource[]): ShardSt
 	return [...byId.values()];
 }
 
-/** The view of a function with what a call of it has to fulfill, if flowR knows of that, which is for the current R only rather than a version asked for. */
-async function withGuards(view: SignatureFunctionView, version: string | undefined): Promise<SignatureFunctionView> {
-	if(version !== undefined) {
-		return view;
-	}
-	const guards = FunctionSemantics.builtInGuards(await FunctionSemantics.loadBaseGuards(), view.name, view.package);
-	return guards === undefined ? view : { ...view, guards };
-}
-
 /**
  * Executes the signature query. With no `package` it summarizes the loaded databases. A glob in `package`/`function`
  * or a multi-version `version` triggers a wildcard search (matching packages or functions). Otherwise a single
  * exact package (optionally at an exact `version`) yields its full view, or the detailed function view.
  */
+// eslint-disable-next-line @typescript-eslint/require-await -- executor contract returns a Promise; the work is synchronous
 export async function executeSignatureQuery({ analyzer }: BasicQueryData, queries: readonly SignatureQuery[]): Promise<SignatureQueryResult> {
 	const start = Date.now();
 	const q = queries[queries.length - 1] ?? { type: 'signature' };
@@ -1002,12 +995,13 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, env());
 		if(fn) {
 			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name, q.callGraphMaxNodes ?? DefaultCallGraphMaxNodes) : undefined;
-			return { ...meta(), function: await withGuards(cg ? { ...fn, callGraph: cg } : fn, q.version) };
+			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
 		}
 		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself
 		const own = builtIn(q.package, q.function);
 		if(own) {
-			return { ...meta(), function: await withGuards(own, q.version) };
+			const guards = FunctionSemantics.builtInGuards(own.name, own.package);
+			return { ...meta(), function: guards === undefined ? own : { ...own, guards } };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<BrandedIdentifier>([

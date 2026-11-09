@@ -14,6 +14,8 @@ import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
 import { ansiFormatter } from '../../../src/util/text/ansi';
 import { SignatureQueryDefinition, type SignatureQuery } from '../../../src/queries/catalog/signature-query/signature-query-format';
 import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl, rSourceRef, signatureQueryCompleter } from '../../../src/queries/catalog/signature-query/signature-query-executor';
+import { withGuards } from '../../../src/project/sigdb/guarded-source';
+import { RBaseGuardsVersion } from '../../../src/data/r-base-guards.generated';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -125,6 +127,20 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(signatureFunctionInfo(src, 'ndpkg', 'secret')?.docUrl).toBeUndefined();
 			src.close();
 			fs.rmSync(dir, { recursive: true, force: true });
+		});
+
+		test('a base function carries what a call of it has to fulfill, read off R', async() => {
+			const b = new SigDbBuilder();
+			b.addPackage('utils', { latest: '4.5.0', core: true });
+			b.addVersion('utils', '4.5.0', { cran: false, functions: [fn('combn'), fn('unknownToFlowr')] });
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-guards-'));
+			await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+			const src = withGuards(await SigDatabase.open(path.join(dir, `db${SigDbExt}`)));
+			const combn = src.functionByName('utils', 'combn');
+			expect(combn?.guards?.formals?.m?.bounds).toEqual({ length: [1, 1], value: [0, null] });
+			expect(combn?.guards?.readOff).toBe(RBaseGuardsVersion);
+			expect(src.functions('utils')?.find(f => f.name === 'unknownToFlowr')?.guards).toBeUndefined();
+			expect(signatureFunctionInfo(src, 'utils', 'combn')?.guards?.required).toEqual(combn?.guards?.required);
 		});
 
 		test('an S3 method links back to its generic (same package and base R)', async() => {

@@ -7,7 +7,7 @@ import { GuardTerm } from '../../../dataflow/fn/guards/guard-term';
 import { conditionsPerFormal } from '../../../dataflow/fn/guards/function-guards';
 import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
 import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
-import { builtInGuards, loadBaseGuards, type StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
+import { builtInGuards, type StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
 
 /** The part of the answer for one function a query asks for, `undefined` if that is nothing. */
 function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuardsQuery): FunctionGuards | undefined {
@@ -27,11 +27,10 @@ function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuar
 }
 
 /** What R's functions of the given names ask for, the ones flowR knows nothing of left out. */
-async function statedFor(names: readonly string[]): Promise<Record<string, StatedGuards>> {
-	const table = await loadBaseGuards();
+function statedFor(names: readonly string[]): Record<string, StatedGuards> {
 	return Object.fromEntries(names.flatMap(name => {
 		const id = Identifier.parse(name);
-		const stated = builtInGuards(table, Identifier.getName(id), Identifier.getNamespace(id));
+		const stated = builtInGuards(Identifier.getName(id), Identifier.getNamespace(id));
 		return stated === undefined ? [] : [[name, stated]];
 	}));
 }
@@ -45,7 +44,7 @@ export async function executeFnGuardsQuery({ analyzer }: BasicQueryData, queries
 	const guards = FunctionSemantics.guards(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx: analyzer.inspectContext() });
 	return {
 		...metaSince(start),
-		...(query.builtIns === undefined ? {} : { builtIns: await statedFor(query.builtIns) }),
+		...(query.builtIns === undefined ? {} : { builtIns: statedFor(query.builtIns) }),
 		guards: Object.fromEntries(Object.entries(guards).flatMap(([id, of]) => {
 			const kept = keep(of, query);
 			return kept === undefined ? [] : [[id, kept]];

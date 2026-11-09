@@ -13,6 +13,8 @@ import {
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
 import { compactRecord } from '../../util/objects';
+import type { StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
+import type { withGuards } from './guarded-source';
 import { RPrimitives } from '../../data/r-primitives.generated';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
@@ -84,6 +86,8 @@ export interface DecodedFunction {
 	readonly topic?:      string;
 	/** the package this name is re-exported from, see {@link SigFunctionInfo.reexportOf} */
 	readonly reexportOf?: string;
+	/** what a call has to fulfill to return normally, as far as a source knows, see {@link withGuards} */
+	readonly guards?:     StatedGuards;
 }
 
 /**

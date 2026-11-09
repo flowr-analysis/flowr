@@ -5,7 +5,7 @@ import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
 import { guardsOfFunctions, summarizeClauses } from './guards/function-guards';
-import { builtInGuards, loadBaseGuards } from './guards/built-in-guards';
+import { builtInGuards } from './guards/built-in-guards';
 import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOfImpl, toSigClassesImpl } from './class-declaration';
 import { DfgVertex } from '../graph/vertex';
 import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
@@ -15,6 +15,7 @@ import { Quoted } from '../internal/process/functions/call/quoted';
 import { Deferred } from '../internal/process/functions/call/deferred';
 import { UnsupportedFunctions } from '../../abstract-interpretation/unsupported-functions';
 import type { DataflowGraphVertexInfo } from '../graph/vertex';
+import type { DecodedFunction } from '../../project/sigdb/decode';
 
 /**
  * The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class.
@@ -44,10 +45,8 @@ export const FunctionSemantics = {
 	guards:          guardsOfFunctions,
 	/** The conditions of some clauses of a definition in R syntax. */
 	guardSummary:    summarizeClauses,
-	/** What a function of the base packages asks for, from the table {@link FunctionSemantics.loadBaseGuards} loads. */
+	/** What a function of the base packages asks for, what the signature database answers as {@link DecodedFunction.guards} as well. */
 	builtInGuards,
-	/** Loads what the closures of the base packages ask for. */
-	loadBaseGuards,
 	/** The reflective argument bits of one definition. */
 	frameReflection: reflectiveRolesOf,
 	/** What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of them it does not simply evaluate. */

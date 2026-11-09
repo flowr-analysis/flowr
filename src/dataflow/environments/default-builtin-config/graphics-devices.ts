@@ -6,7 +6,7 @@ import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { ArgProp, CallProp, SemanticCallTag, type SemanticCallTags } from '../built-in-props';
 import { ClassSystem, AmbientStateAccessType } from '../built-in-kinds';
 import { DeprecationState } from '../deprecation-info';
-import { ReadsLastPlot, PlotAddonConfig, OpenDevice, ReadDevices, PlotCreateConfig } from './shared-configs';
+import { ReadsLastPlot, ReadDevice, ReadsPlot, NewGridPlot, AddsToGridPlot, PlotAddonConfig, OpenDevice, ReadDevices, PlotCreateConfig } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import { FunctionDispatch } from '../../graph/vertex';
 
@@ -52,6 +52,17 @@ export const GraphicsDefinitions = [
 	fn(pkg(PkgName.GrDevices, 'graphics.off'), BuiltInProcName.Default,
 		{ props: CallProp.Configures | CallProp.Invisible, libFn: true, ambient: { type: AmbientStateAccessType.CloseDevice, all: true }, tags: [SemanticCallTag.Graphics, SemanticCallTag.Closes, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': ArgProp.Forced }) },
 		Primitive),
+	/* `dev.copy` opens a device holding what the active one holds, the others put that on disk and leave the devices as they are */
+	fn(pkg(PkgName.GrDevices, 'dev.copy'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Configures | CallProp.Invisible, ambient: [ReadDevice, OpenDevice], tags: [SemanticCallTag.Graphics] }, Primitive),
+	fn(pkg(PkgName.GrDevices, 'dev.print', 'dev.copy2pdf', 'dev.copy2eps', 'savePlot'), BuiltInProcName.DefaultReadAllArgs,
+		{ props: CallProp.Invisible, ambient: [ReadDevice, { type: AmbientStateAccessType.WriteFiles }], tags: [SemanticCallTag.Graphics] }, Primitive),
+	/* they measure in the coordinates of the plot */
+	fn(pkg(PkgName.Graphics, 'strwidth', 'strheight', 'grconvertX', 'grconvertY', 'xinch', 'yinch', 'xyinch'), BuiltInProcName.DefaultReadAllArgs, { ambient: ReadsPlot, tags: [SemanticCallTag.Graphics] }, Primitive),
+	/* grid draws on the device, a new page starts a new plot */
+	fn(pkg(PkgName.Grid, 'grid.newpage'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Invisible, ambient: NewGridPlot, tags: [SemanticCallTag.Graphics] }, Primitive),
+	fn(pkg(PkgName.Grid, 'grid.rect', 'grid.lines', 'grid.points', 'grid.text', 'grid.polygon', 'grid.circle', 'grid.segments', 'grid.draw', 'grid.raster',
+		'grid.polyline', 'grid.path', 'grid.xaxis', 'grid.yaxis', 'grid.grill', 'grid.abline', 'grid.curve', 'grid.arrows', 'grid.roundrect', 'pushViewport', 'popViewport',
+		'upViewport', 'downViewport'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Invisible, ambient: AddsToGridPlot, tags: [SemanticCallTag.Graphics] }, Primitive),
 	/* `dev.next` and `dev.prev` only name another device, they switch to none */
 	fn(pkg(PkgName.GrDevices, 'dev.cur', 'dev.list', 'dev.size', 'dev.capabilities', 'dev.next', 'dev.prev'), BuiltInProcName.Default,
 		{ props: CallProp.Ambient, libFn: true, ambient: ReadDevices, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }),

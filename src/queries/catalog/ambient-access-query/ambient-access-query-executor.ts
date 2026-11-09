@@ -9,7 +9,7 @@ import { QueryFunctionFilter } from '../../query-function-filter';
 import { log } from '../../../util/log';
 
 function summary(a: AmbientAccess): AmbientAccessSummary {
-	return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: [...a.draws] };
+	return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), kills: [...a.kills.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: [...a.draws] };
 }
 
 /**

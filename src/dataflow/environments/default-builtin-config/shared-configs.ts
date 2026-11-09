@@ -243,7 +243,7 @@ export const GgPlotImplicitAddons = ['geom_count', 'geom_bin_2d', 'geom_spoke', 
 	'scale_fill_gdocs', 'scale_color_hc', 'scale_color_gdocs', 'scale_color_canva', 'scale_color_gradient_tableau', 'scale_fill_solarized',
 	'scale_fill_continuous_tableau', 'scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'] as const;
 export const PlotFunctionsWithAddParam: Set<BrandedIdentifier> = new Set(['map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot']);
-export const GraphicsPlotAddons: BrandedIdentifier[] = ['points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
+export const GraphicsPlotAddons: BrandedIdentifier[] = ['plot.window', 'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage', 'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines'];
 export const GgPlotAddons = ['ggdraw', 'last_plot'];
 
@@ -420,17 +420,19 @@ export const NewGridPlot = { ...NewPlot, parameters: false } as const;
 export const BuildsPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.Build, parameters: false } as const;
 /** what `last_plot()` and `ggsave` read */
 export const ReadsLastPlot = { type: AmbientStateAccessType.ReadState, state: AmbientStateName.lastPlot } as const;
-/** what building a ggplot does: it becomes what `last_plot()` returns */
-const BuildsGgPlot = [BuildsPlot, { type: AmbientStateAccessType.SetState, state: AmbientStateName.lastPlot }] as const;
-/* adding to a ggplot (`p + geom_point()`) builds on the plot it is added to */
-const AddsToGgPlot = [...BuildsGgPlot, ReadsLastPlot] as const;
+/** what building or adding to a ggplot does: the plot (the `+` the call is part of) becomes what `last_plot()` returns */
+const BuildsGgPlot = [BuildsPlot, { type: AmbientStateAccessType.SetState, state: AmbientStateName.lastPlot, atPlotValue: true }] as const;
+/** a grid call drawing on the device without starting a new page */
+export const AddsToGridPlot = { ...AddsToPlot, parameters: false } as const;
+/** what queries the coordinates of the plot (`strwidth`): it reads the plot and opens a device if none is open */
+export const ReadsPlot = AddsToPlot;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
 	treatAsFnCall: {
 		'facet_grid': ['labeller']
 	},
-	ambient: AddsToGgPlot,
+	ambient: BuildsGgPlot,
 	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
 	sig:     sig({ '...': ArgProp.Forced })
 } as const;
@@ -455,7 +457,7 @@ export const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['packa
 export const LoaderSearchPath = (quoted: boolean) => ({ type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'unnamed', quoted } }) as const;
 /* which entry a detach removes depends on every earlier attach, so it reads the search path as well */
 export const DetachSearchPath = [
-	SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }),
+	{ ...SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }), removes: true },
 	{ type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.SearchPath) }
 ] as const;
 export const ImportSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['.from', '...', '.into', '.library', '.directory', '.all', '.except', '.chdir', '.character_only', '.S3'], '.into', { fallback: 'imports' });

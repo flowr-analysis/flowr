@@ -7,6 +7,8 @@ export const PrintingOptions: readonly string[] = ['digits', 'width', 'max.print
 export enum AmbientSingleState {
 	Graphics = 'graphics',
 	Device = 'device',
+	/** the console output, which `capture.output` diverts for its code */
+	Sink = 'sink',
 	Rng = 'rng',
 	WorkingDirectory = 'wd'
 }
@@ -25,7 +27,7 @@ export const enum AmbientStateAccessType {
 	SetPalette   = 'set-palette',
 	/** reads the graphics state and the palette, like every plot does, and draws on the active device as {@link PlotDraw} says */
 	ReadGraphics = 'read-graphics',
-	/** opens a device, which starts with a fresh graphics state */
+	/** opens a device, which starts with a fresh graphics state, or an instance of another family (see {@link AmbientStateAccess#family}) */
 	OpenDevice   = 'open-device',
 	/** closes a device (or all of them), returning to the state of another open device */
 	CloseDevice  = 'close-device',

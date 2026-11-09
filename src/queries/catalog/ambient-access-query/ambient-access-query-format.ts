@@ -36,6 +36,7 @@ export interface AmbientAccessSummary {
 	readonly reads:     readonly AmbientStateName[]
 	readonly writes:    readonly AmbientStateName[]
 	readonly assumed:   readonly AmbientStateName[]
+	readonly kills:     readonly AmbientStateName[]
 	readonly variables: readonly BrandedIdentifier[]
 	readonly draws:     readonly NodeId[]
 }
@@ -62,7 +63,7 @@ export const AmbientAccessQueryDefinition = {
 		result.push(queryHeader('ambient-access', formatter, out['.meta'].timing));
 		const entries = [...Object.entries(out.results), ...Object.entries(out.functions ?? {}).map(([id, a]) => [`function ${id}`, a] as const)];
 		for(const [key, a] of entries) {
-			const line = listed('reads', a.reads) + listed('writes', a.writes) + listed('assumed', a.assumed) + listed('binds', a.variables) + listed('draws', a.draws);
+			const line = listed('reads', a.reads) + listed('writes', a.writes) + listed('assumed', a.assumed) + listed('kills', a.kills) + listed('binds', a.variables) + listed('draws', a.draws);
 			result.push(`   ╰ ${bold(key, formatter)}:${line === '' ? ' nothing' : line}`);
 		}
 		return true;

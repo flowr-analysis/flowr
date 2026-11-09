@@ -36,7 +36,7 @@ import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientAccess } from '../../../../../graph/ambient-access';
-import { type AmbientFamily, AmbientStateName, GraphicsDevices, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
+import { type AmbientFamily, AmbientStateName, GraphicsDevices, OutputSinks, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 import { type AmbientKeys, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
 import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -53,10 +53,9 @@ function activeStates(family: AmbientFamily): AmbientStateName[] {
 }
 
 const DeviceStates = GraphicsDevices.states.flat();
-const ActiveDeviceStates = activeStates(GraphicsDevices);
 
 const Accumulating: ReadonlySet<AmbientStateName> = new Set([
-	...DeviceStates, AmbientStateName.canvas, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption,
+	...DeviceStates, ...OutputSinks.states.flat(), AmbientStateName.canvas, AmbientStateName.palette, AmbientStateName.allOptions, AmbientStateName.unknownOption,
 	AmbientStateName.warnsAsErrors, AmbientStateName.files, AmbientStateName.rngKind, AmbientStateName.finalizers, ...KeyedAccumulators
 ]);
 
@@ -65,7 +64,9 @@ enum DeviceAccess {
 	Open = 'open',
 	Close = 'close',
 	CloseAll = 'close-all',
-	/** closes one that is not known to be the active one, or makes another one active */
+	/** closes one that is not known to be the active one, which writes what any of them holds */
+	CloseSome = 'close-some',
+	/** makes another one active */
 	Switch = 'switch'
 }
 
@@ -142,15 +143,15 @@ export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId
 }
 
 /** Adds the reads and writes of the ambient state to what a call does, see {@link AmbientStateName}. */
-function withAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, reads: readonly AmbientStateName[], writes: readonly (AmbientStateName | AmbientWrite)[] = []): DataflowInformation {
-	if(reads.length === 0 && writes.length === 0) {
+function withAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, reads: readonly AmbientStateName[], writes: readonly (AmbientStateName | AmbientWrite)[] = [], kills: readonly AmbientStateName[] = []): DataflowInformation {
+	if(reads.length === 0 && writes.length === 0 && kills.length === 0) {
 		return res;
 	}
 	const cds = data.cds ? [...data.cds] : undefined;
 	const maybeWritten = writes.flatMap(w => typeof w === 'object' && w.mode === AmbientWriteMode.Maybe ? [w.name] : []);
 	const read = uniqueArrayMerge(reads, maybeWritten);
 	const readRefs: IdentifierReference[] = read.map(name => ({ nodeId: rootId, name, type: ReferenceType.Variable, cds }));
-	recordAmbient(res.graph, rootId, res.environment, read, writes);
+	recordAmbient(res.graph, rootId, res.environment, read, writes, kills);
 	/* the writes stay out of `out`: an assignment reads whatever else its source writes (`x <- y <- 3`) */
 	return {
 		...res,
@@ -164,9 +165,9 @@ function writesLocally(environment: REnvironmentInformation, name: AmbientStateN
 	return mode === AmbientWriteMode.Local || (environment.level > 0 && environment.current.memory.has(name));
 }
 
-/** Notes in `graph` what the call `rootId` reads and writes, see {@link DataflowGraph#recordAmbientAccess}; `environment` is the one the writes apply to. */
-function recordAmbient(graph: DataflowGraph, rootId: NodeId, environment: REnvironmentInformation, reads: readonly AmbientStateName[], writes: readonly (AmbientStateName | AmbientWrite)[]): void {
-	if(reads.length === 0 && writes.length === 0) {
+/** Notes in `graph` what the call `rootId` reads, writes, and ends (`kills`), see {@link DataflowGraph#recordAmbientAccess}; `environment` is the one the writes apply to. */
+function recordAmbient(graph: DataflowGraph, rootId: NodeId, environment: REnvironmentInformation, reads: readonly AmbientStateName[], writes: readonly (AmbientStateName | AmbientWrite)[], kills: readonly AmbientStateName[] = []): void {
+	if(reads.length === 0 && writes.length === 0 && kills.length === 0) {
 		return;
 	}
 	const global: AmbientStateName[] = [];
@@ -176,7 +177,7 @@ function recordAmbient(graph: DataflowGraph, rootId: NodeId, environment: REnvir
 		const { name, mode, assumed: isAssumed } = typeof write === 'string' ? { name: write, mode: undefined, assumed: undefined } : write;
 		(writesLocally(environment, name, mode) ? local : isAssumed ? assumed : global).push(name);
 	}
-	graph.recordAmbientAccess(rootId, { reads, writes: global, assumed, local });
+	graph.recordAmbientAccess(rootId, { reads, writes: global, assumed, local, kills });
 }
 
 /** Whether the code itself binds a variable of the same name, by quoting it in backticks, which a write of the state must not replace, as they only share the name. */
@@ -342,7 +343,7 @@ function keyedReads(state: KeyedState, keys: readonly BrandedIdentifier[]): Ambi
 /** An {@link AmbientStateAccessType} together with what refines it for some of the types. */
 export type AmbientStateAccess = {
 	readonly type: AmbientStateAccessType.SetOptions | AmbientStateAccessType.GetOption
-		| AmbientStateAccessType.SetPalette | AmbientStateAccessType.OpenDevice | AmbientStateAccessType.SwitchDevice
+		| AmbientStateAccessType.SetPalette
 		| AmbientStateAccessType.DrawRng | AmbientStateAccessType.SetWorkingDirectory | AmbientStateAccessType.GetWorkingDirectory | AmbientStateAccessType.OpenTextConnection | AmbientStateAccessType.RegisterFinalizer | AmbientStateAccessType.RunFinalizers
 } | {
 	readonly type:      AmbientStateAccessType.ReadFiles | AmbientStateAccessType.WriteFiles
@@ -366,13 +367,22 @@ export type AmbientStateAccess = {
 	/** grid graphics (`ggplot`) ignore the base graphics parameters and the palette */
 	readonly parameters?: false
 } | {
-	readonly type: AmbientStateAccessType.CloseDevice
-	/** `graphics.off()` closes every device */
-	readonly all?: boolean
+	readonly type:                    AmbientStateAccessType.OpenDevice | AmbientStateAccessType.SwitchDevice
+	/** the family the call opens an instance of, the graphics devices unless given */
+	readonly family?:                 AmbientFamily
+	/** `sink()` without arguments closes the last instance instead */
+	readonly closesWithoutArguments?: true
 } | {
-	readonly type:  AmbientStateAccessType.SetKeyed
-	readonly state: KeyedState
-	readonly keys:  AmbientKeys
+	readonly type:    AmbientStateAccessType.CloseDevice
+	readonly family?: AmbientFamily
+	/** `graphics.off()` closes every device */
+	readonly all?:    boolean
+} | {
+	readonly type:     AmbientStateAccessType.SetKeyed
+	readonly state:    KeyedState
+	readonly keys:     AmbientKeys
+	/** the call removes the entries, like `Sys.unsetenv` and `detach` */
+	readonly removes?: true
 } | {
 	readonly type:  AmbientStateAccessType.ReadState
 	readonly state: AmbientStateName
@@ -387,6 +397,8 @@ export type AmbientStateAccess = {
 	readonly state:                  AmbientStateName
 	/** `Sys.umask()` only queries the state */
 	readonly queryWithoutArguments?: boolean
+	/** the call is part of a plot object (`p + geom_point()`), which is what it sets */
+	readonly atPlotValue?:           true
 } | {
 	readonly type:                   AmbientStateAccessType.SetGraphics
 	/** `par()` and `par("mar")` only query the state */
@@ -411,6 +423,7 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 	}
 	const reads: AmbientStateName[] = [];
 	const writes: (AmbientStateName | AmbientWrite)[] = [];
+	const kills: AmbientStateName[] = [];
 	switch(access.type) {
 		case AmbientStateAccessType.ReadGraphics:
 			if(access.plot === PlotDraw.Build) {
@@ -471,13 +484,23 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 			if(access.state === KeyedState.Env && keys.some(k => k === UnknownKey || GlobalEffectEnv.test(k))) {
 				res.graph.markIdForUnknownSideEffects(rootId);
 			}
-			writes.push(...keyedWrites(access.state, keys));
+			const written = keyedWrites(access.state, keys);
+			writes.push(...written);
+			if(access.removes) {
+				kills.push(...written.filter(n => n !== AmbientStateName.allOf(access.state)));
+			}
 			break;
 		}
 		case AmbientStateAccessType.ReadKeyed:
 			reads.push(...keyedReads(access.state, keysOf(access.keys, args, data)));
 			break;
 		case AmbientStateAccessType.SetState:
+			if(access.atPlotValue) {
+				/* the plot object is what the outermost `+` the call is part of builds */
+				const at = outermostPlus(rootId, data.completeAst.idMap);
+				recordAmbient(res.graph, rootId, res.environment, [], [access.state]);
+				return { ...res, environment: defineAmbient(res.environment, at, data.cds ? [...data.cds] : undefined, [access.state]) };
+			}
 			if(!onlyQueries(access, args)) {
 				writes.push(access.state);
 			}
@@ -486,12 +509,12 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 			reads.push(access.state);
 			break;
 		case AmbientStateAccessType.OpenDevice:
-			return deviceAccess(res, rootId, data, DeviceAccess.Open);
+			return deviceAccess(res, rootId, data, access.closesWithoutArguments && args.length === 0 ? DeviceAccess.Close : DeviceAccess.Open, access.family);
 		case AmbientStateAccessType.CloseDevice:
 			/* `dev.off(which)` may close a device other than the active one, which keeps its state then */
-			return deviceAccess(res, rootId, data, access.all ? DeviceAccess.CloseAll : args.length > 0 ? DeviceAccess.Switch : DeviceAccess.Close);
+			return deviceAccess(res, rootId, data, access.all ? DeviceAccess.CloseAll : args.length > 0 ? DeviceAccess.CloseSome : DeviceAccess.Close, access.family);
 		case AmbientStateAccessType.SwitchDevice:
-			return deviceAccess(res, rootId, data, DeviceAccess.Switch);
+			return deviceAccess(res, rootId, data, DeviceAccess.Switch, access.family);
 		case AmbientStateAccessType.SetRng: {
 			const kindFrom = access.kindFrom ?? 1;
 			reads.push(AmbientStateName.rngKind);
@@ -550,7 +573,7 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 			return withAccess(res, rootId, data, [AmbientStateName.finalizers], registered.flatMap(d => d.writes ?? []).map(maybe));
 		}
 	}
-	return withAccess(res, rootId, data, reads, uniqueArray(writes));
+	return withAccess(res, rootId, data, reads, uniqueArray(writes), kills);
 }
 
 /** drawing a new plot adds to the device, which opens one if none is open, and replaces its plot */
@@ -581,6 +604,15 @@ function mayHoldPlot<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | und
 		const source = data.completeAst.idMap.get(d.definedAt);
 		return RBinaryOp.is(source) && mayHoldPlot(source.lhs.info.id === d.nodeId ? source.rhs : source.lhs, data, seen);
 	});
+}
+
+/** the outermost `+` chain holding `id`, `id` itself if it is part of none */
+function outermostPlus(id: NodeId, idMap: AstIdMap): NodeId {
+	let at = idMap.get(id);
+	for(let parent = at === undefined ? undefined : RNode.directParent(at, idMap); RBinaryOp.is(parent) && parent.operator === '+'; parent = RNode.directParent(parent, idMap)) {
+		at = parent;
+	}
+	return at?.info.id ?? id;
 }
 
 /** whether the argument `add` is the literal `TRUE`, as in `curve(f, add = TRUE)` */
@@ -722,7 +754,7 @@ type UnknownArguments = typeof UnknownArguments;
 function applyWithUnknownArguments<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, access: AmbientStateAccess): DataflowInformation {
 	switch(access.type) {
 		case AmbientStateAccessType.CloseDevice:
-			return deviceAccess(res, rootId, data, access.all ? DeviceAccess.CloseAll : DeviceAccess.Switch);
+			return deviceAccess(res, rootId, data, access.all ? DeviceAccess.CloseAll : DeviceAccess.CloseSome, access.family);
 		/* the arguments handed on (`do.call(readLines, list("a.txt"))`, `lapply(files, readLines)`) may still name the files */
 		case AmbientStateAccessType.OpenDevice:
 		case AmbientStateAccessType.SwitchDevice:
@@ -737,20 +769,16 @@ function applyWithUnknownArguments<OtherInfo>(res: DataflowInformation, rootId: 
 	return withAccess(res, rootId, data, reads, writes);
 }
 
-const Devices = { reads: [], writes: ActiveDeviceStates };
 /* evaluated code may attach a package as well, which every call nothing else resolves reads */
 const Quoted = { reads: [AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.graphics, AmbientStateName.palette, AmbientStateName.allOf(KeyedState.SearchPath)] };
 
 /** What a call of the given kind may read and write when its arguments are unknown, as when only linking reveals it. */
-const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientStateAccessType.ReadKeyed | AmbientStateAccessType.ReadOptions | AmbientStateAccessType.SetKeyed | AmbientStateAccessType.SetState | AmbientStateAccessType.ReadState>, { readonly reads: readonly AmbientStateName[], readonly writes: readonly AmbientStateName[] }> = {
+const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientStateAccessType.OpenDevice | AmbientStateAccessType.CloseDevice | AmbientStateAccessType.SwitchDevice | AmbientStateAccessType.ReadKeyed | AmbientStateAccessType.ReadOptions | AmbientStateAccessType.SetKeyed | AmbientStateAccessType.SetState | AmbientStateAccessType.ReadState>, { readonly reads: readonly AmbientStateName[], readonly writes: readonly AmbientStateName[] }> = {
 	[AmbientStateAccessType.SetOptions]:          { reads: [AmbientStateName.allOptions], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.warnsAsErrors] },
 	[AmbientStateAccessType.GetOption]:           { reads: [AmbientStateName.allOptions], writes: [] },
 	[AmbientStateAccessType.SetGraphics]:         { reads: [AmbientStateName.graphics], writes: [AmbientStateName.graphics, AmbientStateName.device] },
 	[AmbientStateAccessType.ReadGraphics]:        { reads: [AmbientStateName.graphics, AmbientStateName.palette], writes: [] },
 	[AmbientStateAccessType.SetPalette]:          { reads: [AmbientStateName.palette], writes: [AmbientStateName.palette] },
-	[AmbientStateAccessType.OpenDevice]:          Devices,
-	[AmbientStateAccessType.CloseDevice]:         Devices,
-	[AmbientStateAccessType.SwitchDevice]:        Devices,
 	[AmbientStateAccessType.SetRng]:              { reads: [AmbientStateName.rngKind], writes: [AmbientStateName.rng, AmbientStateName.rngKind] },
 	[AmbientStateAccessType.DrawRng]:             { reads: [AmbientStateName.rng], writes: [AmbientStateName.rng] },
 	[AmbientStateAccessType.ReadFiles]:           { reads: [AmbientStateName.workingDirectory, AmbientStateName.files], writes: [] },
@@ -774,6 +802,10 @@ function unknownArgumentAccess(access: AmbientStateAccess, drawing: boolean): { 
 			return { reads: [], writes: [access.state] };
 		case AmbientStateAccessType.ReadState:
 			return { reads: [access.state], writes: [] };
+		case AmbientStateAccessType.OpenDevice:
+		case AmbientStateAccessType.CloseDevice:
+		case AmbientStateAccessType.SwitchDevice:
+			return { reads: [], writes: activeStates(access.family ?? GraphicsDevices) };
 		case AmbientStateAccessType.ReadGraphics: {
 			/* we cannot tell whether it adds to the plot, so it may do either */
 			const plot = access.plot === undefined ? [] : [AmbientStateName.plot];
@@ -794,7 +826,10 @@ function unknownArgumentAccess(access: AmbientStateAccess, drawing: boolean): { 
 function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, kind: DeviceAccess, family: AmbientFamily = GraphicsDevices): DataflowInformation {
 	const otherOf = (state: AmbientStateName) => family.states.find(([active]) => active === state)?.[1] ?? state;
 	const actives = activeStates(family);
-	const reads = kind === DeviceAccess.Switch ? [family.switched] : kind === DeviceAccess.Close ? [family.used] : kind === DeviceAccess.CloseAll ? [family.used, otherOf(family.used)] : [];
+	/* `x <- dev.off()` is the device that is active afterward, one of the others */
+	const closing = kind === DeviceAccess.Close ? [family.used, ...resultIsUsed(rootId, data) ? [otherOf(family.used)] : []] : [];
+	const all = [family.used, otherOf(family.used)];
+	const reads = kind === DeviceAccess.Switch ? [family.switched] : kind === DeviceAccess.CloseSome ? [family.switched, ...all] : kind === DeviceAccess.CloseAll ? all : closing;
 	/* closing writes the file of the device, which its opening names unless we do not know the device closed */
 	const unnamedFile = kind === DeviceAccess.Open ? [] : [AmbientStateName.anyFile, AmbientStateName.files];
 	const cds = data.cds ? [...data.cds] : undefined;
@@ -808,6 +843,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 		if(kind === DeviceAccess.Open) {
 			environment = defineAmbient(environment, rootId, cds, [{ name: family.openedHere, mode: AmbientWriteMode.Local }]);
 		}
+		recordAmbient(res.graph, rootId, environment, [], [], kind === DeviceAccess.Close || kind === DeviceAccess.CloseAll ? actives : []);
 		return withAccess({ ...res, environment }, rootId, data, reads, [...actives, ...here.length > 0 ? [] : unnamedFile]);
 	}
 	const lookup = (name: AmbientStateName) => Resolve.byName(name, res.environment) ?? [];
@@ -820,7 +856,7 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 	const repeats = RLoopConstructs.encloses(rootId, data.completeAst.idMap);
 	const earlierRound: IdentifierDefinition[] = repeats ? [{ nodeId: rootId, name: family.used, type: ReferenceType.Variable, definedAt: rootId, cds: cds ?? [] }] : [];
 	let environment = res.environment;
-	if(kind === DeviceAccess.Switch) {
+	if(kind === DeviceAccess.Switch || kind === DeviceAccess.CloseSome) {
 		environment = defineAmbient(environment, rootId, cds, actives);
 	}
 	for(const [active, others] of family.states) {
@@ -838,11 +874,14 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 				environment = setAmbient(setAmbient(environment, active, []), others, []);
 				break;
 			case DeviceAccess.Switch:
+			case DeviceAccess.CloseSome:
 				environment = setAmbient(setAmbient(environment, active, other, true), others, current, true);
 				break;
 		}
 	}
-	recordAmbient(res.graph, rootId, res.environment, [], kind === DeviceAccess.CloseAll ? family.states.flat() : actives);
+	/* a close ends the state of the device it closes, all of them for every device */
+	const kills = kind === DeviceAccess.Close ? actives : kind === DeviceAccess.CloseAll ? family.states.flat() : [];
+	recordAmbient(res.graph, rootId, res.environment, [], kind === DeviceAccess.CloseAll ? family.states.flat() : actives, kills);
 	return withAccess({ ...res, environment }, rootId, data, reads, kind === DeviceAccess.Open || closed.length > 0 ? [] : unnamedFile);
 }
 
@@ -1016,24 +1055,28 @@ export interface AmbientScope {
 export function processAmbientScope<OtherInfo>(name: RSymbol<OtherInfo & ParentInformation>, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, scope: AmbientScope): DataflowInformation {
 	const bound = MatchArgs.toNames(args, scope.params);
 	const code = scope.code === undefined ? undefined : bound.get(scope.code);
-	const codeIndex = code === undefined ? -1 : args.findIndex(a => a !== EmptyArgument && a.info.id === code.info.id);
+	/* the code may be several arguments, all that fall to `...` (`capture.output(print(1), print(2))`) */
+	const formals = new Set([...bound.entries()].filter(([param]) => param !== '...').map(([, arg]) => arg.info.id));
+	const isCode = (arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined) => arg !== undefined && arg !== EmptyArgument
+		&& (scope.code === '...' ? !formals.has(arg.info.id) : arg.info.id === code?.info.id);
+	const family = scopedFamily(scope.state);
 	const local = code === undefined && data.environment.level > 0;
 	const { writes, unknown } = scope.preserve ? { writes: local ? [{ name: singleStateOf(AmbientSingleState.Rng), mode: AmbientWriteMode.Local }] : [], unknown: false } : scopedWrites(scope, args, bound, local);
 	const cds = data.cds ? [...data.cds] : undefined;
 	const apply = (environment: REnvironmentInformation): REnvironmentInformation =>
-		scope.state === AmbientSingleState.Device ? deviceAccess({ ...DataflowInformation.initialize(rootId, data), environment }, rootId, data, local ? DeviceAccess.Switch : DeviceAccess.Open).environment
+		family !== undefined ? deviceAccess({ ...DataflowInformation.initialize(rootId, data), environment }, rootId, data, local ? DeviceAccess.Switch : DeviceAccess.Open, family).environment
 			: defineAmbient(environment, rootId, cds, writes);
 
 	const { information } = processKnownFunctionCall({
 		name, args, rootId, data, origin:    BuiltInProcName.Default,
-		patchData: (d, i) => i === codeIndex ? { ...d, environment: apply(d.environment) } : d
+		patchData: (d, i) => isCode(args[i]) ? { ...d, environment: apply(d.environment) } : d
 	});
 	if(unknown) {
 		information.graph.markIdForUnknownSideEffects(rootId);
 	}
 	/* the state a scope changes around its code is back afterward */
-	const changed = scope.state === AmbientSingleState.Device ? ActiveDeviceStates : writes;
-	recordAmbient(information.graph, rootId, information.environment, [], code === undefined && !(scope.state === AmbientSingleState.Device && local) ? changed : changed.map(w => ({ name: typeof w === 'string' ? w : w.name, mode: AmbientWriteMode.Local })));
+	const changed = family !== undefined ? activeStates(family) : writes;
+	recordAmbient(information.graph, rootId, information.environment, [], code === undefined && !(family !== undefined && local) ? changed : changed.map(w => ({ name: typeof w === 'string' ? w : w.name, mode: AmbientWriteMode.Local })));
 	if(code === undefined) {
 		const applied = { ...information, environment: apply(information.environment) };
 		/* the frame starts out with the state as it was */
@@ -1042,13 +1085,13 @@ export function processAmbientScope<OtherInfo>(name: RSymbol<OtherInfo & ParentI
 	/* afterward, what the scope changed is back to what it was before */
 	let environment = information.environment;
 	const keyed = keyedStateOf(scope);
-	const restored = scope.state === AmbientSingleState.Device ? DeviceStates
+	const restored = family !== undefined ? family.states.flat()
 		: scope.state === AmbientSingleState.Rng || scope.state === AmbientSingleState.WorkingDirectory ? [singleStateOf(scope.state)]
 			: writes.map(w => typeof w === 'string' ? w : w.name).filter(n => keyed !== undefined && n.startsWith(AmbientStateName.keyed(keyed, '')) && n !== AmbientStateName.keyed(keyed, UnknownKey));
 	for(const state of restored) {
 		const before = Resolve.byName(state, data.environment);
 		/* an entry nothing set before keeps the scope's definition, we cannot tell R's default apart */
-		if((before !== undefined && before.length > 0) || ((scope.state === AmbientSingleState.Device || scope.state === AmbientSingleState.Rng || scope.state === AmbientSingleState.WorkingDirectory) && data.environment.level === 0)) {
+		if((before !== undefined && before.length > 0) || ((family !== undefined || scope.state === AmbientSingleState.Rng || scope.state === AmbientSingleState.WorkingDirectory) && data.environment.level === 0)) {
 			environment = setAmbient(environment, state, before ?? []);
 		}
 	}
@@ -1058,6 +1101,11 @@ export function processAmbientScope<OtherInfo>(name: RSymbol<OtherInfo & ParentI
 		environment = setAmbient(environment, AmbientStateName.graphics, kept);
 	}
 	return { ...information, environment };
+}
+
+/** The family of instances a scope opens one of for its code, `with_png` a device and `capture.output` a diversion of the output. */
+function scopedFamily(state: AmbientScope['state']): AmbientFamily | undefined {
+	return state === AmbientSingleState.Device ? GraphicsDevices : state === AmbientSingleState.Sink ? OutputSinks : undefined;
 }
 
 /** The keyed state an {@link AmbientScope} changes the entries of, `undefined` for a state without entries. */
@@ -1128,15 +1176,18 @@ export function evaluatesCapturedCode<OtherInfo>(res: DataflowInformation, rootI
 
 /** What the implicit `print` of a top-level value reads (see {@link readsOfAutoPrint}): every option if a method may print it (`dispatched`). */
 export function autoPrintReads(dispatched: boolean): AmbientStateName[] {
-	return optionReads(dispatched ? undefined : PrintingOptions);
+	return [...optionReads(dispatched ? undefined : PrintingOptions), AmbientStateName.sink];
 }
+
+/** what printing writes: it is part of the diversion of the output, see {@link OutputSinks} */
+export const PrintWrites: readonly AmbientStateName[] = [AmbientStateName.sinkOutput];
 
 /** R prints every visible top-level value (see {@link autoPrints}) by an implicit `print`, which reads the options the configured `print` reads for that value, and draws a plot object. */
 export function readsOfAutoPrint<OtherInfo>(processed: DataflowInformation, expression: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const print = Resolve.byNameAndType('print', { current: REnvironment.findBuiltIn(data.environment.current), level: 0 }, ReferenceType.Function)?.slice(0, 1) ?? [];
 	const reads = print.flatMap(hiddenAccess).flatMap(access => access.type === AmbientStateAccessType.ReadOptions
 		? printingReads(expression, access.dispatchOn !== undefined, access.keys, data) : []);
-	return withAccess(processed, expression.info.id, data, reads, mayHoldPlot(expression, data) ? DrawsNewPlot : []);
+	return withAccess(processed, expression.info.id, data, [...reads, AmbientStateName.sink], [...PrintWrites, ...mayHoldPlot(expression, data) ? DrawsNewPlot : []]);
 }
 
 /** the processors whose calls return invisibly, although their configuration states no {@link CallProp.Invisible} */
@@ -1152,6 +1203,9 @@ export function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInform
 		return true;
 	} else if(Array.isArray(vertex.origin) && vertex.origin.some(o => InvisibleProcessors.has(o))) {
 		return false;
+	} else if(RExpressionList.is(expression) && expression.grouping?.[0].lexeme === '{' && vertex.onlyBuiltin && expression.children.length > 0) {
+		/* a block hands on its last value, visible or not */
+		return autoPrints(expression.children[expression.children.length - 1], processed, data);
 	}
 	/* `invisible`, `library`, ...: everything this resolves to returns invisibly */
 	const targets = Resolve.byNameAndType(vertex.name, data.environment, ReferenceType.Function);

@@ -63,8 +63,17 @@ export const AmbientStateName = {
 	anyFile:              '#file:*',
 	/** the working directory `setwd` changes, which every call accessing a file reads to resolve a relative path */
 	workingDirectory:     '#wd',
-	/** whether console output is diverted into a file or connection, as `sink(file)` does and `sink()` undoes */
+	/** where console output goes, the call diverting it into a file or connection (`sink(file)`), and the diversions below it, which `sink()` returns to */
 	sink:                 '#sink',
+	otherSinks:           '#sink:other',
+	/** the explicit diversion of the console output, and those below it */
+	sinkOpener:           '#sink:opener',
+	otherSinkOpeners:     '#sink:opener:other',
+	/** the diversion of the output and every call printing into it, and those of the diversions below, which ending it links to */
+	sinkOutput:           '#sink:output',
+	otherSinkOutputs:     '#sink:output:other',
+	/** within a function, the call of its body that diverted the output */
+	sinkOpenedHere:       '#sink:here',
 	/** the project root `here::here()` builds its paths from, found from the working directory unless `here::i_am` names it */
 	projectRoot:          '#project-root',
 	/** where packages are installed and loaded from, which `.libPaths(new)` changes and every package load reads */
@@ -141,6 +150,19 @@ export const GraphicsDevices: AmbientFamily = {
 	opened:     AmbientStateName.deviceOpener,
 	switched:   AmbientStateName.graphics,
 	openedHere: AmbientStateName.deviceOpenedHere
+};
+
+/** The diversions of the console output, a stack: `sink(file)` pushes one, `sink()` pops it and returns to the one below. */
+export const OutputSinks: AmbientFamily = {
+	states: [
+		[AmbientStateName.sink, AmbientStateName.otherSinks],
+		[AmbientStateName.sinkOpener, AmbientStateName.otherSinkOpeners],
+		[AmbientStateName.sinkOutput, AmbientStateName.otherSinkOutputs]
+	],
+	used:       AmbientStateName.sinkOutput,
+	opened:     AmbientStateName.sinkOpener,
+	switched:   AmbientStateName.sink,
+	openedHere: AmbientStateName.sinkOpenedHere
 };
 
 /** The pseudo variables that only grow, because every write to their state adds to them. */

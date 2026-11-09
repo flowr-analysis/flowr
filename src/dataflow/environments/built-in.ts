@@ -195,7 +195,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame, readsDots }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	if(scope !== undefined) {
-		return processAmbientScope(name, args, rootId, data, scope);
+		/* what the scope does to the state around its code, then what the call itself does (`capture.output(..., file = "a.txt")` writes the file) */
+		const scoped = processAmbientScope(name, args, rootId, data, scope);
+		return ambient === undefined ? scoped : applyAmbientStateAccess(scoped, args, rootId, data, ambient);
 	}
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? FunctionSemantics.call.signature.layout(sig) : undefined;
@@ -384,14 +386,17 @@ function withFileAccess<Config extends BuiltInFnInfo | undefined>(config: Config
 	}))] };
 }
 
-/** A call starting a process hands it every environment variable, a call loading a package looks for it in the library paths. */
+/** A call starting a process hands it every environment variable, a call loading a package looks for it in the library paths, a call printing writes where the output is diverted. */
 function withImplicitReads<Config extends BuiltInFnInfo | undefined>(config: Config): Config {
 	const { tags, ambient }: BuiltInFnInfo = config ?? {};
 	const reads = [
 		...tags?.includes(SemanticCallTag.Process) ? [AmbientStateName.allOf(KeyedState.Env)] : [],
-		...tags?.includes(SemanticCallTag.LoadsPackage) ? [AmbientStateName.libPaths] : []
+		...tags?.includes(SemanticCallTag.LoadsPackage) ? [AmbientStateName.libPaths] : [],
+		...tags?.includes(SemanticCallTag.Prints) ? [AmbientStateName.sink] : []
 	];
-	return reads.length === 0 ? config : { ...config, ambient: [...[ambient ?? []].flat(), ...reads.map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const)] };
+	/* what is printed is part of the diversion, which ending it links to */
+	const writes = tags?.includes(SemanticCallTag.Prints) ? [{ type: AmbientStateAccessType.SetState, state: AmbientStateName.sinkOutput } as const] : [];
+	return reads.length === 0 ? config : { ...config, ambient: [...[ambient ?? []].flat(), ...reads.map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const), ...writes] };
 }
 
 export const BuiltInProcessorMapper = {

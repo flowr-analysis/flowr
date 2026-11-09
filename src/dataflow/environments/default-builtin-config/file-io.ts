@@ -84,8 +84,9 @@ export const IoDefinitions = [
 		{ libFn: true, tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ x: Forced.Resource, encoding: Forced.Value, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Xml2, 'download_html', 'download_xml'), BuiltInProcName.Default,
 		{ props: CallProp.Invisible, libFn: true, tags: Downloads, sig: sig({ url: Forced.Resource, file: Forced.Resource | ArgProp.Written, '...': Forced.Value }) }),
-	fn([...pkg(PkgName.Fs, 'file_exists', 'dir_exists', 'file_info', 'file_size', 'dir_info'), ...base('file.exists', 'file.size', 'file.info', 'file.mtime', 'Sys.readlink')],
-		BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ '...': Forced.Resource }) }),
+	fn([...pkg(PkgName.Fs, 'file_exists', 'dir_exists', 'file_info', 'file_size', 'dir_info'), ...base('file.exists', 'file.size', 'file.info', 'file.mtime', 'file.mode', 'Sys.readlink')],
+		/* the mode of a file is what the creation mask let through when it was written */
+		BuiltInProcName.DefaultReadAllArgs, { ambient: { type: AmbientStateAccessType.ReadState, state: AmbientStateName.umask }, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ '...': Forced.Resource }) }),
 	fn(pkg(PkgName.Config, 'get'), BuiltInProcName.DefaultReadAllArgs,
 		{ libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ value: Forced.Value, config: Forced.Value, file: Forced.Resource, use_parent: Forced.Flag }) }),
 	fn(pkg(PkgName.Fs, 'file_move'), BuiltInProcName.Default,

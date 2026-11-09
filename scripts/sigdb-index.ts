@@ -25,7 +25,8 @@ import { baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
 import { builtInGuards, namesWithGuards } from '../src/dataflow/fn/guards/built-in-guards';
-import { claimConditions } from '../src/dataflow/fn/guards/guard-claims';
+import { claimConditions, returnConditions } from '../src/dataflow/fn/guards/guard-claims';
+import type { Guards } from './sigdb-page/database';
 
 export interface PackageEntry {
 	readonly name:      BrandedNamespace;
@@ -73,8 +74,8 @@ export interface SigIndex {
 	readonly groups:         ReadonlyMap<BrandedIdentifier, string>;
 }
 
-/** What the page shows of the guards of the base packages, as `pkg::name -> [requires, [formal, claim][]]`. */
-export function guardsForPage(): Record<string, [requires: string, claims: [formal: string, claim: string[]][], because: [requires: string, kind: string, fails: string, via: string, message: string][], readOff: string, relations: [holds: string, unless: string][], required: string[]]> {
+/** What the page shows of the guards of the base packages, as `pkg::name ->` {@link Guards}. */
+export function guardsForPage(): Record<string, Guards> {
 	return Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
 		const stated = builtInGuards(name, pkg);
 		const claims = [
@@ -82,8 +83,10 @@ export function guardsForPage(): Record<string, [requires: string, claims: [form
 			/* a claim that holds unless something else lets the call through reads as that alternative or the claim */
 			...(stated?.conditional ?? []).map(({ formal, claim, unless }): [string, string[]] => [formal, [`${unless} || ${claimConditions(formal, claim).join(' && ')}`]])
 		];
-		const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message }): [string, string, string, string, string] => [requires, kind, fails, via?.join(', ') ?? '', message ?? '']);
-		return stated === undefined || (stated.requires === '' && claims.length === 0 && (stated.required ?? []).length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []]]]];
+		const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message, reads, brief }): [string, string, string, string, string, string, string] => [requires, kind, fails, via?.join(', ') ?? '', message ?? '', reads ?? '', brief ?? '']);
+		const result = returnConditions(stated?.returns, stated?.passes);
+		const named = [...new Set([...stated?.required ?? [], ...claims.map(([formal]) => formal), ...(stated?.relations ?? []).flatMap(r => r.formals), ...(stated?.because ?? []).flatMap(b => b.formals ?? [])])];
+		return stated === undefined || (stated.requires === '' && claims.length === 0 && (stated.required ?? []).length === 0 && result.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []], result, named]]];
 	}));
 }
 

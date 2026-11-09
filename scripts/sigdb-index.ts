@@ -25,7 +25,7 @@ import { baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
 import { builtInGuards, namesWithGuards } from '../src/dataflow/fn/guards/built-in-guards';
-import { claimWords } from '../src/dataflow/fn/guards/guard-claims';
+import { claimConditions } from '../src/dataflow/fn/guards/guard-claims';
 
 export interface PackageEntry {
 	readonly name:      BrandedNamespace;
@@ -74,12 +74,16 @@ export interface SigIndex {
 }
 
 /** What the page shows of the guards of the base packages, as `pkg::name -> [requires, [formal, claim][]]`. */
-export function guardsForPage(): Record<string, [requires: string, claims: [formal: string, claim: string[]][], because: [requires: string, fails: string, via: string, message: string][], readOff: string, relations: [holds: string, unless: string][]]> {
+export function guardsForPage(): Record<string, [requires: string, claims: [formal: string, claim: string[]][], because: [requires: string, fails: string, via: string, message: string][], readOff: string, relations: [holds: string, unless: string][], required: string[]]> {
 	return Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
 		const stated = builtInGuards(name, pkg);
-		const claims = Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, claimWords(claim)]);
+		const claims = [
+			...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, claimConditions(formal, claim)]),
+			/* a claim that holds unless something else lets the call through reads as that alternative or the claim */
+			...(stated?.conditional ?? []).map(({ formal, claim, unless }): [string, string[]] => [formal, [`${unless} || ${claimConditions(formal, claim).join(' && ')}`]])
+		];
 		const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message }): [string, string, string, string] => [requires, `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}`, via?.join(', ') ?? '', message ?? '']);
-		return stated === undefined || (stated.requires === '' && claims.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless }): [string, string] => [holds, unless ?? ''])]]];
+		return stated === undefined || (stated.requires === '' && claims.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless }): [string, string] => [holds, unless ?? '']), [...stated.required ?? []]]]];
 	}));
 }
 

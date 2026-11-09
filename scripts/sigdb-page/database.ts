@@ -11,7 +11,9 @@ export type Guards = readonly [
 	/** the R version a contract was inferred from by reading the closure, empty for one flowR states of a function written in C */
 	readOff?: string,
 	/** comparisons relating formals, like `length(x) >= m`, with what lets a call through instead */
-	relations?: readonly (readonly [holds: string, unless: string])[]
+	relations?: readonly (readonly [holds: string, unless: string])[],
+	/** the formals a call has to give */
+	required?: readonly string[]
 ];
 import { FilterKind, filterOf } from './filters';
 

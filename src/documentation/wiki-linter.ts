@@ -146,6 +146,10 @@ scale_it <- function(values) {
 		configType: 'UselessLoopConfig', ruleType:   'USELESS_LOOP', testfile:   'lint-useless-loop',
 		example:    'for(i in c(1)) { print(i) }'
 	},
+	'call-contracts': {
+		configType: 'CallContractsConfig', ruleType:   'CALL_CONTRACTS', testfile:   'lint-call-contracts',
+		example:    'f <- function(m) { if(m < 0) stop("m < 0"); stopifnot(is.numeric(m)); m }\nf(-1)\nstrsplit(1, "a")'
+	},
 	'stop-call': {
 		configType: 'StopWithCallConfig', ruleType:   'STOP_WITH_CALL_ARG', testfile:   'lint-stop-call',
 		example:    'f <- function(x) stop(x)'

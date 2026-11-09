@@ -1,4 +1,5 @@
 import type { BrandedIdentifier } from '../../environments/identifier';
+import { type GuardFactsLookup, RValueType } from '../../environments/guard-facts';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** A formal parameter of the function a term speaks about. */
@@ -95,27 +96,26 @@ const NegatedComparison: Readonly<Record<BrandedIdentifier, BrandedIdentifier>> 
 };
 
 /** The predicates yielding one logical, no matter how long their argument is, so `stopifnot` asks nothing more of them. */
-function isScalar(this: void, term: GuardCall): boolean {
+function isScalar(this: void, term: GuardCall, facts: GuardFactsLookup): boolean {
 	if(!term.known) {
 		return false;
 	} else if(NegatedComparison[term.fn] !== undefined) {
-		return term.args.every(a => a.value.kind === 'constant' || (isCall(a.value) && ScalarReads.has(a.value.fn)));
+		return term.args.every(a => a.value.kind === 'constant' || (isCall(a.value) && facts(a.value.fn)?.measures === 'single'));
 	}
-	return ScalarResults.has(term.fn) || (term.fn.startsWith('is.') && !Elementwise.has(term.fn));
+	const stated = facts(term.fn);
+	return stated?.singleResult === true || stated?.predicate !== undefined;
 }
-
-/** What reads a single number off its argument, no matter how long it is. */
-const ScalarReads: ReadonlySet<BrandedIdentifier> = new Set(['length', 'nrow', 'ncol', 'NROW', 'NCOL']);
-
-const Elementwise: ReadonlySet<BrandedIdentifier> = new Set(['is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.element']);
-const ScalarResults: ReadonlySet<BrandedIdentifier> = new Set(['inherits', 'identical', 'isTRUE', 'isFALSE', 'missing', 'exists', 'anyNA', 'all', 'any', 'xor', 'requireNamespace', '&&', '||']);
 
 /**
  * What it means for `term` to have been found `holds` (or not): what `if` and `&&` saw is one logical that is not `NA`
  * while `stopifnot` (`vector`) saw only `TRUE`s, as it also accepts a whole vector of them.
  * The result is in negation normal form and spells the vector case out with `all`, so it reads the way it is meant.
  */
-function truth(this: void, term: GuardTerm, holds: boolean, vector = false): GuardTerm {
+function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLookup, vector = false): GuardTerm {
+	const leaf = (of: GuardTerm, as: boolean, whole: boolean): GuardTerm => {
+		const negated = as ? of : known('!', of);
+		return whole && !(isCall(of) && isScalar(of, facts)) ? known('all', negated) : negated;
+	};
 	if(term.kind === 'constant' && typeof term.value === 'boolean') {
 		return term.value === holds ? True : False;
 	} else if(term.kind === 'formal' || term.kind === 'free') {
@@ -128,34 +128,29 @@ function truth(this: void, term: GuardTerm, holds: boolean, vector = false): Gua
 	const [first, second] = operands;
 	switch(term.fn) {
 		case '!':
-			return truth(first, !holds, vector);
+			return truth(first, !holds, facts, vector);
 		case 'isTRUE':
 		case 'isFALSE':
 			/* on a formal it says more than the truth of the formal: a single logical */
-			return holds && isCall(first) ? truth(first, term.fn === 'isTRUE') : leaf(term, holds, false);
+			return holds && isCall(first) ? truth(first, term.fn === 'isTRUE', facts) : leaf(term, holds, false);
 		case '&&':
-			return (holds ? all : any)(truth(first, holds), truth(second, holds));
+			return (holds ? all : any)(truth(first, holds, facts), truth(second, holds, facts));
 		case '||':
-			return (holds ? any : all)(truth(first, holds), truth(second, holds));
+			return (holds ? any : all)(truth(first, holds, facts), truth(second, holds, facts));
 		case '&':
-			return vector && !holds ? leaf(term, holds, vector) : (holds ? all : any)(truth(first, holds, vector), truth(second, holds, vector));
+			return vector && !holds ? leaf(term, holds, vector) : (holds ? all : any)(truth(first, holds, facts, vector), truth(second, holds, facts, vector));
 		case '|':
-			return vector && holds ? leaf(term, holds, vector) : (holds ? any : all)(truth(first, holds, vector), truth(second, holds, vector));
+			return vector && holds ? leaf(term, holds, vector) : (holds ? any : all)(truth(first, holds, facts, vector), truth(second, holds, facts, vector));
 		case 'all':
-			return operands.length === 1 && holds ? truth(first, true, true) : leaf(term, holds, false);
+			return operands.length === 1 && holds ? truth(first, true, facts, true) : leaf(term, holds, false);
 		case 'any':
-			return operands.length === 1 && !holds ? truth(first, false, true) : leaf(term, holds, false);
+			return operands.length === 1 && !holds ? truth(first, false, facts, true) : leaf(term, holds, false);
 		default:
 			if(NegatedComparison[term.fn] !== undefined && !holds) {
 				return leaf({ ...term, fn: NegatedComparison[term.fn] }, true, vector);
 			}
 			return leaf(term, holds, vector);
 	}
-}
-
-function leaf(this: void, term: GuardTerm, holds: boolean, vector: boolean): GuardTerm {
-	const negated = holds ? term : known('!', term);
-	return vector && !(isCall(term) && isScalar(term)) ? known('all', negated) : negated;
 }
 
 /** How tightly the operators bind, for putting parentheses exactly where R needs them. */
@@ -260,13 +255,47 @@ function substitute(this: void, term: GuardTerm, binding: GuardBinding, outer?: 
 	return { ...term, args };
 }
 
+/** The type of a literal, `undefined` where the lexeme does not settle it. */
+function typeOfLiteral(this: void, term: GuardConstant): RValueType | undefined {
+	if(typeof term.value === 'boolean' || term.lexeme === 'NA') {
+		return RValueType.Logical;
+	} else if(typeof term.value === 'string') {
+		return RValueType.Character;
+	} else if(term.lexeme === 'NULL') {
+		return RValueType.Null;
+	} else if(typeof term.value === 'number') {
+		return term.lexeme.endsWith('L') ? RValueType.Integer : term.lexeme.endsWith('i') ? RValueType.Complex : RValueType.Double;
+	}
+	return undefined;
+}
+
+/** A predicate on a literal decided, as a literal has no attributes. */
+function decided(this: void, term: GuardTerm, facts: GuardFactsLookup): GuardTerm {
+	if(!isCall(term) || !term.known) {
+		return term;
+	} else if(term.fn === '!') {
+		const of = decided(term.args[0].value, facts);
+		return of.kind === 'constant' && typeof of.value === 'boolean' ? (of.value ? False : True) : known('!', of);
+	}
+	const predicate = facts(term.fn)?.predicate;
+	const [arg] = term.args;
+	const type = term.args.length === 1 && arg.name === undefined && arg.value.kind === 'constant' ? typeOfLiteral(arg.value) : undefined;
+	if(predicate === undefined || type === undefined) {
+		return term;
+	} else if(predicate.classed || (predicate.yes & type) === 0) {
+		return False;
+	}
+	return predicate.exact || (predicate.plain && type !== RValueType.Null) ? True : term;
+}
+
 /** {@link substitute} for a condition in negation normal form, where anything not statable can weaken into {@link True}, while the rest still holds. */
-function substituteCondition(this: void, term: GuardTerm, binding: GuardBinding, outer?: GuardOuter): GuardTerm {
+function substituteCondition(this: void, term: GuardTerm, binding: GuardBinding, outer?: GuardOuter, facts?: GuardFactsLookup): GuardTerm {
 	if(isCall(term) && term.known && (term.fn === '&&' || term.fn === '||')) {
-		const operands = term.args.map(a => substituteCondition(a.value, binding, outer));
+		const operands = term.args.map(a => substituteCondition(a.value, binding, outer, facts));
 		return term.fn === '&&' ? all(...operands) : any(...operands);
 	}
-	return substitute(term, binding, outer) ?? True;
+	const substituted = substitute(term, binding, outer) ?? True;
+	return facts === undefined ? substituted : decided(substituted, facts);
 }
 
 /**

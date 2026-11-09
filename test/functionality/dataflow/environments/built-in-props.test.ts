@@ -15,6 +15,7 @@ import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import { uniqueArray } from '../../../../src/util/collections/arrays';
 import { withTreeSitter } from '../../_helper/shell';
+import { namesWithGuardFacts } from '../../../../src/dataflow/environments/default-builtin-config/guards';
 import { controlledSigDb } from '../../_helper/linter';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
@@ -227,6 +228,16 @@ describe('Built-in properties', () => {
 			});
 	});
 
+	test(label('every name with guard facts is defined in its package and carries them', ['name-normal'], ['other']), () => {
+		const carried = new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function'
+			? (d.names as readonly Identifier[]).filter(id => d.config?.guards?.[Identifier.getName(id)] !== undefined)
+				.map(id => `${Identifier.getNamespace(id) ?? PkgName.Base}::${Identifier.getName(id)}`)
+			: []));
+		for(const [namespace, name] of namesWithGuardFacts()) {
+			assert.isTrue(carried.has(`${namespace}::${name}`), `${namespace}::${name} has facts but no definition`);
+		}
+	});
+
 	describe('The configuration stays consistent', () => {
 		const withInfo = DefaultBuiltinConfig
 			.flatMap(d => {
@@ -322,12 +333,12 @@ describe('Built-in properties', () => {
 		const registered = new Map(DefaultBuiltinConfig.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
 		/* the two labeling passes the written definitions go through, and the only bits they may add */
 		const labeled = CallProp.Generic | CallProp.Primitive;
-		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits change', ['name-normal'], ['other']), () => {
+		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits and the guard facts change', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual([...registered.keys()].sort(), [...written.keys()].sort());
 			for(const [name, def] of registered) {
 				const before = written.get(name) as typeof def;
 				const info = (d: typeof def) => (d as { config?: BuiltInFnInfo }).config;
-				assert.deepStrictEqual({ ...info(def), props: undefined }, { ...info(before), props: undefined }, name);
+				assert.deepStrictEqual({ ...info(def), props: undefined, guards: undefined }, { ...info(before), props: undefined, guards: undefined }, name);
 				assert.deepStrictEqual(info(def)?.tags, info(before)?.tags);
 				assert.deepStrictEqual((def as { processor?: string }).processor, (before as { processor?: string }).processor, name);
 				assert.deepStrictEqual((def as { evalHandler?: string }).evalHandler, (before as { evalHandler?: string }).evalHandler, name);

@@ -1,3 +1,4 @@
+import type { GuardFacts } from './guard-facts';
 import type { AmbientScope, AmbientStateAccess } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { DecodedFunction } from '../../project/sigdb/decode';
@@ -461,6 +462,8 @@ export interface BuiltInFnInfo extends StatedProps {
 	readonly keepEnvironment?:       boolean
 	/** What this call lets the function around it reach about its own formals without naming one of them, e.g. `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}. */
 	readonly frame?:                 ArgProps
+	/** per name this definition states, what it has to do with the guards of the functions calling it, see {@link GuardFacts} */
+	readonly guards?:                Readonly<Record<BrandedIdentifier, GuardFacts>>
 	/** the generics the call may dispatch to on (parts of) its arguments, like `as.character` for `paste` or `format` for the columns `print` shows of a data frame; any method of them may run */
 	readonly dispatches?:            string[]
 }

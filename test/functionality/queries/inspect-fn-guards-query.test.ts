@@ -14,13 +14,16 @@ import { VertexType } from '../../../src/dataflow/graph/vertex';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { RBaseGuards } from '../../../src/data/r-base-guards.generated';
 import { claimWords } from '../../../src/dataflow/fn/guards/guard-claims';
+import { FlowrConfig } from '../../../src/config';
+import { RValueType } from '../../../src/dataflow/environments/guard-facts';
+import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
 
 /** The programs to check against R as well, with what the query made of them. */
 const Checked: { readonly code: string, readonly guards: FunctionGuards | undefined }[] = [];
 
 /** What the query says about `f`, which is the last definition of the program. */
-async function guardsOfF(parser: KnownParser, code: string): Promise<FunctionGuards | undefined> {
-	const { result, analyzer } = await runQuery(parser, code, { type: 'inspect-fn-guards' });
+async function guardsOfF(parser: KnownParser, code: string, config?: FlowrConfig): Promise<FunctionGuards | undefined> {
+	const { result, analyzer } = await runQuery(parser, code, { type: 'inspect-fn-guards' }, config);
 	const definitions = (await analyzer.dataflow()).graph.vertexIdsOfType(VertexType.FunctionDefinition).filter(NodeId.isWritten);
 	return result.guards[Math.max(...definitions.map(Number))];
 }
@@ -65,7 +68,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { is.numeric(x) && stop("a"); 2 }', '!is.numeric(x)');
 	guards('f <- function(x) { if(is.numeric(x)) 1 else stop("no") }', 'is.numeric(x)');
 	guards('f <- function(x) { if(any(x < 0)) stop("no"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x >= 0)');
-	guards('f <- function(x) { if(!all(x > 0)) stop("no"); 1 }', 'all(x > 0)');
+	guards('f <- function(x) { if(!all(x > 0)) stop("no"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0)');
 	guards('f <- function(x) { stopifnot(!any(is.na(x))); 1 }', 'all(!is.na(x))');
 	guards('f <- function(x) { stopifnot(x > 0 | x < -1); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0 | x < -1)');
 	guards('f <- function(x) { stopifnot(x > 0 & x < 5); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0) && all(x < 5)');
@@ -179,7 +182,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(a, y) { if(!is.numeric(y)) stop("y"); y }; f <- function(x) { g(y = x, a = 1); 1 }', 'is.numeric(x)');
 	guards('g <- function(y, ...) { if(!is.numeric(y)) stop("y"); y }; f <- function(...) { g(...); 1 }', '');
 	guards('g <- function(y) { if(missing(y)) stop("y"); 1 }; f <- function(x) { g(x); 1 }', '!missing(x)');
-	guards('g <- function(y) { if(missing(y)) stop("y"); 1 }; f <- function(x) { g(); 1 }', '');
+	guards('g <- function(y) { if(missing(y)) stop("y"); 1 }; f <- function(x) { g(); 1 }', 'FALSE');
 	guards('g <- function(y) { if(y > 0) { h2(y) }; 1 }; h2 <- function(z) { stopifnot(is.numeric(z)); 1 }; f <- function(x) { g(x); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && (x <= 0 || is.numeric(x))');
 
 	/* predicates are seen through */
@@ -407,6 +410,16 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; h <- function(x, ...) { g(x, ...) }; f <- function(v) { h(v) }', 'is.list(v)');
 	guards('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; h <- function(x, ...) { g(x, ...) }; f <- function(v) { h(v, y = list()) }', '');
 	guards('f <- function(x = 1L) { stopifnot(is.character(x)); x }', 'is.character(x)');
+	guards('f <- function(x) { stopifnot(length(x) > 0.5); 1 }', 'length(x) > 0.5');
+	guards('f <- function(x) { stopifnot(length(x) < 1.5); 1 }', 'length(x) < 1.5');
+	guards('f <- function(x) { stopifnot(length(x) >= 1.5); 1 }', 'length(x) >= 1.5');
+	guards('f <- function(x) { stopifnot(length(x) <= 1.5); 1 }', 'length(x) <= 1.5');
+	guards('f <- function(x) { stopifnot(nchar(x) > 0.5); 1 }', 'all(nchar(x) > 0.5)');
+	guards('f <- function(x) { stopifnot(nrow(x) > 0); 1 }', 'all(nrow(x) > 0)');
+	guards('f <- function(x, y) { stopifnot(xor(x, y)); 1 }', 'all(xor(x, y))');
+	guards('g <- function(x, m) { if(is.matrix(x)) stopifnot(is.numeric(m) || is.null(m)); x }; f <- function(x) g(x, "a")', '!is.matrix(x)');
+	guards('g <- function(x, m) { stopifnot(is.object(m) || is.vector(m)); x }; f <- function(x) g(x, 2L)', '');
+	guards('g <- function(x, m) { stopifnot(is.atomic(m), !is.null(x)); x }; f <- function(x) g(x, NULL)', '!is.null(x)');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
@@ -437,6 +450,18 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.deepStrictEqual(builtIns['base::sort'].formals?.decreasing.types, ['logical']);
 		assert.deepStrictEqual(builtIns['utils::combn'].formals?.m.bounds, { length: [1, 1], value: [0, null] });
 		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer|double', 'length = 1', 'value >= 0']);
+	});
+
+	test('a configuration teaches what a function checks', async() => {
+		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
+		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.semantics.environment.overwriteBuiltIns.definitions = [{ type:      'function', names:     ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+				config:    { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
+		});
+		const taught = await guardsOfF(parser, code, config);
+		const plain = await guardsOfF(parser, code);
+		assert.deepStrictEqual(taught?.formals?.x?.types, ['character']);
+		assert.isUndefined(plain?.formals?.x?.types);
 	});
 
 	test('an operator takes the class of its other operand into account', async() => {
@@ -502,7 +527,17 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('g <- function(y) y; f <- function(x) { g(x) }', {}, ['x']);
 	claims('g <- function(y) 1; f <- function(x) { g(x) }', {}, []);
 	claims('f <- function(x) { if(FALSE) x; 1 }', {}, []);
-	claims('f <- function(x) { if(anyNA(x)) stop("n"); 1 }', { x: { notNA: true } }, []);
+	claims('f <- function(x) { if(anyNA(x)) stop("n"); 1 }', { x: { notNA: true } }, ['x']);
+	/* a bound between whole numbers lands on the next whole one, not a step past the bound */
+	claims('f <- function(x) { stopifnot(length(x) > 0); 1 }', { x: { bounds: { length: [1, null] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(length(x) > 0.5); 1 }', { x: { bounds: { length: [1, null] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(length(x) < 1.5); 1 }', { x: { bounds: { length: [null, 1] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(length(x) >= 1.5); 1 }', { x: { bounds: { length: [2, null] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(length(x) <= 1.5); 1 }', { x: { bounds: { length: [null, 1] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(nchar(x) > 0.5); 1 }', { x: { bounds: { nchar: [1, null] } } }, ['x']);
+	/* without dimensions it is `NULL`, of which `stopifnot` asks nothing */
+	claims('f <- function(x) { stopifnot(nrow(x) > 0); 1 }', {}, ['x']);
+	claims('f <- function(x) { if(nrow(x) > 0) 1 else stop("n") }', { x: { bounds: { nrow: [1, null] } } }, ['x']);
 	claims('f <- function(x) { stopifnot(!is.na(x)); 1 }', { x: { notNA: true } }, ['x']);
 	claims('f <- function(x) { stopifnot(is.finite(x)); 1 }', { x: { notNA: true } }, ['x']);
 	claims('f <- function(x = 1) { if(missing(x)) stop("n"); 1 }', {}, ['x']);

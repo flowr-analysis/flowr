@@ -29,7 +29,8 @@ import { bindsOutside, type BuiltInLookup } from '../frame-reflection';
 import { definitionsBehind } from '../higher-order-function';
 import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant } from './guard-term';
-import { Appliers, Asserting, callable, CheckingCalls, composesName, condition, getAsExists, logicalOperand, Measures, Requirements, succeeds, TypePredicates } from './guard-knowledge';
+import type { GuardFacts, GuardFactsLookup } from '../../environments/guard-facts';
+import { callable, composesName, condition, defaultGuardFacts, Demands, getAsExists, guardFactsIn, logicalOperand, onlyComputesBy, succeeds } from './guard-knowledge';
 import { claimsOf, impliedBy, type ClaimedName, type FormalClaim } from './guard-claims';
 
 /** One condition every normal return of a function has passed; if it does not hold, the call fails. */
@@ -110,6 +111,7 @@ export interface FunctionGuardsOptions {
 interface GuardState {
 	readonly graph:         DataflowGraph
 	readonly info:          BuiltInLookup
+	readonly facts:         GuardFactsLookup
 	readonly contracts:     Map<NodeId, Contract>
 	/** every name the program binds with where it does so */
 	readonly bindings:      ReturnType<typeof Dataflow.definitionsByName>
@@ -154,13 +156,6 @@ const MaxCalleeDepth = 256;
 /** The packages whose functions flowR knows the semantics of when they come with their name. */
 const BaseNamespaces: ReadonlySet<BrandedNamespace> = new Set(['base', 'stats', 'utils', 'methods']);
 
-/** The calls that do not do anything but compute, whatever the configuration states about them. */
-const ComputesOnly: ReadonlySet<BrandedIdentifier> = new Set([
-	'inherits', 'identical', 'isTRUE', 'isFALSE', 'all', 'anyNA', 'typeof', 'mode', 'storage.mode', 'is', 'nzchar', 'class', 'oldClass', 'c', 'stopifnot', 'invisible', 'list', 'names', 'dim', 'exists', 'match.arg', 'arg_match', 'arg_match0',
-	'seq_len', 'seq_along', 'xor', '|>', 'all.equal', 'nargs', '...length', '...elt', 'hasArg', '-', '+', '*', '/', '^', '%%', '%/%', '%in%', '%*%', ':', '$', '[', '[[', '@',
-	...Object.keys(TypePredicates), ...Measures, ...Object.keys(CheckingCalls)
-]);
-
 function nodeOf(this: void, id: NodeId, state: GuardState): RNodeWithParent | undefined {
 	return state.graph.idMap?.get(id);
 }
@@ -185,8 +180,8 @@ function soleCallee(this: void, id: NodeId, state: GuardState): NodeId | undefin
 }
 
 /** The package providing the function flowR knows about, none for what R ships with. */
-function packageOf(this: void, name: BrandedIdentifier): BrandedNamespace | undefined {
-	return CheckingCalls[name]?.pkg ?? Asserting[name]?.pkg ?? (name in TypePredicates && name.startsWith('is_') ? 'rlang' : undefined);
+function packageOf(this: void, facts: GuardFacts | undefined): BrandedNamespace | undefined {
+	return facts?.pkg;
 }
 
 /** The name of the function a call runs, if it is what R or the named package ships with rather than something the program defines. */
@@ -198,7 +193,7 @@ function knownNameOf(this: void, id: NodeId, vertex: DataflowGraphVertexFunction
 	const qualified = Dataflow.qualify(id, state.graph, false) ?? vertex.name;
 	const namespace = Identifier.getNamespace(qualified) ?? Identifier.getNamespace(vertex.name);
 	const name = Identifier.getName(vertex.name);
-	const pkg = packageOf(name);
+	const pkg = packageOf(state.facts(name));
 	return (pkg === undefined ? namespace === undefined || BaseNamespaces.has(namespace) : namespace === pkg) ? name : undefined;
 }
 
@@ -215,12 +210,7 @@ function onlyComputes(this: void, id: NodeId, vertex: DataflowGraphVertexFunctio
 	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Assignment)) {
 		return !bindsOutside(vertex, info);
 	}
-	return ComputesOnly.has(name) || CallProps.hasAny(info, CallProp.Pure);
-}
-
-/** Whether the name comes with R rather than with one of the packages flowR knows the checks of. */
-function isBaseName(this: void, name: BrandedIdentifier): boolean {
-	return packageOf(name) === undefined;
+	return onlyComputesBy(state.facts(name)) || CallProps.hasAny(info, CallProp.Pure);
 }
 
 /** Whether every call within the term is one flowR knows computes nothing but its value, so it may stand in where a variable was read. */
@@ -228,7 +218,7 @@ function isPureTerm(this: void, term: GuardTerm, state: GuardState): boolean {
 	if(!GuardTerm.isCall(term)) {
 		return true;
 	}
-	const pure = term.known === true && (ComputesOnly.has(GuardTerm.bareName(term.fn)) || CallProps.hasAny(state.info(term.fn), CallProp.Pure));
+	const pure = term.known === true && (onlyComputesBy(state.facts(GuardTerm.bareName(term.fn))) || CallProps.hasAny(state.info(term.fn), CallProp.Pure));
 	return pure && term.args.every(a => isPureTerm(a.value, state));
 }
 
@@ -396,7 +386,7 @@ function callTerm(this: void, id: NodeId, fn: string, args: readonly GuardArgume
 	const vertex = callVertexOf(id, state);
 	const known = vertex === undefined ? undefined : knownNameOf(id, vertex, state);
 	/* what R ships with reads the same with or without the namespace, the rest keeps it to still be what the code says */
-	return known === undefined ? { kind: 'call', fn, args } : { kind: 'call', fn: isBaseName(known) ? GuardTerm.bareName(fn) : fn, args, known: true };
+	return known === undefined ? { kind: 'call', fn, args } : { kind: 'call', fn: packageOf(state.facts(known)) === undefined ? GuardTerm.bareName(fn) : fn, args, known: true };
 }
 
 /** The expression as a term in the formals of the function it is written in, `undefined` if it depends on what cannot be stated in them. */
@@ -522,9 +512,6 @@ function walkSequence(this: void, nodes: readonly RNodeWithParent[], path: Path,
 	return exits;
 }
 
-/** The calls that hand out a frame or write to one in a way flowR does not see, besides what states {@link SemanticCallTag.Frames}. */
-const OpensFrame: ReadonlySet<BrandedIdentifier> = new Set(['rm', 'remove', 'list2env', 'makeActiveBinding', 'eval', 'evalq', 'eval.parent', 'source', 'sys.source', 'attach', 'sys.frame', 'sys.frames', 'as.environment', 'env_poke', 'env_bind', 'caller_env', 'current_env']);
-
 /**
  * What may write to the frame of the function without that showing up as a definition once it runs or is defined: `e <- environment()`, `rm(x)`, or a closure with `x <<- v`.
  * A `<<-` right in the frame writes to the frames around it instead.
@@ -540,7 +527,7 @@ function frameOpeners(this: void, definition: RFunctionDefinition<ParentInformat
 			}
 		} else if(vertex !== undefined && !RSymbol.is(node)) {
 			const name = Identifier.getName(vertex.name);
-			if(OpensFrame.has(name) || CallProps.hasAny(state.info(vertex.name), SemanticCallTag.Frames) || assignsComputedName(name, vertex, state)) {
+			if(state.facts(name)?.opensFrame || CallProps.hasAny(state.info(vertex.name), SemanticCallTag.Frames) || assignsComputedName(name, vertex, state)) {
 				openers.add(id);
 			}
 		}
@@ -593,11 +580,11 @@ function branches(this: void, run: Run, ...walks: readonly (() => Exit[])[]): Ex
 	return exits;
 }
 
-function stepsOf(this: void, term: GuardTerm | undefined): readonly [PathStep, PathStep] {
+function stepsOf(this: void, term: GuardTerm | undefined, facts: GuardFactsLookup): readonly [PathStep, PathStep] {
 	if(term === undefined) {
 		return [UnknownStep, UnknownStep];
 	}
-	const [holds, fails] = [GuardTerm.truth(term, true), GuardTerm.truth(term, false)];
+	const [holds, fails] = [GuardTerm.truth(term, true, facts), GuardTerm.truth(term, false, facts)];
 	return [{ holds, fails }, { holds: fails, fails: holds }];
 }
 
@@ -618,7 +605,7 @@ function walkIf(this: void, condNode: RNodeWithParent, then: RNodeWithParent, ot
 	if(formal !== undefined) {
 		addClause(run, atCondition, condition(formal), condNode.info.id, { kind: 'implicit' });
 	}
-	const [yes, no] = stepsOf(term);
+	const [yes, no] = stepsOf(term, run.state.facts);
 	return [
 		...before,
 		...branches(run,
@@ -687,7 +674,7 @@ function walkConditions(this: void, conditions: readonly RNodeWithParent[], vect
 			/* `stopifnot("x must be positive" = x > 0)` */
 			const named = vector ? RNode.directParent(expression, run.state.graph.idMap as AstIdMap) : undefined;
 			const message = RArgument.is(named) ? named.name?.content : undefined;
-			addClause(run, current, GuardTerm.truth(term, true, vector), expression.info.id, { kind: 'explicit', ...(message === undefined ? {} : { message: String(message) }) });
+			addClause(run, current, GuardTerm.truth(term, true, run.state.facts, vector), expression.info.id, { kind: 'explicit', ...(message === undefined ? {} : { message: String(message) }) });
 		}
 	}
 	return exits;
@@ -736,8 +723,7 @@ function evaluatedAndNot(this: void, vertex: DataflowGraphVertexFunctionCall, st
 /** What the call of a built-in asks of what it was handed, on top of evaluating it. */
 function builtInRequirements(this: void, name: BrandedIdentifier, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
 	const { state, scope } = run;
-	const requirements = Requirements[name];
-	const applied = Appliers[name];
+	const { asks: requirements, applies: applied } = state.facts(name) ?? {};
 	if(requirements === undefined && applied === undefined) {
 		return;
 	}
@@ -748,10 +734,11 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 	const termOfNode = (n: RNodeWithParent) => termOf(n, scope, state);
 	/* an operator also dispatches on its other operand, which has to be stated to be ruled out */
 	const operands = requirements !== undefined && Object.keys(requirements).length === 2 ? [...bound.values()].flat() : [];
-	for(const [formal, requirement] of Object.entries(requirements ?? {})) {
+	for(const [formal, demand] of Object.entries(requirements ?? {})) {
+		const requirement = Demands[demand];
 		for(const value of bound.get(formal) ?? []) {
 			const term = termOfNode(value);
-			if(term?.kind === 'formal' && requirement !== undefined) {
+			if(term?.kind === 'formal') {
 				const otherNode = operands.find(o => o !== value);
 				const other = otherNode === undefined ? undefined : termOfNode(otherNode);
 				if(otherNode === undefined || other !== undefined) {
@@ -783,8 +770,8 @@ function getRequirement(this: void, node: RNodeWithParent, path: Path, run: Run)
 /** A call flowR knows the failing of: `succeeds(check(x))`, with the choices `match.arg` takes from the default of the formal spelled out. */
 function checkRequirement(this: void, name: BrandedIdentifier, node: RNodeWithParent, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
 	const term = termOf(node, run.scope, run.state);
-	const check = CheckingCalls[name];
-	if(!GuardTerm.isCall(term) || check.defers?.some(d => term.args.some(a => a.name === d))) {
+	const check = run.state.facts(name)?.check;
+	if(check === undefined || !GuardTerm.isCall(term) || check.defers?.some(d => term.args.some(a => a.name === d))) {
 		return;
 	}
 	const [first] = term.args;
@@ -792,7 +779,7 @@ function checkRequirement(this: void, name: BrandedIdentifier, node: RNodeWithPa
 		return;
 	}
 	let call: GuardCall = term;
-	if((name === 'match.arg' || name === 'arg_match') && term.args.length === 1 && first.value.kind === 'formal') {
+	if(check.choicesFromDefault && term.args.length === 1 && first.value.kind === 'formal') {
 		const { name: formal } = first.value;
 		const parameter = run.scope.definition.parameters.find(p => p.name.content === formal);
 		const choices = parameter?.defaultValue === undefined ? undefined : termOf(parameter.defaultValue, run.scope, run.state);
@@ -824,12 +811,12 @@ function inherit(this: void, target: NodeId, vertex: DataflowGraphVertexFunction
 	for(const clause of contract.clauses) {
 		const inherited = { kind: clause.kind, pure: clause.pure, via: [vertex.id, ...clause.via ?? []], ...(clause.message === undefined ? {} : { message: clause.message }) };
 		const asked = dotsUnnamed ? GuardTerm.any(...GuardTerm.disjuncts(clause.requires).filter(d => GuardTerm.render(d) !== DotsBearNamesText)) : clause.requires;
-		const requires = GuardTerm.substituteCondition(asked, binding, outer);
+		const requires = GuardTerm.substituteCondition(asked, binding, outer, state.facts);
 		if(GuardTerm.formalsOf(requires).size > 0 || GuardTerm.isFalse(requires)) {
 			addClause(run, path, requires, clause.at, inherited);
 		}
 		if(besides !== undefined && !besides.complete) {
-			const unlessNamed = GuardTerm.substituteCondition(asked, besides.binding, outer);
+			const unlessNamed = GuardTerm.substituteCondition(asked, besides.binding, outer, state.facts);
 			if(GuardTerm.formalsOf(unlessNamed).size > 0 && GuardTerm.render(unlessNamed) !== GuardTerm.render(requires)) {
 				addClause(run, path, GuardTerm.any(DotsBearNames, unlessNamed), clause.at, inherited);
 			}
@@ -881,8 +868,8 @@ function walkCall(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		addClause(run, path, GuardTerm.False, id, { kind: 'explicit', ...(messageOf(node) === undefined ? {} : { message: messageOf(node) }) });
 		return [...before, { path, kind: 'error' }];
 	} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.StopIfNot)) {
-		const asserting = Asserting[Identifier.getName(vertex.name)];
-		const conditions = asserting === undefined ? stopIfNotConditions(call) : call.arguments.flatMap(a => a === EmptyArgument || a.value === undefined || asserting.options.has(a.name?.content ?? '') ? [] : [a.value]);
+		const asserting = state.facts(Identifier.getName(vertex.name))?.asserts;
+		const conditions = asserting === undefined ? stopIfNotConditions(call) : call.arguments.flatMap(a => a === EmptyArgument || a.value === undefined || asserting.includes(a.name?.content ?? '') ? [] : [a.value]);
 		return conditions === undefined ? skipped(node, path, run) : walkConditions(conditions, asserting === undefined, path, run);
 	} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.Return)) {
 		const [value] = call.arguments;
@@ -923,7 +910,7 @@ function walkCall(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		builtInRequirements(name, vertex, after, run);
 		if(name === 'get') {
 			getRequirement(node, after, run);
-		} else if(CheckingCalls[name] !== undefined) {
+		} else if(state.facts(name)?.check !== undefined) {
 			checkRequirement(name, node, vertex, after, run);
 		}
 	}
@@ -1005,7 +992,7 @@ function walkShortCircuit(this: void, operator: '&&' | '||', lhs: RNodeWithParen
 	if(left?.kind === 'formal') {
 		addClause(run, atRight, logicalOperand(left), lhs.info.id, { kind: 'implicit' });
 	}
-	const [yes, no] = stepsOf(left);
+	const [yes, no] = stepsOf(left, run.state.facts);
 	const rightPath = [...atRight, operator === '&&' ? yes : no];
 	const right = termOf(rhs, run.scope, run.state);
 	const after = branches(run, () => walk(rhs, rightPath, run), () => []);
@@ -1016,9 +1003,9 @@ function walkShortCircuit(this: void, operator: '&&' | '||', lhs: RNodeWithParen
 }
 
 /** Takes out of a clause what another one rules out: `is.null(x) || is.numeric(x)` is `is.numeric(x)` once `!is.null(x)` holds, as code reads `if(is.null(x)) stop() else if(!is.numeric(x)) stop()`. */
-function withUnitsApplied(this: void, clauses: readonly GuardClause[]): GuardClause[] {
+function withUnitsApplied(this: void, clauses: readonly GuardClause[], facts: GuardFactsLookup): GuardClause[] {
 	const isUnit = (term: GuardTerm) => !GuardTerm.isCall(term, '||');
-	const units = new Set(clauses.filter(c => isUnit(c.requires)).map(c => GuardTerm.render(GuardTerm.truth(c.requires, false))));
+	const units = new Set(clauses.filter(c => isUnit(c.requires)).map(c => GuardTerm.render(GuardTerm.truth(c.requires, false, facts))));
 	const applied = clauses.map(clause => {
 		if(isUnit(clause.requires)) {
 			return clause;
@@ -1032,19 +1019,19 @@ function withUnitsApplied(this: void, clauses: readonly GuardClause[]): GuardCla
 }
 
 /** The clauses without what R asks for that the function checked already, which adds nothing: `x > 0` needs no function to be ruled out after `is.numeric(x)`. */
-function withoutImplied(this: void, clauses: readonly GuardClause[], scope: Scope): GuardClause[] {
+function withoutImplied(this: void, clauses: readonly GuardClause[], scope: Scope, facts: GuardFactsLookup): GuardClause[] {
 	const explicit = clauses.filter(c => c.kind === 'explicit').map(c => c.requires);
 	const formals = [...scope.formals.values()];
-	return clauses.filter(c => c.kind === 'explicit' || !impliedBy(c.requires, explicit, formals));
+	return clauses.filter(c => c.kind === 'explicit' || !impliedBy(c.requires, explicit, formals, facts));
 }
 
 /** The formals the condition asks to be there, as `!missing(x)` does, whether or not they come with a default. */
-function demandsPresenceOf(this: void, condition: GuardTerm): BrandedIdentifier[] {
+function demandsPresenceOf(this: void, condition: GuardTerm, facts: GuardFactsLookup): BrandedIdentifier[] {
 	if(!GuardTerm.isCall(condition) || !condition.known || (condition.fn !== '!' && condition.fn !== 'succeeds')) {
 		return [];
 	}
 	const [{ value: inner }] = condition.args;
-	const asked = GuardTerm.isCall(inner) && (condition.fn === '!' ? inner.fn === 'missing' : CheckingCalls[GuardTerm.bareName(inner.fn)]?.present) ? inner.args[0]?.value : undefined;
+	const asked = GuardTerm.isCall(inner) && (condition.fn === '!' ? inner.fn === 'missing' : facts(GuardTerm.bareName(inner.fn))?.check?.present) ? inner.args[0]?.value : undefined;
 	return asked?.kind === 'formal' ? [asked.name] : [];
 }
 
@@ -1070,9 +1057,9 @@ function contractOf(this: void, id: NodeId, state: GuardState): Contract {
 	}
 	walk(scope.definition.body, [], run);
 	state.depth--;
-	const demanded = new Set([...run.clauses.values()].flatMap(c => demandsPresenceOf(c.requires)));
+	const demanded = new Set([...run.clauses.values()].flatMap(c => demandsPresenceOf(c.requires, state.facts)));
 	const contract: Contract = {
-		clauses:  withoutImplied(withUnitsApplied([...run.clauses.values()]), scope),
+		clauses:  withoutImplied(withUnitsApplied([...run.clauses.values()], state.facts), scope, state.facts),
 		required: scope.definition.parameters.filter(p => demanded.has(p.name.content) || (p.defaultValue === undefined && run.read.has(p.name.content))).map(p => p.name.content),
 		effects:  run.effects,
 		opens:    scope.frameIsOpen
@@ -1083,7 +1070,7 @@ function contractOf(this: void, id: NodeId, state: GuardState): Contract {
 
 function stateOf(this: void, graph: DataflowGraph, { ctx }: FunctionGuardsOptions): GuardState {
 	const bindings = Dataflow.definitionsByName(graph);
-	return { graph, info: builtInLookup(ctx), contracts: new Map(), bindings, bindsFunction: memoize(name => bindings.get(name).some(id => definitionsBehind(id, graph).size > 0)), depth: 0 };
+	return { graph, info: builtInLookup(ctx), facts: ctx === undefined ? defaultGuardFacts() : guardFactsIn(ctx.env.builtInDefinitions), contracts: new Map(), bindings, bindsFunction: memoize(name => bindings.get(name).some(id => definitionsBehind(id, graph).size > 0)), depth: 0 };
 }
 
 /** The claims with what the program offers for the names they need. */
@@ -1120,7 +1107,7 @@ export function guardsOfFunctions(this: void, definitions: readonly NodeId[], gr
 		const { clauses, required } = contractOf(id, state);
 		result[id] = {
 			clauses,
-			formals:    withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()]), state),
+			formals:    withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()], state.facts), state),
 			conditions: conditionsPerFormal(clauses),
 			required,
 			...summarizeClauses(clauses)

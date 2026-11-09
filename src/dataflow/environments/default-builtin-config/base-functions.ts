@@ -178,7 +178,7 @@ export const BaseDefinitions = [
 	fn(base('reg.finalizer'), BuiltInProcName.Default,
 		{ ambient: { type: AmbientStateAccessType.RegisterFinalizer }, sig: sig({ e: ArgProp.Forced, f: ArgProp.Forced, onexit: Forced.Flag }) }),
 	fn(base('gc'), BuiltInProcName.Default, { ambient: { type: AmbientStateAccessType.RunFinalizers }, sig: sig({ verbose: Forced.Flag, reset: Forced.Flag, full: Forced.Flag }) }),
-	fn(base('rm'), BuiltInProcName.Rm, { props: CallProp.Invisible | CallProp.Scope, sig: sig({ '...': 0, list: ArgProp.Forced, pos: 0, envir: ArgProp.Forced, inherits: ArgProp.Forced }) }, Primitive),
+	fn(base('rm', 'remove'), BuiltInProcName.Rm, { props: CallProp.Invisible | CallProp.Scope, sig: sig({ '...': 0, list: ArgProp.Forced, pos: 0, envir: ArgProp.Forced, inherits: ArgProp.Forced }) }, Primitive),
 	/* they read the state they set, so both bits apply */
 	fn(base('options'), BuiltInProcName.Default,
 		{ ambient: { type: AmbientStateAccessType.SetOptions }, props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),

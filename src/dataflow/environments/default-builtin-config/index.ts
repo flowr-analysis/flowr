@@ -26,6 +26,7 @@ import { WithrDefinitions } from './package-withr';
 import { ParallelDefinitions } from './parallel-execution';
 import { MiscDefinitions } from './misc-packages';
 import { TestingDefinitions } from './unit-testing';
+import { GuardDefinitions, markGuards } from './guards';
 
 export type { StatedSignature } from './shared-configs';
 export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics } from './shared-configs';
@@ -75,11 +76,12 @@ export const WrittenBuiltinDefinitions = [
 	...WithrDefinitions,
 	...ParallelDefinitions,
 	...MiscDefinitions,
-	...TestingDefinitions
+	...TestingDefinitions,
+	...GuardDefinitions
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */
-export const DefaultBuiltinConfig = markPrimitives(markGenerics(WrittenBuiltinDefinitions));
+export const DefaultBuiltinConfig = markGuards(markPrimitives(markGenerics(WrittenBuiltinDefinitions)));
 
 /** Expensive and naive lookup of the default processor for a built-in function name */
 export function getDefaultProcessor(name: BrandedIdentifier): BuiltInProcName | undefined {

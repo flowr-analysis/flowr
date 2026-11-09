@@ -38,6 +38,7 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RValue } from '../../../../../eval/values/r-value';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { removedNameOf } from '../../../../../environments/removal-marker';
 import { isBaseRPackage } from '../../../../../../util/r-base-packages';
 
 /**
@@ -791,7 +792,8 @@ export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<N
 		...Dataflow.callsIn(fdef, graph).map(([call]) => accessOfCall(graph, call, environment)),
 		{
 			...AmbientAccess.empty,
-			variables: Relation.fromPairs(escaped(id, fdef).flatMap(def => names.get(def) ?? []).filter(({ name }) => !AmbientStateName.is(name)).map(({ name, nodeId }) => [name, nodeId]))
+			/* removing a global is a write of it, as far as what a function binds goes */
+			variables: Relation.fromPairs(escaped(id, fdef).flatMap(def => names.get(def) ?? []).filter(({ name }) => !AmbientStateName.is(name)).map(({ name, nodeId }) => [removedNameOf(name), nodeId]))
 		}
 	]));
 }

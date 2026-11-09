@@ -284,6 +284,12 @@ describe('Ambient access of code', withTreeSitter(ts => {
 			assert.strictEqual(Dataflow.sideEffects.ambientAccess(info, RNode.collectAllIds(root)).draws.size, 2);
 		});
 
+		test(label('removing a global binds it, under its own name', [], ['dataflow']), async() => {
+			const { graph } = await run('restore <- function(seed) {\n  if(is.null(seed)) rm(".Random.seed", envir = globalenv())\n  else assign(".Random.seed", seed, envir = globalenv())\n}');
+			const [access] = Dataflow.sideEffects.ambientAccessOfFunctions(graph).values();
+			assert.deepStrictEqual([...access.variables.keys()], ['.Random.seed']);
+		});
+
 		test(label('every function', [], ['dataflow']), async() => {
 			const { graph } = await run('a <- function() plot(1)\nb <- function() a()\nc <- function() 1');
 			const all = [...Dataflow.sideEffects.ambientAccessOfFunctions(graph).values()].map(shown);

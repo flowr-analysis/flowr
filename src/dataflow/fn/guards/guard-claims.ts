@@ -1,5 +1,6 @@
 import type { BrandedIdentifier } from '../../environments/identifier';
 import { IntervalDomain } from '../../../abstract-interpretation/domains/interval-domain';
+import { BoundedSetDomain } from '../../../abstract-interpretation/domains/bounded-set-domain';
 import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
 import { AnyType, RValueType, type GuardFactsLookup, type RValueTypes } from '../../environments/guard-facts';
 import { typeNames } from './guard-knowledge';
@@ -46,10 +47,11 @@ export interface ClaimedName {
 
 /** {@link FormalClaim} while it is being worked out, which is a lattice: every field goes from what is known towards nothing. */
 interface Abstract {
-	readonly types:    RValueTypes
-	readonly plain:    RValueTypes
-	/** `undefined` for no claim, as an empty set states that no character value passes */
-	readonly values:   ReadonlySet<string | number | boolean> | undefined
+	readonly types:    TypeSet
+	/** the types of a value without a class attribute */
+	readonly plain:    TypeSet
+	/** top for no claim, as bottom states that no character value passes */
+	readonly values:   BoundedSetDomain<string | number | boolean>
 	readonly partial:  boolean
 	readonly classes:  ReadonlySet<string> | undefined
 	readonly bounds:   ReadonlyMap<BrandedIdentifier, IntervalDomain>
@@ -58,10 +60,30 @@ interface Abstract {
 	readonly resolves: ReadonlyMap<string, ClaimedName>
 }
 
-const Unconstrained: Abstract = { types: AnyType, plain: AnyType, values: undefined, partial: false, classes: undefined, bounds: new Map(), notNA: false, callable: false, resolves: new Map() };
+type TypeSet = BoundedSetDomain<RValueType>;
+
+const AllTypes = typeNames(AnyType).length;
+
+/** The types as a set, which is top once it holds every one of them. */
+function typeSet(this: void, types: RValueTypes): TypeSet {
+	return new BoundedSetDomain(Array.from({ length: AllTypes }, (_, i) => 1 << i).filter(bit => (types & bit) !== 0), AllTypes - 1);
+}
+
+/** The types of the set, all of them for top. */
+function typeBits(this: void, types: TypeSet): RValueTypes {
+	return types.isValue() ? types.value.values().reduce((acc, type) => acc | type, 0) : AnyType;
+}
+
+const NoValues = BoundedSetDomain.top<string | number | boolean>();
+
+function ofValues(this: void, values: ReadonlySet<string | number | boolean> | undefined): BoundedSetDomain<string | number | boolean> {
+	return values === undefined ? NoValues : NoValues.create(values);
+}
+
+const Unconstrained: Abstract = { types: typeSet(AnyType), plain: typeSet(AnyType), values: NoValues, partial: false, classes: undefined, bounds: new Map(), notNA: false, callable: false, resolves: new Map() };
 
 function ofTypes(this: void, types: RValueTypes, classed = false): Abstract {
-	return { ...Unconstrained, types, plain: classed ? 0 : types };
+	return { ...Unconstrained, types: typeSet(types), plain: typeSet(classed ? 0 : types) };
 }
 
 function ofBound(this: void, measure: BrandedIdentifier, lower: number, upper: number): Abstract {
@@ -83,13 +105,13 @@ function combineMaps(this: void, a: Abstract['bounds'], b: Abstract['bounds'], m
 
 /** Both hold. */
 function both(this: void, a: Abstract, b: Abstract): Abstract {
-	const values = a.values === undefined ? b.values : b.values === undefined ? a.values : a.values.intersection(b.values);
+	const values = a.values.meet(b.values);
 	return {
-		types:    a.types & b.types,
-		plain:    a.plain & b.plain,
+		types:    a.types.meet(b.types),
+		plain:    a.plain.meet(b.plain),
 		values,
 		/* whichever narrowed it last keeps the exact values, those always pass the partial ones as well */
-		partial:  (a.values === undefined || a.partial) && (b.values === undefined || b.partial) && values !== undefined,
+		partial:  (a.values.isTop() || a.partial) && (b.values.isTop() || b.partial) && !values.isTop(),
 		/* each of them holds, and a class set says "at least one of these": either answer is true, the smaller says more */
 		classes:  a.classes === undefined || (b.classes !== undefined && b.classes.size < a.classes.size) ? b.classes : a.classes,
 		bounds:   combineMaps(a.bounds, b.bounds, true),
@@ -101,12 +123,12 @@ function both(this: void, a: Abstract, b: Abstract): Abstract {
 
 /** At least one of the two holds. */
 function either(this: void, a: Abstract, b: Abstract): Abstract {
-	const values = a.values === undefined || b.values === undefined ? undefined : a.values.union(b.values);
+	const values = a.values.join(b.values);
 	return {
-		types:    a.types | b.types,
-		plain:    a.plain | b.plain,
+		types:    a.types.join(b.types),
+		plain:    a.plain.join(b.plain),
 		values,
-		partial:  values !== undefined && (a.partial || b.partial),
+		partial:  !values.isTop() && (a.partial || b.partial),
 		classes:  a.classes === undefined || b.classes === undefined ? undefined : a.classes.union(b.classes),
 		bounds:   combineMaps(a.bounds, b.bounds, false),
 		notNA:    a.notNA && b.notNA,
@@ -141,7 +163,7 @@ function ofPredicate(this: void, call: GuardCall, formal: BrandedIdentifier, hol
 		}
 		const ruledOut = predicate.exact ? ofTypes(AnyType & ~predicate.yes) : Unconstrained;
 		/* whatever a string can be measured against, this is not one */
-		return call.fn === 'is.character' ? { ...ruledOut, values: new Set() } : ruledOut;
+		return call.fn === 'is.character' ? { ...ruledOut, values: NoValues.bottom() } : ruledOut;
 	} else if(isFormal(first, formal) && (holds ? name === 'is.finite' : name === 'is.na' || name === 'anyNA')) {
 		return { ...Unconstrained, notNA: true };
 	} else if(stated?.measures !== undefined && isFormal(first, formal) && call.args.length === 1) {
@@ -197,7 +219,7 @@ function ofComparison(this: void, read: GuardTerm, op: BrandedIdentifier, right:
 	const number = constants.length === 1 ? constants[0].value : undefined;
 	if(op === '%in%' || (op === '==' && typeof number !== 'number')) {
 		const values = valuesOf(constants);
-		return values === undefined ? Unconstrained : { ...Unconstrained, values };
+		return values === undefined ? Unconstrained : { ...Unconstrained, values: ofValues(values) };
 	}
 	return typeof number === 'number' ? boundOf('value', op, number) : Unconstrained;
 }
@@ -227,7 +249,7 @@ function ofCheck(this: void, call: GuardCall, formal: BrandedIdentifier, facts: 
 	}
 	const choices = check.choices === undefined ? undefined : call.args.find((a, i) => a.name === check.choices || (a.name === undefined && i === 1))?.value;
 	const values = choices === undefined ? undefined : valuesOf(GuardTerm.constants(choices) ?? []);
-	const claim = { ...ofTypes(types, check.classed), values, partial: values !== undefined && check.partial === true };
+	const claim = { ...ofTypes(types, check.classed), values: ofValues(values), partial: values !== undefined && check.partial === true };
 	return check.scalar && !loosened ? both(claim, ofBound('length', 1, 1)) : claim;
 }
 
@@ -321,20 +343,20 @@ function boundsOf(this: void, bounds: Abstract['bounds']): Record<string, Claime
 const Numbers = RValueType.Integer | RValueType.Double;
 
 /** Whether `==` tells the values apart for every value without a class, as R turns `TRUE == 1` and `"1" == 1` true, which only a string claim survives. */
-function comparesExactly(this: void, plain: RValueTypes, values: ReadonlySet<string | number | boolean>): boolean {
-	const kinds = new Set([...values].map(v => typeof v));
-	return kinds.size === 1 && (kinds.has('string') || (plain & ~(kinds.has('number') ? Numbers : RValueType.Logical)) === 0);
+function comparesExactly(this: void, plain: TypeSet, values: BoundedSetDomain<string | number | boolean>): values is BoundedSetDomain<string | number | boolean> & { value: ReadonlySet<string | number | boolean> } {
+	const kinds = new Set(values.isValue() ? [...values.value].map(v => typeof v) : []);
+	return kinds.size === 1 && (kinds.has('string') || plain.leq(typeSet(kinds.has('number') ? Numbers : RValueType.Logical)));
 }
 
 function toClaim(this: void, abstract: Abstract): FormalClaim {
 	const { types, plain, partial, classes, notNA, callable, resolves } = abstract;
-	const values = abstract.values !== undefined && comparesExactly(plain, abstract.values) ? abstract.values : undefined;
+	const values = comparesExactly(plain, abstract.values) ? abstract.values.value : undefined;
 	/* `"a" > 5` holds in R, so a bound on the value says something only of a number */
-	const bounds = (plain & ~(Numbers | RValueType.Logical)) === 0 ? abstract.bounds : new Map([...abstract.bounds].filter(([measure]) => measure !== 'value'));
+	const bounds = plain.leq(typeSet(Numbers | RValueType.Logical)) ? abstract.bounds : new Map([...abstract.bounds].filter(([measure]) => measure !== 'value'));
 	const stated = boundsOf(bounds);
 	return {
-		...(types === AnyType ? {} : { types: typeNames(types) }),
-		...(plain === types || plain === AnyType ? {} : { plainTypes: typeNames(plain) }),
+		...(types.isTop() ? {} : { types: typeNames(typeBits(types)) }),
+		...(plain.equals(types) || plain.isTop() ? {} : { plainTypes: typeNames(typeBits(plain)) }),
 		...(values === undefined || values.size === 0 ? {} : { values: [...values], ...(partial ? { partial } : {}) }),
 		...(classes === undefined ? {} : { classes: [...classes] }),
 		...(stated === undefined ? {} : { bounds: stated }),
@@ -350,7 +372,7 @@ export function impliedBy(this: void, implied: GuardTerm, conditions: readonly G
 	return mentioned.length === 1 && GuardTerm.isCall(implied) && mentioned.every(formal => {
 		const known = conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained);
 		const { plain } = abstractOf(implied, formal, facts);
-		return known.types !== AnyType && plain !== AnyType && (known.types & ~plain) === 0;
+		return !known.types.isTop() && !plain.isTop() && known.types.leq(plain);
 	});
 }
 

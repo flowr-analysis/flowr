@@ -77,7 +77,8 @@ function connect(this: void, fn: BrandedIdentifier, absorbing: GuardConstant, ne
 
 /** The name of the function without the namespace it was written with. */
 function bareName(this: void, fn: BrandedIdentifier): BrandedIdentifier {
-	return fn.slice(fn.lastIndexOf(':') + 1);
+	const at = fn.lastIndexOf('::');
+	return at > 0 && at + 2 < fn.length ? fn.slice(at + 2) : fn;
 }
 
 /** All of the terms; dropping unknowable ones turns into {@link True}, which leaves what is left necessary. */
@@ -132,7 +133,7 @@ function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLoo
 		case 'isTRUE':
 		case 'isFALSE':
 			/* on a formal it says more than the truth of the formal: a single logical */
-			return holds && isCall(first) ? truth(first, term.fn === 'isTRUE', facts) : leaf(term, holds, false);
+			return holds && isCall(first) && isScalar(first, facts) ? truth(first, term.fn === 'isTRUE', facts) : leaf(term, holds, false);
 		case '&&':
 			return (holds ? all : any)(truth(first, holds, facts), truth(second, holds, facts));
 		case '||':
@@ -177,12 +178,19 @@ function renderBelow(this: void, term: GuardTerm, atLeast: number): string {
 	return precedenceOf(term) < atLeast ? `(${text})` : text;
 }
 
+/** A name R reads without backticks, `...` and `..1` among them. */
+const Syntactic = /^(?:[A-Za-z]|\.(?![0-9]))[A-Za-z0-9._]*$|^\.$/;
+const Reserved = new Set(['if', 'else', 'repeat', 'while', 'function', 'for', 'next', 'break', 'TRUE', 'FALSE', 'NULL', 'Inf', 'NaN', 'NA', 'NA_integer_', 'NA_real_', 'NA_character_', 'NA_complex_', 'in']);
+
 /** The term in the R syntax it stands for. */
 function render(this: void, term: GuardTerm): string {
 	switch(term.kind) {
 		case 'formal':
 		case 'free':
-			return String(term.name);
+		{
+			const name = String(term.name);
+			return Syntactic.test(name) && !Reserved.has(name) ? name : `\`${name}\``;
+		}
 		case 'constant':
 			return term.lexeme;
 	}
@@ -197,7 +205,8 @@ function render(this: void, term: GuardTerm): string {
 		return `${renderBelow(first, AtomPrecedence)}${term.fn}${renderArgs(term.args.slice(1))}${close}`;
 	} else if(Precedence[term.fn] !== undefined && term.args.length === 2) {
 		const own = Precedence[term.fn];
-		return `${renderBelow(first, own)} ${term.fn} ${renderBelow(second, own + 1)}`;
+		const spaced = term.fn === ':' ? ':' : ` ${term.fn} `;
+		return `${renderBelow(first, own)}${spaced}${renderBelow(second, own + 1)}`;
 	}
 	return `${term.fn}(${renderArgs(term.args)})`;
 }
@@ -239,7 +248,10 @@ function substitute(this: void, term: GuardTerm, binding: GuardBinding, outer?: 
 		case 'constant':
 			return term;
 	}
-	if(term.fn === 'missing' && term.known) {
+	if(term.fn === '...names' && term.known) {
+		/* it speaks of the dots of the callee, which the caller fills */
+		return undefined;
+	} else if(term.fn === 'missing' && term.known) {
 		const [{ value: formal }] = term.args;
 		const bound = formal.kind === 'formal' ? binding.get(formal.name) : undefined;
 		return bound === undefined ? True : bound.kind === 'formal' ? { ...term, args: [{ value: bound }] } : False;

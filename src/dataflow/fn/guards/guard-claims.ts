@@ -16,13 +16,13 @@ export interface FormalClaim {
 	readonly types?:      readonly string[]
 	/** the same, for a value without a class attribute, as those can bring methods of their own; only stated if it says more than {@link FormalClaim.types} */
 	readonly plainTypes?: readonly string[]
-	/** a character value holds only these, or abbreviates one of them if {@link FormalClaim.partial} is set */
+	/** a character value holds only these, or abbreviates one of them if {@link FormalClaim.partial} is set, numbers and logicals are only stated for a value that is one */
 	readonly values?:     readonly (string | number | boolean)[]
 	/** the {@link FormalClaim.values} are matched partially, as `match.arg` does */
 	readonly partial?:    boolean
 	/** `class(x)` holds at least one of these */
 	readonly classes?:    readonly string[]
-	/** the bounds of what the formal measures: `value` for a number (compared as R compares), else `length`, `nchar`, `nrow`, `ncol`, `NROW`, or `NCOL`, which are taken to be whole numbers, as an S3 method of `length` returning anything else breaks its contract */
+	/** the bounds of what the formal measures: `value` for a number without a class attribute, only stated if the formal is one, else `length`, `nchar`, `nrow`, `ncol`, `NROW`, or `NCOL`, which are taken to be whole numbers, as an S3 method of `length` returning anything else breaks its contract */
 	readonly bounds?:     Readonly<Record<string, ClaimedRange>>
 	/** no element is `NA` */
 	readonly notNA?:      boolean
@@ -318,8 +318,19 @@ function boundsOf(this: void, bounds: Abstract['bounds']): Record<string, Claime
 	}));
 }
 
+const Numbers = RValueType.Integer | RValueType.Double;
+
+/** Whether `==` tells the values apart for every value without a class, as R turns `TRUE == 1` and `"1" == 1` true, which only a string claim survives. */
+function comparesExactly(this: void, plain: RValueTypes, values: ReadonlySet<string | number | boolean>): boolean {
+	const kinds = new Set([...values].map(v => typeof v));
+	return kinds.size === 1 && (kinds.has('string') || (plain & ~(kinds.has('number') ? Numbers : RValueType.Logical)) === 0);
+}
+
 function toClaim(this: void, abstract: Abstract): FormalClaim {
-	const { types, plain, values, partial, classes, bounds, notNA, callable, resolves } = abstract;
+	const { types, plain, partial, classes, notNA, callable, resolves } = abstract;
+	const values = abstract.values !== undefined && comparesExactly(plain, abstract.values) ? abstract.values : undefined;
+	/* `"a" > 5` holds in R, so a bound on the value says something only of a number */
+	const bounds = (plain & ~(Numbers | RValueType.Logical)) === 0 ? abstract.bounds : new Map([...abstract.bounds].filter(([measure]) => measure !== 'value'));
 	const stated = boundsOf(bounds);
 	return {
 		...(types === AnyType ? {} : { types: typeNames(types) }),

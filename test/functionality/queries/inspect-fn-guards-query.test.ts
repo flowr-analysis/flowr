@@ -420,6 +420,17 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(x, m) { if(is.matrix(x)) stopifnot(is.numeric(m) || is.null(m)); x }; f <- function(x) g(x, "a")', '!is.matrix(x)');
 	guards('g <- function(x, m) { stopifnot(is.object(m) || is.vector(m)); x }; f <- function(x) g(x, 2L)', '');
 	guards('g <- function(x, m) { stopifnot(is.atomic(m), !is.null(x)); x }; f <- function(x) g(x, NULL)', '!is.null(x)');
+	guards('f <- function(x) { stopifnot(x %in% 1:3); x }', 'all(x %in% 1:3)');
+	guards('f <- function(x) { stopifnot(x == 1:2); x }', '(!is.function(x) && !is.environment(x) || is.object(x) || is.object(1:2)) && all(x == 1:2)');
+	guards('f <- function(x) { stopifnot(x %in% -(1:3)); x }', 'all(x %in% -(1:3))');
+	guards('f <- function(x) { stopifnot(x > 0, x > 5); x }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0) && all(x > 5)');
+	guards('f <- function(x) { stopifnot(is.numeric(x), x > 5); x }', 'is.numeric(x) && all(x > 5)');
+	guards('f <- function(x) { stopifnot(x == TRUE); x }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x == TRUE)');
+	guards('f <- function(x) { stopifnot(is.logical(x), x == TRUE); x }', 'is.logical(x) && all(x == TRUE)');
+	guards('f <- function(x) { stopifnot(x == 1); x }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x == 1)');
+	guards('f <- function(x) { stopifnot(is.integer(x), x == 1); x }', 'is.integer(x) && all(x == 1)');
+	guards('f <- function(`my x`) { stopifnot(is.numeric(`my x`)); 1 }', 'is.numeric(`my x`)');
+	guards('f <- function(x) { stopifnot(isTRUE(all.equal(x, 1))); x }', 'isTRUE(all.equal(x, 1))');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
@@ -455,8 +466,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test('a configuration teaches what a function checks', async() => {
 		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.semantics.environment.overwriteBuiltIns.definitions = [{ type:      'function', names:     ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
-				config:    { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
+			c.semantics.environment.overwriteBuiltIns.definitions = [{ type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+				config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
 		});
 		const taught = await guardsOfF(parser, code, config);
 		const plain = await guardsOfF(parser, code);
@@ -499,7 +510,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; h <- function(x, ...) { g(x, ...) }; f <- function(v) { h(v) }', { v: { types: ['list', 'pairlist'] } }, []);
 	claims('f <- function(x) { if(x != "a" && x != "b") stop("n"); x }', { x: { plainTypes: AnythingBut('function', 'environment'), values: ['a', 'b'] } }, ['x']);
 	claims('f <- function(x) { switch(x, a = 1, b = 2, stop("no")) }', { x: { values: ['a', 'b'] } }, ['x']);
-	claims('f <- function(x, y = 1) { stopifnot(x > 0, x <= 5, length(y) == 1L); x }', { x: { plainTypes: AnythingBut('function', 'environment'), bounds: { value: [0, 5] } }, y: { bounds: { length: [1, 1] } } }, ['x']);
+	claims('f <- function(x, y = 1) { stopifnot(x > 0, x <= 5, length(y) == 1L); x }', { x: { plainTypes: AnythingBut('function', 'environment') }, y: { bounds: { length: [1, 1] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.numeric(x), x > 0, x <= 5); x }', { x: { types: ['integer', 'double'], bounds: { value: [0, 5] } } }, ['x']);
 	claims('f <- function(x) { if(length(x) == 0) stop("n"); x }', { x: { bounds: { length: [1, null] } } }, ['x']);
 	claims('f <- function(x) { if(nrow(x) > 3) stop("n"); x }', { x: { bounds: { nrow: [null, 3] } } }, ['x']);
 	claims('f <- function(x) { if(!inherits(x, c("a", "b"))) stop("n"); x }', { x: { classes: ['a', 'b'] } }, ['x']);

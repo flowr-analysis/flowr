@@ -358,7 +358,7 @@ function bindingBesidesDots(this: void, vertex: DataflowGraphVertexFunctionCall,
 }
 
 /** Whether something the dots hand on bears a name, which only the function holding the dots can tell. */
-const DotsBearNames = GuardTerm.known('!', GuardTerm.known('is.null', { kind: 'free', name: '...names()' }));
+const DotsBearNames = GuardTerm.known('!', GuardTerm.known('is.null', GuardTerm.known('...names')));
 const DotsBearNamesText = GuardTerm.render(DotsBearNames);
 
 /** Whether the dots of the callee are its own and a call leaves them without a name, as nothing it hands on could bear one: a name not spelled out in full may still end up in them. */

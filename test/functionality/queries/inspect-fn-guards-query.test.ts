@@ -505,6 +505,11 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		]);
 	});
 
+	test('a claim that holds unless another formal lets the call through', async() => {
+		const guards = await guardsOfF(parser, 'f <- function(package, character.only) { if(!missing(package)) stopifnot(is.logical(character.only)); 1 }');
+		assert.deepStrictEqual(guards?.conditional, [{ formal: 'character.only', claim: { types: ['logical'] }, unless: 'missing(package)' }]);
+	});
+
 	test('a configuration teaches what a function checks', async() => {
 		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {

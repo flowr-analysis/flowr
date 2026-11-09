@@ -405,6 +405,30 @@ export function relationsOf(this: void, conditions: readonly GuardTerm[]): Claim
 	});
 }
 
+/** A claim on one formal that holds unless something else lets the call through, like `missing(package) || is.character(character.only)`. */
+export interface ConditionalClaim {
+	readonly formal: BrandedIdentifier
+	readonly claim:  FormalClaim
+	/** what lets a call through instead, in R syntax */
+	readonly unless: string
+}
+
+/** The claims the given conditions make on a formal unless something not about that formal holds, see {@link ConditionalClaim}. */
+export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): ConditionalClaim[] {
+	return conditions.flatMap(condition => {
+		const alternatives = GuardTerm.disjuncts(condition);
+		return formals.flatMap(formal => {
+			const about = alternatives.filter(a => setEquals(GuardTerm.formalsOf(a), new Set([formal])));
+			const others = alternatives.filter(a => !GuardTerm.formalsOf(a).has(formal));
+			if(about.length === 0 || others.length === 0 || about.length + others.length !== alternatives.length) {
+				return [];
+			}
+			const claim = toClaim(about.map(a => abstractOf(a, formal, facts)).reduce(either));
+			return Object.keys(claim).length === 0 ? [] : [{ formal, claim, unless: GuardTerm.render(GuardTerm.any(...others)) }];
+		});
+	});
+}
+
 /** Whether every value passing `conditions` passes `implied` as far as the types can tell; as a wrong guess only loses a clause, not what is left. */
 export function impliedBy(this: void, implied: GuardTerm, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): boolean {
 	const alternatives = GuardTerm.disjuncts(implied);
@@ -441,6 +465,40 @@ function listed(this: void, words: readonly string[]): string {
 function typesInWords(this: void, types: readonly string[]): string {
 	const left = typeNames(AnyType).filter(t => !types.includes(t));
 	return left.length < types.length ? `anything but ${listed(left)}` : listed(types);
+}
+
+/** `{a, b}`, or the one value itself. */
+function setOf(this: void, words: readonly (string | number | boolean)[]): string {
+	return words.length === 1 ? String(words[0]) : `{${words.join(', ')}}`;
+}
+
+/**
+ * Reads a claim on `formal` as conditions written the way R would test them, all of which hold, like
+ * `typeof(m) in {integer, double}`, `length(m) == 1`, and `m >= 0`.
+ */
+export function claimConditions(this: void, formal: string, { types, plainTypes, values, partial, classes, bounds, notNA, callable, resolves }: FormalClaim): string[] {
+	const ofTypes = (named: readonly string[], unclassed: boolean) => {
+		const left = typeNames(AnyType).filter(t => !named.includes(t));
+		const said = left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
+		return unclassed ? `is.object(${formal}) || ${said}` : said;
+	};
+	const range = (measure: string, [lower, upper]: ClaimedRange) => {
+		const of = measure === 'value' ? formal : `${measure}(${formal})`;
+		return lower !== null && lower === upper ? [`${of} == ${lower}`]
+			: [...lower === null ? [] : [`${of} >= ${lower}`], ...upper === null ? [] : [`${of} <= ${upper}`]];
+	};
+	return [
+		...types === undefined ? [] : [ofTypes(types, false)],
+		...plainTypes === undefined ? [] : [ofTypes(plainTypes, true)],
+		...values === undefined ? [] : [partial
+			? `!is.na(pmatch(${formal}, c(${values.map(v => JSON.stringify(v)).join(', ')})))`
+			: `${formal} in ${setOf(values.map(v => JSON.stringify(v)))}`],
+		...classes === undefined ? [] : [classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`],
+		...Object.entries(bounds ?? {}).flatMap(([measure, bound]) => range(measure, bound)),
+		...notNA ? [`!anyNA(${formal})`] : [],
+		...callable ? [`is.function(match.fun(${formal}))`] : [],
+		...(resolves ?? []).map(r => `exists(${r.expression})`)
+	];
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */

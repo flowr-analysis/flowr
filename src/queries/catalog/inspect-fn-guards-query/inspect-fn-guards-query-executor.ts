@@ -20,10 +20,11 @@ function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuar
 	const kept: FunctionGuards = {
 		...FunctionSemantics.guardSummary(clauses),
 		clauses,
-		conditions: onlyNamed(conditionsPerFormal(clauses)),
-		formals:    onlyNamed(guards.formals),
-		relations:  relationsOf(clauses.map(c => c.requires)),
-		required:   guards.required.filter(f => named === undefined || named.has(f))
+		conditions:  onlyNamed(conditionsPerFormal(clauses)),
+		formals:     onlyNamed(guards.formals),
+		relations:   relationsOf(clauses.map(c => c.requires)),
+		conditional: guards.conditional.filter(c => named === undefined || named.has(c.formal)),
+		required:    guards.required.filter(f => named === undefined || named.has(f))
 	};
 	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 ? kept : undefined;
 }

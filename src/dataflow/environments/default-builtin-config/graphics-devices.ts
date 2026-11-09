@@ -6,7 +6,7 @@ import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { ArgProp, CallProp, SemanticCallTag, type SemanticCallTags } from '../built-in-props';
 import { ClassSystem, AmbientStateAccessType } from '../built-in-kinds';
 import { DeprecationState } from '../deprecation-info';
-import { LinkToLastGgPlot, LinkToLastPlot, PlotAddonConfig, OpenDevice, ReadDevices, PlotCreateConfig } from './shared-configs';
+import { LinkToLastGgPlot, PlotAddonConfig, OpenDevice, ReadDevices, PlotCreateConfig } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import { FunctionDispatch } from '../../graph/vertex';
 
@@ -47,21 +47,22 @@ export const GraphicsDefinitions = [
 	fn(pkg(PkgName.GgPlot2, 'qplot'), BuiltInProcName.Default, { ...PlotCreateConfig, tags: [SemanticCallTag.Graphics, SemanticCallTag.Deprecated] as SemanticCallTags },
 		{ overrides: true, assumePrimitive: true }),
 	fn(pkg(PkgName.GrDevices, 'dev.off'), BuiltInProcName.Default,
-		{ props: CallProp.Configures, libFn: true, ambient: { type: AmbientStateAccessType.CloseDevice }, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics, SemanticCallTag.Closes, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': ArgProp.Forced }) },
+		{ props: CallProp.Configures, libFn: true, ambient: { type: AmbientStateAccessType.CloseDevice }, tags: [SemanticCallTag.Graphics, SemanticCallTag.Closes, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': ArgProp.Forced }) },
 		Primitive),
 	fn(pkg(PkgName.GrDevices, 'graphics.off'), BuiltInProcName.Default,
-		{ props: CallProp.Configures | CallProp.Invisible, libFn: true, ambient: { type: AmbientStateAccessType.CloseDevice, all: true }, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics, SemanticCallTag.Closes, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': ArgProp.Forced }) },
+		{ props: CallProp.Configures | CallProp.Invisible, libFn: true, ambient: { type: AmbientStateAccessType.CloseDevice, all: true }, tags: [SemanticCallTag.Graphics, SemanticCallTag.Closes, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': ArgProp.Forced }) },
 		Primitive),
-	fn(pkg(PkgName.GrDevices, 'dev.cur', 'dev.list', 'dev.size', 'dev.capabilities'), BuiltInProcName.Default,
+	/* `dev.next` and `dev.prev` only name another device, they switch to none */
+	fn(pkg(PkgName.GrDevices, 'dev.cur', 'dev.list', 'dev.size', 'dev.capabilities', 'dev.next', 'dev.prev'), BuiltInProcName.Default,
 		{ props: CallProp.Ambient, libFn: true, ambient: ReadDevices, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }),
 	/* switching the active device makes its graphics state the one in effect */
-	fn(pkg(PkgName.GrDevices, 'dev.set', 'dev.next', 'dev.prev'), BuiltInProcName.Default,
+	fn(pkg(PkgName.GrDevices, 'dev.set'), BuiltInProcName.Default,
 		{ props: CallProp.Configures, libFn: true, ambient: { type: AmbientStateAccessType.SwitchDevice }, tags: [SemanticCallTag.Graphics], sig: sig({ which: ArgProp.Forced }) }),
 	fn([...pkg(PkgName.GgPlot2, 'make_constructor'), ...pkg(PkgName.S7, 'new_class')], BuiltInProcName.S7MakeConstructor,
 		{ mode: [FunctionDispatch.S7], classDecl: { system: ClassSystem.S7, nameArg: { idx: 0, name: 'name' }, containsArg: { idx: 1, name: 'parent' }, memberArgs: [{ name: 'properties', typed: true }], virtualArg: { name: 'abstract' } } },
 		Primitive),
 	fn([...pkg(PkgName.Graphics, 'par'), ...pkg(PkgName.TinyPlot, 'tpar')], BuiltInProcName.Default,
-		{ props: CallProp.Configures | CallProp.Invisible, ambient: { type: AmbientStateAccessType.SetGraphics, queryOnUnnamedStrings: true, queryLinksTo: LinkToLastPlot, keys: { from: 'argument-names', ignore: ['no.readonly'] } }, tags: [SemanticCallTag.Graphics], sig: sig({ '...': 0, 'no.readonly': 0 }) }),
+		{ props: CallProp.Configures | CallProp.Invisible, ambient: { type: AmbientStateAccessType.SetGraphics, queryOnUnnamedStrings: true, queryReadsPlot: true, keys: { from: 'argument-names', ignore: ['no.readonly'] } }, tags: [SemanticCallTag.Graphics], sig: sig({ '...': 0, 'no.readonly': 0 }) }),
 	/* they arrange the device or change its colors, which every later plot on it picks up */
 	fn(pkg(PkgName.Graphics, 'layout', 'screen', 'close.screen'), BuiltInProcName.Default,
 		{ props: CallProp.Configures | CallProp.Invisible, ambient: { type: AmbientStateAccessType.SetGraphics }, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }),

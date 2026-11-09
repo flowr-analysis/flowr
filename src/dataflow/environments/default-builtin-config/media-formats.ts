@@ -3,7 +3,7 @@ import { fn, pkg, Primitive, readsFile, writesFile } from './define-helpers';
 import { PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { LinkToLastPlot, OpenDevice } from './shared-configs';
+import { ReadDevice, OpenDevice } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of images, audio, and video. */
@@ -46,9 +46,9 @@ export const MediaDefinitions = [
 	fn(pkg(PkgName.TuneR, 'writeWave'), BuiltInProcName.DefaultReadAllArgs, writesFile('filename', 'object')),
 	fn(pkg(PkgName.Audio, 'save.wave'), BuiltInProcName.DefaultReadAllArgs, writesFile('where', 'what')),
 	fn([...pkg(PkgName.Magick, 'image_capture'), ...pkg(PkgName.GrDevices, 'dev.capture')], BuiltInProcName.Default,
-		{ libFn: true, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }, Primitive),
+		{ libFn: true, ambient: ReadDevice, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) }, Primitive),
 	/* they put what the device holds on disk */
 	fn(pkg(PkgName.Magick, 'image_write'), BuiltInProcName.Default,
-		{ libFn: true, props: CallProp.Invisible, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ image: Forced.Value, path: Forced.Resource | ArgProp.Optional }) },
+		{ libFn: true, props: CallProp.Invisible, ambient: ReadDevice, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ image: Forced.Value, path: Forced.Resource | ArgProp.Optional }) },
 		Primitive),
 ] as const satisfies AnyBuiltInDefinition[];

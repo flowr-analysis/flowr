@@ -23,7 +23,7 @@ export const enum AmbientStateAccessType {
 	SetGraphics  = 'set-graphics',
 	/** writes the palette, which all devices share; without arguments it only reads it */
 	SetPalette   = 'set-palette',
-	/** reads the graphics state and the palette, like every plot does */
+	/** reads the graphics state and the palette, like every plot does, and draws on the active device as {@link PlotDraw} says */
 	ReadGraphics = 'read-graphics',
 	/** opens a device, which starts with a fresh graphics state */
 	OpenDevice   = 'open-device',
@@ -56,6 +56,16 @@ export const enum AmbientStateAccessType {
 	SetState     = 'set-state',
 	/** reads a state without entries, like `search()` reads the search path */
 	ReadState    = 'read-state'
+}
+
+/** How a drawing call changes the plot on the active device, which it opens if none is open. */
+export enum PlotDraw {
+	/** starts a new plot, like `plot` */
+	New = 'new',
+	/** adds to the current plot, like `points` */
+	Add = 'add',
+	/** adds to the current plot if its argument `add` is `TRUE`, and starts a new one otherwise, like `curve` */
+	AddIfAsked = 'add-if-asked'
 }
 
 /** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */

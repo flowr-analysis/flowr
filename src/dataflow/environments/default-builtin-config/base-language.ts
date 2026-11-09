@@ -7,7 +7,7 @@ import { BuiltInEvalName } from '../built-in-eval-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { DataMaskingFunctionIdentifiers } from '../data-masking-functions';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, ReadGraphicsState, PlotCreateConfig } from './shared-configs';
+import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, PlotCreateConfig, NewPlot, AddsToPlot, MayAddToPlot } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** What `$` and `@` share: they access a field by its name. */
@@ -23,14 +23,13 @@ export const LanguageDefinitions = [
 		{ libFn: true, ambient: DbReadsWrites(DbConnectSig), tags: [SemanticCallTag.Opens, SemanticCallTag.Database, SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes], sig: DbConnectSig }),
 	// graphics base
 	fn(namespacePlotFunctions(GraphicsPlotCreate.concat(TinyPlotCrate).filter(f => !VisiblePlotCreate.has(f))), BuiltInProcName.Default,
-		{ ...PlotCreateConfig, props: CallProp.Invisible, ambient: ReadGraphicsState }, Primitive),
-	fn(namespacePlotFunctions([...VisiblePlotCreate]), BuiltInProcName.Default, { ...PlotCreateConfig, ambient: ReadGraphicsState }, Primitive),
-	/* grid-based plots ignore the base graphics parameters */
+		{ ...PlotCreateConfig, props: CallProp.Invisible, ambient: NewPlot }, Primitive),
+	fn(namespacePlotFunctions([...VisiblePlotCreate]), BuiltInProcName.Default, { ...PlotCreateConfig, ambient: NewPlot }, Primitive),
 	fn(namespacePlotFunctions(GgPlotCreate), BuiltInProcName.Default, PlotCreateConfig, Primitive),
 	fn(namespacePlotFunctions(['grid.arrange']), BuiltInProcName.Default, { ...PlotCreateConfig, props: CallProp.Invisible }, { overrides: true, assumePrimitive: true }),
 	// graphics addons
-	fn(namespacePlotFunctions(GraphicsPlotAddons.concat(...PlotFunctionsWithAddParam)), BuiltInProcName.Default,
-		{ ...PlotAddonConfig, props: CallProp.Invisible, ambient: ReadGraphicsState }, { overrides: true, assumePrimitive: true }),
+	fn(namespacePlotFunctions(GraphicsPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: AddsToPlot }, Primitive),
+	fn(namespacePlotFunctions([...PlotFunctionsWithAddParam]), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: MayAddToPlot }, { overrides: true, assumePrimitive: true }),
 	fn(namespacePlotFunctions(GgPlotImplicitAddons.filter(f => !InvisibleGgPlotAddons.includes(f))), BuiltInProcName.Default, PlotAddonConfig, Primitive),
 	fn(namespacePlotFunctions(InvisibleGgPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible }, Primitive),
 	// plot tags

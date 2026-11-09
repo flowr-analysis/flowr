@@ -1,18 +1,13 @@
 import { pkg, base } from './define-helpers';
 import { sig, Forced } from './shared-signatures';
 import type { BuiltInDefinitions } from '../built-in-config';
-import type { DataflowGraph } from '../../graph/graph';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { BuiltInOperators, OperatorCategory } from './base-operators';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexInfo, DfgVertex } from '../../graph/vertex';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { CascadeAction } from '../../../queries/catalog/call-context-query/cascade-action';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { ArgProp, CallProp, type FnSig, SemanticCallTag, type SemanticCallTags } from '../built-in-props';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../util/r-base-packages';
 import { RBasePrimitives } from '../../../data/r-base-primitives.generated';
 import { RBasePackageStore } from '../../../data/r-base-packages.generated';
-import { AmbientStateAccessType, PrintingOptions } from '../built-in-kinds';
+import { AmbientStateAccessType, PlotDraw, PrintingOptions } from '../built-in-kinds';
 import { AmbientStateName, KeyedState, UnknownKey } from '../ambient-state-name';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
@@ -190,8 +185,6 @@ export const PlotCreate = GraphicsPlotCreate.concat(TinyPlotCrate, GgPlotCreate)
 export const VisiblePlotCreate: ReadonlySet<string> = new Set(['xyplot', 'stripplot', 'bwplot', 'dotplot', 'histogram', 'splom', 'leaflet', 'plot_ly', 'tm_shape', 'itemplot']);
 /** the plot creators that return the plot to draw when printed, where base graphics draw at once and return something else */
 export const PlotObjectCreate: ReadonlySet<string> = new Set([...GgPlotCreate.filter(f => f !== 'grid.arrange'), 'last_plot', ...VisiblePlotCreate, 'pheatmap']);
-export const GraphicDeviceOpen = ['pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
-	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp', 'agg_capture'] as const;
 export const TinyPlotAddons = ['tinyplot_add', 'plt_add'];
 /** the addons that change the theme of later plots and hand back the old one invisibly */
 export const InvisibleGgPlotAddons: readonly string[] = ['theme_update', 'theme_replace'];
@@ -253,7 +246,6 @@ export const PlotFunctionsWithAddParam: Set<BrandedIdentifier> = new Set(['map',
 export const GraphicsPlotAddons: BrandedIdentifier[] = ['points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage', 'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines'];
 export const GgPlotAddons = ['ggdraw', 'last_plot'];
-export const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);
 
 /** The packages exporting magrittr's `%>%`: the tidyverse and friends re-export the very same function. */
 export const MagrittrPipePackages = [PkgName.Magrittr, PkgName.Dplyr, PkgName.Purrr, PkgName.Stringr, PkgName.Tibble,
@@ -371,26 +363,10 @@ export function toRegex(n: readonly Identifier[]): RegExp {
 	})$`);
 }
 
-export const DeviceClose = ['dev.off', 'graphics.off'];
-
-/** `dev.off()` closes the active device, `dev.off(which)` maybe another one */
-export function closesActiveDevice(target: DataflowGraphVertexInfo): boolean {
-	if(!DfgVertex.isFunctionCall(target)) {
-		return false;
-	}
-	const name = Identifier.getName(target.name);
-	return name === 'graphics.off' || (name === 'dev.off' && target.args.length === 0);
-}
-
-/** what ggplot's `last_plot()` is: the last ggplot created or added to */
+/** what ggplot's `last_plot()` is: the last ggplot created or added to, which is no state of the device */
 export const LinkToLastGgPlot = {
 	type:     'link-to-last-call',
 	callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotImplicitAddons, GgPlotAddons))
-} as const;
-/** what closing or exporting a device links back to: the plot calls that filled it */
-export const LinkToLastPlot = {
-	type:     'link-to-last-call',
-	callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
 } as const;
 
 /** The internal generics: they dispatch in C rather than through `UseMethod`, so the list has to be written down. */
@@ -433,55 +409,36 @@ export function markPrimitives(definitions: BuiltInDefinitions): BuiltInDefiniti
 	return labelNames(definitions, CallProp.Primitive, n => RBasePrimitives.has(Identifier.getName(n)) && (Identifier.getNamespace(n) ?? PkgName.Base) === PkgName.Base);
 }
 
-/**
- * Whether the `add` argument of the call (named, or the positional one at `index`) is the literal `TRUE`.
- * It reads the nodes itself, as the AST helpers would make loading the configuration expensive.
- * @lintIgnore
- */
-function addsToPlot(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, index = -1): boolean {
-	const args = call.args.filter(a => typeof a === 'object');
-	const arg = args.find(a => a.name === 'add') ?? args.filter(a => a.name === undefined)[index];
-	const ref = arg === undefined ? undefined : arg.name === undefined ? arg.nodeId : arg.valueId;
-	let node = ref === undefined ? undefined : graph.idMap?.get(ref);
-	if(node?.type === RType.Argument) {
-		node = node.value;
-	}
-	return node?.type === RType.Logical && node.content === true;
-}
-
-/** Whether the call names a plot function with an `add` parameter ({@link PlotFunctionsWithAddParam}), and if so whether its `add` argument says that it appends to the existing plot, and `undefined` for any other function. */
-export function appendsToPlot(source: NodeId, graph: DataflowGraph): boolean | undefined {
-	const vertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
-	return PlotFunctionsWithAddParam.has(Identifier.getName(vertex.name)) ? addsToPlot(graph, vertex) : undefined;
-}
+/** a base graphics plot, which reads the graphics parameters, see {@link AmbientStateName.plot} */
+export const NewPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.New } as const;
+export const AddsToPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.Add } as const;
+/** `curve(f, add = TRUE)` adds to the plot, `curve(f)` starts a new one */
+export const MayAddToPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.AddIfAsked } as const;
+/* grid-based plots ignore the base graphics parameters */
+const NewGridPlot = { ...NewPlot, parameters: false } as const;
+const AddsToGridPlot = { ...AddsToPlot, parameters: false } as const;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
 	treatAsFnCall: {
 		'facet_grid': ['labeller']
 	},
-	hasUnknownSideEffects: {
-		type:      'link-to-last-call',
-		callName:  toRegex(PlotCreate.concat(PlotAddons)),
-		ignoreIf:  (source: NodeId, graph: DataflowGraph) => appendsToPlot(source, graph) === false,
-		cascadeIf: (targetVertex: DataflowGraphVertexInfo, _: NodeId, graph: DataflowGraph) => {
-			const target = targetVertex as DataflowGraphVertexFunctionCall;
-			/* `add = TRUE` appends to an existing plot, so the chain carries on through it */
-			return Identifier.getName(target.name) && addsToPlot(graph, target, 11) ? CascadeAction.Continue : CascadeAction.Stop;
-		}
-	},
-	tags: [SemanticCallTag.Graphics] as SemanticCallTags, sig: sig({ '...': ArgProp.Forced }) } as const;
+	ambient: AddsToGridPlot,
+	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
+	sig:     sig({ '...': ArgProp.Forced })
+} as const;
 
 /** the devices withr opens for a scope, as `with_<device>` and `local_<device>` */
 export const WithrDevices = ['bmp', 'cairo_pdf', 'cairo_ps', 'jpeg', 'pdf', 'png', 'svg', 'tiff', 'xfig', 'postscript'] as const;
 
-export const ReadGraphicsState = { type: AmbientStateAccessType.ReadGraphics } as const;
 export const ReadPrintingOptions = { type: AmbientStateAccessType.ReadOptions, keys: PrintingOptions } as const;
 /* a method for the printed value may read any option, see {@link AmbientStateAccess} */
 export const PrintDispatched = { type: AmbientStateAccessType.ReadOptions, keys: PrintingOptions, dispatchOn: 0 } as const;
 export const OpenDevice = { type: AmbientStateAccessType.OpenDevice } as const;
 /** the devices that are open, which `dev.cur()` and `dev.list()` report */
 export const ReadDevices = [AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy].map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const);
+/** what the active device holds, which exporting it (`image_write`, `dev.capture`) reads */
+export const ReadDevice = { type: AmbientStateAccessType.ReadState, state: AmbientStateName.device } as const;
 /** sets the entries of an environment variable, a locale or a search path state that the call names with the parameter `name` of the given signature */
 export const SetsEntryNamedBy = (state: KeyedState, signature: readonly string[], name: string, rest: { readonly fallback?: string, readonly quoted?: boolean | string } = {}) =>
 	({ type: AmbientStateAccessType.SetKeyed, state, keys: { from: 'parameter', signature, names: [name], ...rest } }) as const;
@@ -500,11 +457,7 @@ export const AttachSearchPath = { type: AmbientStateAccessType.SetKeyed, state: 
 
 /** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
 export const PlotCreateConfig = {
-	hasUnknownSideEffects: {
-		type:      'link-to-last-call',
-		ignoreIf:  (source: NodeId, graph: DataflowGraph) => appendsToPlot(source, graph) === true,
-		callName:  toRegex((GraphicDeviceOpen as readonly string[]).concat(DeviceClose)),
-		/* a device closed in between is not the one the plot goes to (the graphics state knows which one it is) */
-		cascadeIf: (target: DataflowGraphVertexInfo) => closesActiveDevice(target) ? CascadeAction.Block : CascadeAction.Stop
-	},
-	tags: [SemanticCallTag.Graphics] as SemanticCallTags, sig: sig({ '...': ArgProp.Forced }) } as const;
+	ambient: NewGridPlot,
+	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
+	sig:     sig({ '...': ArgProp.Forced })
+} as const;

@@ -40,11 +40,14 @@ export const AmbientStateName = {
 	graphics:             '#graphics',
 	/** the graphics states of the other open devices, the active one returns to one of them once it closes */
 	otherDevices:         '#graphics:other',
-	/** the call that opened the active device, and those of the other open devices */
+	/** the calls that opened the active device and drew on it (a plot opens a device if none is open), and those of the other open devices, which closing a device links to */
 	device:               '#device',
 	otherDevicesOpenedBy: '#device:other',
 	/** within a function, the call of its body that opened the active device, which only that body knows */
 	deviceOpenedHere:     '#device:here',
+	/** the calls drawing the plot on the active device: a new plot (`plot`) replaces it, an addon (`points`) reads and adds to it */
+	plot:                 '#plot',
+	otherPlots:           '#plot:other',
 	/** what is drawn on the active device, which every plot adds to; only written if `semantics.ambient.drawingWritesDevice` is set */
 	canvas:               '#canvas',
 	/** the color palette, which, other than the graphics parameters, all devices share */
@@ -103,6 +106,33 @@ export const AmbientStateName = {
 		return typeof name === 'string' && name.startsWith('#');
 	}
 } as const;
+
+/**
+ * A state of which several instances exist at once, one of them active, like the graphics devices:
+ * opening an instance makes it the active one, switching makes another one active, closing it returns to another.
+ */
+export interface AmbientFamily {
+	/** each state an instance has of its own, with the pseudo variable holding it for the other open instances */
+	readonly states:     readonly (readonly [active: AmbientStateName, others: AmbientStateName])[]
+	/** the state of {@link AmbientFamily#states} holding the calls that opened the active instance and used it */
+	readonly opener:     AmbientStateName
+	/** the state of {@link AmbientFamily#states} only an explicit opening resets, which tells it apart from a use that opened the instance on the fly */
+	readonly fresh:      AmbientStateName
+	/** within a function, the call of its body that opened the active instance */
+	readonly openedHere: AmbientStateName
+}
+
+/** The graphics devices, each with its graphics parameters, the calls opening and drawing on it, and its current plot. */
+export const GraphicsDevices: AmbientFamily = {
+	states: [
+		[AmbientStateName.graphics, AmbientStateName.otherDevices],
+		[AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy],
+		[AmbientStateName.plot, AmbientStateName.otherPlots]
+	],
+	opener:     AmbientStateName.device,
+	fresh:      AmbientStateName.graphics,
+	openedHere: AmbientStateName.deviceOpenedHere
+};
 
 /** The pseudo variables that only grow, because every write to their state adds to them. */
 export const KeyedAccumulators: readonly AmbientStateName[] = Object.values(KeyedState).flatMap(state => [AmbientStateName.allOf(state), AmbientStateName.keyed(state, UnknownKey)]);

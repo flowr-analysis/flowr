@@ -708,7 +708,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 					continue;
 				}
 				environment = REnvironment.define(def, false, environment);
-				linkReadsAfter(graph, id, def, open, definitionsNamed);
+				linkReadsAfter(graph, id, def, open, definitionsNamed, defs);
 				grew = true;
 			}
 		}
@@ -717,10 +717,12 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 }
 
 /** A read that may run after `call` and sees a definition the call may replace (or nothing, as with the `open` reads) may see `def` instead, as with a callee only the call binds: `g <- function(f) f(); x <- 1; g(function() x <<- 2); print(x)`, or `g(runif)`. */
-function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[], definitionsNamed: (name: BrandedIdentifier) => readonly NodeId[]): void {
+function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[], definitionsNamed: (name: BrandedIdentifier) => readonly NodeId[], escaped: ReadonlyMap<NodeId, readonly NamedDefinition[]>): void {
 	const before = graph.getVertex(call)?.environment;
 	const visible = before === undefined ? definitionsNamed(def.name) : Resolve.byName(def.name, before)?.map(d => d.nodeId) ?? [];
-	const replaced = new Set([...visible, ...Dataflow.sourcesOf(graph, call, EdgeType.SideEffectOnCall)]);
+	/* a write of the call that escapes under another name (`par` beside `plot` in the body) replaces nothing of this one */
+	const sameName = (id: NodeId) => escaped.get(id)?.some(d => d.name === def.name) ?? true;
+	const replaced = new Set([...visible, ...Dataflow.sourcesOf(graph, call, EdgeType.SideEffectOnCall).filter(sameName)]);
 	const readers = new Set(open.filter(r => r.name === def.name).map(r => r.nodeId));
 	for(const [id] of graph.vertices(true)) {
 		/* an argument reads the value of a call, not a name the call may define (an ambient state is defined at its call) */

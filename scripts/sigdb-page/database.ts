@@ -179,6 +179,11 @@ export class Entry {
 		return this.stated.find(entry => entry.pkg === pkg) ?? this.stated.find(entry => entry.pkg === 'base') ?? this.stated[0];
 	}
 
+	/** what a call of it has to fulfill in `pkg` */
+	guardsIn(pkg: string): readonly [requires: string, claims: readonly (readonly [formal: string, claim: string])[]] | undefined {
+		return db.guards.get(pkg + '::' + this.name);
+	}
+
 	declaredIn(pkg: string | undefined): string | undefined {
 		return (db.formals.get(this.name) ?? []).find(entry => entry[0] === pkg)?.[1];
 	}
@@ -227,6 +232,8 @@ class Database {
 	readonly topicsComplete = readJson<boolean>('topics-complete');
 	readonly formals = readMap<[pkg: string, params: string][]>('formals');
 	readonly groups = readMap<string>('groups');
+	/** what a call of a base R function has to fulfill, by `pkg::name` */
+	readonly guards = readMap<[requires: string, claims: [formal: string, claim: string][]]>('guards');
 
 	packages: readonly Package[] = [];
 	/** `name\towner,owner` per line, kept as the one string it arrives as since a search only slices out what it hits */

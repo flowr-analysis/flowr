@@ -165,6 +165,7 @@ export class Hits {
 		}
 		const chosen = owners.find(owner => owner.pkg.name === this.asked.scoped) ?? owners[0];
 		const own = entry.statedFor(chosen?.pkg.name);
+		const guards = chosen === undefined ? undefined : entry.guardsIn(chosen.pkg.name);
 		const known = entry.kinds;
 		for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
 			head.append(el('span', kind === 'builtin' ? 'kindtag flowr' : 'kindtag', KindNames[kind] ?? kind));
@@ -198,6 +199,9 @@ export class Hits {
 		}
 		head.append(list);
 		row.append(head);
+		if(guards !== undefined) {
+			row.append(guardLine(name, guards));
+		}
 		opens(row, () => this.owners(entry));
 		this.list.append(row);
 	}
@@ -248,6 +252,10 @@ export class Hits {
 			marks.append(...flagsOf(owner.flags).filter(flag => !said.has(flag.name)).map(flag => titled(el('span', 'flag', flag.name), flag.about)));
 			if(args !== '' || props !== '') {
 				marks.append(this.signature(name, args, props));
+			}
+			const guardsHere = entry.guardsIn(pkg.name);
+			if(guardsHere !== undefined && entry.shown.length > 1) {
+				marks.append(guardLine(name, guardsHere));
 			}
 			const { file, line } = owner;
 			const src = blank(file === undefined
@@ -343,6 +351,13 @@ export class Hits {
 		}
 		return part;
 	}
+}
+
+/** what a call has to fulfill: the claims per formal up front, the whole condition on hover. A default of a formal has no part in this */
+function guardLine(name: string, [requires, claims]: readonly [string, readonly (readonly [string, string])[]]): HTMLElement {
+	const line = titled(el('code', 'guards'), name + ' returns normally only if: ' + (requires === '' ? 'the formals named here were given' : requires) + '. Default values claim nothing: they only fill in what a call leaves out.');
+	line.append(...(claims.length > 0 ? claims.flatMap(([formal, claim], at) => [at > 0 ? '; ' : '', el('b', undefined, formal), ': ' + claim]) : [el('b', undefined, 'requires'), ': ' + requires]));
+	return line;
 }
 
 function packageLink(pkg: Package): HTMLAnchorElement {

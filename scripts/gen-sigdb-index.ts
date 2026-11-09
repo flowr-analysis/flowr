@@ -12,7 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
-import { encode, pack, readSigIndex } from './sigdb-index';
+import { encode, guardsForPage, pack, readSigIndex } from './sigdb-index';
 import { template, writePage, committedNote } from './html-page';
 
 /** bundles sigdb-page/main.ts as iife; module scripts are CORS-blocked when opened from disk */
@@ -85,6 +85,7 @@ async function main(): Promise<void> {
 		.replace('"<!--FORMALS-->"', JSON.stringify(Object.fromEntries(index.formals)).replaceAll('</', '<\\/'))
 		.replace('"<!--TOPICS-->"', JSON.stringify(Object.fromEntries(index.topics)).replaceAll('</', '<\\/'))
 		.replace('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
+		.replace('"<!--GUARDS-->"', JSON.stringify(guardsForPage()).replaceAll('</', '<\\/'))
 		.replace('"<!--GROUPS-->"', JSON.stringify(Object.fromEntries(index.groups)).replaceAll('</', '<\\/'))
 		.replace('"<!--GENERICS-->"', JSON.stringify([...index.generics].sort().join('\n')).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));

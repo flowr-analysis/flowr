@@ -24,6 +24,9 @@ import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } fr
 import { baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
+import { RBaseGuards } from '../src/data/r-base-guards.generated';
+import { builtInGuards, namesWithGuards } from '../src/dataflow/fn/guards/built-in-guards';
+import { claimWords } from '../src/dataflow/fn/guards/guard-claims';
 
 export interface PackageEntry {
 	readonly name:      BrandedNamespace;
@@ -69,6 +72,15 @@ export interface SigIndex {
 	readonly topicsComplete: boolean;
 	/** the S4 group generic a name belongs to (`sin` to `Math`), see {@link S4GroupOfMember} */
 	readonly groups:         ReadonlyMap<BrandedIdentifier, string>;
+}
+
+/** What the page shows of the guards of the base packages, as `pkg::name -> [requires, [formal, claim][]]`. */
+export function guardsForPage(): Record<string, [requires: string, claims: [formal: string, claim: string][]]> {
+	return Object.fromEntries(namesWithGuards(RBaseGuards).flatMap(([pkg, name]) => {
+		const stated = builtInGuards(RBaseGuards, name, pkg);
+		const claims = Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string] => [formal, claimWords(claim).join(', ')]);
+		return stated === undefined || (stated.requires === '' && claims.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims]]];
+	}));
 }
 
 /** one exported name, as much of it as fits in a page */

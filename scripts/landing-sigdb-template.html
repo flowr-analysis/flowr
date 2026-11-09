@@ -201,6 +201,8 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .stated mark.want { border-radius: .2rem; padding: 0 .15rem; color: inherit; }
 #hits .stated mark.want.role { color: color-mix(in srgb, #3b73c4 72%, var(--fg)); background: color-mix(in srgb, #3b73c4 14%, transparent); }
 #hits .stated mark.want.prop { color: color-mix(in srgb, #c27a12 70%, var(--fg)); background: color-mix(in srgb, #c27a12 15%, transparent); }
+#hits .guards { display: block; margin-top: .25rem; font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+#hits .guards b { font-weight: 500; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
@@ -319,6 +321,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 <script type="application/json" id="stated">"<!--STATED-->"</script>
 <script type="application/json" id="topics">"<!--TOPICS-->"</script>
 <script type="application/json" id="formals">"<!--FORMALS-->"</script>
+<script type="application/json" id="guards">"<!--GUARDS-->"</script>
 <script type="application/json" id="groups">"<!--GROUPS-->"</script>
 <script type="application/json" id="generics">"<!--GENERICS-->"</script>
 <!--FOOTER:sigdb-->

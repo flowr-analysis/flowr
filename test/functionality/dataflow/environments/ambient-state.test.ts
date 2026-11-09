@@ -266,7 +266,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette', '#sink'], writes: ['#canvas', '#device', '#plot', '#sink:output'], draws: 1 }, true);
 		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options', '#sink'], writes: ['#device', '#device:opener', '#graphics', '#plot', '#sink:output'], kills: ['#device', '#device:opener', '#graphics', '#plot'], draws: 1 });
 		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#graphics', '#palette', '#wd'], writes: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
-		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#plot'], writes: ['#device'], draws: 1 });
+		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#par:*', '#par:usr', '#plot'], writes: ['#device'], draws: 1 });
 		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#device', '#graphics', '#par:mfrow'], draws: 1 });
 
 		check('a draw through a parameter', 'g <- function(f, ...) f(...)\nh <- function() g(plot, 1)\nh()', 'file', {

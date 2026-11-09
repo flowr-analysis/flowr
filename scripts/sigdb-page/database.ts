@@ -7,7 +7,7 @@ import { ExportFlag } from './export-flags';
 export type Guards = readonly [
 	requires: string,
 	claims: readonly (readonly [formal: string, words: readonly string[]])[],
-	because?: readonly (readonly [requires: string, fails: string, via: string, message: string])[],
+	because?: readonly (readonly [requires: string, kind: string, fails: string, via: string, message: string])[],
 	/** the R version a contract was inferred from by reading the closure, empty for one flowR states of a function written in C */
 	readOff?: string,
 	/** comparisons relating formals, like `length(x) >= m`, with what lets a call through instead */

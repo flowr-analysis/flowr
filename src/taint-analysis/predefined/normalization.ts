@@ -3,6 +3,7 @@ import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
 import { PkgName  } from '../../dataflow/environments/identifier';
 import type { TaintCondition, TaintMapping } from '../taint-mapping';
+import { withTaintOrigins } from '../builder/report-template';
 import { TaintFnCategory } from '../function-categories';
 
 export const MinMax = Symbol('Min-Max');
@@ -41,10 +42,12 @@ const normalizationSources: TaintMapping<typeof normalizationDomain>[] = [
 				{ pos: 2, name: 'scale', default: true }
 			],
 			argDefinition: [{ pos: 0, name: 'x' }],
-			conditionFn:   ([center, scale], [taint]) => {
+			conditionFn:   ([center, scale], [taint], provenance) => {
 				if(center === true && scale === true) {
+					provenance.note('center = TRUE, scale = TRUE');
 					return ZScore;
 				} else if(center === true) {
+					provenance.note('center = TRUE');
 					return ZeroCentered;
 				} else if(center === false && scale === false) {
 					return taint.value ?? Top;
@@ -130,7 +133,8 @@ export const normalizationKnownConstant = TaintAnalysisDefinition.create('normal
 		{ identifier: ['var', PkgName.Stats], condition: checkKnownConstant(UnitVariance, ZScore) },
 		{ identifier: [['min', PkgName.Base], ['max', PkgName.Base], ['range', PkgName.Base]], condition: checkKnownConstant(MinMax) }
 	).report((f) => {
-		return f.functionName ? `${f.functionName} calculated on normalized data yields a known result [${f.locString}]` : `Known summary statistic calculated on normalized data [${f.locString}]`;
+		const message = f.functionName ? `${f.functionName} calculated on normalized data yields a known result [${f.locString}]` : `Known summary statistic calculated on normalized data [${f.locString}]`;
+		return withTaintOrigins(message, f);
 	});
 
 /**

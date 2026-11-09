@@ -107,8 +107,8 @@ const strongestSecret = strongest(Secret, Credential, FileContent, Response);
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value : [value]).filter(v => typeof v === 'string');
 
 /** the response to a request carrying a secret: a token endpoint answers with a new secret */
-const responseTaint: TaintConditionFunction<typeof secretDomain> = ([url], taints) =>
-	!isSecret(taints) ? strongestSecret([], taints) : typeof url === 'string' && TokenUrlPattern.test(url) ? Secret : Response;
+const responseTaint: TaintConditionFunction<typeof secretDomain> = ([url], taints, provenance) =>
+	!isSecret(taints) ? strongestSecret([], taints, provenance) : typeof url === 'string' && TokenUrlPattern.test(url) ? Secret : Response;
 
 /** a response is secret only from a token endpoint, the credentials it keeps are not part of its body */
 const bodyTaint = strongest(Secret, FileContent);

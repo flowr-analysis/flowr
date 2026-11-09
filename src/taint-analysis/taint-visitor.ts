@@ -1,6 +1,6 @@
+import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { AbstractInterpreter, type AbsintVisitorConfiguration, type DomainSemantics } from '../abstract-interpretation/absint-inference';
 import type { AbsintContext, AbstractSemantics } from '../abstract-interpretation/abstract-semantics';
-import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
 import type { StateDomain } from '../abstract-interpretation/domains/state-domain';
 import { resolveFnCallToTaint } from './taint-resolve';
@@ -16,6 +16,7 @@ import { Identifier } from '../dataflow/environments/identifier';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { TaintMapper } from './taint-mapping';
+import type { TaintProvenanceTracker } from './provenance/taint-provenance-tracker';
 
 /**
  * Function calls the taint analysis is able to handle:
@@ -63,6 +64,7 @@ export type TaintVisitorHook = (info: Omit<FnCallHookInfo, 'name' | 'dfg' | 'ctx
 export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
 	/** Callbacks invoked when each function call is visited during taint inference */
 	fnCallHook?: TaintVisitorHook;
+	provenance?: TaintProvenanceTracker;
 };
 
 /**
@@ -87,7 +89,7 @@ export interface TaintComponent<Domain extends AnyAbstractDomain = AnyAbstractDo
 }
 
 /** The abstract semantics of a taint component: every taintable call gets the taint its mappings resolve to. */
-function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: TaintComponent<Domain>, fnCallHook?: TaintVisitorHook): AbstractSemantics<StateDomain<Domain>> {
+function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: TaintComponent<Domain>, fnCallHook?: TaintVisitorHook, provenance?: TaintProvenanceTracker): AbstractSemantics<StateDomain<Domain>> {
 	const handleCall = (state: StateDomain<Domain>, call: DataflowGraphVertexFunctionCall, ctx: AbsintContext<StateDomain<Domain>>, explicitOnly: boolean): void => {
 		const node = ctx.getAstNode(call.id);
 		const name = taintCallName(call, node);
@@ -96,8 +98,10 @@ function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: Ta
 			return;
 		}
 		const projectArg = (id: NodeId): Domain | undefined => ctx.getAbstractValue(id);
-		const { value, role, category } = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
+		const resolved = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
+		const { value, role, category } = resolved;
 		state.set(call.id, value);
+		provenance?.record(call, resolved, projectArg);
 		fnCallHook?.({ node, value, wasMapped: mappings.length > 0, projectArg, call, role, category });
 	};
 	return {
@@ -131,7 +135,7 @@ export class TaintInterpreter extends AbstractInterpreter<TaintProduct> {
 		reductions: readonly ProductReduction<TaintProduct>[] = []
 	) {
 		const domains = Object.fromEntries(components.map(c => [c.name, c.domain])) as Required<TaintProduct>;
-		const semantics = Object.fromEntries(components.map(c => [c.name, taintSemantics(c, config.fnCallHook)])) as DomainSemantics<TaintProduct>;
+		const semantics = Object.fromEntries(components.map(c => [c.name, taintSemantics(c, config.fnCallHook, config.provenance)])) as DomainSemantics<TaintProduct>;
 		/* a component missing from a state is simply unknown, so the reductions see the product as partial */
 		super(config, { domains, semantics, reductions: reductions as readonly ProductReduction<Partial<TaintProduct>>[], collapseOnBottom: false });
 	}

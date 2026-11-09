@@ -18,6 +18,7 @@ import { guard, isNotUndefined } from '../../util/assert';
 import { buildFindingContext, renderReport } from './report-template';
 import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
 import type { TaintFnCategory } from '../function-categories';
+import { CallProvenanceTracker, findOrigins, type TaintProvenanceTracker } from '../provenance/taint-provenance-tracker';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -67,11 +68,12 @@ export interface TaintFinding {
  */
 export interface TaintInferenceResult {
 	/** The final abstract domain state after running the taint analysis visitor */
-	domains:  StateAbstractDomain<AnyAbstractDomain>
+	domains:     StateAbstractDomain<AnyAbstractDomain>
 	/** The message describing the findings */
-	msg?:     string
+	msg?:        string
 	/** The findings produced by the analysis, i.e. one per AST node whose inferred taint reached Bottom */
-	findings: TaintFinding[]
+	findings:    TaintFinding[]
+	provenance?: TaintProvenanceTracker
 }
 
 /**
@@ -90,6 +92,8 @@ export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	 * Add a callback hook that is invoked for each function call mapping during taint analysis.
 	 */
 	withHook(fnCallHook: FnCallHook): this;
+
+	withProvenance(createTracker?: () => TaintProvenanceTracker): this;
 
 	/**
 	 * Add a predefined taint analysis by name.
@@ -123,6 +127,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 	private readonly defs:       RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
 	private readonly categories: TaintFnCategory[] = [];
 	private fnCallHook:          FnCallHook | undefined;
+	private createTracker:       (() => TaintProvenanceTracker) | undefined;
 
 	private constructor(analyzer?: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
@@ -144,6 +149,11 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 
 	public withHook(fnCallHook: FnCallHook): this {
 		this.fnCallHook = fnCallHook;
+		return this;
+	}
+
+	public withProvenance(createTracker: () => TaintProvenanceTracker = () => new CallProvenanceTracker()): this {
+		this.createTracker = createTracker;
 		return this;
 	}
 
@@ -174,12 +184,14 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 		const dfg = (await analyzer.dataflow()).graph;
 		const ctx = analyzer.inspectContext();
 		for(const def of this.defs) {
+			const provenance = this.createTracker?.();
 			const baseConfig: TaintVisitorConfiguration = {
 				controlFlow:   await analyzer.controlflow(),
 				ctx:           ctx,
 				dfg:           dfg,
 				normalizedAst: await analyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
+				provenance,
 			};
 
 			const interpreter = def.createVisitor(baseConfig, this.categories);
@@ -192,13 +204,13 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 				const node = idMap.get(nodeId);
 				const loc = SourceLocation.fromNode(node);
 				return typeof report === 'function'
-					? { nodeId, loc, msg: renderReport(report, buildFindingContext(def.name, nodeId, node, loc)) }
+					? { nodeId, loc, msg: renderReport(report, buildFindingContext(def.name, nodeId, node, loc, findOrigins(provenance, nodeId, dfg, idMap))) }
 					: { nodeId, loc };
 			});
 
 			// If the report message is a constant string, save it only once
 			const msg = typeof report === 'string' ? report : undefined;
-			results.set(def.name, { domains: endState, msg, findings });
+			results.set(def.name, { domains: endState, msg, findings, provenance });
 		}
 		return results;
 	}

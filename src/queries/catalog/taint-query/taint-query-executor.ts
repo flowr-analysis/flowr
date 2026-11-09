@@ -26,6 +26,10 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 		.taint<AllPredefinedTaintAnalysisNames>()
 		.addPredefined(...flattened);
 
+	if(queries.some(q => q.recordProvenance)) {
+		analysis.withProvenance();
+	}
+
 	return {
 		results: await analysis.run(),
 		'.meta': {

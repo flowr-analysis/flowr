@@ -76,7 +76,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 			return [rule as TaintMappingInternal<Domain>];
 		}
 		return rule.identifier.map(i => {
-			return { role: rule.role, category: rule.category, identifier: i,
+			return { role: rule.role, category: rule.category, recordProvenance: rule.recordProvenance, identifier: i,
 				...('taint' in rule ? { taint: rule.taint } : { condition: rule.condition }) };
 		});
 	}
@@ -89,9 +89,10 @@ export enum TaintRole {
 }
 
 type TaintMappingBase = {
-	readonly role?:      TaintRole;
-	readonly category?:  string;
-	readonly identifier: Identifier | Identifier[];
+	readonly role?:             TaintRole;
+	readonly category?:         string;
+	readonly recordProvenance?: boolean;
+	readonly identifier:        Identifier | Identifier[];
 };
 
 /** A mapping that assigns a fixed taint to a matched call. */
@@ -127,9 +128,10 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
  * Each rule is mapped to a single identifier simplifying search and retrieval.
  */
 type TaintMappingInternal<Domain extends AnyAbstractDomain> = {
-	readonly role?:      TaintRole;
-	readonly category?:  string;
-	readonly identifier: Identifier;
+	readonly role?:             TaintRole;
+	readonly category?:         string;
+	readonly recordProvenance?: boolean;
+	readonly identifier:        Identifier;
 } & ({ taint: AbstractValue<Domain>; } | { condition: TaintCondition<Domain>; });
 
 export type TaintConditionDomain<Domain extends AnyAbstractDomain> =
@@ -137,7 +139,12 @@ export type TaintConditionDomain<Domain extends AnyAbstractDomain> =
 
 /** Function describing how the resulting taint is calculated from incoming arguments and taints */
 export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
-	(args: unknown[], taints: TaintConditionDomain<Domain>[]) => AbstractValue<Domain> | undefined;
+	(args: unknown[], taints: TaintConditionDomain<Domain>[], provenance: TaintRuleProvenance) => AbstractValue<Domain> | undefined;
+
+export interface TaintRuleProvenance {
+	note(info: string): void
+	suppressDefault(): void
+}
 
 export interface TaintParameterLocation {
 	pos:   number,

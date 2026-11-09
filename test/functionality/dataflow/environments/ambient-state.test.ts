@@ -136,7 +136,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 			a01: ['#sink:output'], a22: ['#sink:output'], a03: ['#sink:output'], a04: [], a05: ['#sink:output']
 		});
 		check('the console named as the target', 'a01 <- function() cat("x", file = stderr())\na22 <- function() cat("x", file = "")\na03 <- function() writeLines("x", con = stdout())\na04 <- function() capture.output(print(1), file = NULL)', {
-			a01: ['#sink:output'], a22: ['#sink:output'], a03: ['#sink:output'], a04: ['#sink:output']
+			a01: ['#message-sink:output', '#sink:output'], a22: ['#sink:output'], a03: ['#sink:output'], a04: ['#sink:output']
 		});
 		check('a named file is still written', 'a01 <- function() cat("x", file = "out.txt")\na22 <- function() capture.output(print(1), file = "c.txt")\na03 <- function(p) writeLines("x", p)', {
 			a01: ['#file:out', '#files', '#sink:output'], a22: ['#file:c', '#files', '#sink:output'], a03: ['#file:*', '#files', '#sink:output']

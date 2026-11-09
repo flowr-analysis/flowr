@@ -30,7 +30,7 @@ describe('Ambient effects of the built-ins', () => {
 		check('paste', ['options: reads options [scipen, OutDec]']);
 		check('col2rgb', ['palette: reads palette']);
 		check('Sys.timezone', ['environment variables: reads environment variables [TZ]']);
-		check('cat', ['options: reads options [digits, width, max.print, digits.secs, useFancyQuotes, scipen, OutDec]', 'files: reads files [named by file] (if append is TRUE)', 'files: writes files [named by file]', 'output sink: adds to sink']);
+		check('cat', ['options: reads options [digits, width, max.print, digits.secs, useFancyQuotes, scipen, OutDec]', 'message sink: adds to message sink (if file is a call of stderr)', 'files: reads files [named by file] (if append is TRUE)', 'files: writes files [named by file]', 'output sink: adds to sink']);
 		check('message', ['message sink: adds to message sink', 'output sink: adds to sink']);
 	});
 	test('every part and verb has its words', () => {

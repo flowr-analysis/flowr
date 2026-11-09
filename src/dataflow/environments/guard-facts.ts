@@ -81,6 +81,17 @@ export enum GuardDemand {
 	Named              = 'named'
 }
 
+/** What the value a function returns is like, whatever it was handed. */
+export interface ReturnedValue {
+	readonly types:   RValueTypes
+	/** it is a single value */
+	readonly scalar?: boolean
+	/** no element of it is `NA` */
+	readonly notNA?:  boolean
+	/** it counts something, so it holds whole numbers none of which is negative */
+	readonly count?:  boolean
+}
+
 /** What a function has to do with the guards of what calls it, all read off the built-in definitions rather than its name. */
 export interface GuardFacts {
 	/** the package providing it, none for what R ships with */
@@ -101,6 +112,8 @@ export interface GuardFacts {
 	readonly applies?:      BrandedIdentifier
 	/** it yields one logical, no matter how long its arguments are */
 	readonly singleResult?: boolean
+	/** what it returns, or `argument` for the one argument it was handed, as `invisible` returns it; a predicate, a measure, and what {@link GuardFacts.reads} need not state it */
+	readonly returns?:      ReturnedValue | 'argument'
 	/** it does not do anything but compute, whatever else is stated of it */
 	readonly computes?:     boolean
 	/** it hands out a frame or writes to one in a way the dataflow does not see */

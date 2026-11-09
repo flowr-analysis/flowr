@@ -1,7 +1,7 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../built-in-config';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp } from '../built-in-props';
-import { AnyType, GuardDemand, RValueType, type CheckingCall, type GuardFacts, type RValueTypes, type TypePredicate } from '../guard-facts';
+import { AnyType, GuardDemand, RValueType, type CheckingCall, type GuardFacts, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import { base, fn, pkg, Primitive } from './define-helpers';
@@ -16,7 +16,12 @@ const predicate = (yes: RValueTypes, more: Omit<TypePredicate, 'yes'> = {}): Gua
 const exact = (yes: RValueTypes): GuardFacts => predicate(yes, { exact: true });
 const scalar = (yes: RValueTypes): GuardFacts => predicate(yes, { scalar: true });
 const Computes: GuardFacts = { computes: true };
-const SingleResult: GuardFacts = { computes: true, singleResult: true };
+const OneTruth: ReturnedValue = { types: Logical, scalar: true, notNA: true };
+const SingleResult: GuardFacts = { computes: true, singleResult: true, returns: OneTruth };
+/* `all(NA)` is `NA`, and `inherits(x, what, which = TRUE)` returns integers */
+const OneLogical: GuardFacts = { singleResult: true, returns: { types: Logical, scalar: true } };
+const Count: ReturnedValue = { types: Integer, scalar: true, notNA: true, count: true };
+const Returns = (types: RValueTypes, more: Omit<ReturnedValue, 'types'> = {}): GuardFacts => ({ returns: { types, ...more } });
 const OpensFrame: GuardFacts = { opensFrame: true };
 
 const ArithmeticOperands = { asks: { e1: GuardDemand.Arithmetic, e2: GuardDemand.Arithmetic } };
@@ -139,7 +144,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'endsWith':          Strings,
 		'basename':          Pathed,
 		'dirname':           Pathed,
-		'sprintf':           { asks: { fmt: GuardDemand.Character } },
+		'sprintf':           { asks: { fmt: GuardDemand.Character }, returns: { types: Character } },
 		'file.exists':       { asks: { '...': GuardDemand.Character } },
 		'dir.exists':        { asks: { paths: GuardDemand.Character } },
 		'which':             { asks: { x: GuardDemand.Logical } },
@@ -147,7 +152,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'apply':             { asks: { X: GuardDemand.HasDim } },
 		'assign':            { asks: { x: GuardDemand.Character } },
 		'get':               { asks: { x: GuardDemand.Named } },
-		'exists':            { asks: { x: GuardDemand.Named }, computes: true, singleResult: true },
+		'exists':            { asks: { x: GuardDemand.Named }, computes: true, singleResult: true, returns: OneTruth },
 		'do.call':           { asks: { args: GuardDemand.List }, applies: 'what' },
 		'match.fun':         { applies: 'FUN' },
 		'lapply':            { applies: 'FUN' },
@@ -157,38 +162,48 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'Map':               { applies: 'f' },
 		/* `Reduce` returns for an empty `x` before it looks at `f`, so it asks nothing of it */
 		'Filter':            { applies: 'f' },
-		'inherits':          SingleResult,
+		'inherits':          { computes: true, singleResult: true },
 		'identical':         SingleResult,
 		'isTRUE':            SingleResult,
 		'isFALSE':           SingleResult,
-		'all':               SingleResult,
-		'any':               { singleResult: true },
+		'all':               { ...OneLogical, computes: true },
+		'any':               OneLogical,
 		'anyNA':             SingleResult,
-		'missing':           { singleResult: true },
-		'requireNamespace':  { singleResult: true },
-		'&&':                { singleResult: true },
-		'||':                { singleResult: true },
-		'nzchar':            Computes,
-		'class':             Computes,
-		'oldClass':          Computes,
+		'missing':           { singleResult: true, returns: OneTruth },
+		'requireNamespace':  { singleResult: true, returns: OneTruth },
+		'&&':                OneLogical,
+		'||':                OneLogical,
+		'nzchar':            { ...Computes, ...Returns(Logical) },
+		'class':             { ...Computes, ...Returns(Character) },
+		'oldClass':          { ...Computes, ...Returns(Character | Null) },
 		'c':                 Computes,
 		'stopifnot':         Computes,
-		'invisible':         Computes,
-		'list':              Computes,
-		'names':             Computes,
+		'invisible':         { ...Computes, returns: 'argument' },
+		'list':              { ...Computes, ...Returns(List) },
+		'names':             { ...Computes, ...Returns(Character | Null) },
 		'dim':               Computes,
-		'seq_len':           Computes,
-		'seq_along':         Computes,
+		'seq_len':           { ...Computes, ...Returns(Numeric, { notNA: true, count: true }) },
+		'seq_along':         { ...Computes, ...Returns(Numeric, { notNA: true, count: true }) },
 		'xor':               Computes,
 		'|>':                Computes,
 		'all.equal':         Computes,
-		'nargs':             Computes,
-		'...length':         Computes,
+		'nargs':             { ...Computes, returns: Count },
+		'...length':         { ...Computes, returns: Count },
 		'...elt':            Computes,
-		'%in%':              Computes,
+		'%in%':              { ...Computes, ...Returns(Logical, { notNA: true }) },
 		'%*%':               Computes,
 		':':                 Computes,
 		'@':                 Computes,
+		'identity':          { returns: 'argument' },
+		'paste':             Returns(Character),
+		'paste0':            Returns(Character),
+		'toupper':           Returns(Character),
+		'tolower':           Returns(Character),
+		'as.character':      Returns(Character),
+		'as.integer':        Returns(Integer),
+		'as.numeric':        Returns(Double),
+		'as.double':         Returns(Double),
+		'as.logical':        Returns(Logical),
 		'rm':                OpensFrame,
 		'remove':            OpensFrame,
 		'list2env':          OpensFrame,

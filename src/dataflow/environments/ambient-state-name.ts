@@ -40,14 +40,19 @@ export const AmbientStateName = {
 	graphics:             '#graphics',
 	/** the graphics states of the other open devices, the active one returns to one of them once it closes */
 	otherDevices:         '#graphics:other',
-	/** the calls that opened the active device and drew on it (a plot opens a device if none is open), and those of the other open devices, which closing a device links to */
+	/** the calls that opened the active device, set it up, and drew on it (a plot or `par` opens a device if none is open), and those of the other open devices, which closing a device links to */
 	device:               '#device',
 	otherDevicesOpenedBy: '#device:other',
+	/** the call that explicitly opened the active device (`png("a.png")`), and those of the other open devices, which names the file its close writes */
+	deviceOpener:         '#device:opener',
+	otherDeviceOpeners:   '#device:opener:other',
 	/** within a function, the call of its body that opened the active device, which only that body knows */
 	deviceOpenedHere:     '#device:here',
 	/** the calls drawing the plot on the active device: a new plot (`plot`) replaces it, an addon (`points`) reads and adds to it */
 	plot:                 '#plot',
 	otherPlots:           '#plot:other',
+	/** the plot ggplot2's `last_plot()` returns, which building a ggplot (`ggplot`, `+`) replaces and `ggsave` reads; it belongs to no device */
+	lastPlot:             '#last-plot',
 	/** what is drawn on the active device, which every plot adds to; only written if `semantics.ambient.drawingWritesDevice` is set */
 	canvas:               '#canvas',
 	/** the color palette, which, other than the graphics parameters, all devices share */
@@ -115,22 +120,26 @@ export interface AmbientFamily {
 	/** each state an instance has of its own, with the pseudo variable holding it for the other open instances */
 	readonly states:     readonly (readonly [active: AmbientStateName, others: AmbientStateName])[]
 	/** the state of {@link AmbientFamily#states} holding the calls that opened the active instance and used it */
-	readonly opener:     AmbientStateName
-	/** the state of {@link AmbientFamily#states} only an explicit opening resets, which tells it apart from a use that opened the instance on the fly */
-	readonly fresh:      AmbientStateName
+	readonly used:       AmbientStateName
+	/** the state of {@link AmbientFamily#states} only an explicit opening writes, which tells it apart from a use that opened the instance on the fly */
+	readonly opened:     AmbientStateName
+	/** the state of {@link AmbientFamily#states} a switch to another instance reads */
+	readonly switched:   AmbientStateName
 	/** within a function, the call of its body that opened the active instance */
 	readonly openedHere: AmbientStateName
 }
 
-/** The graphics devices, each with its graphics parameters, the calls opening and drawing on it, and its current plot. */
+/** The graphics devices, each with its graphics parameters, the calls opening and using it, its current plot, and its explicit opening. */
 export const GraphicsDevices: AmbientFamily = {
 	states: [
 		[AmbientStateName.graphics, AmbientStateName.otherDevices],
 		[AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy],
-		[AmbientStateName.plot, AmbientStateName.otherPlots]
+		[AmbientStateName.plot, AmbientStateName.otherPlots],
+		[AmbientStateName.deviceOpener, AmbientStateName.otherDeviceOpeners]
 	],
-	opener:     AmbientStateName.device,
-	fresh:      AmbientStateName.graphics,
+	used:       AmbientStateName.device,
+	opened:     AmbientStateName.deviceOpener,
+	switched:   AmbientStateName.graphics,
 	openedHere: AmbientStateName.deviceOpenedHere
 };
 

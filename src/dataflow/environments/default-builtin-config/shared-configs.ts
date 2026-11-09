@@ -415,15 +415,22 @@ export const AddsToPlot = { type: AmbientStateAccessType.ReadGraphics, plot: Plo
 /** `curve(f, add = TRUE)` adds to the plot, `curve(f)` starts a new one */
 export const MayAddToPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.AddIfAsked } as const;
 /* grid-based plots ignore the base graphics parameters */
-const NewGridPlot = { ...NewPlot, parameters: false } as const;
-const AddsToGridPlot = { ...AddsToPlot, parameters: false } as const;
+export const NewGridPlot = { ...NewPlot, parameters: false } as const;
+/** a plot object (`ggplot`, `xyplot`), which draws once printed */
+export const BuildsPlot = { type: AmbientStateAccessType.ReadGraphics, plot: PlotDraw.Build, parameters: false } as const;
+/** what `last_plot()` and `ggsave` read */
+export const ReadsLastPlot = { type: AmbientStateAccessType.ReadState, state: AmbientStateName.lastPlot } as const;
+/** what building a ggplot does: it becomes what `last_plot()` returns */
+const BuildsGgPlot = [BuildsPlot, { type: AmbientStateAccessType.SetState, state: AmbientStateName.lastPlot }] as const;
+/* adding to a ggplot (`p + geom_point()`) builds on the plot it is added to */
+const AddsToGgPlot = [...BuildsGgPlot, ReadsLastPlot] as const;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
 	treatAsFnCall: {
 		'facet_grid': ['labeller']
 	},
-	ambient: AddsToGridPlot,
+	ambient: AddsToGgPlot,
 	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
 	sig:     sig({ '...': ArgProp.Forced })
 } as const;
@@ -457,7 +464,7 @@ export const AttachSearchPath = { type: AmbientStateAccessType.SetKeyed, state: 
 
 /** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
 export const PlotCreateConfig = {
-	ambient: NewGridPlot,
+	ambient: BuildsGgPlot,
 	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
 	sig:     sig({ '...': ArgProp.Forced })
 } as const;

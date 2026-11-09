@@ -65,7 +65,9 @@ export enum PlotDraw {
 	/** adds to the current plot, like `points` */
 	Add = 'add',
 	/** adds to the current plot if its argument `add` is `TRUE`, and starts a new one otherwise, like `curve` */
-	AddIfAsked = 'add-if-asked'
+	AddIfAsked = 'add-if-asked',
+	/** builds a plot object that draws once printed (`ggplot(d) + geom_point()`), so the call itself leaves the device alone */
+	Build = 'build'
 }
 
 /** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */

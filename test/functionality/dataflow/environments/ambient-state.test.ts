@@ -85,10 +85,11 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 	});
 
 	describe('graphics parameters', () => {
-		check('par names its parameters', 'a01 <- function() par(mfrow = c(1, 2), mar = c(1, 1, 1, 1))', { a01: ['#graphics', '#par:mar', '#par:mfrow'] });
-		check('par restoring a saved list', 'a01 <- function(op) par(op)', { a01: ['#graphics', '#par:*'] });
-		check('par queries are no writes', 'a01 <- function() par("mar")', { a01: [] });
-		check('no.readonly is a query', 'a01 <- function() par(no.readonly = TRUE)', { a01: [] });
+		check('par names its parameters', 'a01 <- function() par(mfrow = c(1, 2), mar = c(1, 1, 1, 1))', { a01: ['#device', '#graphics', '#par:mar', '#par:mfrow'] });
+		check('par restoring a saved list', 'a01 <- function(op) par(op)', { a01: ['#device', '#graphics', '#par:*'] });
+		/* a query opens a device if none is open (checked against R), but leaves the parameters alone */
+		check('par queries are no writes', 'a01 <- function() par("mar")', { a01: ['#device'] });
+		check('no.readonly is a query', 'a01 <- function() par(no.readonly = TRUE)', { a01: ['#device'] });
 	});
 
 	describe('output, files, and devices', () => {
@@ -96,8 +97,8 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 		check('sink() ends the diversion, which finishes the file it wrote', 'a01 <- function() sink()', { a01: ['#sink', '#file:*', '#files'] });
 		check('Sys.umask sets the mask', 'a01 <- function() Sys.umask("022")', { a01: ['#umask'] });
 		check('Sys.umask() only queries', 'a01 <- function() Sys.umask()', { a01: [] });
-		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#file:a', '#files', '#graphics', '#plot'] });
-		check('a device is closed', 'a01 <- function() dev.off()', { a01: ['#device', '#file:*', '#files', '#graphics', '#plot'] });
+		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'] });
+		check('a device is closed', 'a01 <- function() dev.off()', { a01: ['#device', '#device:opener', '#file:*', '#files', '#graphics', '#plot'] });
 	});
 
 	describe('the search path', () => {
@@ -250,14 +251,16 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('plot draws on the device', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#device', '#plot'], draws: 1 });
 		check('lines adds to the plot', 'lines(1:2)', 'file', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
 		check('curve adds only if asked', 'curve(sin)\ncurve(cos, add = TRUE)', 'second', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
-		check('ggplot ignores the graphics parameters', 'library(ggplot2)\nggplot(d)', 'second', { reads: ['#options'], writes: ['#device', '#plot'] });
+		check('building a ggplot leaves the device alone', 'library(ggplot2)\np <- ggplot(d)', 'second', { writes: ['#last-plot'] });
+		check('printing a ggplot draws it', 'library(ggplot2)\np <- ggplot(d) + geom_point()\nprint(p)', 'last', { reads: ['#options'], writes: ['#device', '#plot'] });
+		check('ggsave reads the last plot', 'library(ggplot2)\nggplot(d)\nggsave("a.png")', 'last', { reads: ['#last-plot', '#wd'], writes: ['#file:a', '#files'] });
 		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#device', '#plot'], draws: 1 });
 		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
 		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
-		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options'], writes: ['#device', '#graphics', '#plot'], draws: 1 });
-		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#graphics', '#palette', '#wd'], writes: ['#device', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
-		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#plot'], draws: 1 });
-		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#graphics', '#par:mfrow'], draws: 1 });
+		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options'], writes: ['#device', '#device:opener', '#graphics', '#plot'], draws: 1 });
+		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#graphics', '#palette', '#wd'], writes: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
+		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#plot'], writes: ['#device'], draws: 1 });
+		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#device', '#graphics', '#par:mfrow'], draws: 1 });
 
 		check('a draw through a parameter', 'g <- function(f, ...) f(...)\nh <- function() g(plot, 1)\nh()', 'file', {
 			reads: ['#env', '#graphics', '#options', '#palette', '#plot', '#rng'], writes: ['#canvas', '#device', '#plot'], assumed: ['#rng'], draws: 1

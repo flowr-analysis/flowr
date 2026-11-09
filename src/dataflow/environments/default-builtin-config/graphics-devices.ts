@@ -6,7 +6,7 @@ import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { ArgProp, CallProp, SemanticCallTag, type SemanticCallTags } from '../built-in-props';
 import { ClassSystem, AmbientStateAccessType } from '../built-in-kinds';
 import { DeprecationState } from '../deprecation-info';
-import { LinkToLastGgPlot, PlotAddonConfig, OpenDevice, ReadDevices, PlotCreateConfig } from './shared-configs';
+import { ReadsLastPlot, PlotAddonConfig, OpenDevice, ReadDevices, PlotCreateConfig } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import { FunctionDispatch } from '../../graph/vertex';
 
@@ -38,9 +38,9 @@ export const GraphicsDefinitions = [
 	fn(pkg(PkgName.VisNetwork, 'visSave'), BuiltInProcName.DefaultReadAllArgs, writesFile('file', 'graph')),
 	fn(pkg(PkgName.DiagrammeR, 'save_graph'), BuiltInProcName.DefaultReadAllArgs, writesFile('file', 'graph')),
 	fn(pkg(PkgName.GgPlot2, 'ggsave'), BuiltInProcName.Default,
-		{ props: CallProp.Invisible, libFn: true, readAllArguments: true, hasUnknownSideEffects: LinkToLastGgPlot, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ filename: Forced.Resource, plot: Forced.Value, device: ArgProp.Flag, path: ArgProp.Resource | ArgProp.Optional, scale: ArgProp.Flag, width: ArgProp.Flag, height: ArgProp.Flag, units: ArgProp.Flag, dpi: ArgProp.Flag, limitsize: ArgProp.Flag, bg: ArgProp.Flag, 'create.dir': ArgProp.Flag, '...': ArgProp.Flag }) }),
+		{ props: CallProp.Invisible, libFn: true, readAllArguments: true, ambient: ReadsLastPlot, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ filename: Forced.Resource, plot: Forced.Value, device: ArgProp.Flag, path: ArgProp.Resource | ArgProp.Optional, scale: ArgProp.Flag, width: ArgProp.Flag, height: ArgProp.Flag, units: ArgProp.Flag, dpi: ArgProp.Flag, limitsize: ArgProp.Flag, bg: ArgProp.Flag, 'create.dir': ArgProp.Flag, '...': ArgProp.Flag }) }),
 	fn(pkg(PkgName.Cowplot, 'ggsave2'), BuiltInProcName.Default,
-		{ props: CallProp.Invisible, libFn: true, readAllArguments: true, hasUnknownSideEffects: LinkToLastGgPlot, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ filename: Forced.Resource, '...': Forced.Value }) }),
+		{ props: CallProp.Invisible, libFn: true, readAllArguments: true, ambient: ReadsLastPlot, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ filename: Forced.Resource, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Svglite, 'svglite'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Invisible, libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ file: Forced.Resource, '...': Forced.Value }) }),
 	/* `qplot` creates a plot like the ones above and is deprecated on top of it; registered after them so this definition is the one that sticks */

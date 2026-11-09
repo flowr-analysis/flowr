@@ -187,6 +187,11 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		graphicsCase('an addon after a conditional device', 'plot(0)\nif(u) png("a.png")\npoints(1)', '3@points', 'plot(0)\nif(u) png("a.png")\npoints(1)');
 		graphicsCase('exporting a device keeps what is drawn on it', 'img <- magick::image_graph()\nplot(1)\nlines(2)\nr <- magick::image_write(img, "a.png")', '4@r', 'img <- magick::image_graph()\nplot(1)\nlines(2)\nr <- magick::image_write(img, "a.png")');
 		graphicsCase('ggplot draws on the device', 'library(ggplot2)\npng("a.png")\nggplot(d) + geom_point()\ndev.off()', '4@dev.off', 'library(ggplot2)\npng("a.png")\nggplot(d) + geom_point()\ndev.off()');
+		/* a ggplot is a value, R draws it where it is printed (checked against R) */
+		graphicsCase('a ggplot printed later', 'library(ggplot2)\np <- ggplot(d) + geom_point()\nx <- 1\npng("a.png")\nprint(p)\ndev.off()', '6@dev.off', 'library(ggplot2)\np <- ggplot(d) + geom_point()\npng("a.png")\nprint(p)\ndev.off()');
+		graphicsCase('a ggplot auto-printed later', 'library(ggplot2)\np <- ggplot(d)\npng("a.png")\np\ndev.off()', '5@dev.off', 'library(ggplot2)\np <- ggplot(d)\npng("a.png")\np\ndev.off()');
+		graphicsCase('a ggplot built before draws nothing on the device', 'library(ggplot2)\npng("a.png")\np <- ggplot(d)\nplot(1)\ndev.off()', '5@dev.off', 'png("a.png")\nplot(1)\ndev.off()');
+		graphicsCase('par opens the device its close writes', 'par(mfrow=c(1,2))\ndev.off()', '2@dev.off', 'par(mfrow=c(1,2))\ndev.off()');
 		graphicsCase('ggplot ignores par', 'library(ggplot2)\npar(mfrow=c(1,2))\np <- ggplot(d)', '3@p', 'library(ggplot2)\np <- ggplot(d)');
 	});
 }));

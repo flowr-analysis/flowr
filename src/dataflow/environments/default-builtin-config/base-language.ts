@@ -7,7 +7,7 @@ import { BuiltInEvalName } from '../built-in-eval-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { DataMaskingFunctionIdentifiers } from '../data-masking-functions';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, PlotCreateConfig, NewPlot, AddsToPlot, MayAddToPlot } from './shared-configs';
+import { namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, VisiblePlotCreate, TinyPlotAddons, InvisibleGgPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, MagrittrPipePackages, DbConnectSig, DbConnSig, DbReads, DbReadsWrites, DbPackages, OtherTransforms, ModelFits, toRegex, PlotAddonConfig, PlotCreateConfig, NewPlot, AddsToPlot, MayAddToPlot, BuildsPlot, NewGridPlot, ReadsLastPlot } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** What `$` and `@` share: they access a field by its name. */
@@ -24,17 +24,19 @@ export const LanguageDefinitions = [
 	// graphics base
 	fn(namespacePlotFunctions(GraphicsPlotCreate.concat(TinyPlotCrate).filter(f => !VisiblePlotCreate.has(f))), BuiltInProcName.Default,
 		{ ...PlotCreateConfig, props: CallProp.Invisible, ambient: NewPlot }, Primitive),
-	fn(namespacePlotFunctions([...VisiblePlotCreate]), BuiltInProcName.Default, { ...PlotCreateConfig, ambient: NewPlot }, Primitive),
+	/* they return a plot object instead of drawing at once */
+	fn(namespacePlotFunctions([...VisiblePlotCreate]), BuiltInProcName.Default, { ...PlotCreateConfig, ambient: BuildsPlot }, Primitive),
 	fn(namespacePlotFunctions(GgPlotCreate), BuiltInProcName.Default, PlotCreateConfig, Primitive),
-	fn(namespacePlotFunctions(['grid.arrange']), BuiltInProcName.Default, { ...PlotCreateConfig, props: CallProp.Invisible }, { overrides: true, assumePrimitive: true }),
+	fn(namespacePlotFunctions(['grid.arrange']), BuiltInProcName.Default, { ...PlotCreateConfig, props: CallProp.Invisible, ambient: NewGridPlot }, { overrides: true, assumePrimitive: true }),
 	// graphics addons
 	fn(namespacePlotFunctions(GraphicsPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: AddsToPlot }, Primitive),
 	fn(namespacePlotFunctions([...PlotFunctionsWithAddParam]), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: MayAddToPlot }, { overrides: true, assumePrimitive: true }),
 	fn(namespacePlotFunctions(GgPlotImplicitAddons.filter(f => !InvisibleGgPlotAddons.includes(f))), BuiltInProcName.Default, PlotAddonConfig, Primitive),
-	fn(namespacePlotFunctions(InvisibleGgPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible }, Primitive),
+	/* they change the theme every later ggplot is drawn with, like `theme_set` */
+	fn(namespacePlotFunctions(InvisibleGgPlotAddons), BuiltInProcName.Default, { ...PlotAddonConfig, props: CallProp.Invisible, ambient: [], hasUnknownSideEffects: true }, Primitive),
 	// plot tags
 	fn(namespacePlotFunctions(GgPlotAddons), BuiltInProcName.Default,
-		{ libFn: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotAddons)) }, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) },
+		{ libFn: true, ambient: [BuildsPlot, ReadsLastPlot], tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) },
 		Primitive),
 	fn(namespacePlotFunctions(TinyPlotAddons), BuiltInProcName.Default,
 		{ libFn: true, props: CallProp.Invisible, hasUnknownSideEffects: { type: 'link-to-last-call', callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons]) }, tags: [SemanticCallTag.Graphics], sig: sig({ '...': ArgProp.Forced }) },

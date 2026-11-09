@@ -9,6 +9,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { statedFunctions } from '../../../../../environments/query-fn-props';
 import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, Identifier, isInGraphDefinition, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { applyCdsToDefinitions } from '../../../../../environments/reference-to-maybe';
@@ -412,6 +413,9 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 	const writes: (AmbientStateName | AmbientWrite)[] = [];
 	switch(access.type) {
 		case AmbientStateAccessType.ReadGraphics:
+			if(access.plot === PlotDraw.Build) {
+				break;
+			}
 			if(access.parameters !== false) {
 				reads.push(AmbientStateName.graphics, AmbientStateName.palette);
 			}
@@ -421,13 +425,13 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 			if(access.plot !== undefined) {
 				const adds = access.plot === PlotDraw.Add || (access.plot === PlotDraw.AddIfAsked && asksToAdd(args));
 				reads.push(...adds ? [AmbientStateName.plot] : []);
-				/* drawing adds to the device, which opens one if none is open */
-				writes.push(AmbientStateName.device, adds ? AmbientStateName.plot : { name: AmbientStateName.plot, mode: AmbientWriteMode.Reset });
+				writes.push(...adds ? [AmbientStateName.device, AmbientStateName.plot] : DrawsNewPlot);
 			}
 			break;
 		case AmbientStateAccessType.SetGraphics:
-			/* the call returns the previous state */
+			/* the call returns the previous state, and like a plot it sets up the device, which it opens if none is open, even to query it */
 			reads.push(AmbientStateName.graphics);
+			writes.push(AmbientStateName.device);
 			if(onlyQueries(access, args)) {
 				if(access.queryReadsPlot) {
 					reads.push(AmbientStateName.plot);
@@ -445,6 +449,9 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 		case AmbientStateAccessType.ReadOptions: {
 			const dispatched = access.dispatchOn === undefined ? undefined : RArgument.valueOf(args[access.dispatchOn]);
 			reads.push(...printingReads(dispatched, access.dispatchOn !== undefined, access.keys, data));
+			if(mayHoldPlot(dispatched, data)) {
+				writes.push(...DrawsNewPlot);
+			}
 			break;
 		}
 		case AmbientStateAccessType.GetOption: {
@@ -544,6 +551,36 @@ export function applyAmbientStateAccess<OtherInfo>(res: DataflowInformation, arg
 		}
 	}
 	return withAccess(res, rootId, data, reads, uniqueArray(writes));
+}
+
+/** drawing a new plot adds to the device, which opens one if none is open, and replaces its plot */
+const DrawsNewPlot: readonly (AmbientStateName | AmbientWrite)[] = [AmbientStateName.device, { name: AmbientStateName.plot, mode: AmbientWriteMode.Reset }];
+
+/**
+ * Whether the value of `node` may be a plot object, which printing draws: a call building one ({@link PlotDraw.Build}, as `ggplot` does),
+ * a `+` adding to one, or a variable bound to either.
+ */
+function mayHoldPlot<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, seen = new Set<NodeId>()): boolean {
+	if(node === undefined || seen.has(node.info.id)) {
+		return false;
+	}
+	seen.add(node.info.id);
+	if(RFunctionCall.isNamed(node)) {
+		return (statedFunctions(node.functionName.content, data.environment) ?? [])
+			.some(t => hiddenAccess(t).some(a => a.type === AmbientStateAccessType.ReadGraphics && a.plot === PlotDraw.Build));
+	} else if(RBinaryOp.is(node)) {
+		return node.operator === '+' && (mayHoldPlot(node.lhs, data, seen) || mayHoldPlot(node.rhs, data, seen));
+	} else if(RIfThenElse.is(node)) {
+		return mayHoldPlot(node.then, data, seen) || mayHoldPlot(node.otherwise, data, seen);
+	} else if(RExpressionList.is(node)) {
+		return mayHoldPlot(node.children.at(-1), data, seen);
+	} else if(!RSymbol.is(node)) {
+		return false;
+	}
+	return (Resolve.byName(node.content, data.environment) ?? []).filter(isInGraphDefinition).some(d => {
+		const source = data.completeAst.idMap.get(d.definedAt);
+		return RBinaryOp.is(source) && mayHoldPlot(source.lhs.info.id === d.nodeId ? source.rhs : source.lhs, data, seen);
+	});
 }
 
 /** whether the argument `add` is the literal `TRUE`, as in `curve(f, add = TRUE)` */
@@ -708,7 +745,7 @@ const Quoted = { reads: [AmbientStateName.allOptions, AmbientStateName.graphics,
 const UnknownArgumentAccess: Record<Exclude<AmbientStateAccessType, AmbientStateAccessType.ReadKeyed | AmbientStateAccessType.ReadOptions | AmbientStateAccessType.SetKeyed | AmbientStateAccessType.SetState | AmbientStateAccessType.ReadState>, { readonly reads: readonly AmbientStateName[], readonly writes: readonly AmbientStateName[] }> = {
 	[AmbientStateAccessType.SetOptions]:          { reads: [AmbientStateName.allOptions], writes: [AmbientStateName.unknownOption, AmbientStateName.allOptions, AmbientStateName.warnsAsErrors] },
 	[AmbientStateAccessType.GetOption]:           { reads: [AmbientStateName.allOptions], writes: [] },
-	[AmbientStateAccessType.SetGraphics]:         { reads: [AmbientStateName.graphics], writes: [AmbientStateName.graphics] },
+	[AmbientStateAccessType.SetGraphics]:         { reads: [AmbientStateName.graphics], writes: [AmbientStateName.graphics, AmbientStateName.device] },
 	[AmbientStateAccessType.ReadGraphics]:        { reads: [AmbientStateName.graphics, AmbientStateName.palette], writes: [] },
 	[AmbientStateAccessType.SetPalette]:          { reads: [AmbientStateName.palette], writes: [AmbientStateName.palette] },
 	[AmbientStateAccessType.OpenDevice]:          Devices,
@@ -755,10 +792,9 @@ function unknownArgumentAccess(access: AmbientStateAccess, drawing: boolean): { 
  * Within a function the open instances are unknown, so a call only adds.
  */
 function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, kind: DeviceAccess, family: AmbientFamily = GraphicsDevices): DataflowInformation {
-	const [[fresh, otherFresh]] = family.states.filter(([active]) => active === family.fresh);
-	const [[opener, otherOpeners]] = family.states.filter(([active]) => active === family.opener);
+	const otherOf = (state: AmbientStateName) => family.states.find(([active]) => active === state)?.[1] ?? state;
 	const actives = activeStates(family);
-	const reads = kind === DeviceAccess.Switch ? [fresh] : kind === DeviceAccess.Close ? [opener] : kind === DeviceAccess.CloseAll ? [opener, otherOpeners] : [];
+	const reads = kind === DeviceAccess.Switch ? [family.switched] : kind === DeviceAccess.Close ? [family.used] : kind === DeviceAccess.CloseAll ? [family.used, otherOf(family.used)] : [];
 	/* closing writes the file of the device, which its opening names unless we do not know the device closed */
 	const unnamedFile = kind === DeviceAccess.Open ? [] : [AmbientStateName.anyFile, AmbientStateName.files];
 	const cds = data.cds ? [...data.cds] : undefined;
@@ -775,19 +811,14 @@ function deviceAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data:
 		return withAccess({ ...res, environment }, rootId, data, reads, [...actives, ...here.length > 0 ? [] : unnamedFile]);
 	}
 	const lookup = (name: AmbientStateName) => Resolve.byName(name, res.environment) ?? [];
-	/* only an explicit opening resets the fresh state, a use opening the device on the fly (`plot` without one) names no file and needs no close */
-	const explicitly = (openers: readonly IdentifierDefinition[], freshStates: readonly IdentifierDefinition[]) => {
-		const ids = new Set(freshStates.map(d => d.nodeId));
-		return openers.filter(d => ids.has(d.nodeId));
-	};
-	const closed = kind === DeviceAccess.Close ? explicitly(lookup(opener), lookup(fresh))
-		: kind === DeviceAccess.CloseAll ? explicitly([...lookup(opener), ...lookup(otherOpeners)], [...lookup(fresh), ...lookup(otherFresh)]) : [];
+	/* a use opening the device on the fly (`plot` without one) names no file and needs no close */
+	const closed = kind === DeviceAccess.Close ? lookup(family.opened) : kind === DeviceAccess.CloseAll ? [...lookup(family.opened), ...lookup(otherOf(family.opened))] : [];
 	for(const open of closed) {
 		res.graph.addEdge(open.nodeId, rootId, EdgeType.Reads);
 	}
 	/* in a loop, an earlier round may have opened a device this one leaves behind, or a close may leave one open */
 	const repeats = RLoopConstructs.encloses(rootId, data.completeAst.idMap);
-	const earlierRound: IdentifierDefinition[] = repeats ? [{ nodeId: rootId, name: opener, type: ReferenceType.Variable, definedAt: rootId, cds: cds ?? [] }] : [];
+	const earlierRound: IdentifierDefinition[] = repeats ? [{ nodeId: rootId, name: family.used, type: ReferenceType.Variable, definedAt: rootId, cds: cds ?? [] }] : [];
 	let environment = res.environment;
 	if(kind === DeviceAccess.Switch) {
 		environment = defineAmbient(environment, rootId, cds, actives);
@@ -1100,12 +1131,12 @@ export function autoPrintReads(dispatched: boolean): AmbientStateName[] {
 	return optionReads(dispatched ? undefined : PrintingOptions);
 }
 
-/** R prints every visible top-level value (see {@link autoPrints}) by an implicit `print`, which reads the options the configured `print` reads for that value. */
+/** R prints every visible top-level value (see {@link autoPrints}) by an implicit `print`, which reads the options the configured `print` reads for that value, and draws a plot object. */
 export function readsOfAutoPrint<OtherInfo>(processed: DataflowInformation, expression: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const print = Resolve.byNameAndType('print', { current: REnvironment.findBuiltIn(data.environment.current), level: 0 }, ReferenceType.Function)?.slice(0, 1) ?? [];
 	const reads = print.flatMap(hiddenAccess).flatMap(access => access.type === AmbientStateAccessType.ReadOptions
 		? printingReads(expression, access.dispatchOn !== undefined, access.keys, data) : []);
-	return withAccess(processed, expression.info.id, data, reads, []);
+	return withAccess(processed, expression.info.id, data, reads, mayHoldPlot(expression, data) ? DrawsNewPlot : []);
 }
 
 /** the processors whose calls return invisibly, although their configuration states no {@link CallProp.Invisible} */

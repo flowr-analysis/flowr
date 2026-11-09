@@ -83,7 +83,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { n <- length(x); if(n != 1) stop("x"); 1 }', 'length(x) == 1');
 	guards('f <- function(x) { x <- x + 1; if(x < 0) stop("x"); 1 }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x)) && x + 1 >= 0');
 	guards('f <- function(x) { x[1] <- 0; if(x < 0) stop("x"); 1 }', '');
-	guards('f <- function(x, c) { if(c) x <- 1; if(!is.numeric(x)) stop("n"); 1 }', 'length(c) == 1 && !is.na(c)');
+	guards('f <- function(x, c) { if(c) x <- 1; if(!is.numeric(x)) stop("n"); 1 }', 'length(c) == 1 && !is.na(c) && (as.logical(unclass(c)) || is.numeric(x))');
 
 	/* values from a set */
 	guards('f <- function(x = c("a", "b")) { x <- match.arg(x); x }', 'succeeds(match.arg(x, c("a", "b")))');
@@ -459,6 +459,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x, g) { Reduce(g, x) }', '');
 	guards('f <- function(x, g) { Filter(g, x) }', 'is.function(g) || is.character(g) && exists(g, mode = "function") || is.symbol(g) || exists("g", mode = "function")');
 	guards('f <- function(x) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- 1; x }', '');
+	guards('f <- function(x, m) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- seq_len(x); n <- length(x); if(n < m) stop("n < m"); 1 }', '(is.numeric(x) && length(x) == 1L && x > 0 || !is.function(m) && !is.environment(m) || is.object(m) || is.object(length(x))) && (is.numeric(x) && length(x) == 1L && x > 0 || length(x) >= m)');
+	guards('f <- function(x) { if(is.null(x)) x <- 1; stopifnot(is.numeric(x)); x }', 'is.null(x) || is.numeric(x)');
+	guards('f <- function(x, y) { if(y) x <- "a"; if(!is.character(x)) stop("c"); x }', 'length(y) == 1 && !is.na(y) && (as.logical(unclass(y)) || is.character(x))');
+	guards('f <- function(x) { if(is.character(x)) x <- nchar(x); for(i in 1:2) x <- x + 1; stopifnot(x > 0); x }', '');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));

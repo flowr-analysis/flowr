@@ -22,6 +22,7 @@ import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/mod
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -133,6 +134,8 @@ interface Scope {
 	readonly formals:    ReadonlyMap<NodeId, BrandedIdentifier>
 	/** something got hold of the frame of the function, or could write to it as far as flowR can tell, so what a formal holds is not known from here on */
 	frameIsOpen:         boolean
+	/** the definitions known not to have run on the path walked, see {@link walkUnlessRebound} */
+	readonly skips:      Set<NodeId>
 }
 
 /** The one walk through the body of a function. */
@@ -146,6 +149,8 @@ interface Run {
 	readonly openers: ReadonlySet<NodeId>
 	/** whether anything but computing a value may have happened by now */
 	effects:          boolean
+	/** while walking on as if a branch rebinding these formals was not taken, and the steps of the path from there on, see {@link walkUnlessRebound} */
+	rebound?:         { readonly formals: ReadonlySet<BrandedIdentifier>, readonly from: number }
 }
 
 /** How deep local definitions and predicates are followed. */
@@ -252,7 +257,7 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 	} else if(scope.frameIsOpen) {
 		return undefined;
 	}
-	const origins = Dataflow.origin(state.graph, node.info.id);
+	const origins = Dataflow.origin(state.graph, node.info.id)?.filter(o => !scope.skips.has(o.id));
 	if(origins === undefined || origins.length === 0) {
 		/* no call links the read yet */
 		return onceBoundLiteral(name, scope, state, depth) ?? { kind: 'free', name };
@@ -316,7 +321,7 @@ function scopeOf(this: void, id: NodeId, state: GuardState): Scope | undefined {
 	if(!RFunctionDefinition.is(definition) || !DfgVertex.isFunctionDefinition(vertex)) {
 		return undefined;
 	}
-	return { definition, vertex, formals: new Map(definition.parameters.filter(p => !p.special).map(p => [p.name.info.id, p.name.content])), frameIsOpen: false };
+	return { definition, vertex, formals: new Map(definition.parameters.filter(p => !p.special).map(p => [p.name.info.id, p.name.content])), frameIsOpen: false, skips: new Set() };
 }
 
 /** The formals of a function by name, `...` among them. */
@@ -478,7 +483,13 @@ function asksNothingOfCalls(this: void, term: GuardTerm, state: GuardState): boo
 function addClause(this: void, run: Run, path: Path, condition: GuardTerm, at: NodeId, extra: Partial<Pick<GuardClause, 'via' | 'message' | 'pure'>> & Pick<GuardClause, 'kind'>): void {
 	/* what R rejects on a path that has already made sure of it, like `x > 0` after `is.numeric(x) &&`, asks nothing */
 	const reached = path.flatMap(step => GuardTerm.conjuncts(step.holds));
+	const rebound = run.rebound;
 	if(run.scope.frameIsOpen || (extra.kind === 'implicit' && impliedBy(condition, reached, [...run.scope.formals.values()], run.state.facts))) {
+		return;
+	}
+	/* walking on as if a branch was not taken only adds what speaks of what that branch rebinds */
+	const since = rebound === undefined ? [] : [...path.slice(rebound.from).map(step => step.fails), condition];
+	if(rebound !== undefined && !since.some(term => GuardTerm.formalsOf(term).values().some(f => rebound.formals.has(f)))) {
 		return;
 	}
 	const all = GuardTerm.any(...path.map(step => step.fails), condition);
@@ -515,16 +526,45 @@ function afterExits(this: void, path: Path, exits: readonly Exit[]): Path | unde
 function walkSequence(this: void, nodes: readonly RNodeWithParent[], path: Path, run: Run): Exit[] {
 	const exits: Exit[] = [];
 	let current = path;
-	for(const node of nodes) {
+	for(const [at, node] of nodes.entries()) {
 		const here = walk(node, current, run);
 		exits.push(...here);
 		const next = afterExits(current, here);
 		if(next === undefined) {
 			break;
 		}
+		walkUnlessRebound(node, nodes.slice(at + 1), next, run);
 		current = next;
 	}
 	return exits;
+}
+
+/**
+ * After `if(c) x <- seq_len(x)` a read of `x` may see either value, so what follows says nothing of the formal `x`.
+ * Unless `c` held, it still is the formal, so the rest is walked once more on that path, keeping only what speaks of the rebound formals.
+ */
+function walkUnlessRebound(this: void, node: RNodeWithParent, rest: readonly RNodeWithParent[], path: Path, run: Run): void {
+	if(run.rebound !== undefined || rest.length === 0 || !RIfThenElse.is(node) || node.otherwise !== undefined) {
+		return;
+	}
+	const { scope, state } = run;
+	const definitions = RNode.collectAllIds(node.then).values().filter(id => DfgVertex.isVariableDefinition(state.graph.getVertex(id))).toArray();
+	const formals = new Set(definitions.flatMap(id => {
+		const name = NodeId.recoverBareName(id, state.graph.idMap);
+		return name !== undefined && isFormalName(name, scope) ? [name] : [];
+	}));
+	const condition = termOf(node.condition, scope, state);
+	if(formals.size === 0 || condition === undefined) {
+		return;
+	}
+	const [, unless] = stepsOf(condition, state.facts);
+	const effects = run.effects;
+	definitions.forEach(id => scope.skips.add(id));
+	run.rebound = { formals, from: path.length + 1 };
+	walkSequence(rest, [...path, unless], run);
+	run.rebound = undefined;
+	definitions.forEach(id => scope.skips.delete(id));
+	run.effects = effects;
 }
 
 /**

@@ -369,6 +369,11 @@ function toClaim(this: void, abstract: Abstract): FormalClaim {
 
 /** Whether every value passing `conditions` passes `implied` as far as the types can tell; as a wrong guess only loses a clause, not what is left. */
 export function impliedBy(this: void, implied: GuardTerm, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): boolean {
+	const alternatives = GuardTerm.disjuncts(implied);
+	/* what implies one of the alternatives implies all of them together */
+	if(alternatives.length > 1) {
+		return alternatives.some(alternative => impliedBy(alternative, conditions, formals, facts));
+	}
 	const mentioned = formals.filter(formal => GuardTerm.formalsOf(implied).has(formal));
 	return mentioned.length === 1 && GuardTerm.isCall(implied) && mentioned.every(formal => {
 		const known = conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained);

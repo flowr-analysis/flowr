@@ -1,3 +1,4 @@
+import { AmbientStateName } from '../../dataflow/environments/ambient-state-name';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { assertUnreachable, guard } from '../../util/assert';
 import { log } from '../../util/log';
@@ -344,12 +345,12 @@ function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: Slic
 	};
 }
 
-/** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the `seeds` call (a printed value its `print` method), transitively. */
+/** The calls writing output (`cat`, `print`, ...: they print into {@link AmbientStateName.sinkOutput}) within the functions the `seeds` call (a printed value its `print` method), transitively. */
 function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): NodeId[] {
 	const writers = new Set<NodeId>();
-	for(const effect of graph.unknownSideEffects) {
-		if(typeof effect === 'object') {
-			writers.add(effect.id);
+	for(const id of graph.ambientAccessIds()) {
+		if(graph.ambientAccessOf(id)?.writes.has(AmbientStateName.sinkOutput)) {
+			writers.add(id);
 		}
 	}
 	if(writers.size === 0) {

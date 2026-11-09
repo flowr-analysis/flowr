@@ -557,13 +557,14 @@ function separateFileWritesPerCall(graph: DataflowGraph, environment: REnvironme
 		return { reads, writes };
 	});
 	const readPaths = memoize((id: NodeId) => fileAccess(id).reads ? pathsOf(id, false, graph, environment, ctx) : undefined);
-	/* writing to the console (`cat(x)`) names no file, and has no call to tell apart */
-	const namesFile = (id: NodeId) => {
+	/* writing to the console (`cat(x)`) names no file, but writes into the diversion of the output, whose end reads every call printing */
+	const writesFile = (id: NodeId) => {
 		const vertex = graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		return resourceArgs(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), true).length > 0;
+		return (fileAccess(id).writes && resourceArgs(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), true).length > 0)
+			|| graph.ambientAccessOf(id)?.writes.has(AmbientStateName.sinkOutput) === true;
 	};
 	const writers = [...graph.verticesOfType(VertexType.FunctionCall)].map(([id]) => id)
-		.filter(id => graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.SideEffectOnCall)) && !graph.unknownSideEffects.has(id) && fileAccess(id).writes && namesFile(id));
+		.filter(id => graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.SideEffectOnCall)) && !graph.unknownSideEffects.has(id) && writesFile(id));
 	const separated = new Set<NodeId>();
 	for(const writer of writers) {
 		const levels = fileWriteLevels(writer, graph, idMap, callContext => pathsOf(writer, true, graph, environment, ctx, callContext));

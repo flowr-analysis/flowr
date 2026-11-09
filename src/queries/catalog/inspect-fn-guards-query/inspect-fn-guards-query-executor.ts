@@ -14,12 +14,13 @@ function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuar
 	const named: ReadonlySet<BrandedIdentifier> | undefined = formals && new Set(formals);
 	const wanted = (clause: GuardClause) => (kind === undefined || clause.kind === kind) && (!onlyPure || clause.pure)
 		&& (named === undefined || GuardTerm.formalsOf(clause.requires).values().some(f => named.has(f)));
+	const onlyNamed = <T>(of: Readonly<Record<BrandedIdentifier, T>>) => named === undefined ? of : Object.fromEntries(Object.entries(of).filter(([name]) => named.has(name)));
 	const clauses = guards.clauses.filter(wanted);
 	const kept: FunctionGuards = {
 		...FunctionSemantics.guardSummary(clauses),
 		clauses,
-		conditions: named === undefined ? conditionsPerFormal(clauses) : Object.fromEntries(Object.entries(conditionsPerFormal(clauses)).filter(([name]) => named.has(name))),
-		formals:    named === undefined ? guards.formals : Object.fromEntries(Object.entries(guards.formals).filter(([name]) => named.has(name))),
+		conditions: onlyNamed(conditionsPerFormal(clauses)),
+		formals:    onlyNamed(guards.formals),
 		required:   guards.required.filter(f => named === undefined || named.has(f))
 	};
 	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 ? kept : undefined;

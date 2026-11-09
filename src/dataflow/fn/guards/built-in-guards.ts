@@ -8,8 +8,6 @@ import { GuardTerm } from './guard-term';
 
 /** What is known about a function without a program to read it from: {@link FunctionGuards} without the clauses, which point at code. */
 export interface StatedGuards extends Pick<FunctionGuards, 'requires'> {
-	/** see {@link FunctionGuards.pure}, left out if it says the same as {@link StatedGuards.requires} */
-	readonly pure?:     string
 	/** see {@link FunctionGuards.required} */
 	readonly required?: readonly BrandedIdentifier[]
 	/** see {@link FunctionGuards.formals} */
@@ -25,15 +23,17 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 	if(requirements === undefined) {
 		return undefined;
 	}
+	const formals = Object.keys(requirements);
 	const stated = Object.entries(requirements).flatMap(([formal, require]) => {
 		/* what the dots hold is several values, none of which a formal of the name `...` could stand for in R code */
-		return require === undefined || formal === '...' ? [] : [[formal, require(GuardTerm.formal(formal))] as const];
+		const other = formals.find(f => f !== formal);
+		return require === undefined || formal === '...' ? [] : [[formal, require(GuardTerm.formal(formal), other === undefined ? undefined : GuardTerm.formal(other))] as const];
 	});
 	if(stated.length === 0) {
 		return undefined;
 	}
-	const formals = claimsOf(stated.map(([, term]) => term), stated.map(([formal]) => formal));
-	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(formals).length > 0 ? { formals } : {}) };
+	const claims = claimsOf(stated.map(([, term]) => term), stated.map(([formal]) => formal));
+	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(claims).length > 0 ? { formals: claims } : {}) };
 }
 
 /** The table of what the closures of the base packages ask for, loaded on request as it is sizable. */

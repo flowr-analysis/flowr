@@ -33,6 +33,16 @@ export interface InspectFnGuardsQueryResult extends BaseQueryResult {
 	readonly builtIns?: Record<string, StatedGuards>
 }
 
+/** Adds what has to be supplied, and what is claimed about each formal. */
+function pushClaims(result: string[], { required = [], formals = {} }: StatedGuards): void {
+	if(required.length > 0) {
+		result.push(`    a call has to supply: ${required.join(', ')}`);
+	}
+	for(const [formal, claim] of Object.entries(formals)) {
+		result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
+	}
+}
+
 export const InspectFnGuardsQueryDefinition = {
 	title:           'Inspect Function Guards Query',
 	executor:        executeFnGuardsQuery,
@@ -46,24 +56,14 @@ export const InspectFnGuardsQueryDefinition = {
 			if(guards.pure !== '' && guards.pure !== guards.requires) {
 				result.push(`    failing cleanly on: ${guards.pure}`);
 			}
-			if(guards.required.length > 0) {
-				result.push(`    a call has to supply: ${guards.required.join(', ')}`);
-			}
-			for(const [formal, claim] of Object.entries(guards.formals)) {
-				result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
-			}
+			pushClaims(result, guards);
 			for(const [formal, conditions] of Object.entries(guards.conditions)) {
 				result.push(`    ${formal} is checked by: ${conditions.join(', ')}`);
 			}
 		}
 		for(const [name, guards] of Object.entries(out.builtIns ?? {})) {
 			result.push(`  - ${bold(name, formatter)} requires ${guards.requires === '' ? 'nothing' : guards.requires}`);
-			if(guards.required !== undefined) {
-				result.push(`    a call has to supply: ${guards.required.join(', ')}`);
-			}
-			for(const [formal, claim] of Object.entries(guards.formals ?? {})) {
-				result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
-			}
+			pushClaims(result, guards);
 		}
 		return true;
 	},

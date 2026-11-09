@@ -325,12 +325,21 @@ function scopeOf(this: void, id: NodeId, state: GuardState): Scope | undefined {
 	return { definition, vertex, formals: new Map(definition.parameters.filter(p => !p.special).map(p => [p.name.info.id, p.name.content])), frameIsOpen: false };
 }
 
+/** The formals of a function by name, `...` among them. */
+function formalNamesOf(this: void, { definition }: Scope): BrandedIdentifier[] {
+	return definition.parameters.map(p => p.name.content);
+}
+
+/** Whether the argument states the formal it is for, by the name of the formal in full. */
+function namesFormal(this: void, argument: DataflowGraphVertexFunctionCall['args'][number], names: readonly BrandedIdentifier[]): boolean {
+	return FunctionArgument.isNamed(argument) && names.includes(argument.name);
+}
+
 /** What the given arguments of the call bind the formals of the callee to, seen from the caller, with whether that leaves no formal unbound. */
 function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall, args: DataflowGraphVertexFunctionCall['args'], callee: Scope, scope: Scope, state: GuardState, depth: number): { readonly binding: GuardBinding, readonly complete: boolean } {
 	const binding = new Map<BrandedIdentifier, GuardTerm>();
-	const names = callee.definition.parameters.map(p => p.special ? '...' : p.name.content);
-	const spec: Record<BrandedIdentifier, BrandedIdentifier> = Object.fromEntries(names.map(n => [n, n]));
-	const matched = MatchArgs.toSpec<BrandedIdentifier>(args, spec);
+	const names = formalNamesOf(callee);
+	const matched = MatchArgs.toSpec<BrandedIdentifier>(args, Object.fromEntries(names.map(n => [n, n])));
 	for(const [formal, ids] of matched) {
 		const value = formal === '...' || ids.length !== 1 ? undefined : valueOfArgument(ids[0], vertex, state);
 		const term = value === undefined ? undefined : termOf(value, scope, state, depth);
@@ -343,8 +352,8 @@ function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall,
 
 /** What the arguments of the call bind the formals of the callee to for sure: what the dots hand on may name any formal, which moves the arguments given by position, so only the ones given by their full name stay. */
 function bindingOf(this: void, vertex: DataflowGraphVertexFunctionCall, callee: Scope, scope: Scope, state: GuardState, depth: number): GuardBinding {
-	const names = callee.definition.parameters.map(p => p.name.content);
-	const args = MatchArgs.handsOnDots(vertex.args, state.graph) ? vertex.args.filter(a => FunctionArgument.isNamed(a) && names.includes(a.name)) : vertex.args;
+	const names = formalNamesOf(callee);
+	const args = MatchArgs.handsOnDots(vertex.args, state.graph) ? vertex.args.filter(a => namesFormal(a, names)) : vertex.args;
 	return bindingOfArguments(vertex, args, callee, scope, state, depth).binding;
 }
 
@@ -354,18 +363,18 @@ function bindingBesidesDots(this: void, vertex: DataflowGraphVertexFunctionCall,
 	if(dots < 0) {
 		return undefined;
 	}
-	const names = callee.definition.parameters.map(p => p.name.content);
-	return bindingOfArguments(vertex, vertex.args.filter((a, at) => at < dots || (FunctionArgument.isNamed(a) && names.includes(a.name))), callee, scope, state, 0);
+	const names = formalNamesOf(callee);
+	return bindingOfArguments(vertex, vertex.args.filter((a, at) => at < dots || namesFormal(a, names)), callee, scope, state, 0);
 }
 
 /** Whether something the dots hand on bears a name, which only the function holding the dots can tell. */
 const DotsBearNames = GuardTerm.known('!', GuardTerm.known('is.null', { kind: 'free', name: '...names()' }));
 const DotsBearNamesText = GuardTerm.render(DotsBearNames);
 
-/** Whether the call hands the dots of the callee an argument bearing a name, which no formal of it takes. */
-function hasNamedExtras(this: void, vertex: DataflowGraphVertexFunctionCall, callee: Scope): boolean {
-	const names = callee.definition.parameters.map(p => p.name.content);
-	return vertex.args.some(a => FunctionArgument.isNamed(a) && !names.some(n => n.startsWith(a.name)));
+/** Whether the dots of the callee are its own and a call leaves them without a name, as nothing it hands on could bear one: a name not spelled out in full may still end up in them. */
+function leavesDotsUnnamed(this: void, vertex: DataflowGraphVertexFunctionCall, callee: Scope, state: GuardState): boolean {
+	const names = formalNamesOf(callee);
+	return names.includes('...') && !MatchArgs.handsOnDots(vertex.args, state.graph) && vertex.args.every(a => !FunctionArgument.isNamed(a) || namesFormal(a, names));
 }
 
 /** The node of the value of an argument, a named argument being bound by the node that names it. */
@@ -811,10 +820,10 @@ function inherit(this: void, target: NodeId, vertex: DataflowGraphVertexFunction
 		const name = scope.formals.get(origin);
 		return name === undefined ? undefined : GuardTerm.formal(name);
 	};
+	const dotsUnnamed = leavesDotsUnnamed(vertex, callee, state);
 	for(const clause of contract.clauses) {
 		const inherited = { kind: clause.kind, pure: clause.pure, via: [vertex.id, ...clause.via ?? []], ...(clause.message === undefined ? {} : { message: clause.message }) };
-		/* a call handing nothing on leaves the dots of the callee without a name */
-		const asked = MatchArgs.handsOnDots(vertex.args, state.graph) || hasNamedExtras(vertex, callee) ? clause.requires : GuardTerm.any(...GuardTerm.disjuncts(clause.requires).filter(d => GuardTerm.render(d) !== DotsBearNamesText));
+		const asked = dotsUnnamed ? GuardTerm.any(...GuardTerm.disjuncts(clause.requires).filter(d => GuardTerm.render(d) !== DotsBearNamesText)) : clause.requires;
 		const requires = GuardTerm.substituteCondition(asked, binding, outer);
 		if(GuardTerm.formalsOf(requires).size > 0 || GuardTerm.isFalse(requires)) {
 			addClause(run, path, requires, clause.at, inherited);

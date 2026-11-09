@@ -439,6 +439,12 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer|double', 'length = 1', 'value >= 0']);
 	});
 
+	test('an operator takes the class of its other operand into account', async() => {
+		const { result } = await runQuery(parser, 'x', { type: 'inspect-fn-guards', builtIns: ['+', 'stats::strsplit', 'foo::strsplit'] });
+		assert.deepStrictEqual(Object.keys(result.builtIns ?? {}), ['+']);
+		assert.include(result.builtIns?.['+'].requires, 'is.object(e2)');
+	});
+
 	test('the table of the base packages takes nothing from a default', () => {
 		/* each of these only has a default of that type, and takes others just as well */
 		for(const [pkg, name, formal] of [['utils', 'head', 'n'], ['base', 'round', 'digits'], ['base', 'paste', 'sep'], ['base', 'nchar', 'type'], ['base', 'seq_len', 'length.out']]) {
@@ -457,6 +463,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x = NULL) { if(is.null(x)) 1 else x }', {}, []);
 
 	/* a wrapper handing on its dots */
+	/* a name reaches a formal behind the dots only spelled out in full, so here it ends up in the dots */
+	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; h <- function(x, ..., yy = 1) { g(x, ...) }; f <- function(v) { h(v, y = list()) }', {}, []);
+	/* the dots a closure hands on are the ones of whoever holds them */
+	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; f <- function(x, ...) { k <- function() g(x, ...); k() }', {}, []);
 	claims('g <- function(y) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', { x: { types: ['list', 'pairlist'] } }, ['x']);
 	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', {}, []);
 	claims('g <- function(y, ...) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', {}, []);

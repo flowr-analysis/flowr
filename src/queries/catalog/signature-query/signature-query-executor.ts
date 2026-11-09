@@ -909,8 +909,11 @@ function collectShardStatus(sources: readonly PackageSignatureSource[]): ShardSt
 	return [...byId.values()];
 }
 
-/** The view of a function with what a call of it has to fulfill, if flowR knows of that. */
-async function withGuards(view: SignatureFunctionView): Promise<SignatureFunctionView> {
+/** The view of a function with what a call of it has to fulfill, if flowR knows of that, which is for the current R only rather than a version asked for. */
+async function withGuards(view: SignatureFunctionView, version: string | undefined): Promise<SignatureFunctionView> {
+	if(version !== undefined) {
+		return view;
+	}
 	const guards = FunctionSemantics.builtInGuards(await FunctionSemantics.loadBaseGuards(), view.name, view.package);
 	return guards === undefined ? view : { ...view, guards };
 }
@@ -999,12 +1002,12 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, env());
 		if(fn) {
 			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name, q.callGraphMaxNodes ?? DefaultCallGraphMaxNodes) : undefined;
-			return { ...meta(), function: await withGuards(cg ? { ...fn, callGraph: cg } : fn) };
+			return { ...meta(), function: await withGuards(cg ? { ...fn, callGraph: cg } : fn, q.version) };
 		}
 		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself
 		const own = builtIn(q.package, q.function);
 		if(own) {
-			return { ...meta(), function: await withGuards(own) };
+			return { ...meta(), function: await withGuards(own, q.version) };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<BrandedIdentifier>([

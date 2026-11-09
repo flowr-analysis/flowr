@@ -363,7 +363,7 @@ export function claimWords(this: void, { types, plainTypes, values, partial, cla
 		plainTypes === undefined ? '' : `${typesInWords(plainTypes)} unless classed`,
 		values === undefined ? '' : `one of ${values.join(', ')}${partial ? ' (or a prefix)' : ''}`,
 		classes === undefined ? '' : `class ${classes.join('|')}`,
-		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure === 'value' ? 'value' : measure, bound)),
+		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure, bound)),
 		notNA ? 'not NA' : '',
 		callable ? 'callable' : '',
 		...(resolves ?? []).map(r => `${r.expression} exists`)

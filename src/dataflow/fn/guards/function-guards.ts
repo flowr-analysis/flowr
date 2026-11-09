@@ -152,9 +152,11 @@ interface Run {
 	/** whether anything but computing a value may have happened by now */
 	effects:          boolean
 	/** while walking on as if a branch rebinding these formals was not taken, and the steps of the path from there on, see {@link walkUnlessRebound} */
-	rebound?:         { readonly formals: ReadonlySet<BrandedIdentifier>, readonly from: number }
+	rebound?:         { readonly formals: ReadonlySet<BrandedIdentifier>, readonly from: number, readonly depth: number }
 }
 
+/** How many branches rebinding a formal are seen past one after the other, see {@link walkUnlessRebound}. */
+const MaxReboundDepth = 2;
 /** How deep local definitions and predicates are followed. */
 const MaxTermDepth = 8;
 /** How deep calls are followed, far beyond what code does and well before the stack ends. */
@@ -546,7 +548,7 @@ function walkSequence(this: void, nodes: readonly RNodeWithParent[], path: Path,
  * Unless `c` held, it still is the formal, so the rest is walked once more on that path, keeping only what speaks of the rebound formals.
  */
 function walkUnlessRebound(this: void, node: RNodeWithParent, rest: readonly RNodeWithParent[], path: Path, run: Run): void {
-	if(run.rebound !== undefined || rest.length === 0 || !RIfThenElse.is(node) || node.otherwise !== undefined) {
+	if((run.rebound?.depth ?? 0) >= MaxReboundDepth || rest.length === 0 || !RIfThenElse.is(node) || node.otherwise !== undefined) {
 		return;
 	}
 	const { scope, state } = run;
@@ -560,12 +562,13 @@ function walkUnlessRebound(this: void, node: RNodeWithParent, rest: readonly RNo
 		return;
 	}
 	const [, unless] = stepsOf(condition, state.facts);
-	const effects = run.effects;
-	definitions.forEach(id => scope.skips.add(id));
-	run.rebound = { formals, from: path.length + 1 };
+	const { effects, rebound } = run;
+	const added = definitions.filter(id => !scope.skips.has(id));
+	added.forEach(id => scope.skips.add(id));
+	run.rebound = rebound === undefined ? { formals, from: path.length + 1, depth: 1 } : { formals: rebound.formals.union(formals), from: rebound.from, depth: rebound.depth + 1 };
 	walkSequence(rest, [...path, unless], run);
-	run.rebound = undefined;
-	definitions.forEach(id => scope.skips.delete(id));
+	run.rebound = rebound;
+	added.forEach(id => scope.skips.delete(id));
 	run.effects = effects;
 }
 

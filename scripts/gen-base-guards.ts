@@ -15,6 +15,9 @@ import { RBinaryOp } from '../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
 import { NodeId } from '../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from '../src/dataflow/fn/function-semantics';
 import { reasonsOf, type StatedGuards } from '../src/dataflow/fn/guards/built-in-guards';
+import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
+import { builtInNames } from '../src/dataflow/environments/query-fn-props';
+import { Identifier } from '../src/dataflow/environments/identifier';
 
 const Target = path.join('src', 'data', 'r-base-guards.generated.ts');
 
@@ -54,24 +57,47 @@ async function guardsIn(code: string, names: ReadonlySet<string>, into: Record<s
 				...(guard.required.length > 0 ? { required: guard.required } : {}),
 				...formals,
 				...(guard.relations.length > 0 ? { relations: guard.relations } : {}),
+				...(guard.conditional.length > 0 ? { conditional: guard.conditional } : {}),
 				...(clauses.length > 0 ? { because: reasonsOf(clauses, idMap) } : {})
 			};
 		}
 	}
 }
 
-async function guardsOfPackage(pkg: string, closures: readonly Closure[]): Promise<Record<string, StatedGuards>> {
+/** What flowR models itself, which keeps its built-in meaning rather than the closure R has for it, like `stop` or `match.arg`. */
+const Modeled: ReadonlySet<string> = new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'constant' ? [] : builtInNames(d).map(Identifier.getName)));
+
+/** The closures `from` calls, transitively, that flowR does not model itself, so what they check counts as well. */
+function calledClosures(this: void, from: readonly Closure[], available: ReadonlyMap<string, Closure>): Closure[] {
+	const found = new Map<string, Closure>();
+	const queue = [...from];
+	for(let next = queue.pop(); next !== undefined; next = queue.pop()) {
+		for(const [, name] of next.code.matchAll(/([A-Za-z.][A-Za-z0-9._]*)\s*\(/g)) {
+			const callee = available.get(name);
+			if(callee !== undefined && !Modeled.has(name) && !found.has(name) && !from.includes(callee)) {
+				found.set(name, callee);
+				queue.push(callee);
+			}
+		}
+	}
+	return [...found.values()];
+}
+
+async function guardsOfPackage(pkg: string, closures: readonly Closure[], others: ReadonlyMap<string, Closure>): Promise<Record<string, StatedGuards>> {
 	const guards: Record<string, StatedGuards> = {};
 	const exported = closures.filter(c => c.exported);
+	const own = new Map(closures.map(c => [c.name, c]));
+	/* what a closure calls of its own package wins over a name another package has as well */
+	const available = new Map([...others, ...own]);
 	if(pkg === 'base') {
-		const known = new Set(closures.map(c => c.name));
 		for(const closure of exported) {
 			/* with a default method around, dispatching cannot fail for lack of a method */
-			const fallback = known.has(`${closure.name}.default`) ? `${quoted(`${closure.name}.default`)} <- function(...) NULL\n` : '';
-			await guardsIn(definition(closure) + fallback, new Set([closure.name]), guards);
+			const fallback = own.has(`${closure.name}.default`) ? `${quoted(`${closure.name}.default`)} <- function(...) NULL\n` : '';
+			const helpers = calledClosures([closure], available);
+			await guardsIn([closure, ...helpers].map(definition).join('\n') + fallback, new Set([closure.name]), guards);
 		}
 	} else {
-		await guardsIn(closures.map(definition).join('\n'), new Set(exported.map(c => c.name)), guards);
+		await guardsIn([...closures, ...calledClosures(closures, available)].map(definition).join('\n'), new Set(exported.map(c => c.name)), guards);
 	}
 	return guards;
 }
@@ -81,9 +107,11 @@ async function main(): Promise<void> {
 	execFileSync('Rscript', [path.join('scripts', 'gen-base-guards.R'), dir], { stdio: 'inherit' });
 	const version = fs.readFileSync(path.join(dir, 'R-version'), 'utf8').trim();
 	const all: Record<string, Record<string, StatedGuards>> = {};
-	for(const file of fs.readdirSync(dir).filter(f => f.endsWith('.closures.tsv')).sort()) {
-		const pkg = file.slice(0, -'.closures.tsv'.length);
-		all[pkg] = await guardsOfPackage(pkg, readClosures(path.join(dir, file)));
+	const packages = fs.readdirSync(dir).filter(f => f.endsWith('.closures.tsv')).sort().map(file => [file.slice(0, -'.closures.tsv'.length), readClosures(path.join(dir, file))] as const);
+	/* the exported closures of every package, base winning a name others export as well, as it is attached last */
+	const exports = new Map([...packages.filter(([pkg]) => pkg !== 'base'), ...packages.filter(([pkg]) => pkg === 'base')].flatMap(([, closures]) => closures.filter(c => c.exported).map(c => [c.name, c] as const)));
+	for(const [pkg, closures] of packages) {
+		all[pkg] = await guardsOfPackage(pkg, closures, exports);
 		console.log(`  ${pkg}: ${Object.keys(all[pkg]).length} functions`);
 	}
 	fs.rmSync(dir, { recursive: true });

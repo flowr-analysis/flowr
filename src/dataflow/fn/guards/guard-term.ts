@@ -83,7 +83,46 @@ function bareName(this: void, fn: BrandedIdentifier): BrandedIdentifier {
 
 /** All of the terms; dropping unknowable ones turns into {@link True}, which leaves what is left necessary. */
 function all(this: void, ...terms: readonly GuardTerm[]): GuardTerm {
-	return connect('&&', False, True, terms);
+	const joined = connect('&&', False, True, terms);
+	return isCall(joined, '&&') && joined.known ? connect('&&', False, True, resolved(flatten('&&', [joined]), t => t, (_a, _b, t) => t)) : joined;
+}
+
+/** Whether `a` holds exactly when `b` does not, as far as what they are written as tells. */
+function complementary(this: void, a: GuardTerm, b: GuardTerm): boolean {
+	const negates = (x: GuardTerm, y: GuardTerm) => isCall(x, '!') && x.known === true && x.args.length === 1 && render(x.args[0].value) === render(y);
+	const flips = isCall(a) && isCall(b) && a.known === true && b.known === true && NegatedComparison[a.fn] === b.fn && a.args.length === 2 && b.args.length === 2
+		&& a.args.every((arg, at) => render(arg.value) === render(b.args[at].value));
+	return flips || negates(a, b) || negates(b, a);
+}
+
+/**
+ * The conjuncts with what follows from them by what they are written as: of `p` and `p || q` the former says it all,
+ * and `a || p` with `!a || p` leaves `p`, `merge` telling what the item for that is.
+ */
+function resolved<T>(this: void, items: readonly T[], termOf: (item: T) => GuardTerm, merge: (a: T, b: T, term: GuardTerm) => T): T[] {
+	let current = [...items];
+	for(let changed = true; changed;) {
+		changed = false;
+		const alternatives = current.map(item => flatten('||', [termOf(item)]));
+		const keys = alternatives.map(of => new Set(of.map(render)));
+		const kept = current.filter((_, j) => !keys.some((key, i) => i !== j && key.isSubsetOf(keys[j]) && (key.size < keys[j].size || i < j)));
+		if(kept.length < current.length) {
+			current = kept;
+			changed = true;
+			continue;
+		}
+		for(let i = 0; i < current.length && !changed; i++) {
+			for(let j = i + 1; j < current.length && !changed; j++) {
+				const [mine, theirs] = [alternatives[i].filter(a => !keys[j].has(render(a))), alternatives[j].filter(a => !keys[i].has(render(a)))];
+				if(mine.length === 1 && theirs.length === 1 && complementary(mine[0], theirs[0])) {
+					const rest = any(...alternatives[i].filter(a => a !== mine[0]));
+					current = [...current.slice(0, i), merge(current[i], current[j], rest), ...current.slice(i + 1, j), ...current.slice(j + 1)];
+					changed = true;
+				}
+			}
+		}
+	}
+	return current;
 }
 
 /** Any of the terms. */
@@ -333,6 +372,7 @@ export const GuardTerm = {
 	readsFree,
 	substitute,
 	substituteCondition,
+	resolved,
 	/** The string a term always spells out: a literal, or a `paste0` or `sprintf("%s", .)` of literals. */
 	constantString(this: void, term: GuardTerm | undefined): string | undefined {
 		if(term?.kind === 'constant') {

@@ -37,7 +37,6 @@ describe('Simple Defs in Multiple Files', { concurrent: false }, withShell(shell
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant(5)
 			.defineVariable(4, 'y', { definedBy: [5, 6] })
-			.markIdForUnknownSideEffects(13)
 	);
 
 	test('Correct File-Info for Multiple Files', async() => {

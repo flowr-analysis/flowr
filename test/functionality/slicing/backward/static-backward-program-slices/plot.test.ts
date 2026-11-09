@@ -194,4 +194,24 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		graphicsCase('par opens the device its close writes', 'par(mfrow=c(1,2))\ndev.off()', '2@dev.off', 'par(mfrow=c(1,2))\ndev.off()');
 		graphicsCase('ggplot ignores par', 'library(ggplot2)\npar(mfrow=c(1,2))\np <- ggplot(d)', '3@p', 'library(ggplot2)\np <- ggplot(d)');
 	});
+	/* programs where an earlier slice ran differently in R than the whole program, each slice checked against R */
+	describe('counterexamples', () => {
+		function counterexample(name: string, code: string, criterion: SlicingCriterion, expected: string) {
+			assertSliced(label(name, ['functions-with-global-side-effects', 'graphics-state', 'call-normal', 'newlines']), shell, code, [criterion], expected);
+		}
+		counterexample('B6-plot-window', 'png("a.png", type="cairo")\nplot.new()\nplot.window(c(0,10), c(0,10))\nlines(c(1,5), c(1,5))\ndev.off()', '5@dev.off', 'png("a.png", type="cairo")\nplot.new()\nplot.window(c(0,10), c(0,10))\nlines(c(1,5), c(1,5))\ndev.off()');
+		counterexample('B7b-dev-off-value', 'png("a.png", type="cairo")\npng("b.png", type="cairo")\nx <- dev.off()', '3@x', 'png("a.png", type="cairo")\npng("b.png", type="cairo")\nx <- dev.off()');
+		counterexample('B7d-dev-off-which', 'png("a.png", type="cairo")\nplot(1:3)\npng("b.png", type="cairo")\ndev.off(2)', '4@dev.off', 'png("a.png", type="cairo")\nplot(1:3)\npng("b.png", type="cairo")\ndev.off(2)');
+		counterexample('B7c-dev-copy', 'pdf(NULL)\nplot(1:3)\ndev.copy(png, "b.png", type="cairo")\ndev.off()\ndev.off()', '5@dev.off', 'pdf(NULL)\nplot(1:3)\ndev.off()');
+		counterexample('B8-sink-stack', 'sink("o.txt")\nsink("p.txt")\nsink()\nprint(3)\nsink()\nx <- readLines("o.txt")', '6@x', 'sink("o.txt")\nsink("p.txt")\nsink()\nprint(3)\nsink()\nx <- readLines("o.txt")');
+		counterexample('B9-capture-output', 'sink("a.txt")\ny <- capture.output(print(1))\nsink()\nx <- readLines("a.txt")', '4@x', 'sink("a.txt")\nsink()\nx <- readLines("a.txt")');
+		counterexample('B10-textconn-sink', 'tc <- textConnection("out", "w", local=TRUE)\nsink(tc)\nprint(1)\nsink()\nx <- textConnectionValue(tc)', '5@x', 'tc <- textConnection("out", "w", local=TRUE)\nsink(tc)\nprint(1)\nsink()\nx <- textConnectionValue(tc)');
+		counterexample('B10b-pushback', 'tc <- textConnection("a\\nb")\npushBack("z", tc)\nx <- readLines(tc, 1)', '3@x', 'tc <- textConnection("a\\nb")\npushBack("z", tc)\nx <- readLines(tc, 1)');
+		counterexample('B11-sink-number', 'sink(tempfile())\nx <- sink.number()', '2@x', 'sink(tempfile())\nx <- sink.number()');
+		counterexample('B12-strwidth', 'pdf(NULL)\nplot(1:10)\nw <- strwidth("abc")', '3@w', 'pdf(NULL)\nplot(1:10)\nw <- strwidth("abc")');
+		counterexample('B12b-grid', 'library(grid)\npng("a.png", type="cairo")\ngrid.rect()\ndev.off()', '4@dev.off', 'library(grid)\npng("a.png", type="cairo")\ngrid.rect()\ndev.off()');
+		counterexample('B12c-ggplot-last-plot', 'library(ggplot2)\np <- ggplot(data.frame(x=1:3,y=1:3), aes(x,y)) + geom_point()\nq <- p + geom_line()\nggsave("a.png", width=3, height=3, device="png", type="cairo")', '4@ggsave', 'library(ggplot2)\np <- ggplot(data.frame(x=1:3,y=1:3), aes(x,y)) + geom_point()\np + geom_line()\nggsave("a.png", width=3, height=3, device="png", type="cairo")');
+		counterexample('B12d-file-mode', 'writeLines("a", "f.txt")\nx <- file.mode("f.txt")', '2@x', 'writeLines("a", "f.txt")\nx <- file.mode("f.txt")');
+		counterexample('B12e-umask', 'Sys.umask("077")\nwriteLines("a", "f.txt")\nx <- file.mode("f.txt")', '3@x', 'Sys.umask("077")\nwriteLines("a", "f.txt")\nx <- file.mode("f.txt")');
+	});
 }));

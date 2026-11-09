@@ -38,8 +38,7 @@ describe('source', withTreeSitter(parser => {
 		.constant('1')
 		.constant('simple:1:1-1')
 		.defineVariable('simple:1:1-0', 'N', { definedBy: ['simple:1:1-1', 'simple:1:1-2'] })
-		.addControlDependency('simple:1:1-0', '3', true)
-		.markIdForUnknownSideEffects('7'),
+		.addControlDependency('simple:1:1-0', '3', true),
 	{ addFiles }, undefined, config
 	);
 
@@ -70,8 +69,7 @@ describe('source', withTreeSitter(parser => {
 		.constant('8')
 		.constant('simple:3:1-1')
 		.defineVariable('simple:3:1-0', 'N', { definedBy: ['simple:3:1-1', 'simple:3:1-2'] })
-		.addControlDependency('simple:3:1-0', '10', true)
-		.markIdForUnknownSideEffects('14'),
+		.addControlDependency('simple:3:1-0', '10', true),
 	{ addFiles }, undefined, config
 	);
 
@@ -96,8 +94,7 @@ describe('source', withTreeSitter(parser => {
 		.constant('simple:1:10-1')
 		.defineVariable('simple:1:10-0', 'N', { definedBy: ['simple:1:10-1', 'simple:1:10-2'] })
 		.addControlDependency('simple:1:10-0', '6', true)
-		.addControlDependency('simple:1:10-0', '8', true)
-		.markIdForUnknownSideEffects('12'),
+		.addControlDependency('simple:1:10-0', '8', true),
 	{ addFiles }, undefined, config
 	);
 
@@ -143,8 +140,7 @@ describe('source', withTreeSitter(parser => {
 		.constant('4')
 		.constant('recursive2:2:1-5')
 		/* indicate recursion */
-		.markIdForUnknownSideEffects('recursive2:2:1-7')
-		.markIdForUnknownSideEffects('recursive2:2:1-3'),
+		.markIdForUnknownSideEffects('recursive2:2:1-7'),
 	{ addFiles }, undefined, config
 	);
 
@@ -263,8 +259,7 @@ describe('source', withTreeSitter(parser => {
 			.calls('closure1:1:1-6', NodeId.toBuiltIn('{'))
 			.defineVariable('closure1:1:1-0', 'f', { definedBy: ['closure1:1:1-7', 'closure1:1:1-8'] })
 			.addControlDependency('closure1:1:1-0', '3', true)
-			.defineVariable('4', 'g', { definedBy: ['6', '7'] })
-			.markIdForUnknownSideEffects('12'),
+			.defineVariable('4', 'g', { definedBy: ['6', '7'] }),
 		{ addFiles }, undefined, config
 	);
 
@@ -339,8 +334,7 @@ describe('source', withTreeSitter(parser => {
 			}, false)
 			.calls('closure2:2:1-6', NodeId.toBuiltIn('{'))
 			.defineVariable('closure2:2:1-0', 'f', { definedBy: ['closure2:2:1-7', 'closure2:2:1-8'] })
-			.addControlDependency('closure2:2:1-0', '6', true)
-			.markIdForUnknownSideEffects('12'),
+			.addControlDependency('closure2:2:1-0', '6', true),
 		{ addFiles }, undefined, config
 	);
 }));

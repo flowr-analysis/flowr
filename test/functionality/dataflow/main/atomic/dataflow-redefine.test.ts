@@ -39,7 +39,7 @@ if(1)
 			.constant('7', { cds: [{ id: '13', when: true, byPromise: true }] })
 			.definesOnCall('7', '1')
 			.definedByOnCall('1', '7')
-			.constant('9', { cds: [{ id: '13', when: true, byPromise: true }] }).markIdForUnknownSideEffects('11'));
+			.constant('9', { cds: [{ id: '13', when: true, byPromise: true }] }));
 	assertDataflow(label('if (assignment)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 
@@ -78,8 +78,7 @@ print(x)`, emptyGraph().autoPrints([16]).autoPrints([12], true)
 			.definesOnCall('7', '1')
 			.definedByOnCall('1', '7')
 			.constant('9', { cds: [{ id: '12', when: true, byPromise: true }] })
-			.defineVariable('8', 'x', { definedBy: ['9', '10'], cds: [{ id: '12', when: true, byPromise: true }] })
-			.markIdForUnknownSideEffects('16'));
+			.defineVariable('8', 'x', { definedBy: ['9', '10'], cds: [{ id: '12', when: true, byPromise: true }] }));
 	assertDataflow(label('<-', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'name-escaped', ...BuiltInOperators.byName['*'].capabilities, 'named-arguments']),
 		shell, `x <- 2
 \`<-\` <- \`*\`
@@ -111,8 +110,7 @@ print(y = x)`, emptyGraph().autoPrints([13]).autoPrints([8], true)
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('3', '`<-`', { definedBy: ['4', '5'] })
-			.constant('7', { cds: [{ id: '8', when: true, byPromise: true }] })
-			.markIdForUnknownSideEffects('13'));
+			.constant('7', { cds: [{ id: '8', when: true, byPromise: true }] }));
 	assertDataflow(label('<- in function', ['name-normal', 'name-escaped', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', ...BuiltInOperators.byName['*'].capabilities, 'call-normal', 'unnamed-arguments']),
 		shell, `f <- function() {
    x <- 2
@@ -169,6 +167,5 @@ print(y)`, emptyGraph().autoPrints([22], true)
 				environment:       defaultEnv().pushEnv().defineVariable('x', '3', '5').defineVariable('<-', '6', '8')
 			})
 			.defineVariable('0', 'f', { definedBy: ['13', '14'] })
-			.defineVariable('15', 'y', { definedBy: ['17', '18'] })
-			.markIdForUnknownSideEffects('22'));
+			.defineVariable('15', 'y', { definedBy: ['17', '18'] }));
 }));

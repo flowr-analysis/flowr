@@ -631,7 +631,6 @@ print(g())`, emptyGraph().autoPrints([22], true)
 				.definesOnCall(14, 1)
 				.definedByOnCall(1, 14)
 				.defineVariable(12, 'g', { definedBy: [16, 17] })
-				.markIdForUnknownSideEffects(22)
 		);
 		assertDataflow(label('nested closures w/ default arguments', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'lambda-syntax', 'implicit-return', ...BuiltInOperators.byName['+'].capabilities, 'closures', 'grouping']),
 			shell, `f <- function(x = 1) {
@@ -713,8 +712,7 @@ print(g())`, emptyGraph().autoPrints([38], true)
 				.reads(32, 30)
 				.definesOnCall(30, 1)
 				.definedByOnCall(1, 30)
-				.defineVariable(28, 'g', { definedBy: [32, 33] })
-				.markIdForUnknownSideEffects(38),
+				.defineVariable(28, 'g', { definedBy: [32, 33] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
 		assertDataflow(label('closure w/ side effects', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...BuiltInOperators.byName['<<-'].capabilities, 'side-effects-in-function-call', ...BuiltInOperators.byName['+'].capabilities, 'numbers']),
 			shell, `f <- function() {
@@ -785,7 +783,6 @@ print(x)`, emptyGraph().autoPrints([21, 25], true)
 				.defineVariable('0', 'f', { definedBy: ['14', '15'] })
 				.constant('17')
 				.defineVariable('16', 'x', { definedBy: ['17', '18'] })
-				.markIdForUnknownSideEffects('25')
 		);
 	});
 

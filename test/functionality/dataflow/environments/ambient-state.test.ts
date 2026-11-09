@@ -20,7 +20,7 @@ import type { BuiltInDefinition } from '../../../../src/dataflow/environments/bu
 import type { AmbientAccess } from '../../../../src/dataflow/graph/ambient-access';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
-	type Kind = 'writes' | 'assumed' | 'variables';
+	type Kind = 'writes' | 'assumed' | 'kills' | 'variables';
 
 	/** what each function, named by what it is assigned to, may leave changed (sorted) */
 	async function summaries(code: string, kind: Kind): Promise<Record<BrandedIdentifier, BrandedIdentifier[]>> {
@@ -93,11 +93,18 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 	});
 
 	describe('output, files, and devices', () => {
-		check('sink diverts the output', 'a01 <- function() sink("out.txt")', { a01: ['#sink', '#file:out', '#files'] });
-		check('sink() ends the diversion, which finishes the file it wrote', 'a01 <- function() sink()', { a01: ['#sink', '#file:*', '#files'] });
+		check('sink diverts the output', 'a01 <- function() sink("out.txt")', { a01: ['#sink', '#sink:opener', '#sink:output', '#file:out', '#files'] });
+		check('sink() ends the diversion, which finishes the file it wrote', 'a01 <- function() sink()', { a01: ['#sink', '#sink:opener', '#sink:output', '#file:*', '#files'] });
 		check('Sys.umask sets the mask', 'a01 <- function() Sys.umask("022")', { a01: ['#umask'] });
 		check('Sys.umask() only queries', 'a01 <- function() Sys.umask()', { a01: [] });
 		check('a device is opened', 'a01 <- function() pdf("a.pdf")', { a01: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'] });
+		/* a close ends the state of the device, a removal the entries it names (checked against R) */
+		check('closing kills the device', 'a01 <- function() dev.off()\na22 <- function() graphics.off()\na03 <- function() dev.off(3)', {
+			a01: ['#device', '#device:opener', '#graphics', '#plot'], a22: ['#device', '#device:opener', '#graphics', '#plot'], a03: []
+		}, 'kills');
+		check('kills of the other states', 'a01 <- function() sink()\na22 <- function() sink("a.txt")\na03 <- function() Sys.unsetenv("A")\na04 <- function() detach(package:dplyr)', {
+			a01: ['#sink', '#sink:opener', '#sink:output'], a22: [], a03: ['#env:A'], a04: ['#search-path:dplyr']
+		}, 'kills');
 		check('a device is closed', 'a01 <- function() dev.off()', { a01: ['#device', '#device:opener', '#file:*', '#files', '#graphics', '#plot'] });
 	});
 
@@ -126,15 +133,15 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 	describe('printing to the console writes no file', () => {
 		check('cat and writeLines without a target', 'a01 <- function() cat("x")\na22 <- function() writeLines("x")\na03 <- function() dput(1)\na04 <- function() write.csv(1)\na05 <- function() capture.output(print(1))', {
-			a01: [], a22: [], a03: [], a04: [], a05: []
+			a01: ['#sink:output'], a22: ['#sink:output'], a03: ['#sink:output'], a04: [], a05: ['#sink:output']
 		});
 		check('the console named as the target', 'a01 <- function() cat("x", file = stderr())\na22 <- function() cat("x", file = "")\na03 <- function() writeLines("x", con = stdout())\na04 <- function() capture.output(print(1), file = NULL)', {
-			a01: [], a22: [], a03: [], a04: []
+			a01: ['#sink:output'], a22: ['#sink:output'], a03: ['#sink:output'], a04: ['#sink:output']
 		});
 		check('a named file is still written', 'a01 <- function() cat("x", file = "out.txt")\na22 <- function() capture.output(print(1), file = "c.txt")\na03 <- function(p) writeLines("x", p)', {
-			a01: ['#file:out', '#files'], a22: ['#file:c', '#files'], a03: ['#file:*', '#files']
+			a01: ['#file:out', '#files', '#sink:output'], a22: ['#file:c', '#files', '#sink:output'], a03: ['#file:*', '#files', '#sink:output']
 		});
-		check('write defaults to the file data', 'a01 <- function() write("x")', { a01: ['#file:*', '#files'] });
+		check('write defaults to the file data', 'a01 <- function() write("x")', { a01: ['#file:*', '#files', '#sink:output'] });
 		check('package functions printing by default', 'a01 <- function(d) data.table::fwrite(d)\na22 <- function(t) ape::write.tree(t)\na03 <- function(m) texreg::texreg(m)', {
 			a01: [], a22: [], a03: []
 		});
@@ -168,7 +175,7 @@ describe('Ambient state summaries', withTreeSitter(ts => {
 
 describe('Ambient access of code', withTreeSitter(ts => {
 	type Selector = 'file' | 'first' | 'second' | 'last' | 'block';
-	interface Shown { reads: BrandedIdentifier[], writes: BrandedIdentifier[], assumed: BrandedIdentifier[], variables: BrandedIdentifier[], draws: number }
+	interface Shown { reads: BrandedIdentifier[], writes: BrandedIdentifier[], assumed: BrandedIdentifier[], kills: BrandedIdentifier[], variables: BrandedIdentifier[], draws: number }
 
 	async function run(code: string, drawing = false) {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
@@ -182,7 +189,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 	}
 
 	function shown(a: AmbientAccess): Shown {
-		return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: a.draws.size };
+		return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), kills: [...a.kills.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: a.draws.size };
 	}
 
 	async function access(code: string, selector: Selector, drawing = false): Promise<Shown> {
@@ -195,21 +202,21 @@ describe('Ambient access of code', withTreeSitter(ts => {
 
 	function check(name: string, code: string, selector: Selector, expected: Partial<Shown>, drawing = false): void {
 		test(label(name, [], ['dataflow']), async() => {
-			assert.deepStrictEqual(await access(code, selector, drawing), { reads: [], writes: [], assumed: [], variables: [], draws: 0, ...expected });
+			assert.deepStrictEqual(await access(code, selector, drawing), { reads: [], writes: [], assumed: [], kills: [], variables: [], draws: 0, ...expected });
 		});
 	}
 
 	describe('scopes', () => {
 		check('a file', 'options(digits = 3)\nx <- 1', 'file', { writes: ['#option:digits', '#options'] });
-		check('a statement', 'options(digits = 3)\nsink("a.txt")', 'second', { reads: ['#wd'], writes: ['#file:a', '#files', '#sink'] });
+		check('a statement', 'options(digits = 3)\nsink("a.txt")', 'second', { reads: ['#file:*', '#file:a', '#wd'], writes: ['#file:a', '#files', '#sink', '#sink:opener', '#sink:output'] });
 		check('a single call id', 'options(digits = 3)\nx <- 1', 'block', { writes: ['#option:digits', '#options'] });
-		check('a block', '{\n options(digits = 3)\n sink("a.txt")\n}\nx <- 1', 'first', { reads: ['#options', '#wd'], writes: ['#file:a', '#files', '#option:digits', '#options', '#sink'] });
-		check('a call reaching a function', 'f <- function() options(digits = 3)\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options'], writes: ['#option:digits', '#options'] });
+		check('a block', '{\n options(digits = 3)\n sink("a.txt")\n}\nx <- 1', 'first', { reads: ['#file:*', '#file:a', '#wd'], writes: ['#file:a', '#files', '#option:digits', '#options', '#sink', '#sink:opener', '#sink:output'] });
+		check('a call reaching a function', 'f <- function() options(digits = 3)\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options', '#sink'], writes: ['#option:digits', '#options', '#sink:output'] });
 		check('a function never called does not count', 'f <- function() options(digits = 3)\nx <- 1', 'file', {});
 		check('the exit hook of a function never called does not count', 'f <- function() { on.exit(options(digits = 3)); 1 }\nx <- 1', 'file', {});
 		check('quoted code does not count', 'x <- quote(options(digits = 3))', 'file', {});
 		check('only the code of the scope counts', 'x <- 1\noptions(digits = 3)', 'first', {});
-		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options'] });
+		check('frame-local writes are excluded', 'f <- function() { withr::local_options(digits = 3); 1 }\nf()', 'file', { reads: ['#options', '#sink'], writes: ['#sink:output'] });
 	});
 
 	describe('scopes as nodes', () => {
@@ -242,7 +249,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 
 	describe('reads', () => {
 		check('getOption reads the option', 'x <- getOption("digits")', 'file', { reads: ['#option:*', '#option:digits'] });
-		check('a read through a called function', 'f <- function() getOption("digits")\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options'] });
+		check('a read through a called function', 'f <- function() getOption("digits")\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options', '#sink'], writes: ['#sink:output'] });
 		check('setwd reads and writes the working directory', 'setwd("a")', 'file', { reads: ['#files', '#wd'], writes: ['#wd'] });
 	});
 
@@ -252,18 +259,18 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('lines adds to the plot', 'lines(1:2)', 'file', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
 		check('curve adds only if asked', 'curve(sin)\ncurve(cos, add = TRUE)', 'second', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
 		check('building a ggplot leaves the device alone', 'library(ggplot2)\np <- ggplot(d)', 'second', { writes: ['#last-plot'] });
-		check('printing a ggplot draws it', 'library(ggplot2)\np <- ggplot(d) + geom_point()\nprint(p)', 'last', { reads: ['#options'], writes: ['#device', '#plot'] });
+		check('printing a ggplot draws it', 'library(ggplot2)\np <- ggplot(d) + geom_point()\nprint(p)', 'last', { reads: ['#options', '#sink'], writes: ['#device', '#plot', '#sink:output'] });
 		check('ggsave reads the last plot', 'library(ggplot2)\nggplot(d)\nggsave("a.png")', 'last', { reads: ['#last-plot', '#wd'], writes: ['#file:a', '#files'] });
-		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#device', '#plot'], draws: 1 });
+		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette', '#sink'], writes: ['#device', '#plot', '#sink:output'], draws: 1 });
 		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
-		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
-		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options'], writes: ['#device', '#device:opener', '#graphics', '#plot'], draws: 1 });
+		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette', '#sink'], writes: ['#canvas', '#device', '#plot', '#sink:output'], draws: 1 }, true);
+		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options', '#sink'], writes: ['#device', '#device:opener', '#graphics', '#plot', '#sink:output'], kills: ['#device', '#device:opener', '#graphics', '#plot'], draws: 1 });
 		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#graphics', '#palette', '#wd'], writes: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
 		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#plot'], writes: ['#device'], draws: 1 });
 		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#device', '#graphics', '#par:mfrow'], draws: 1 });
 
 		check('a draw through a parameter', 'g <- function(f, ...) f(...)\nh <- function() g(plot, 1)\nh()', 'file', {
-			reads: ['#env', '#graphics', '#options', '#palette', '#plot', '#rng'], writes: ['#canvas', '#device', '#plot'], assumed: ['#rng'], draws: 1
+			reads: ['#env', '#graphics', '#options', '#palette', '#plot', '#rng', '#sink'], writes: ['#canvas', '#device', '#plot', '#sink:output'], assumed: ['#rng'], draws: 1
 		}, true);
 
 		test(label('a configured graphics built-in draws', [], ['dataflow']), async() => {

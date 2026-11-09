@@ -65,7 +65,7 @@ describe('Ambient Access Query', withTreeSitter(parser => {
 	test(label('includeCallees false only counts the calls of the scope', ['name-normal'], ['other']), async() => {
 		const analyzer = await analyzerFor('f <- function() options(digits = 3)\nf()');
 		const { results } = await analyzer.query({ type: 'ambient-access', criteria: ['2^'], includeCallees: false });
-		assert.deepStrictEqual(results['2^'].writes, []);
+		assert.deepStrictEqual(results['2^'].writes, ['#sink:output']);
 	});
 
 	test(label('the summary names each scope', ['name-normal'], ['other']), async() => {

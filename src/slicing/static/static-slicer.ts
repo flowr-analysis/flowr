@@ -5,7 +5,7 @@ import { log } from '../../util/log';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { assignmentHidingValue, callsRuledOutAt, deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, ruledOutVia, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { assignmentHidingValue, callsRuledOutAt, printedClosures, deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, ruledOutVia, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import { MaxContextDepth, methodOnlyEdges } from '../../dataflow/internal/dispatch-linking';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
@@ -197,6 +197,9 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			for(const dep of dependencies) {
 				enqueue(dep, baseEnvironment, baseEnvFingerprint);
 			}
+		}
+		for(const printed of direction === SliceDirection.Backward ? printedClosures(id, graph, idMap) : []) {
+			enqueue(printed, baseEnvironment, baseEnvFingerprint);
 		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
 			sliceForCall(current, currentVertex, info, queue, ctx, ruledOut);

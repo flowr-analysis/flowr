@@ -301,9 +301,9 @@ export function deferringCall(id: NodeId, info: DataflowInformation, idMap: AstI
 	return undefined;
 }
 
-/** Whether running `id` may write into the message sink, as a message or a warning does, in the functions it calls as well. */
+/** Whether running `id` may write into the message sink, as a message or a warning does, in its arguments (an inner `suppressWarnings(message(m))`) and the functions it calls as well. */
 function reports(id: NodeId, info: DataflowInformation): boolean {
-	return Dataflow.sideEffects.ambientAccess(info, [id]).writes.has(MessageSinks.used);
+	return Dataflow.sideEffects.ambientAccess(info, id).writes.has(MessageSinks.used);
 }
 
 /** Whether the call `id` runs while the output is diverted (`sink(f)`), so that what it prints is part of what the program writes, `true` if it keeps no environment to tell. */
@@ -326,4 +326,17 @@ export function assignmentHidingValue(id: NodeId, info: DataflowInformation, idM
 	}
 	const visible = Dataflow.calleeIdsOf(info.graph, id).some(t => !NodeId.isBuiltIn(t)) || !CallProps.hasAny(callFnProps(id, info), CallProp.Invisible);
 	return visible && runsDiverted(id, info) ? parent.info.id : undefined;
+}
+
+/** Every node of the closures what the output `id` reads (`sink()` ending a diversion) prints, as printing a closure deparses its whole definition (`f` at the top level, `print(f)`), but for the methods printing calls. */
+export function printedClosures(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): NodeId[] {
+	const prints = (at: NodeId, kind: 'reads' | 'writes') => graph.ambientAccessOf(at)?.[kind].has(AmbientStateName.sinkOutput) === true;
+	if(!prints(id, 'reads')) {
+		return [];
+	}
+	return Dataflow.targetsOf(graph, id, EdgeType.Reads).filter(printer => printer !== id && prints(printer, 'writes')).flatMap(printer => {
+		const called = Dataflow.calleeIdsOf(graph, printer);
+		return [...getAllLinkedFunctionDefinitions(new Set([printer]), graph)[0]].filter(closure => !called.includes(closure.id))
+			.flatMap(closure => [...RNode.collectAllIds(idMap.get(closure.id))].filter(n => graph.hasVertex(n)));
+	});
 }

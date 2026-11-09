@@ -33,6 +33,9 @@ const Signals: DefaultBuiltInProcessorConfiguration = {
 	sig:             sig({ '...': ArgProp.Alias | ArgProp.Forced })
 };
 
+/** what muffles the conditions its code signals */
+const Suppresses: DefaultBuiltInProcessorConfiguration = { keepArgumentOut: true, sig: sig({ expr: ArgProp.Alias | ArgProp.Forced, classes: ArgProp.Value }) };
+
 /** what signals an error */
 const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }) };
 
@@ -239,11 +242,13 @@ export const BaseDefinitions = [
 	fn(base('message'), BuiltInProcName.Default, { ...Signals, signals: ['simpleMessage', 'message', 'condition'] }),
 	fn(base('warning'), BuiltInProcName.Default, { ...Signals, signals: ['simpleWarning', 'warning', 'condition'] }),
 	fn([...pkg(PkgName.Rlang, 'warn'), ...pkg(PkgName.Msgr, 'info')], BuiltInProcName.Default, Signals),
+	fn(base('packageStartupMessage'), BuiltInProcName.Default, { ...Signals, signals: ['packageStartupMessage', 'simpleMessage', 'message', 'condition'] }),
 	fn(base('invisible'), BuiltInProcName.Default, { keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: sig({ x: ArgProp.Alias | ArgProp.Forced }) }, Primitive),
 	fn(base('force', 'identity'), BuiltInProcName.Default, { keepArgumentOut: true, props: CallProp.Pure, sig: sig({ x: ArgProp.Alias | ArgProp.Forced }) }),
 	fn(base('I'), BuiltInProcName.Default, { keepArgumentOut: true, props: CallProp.Pure, sig: sig({ x: Forced.Value }) }),
-	fn(base('suppressWarnings', 'suppressMessages', 'suppressPackageStartupMessages'), BuiltInProcName.Default,
-		{ keepArgumentOut: true, sig: sig({ expr: ArgProp.Alias | ArgProp.Forced, classes: ArgProp.Value }) }),
+	fn(base('suppressWarnings'), BuiltInProcName.Default, { ...Suppresses, muffles: ['warning'] }),
+	fn(base('suppressMessages'), BuiltInProcName.Default, { ...Suppresses, muffles: ['message'] }),
+	fn(base('suppressPackageStartupMessages'), BuiltInProcName.Default, { ...Suppresses, muffles: ['packageStartupMessage'] }),
 	/* it changes into a directory that has to exist, so it reads the files as well */
 	fn(base('setwd'), BuiltInProcName.Default,
 		{ ambient: [Ambient.wd.reads, Ambient.wd.writes], props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ dir: ArgProp.Value | Forced.Resource }) }),
@@ -275,19 +280,21 @@ export const BaseDefinitions = [
 		{ includeFunctionCall: true, supportFunctionCall: false, keepEnvironment: true, tags: [SemanticCallTag.Eval], sig: sig({ expr: Forced.Value | ArgProp.Injectable, envir: Forced.Value, enclos: Forced.Value }) },
 		Primitive),
 	fn(base('cat'), BuiltInProcName.Default,
-		{ ambient: ReadPrintingOptions, props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional, sep: Forced.Value, fill: Forced.Value, labels: Forced.Value, append: Forced.Flag }) }),
+		{ ambient: [ReadPrintingOptions, { ...Ambient.messageSink.adds, when: { arg: 'file', formals: ['...', 'file'], calls: ['stderr'] } }], props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional, sep: Forced.Value, fill: Forced.Value, labels: Forced.Value, append: Forced.Flag }) }),
 	fn(base('switch'), BuiltInProcName.Default, { alternativeArgsFrom: 1, useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure, sig: sig({ EXPR: Forced.Value }) }),
 	fn(base('stop'), BuiltInProcName.Default, { ...Throws, signals: ['simpleError', 'error', 'condition'] }),
 	/* their classes depend on more than the message (`class = `, a glue template evaluated in the caller) */
 	fn([...pkg(PkgName.Rlang, 'abort'), ...pkg(PkgName.Cli, 'cli_abort'), ...pkg(PkgName.RmethodsS3, 'throw'), ...pkg(PkgName.Roo, 'throw'),
 		/* R.oo re-exports R.methodsS3::throw */ ...pkg(PkgName.Purrr, 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length')], BuiltInProcName.Default, Throws),
 	/* the block is evaluated whatever happens, the handlers only when something does, and an error keeps the value from coming back */
-	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, sig: sig({ expr: Forced.Value }) }, Primitive),
+	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, ambient: { ...Ambient.messageSink.adds, unless: { flag: 'silent' } }, sig: sig({ expr: Forced.Value }) }, Primitive),
 	fn([...base('tryCatch'), ...pkg(PkgName.TryCatchLog, 'tryCatchLog')], BuiltInProcName.Try,
 		{ block: 'expr', handlers: { error: 'error', finally: 'finally' }, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee, finally: ArgProp.Nse }) }, Primitive),
 	fn(base('withCallingHandlers'), BuiltInProcName.Try, { block: 'expr', aborts: false, handlers: {}, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }, Primitive),
 	/* its handlers run on what the session signals from then on */
 	fn(base('globalCallingHandlers'), BuiltInProcName.Try, { aborts: false, handlers: {}, sig: sig({ '...': ArgProp.Callee }) }, Primitive),
+	/* invoking a restart leaves the code for the function of that name */
+	fn(base('withRestarts'), BuiltInProcName.Try, { block: 'expr', handlers: { error: 'error' }, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }),
 	fn(base('invokeRestart'), BuiltInProcName.Default, { sig: sig({ r: Forced.Value, '...': Forced.Value }) }, Primitive),
 	fn([...base('stopifnot'), ...pkg(PkgName.AssertThat, 'assert_that')], BuiltInProcName.StopIfNot,
 		{ props: CallProp.Invisible | CallProp.Throws, sig: sig({ '...': 0, exprs: ArgProp.NoDefault, exprObject: ArgProp.NoDefault, local: 0 }) }),
@@ -439,7 +446,9 @@ export const BaseDefinitions = [
 	fn(base('Sys.getenv'), BuiltInProcName.Default,
 		{ props: CallProp.Ambient, ambient: { ...Ambient.env.reads, member: { from: 'parameter', signature: ['x', 'unset', 'names', 'allowEmpty'], names: ['x'] }, handsBack: true }, sig: sig({ '...': ArgProp.Forced }) }),
 	/* turning a number into text reads `scipen` and `OutDec` */
-	fn(base('as.character', 'toString', 'prettyNum', 'formatC'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: SigXDots }, Primitive),
+	fn(base('as.character', 'toString', 'formatC'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: SigXDots }, Primitive),
+	/* it formats each number with `format` */
+	fn(base('prettyNum'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: PrintDispatched, sig: SigXDots }, Primitive),
 	/* the local date and time zone follow `TZ` */
 	fn(base('Sys.Date', 'Sys.timezone', 'date'), BuiltInProcName.Default, { ambient: { ...Ambient.env.reads, member: { from: 'constant', keys: ['TZ'] } }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
 	fn(base('Sys.getlocale'), BuiltInProcName.Default, { ambient: { ...Ambient.locale.reads, member: { from: 'parameter', signature: ['category'], names: ['category'], fallback: 'LC_ALL' } }, sig: sig({ category: ArgProp.Forced }) }),

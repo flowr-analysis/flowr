@@ -457,6 +457,8 @@ export interface BuiltInFnInfo extends StatedProps {
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
 	/** The condition classes a call signals when every argument it is handed is a constant, like `simpleError`, `error`, and `condition` for `stop("x")`. */
 	readonly signals?:               readonly string[]
+	/** The condition classes the call muffles while its code runs, like `message` for `suppressMessages(expr)`, which decides where the output of that code goes. */
+	readonly muffles?:               readonly string[]
 	/** the parameters and what each of their arguments is used for */
 	readonly sig?:                   FnSig
 	/** keep the environment on the call vertex, for a later pass to look names up in */

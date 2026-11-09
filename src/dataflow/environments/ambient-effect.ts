@@ -69,6 +69,8 @@ export type AmbientCondition =
 	| { readonly flag: string }
 	/** the argument for the formal `arg` (matched against the `formals`) is one of the strings `is`, `null` standing for a missing or `NULL` argument */
 	| { readonly arg: BrandedIdentifier, readonly formals: readonly BrandedIdentifier[], readonly is: readonly (string | null)[] }
+	/** the argument for the formal `arg` is a call of one of the functions `calls`, or a variable bound to one, like `cat(x, file = stderr())` */
+	| { readonly arg: BrandedIdentifier, readonly formals: readonly BrandedIdentifier[], readonly calls: readonly BrandedIdentifier[] }
 	/** an argument other than one for the leading formals, by position or by another name, like a kind for `set.seed(1, "Wichmann-Hill")` */
 	| { readonly besides: readonly BrandedIdentifier[] };
 
@@ -275,6 +277,8 @@ function conditionWords(condition: AmbientCondition): string {
 		return 'it only queries';
 	} else if('flag' in condition) {
 		return `${condition.flag} is TRUE`;
+	} else if('calls' in condition) {
+		return `${condition.arg} is a call of ${condition.calls.join(' or ')}`;
 	} else if('arg' in condition) {
 		return `${condition.arg} is ${condition.is.map(v => v === null ? 'missing' : `"${v}"`).join(' or ')}`;
 	}

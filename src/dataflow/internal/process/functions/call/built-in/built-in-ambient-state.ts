@@ -408,6 +408,8 @@ function holds<OtherInfo>(condition: AmbientCondition, args: readonly Potentiall
 	} else if('flag' in condition) {
 		const flag = args.find(a => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === condition.flag);
 		return flag === undefined || flag === EmptyArgument ? Ternary.Never : RLogical.is(flag.value) ? flag.value.content ? Ternary.Always : Ternary.Never : data === undefined ? Ternary.Maybe : flagValue(flag.value, data);
+	} else if('calls' in condition) {
+		return argumentCalls(MatchArgs.toNames(args, condition.formals).get(condition.arg), condition.calls, data);
 	} else if('arg' in condition) {
 		return argumentIs(MatchArgs.toNames(args, condition.formals).get(condition.arg), condition.is, data);
 	}
@@ -429,6 +431,16 @@ function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | u
 	}
 	const known = strings.map(v => is.includes(v));
 	return known.every(Boolean) ? Ternary.Always : known.some(Boolean) ? Ternary.Maybe : Ternary.Never;
+}
+
+/** Whether the argument is a call of one of the functions `calls`, or a variable bound to one. */
+function argumentCalls<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, calls: readonly BrandedIdentifier[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | undefined): Ternary {
+	if(arg === undefined) {
+		return Ternary.Never;
+	}
+	const values = data === undefined ? [RArgument.valueOf(arg)].filter(isNotUndefined) : boundValues(arg.info.id, data);
+	const known = values.map(v => RFunctionCall.isNamed(v, new Set(calls)));
+	return known.length === 0 ? Ternary.Maybe : known.every(Boolean) ? Ternary.Always : known.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }
 
 /** Whether the effect happens for the arguments `args`, see {@link AmbientEffect#when}. */
@@ -1322,7 +1334,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 				}
 				return false;
 			}
-			if(mode.muffled && RFunctionCall.isNamed(node, 'suppressWarnings') && targets.every(t => NodeId.isBuiltIn(t.nodeId))) {
+			if(mode.muffled && targets.length > 0 && targets.every(t => t.type === ReferenceType.BuiltInFunction && t.config?.muffles?.includes('warning') === true)) {
 				return true;
 			}
 			const handlers = mode.muffled ? muffledHandlers(node, graph, data) : undefined;

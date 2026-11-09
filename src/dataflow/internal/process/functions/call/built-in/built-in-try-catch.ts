@@ -64,6 +64,10 @@ export function processTryCatch<OtherInfo>(
 	const blockAst = blockInfo && data.completeAst.idMap.get(blockInfo.entryPoint);
 	const sitesOf = (condition: Identifier, link: boolean) => blockAst === undefined ? [] : signalSites(blockAst, Identifier.getName(condition), info.graph, data, link);
 	const signaled = new Set(aborts ? otherHandlers.flatMap(({ name: condition }) => sitesOf(condition, true)) : []);
+	/* a calling handler decides what a signal does as well (`invokeRestart("muffleWarning")`), so what signals stays with the construct */
+	for(const site of aborts ? [] : otherHandlers.flatMap(({ name: condition }) => sitesOf(condition, false))) {
+		info.graph.addEdge(site, rootId, EdgeType.Reads);
+	}
 	const raising: NodeId[] = [];
 	if(blockInfo !== undefined && blockAst !== undefined && (catchesError || signaled.size > 0)) {
 		const targetsOf = (n: Identifier) => [data.environment, info.environment]

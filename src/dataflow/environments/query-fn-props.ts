@@ -75,16 +75,18 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 	let sig: FnSig | undefined;
 	let stated: StatedProps = {};
 	let frame: ArgProps | undefined;
+	let muffles: readonly string[] | undefined;
 	for(const d of definitions ?? []) {
 		if(d.type !== ReferenceType.BuiltInFunction) {
 			continue;
 		}
 		const info: BuiltInFnInfo | undefined = d.config;
 		sig ??= info?.sig;
+		muffles ??= info?.muffles;
 		stated = FunctionSemantics.call.props.join(stated, info);
 		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
 	}
-	return sig === undefined && frame === undefined && !FunctionSemantics.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame };
+	return sig === undefined && frame === undefined && !FunctionSemantics.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame, ...muffles === undefined ? {} : { muffles } };
 }
 
 /** What flowR knows about the function `name`: what the built-in definitions state, filled up with what the signature database knows (see {@link fnInfoFromSignature}). */

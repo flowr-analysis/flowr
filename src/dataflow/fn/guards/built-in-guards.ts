@@ -1,18 +1,20 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
 import { PkgName } from '../../environments/identifier';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import type { FunctionGuards, GuardClause } from './function-guards';
-import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { messageOf, type FunctionGuards, type GuardClause } from './function-guards';
+import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { claimsOf, type FormalClaim } from './guard-claims';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { claimsOf, readingOf, type FormalClaim } from './guard-claims';
 import { defaultGuardFacts, Demands } from './guard-knowledge';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
 
 /** What is known about a function without a program to read it from: {@link FunctionGuards} without the clauses, which point at code. */
-export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<Pick<FunctionGuards, 'relations' | 'conditional'>> {
+export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<Pick<FunctionGuards, 'relations' | 'conditional' | 'returns' | 'passes'>> {
 	/** see {@link FunctionGuards.required} */
 	readonly required?: readonly BrandedIdentifier[]
 	/** see {@link FunctionGuards.formals} */
@@ -31,7 +33,13 @@ export interface GuardReason {
 	readonly kind:     GuardClause['kind']
 	/** the code that fails, as it is written */
 	readonly fails:    string
-	/** the calls the condition is inherited through, outermost first, by the function they call */
+	/** the same, shortened to what a reader needs next to the message: `stop(...)` for a call raising it, or the `if (cond) ...` whose condition R rejects */
+	readonly brief?:   string
+	/** the condition in words, where it uses notation of flowR's own, see {@link readingOf} */
+	readonly reads?:   string
+	/** the formals the condition speaks of */
+	readonly formals?: readonly BrandedIdentifier[]
+	/** the calls the condition is inherited through, outermost first, by the function they call, written `pkg::name` where the package is known */
 	readonly via?:     readonly string[]
 	/** see {@link GuardClause.message} */
 	readonly message?: string
@@ -39,19 +47,47 @@ export interface GuardReason {
 
 const MaxReasonLength = 160;
 
-/** The {@link GuardReason} of each of the clauses, reading the code they point at from `idMap`. */
-export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: AstIdMap): GuardReason[] {
-	const written = (id: NodeId) => {
-		const text = RNode.lexeme(idMap.get(id))?.split('\n')[0] ?? '';
-		return text.length > MaxReasonLength ? `${text.slice(0, MaxReasonLength)}...` : text;
+function written(this: void, node: RNodeWithParent | undefined): string {
+	const text = RNode.lexeme(node)?.split('\n')[0] ?? '';
+	return text.length > MaxReasonLength ? `${text.slice(0, MaxReasonLength)}...` : text;
+}
+
+/** The failing code shortened, see {@link GuardReason.brief}. */
+function briefOf(this: void, node: RNodeWithParent | undefined, message: string | undefined, idMap: AstIdMap): string | undefined {
+	if(node === undefined) {
+		return undefined;
+	} else if(RFunctionCall.isNamed(node) && message !== undefined && messageOf(node) === message) {
+		return `${RNode.ownLexeme(node) ?? ''}(...)`;
+	}
+	const parent = RNode.directParent(node, idMap);
+	return (RIfThenElse.is(parent) || RWhileLoop.is(parent)) && parent.condition === node ? `${RIfThenElse.is(parent) ? 'if' : 'while'} (${written(node)}) ...` : undefined;
+}
+
+/**
+ * The {@link GuardReason} of each of the clauses, reading the code they point at from `idMap`.
+ * @param ownerOf - the package defining a function of the program, to qualify {@link GuardReason.via} with
+ */
+export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: AstIdMap, ownerOf: (name: string) => string | undefined = () => undefined): GuardReason[] {
+	const qualified = (name: string) => {
+		const owner = ownerOf(name);
+		return owner === undefined ? name : `${owner}::${name}`;
 	};
-	return clauses.map(({ rendered, kind, at, via, message }) => ({
-		requires: rendered,
-		kind,
-		fails:    written(at),
-		...(via === undefined || via.length === 0 ? {} : { via: via.map(id => RNode.ownLexeme(idMap.get(id)) ?? '') }),
-		...(message === undefined ? {} : { message })
-	}));
+	return clauses.map(({ requires, rendered, kind, at, via, message }) => {
+		const node = idMap.get(at);
+		const brief = briefOf(node, message, idMap);
+		const reads = readingOf(requires, defaultGuardFacts());
+		const formals = [...GuardTerm.formalsOf(requires)];
+		return {
+			requires: rendered,
+			kind,
+			fails:    written(node),
+			...(brief === undefined ? {} : { brief }),
+			...(reads === undefined ? {} : { reads }),
+			...(formals.length === 0 ? {} : { formals }),
+			...(via === undefined || via.length === 0 ? {} : { via: via.map(id => qualified(RNode.ownLexeme(idMap.get(id)) ?? '')) }),
+			...(message === undefined ? {} : { message })
+		};
+	});
 }
 
 /** {@link StatedGuards} per package and name. */

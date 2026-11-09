@@ -2,7 +2,7 @@ import type { BrandedIdentifier } from '../../environments/identifier';
 import { IntervalDomain } from '../../../abstract-interpretation/domains/interval-domain';
 import { BoundedSetDomain } from '../../../abstract-interpretation/domains/bounded-set-domain';
 import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
-import { AnyType, RValueType, type GuardFactsLookup, type RValueTypes } from '../../environments/guard-facts';
+import { AnyType, RValueType, type GuardFacts, type GuardFactsLookup, type ReturnedValue, type RValueTypes } from '../../environments/guard-facts';
 import { setEquals } from '../../../util/collections/set';
 import { typeNames } from './guard-knowledge';
 
@@ -481,6 +481,142 @@ export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: 
 	return claims;
 }
 
+/** One way a function returns normally: the value it returns, `undefined` if flowR cannot state it, and what holds on the way there. */
+export interface ReturnedTerm {
+	readonly value: GuardTerm | undefined
+	readonly holds: readonly GuardTerm[]
+}
+
+/** What a function states of the values it returns, also by being a predicate, a measure, or a reader of the type. */
+function returnedBy(this: void, facts: GuardFacts | undefined): ReturnedValue | 'argument' | undefined {
+	if(facts?.returns !== undefined) {
+		return facts.returns;
+	} else if(facts?.predicate !== undefined) {
+		return { types: RValueType.Logical, scalar: true, notNA: true };
+	} else if(facts?.reads !== undefined) {
+		return { types: RValueType.Character, scalar: true, notNA: true };
+	}
+	switch(facts?.measures) {
+		case 'single':
+			return { types: Numbers, scalar: true, notNA: true, count: true };
+		/* `ncol` of a table of one dimension is `NA` */
+		case 'nullable':
+			return { types: RValueType.Integer | RValueType.Null, count: true };
+		case 'elementwise':
+			return { types: RValueType.Integer };
+		default:
+			return undefined;
+	}
+}
+
+function ofReturned(this: void, { types, scalar, notNA, count }: ReturnedValue): Abstract {
+	const typed: Abstract = { ...ofTypes(types), notNA: notNA === true, whole: count === true };
+	const counted = count ? both(typed, ofBound('value', 0, Infinity)) : typed;
+	return scalar ? both(counted, ofBound('length', 1, 1)) : counted;
+}
+
+/** The types `c` turns its elements into, from the weakest to the strongest. */
+const Coerced: readonly RValueType[] = [RValueType.Logical, RValueType.Integer, RValueType.Double, RValueType.Complex, RValueType.Character];
+const TypeOfSymbol: Readonly<Record<string, RValueType>> = { NULL: RValueType.Null, NA: RValueType.Logical, NaN: RValueType.Double, Inf: RValueType.Double, NA_integer_: RValueType.Integer, NA_real_: RValueType.Double, NA_character_: RValueType.Character, NA_complex_: RValueType.Complex };
+
+function typeOfConstant(this: void, { lexeme, value }: GuardConstant): RValueType | undefined {
+	switch(typeof value) {
+		case 'string':
+			return RValueType.Character;
+		case 'boolean':
+			return RValueType.Logical;
+		case 'number':
+			return lexeme.endsWith('L') ? RValueType.Integer : lexeme.endsWith('i') ? RValueType.Complex : RValueType.Double;
+		default:
+			return TypeOfSymbol[lexeme];
+	}
+}
+
+/** What `c` of the constants is, a single one being itself. */
+function ofConstants(this: void, constants: readonly GuardConstant[]): Abstract {
+	const types = constants.map(typeOfConstant);
+	if(types.includes(undefined)) {
+		return Unconstrained;
+	}
+	const elements = constants.filter((_, at) => types[at] !== RValueType.Null);
+	const ranks = types.filter(t => t !== RValueType.Null).map(t => Coerced.indexOf(t as RValueType));
+	if(ranks.length === 0) {
+		return both(ofTypes(RValueType.Null), ofBound('length', 0, 0));
+	}
+	const type = Coerced[Math.max(...ranks)];
+	const values = elements.map(c => c.value);
+	/* `NaN` and `Inf` are numbers to the parser */
+	const known = values.every(v => v !== undefined && (typeof v !== 'number' || Number.isFinite(v)));
+	const numbers = (type & Numbers) !== 0 && known ? values as number[] : undefined;
+	const counted = both(ofTypes(type), ofBound('length', elements.length, elements.length));
+	return {
+		...(numbers === undefined ? counted : both(counted, ofBound('value', Math.min(...numbers), Math.max(...numbers)))),
+		values: known ? ofValues(new Set(values as (string | number | boolean)[])) : NoValues,
+		notNA:  values.every(v => v !== undefined && !Number.isNaN(v)),
+		whole:  numbers?.every(n => Number.isInteger(n)) ?? false
+	};
+}
+
+/** What the value of the term is, `conditions` holding of the formals. */
+function ofValue(this: void, term: GuardTerm | undefined, conditions: readonly GuardTerm[], facts: GuardFactsLookup): Abstract {
+	if(term?.kind === 'formal') {
+		return conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, term.name, facts)), Unconstrained);
+	}
+	const constants = GuardTerm.constants(term);
+	if(constants !== undefined && (!GuardTerm.isCall(term) || term.args.every(a => a.name === undefined))) {
+		return ofConstants(constants);
+	} else if(!GuardTerm.isCall(term) || !term.known) {
+		return Unconstrained;
+	}
+	const [only] = term.args;
+	/* the internal code of a function of R returns what that function does, as in `.Internal(toupper(x))` */
+	if(term.fn === '.Internal' && term.args.length === 1 && GuardTerm.isCall(only.value)) {
+		return ofValue({ ...only.value, known: true }, conditions, facts);
+	}
+	const returned = returnedBy(facts(GuardTerm.bareName(term.fn)));
+	if(returned === 'argument') {
+		return term.args.length === 0 ? ofConstants([]) : term.args.length === 1 ? ofValue(only.value, conditions, facts) : Unconstrained;
+	}
+	return returned === undefined ? Unconstrained : ofReturned(returned);
+}
+
+/** What holds of the value of every normal return, given what holds of the formals on every one of them, `undefined` if that is nothing. */
+export function returnsOf(this: void, returned: readonly ReturnedTerm[], conditions: readonly GuardTerm[], facts: GuardFactsLookup): FormalClaim | undefined {
+	const claim = returned.length === 0 ? {} : toClaim(returned.map(r => ofValue(r.value, [...conditions, ...r.holds], facts)).reduce(either));
+	return Object.keys(claim).length === 0 ? undefined : claim;
+}
+
+/** The formal the term hands back as it is. */
+function passedOn(this: void, term: GuardTerm | undefined, facts: GuardFactsLookup): BrandedIdentifier | undefined {
+	if(term?.kind === 'formal') {
+		return term.name;
+	}
+	return GuardTerm.isCall(term) && term.known && term.args.length === 1 && returnedBy(facts(GuardTerm.bareName(term.fn))) === 'argument' ? passedOn(term.args[0].value, facts) : undefined;
+}
+
+/** The formal every normal return hands back unchanged, if there is one. */
+export function returnedFormalOf(this: void, returned: readonly ReturnedTerm[], facts: GuardFactsLookup): BrandedIdentifier | undefined {
+	const [first, ...rest] = returned.map(r => passedOn(r.value, facts));
+	return rest.every(f => f === first) ? first : undefined;
+}
+
+/** `succeeds(f(x, ...))` in words: what the check `f` states of `x`, or that the call runs without an error. */
+function succeedsInWords(this: void, call: GuardCall, facts: GuardFactsLookup): string {
+	const checked = call.args[0]?.value;
+	const claim = checked?.kind === 'formal' && facts(GuardTerm.bareName(call.fn))?.check !== undefined ? toClaim(ofCheck(call, checked.name, facts)) : undefined;
+	/* the choices say what the type adds for anyone reading it */
+	const said = claim === undefined || checked?.kind !== 'formal' ? [] : claimConditions(String(checked.name), claim.values === undefined ? claim : { values: claim.values, ...(claim.partial ? { partial: true } : {}) });
+	return said.length > 0 ? said.join(' && ') : `${GuardTerm.render(call)} runs without an error`;
+}
+
+/** A condition as a reader without flowR's notation reads it, `undefined` if it reads as written: each `succeeds` stated by what it checks. */
+export function readingOf(this: void, condition: GuardTerm, facts: GuardFactsLookup): string | undefined {
+	const alternatives = GuardTerm.disjuncts(condition);
+	const read = (term: GuardTerm) => GuardTerm.isCall(term, 'succeeds') && term.known && GuardTerm.isCall(term.args[0]?.value) ? succeedsInWords(term.args[0].value, facts) : undefined;
+	const readings = alternatives.map(read);
+	return readings.every(r => r === undefined) ? undefined : alternatives.map((a, at) => readings[at] ?? GuardTerm.render(a)).join(' || ');
+}
+
 /** `a`, `a or b`, `a, b, or c`. */
 function listed(this: void, words: readonly string[]): string {
 	return words.length <= 2 ? words.join(' or ') : `${words.slice(0, -1).join(', ')}, or ${words[words.length - 1]}`;
@@ -515,7 +651,7 @@ export function claimConditions(this: void, formal: string, { types, plainTypes,
 	return [
 		...types === undefined ? [] : [ofTypes(types, false)],
 		...plainTypes === undefined ? [] : [ofTypes(plainTypes, true)],
-		...values === undefined ? [] : [`${formal} ${partial ? 'matches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`],
+		...values === undefined ? [] : [`${formal} ${partial ? 'pmatches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`],
 		...classes === undefined ? [] : [classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`],
 		...Object.entries(bounds ?? {}).flatMap(([measure, bound]) => range(measure, bound)),
 		...notNA ? [`!anyNA(${formal})`] : [],
@@ -540,4 +676,14 @@ export function claimWords(this: void, { types, plainTypes, values, partial, cla
 		whole ? 'whole number' : '',
 		...(resolves ?? []).map(r => `${r.expression} exists`)
 	].filter(w => w !== '');
+}
+
+/** What a call returns in a few words, see {@link claimWords}: what holds of it, and the formal it hands back. */
+export function returnWords(this: void, returns: FormalClaim | undefined, passes: BrandedIdentifier | undefined): string[] {
+	return [...passes === undefined ? [] : [`the value of ${passes}`], ...claimWords(returns ?? {})];
+}
+
+/** The same as {@link claimConditions}, of the value a call returns, named `result`. */
+export function returnConditions(this: void, returns: FormalClaim | undefined, passes: BrandedIdentifier | undefined): string[] {
+	return [...passes === undefined ? [] : [`identical(result, ${passes})`], ...claimConditions('result', returns ?? {})];
 }

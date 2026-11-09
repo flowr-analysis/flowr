@@ -9,11 +9,12 @@ import { reasonsOf, type StatedGuards } from './built-in-guards';
  * formal being required alone is what the signature already says of a formal without a default.
  * @param guards - what flowR inferred for the definition, see {@link FunctionGuards}
  * @param idMap  - the ids of the program the guards were read off, to quote the code that fails, see {@link reasonsOf}
+ * @param ownerOf - the package defining a function of the program, see {@link reasonsOf}
  */
-export function statedGuardsOf(this: void, guards: FunctionGuards, idMap: AstIdMap): StatedGuards | undefined {
+export function statedGuardsOf(this: void, guards: FunctionGuards, idMap: AstIdMap, ownerOf?: (name: string) => string | undefined): StatedGuards | undefined {
 	const clauses = guards.clauses.filter(c => !c.rendered.includes('.Internal('));
 	const hasFormals = Object.keys(guards.formals).length > 0;
-	if(clauses.length === 0 && !hasFormals) {
+	if(clauses.length === 0 && !hasFormals && guards.returns === undefined) {
 		return undefined;
 	}
 	return {
@@ -22,6 +23,8 @@ export function statedGuardsOf(this: void, guards: FunctionGuards, idMap: AstIdM
 		...(hasFormals ? { formals: guards.formals } : {}),
 		...(guards.relations.length > 0 ? { relations: guards.relations } : {}),
 		...(guards.conditional.length > 0 ? { conditional: guards.conditional } : {}),
-		...(clauses.length > 0 ? { because: reasonsOf(clauses, idMap) } : {})
+		...(guards.returns === undefined ? {} : { returns: guards.returns }),
+		...(guards.passes === undefined ? {} : { passes: guards.passes }),
+		...(clauses.length > 0 ? { because: reasonsOf(clauses, idMap, ownerOf) } : {})
 	};
 }

@@ -10,7 +10,7 @@ import { FunctionFilterSchema } from '../../query-function-property';
 import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
 import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import type { StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
-import { claimWords } from '../../../dataflow/fn/guards/guard-claims';
+import { claimWords, returnWords } from '../../../dataflow/fn/guards/guard-claims';
 
 /** Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter. */
 export interface InspectFnGuardsQuery extends BaseQueryFormat {
@@ -34,7 +34,7 @@ export interface InspectFnGuardsQueryResult extends BaseQueryResult {
 }
 
 /** Adds what has to be supplied, and what is claimed about each formal. */
-function pushClaims(result: string[], { required = [], formals = {}, relations = [], conditional = [] }: StatedGuards): void {
+function pushClaims(result: string[], { required = [], formals = {}, relations = [], conditional = [], returns, passes }: StatedGuards): void {
 	if(required.length > 0) {
 		result.push(`    a call has to supply: ${required.join(', ')}`);
 	}
@@ -46,6 +46,9 @@ function pushClaims(result: string[], { required = [], formals = {}, relations =
 	}
 	for(const { holds, unless } of relations) {
 		result.push(`    relation: ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
+	}
+	if(returns !== undefined || passes !== undefined) {
+		result.push(`    returns: ${returnWords(returns, passes).join(', ')}`);
 	}
 }
 

@@ -32,7 +32,7 @@ import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant } from './guard-term';
 import type { GuardFacts, GuardFactsLookup } from '../../environments/guard-facts';
 import { ConditionMessages, DemandMessages, NotCallableMessage, callable, composesName, condition, defaultGuardFacts, Demands, getAsExists, guardFactsIn, logicalOperand, onlyComputesBy, succeeds } from './guard-knowledge';
-import { claimsOf, conditionalClaimsOf, impliedBy, relationsOf, type ClaimedName, type ClaimedRelation, type ConditionalClaim, type FormalClaim } from './guard-claims';
+import { claimsOf, conditionalClaimsOf, impliedBy, relationsOf, returnedFormalOf, returnsOf, type ClaimedName, type ClaimedRelation, type ConditionalClaim, type FormalClaim, type ReturnedTerm } from './guard-claims';
 
 /** One condition every normal return of a function has passed; if it does not hold, the call fails. */
 export interface GuardClause {
@@ -70,6 +70,10 @@ export interface FunctionGuards {
 	readonly requires:    string
 	/** the conditions that fail before any side effect in R syntax, an empty string if there are none: the tightest precondition that guarantees a clean failure */
 	readonly pure:        string
+	/** what holds of the value a call returns normally, said as of a formal */
+	readonly returns?:    FormalClaim
+	/** the formal every normal return hands back unchanged */
+	readonly passes?:     BrandedIdentifier
 }
 
 /** One condition on the way to some code, with what is known either way about whether it held. */
@@ -102,9 +106,11 @@ interface Contract {
 	readonly effects:  boolean
 	/** whether it may have written to the frame of its caller */
 	readonly opens:    boolean
+	/** every way it returns normally, none if flowR does not know them all */
+	readonly returned: readonly ReturnedTerm[]
 }
 
-const NoContract: Contract = { clauses: [], required: [], effects: true, opens: false };
+const NoContract: Contract = { clauses: [], required: [], effects: true, opens: false, returned: [] };
 
 /** What to ask for beyond the definitions, see {@link guardsOfFunctions}. */
 export interface FunctionGuardsOptions {
@@ -144,17 +150,20 @@ interface Scope {
 
 /** The one walk through the body of a function. */
 interface Run {
-	readonly scope:   Scope
-	readonly state:   GuardState
-	readonly clauses: Map<string, GuardClause>
+	readonly scope:    Scope
+	readonly state:    GuardState
+	readonly clauses:  Map<string, GuardClause>
 	/** the formals read without any condition */
-	readonly read:    Set<BrandedIdentifier>
+	readonly read:     Set<BrandedIdentifier>
 	/** the nodes writing to the frame behind the back of the dataflow, see {@link frameOpeners} */
-	readonly openers: ReadonlySet<NodeId>
+	readonly openers:  ReadonlySet<NodeId>
+	/** the nodes whose value the function returns, see {@link markTails} */
+	readonly tails:    ReadonlyMap<NodeId, Tail>
+	readonly returned: ReturnedTerm[]
 	/** whether anything but computing a value may have happened by now */
-	effects:          boolean
+	effects:           boolean
 	/** while walking on as if a branch rebinding these formals was not taken, and the steps of the path from there on, see {@link walkUnlessRebound} */
-	rebound?:         { readonly formals: ReadonlySet<BrandedIdentifier>, readonly from: number, readonly depth: number }
+	rebound?:          { readonly formals: ReadonlySet<BrandedIdentifier>, readonly from: number, readonly depth: number }
 }
 
 /** How many branches rebinding a formal are seen past one after the other, see {@link walkUnlessRebound}. */
@@ -645,6 +654,7 @@ function skipped(this: void, node: RNodeWithParent, path: Path, run: Run): Exit[
 		}
 		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || Identifier.getName(vertex.name) === 'return_from') {
 			exits.push({ path: [...path, UnknownStep], kind: 'return' });
+			returnsValue(undefined, path, run);
 		}
 		run.effects ||= !onlyComputes(id, vertex, state);
 	}
@@ -679,7 +689,7 @@ function formalOfNode(this: void, node: RNodeWithParent, run: Run): GuardTerm | 
 	return term?.kind === 'formal' ? term : undefined;
 }
 
-function walkIf(this: void, condNode: RNodeWithParent, then: RNodeWithParent, otherwise: RNodeWithParent | undefined, path: Path, run: Run): Exit[] {
+function walkIf(this: void, condNode: RNodeWithParent, then: RNodeWithParent, otherwise: RNodeWithParent | undefined, path: Path, run: Run, returnsNull: boolean): Exit[] {
 	const before = walk(condNode, path, run);
 	const atCondition = afterExits(path, before);
 	if(atCondition === undefined) {
@@ -693,6 +703,9 @@ function walkIf(this: void, condNode: RNodeWithParent, then: RNodeWithParent, ot
 		addClause(run, atCondition, known, condNode.info.id, { kind: 'implicit', message: ConditionMessages.na });
 	}
 	const [yes, no] = stepsOf(term, run.state.facts);
+	if(returnsNull) {
+		returnsValue(NullValue, [...atCondition, no], run);
+	}
 	return [
 		...before,
 		...branches(run,
@@ -736,7 +749,8 @@ function walkSwitch(this: void, node: RFunctionCall<ParentInformation>, path: Pa
 	return [...before, ...branches(run, ...walks)];
 }
 
-function messageOf(this: void, node: RNodeWithParent): string | undefined {
+/** The literal message a call like `stop("...")` raises. */
+export function messageOf(this: void, node: RNodeWithParent | undefined): string | undefined {
 	if(!RFunctionCall.is(node)) {
 		return undefined;
 	}
@@ -960,7 +974,12 @@ function walkCall(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		return conditions === undefined ? skipped(node, path, run) : walkConditions(conditions, asserting === undefined, path, run);
 	} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.Return)) {
 		const [value] = call.arguments;
-		const before = value === undefined || value === EmptyArgument || value.value === undefined ? [] : walk(value.value, path, run);
+		const returned = value === undefined || value === EmptyArgument ? undefined : value.value;
+		const before = returned === undefined ? [] : walk(returned, path, run);
+		const after = afterExits(path, before);
+		if(after !== undefined) {
+			returnsValue(returned === undefined ? NullValue : termOf(returned, run.scope, run.state), after, run);
+		}
 		return [...before, { path, kind: 'return' }];
 	} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || runsBuiltIn(vertex, BuiltInProcName.Local)) {
 		/* a `return` that may be one of the program's own may still be the one of R */
@@ -973,6 +992,7 @@ function walkCall(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		dispatchRequirement(call, path, run);
 		/* whichever method it finds, flowR does not know what that does */
 		run.effects = true;
+		returnsValue(undefined, path, run);
 		return [{ path, kind: 'return' }];
 	}
 	if(call !== undefined && !RFunctionCall.isNamed(call)) {
@@ -1023,6 +1043,48 @@ function walkLoopBody(this: void, body: RNodeWithParent, path: Path, run: Run): 
 
 /** Walks the node in the order R evaluates it, reports what it requires, and answers how it can be left early. */
 function walk(this: void, node: RNodeWithParent, path: Path, run: Run): Exit[] {
+	const exits = walkNode(node, path, run);
+	const after = run.tails.get(node.info.id) === Tail.Value ? afterExits(path, exits) : undefined;
+	if(after !== undefined) {
+		returnsValue(termOf(node, run.scope, run.state), after, run);
+	}
+	return exits;
+}
+
+/** How a node at the end of the body gives the value of a normal return: as its own value, or as `NULL` for an `if` without an `else` that is not taken. */
+const enum Tail {
+	Value,
+	Elseless
+}
+
+/** The nodes R returns the value of on reaching the end of the body, as far as {@link walk} goes into them. */
+function markTails(this: void, node: RNodeWithParent, state: GuardState, tails: Map<NodeId, Tail>): void {
+	const vertex = callVertexOf(node.info.id, state);
+	if(RExpressionList.is(node) && node.children.length > 0 && (vertex === undefined || !mayRunOwn(node.info.id, vertex, state))) {
+		markTails(node.children[node.children.length - 1], state, tails);
+	} else if(RIfThenElse.is(node) && runsBuiltIn(vertex, BuiltInProcName.IfThenElse)) {
+		markTails(node.then, state, tails);
+		if(node.otherwise === undefined) {
+			tails.set(node.info.id, Tail.Elseless);
+		} else {
+			markTails(node.otherwise, state, tails);
+		}
+	} else {
+		tails.set(node.info.id, Tail.Value);
+	}
+}
+
+const NullValue: GuardConstant = { kind: 'constant', lexeme: 'NULL' };
+
+/** Notes a normal return with its value, which is `undefined` if flowR cannot state it. */
+function returnsValue(this: void, value: GuardTerm | undefined, path: Path, run: Run): void {
+	/* walking on as if a branch was not taken sees the same returns once more */
+	if(run.rebound === undefined) {
+		run.returned.push({ value, holds: path.map(step => step.holds) });
+	}
+}
+
+function walkNode(this: void, node: RNodeWithParent, path: Path, run: Run): Exit[] {
 	run.scope.frameIsOpen ||= run.openers.has(node.info.id);
 	switch(node.type) {
 		case RType.ExpressionList: {
@@ -1048,7 +1110,7 @@ function walk(this: void, node: RNodeWithParent, path: Path, run: Run): Exit[] {
 		case RType.LineDirective:
 			return [];
 		case RType.IfThenElse:
-			return runsBuiltIn(callVertexOf(node.info.id, run.state), BuiltInProcName.IfThenElse) ? walkIf(node.condition, node.then, node.otherwise, path, run) : skipped(node, path, run);
+			return runsBuiltIn(callVertexOf(node.info.id, run.state), BuiltInProcName.IfThenElse) ? walkIf(node.condition, node.then, node.otherwise, path, run, run.tails.get(node.info.id) === Tail.Elseless) : skipped(node, path, run);
 		case RType.ForLoop:
 			return [...walk(node.vector, path, run), ...walkLoopBody(node.body, path, run)];
 		case RType.WhileLoop:
@@ -1109,6 +1171,11 @@ function withUnitsApplied(this: void, clauses: readonly GuardClause[], facts: Gu
 	return applied.filter((_, at) => !alternatives.some((other, i) => i !== at && other.size < alternatives[at].size && other.isSubsetOf(alternatives[at])));
 }
 
+/** The clause that two give together, as {@link GuardTerm.resolved} found. */
+function mergeClauses(this: void, a: GuardClause, b: GuardClause, requires: GuardTerm): GuardClause {
+	return { ...a, requires, rendered: GuardTerm.render(requires), pure: a.pure && b.pure, kind: a.kind === 'explicit' || b.kind === 'explicit' ? 'explicit' : 'implicit' };
+}
+
 /** The clauses without what R asks for that the function checked already, which adds nothing: `x > 0` needs no function to be ruled out after `is.numeric(x)`. */
 function withoutImplied(this: void, clauses: readonly GuardClause[], scope: Scope, facts: GuardFactsLookup): GuardClause[] {
 	const explicit = clauses.filter(c => c.kind === 'explicit').map(c => c.requires);
@@ -1139,7 +1206,9 @@ function contractOf(this: void, id: NodeId, state: GuardState): Contract {
 	/* a recursive call counts for nothing, which only ever leaves out what the recursion could have added */
 	state.contracts.set(id, NoContract);
 	state.depth++;
-	const run: Run = { scope, state, clauses: new Map(), read: new Set(), openers: frameOpeners(scope.definition, state), effects: false };
+	const tails = new Map<NodeId, Tail>();
+	markTails(scope.definition.body, state, tails);
+	const run: Run = { scope, state, clauses: new Map(), read: new Set(), openers: frameOpeners(scope.definition, state), tails, returned: [], effects: false };
 	/* a default is evaluated on first read, wherever that is: one with a side effect leaves nothing clean */
 	for(const { defaultValue } of scope.definition.parameters) {
 		if(defaultValue !== undefined) {
@@ -1150,10 +1219,11 @@ function contractOf(this: void, id: NodeId, state: GuardState): Contract {
 	state.depth--;
 	const demanded = new Set([...run.clauses.values()].flatMap(c => demandsPresenceOf(c.requires, state.facts)));
 	const contract: Contract = {
-		clauses:  withoutImplied(withUnitsApplied([...run.clauses.values()], state.facts), scope, state.facts),
+		clauses:  withoutImplied(GuardTerm.resolved(withUnitsApplied([...run.clauses.values()], state.facts), c => c.requires, mergeClauses), scope, state.facts),
 		required: scope.definition.parameters.filter(p => demanded.has(p.name.content) || (p.defaultValue === undefined && run.read.has(p.name.content))).map(p => p.name.content),
 		effects:  run.effects,
-		opens:    scope.frameIsOpen
+		opens:    scope.frameIsOpen,
+		returned: run.returned
 	};
 	state.contracts.set(id, contract);
 	return contract;
@@ -1195,7 +1265,9 @@ export function guardsOfFunctions(this: void, definitions: readonly NodeId[], gr
 		if(scope === undefined) {
 			continue;
 		}
-		const { clauses, required } = contractOf(id, state);
+		const { clauses, required, returned } = contractOf(id, state);
+		const returns = returnsOf(returned, clauses.map(c => c.requires), state.facts);
+		const passes = returnedFormalOf(returned, state.facts);
 		result[id] = {
 			clauses,
 			formals:     withCandidates(claimsOf(clauses.map(c => c.requires), [...scope.formals.values()], state.facts), state),
@@ -1203,7 +1275,9 @@ export function guardsOfFunctions(this: void, definitions: readonly NodeId[], gr
 			relations:   relationsOf(clauses.map(c => c.requires), state.facts),
 			conditional: conditionalClaimsOf(clauses.map(c => c.requires), [...scope.formals.values()], state.facts),
 			required,
-			...summarizeClauses(clauses)
+			...summarizeClauses(clauses),
+			...(returns === undefined ? {} : { returns }),
+			...(passes === undefined ? {} : { passes })
 		};
 	}
 	return result;

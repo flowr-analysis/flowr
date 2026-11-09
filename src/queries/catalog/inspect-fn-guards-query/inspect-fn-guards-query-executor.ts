@@ -25,9 +25,11 @@ function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuar
 		formals:     onlyNamed(guards.formals),
 		relations:   relationsOf(clauses.map(c => c.requires), defaultGuardFacts()),
 		conditional: guards.conditional.filter(c => named === undefined || named.has(c.formal)),
-		required:    guards.required.filter(f => named === undefined || named.has(f))
+		required:    guards.required.filter(f => named === undefined || named.has(f)),
+		...(guards.returns === undefined ? {} : { returns: guards.returns }),
+		...(guards.passes === undefined ? {} : { passes: guards.passes })
 	};
-	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 ? kept : undefined;
+	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 || kept.returns !== undefined ? kept : undefined;
 }
 
 /** What R's functions of the given names ask for, the ones flowR knows nothing of left out. */

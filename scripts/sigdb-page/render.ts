@@ -200,9 +200,9 @@ export class Hits {
 		head.append(list);
 		row.append(head);
 		if(guards !== undefined) {
-			row.append(contract(name, guards, formalsOf(args), chosen));
+			row.append(teaser(name, guards, formalsOf(args)));
 		}
-		opens(row, () => this.owners(entry));
+		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formalsOf(args), chosen)));
 		this.list.append(row);
 	}
 
@@ -225,7 +225,7 @@ export class Hits {
 	}
 
 	/** one line per package exporting the name, with its signature there and where it is written */
-	private owners(entry: Entry): HTMLDivElement {
+	private owners(entry: Entry, contracted?: HTMLElement): HTMLDivElement {
 		const { name } = entry;
 		const list = el('div', 'owns');
 		for(const owner of entry.shown) {
@@ -253,10 +253,6 @@ export class Hits {
 			if(args !== '' || props !== '') {
 				marks.append(this.signature(name, args, props, entry.guardsIn(pkg.name)));
 			}
-			const guardsHere = entry.guardsIn(pkg.name);
-			if(guardsHere !== undefined && entry.shown.length > 1) {
-				marks.append(contract(name, guardsHere, formalsOf(args), owner));
-			}
 			const { file, line } = owner;
 			const src = blank(file === undefined
 				? link('src nofile', 'sources', owner.sourceUrl ?? '', 'the database records no file for ' + name + ' in ' + pkg.name + ', so this links to its sources')
@@ -282,7 +278,7 @@ export class Hits {
 		const note = el('p', 'ask');
 		note.append(el('span', undefined, 'for parameters and the call graph, ask flowR:'), command);
 		const box = el('div', 'detail');
-		box.append(list, note);
+		box.append(...(contracted === undefined ? [] : [contracted]), list, note);
 		return box;
 	}
 
@@ -381,67 +377,57 @@ function conjuncts(condition: string): string[] {
 	return [...parts, condition.slice(start)];
 }
 
-/** What a call has to fulfill, closed until asked for: per formal a row of claims, then the whole condition one part per line. A default of a formal has no part in this */
-function contract(name: string, [requires, claims, because = [], readOff = '', relations = []]: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
-	const hue = (formal: string) => hueOf(formals.indexOf(formal));
-	/* each formal in its own color, and a negation standing out, so a long condition reads at a glance */
-	const marked = (code: string): (string | HTMLElement)[] => code.split(/(\|\||&&|[<>=!]=|!|%in%|\b[A-Za-z.][A-Za-z0-9._]*\b)/).filter(part => part !== '').map(part =>
-		Operators[part] !== undefined ? titled(el('span', Operators[part][0], part), Operators[part][1]) : formals.includes(part) ? formalMark(el('span', 'arg ' + hue(part), part), part) : part);
-	const reasonOf = new Map(because.map(([holds, fails, via, message]) => [holds, fails + (via === '' ? '' : ', reached through ' + via) + (message === '' ? '' : ', saying "' + message + '"')]));
-	const box = el('details', 'contract');
-	box.addEventListener('click', event => event.stopPropagation());
-	const summary = titled(el('summary'), 'what a call of ' + name + ' has to fulfill to return normally; default values claim nothing, they only fill in what a call leaves out');
-	const origin = readOff === ''
+/** each formal in its own color and the operators set apart, so a long condition reads at a glance */
+function marker(formals: readonly string[]): (code: string) => (string | HTMLElement)[] {
+	return code => code.split(/(\|\||&&|[<>=!]=|!|%in%|\b[A-Za-z.][A-Za-z0-9._]*\b)/).filter(part => part !== '').map(part =>
+		Operators[part] !== undefined ? titled(el('span', Operators[part][0], part), Operators[part][1])
+			: formals.includes(part) ? formalMark(el('span', 'arg ' + hueOf(formals.indexOf(part)), part), part) : part);
+}
+
+/** where a contract comes from: read off the R code of the function, or stated by flowR for one written in C */
+function originTag(readOff: string): HTMLElement {
+	return readOff === ''
 		? titled(el('span', 'origin stated', 'stated'), 'flowR states this of a function written in C')
 		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function in R ' + readOff + ', so another version of R may ask for less or more');
-	summary.append('contract', origin, ...claims.map(([formal]) => formalMark(el('code', hue(formal), formal), formal)));
-	box.append(summary);
-	if(owner !== undefined) {
-		const of = el('div', 'of');
-		of.append('of ' + owner.pkg.name + '::' + name + ' ' + owner.pkg.version);
-		const url = owner.sourceUrl;
-		if(url !== undefined) {
-			of.append(' \u00b7 implemented in ', blank(link('src', (owner.file ?? 'the sources') + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + owner.pkg.name + '::' + name + ' is written')));
-		}
-		box.append(of);
+}
+
+/** The contract in one line within the row: where it comes from and the formals it speaks of; the row opens it */
+function teaser(name: string, [, claims, , readOff = '']: Guards, formals: readonly string[]): HTMLElement {
+	const line = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
+	line.append(el('span', 'label', 'contract'), originTag(readOff), ...claims.map(([formal]) => formalMark(el('code', hueOf(formals.indexOf(formal)), formal), formal)));
+	return line;
+}
+
+/** one row of a contract table, laid out like the rows of the packages */
+function contractRow(cls: string, ...cells: readonly (string | Node)[][]): HTMLElement {
+	const row = el('div', 'crow ' + cls);
+	row.append(...cells.map(cell => (span => (span.append(...cell), span))(el('span'))));
+	return row;
+}
+
+/** What a call has to fulfill, per formal and per condition with where each comes from. A default of a formal has no part in this */
+function contract(name: string, [requires, claims, because = [], readOff = '', relations = []]: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
+	const marked = marker(formals);
+	const box = el('div', 'contract');
+	const head = el('p', 'chead');
+	head.append(el('span', 'label', 'contract'), originTag(readOff), ' of ' + (owner === undefined ? name : owner.pkg.name + '::' + name + ' ' + owner.pkg.version));
+	const url = owner?.sourceUrl;
+	if(owner !== undefined && url !== undefined) {
+		head.append(' \u00b7 implemented in ', blank(link('src', (owner.file ?? 'the sources') + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + owner.pkg.name + '::' + name + ' is written')));
 	}
-	if(claims.length > 0) {
-		const table = el('dl');
-		table.append(...claims.flatMap(([formal, words]) => [formalMark(el('dt', hue(formal), formal), formal), (dd => (dd.append(...words.map(claimPill)), dd))(formalMark(el('dd'), formal))]));
-		box.append(table);
-	}
-	if(relations.length > 0) {
-		const related = el('ul', 'relations');
-		related.append(...relations.map(([holds, unless]) => {
-			const item = el('li');
-			item.append(...marked(holds), ...(unless === '' ? [] : [el('span', 'unless', ' unless '), ...marked(unless)]));
-			return item;
-		}));
-		box.append(related);
-	}
-	if(requires !== '') {
-		const condition = el('pre', 'requires');
-		condition.append(...conjuncts(requires).flatMap((part, at) => {
-			/* a part spelled exactly like a clause says why it is there on hover */
-			const line = titled(el('span', 'line'), reasonOf.get(part) ?? reasonOf.get(part.replace(/^\((.*)\)$/, '$1')));
-			line.append(...marked(part));
-			return [at > 0 ? el('span', 'and', '&& ') : '', line, '\n'];
-		}));
-		box.append(condition);
-	}
-	if(because.length > 0) {
-		const reasons = el('ol', 'because');
-		reasons.append(...because.map(([holds, fails, via, message]) => {
-			const item = el('li');
-			const code = el('code');
-			code.append(...marked(holds));
-			item.append(code, titled(el('span', 'fails', fails), message === '' ? undefined : 'the error says: ' + message), ...(via === '' ? [] : [el('span', 'via', 'through ' + via)]), ...(message === '' ? [] : [el('q', 'message', message)]));
-			return item;
-		}));
-		const why = el('details', 'why');
-		why.append(el('summary', undefined, 'why'), reasons);
-		box.append(why);
-	}
+	box.append(head);
+	const rows = el('div', 'ctable');
+	rows.append(...claims.map(([formal, words]) => formalMark(contractRow('claim', [formalMark(el('code', 'arg ' + hueOf(formals.indexOf(formal)), formal), formal)], words.flatMap((w, at) => [at > 0 ? el('span', 'sep', ' \u00b7 ') : '', claimWordsOf(w)])), formal)));
+	rows.append(...relations.map(([holds, unless]) => contractRow('relation', [el('span', 'tag', 'relation')], [...marked(holds), ...(unless === '' ? [] : [el('span', 'unless', ' unless '), ...marked(unless)])])));
+	const conditions = because.length > 0 ? because : conjuncts(requires).filter(part => part !== '').map(part => [part, readOff === '' ? 'stated by flowR' : '', '', ''] as const);
+	rows.append(...conditions.map(([holds, fails, via, message]) => {
+		const code = el('code', 'cond');
+		code.append(...marked(holds));
+		const from = el('span', 'from');
+		from.append(fails, ...(via === '' ? [] : [el('span', 'via', ' through ' + via)]), ...(message === '' ? [] : [el('q', 'message', message)]));
+		return contractRow('condition', [code], [from]);
+	}));
+	box.append(rows);
 	/* hovering a formal anywhere lights it up everywhere in the contract */
 	box.addEventListener('mouseover', event => light(box, (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-formal]')?.dataset.formal));
 	box.addEventListener('mouseout', () => light(box, undefined));
@@ -523,8 +509,8 @@ const Connectives: Readonly<Record<string, readonly [cls: string, about: string]
 	unless: ['not', 'except']
 };
 
-/** one claim, each word R gives a meaning to explained on hover, its negations and choices standing out */
-function claimPill(words: string): HTMLElement {
+/** one claim, each word R gives a meaning to explained on hover, its negations and choices set apart */
+function claimWordsOf(words: string): HTMLElement {
 	const pill = el('span', 'claim');
 	pill.append(...words.split(/(\b[A-Za-z]+\b)/).filter(part => part !== '').map(part =>
 		Connectives[part] !== undefined ? titled(el('span', Connectives[part][0], part), Connectives[part][1])

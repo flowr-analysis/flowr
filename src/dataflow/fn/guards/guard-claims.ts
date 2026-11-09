@@ -21,7 +21,7 @@ export interface FormalClaim {
 	readonly values?:     readonly (string | number | boolean)[]
 	/** the {@link FormalClaim.values} are matched partially, as `match.arg` does */
 	readonly partial?:    boolean
-	/** `class(x)` holds at least one of these */
+	/** `class(x)` holds at least one of these, or `x` is an S4 object that `is` one, as `inherits` asks `is` for those */
 	readonly classes?:    readonly string[]
 	/** the bounds of what the formal measures: `value` for a number without a class attribute, only stated if the formal is one, else `length`, `nchar`, `nrow`, `ncol`, `NROW`, or `NCOL`, which are taken to be whole numbers, as an S3 method of `length` returning anything else breaks its contract */
 	readonly bounds?:     Readonly<Record<string, ClaimedRange>>
@@ -157,7 +157,7 @@ function ofPredicate(this: void, call: GuardCall, formal: BrandedIdentifier, hol
 	const predicate = stated?.predicate;
 	if(predicate !== undefined && isFormal(first, formal)) {
 		if(holds) {
-			const types = ofTypes(predicate.yes, predicate.classed);
+			const types = { ...ofTypes(predicate.yes | (predicate.classedToo ?? 0), predicate.classed), ...(predicate.classed ? {} : { plain: typeSet(predicate.yes) }) };
 			const typed = predicate.callable ? { ...types, callable: true } : types;
 			return predicate.scalar ? both(typed, ofBound('length', 1, 1)) : typed;
 		}

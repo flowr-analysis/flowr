@@ -535,6 +535,29 @@ function frameOpeners(this: void, definition: RFunctionDefinition<ParentInformat
 	return openers;
 }
 
+/** Whether an error may still end in a normal return, as `on.exit(return(1))` turns it into one, and `do.call(on.exit, .)` may. */
+function mayReturnOnExit(this: void, definition: RFunctionDefinition<ParentInformation>): boolean {
+	const callees = new Set<NodeId>();
+	let found = false;
+	RNode.visitAst(definition.body, node => {
+		if(RFunctionCall.isNamed(node, 'on.exit')) {
+			callees.add(node.functionName.info.id);
+			found ||= node.arguments.some(a => a !== EmptyArgument && a.value !== undefined && hasSymbol(a.value, 'return'));
+		} else if((RSymbol.is(node) && !callees.has(node.info.id) && Identifier.getName(node.content) === 'on.exit') || (RString.is(node) && node.content.str === 'on.exit')) {
+			found = true;
+		}
+	});
+	return found;
+}
+
+function hasSymbol(this: void, node: RNodeWithParent, name: string): boolean {
+	let found = false;
+	RNode.visitAst(node, n => {
+		found ||= RSymbol.is(n) && Identifier.getName(n.content) === name;
+	});
+	return found;
+}
+
 /** `assign(paste0("a", i), v)` may bind any name at all. */
 function assignsComputedName(this: void, name: BrandedIdentifier, vertex: DataflowGraphVertexFunctionCall, state: GuardState): boolean {
 	if(name !== 'assign') {
@@ -1042,7 +1065,7 @@ function contractOf(this: void, id: NodeId, state: GuardState): Contract {
 		return known;
 	}
 	const scope = state.depth > MaxCalleeDepth ? undefined : scopeOf(id, state);
-	if(scope === undefined) {
+	if(scope === undefined || mayReturnOnExit(scope.definition)) {
 		return NoContract;
 	}
 	/* a recursive call counts for nothing, which only ever leaves out what the recursion could have added */

@@ -78,7 +78,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'is.character':      exact(Character),
 		'is.raw':            exact(Raw),
 		'is.function':       predicate(Fn, { exact: true, callable: true }),
-		'is.environment':    exact(Environment),
+		'is.environment':    predicate(Environment, { exact: true, classedToo: Other }),
 		'is.symbol':         predicate(Symbol, { exact: true, callable: true }),
 		'is.name':           predicate(Symbol, { exact: true, callable: true }),
 		'is.call':           exact(Language),

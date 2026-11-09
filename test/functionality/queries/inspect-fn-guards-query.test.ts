@@ -432,6 +432,19 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(`my x`) { stopifnot(is.numeric(`my x`)); 1 }', 'is.numeric(`my x`)');
 	guards('f <- function(x) { stopifnot(isTRUE(all.equal(x, 1))); x }', 'isTRUE(all.equal(x, 1))');
 
+	/* what comes with an effect */
+	guards('f <- function(x) { on.exit(return(5)); stopifnot(is.numeric(x)); 1 }', '');
+
+	/* what comes with an effect */
+	guards('f <- function(x) { on.exit({ if(TRUE) return(7) }); stopifnot(is.numeric(x)); 1 }', '');
+	guards('f <- function(x) { do.call(on.exit, list(quote(return(9)))); stopifnot(is.numeric(x)); 1 }', '');
+
+	/* what comes with an effect */
+	guards('f <- function(x) { on.exit(print("done")); stopifnot(is.numeric(x)); 1 }', 'is.numeric(x)', '');
+	guards('f <- function(x) { stopifnot(is.environment(x)); 1 }', 'is.environment(x)');
+	guards('f <- function(x) { if(is.environment(x)) stop("e"); 1 }', '!is.environment(x)');
+	guards('f <- function(x) { stopifnot(inherits(x, "function")); 1 }', 'inherits(x, "function")');
+
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
 	claims('f <- function(x) { if(!is.integer(x)) stop("n"); x }', { x: { types: ['integer'] } }, ['x']);
@@ -466,8 +479,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test('a configuration teaches what a function checks', async() => {
 		const code = 'f <- function(x) { stopifnot(is_text(x)); x }';
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.semantics.environment.overwriteBuiltIns.definitions = [{ type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
-				config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
+			c.semantics.environment.overwriteBuiltIns.definitions = [{ type:      'function', names:     ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+				config:    { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } } }];
 		});
 		const taught = await guardsOfF(parser, code, config);
 		const plain = await guardsOfF(parser, code);

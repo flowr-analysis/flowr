@@ -29,17 +29,19 @@ export const AnyType: RValueTypes = (1 << 15) - 1;
 /** What a predicate over one value says about the type of the value. */
 export interface TypePredicate {
 	/** the types it can be true for */
-	readonly yes:       RValueTypes
+	readonly yes:         RValueTypes
 	/** it tells these types and no other, so finding it false rules them out as well */
-	readonly exact?:    boolean
+	readonly exact?:      boolean
+	/** a value with a class attribute of these types passes as well, like an S4 object holding an environment does for `is.environment` */
+	readonly classedToo?: RValueTypes
 	/** true for every value of these types without attributes, other than `NULL` */
-	readonly plain?:    boolean
+	readonly plain?:      boolean
 	/** only true for a value with a class attribute, like `is.data.frame` */
-	readonly classed?:  boolean
+	readonly classed?:    boolean
 	/** only true for something of length one */
-	readonly scalar?:   boolean
+	readonly scalar?:     boolean
 	/** being true makes the value usable as a function */
-	readonly callable?: boolean
+	readonly callable?:   boolean
 }
 
 /** What not failing says about the argument a checking call was handed. */

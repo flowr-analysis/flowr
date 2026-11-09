@@ -8,6 +8,10 @@ succeeds <- function(e) {
   list(1), list(), list(a = 1), list(a = 2), function(...) 1, sum, new.env(), quote(a), quote(a + b), data.frame(a = 1), data.frame(), factor("a"), factor("b", levels = c("z", "b")),
   structure(1, class = "foo"), structure(function(...) 1, class = "foo"), expression(a), pairlist(a = 1), c(1, 2), c(-1, 1), character(0), integer(0), logical(0), c("a", "b"), c("b", "a"),
   c(TRUE, FALSE), c(TRUE, TRUE), matrix(1:4, 2), Sys.Date(), globalenv(), as.POSIXct("2020-01-01"), as.difftime(1, units = "secs"), numeric_version("1.2"), table(1), ts(1:3), array(1, c(1, 1, 1)), matrix("a"))
+.guards_values <- c(.guards_values, local({
+  methods::setClass(".GuardsN", contains = "numeric")
+  list(methods::setRefClass(".GuardsRef", fields = list(n = "numeric"))$new(n = 1), methods::new(".GuardsN", 1), methods::setClass(".GuardsP", representation(x = "numeric")))
+}))
 .guards_type <- function(v) {
   t <- typeof(v)
   if(t %in% c("closure", "builtin", "special")) "function" else if(t %in% c("S4", "externalptr")) "other" else t
@@ -19,7 +23,7 @@ succeeds <- function(e) {
     claim <- formals[[n]]
     if(!is.null(claim$types) && !(.guards_type(v) %in% claim$types)) report("types", n, v)
     if(!is.null(claim$plainTypes) && !is.object(v) && !(.guards_type(v) %in% claim$plainTypes)) report("plainTypes", n, v)
-    if(!is.null(claim$classes) && !any(class(v) %in% claim$classes)) report("classes", n, v)
+    if(!is.null(claim$classes) && !any(class(v) %in% claim$classes) && !(isS4(v) && any(vapply(claim$classes, function(c) methods::is(v, c), logical(1))))) report("classes", n, v)
     if(!is.null(claim$values) && is.character(v)) {
       values <- as.character(claim$values)
       fits <- if(isTRUE(claim$partial)) all(!is.na(pmatch(v, values, duplicates.ok = TRUE))) || identical(v, values) else all(v %in% values)

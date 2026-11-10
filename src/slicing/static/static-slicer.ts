@@ -65,6 +65,8 @@ export interface StaticSliceOptions {
 	 * A slice always gets a contingent of its own, so it is never billed for the analysis or the slices before it.
 	 */
 	readonly gas?:            GasOverrides
+	/** Top-level statements the slice is known to reach, which run as late (backward) as the seeds do, see {@link outsideSeedRun}. */
+	readonly reached?:        readonly NodeId[]
 }
 
 /**
@@ -96,7 +98,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const callSigs: Parameters<typeof deferringCall>[3] = new Map();
 	/* the unknown side effects every slice keeps are seeds as well, so what they reach is not cut off as running too late */
 	const effects = [...graph.unknownSideEffects].filter((id): id is NodeId => typeof id !== 'object');
-	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph) : undefined;
+	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph, options.reached) : undefined;
 	const separatedWrite = (id: NodeId): boolean => info.graph.fileWritesPerCall?.has(id) === true
 		&& !openedBodies.has(RNode.findEnclosing(id, idMap, RFunctionDefinition.is) as NodeId);
 	/* the dispatches within functions decided per call, as visited, and per call of such a function the dispatches it decides */
@@ -285,6 +287,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	}
 
 	const status = queue.status();
+	/* a statement the slice keeps although it runs after the seeds (the close of a sink the seed opens) needs what runs before it as well */
+	const beyond = direction === SliceDirection.Backward && missesSeeds !== undefined ? [...status.result].filter(missesSeeds) : [];
+	if(beyond.length > 0) {
+		return staticSlice({ ...options, reached: [...options.reached ?? [], ...beyond] });
+	}
 	const result = ctx.config.solver.slicer?.autoExtend ? extendSlices(status.result, idMap) : status.result;
 	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
 }
@@ -349,12 +356,12 @@ function topLevelStatement(id: NodeId, idMap: AstIdMap): [NodeId, number] | unde
  * theirs; forward, it is a call running only before them, outside of any function. `undefined` if a seed is in a
  * function, which may run any time.
  */
-function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: SliceDirection, graph: DataflowGraph): ((id: NodeId) => boolean) | undefined {
+function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: SliceDirection, graph: DataflowGraph, reached: readonly NodeId[] = []): ((id: NodeId) => boolean) | undefined {
 	const backward = direction === SliceDirection.Backward;
 	const bounds = new Map<NodeId, number>();
-	for(const id of ids) {
+	for(const id of [...ids, ...reached]) {
 		const at = topLevelStatement(id, idMap);
-		if(at === undefined || RNode.findEnclosing(id, idMap, RFunctionDefinition.is) !== undefined) {
+		if(at === undefined || (!reached.includes(id) && RNode.findEnclosing(id, idMap, RFunctionDefinition.is) !== undefined)) {
 			return undefined;
 		}
 		const bound = bounds.get(at[0]) ?? at[1];

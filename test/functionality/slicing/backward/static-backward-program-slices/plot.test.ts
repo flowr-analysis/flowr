@@ -175,7 +175,7 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		graphicsCase('add = TRUE adds to the plot', 'plot(1)\ncurve(sin, add=TRUE)', '2@curve', 'plot(1)\ncurve(sin, add=TRUE)');
 		graphicsCase('curve starts a new plot otherwise', 'plot(1)\ncurve(sin)', '2@curve', 'curve(sin)');
 		graphicsCase('a close keeps every page of its device', 'png("p%d.png")\nplot(1)\nplot(2)\ndev.off()', '4@dev.off', 'png("p%d.png")\nplot(1)\nplot(2)\ndev.off()');
-		graphicsCase('a close keeps nothing of another device', 'plot(0)\npng("a.png")\nplot(1)\ndev.off()', '4@dev.off', 'png("a.png")\nplot(1)\ndev.off()');
+		graphicsCase('a printed close names the device active afterward', 'plot(0)\npng("a.png")\nplot(1)\ndev.off()', '4@dev.off', 'plot(0)\npng("a.png")\nplot(1)\ndev.off()');
 		graphicsCase('a close of a device a plot opened', 'x <- 1\nhist(x)\ndev.off()', '3@dev.off', 'x <- 1\nhist(x)\ndev.off()');
 		graphicsCase('an addon after closing a nested device', 'png("a.png")\nplot(1)\npdf("b.pdf")\nplot(2)\ndev.off()\npoints(3)', '6@points', 'png("a.png")\nplot(1)\npoints(3)');
 		graphicsCase('an addon after switching devices', 'png("a.png")\nplot(1)\npng("b.png")\nplot(2)\ndev.set(2)\npoints(3)', '6@points', 'png("a.png")\nplot(1)\npng("b.png")\nplot(2)\ndev.set(2)\npoints(3)');
@@ -335,5 +335,12 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('R10-B7-as-numeric-runs-as-double', 'as.double.lbl <- function(x, ...) { options(digits = 3); 1 }\no <- structure(1, class = "lbl")\ns <- as.numeric(o)\nprint(pi)', '4@print', 'as.double.lbl <- function(x, ...) {\n        options(digits = 3)\n        1\n    }\no <- structure(1, class = "lbl")\ns <- as.numeric(o)\nprint(pi)');
 		counterexample('R10-B8-seq-along-runs-length', 'length.k <- function(x) { options(digits = 3); 3L }\no <- structure(list(), class = "k")\ns <- seq_along(o)\nprint(pi)', '4@print', 'length.k <- function(x) {\n        options(digits = 3)\n        3L\n    }\no <- structure(list(), class = "k")\ns <- seq_along(o)\nprint(pi)');
 		counterexample('R10-B9-do-call-of-generic', 'format.cnt <- function(x, ...) { options(digits = 3); "c" }\ns <- do.call(format, list(structure(1, class = "cnt")))\nprint(pi)', '3@print', 'format.cnt <- function(x, ...) {\n        options(digits = 3)\n        "c"\n    }\ns <- do.call(format, list(structure(1, class = "cnt")))\nprint(pi)');
+		counterexample('C-B1-dir-create-before-write', 'dir.create("d")\nwriteLines("a", "d/f.txt")', '2@writeLines', 'dir.create("d")\nwriteLines("a", "d/f.txt")');
+		counterexample('C-B1b-setwd-into-created-dir', 'dir.create("d")\nwriteLines("a", "d/f.txt")\nsetwd("d")\nx <- readLines("f.txt")', '4@x', 'dir.create("d")\nwriteLines("a", "d/f.txt")\nsetwd("d")\nx <- readLines("f.txt")');
+		counterexample('C-B2-file-remove-result', 'writeLines("abc", "f.txt")\nprint(file.remove("f.txt"))', '2@print', 'writeLines("abc", "f.txt")\nprint(file.remove("f.txt"))');
+		counterexample('C-B3-autoprinted-dev-off', 'png("a.png")\npng("b.png")\ndev.off()', '3@dev.off', 'png("a.png")\npng("b.png")\ndev.off()');
+		counterexample('C-B4-sink-opener-keeps-inputs', 'sink("o.txt")\nk <- 1\nf <- function() k\nprint(f())\nsink()', '1@sink', 'sink("o.txt")\nk <- 1\nf <- function() k\nprint(f())\nsink()');
+		counterexample('C-B4b-sink-opener-keeps-binding-body', 'sink("o.txt")\nf <- function() { e <- new.env(); makeActiveBinding("ab", function() { cat("R"); 1 }, e); e$ab }\ny <- f()\nsink()', '1@sink', 'sink("o.txt")\nf <- function() {\n        e <- new.env()\n        makeActiveBinding("ab", function() { cat("R"); 1 }, e)\n        e$ab\n    }\ny <- f()\nsink()');
+		counterexample('C-B7-on-exit-return-keeps-raise', 'f <- function(x) { on.exit(return(5)); stopifnot(is.numeric(x)); 1 }\nprint(f("a"))', '2@print', 'f <- function(x) {\n        on.exit(return(5))\n        stopifnot(is.numeric(x))\n    }\nprint(f("a"))');
 	});
 }));

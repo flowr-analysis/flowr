@@ -198,6 +198,12 @@ export function processFunctionDefinition<OtherInfo>(name: RSymbol<OtherInfo & P
 		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
 		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
 		if(hookExitPoints.length > 0) {
+			/* R prints the message of an error before the hook runs, so what the hook hands back instead still shows it */
+			for(const raised of afterHookExitPoints.filter(e => e.type === ExitPointType.Error)) {
+				for(const exit of hookExitPoints) {
+					subgraph.addEdge(exit.nodeId, raised.nodeId, EdgeType.Reads);
+				}
+			}
 			afterHookExitPoints = overwriteExitPoints(afterHookExitPoints, hookExitPoints);
 		}
 	}

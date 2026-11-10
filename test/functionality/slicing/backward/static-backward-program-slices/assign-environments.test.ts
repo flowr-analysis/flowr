@@ -42,6 +42,7 @@ const Programs: readonly (readonly [name: string, code: string])[] = [
 	['<<- skips a local of the same name', 'v <- 10\nf0 <- function() {\n  v <- 0\n  v <<- v + 1\n}\nf0()\nprint(v)'],
 	['<<- reaches the enclosing function, not the local', 'x <- 1\nf <- function() {\n  x <- 2\n  g <- function() { x <<- 3; x }\n  r <- g()\n  c(r, x)\n}\nprint(c(f(), x))'],
 	['<<- of a function with its own x', 'f <- function() {\n  x <- 1\n  g <- function() {\n    x <- 3\n    x <<- 2\n  }\n  g()\n  x\n}\nprint(f())'],
+	['sys.function recursion keeps its base case', 'f <- function(n) if(n <= 1) 1 else n * sys.function()(n - 1)\nprint(f(4))'],
 	['rm from the global environment in a function', 'x <- 1\nf <- function() rm("x", envir = globalenv())\nf()\nprint(exists("x"))'],
 	['get of a computed name', 'nm <- "zz2"\nassign(nm, 1)\nprint(get(nm))'],
 	['mget of a computed name', 'nm <- "zz3"\nassign(nm, 1)\nprint(mget(nm))'],

@@ -65,6 +65,10 @@ export function processRecall<OtherInfo>(
 
 	if(closure) {
 		information.graph.addEdge(rootId, closure, EdgeType.Calls);
+		/* `sys.function()` hands back the closure it runs in, which a call on its result (`sys.function()(n - 1)`) runs */
+		if(config?.unknownOnNonZeroArg) {
+			information.graph.addEdge(rootId, closure, EdgeType.Returns);
+		}
 		// also kill the name of the recall function
 		const r = information.graph.getVertex(rootId);
 		if(DfgVertex.isFunctionCall(r)) {

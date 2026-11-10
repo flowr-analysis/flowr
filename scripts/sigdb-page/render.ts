@@ -1,6 +1,6 @@
 import { blank, button, el } from '../page-lib/dom';
 import { argsOf, norm, shortOf, wordsOf } from './query';
-import { db, Entry, ImplicitClasses, Owner, type AmbientFamily, type Guards, type Package, type RawAnswers } from './database';
+import { db, Owner, type AmbientFamily, type Entry, type Guards, type Package, type RawAnswers } from './database';
 import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
@@ -193,7 +193,7 @@ export class Hits {
 			row.append(ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name));
 		}
 		/* how it takes part in S3 dispatch is for the opened view, the card stays one line or two */
-		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen), s3Line(entry, formalsOf(args))));
+		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen), s3Line(entry)));
 		this.list.append(row);
 	}
 
@@ -571,8 +571,6 @@ function ambientBlock(name: string, families: readonly AmbientFamily[], key: str
 	return box;
 }
 
-/** the group generics, by the formals they dispatch on, any of which may reach a method */
-const GroupFormals: Readonly<Record<string, readonly string[]>> = { Ops: ['e1', 'e2'], matrixOps: ['x', 'y'], Math: ['x'], Complex: ['z'], Summary: ['the first argument'] };
 
 /** at most this many methods are listed at a generic */
 const ShownMethods = 6;
@@ -581,7 +579,7 @@ const ShownMethods = 6;
  * How the name takes part in S3 dispatch: at a generic, the methods the database knows, those with a contract marked;
  * at a method, its generic, its class, and when dispatch reaches it. That is no claim about calls, as a method can be called directly.
  */
-function s3Line(entry: Entry, shown: readonly string[]): HTMLElement | undefined {
+function s3Line(entry: Entry): HTMLElement | undefined {
 	const { name } = entry;
 	const generic = entry.dispatches.find(([system]) => system === 'S3')?.[1];
 	const methods = entry.s3Methods;
@@ -594,67 +592,30 @@ function s3Line(entry: Entry, shown: readonly string[]): HTMLElement | undefined
 		const used = (method: Entry) => Math.max(...method.owners.map(owner => owner.pkg.base ? Infinity : owner.pkg.downloads));
 		const ranked = [...methods].sort((a, b) => Number(b.contracted) - Number(a.contracted) || used(b) - used(a) || (a.name < b.name ? -1 : 1));
 		line.append(titled(el('span', 'label', 'S3 methods'), 'the S3 methods of ' + name + ' the database knows, those flowR knows a contract for first, then those of base R, then by the downloads of their packages'),
-			...ranked.slice(0, ShownMethods).flatMap((method, at) => [...at > 0 ? [' '] : [], ...methodLink(method, name)]));
+			...ranked.slice(0, ShownMethods).flatMap((method, at) => [...at > 0 ? [el('span', 'sep', ' · ')] : [], methodLink(method, name)]));
 		if(ranked.length > ShownMethods) {
-			line.append(' ', link('more', '+' + (ranked.length - ShownMethods), search(name + '.'), 'search for every name starting with ' + name + '.'));
+			line.append(el('span', 'sep', ' · '), link('more', '+' + (ranked.length - ShownMethods), search(name + '.'), 'search for every name starting with ' + name + '.'));
 		}
 	}
 	if(generic !== undefined) {
 		const cls = name.slice(generic.length + 1);
 		line.append(...methods.length > 0 ? [el('br')] : [], titled(el('span', 'label', 'S3 method'), 'an implementation of the generic for one class'),
-			' of ', link('generic', generic, search(generic), 'search for the generic ' + generic + ' and its other methods'), ' for class ', el('code', 'cls', cls),
-			el('span', 'sep', ' · '), ...reachedBy(generic, cls, shown));
+			' of ', link('generic', generic, search(generic), 'search for the generic ' + generic + ' and its other methods'), ' for class ', el('code', 'cls', cls));
 	}
 	return line;
 }
 
 /** a method as a link to it, marked when flowR knows its contract */
-function methodLink(method: Entry, generic: string): Part[] {
-	const owners = el('span', 'owners');
-	owners.append(...method.owners.slice(0, Shown).map(owner => packageLink(owner.pkg)), ...method.owners.length > Shown ? ['+' + (method.owners.length - Shown)] : []);
-	/* the generic's name is implied, so a method reads as its class, followed by the packages defining it */
-	return [link('method', '.' + method.name.slice(generic.length + 1), search(method.name), method.name + ': S3 method of ' + generic + ' for class '
+function methodLink(method: Entry, generic: string): HTMLElement {
+	/* the generic's name is implied, so a method reads as its class, followed by the packages defining it, all kept on one line */
+	const group = el('span', 'mgroup');
+	group.append(link('method', '.' + method.name.slice(generic.length + 1), search(method.name), method.name + ': S3 method of ' + generic + ' for class '
 		+ method.name.slice(generic.length + 1) + (method.contracted ? '. flowR knows what a call of it has to fulfill' : '')),
-	...method.contracted ? [titled(el('span', 'hascontract', '\u2713'), 'flowR knows what a call of ' + method.name + ' has to fulfill')] : [], owners];
+	...method.contracted ? [titled(el('span', 'hascontract', '\u2713'), 'flowR knows what a call of ' + method.name + ' has to fulfill')] : [],
+	...method.owners.slice(0, Shown).map(owner => packageLink(owner.pkg, 'mpkg')), ...method.owners.length > Shown ? [el('span', 'mpkg more', '+' + (method.owners.length - Shown))] : []);
+	return group;
 }
 
-/**
- * When S3 dispatch from `generic` reaches its method for `cls`: the object dispatched on has the class, an implicit one (`numeric` for a
- * plain double) only counting for an object without a class attribute and a generic that is no primitive, as those dispatch on objects only.
- * The default method is reached whenever no other one applies.
- */
-function reachedBy(generic: string, cls: string, shown: readonly string[]): Part[] {
-	const stated = db.stated.get(generic) ?? [];
-	const primitive = stated.some(entry => wordsOf(entry.props).includes('primitive'));
-	const [first] = (db.formals.get(generic)?.[0]?.[1] ?? formalsOf(stated[0]?.args ?? '').join(',')).split(',').map(f => f.trim()).filter(f => f !== '');
-	const group = GroupFormals[generic];
-	const on = group ?? [first === undefined || first === '...' ? 'the first argument' : first];
-	const formal = (f: string) => shown.includes(f) ? formalMark(el('code', 'arg ' + hueOf(shown.indexOf(f)), f), f) : el('code', 'arg', f);
-	const onWords = 'dispatch looks at ' + on.join(' or ') + (group === undefined
-		? ', the first formal of ' + generic + ', which UseMethod dispatches on unless the generic names another object'
-		: ', as the group generic ' + generic + ' does');
-	if(cls === 'default') {
-		const classes = new Set(new Entry(generic, db.ownersOf(generic)).s3Methods.map(method => method.name.slice(generic.length + 1)));
-		const free = [...ImplicitClasses].filter(c => !classes.has(c));
-		return [titled(el('span', 'reach', 'reached by dispatch when no other method applies'), onWords + '. A method can also be called directly, so this is no claim about the calls of it'),
-			...primitive || free.length === 0 ? [] : [el('span', 'sep', ' · '), titled(el('span', 'reach', free.length === ImplicitClasses.size ? 'no known method for any implicit class, so it takes every value without a class attribute' : 'no known method for the implicit classes ' + free.join(', ')),
-				'an object without a class attribute dispatches on its implicit class (.class2: matrix or array by its dimensions, then its type, integer and double also as numeric), '
-				+ 'so it reaches the default method when no method is known for any of them. A method of a package only applies once the package is loaded')]];
-	}
-	const implicit = ImplicitClasses.has(cls);
-	const test = (f: string): Part[] => {
-		if(f.includes(' ')) {
-			return [f + ' has class "' + cls + '"'];
-		}
-		return !implicit ? ['inherits(', formal(f), ', "' + cls + '")']
-			: primitive ? ['is.object(', formal(f), ') && "' + cls + '" %in% class(', formal(f), ')'] : ['"' + cls + '" %in% .class2(', formal(f), ')'];
-	};
-	const code = el('code', 'cond');
-	code.append(...on.flatMap((f, at) => [...at > 0 ? [' || '] : [], ...test(f)]));
-	return [titled(el('span', 'reach', 'reached by dispatch when '), onWords + (implicit
-		? '. ' + cls + ' is an implicit class, which an object without a class attribute has by its dimensions or type'
-		: '') + '. A method can also be called directly, so this is no claim about the calls of it'), code];
-}
 
 /** one row of a contract table, laid out like the rows of the packages */
 function contractRow(cls: string, ...cells: readonly (string | Node)[][]): HTMLElement {
@@ -712,15 +673,11 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 			const chain = via === '' ? [] : via.split(', ');
 			const from = el('span', 'from');
 			const shown = brief === '' ? fails : brief;
-			/* where the failing code is, by its line within the closure as R prints it (base R keeps no source references), else by the function it is in */
-			const [fn, line, column] = loc === '' ? [chain.at(-1) ?? name] : [loc.slice(0, loc.lastIndexOf(':', loc.lastIndexOf(':') - 1)), ...loc.split(':').slice(-2)];
-			const failsAt = fails + ', in ' + fn + (line === undefined ? '' : ', line ' + line + ' column ' + column + ' of its closure as R prints it')
-				+ (owner?.file === undefined ? '' : ' (defined in ' + owner.file + (owner.line === undefined ? '' : ':' + owner.line) + ')');
+			const where = failingAt(loc, chain.at(-1) ?? name, owner);
 			from.append(
 				...(message === '' ? [] : [el('q', 'message', message), ...fails === '' ? [] : [el('span', 'sep', ' \u00b7 ')]]),
-				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), url === undefined ? titled(el('code', 'at', shown), failsAt) : blank(link('at', shown, url, failsAt))]),
-				/* where it is raised is only said if that is not the function itself, whose code the failing call links to */
-				...(fails === '' || (chain.at(-1) ?? name).replace(/^.*::/, '') === name ? [] : [' in ', ...located(chain.at(-1) ?? name, owner)]),
+				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), where.url === undefined ? titled(el('code', 'at', shown), fails) : blank(link('at', shown, where.url, fails))]),
+				...(fails === '' ? [] : [' in ', ...where.parts]),
 				...(chain.length < 2 ? [] : [el('span', 'via', ', reached through '), ...chain.slice(0, -1).flatMap((fn, at) => [...at > 0 ? ['; '] : [], ...located(fn, owner)])])
 			);
 			return contractRow('condition', [code], [from]);
@@ -755,6 +712,29 @@ function dispatchOf(name: string, guards: Guards, chip: (formal: string) => HTML
 		lines.push(line);
 	}
 	return lines;
+}
+
+/**
+ * Where failing code is, from the `fn:line:column` of a reason, its line counted from the start of the definition of `fn`: as a line of the file
+ * the database says `fn` is written in when it knows, else within `fn`. The line is counted in the closure as R prints it, which base R keeps
+ * no source of, so in the file it is close to the failing code rather than at it.
+ */
+function failingAt(loc: string, fallback: string, home: Owner | undefined): { parts: Part[], url?: string } {
+	const parts = loc.split(':');
+	const [line, column] = loc === '' ? [] : parts.slice(-2).map(Number);
+	const fn = loc === '' ? fallback : parts.slice(0, -2).join(':');
+	const qualified = fn.indexOf('::');
+	const [pkg, name] = qualified < 0 ? [home?.pkg.name, fn] : [fn.slice(0, qualified), fn.slice(qualified + 2)];
+	const owner = db.ownersOf(name).split(',').map(entry => entry === '' ? undefined : Owner.parse(entry)).find(o => o?.pkg.name === pkg);
+	const shown = titled(el('code', 'fn', name), pkg === undefined ? undefined : pkg + '::' + name);
+	if(owner?.file === undefined) {
+		return { parts: [shown, ...line === undefined ? [] : [', line ' + line + ':' + column]] };
+	}
+	const at = owner.line === undefined || line === undefined ? owner.line : owner.line + line - 1;
+	const url = owner.pkg.sourceUrl(owner.file, at);
+	const text = owner.file + (at === undefined ? '' : ':' + at);
+	const about = line === undefined ? 'where ' + name + ' is written' : 'line ' + line + ', column ' + column + ' of ' + name + ' as R prints it, which starts at ' + owner.file + ':' + owner.line + '; base R keeps no source, so the line in the file is close rather than exact';
+	return { parts: [shown, ', ', url === undefined ? titled(el('span', 'src', text), about) : blank(link('src', text, url, about))], url };
 }
 
 /** a function by name, then where the database says it is written, linking there, `home` being the function the contract is of and where an unqualified name is looked for */
@@ -834,7 +814,7 @@ const ClaimAbout: Readonly<Record<string, string>> = {
 };
 
 
-function packageLink(pkg: Package): HTMLAnchorElement {
-	return blank(link(pkg.base ? 'base' : '', pkg.name, pkg.home ?? '',
+function packageLink(pkg: Package, cls = ''): HTMLAnchorElement {
+	return blank(link([cls, pkg.base ? 'base' : ''].filter(c => c !== '').join(' '), pkg.name, pkg.home ?? '',
 		pkg.name + ' ' + pkg.version + (pkg.base ? ' (base R, always available)' : ' (' + pkg.repository.label + ')')));
 }

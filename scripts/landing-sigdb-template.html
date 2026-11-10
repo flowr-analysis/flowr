@@ -217,10 +217,14 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .ambient .fam { justify-self: start; font-size: .74rem; padding: 0 .4rem; border-radius: .7rem; border: 1px solid var(--border); color: color-mix(in srgb, #1f8a96 70%, var(--fg)); cursor: help; }
 #hits .ambient .acc { cursor: help; }
 #hits .ambient .acc.changes { color: var(--fg); }
-#hits .ambient .when, #hits .s3 .reach { font-style: italic; }
+#hits .ambient .when { font-style: italic; }
 #hits .ambient .sep, #hits .s3 .sep { color: var(--border); }
-#hits .s3 .owners { display: inline-flex; gap: .2rem; margin: 0 .6rem 0 .3rem; vertical-align: baseline; }
-#hits .s3 .owners a { font-size: .68rem; padding: 0 .35rem; }
+/* a method with its packages is one unit that never breaks apart, the line wraps between methods */
+#hits .s3 .mgroup { display: inline-block; white-space: nowrap; }
+#hits .s3 .mpkg { display: inline; margin-left: .25rem; padding: 0 .3rem; font-size: .66rem; line-height: 1.3; text-decoration: none; border-radius: .6rem; border: 1px solid var(--border); color: var(--muted); background: var(--sunk); }
+#hits .s3 .mpkg.base { border-style: dashed; background: transparent; color: var(--fg); }
+#hits .s3 .mpkg.more { border: 0; background: none; }
+#hits .s3 a.mpkg:hover { border-color: var(--accent); color: var(--accent); }
 #hits .s3 { margin-bottom: .3rem; font-size: .78rem; color: var(--muted); line-height: 1.5; }
 #hits .s3 .label { margin-right: .4rem; }
 #hits .s3 a.method, #hits .s3 a.generic { color: var(--fg); text-decoration: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; }
@@ -263,7 +267,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 /* a long condition breaks only at its top-level connectives, the lines after the first indented */
 #hits code.cond { display: inline-block; padding-left: 1.2em; text-indent: -1.2em; }
 #hits code.cond .seg { display: inline-block; text-indent: 0; }
-#hits .teaser code.guarded { border-bottom: 1px dashed color-mix(in srgb, var(--hue) 70%, transparent); border-radius: .3rem .3rem 0 0; cursor: help; }
+#hits .teaser code.guarded { cursor: help; }
 #hits .contract .from .where { font-size: .72rem; }
 #hits .contract .from code.at { font-size: .72rem; color: color-mix(in srgb, var(--fg) 70%, var(--muted)); }
 /* operators set apart without shouting and always upright, only the connectives written as words lean */
@@ -272,7 +276,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .and, #hits .contract .cmp, #hits .teaser .and { color: var(--muted); font-style: normal; }
 #hits .contract .word, #hits .teaser .word { font-style: italic; }
 #hits .contract .lit { background: color-mix(in srgb, var(--hue, var(--accent)) 20%, transparent); border-radius: .25rem; }
-#hits .stated .formal.guarded { text-decoration: underline dotted color-mix(in srgb, var(--accent) 60%, transparent); cursor: help; }
+#hits .stated .formal.guarded { cursor: help; }
 #hits .stated .formal.quiet { color: color-mix(in srgb, var(--muted) 75%, transparent); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }

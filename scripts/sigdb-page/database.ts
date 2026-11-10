@@ -47,8 +47,6 @@ export interface RawAnswers {
 	readonly ambient:   Readonly<Record<string, unknown>>;
 }
 
-/** the names of the classes R gives a value without a class attribute for dispatch (`.class2`), from its dimensions and its type */
-export const ImplicitClasses: ReadonlySet<string> = new Set(['matrix', 'array', 'integer', 'double', 'numeric', 'function', 'character', 'logical', 'complex', 'raw', 'list', 'NULL', 'name', 'call', 'expression', 'environment']);
 
 /** the element the page template gives `id`, which it must have */
 export function byId<T extends Element = HTMLElement>(id: string): T {

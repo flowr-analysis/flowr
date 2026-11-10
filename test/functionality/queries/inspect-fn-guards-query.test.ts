@@ -579,7 +579,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.deepStrictEqual(builtIns['base::strsplit'].formals, { x: { types: ['character'] } });
 		assert.deepStrictEqual(builtIns['base::sort'].formals?.decreasing.types, ['logical']);
 		assert.deepStrictEqual(builtIns['utils::combn'].formals?.m.bounds, { length: [1, 1], value: [0, null] });
-		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer or double', 'length = 1', 'value >= 0']);
+		assert.deepStrictEqual(claimWords(builtIns['utils::combn'].formals?.m ?? {}), ['integer or double, unless classed', 'length = 1', 'value >= 0']);
 	});
 
 	test('a relation between formals', async() => {
@@ -641,7 +641,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	});
 
 	test('the table of the base packages relates generics and methods', () => {
-		assert.include(RBaseGuards.base.scale?.requires, 'is.object(x) ||');
+		assert.include(FunctionSemantics.builtInGuards('scale', 'base')?.requires, 'is.object(x) ||');
 		assert.include(RBaseGuards.base.scale?.methods ?? [], 'base::scale.default');
 		assert.deepStrictEqual(RBaseGuards.base['scale.default']?.methodOf, { generic: 'base::scale', class: 'default' });
 		assert.strictEqual(RBaseGuards.base.scale?.dispatches, 'x');

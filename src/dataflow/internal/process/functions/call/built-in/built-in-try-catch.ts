@@ -459,6 +459,18 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		const targets = targetsOf?.(name) ?? [];
 		return targets.length === 0 || targets.some(t => !NodeId.isBuiltIn(t.nodeId));
 	};
+	/* reading a name bound to a promise (`delayedAssign("p", stop("e")); p`) or a lazy parameter forces it, and so raises what the promise does */
+	const forcesRaising = (node: Node): boolean => {
+		if(!RSymbol.is(node) || !DfgVertex.isUse(graph.getVertex(node.info.id))) {
+			return false;
+		}
+		const read = Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads);
+		const promises = [...read, ...read.flatMap(t => Dataflow.sourcesOf(graph, t, EdgeType.DefinesOnCall))];
+		return promises.some(t => {
+			const promised = graph.idMap?.get(t);
+			return promised !== undefined && DfgVertex.isFunctionCall(graph.getVertex(t)) && raises(promised);
+		});
+	};
 	const order = (node: Node, before: readonly NodeId[]): NodeId[] => {
 		reach?.(node);
 		if(RFunctionDefinition.is(node)) {
@@ -477,10 +489,11 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		const loop = RLoopConstructs.is(node);
 		const sites = RNode.directChildren(node).flatMap(child => child === EmptyArgument ? [] : order(child, loop ? [...before, node.info.id] : before));
 		/* code after an unconditional exit is never analyzed, so it has no vertex and neither runs nor raises */
-		if(!CallTypes.has(node.type) || !graph.hasVertex(node.info.id)) {
+		const forcing = forcesRaising(node);
+		if((!CallTypes.has(node.type) && !forcing) || !graph.hasVertex(node.info.id)) {
 			return sites;
 		}
-		const raising = raises(node);
+		const raising = forcing || raises(node);
 		for(const site of [...before, ...rootId !== undefined && raising ? [rootId] : [], ...loop ? sites : []]) {
 			graph.addEdge(node.info.id, site, EdgeType.Reads);
 		}

@@ -434,7 +434,6 @@ function applyJoinSemantics(
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
 
 	if(options?.natural) {
-		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = [];
 	} else if(by === undefined) {
 		duplicateCols = undefined;

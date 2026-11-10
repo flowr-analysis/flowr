@@ -51,7 +51,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a name attached from an environment is defined', parser, 'e <- new.env()\ne$att3 <- 4\nattach(e)\nprint(att3)',
 				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a data set of a loaded package is defined', parser, 'library(dplyr)\nprint(starwars)',
-				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({ ...{ base: ['print'] }, dplyr: ['mutate'] }), checkVariables: true });
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({  base: ['print'], dplyr: ['mutate'] }), checkVariables: true });
 			assertLinter('a data set of a package not loaded is flagged', parser, 'print(starwars)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'starwars', kind: 'variable', loc: [1, 7, 1, 14] }], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a data set of datasets is defined', parser, 'summary(iris)\nhead(mtcars)', 'undefined-symbol', []);

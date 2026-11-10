@@ -205,7 +205,7 @@ export const UNDEFINED_SYMBOL = {
 		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
 		const src = deps.signatures().sources();
 		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
-		const loadedNames = new Set<BrandedNamespace>(loadedPackages.map(p => p.name as BrandedNamespace));
+		const loadedNames = new Set<BrandedNamespace>(loadedPackages.map(p => p.name));
 		/* the database records no data sets, which a loaded package makes available as lazy data */
 		const isDatasetOfLoadedPackage = (name: BrandedIdentifier): boolean =>
 			datasetShape(name, undefined, pkg => loadedNames.has(pkg)) !== undefined;

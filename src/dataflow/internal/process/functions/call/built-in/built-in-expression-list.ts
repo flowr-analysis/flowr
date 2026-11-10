@@ -32,7 +32,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
-import { applyAmbientStateOfCalledBuiltIns, autoPrints, mayForce, readsOfAutoPrint } from './built-in-ambient-state';
+import { applyAmbientStateOfCalledBuiltIns, autoPrints, autoPrintsStatementsOf, mayForce, readsOfAutoPrint } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
@@ -572,13 +572,13 @@ export function processExpressionList<OtherInfo>(
 
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: DataflowInformation | undefined;
-	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
 	const fileRoot = data.completeAst.ast.files.some(f => f.root.info.id === rootId);
-	const autoPrint = data.referenceChain.length <= 1 && data.environment.level === 0 && fileRoot;
+	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
+	const autoPrint = autoPrintsStatementsOf(rootId, data);
 	let initialState: Set<IdentifierReference> | undefined;
 	const hooks: DataflowInformation['hooks'] = [];
 
-	for(const arg of args) {
+	for(const [index, arg] of args.entries()) {
 		const expression = RArgument.unnamedValueOf(arg);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
@@ -671,6 +671,12 @@ export function processExpressionList<OtherInfo>(
 		if(ControlFlow.alwaysExits(processed, context)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
+			for(const dead of args.slice(index + 1)) {
+				const id = RArgument.unnamedValueOf(dead)?.info.id;
+				if(id !== undefined) {
+					data.unreachable?.add(id);
+				}
+			}
 			break;
 		}
 	}

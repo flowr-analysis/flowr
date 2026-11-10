@@ -63,6 +63,8 @@ export const AmbientStateName = {
 	anyFile:              '#file:*',
 	/** the working directory `setwd` changes, which every call accessing a file reads to resolve a relative path */
 	workingDirectory:     '#wd',
+	/** the directories on disk, which creating, moving, or removing one changes and every call accessing a file reads, as the path may lead through them */
+	directories:          '#dirs',
 	/** where console output goes, the call diverting it into a file or connection (`sink(file)`), and the diversions below it, which `sink()` returns to */
 	sink:                 '#sink',
 	otherSinks:           '#sink:other',

@@ -23,6 +23,8 @@ const SetsRngKind = (formals: readonly string[]) => [{ ...Ambient.rng.adds, when
 
 /* closing a connection flushes what was written through it, so the file it leaves holds those writes */
 const ClosesConnection = [Ambient.files.reads, Ambient.files.writes] as const;
+/* removing a file tells whether it was there, and the path may name a directory */
+const RemovesFiles = (removed: FnSig) => ({ ambient: [Ambient.directories.adds, { ...Ambient.files.reads, sig: removed }], tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: removed });
 
 /** what signaling or reporting a condition asks of it, any method of them may run */
 const ConditionAccessors = ['conditionMessage', 'conditionCall', 'as.character', 'as.vector'];
@@ -261,7 +263,7 @@ export const BaseDefinitions = [
 	fn(base('suppressPackageStartupMessages'), BuiltInProcName.Default, { ...Suppresses, muffles: ['packageStartupMessage'] }),
 	/* it changes into a directory that has to exist, so it reads the files as well */
 	fn(base('setwd'), BuiltInProcName.Default,
-		{ ambient: [Ambient.wd.reads, Ambient.wd.writes], props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ dir: ArgProp.Value | Forced.Resource }) }),
+		{ ambient: [Ambient.wd.reads, Ambient.directories.reads, Ambient.wd.writes], props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ dir: ArgProp.Value | Forced.Resource }) }),
 	/* `Sys.umask()` only reports the mask, a mode sets it and hands back the old one invisibly */
 	fn(base('Sys.umask'), BuiltInProcName.Default,
 		{ ambient: { ...Ambient.umask.writes, unless: 'no-arguments' }, props: CallProp.Invisible | CallProp.Configures, sig: sig({ mode: Forced.Value }) }),
@@ -410,21 +412,22 @@ export const BaseDefinitions = [
 		{ libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse, tags: [SemanticCallTag.Frames], sig: sig({ which: ArgProp.Forced }) }),
 	fn(base('c'), BuiltInProcName.Vector, { props: CallProp.Pure, sig: sig({ '...': ArgProp.Value }) }, { assumePrimitive: true, evalHandler: BuiltInEvalName.Vector }),
 	fn(base('sys.on.exit', 'asNamespace', 'unname'), BuiltInProcName.Default, { hasUnknownSideEffects: true }),
-	/* they create, move, or delete files */
+	/* they create, move, or delete files, and as we do not know which paths are directories, the directories as well */
 	fn([...base('dir.create'), ...pkg(PkgName.Fs, 'dir_create')], BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ path: Forced.Resource, '...': ArgProp.Flag }) }),
+		{ props: CallProp.Invisible, ambient: Ambient.directories.adds, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ path: Forced.Resource, '...': ArgProp.Flag }) }),
 	fn(base('unlink'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Resource, recursive: ArgProp.Flag, force: ArgProp.Flag, expand: ArgProp.Flag }) }),
+		{ props: CallProp.Invisible, ...RemovesFiles(sig({ x: Forced.Resource, recursive: ArgProp.Flag, force: ArgProp.Flag, expand: ArgProp.Flag })) }),
 	fn(base('Sys.chmod'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ paths: Forced.Resource, mode: ArgProp.Flag, use_umask: ArgProp.Flag }) }),
 	fn([...base('file.create'), ...pkg(PkgName.Fs, 'file_create', 'file_touch')], BuiltInProcName.DefaultReadAllArgs,
 		{ tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': Forced.Resource, showWarnings: ArgProp.Flag }) }),
-	fn([...base('file.remove', 'Sys.junction'), ...pkg(PkgName.Fs, 'file_delete', 'dir_delete', 'link_delete')], BuiltInProcName.Default,
-		{ hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }),
+	fn(base('file.remove'), BuiltInProcName.Default, { hasUnknownSideEffects: true, ...RemovesFiles(sig({ '...': Forced.Resource })) }),
+	fn(pkg(PkgName.Fs, 'file_delete', 'dir_delete', 'link_delete'), BuiltInProcName.Default, { hasUnknownSideEffects: true, ...RemovesFiles(sig({ path: Forced.Resource })) }),
+	fn(base('Sys.junction'), BuiltInProcName.Default, { hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }),
 	fn(base('file.copy', 'file.link', 'file.symlink'), BuiltInProcName.Default,
 		{ tags: CopiesFiles, sig: sig({ from: Forced.Resource, to: Forced.Resource | ArgProp.Written, overwrite: ArgProp.Flag, recursive: ArgProp.Flag, 'copy.mode': ArgProp.Flag, 'copy.date': ArgProp.Flag }) }),
 	/* a moved file is gone from where it was */
-	fn(base('file.rename'), BuiltInProcName.Default, { hasUnknownSideEffects: true, tags: CopiesFiles, sig: sig({ from: Forced.Resource, to: Forced.Resource | ArgProp.Written }) }),
+	fn(base('file.rename'), BuiltInProcName.Default, { hasUnknownSideEffects: true, ambient: Ambient.directories.adds, tags: CopiesFiles, sig: sig({ from: Forced.Resource, to: Forced.Resource | ArgProp.Written }) }),
 	fn(base('file.append'), BuiltInProcName.Default, { tags: CopiesFiles, sig: sig({ file1: Forced.Resource | ArgProp.Written, file2: Forced.Resource }) }),
 	/* `sink` diverts the output, `par`/`tpar` set (or query) the parameters of the current device */
 	fn(base('sink'), BuiltInProcName.Default,

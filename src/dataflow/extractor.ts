@@ -700,6 +700,7 @@ function extractDataFlowGraph<OtherInfo>(
 		cds:            undefined,
 		referenceChain: [files[0].filePath],
 		statementOrder: new Map(),
+		unreachable:    new Set(),
 		ctx
 	};
 	let df = guardNesting('Dataflow analysis', files[0].filePath, () => processDataflowFor<OtherInfo>(files[0].root, dfData));

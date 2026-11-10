@@ -208,9 +208,9 @@ describe('Ambient access of code', withTreeSitter(ts => {
 
 	describe('scopes', () => {
 		check('a file', 'options(digits = 3)\nx <- 1', 'file', { writes: ['#option:digits', '#options'] });
-		check('a statement', 'options(digits = 3)\nsink("a.txt")', 'second', { reads: ['#file:*', '#file:a', '#wd'], writes: ['#file:a', '#files', '#sink', '#sink:opener', '#sink:output'] });
+		check('a statement', 'options(digits = 3)\nsink("a.txt")', 'second', { reads: ['#dirs', '#file:*', '#file:a', '#wd'], writes: ['#file:a', '#files', '#sink', '#sink:opener', '#sink:output'] });
 		check('a single call id', 'options(digits = 3)\nx <- 1', 'block', { writes: ['#option:digits', '#options'] });
-		check('a block', '{\n options(digits = 3)\n sink("a.txt")\n}\nx <- 1', 'first', { reads: ['#file:*', '#file:a', '#wd'], writes: ['#file:a', '#files', '#option:digits', '#options', '#sink', '#sink:opener', '#sink:output'] });
+		check('a block', '{\n options(digits = 3)\n sink("a.txt")\n}\nx <- 1', 'first', { reads: ['#dirs', '#file:*', '#file:a', '#wd'], writes: ['#file:a', '#files', '#option:digits', '#options', '#sink', '#sink:opener', '#sink:output'] });
 		check('a call reaching a function', 'f <- function() options(digits = 3)\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options', '#sink'], writes: ['#option:digits', '#options', '#sink:output'] });
 		check('a function never called does not count', 'f <- function() options(digits = 3)\nx <- 1', 'file', {});
 		check('the exit hook of a function never called does not count', 'f <- function() { on.exit(options(digits = 3)); 1 }\nx <- 1', 'file', {});
@@ -250,7 +250,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 	describe('reads', () => {
 		check('getOption reads the option', 'x <- getOption("digits")', 'file', { reads: ['#option:*', '#option:digits'] });
 		check('a read through a called function', 'f <- function() getOption("digits")\nf()', 'second', { reads: ['#option:*', '#option:digits', '#options', '#sink'], writes: ['#sink:output'] });
-		check('setwd reads and writes the working directory', 'setwd("a")', 'file', { reads: ['#files', '#wd'], writes: ['#wd'] });
+		check('setwd reads and writes the working directory', 'setwd("a")', 'file', { reads: ['#dirs', '#files', '#wd'], writes: ['#wd'] });
 	});
 
 	describe('drawing', () => {
@@ -260,12 +260,12 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('curve adds only if asked', 'curve(sin)\ncurve(cos, add = TRUE)', 'second', { reads: ['#graphics', '#palette', '#plot'], writes: ['#device', '#plot'], draws: 1 });
 		check('building a ggplot leaves the device alone', 'library(ggplot2)\np <- ggplot(d)', 'second', { writes: ['#last-plot'] });
 		check('printing a ggplot draws it', 'library(ggplot2)\np <- ggplot(d) + geom_point()\nprint(p)', 'last', { reads: ['#options', '#sink'], writes: ['#device', '#plot', '#sink:output'] });
-		check('ggsave reads the last plot', 'library(ggplot2)\nggplot(d)\nggsave("a.png")', 'last', { reads: ['#last-plot', '#wd'], writes: ['#file:a', '#files'] });
+		check('ggsave reads the last plot', 'library(ggplot2)\nggplot(d)\nggsave("a.png")', 'last', { reads: ['#dirs', '#last-plot', '#wd'], writes: ['#file:a', '#files'] });
 		check('a function drawing', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette', '#sink'], writes: ['#device', '#plot', '#sink:output'], draws: 1 });
 		check('plot writes the canvas if configured', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#canvas', '#device', '#plot'], draws: 1 }, true);
 		check('a function plotting writes the canvas if configured', 'f <- function() plot(1)\nf()', 'second', { reads: ['#graphics', '#options', '#palette', '#sink'], writes: ['#canvas', '#device', '#plot', '#sink:output'], draws: 1 }, true);
-		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#options', '#sink'], writes: ['#device', '#device:opener', '#graphics', '#plot', '#sink:output'], kills: ['#device', '#device:opener', '#graphics', '#plot'], draws: 1 });
-		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#graphics', '#palette', '#wd'], writes: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
+		check('closing a device reads what it holds', 'png("a.png")\nplot(1)\ndev.off()', 'last', { reads: ['#device', '#device:other', '#options', '#sink'], writes: ['#device', '#device:opener', '#graphics', '#plot', '#sink:output'], kills: ['#device', '#device:opener', '#graphics', '#plot'], draws: 1 });
+		check('exporting reads what the device holds', 'img <- magick::image_graph()\nplot(1)\nmagick::image_write(img, "a.png")', 'file', { reads: ['#device', '#dirs', '#graphics', '#palette', '#wd'], writes: ['#device', '#device:opener', '#file:a', '#files', '#graphics', '#plot'], draws: 2 });
 		check('par queries the plot', 'u <- par("usr")', 'file', { reads: ['#graphics', '#par:*', '#par:usr', '#plot'], writes: ['#device'], draws: 1 });
 		check('par is a graphics call writing the parameters', 'par(mfrow = c(1, 2))', 'file', { reads: ['#graphics'], writes: ['#device', '#graphics', '#par:mfrow'], draws: 1 });
 

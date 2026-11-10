@@ -391,6 +391,7 @@ const Families: Readonly<Record<AmbientFamilyName, FamilyState>> = {
 	[AmbientPart.Rng]:              { state: AmbientStateName.rng },
 	[AmbientPart.RngKind]:          { state: AmbientStateName.rngKind },
 	[AmbientPart.WorkingDirectory]: { state: AmbientStateName.workingDirectory },
+	[AmbientPart.Directories]:      { state: AmbientStateName.directories },
 	[AmbientPart.Files]:            { state: AmbientStateName.files },
 	[AmbientPart.ProjectRoot]:      { state: AmbientStateName.projectRoot },
 	[AmbientPart.LibPaths]:         { state: AmbientStateName.libPaths },
@@ -584,6 +585,9 @@ function readOptions<OtherInfo>(res: DataflowInformation, args: readonly Potenti
 	return withAccess(res, rootId, data, keyedReads(KeyedState.Option, keys ?? []));
 }
 
+/** what every access of a file reads to find it: the working directory a relative path starts from and the directories the path leads through */
+const FileSystemReads: readonly AmbientStateName[] = [AmbientStateName.workingDirectory, AmbientStateName.directories];
+
 /** What reading or writing the files the call names does, see {@link fileStems}. */
 function fileAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, effect: AmbientEffect): DataflowInformation {
 	const stems = fileStems(res, rootId, data, effect);
@@ -593,9 +597,9 @@ function fileAccess<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: D
 	if(effect.access === AmbientVerb.Reads) {
 		/* a read through a connection the program holds moves its position, so the next read depends on this one */
 		const moves = readsThroughHandle(res, rootId, data, effect.sig) ? stems === undefined ? [AmbientStateName.anyFile, AmbientStateName.files] : stems.map(AmbientStateName.file) : [];
-		return withAccess(res, rootId, data, [AmbientStateName.workingDirectory, ...stems === undefined ? [AmbientStateName.files] : [...stems.map(AmbientStateName.file), AmbientStateName.anyFile]], moves);
+		return withAccess(res, rootId, data, [...FileSystemReads, ...stems === undefined ? [AmbientStateName.files] : [...stems.map(AmbientStateName.file), AmbientStateName.anyFile]], moves);
 	}
-	return withAccess(res, rootId, data, [AmbientStateName.workingDirectory], [...stems === undefined ? [AmbientStateName.anyFile] : stems.map(AmbientStateName.file), AmbientStateName.files]);
+	return withAccess(res, rootId, data, FileSystemReads, [...stems === undefined ? [AmbientStateName.anyFile] : stems.map(AmbientStateName.file), AmbientStateName.files]);
 }
 
 /** `gc()` may run every registered finalizer whose object is released. */
@@ -809,8 +813,8 @@ function unknownArgumentAccess(effect: AmbientEffect, drawing: boolean): { reado
 			}
 			break;
 		case AmbientPart.Files:
-			return effect.access === AmbientVerb.Reads ? { reads: [AmbientStateName.workingDirectory, AmbientStateName.files], writes: [] }
-				: { reads: [AmbientStateName.workingDirectory], writes: [AmbientStateName.anyFile, AmbientStateName.files] };
+			return effect.access === AmbientVerb.Reads ? { reads: [...FileSystemReads, AmbientStateName.files], writes: [] }
+				: { reads: FileSystemReads, writes: [AmbientStateName.anyFile, AmbientStateName.files] };
 		case AmbientPart.TextConnection:
 			return { reads: [], writes: [] };
 		case AmbientPart.Finalizers:
@@ -1002,17 +1006,20 @@ function isQuery<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo &
 		|| (a.name === undefined ? RString.is(a.value) : Identifier.getName(a.name.content) === 'no.readonly'));
 }
 
-/** Whether the call's value may be used: anything but a non-final statement or the script's last statement (the last of a block is its value). */
-function resultIsUsed<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+/** Whether the call's value may be used: anything but a non-final statement or, unless it is `printed` there, a top-level statement of the script (the last of a block is its value). */
+function resultIsUsed<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, printed?: boolean): boolean {
 	const node = data.completeAst.idMap.get(rootId);
 	const parent = node === undefined ? undefined : RNode.directParent(node, data.completeAst.idMap);
+	/* R prints the value a top-level statement leaves visible */
+	printed ??= !(RFunctionCall.isNamed(node) && returnsInvisibly(node.functionName.content, data.environment));
 	if(parent === undefined) {
 		return false;
 	} else if(RExpressionList.is(parent)) {
 		/* a block yields its last value, which is used where the block's is */
-		return parent.children.at(-1)?.info.id === rootId && !data.completeAst.ast.files.some(f => f.root.info.id === parent.info.id) && resultIsUsed(parent.info.id, data);
+		return data.completeAst.ast.files.some(f => f.root.info.id === parent.info.id) ? printed && autoPrintsStatementsOf(parent.info.id, data)
+			: parent.children.at(-1)?.info.id === rootId && resultIsUsed(parent.info.id, data, printed);
 	} else if(RIfThenElse.is(parent)) {
-		return parent.condition.info.id === rootId || resultIsUsed(parent.info.id, data);
+		return parent.condition.info.id === rootId || resultIsUsed(parent.info.id, data, printed);
 	}
 	/* a loop discards what its body yields */
 	return !(RLoopConstructs.is(parent) && parent.body.info.id === rootId);
@@ -1196,6 +1203,11 @@ export function readsOfAutoPrint<OtherInfo>(processed: DataflowInformation, expr
 const InvisibleProcessors: ReadonlySet<string> = new Set([BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop,
 	BuiltInProcName.Assignment, BuiltInProcName.SuperAssignment, BuiltInProcName.FunctionDefinition]);
 
+/** Whether R prints the visible values of the statements of the expression list `list`: those of the top level of the analyzed script, not of a sourced file. */
+export function autoPrintsStatementsOf<OtherInfo>(list: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	return data.referenceChain.length <= 1 && data.environment.level === 0 && data.completeAst.ast.files.some(f => f.root.info.id === list);
+}
+
 /** whether the value of the top-level `expression` is visible, so that R prints it, decided on its vertex */
 export function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInformation>, processed: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const vertex = processed.graph.getVertex(expression.info.id);
@@ -1209,9 +1221,13 @@ export function autoPrints<OtherInfo>(expression: RNode<OtherInfo & ParentInform
 		/* a block hands on its last value, visible or not */
 		return autoPrints(expression.children[expression.children.length - 1], processed, data);
 	}
-	/* `invisible`, `library`, ...: everything this resolves to returns invisibly */
-	const targets = Resolve.byNameAndType(vertex.name, data.environment, ReferenceType.Function);
-	return targets === undefined || targets.length === 0 || !targets.every(t => t.type === ReferenceType.BuiltInFunction && CallProps.hasAny(t.config, CallProp.Invisible));
+	return !returnsInvisibly(vertex.name, data.environment);
+}
+
+/** `invisible`, `library`, ...: whether everything `name` resolves to returns invisibly */
+function returnsInvisibly(name: Identifier, environment: REnvironmentInformation): boolean {
+	const targets = Resolve.byNameAndType(name, environment, ReferenceType.Function);
+	return targets !== undefined && targets.length > 0 && targets.every(t => t.type === ReferenceType.BuiltInFunction && CallProps.hasAny(t.config, CallProp.Invisible));
 }
 
 /** A call through a variable bound to a built-in (`p <- par; p(...)`), only revealed when linking the statement's calls. */
@@ -1335,12 +1351,17 @@ function rejectsArguments(definition: RFunctionDefinition<ParentInformation>, ca
 	return given.length > names.length || given.some(a => a.name !== undefined && !names.some(n => n.startsWith(Identifier.getName(a.name?.content ?? ''))));
 }
 
+/** Whether `id` follows a statement that always exits, so it never runs and has no vertex. */
+function unanalyzed<OtherInfo>(id: NodeId, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo>): boolean {
+	return data.unreachable?.has(id) === true && !graph.hasVertex(id);
+}
+
 /** what may warn when `root` runs, see {@link WarningSiteMode}, `bodies` holds what may in the bodies of the closures seen so far */
 function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>, mode: WarningSiteMode): NodeId[] {
 	const sites: NodeId[] = [];
 	const { signal } = mode;
 	RNode.visitAst(root, node => {
-		if(RFunctionDefinition.is(node)) {
+		if(RFunctionDefinition.is(node) || unanalyzed(node.info.id, graph, data)) {
 			return true;
 		} else if(RBinaryOp.is(node) ? RBinaryOp.getOperatorInfo(node)?.usedAs !== OperatorUsedAs.Assignment : RUnaryOp.is(node) || RAccess.is(node)) {
 			sites.push(node.info.id);

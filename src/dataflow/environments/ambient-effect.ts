@@ -23,6 +23,8 @@ export enum AmbientPart {
 	/** the kind of the random number generator */
 	RngKind = 'rng-kind',
 	WorkingDirectory = 'wd',
+	/** the directories on disk, which every path to a file leads through */
+	Directories = 'directories',
 	/** the files on disk, which the arguments of the {@link AmbientEffect#sig|signature} name */
 	Files = 'files',
 	/** the root `here::here()` builds paths from */
@@ -126,6 +128,7 @@ export const Ambient = {
 	rng:            effectsOf(AmbientPart.Rng),
 	rngKind:        effectsOf(AmbientPart.RngKind),
 	wd:             effectsOf(AmbientPart.WorkingDirectory),
+	directories:    effectsOf(AmbientPart.Directories),
 	files:          effectsOf(AmbientPart.Files),
 	projectRoot:    effectsOf(AmbientPart.ProjectRoot),
 	libPaths:       effectsOf(AmbientPart.LibPaths),
@@ -220,6 +223,7 @@ export const AmbientFamilyInfo: Readonly<Record<AmbientFamilyName, AmbientFamily
 	[AmbientPart.Rng]:              { label: 'random numbers', noun: 'random number generator', verbs: { [AmbientVerb.Adds]: 'draws from', [AmbientVerb.Writes]: 'seeds' }, description: 'The state of the random number generator, which set.seed sets and every draw advances.' },
 	[AmbientPart.RngKind]:          { label: 'random number kind', noun: 'generator kind', of: AmbientPart.Rng, description: 'Which random number generator R uses, which RNGkind sets and set.seed keeps unless it is given one.' },
 	[AmbientPart.WorkingDirectory]: { label: 'working directory', noun: 'working directory', description: 'The directory relative paths start from, which setwd changes.' },
+	[AmbientPart.Directories]:      { label: 'directories', noun: 'directories', description: 'The directories on disk, which dir.create, unlink, and file.rename change and every path to a file leads through.' },
 	[AmbientPart.Files]:            { label: 'files', noun: 'files', description: 'The files on disk, which a call reads or writes by the paths its arguments name.' },
 	[AmbientPart.ProjectRoot]:      { label: 'project root', noun: 'project root', description: 'The root here::here() builds its paths from, which here::i_am names.' },
 	[AmbientPart.LibPaths]:         { label: 'library paths', noun: 'library paths', description: 'Where packages are installed and loaded from, which .libPaths(new) changes.' },

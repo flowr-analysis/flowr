@@ -99,7 +99,7 @@ describe('source', withTreeSitter(parser => {
 	);
 
 	// missing sources should just be ignored
-	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph().recordAmbientAccess(3, { reads: ['#wd', '#files'] })
+	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph().recordAmbientAccess(3, { reads: ['#wd', '#dirs', '#files'] })
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('source')] })
 		.calls('3', NodeId.toBuiltIn('source'))
 		.constant('1')

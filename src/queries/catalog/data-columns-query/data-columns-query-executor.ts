@@ -44,13 +44,10 @@ function innermostAt(idMap: AstIdMap, line: number, col: number, file: string | 
 	return best;
 }
 
-/** the value of an argument, or the node itself */
-const valueOf = (node: RNodeWithParent | undefined): RNodeWithParent | undefined => RArgument.is(node) ? node.value : node;
-
 /** the arguments of a call or an operator, as the nodes of their values */
 function operandsOf(node: RNodeWithParent): RNodeWithParent[] {
 	if(RFunctionCall.is(node)) {
-		return node.arguments.flatMap(arg => valueOf(arg === undefined || typeof arg !== 'object' ? undefined : arg as RNodeWithParent) ?? []);
+		return node.arguments.flatMap(arg => RArgument.valueOf(arg) ?? []);
 	} else if(RBinaryOp.is(node) || RPipe.is(node)) {
 		return [node.lhs, node.rhs];
 	}
@@ -106,7 +103,7 @@ function framesFor(node: RNodeWithParent, idMap: AstIdMap, dfg: DataflowGraph): 
 			/* the other quoted operands are written in the same data mask (`y = mpg` next to `x = wt` in `aes`), and name columns, not data */
 			const level = operandsOf(ancestor).filter(operand => operand !== child && !RNode.iterateParents(child, idMap).some(p => p === operand) && !dfg.isQuoted(operand.info.id));
 			/* the pipe hands its left side on as the first argument */
-			if(outer !== undefined && Pipes.has(operatorOf(outer) ?? '') && valueOf(operandsOf(outer)[1]) === ancestor) {
+			if(outer !== undefined && Pipes.has(operatorOf(outer) ?? '') && RArgument.valueOf(operandsOf(outer)[1]) === ancestor) {
 				level.unshift(operandsOf(outer)[0]);
 			}
 			if(outer !== undefined && RBinaryOp.is(outer) && outer.operator === '+' && outer.rhs === ancestor) {

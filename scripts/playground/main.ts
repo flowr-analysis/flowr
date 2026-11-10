@@ -41,6 +41,7 @@ import type { ProjectQueryResult } from '../../src/queries/catalog/project-query
 import { rAuthorInfoToReadable } from '../../src/util/r-author';
 import { stringifyRLicense } from '../../src/util/r-license';
 import { baseRPackages, isBaseRPackage } from '../../src/util/r-base-packages';
+import { RBasePackageStore } from '../../src/data/r-base-packages.generated';
 import { DataflowMermaid } from '../../src/util/mermaid/dfg';
 import { cfgToMermaid } from '../../src/util/mermaid/cfg';
 import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
@@ -61,6 +62,11 @@ import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { VertexType } from '../../src/dataflow/graph/vertex';
 import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { contractCard, placeIn, programContracts, statedContract, type ProgramContract } from './contracts';
+import { FunctionSemantics } from '../../src/dataflow/fn/function-semantics';
+import { fnEntry } from '../../src/dataflow/environments/query-fn-props';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../src/project/context/flowr-analyzer-context';
+import type { InspectFnGuardsQueryResult } from '../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
@@ -457,7 +463,8 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	const said = about.said;
 	const known = about.local ? undefined : signatureOf(found.name, ownerOf(found.name, about.pkg));
 	const complaints = lintsOver(from, to);
-	return said === undefined && known === undefined && complaints.length === 0 && depsOver(from, to).length === 0 ? null : card(tip(known, said, complaints));
+	const contracted = contractOf(found.name, about, known);
+	return said === undefined && known === undefined && contracted === undefined && complaints.length === 0 && depsOver(from, to).length === 0 ? null : card(tip(known, said, complaints, contracted));
 });
 
 /**
@@ -601,8 +608,36 @@ function packageTip(info: PackageInfo, complaints: readonly { rule: string, mess
 	return tip({ call: head, props: '', where: packageFacts(info).join(' · '), name: info.name }, undefined, complaints);
 }
 
+/** what the functions of the script ask of their calls, and the context of the last analysis to ask about the others */
+let shownContracts: readonly ProgramContract[] = [];
+let contractContext: ReadOnlyFlowrAnalyzerContext | undefined;
+
+/** the contract of what the name stands for: inferred for a function of the script, stated for one of R or a package */
+function contractOf(name: string, about: Known, known: Signature | undefined): HTMLElement | undefined {
+	const own = shownContracts.find(c => c.ids.some(id => about.defs?.includes(String(id))));
+	if(own !== undefined) {
+		return contractCard(own.name, own.formals, own.guards, { program: own }, place => reveal(place.file, place.line));
+	}
+	const [, pkg, bare, params = ''] = /^([\w.]+)::([^(]+)(?:\((.*)\))?$/.exec(known?.call ?? '') ?? [];
+	if(about.local || pkg === undefined || bare !== name) {
+		return undefined;
+	}
+	const guardsOf = (id: Identifier) => (contractContext === undefined ? undefined : fnEntry(id, contractContext).entry?.guards) ?? FunctionSemantics.builtInGuards(Identifier.getName(id), Identifier.getNamespace(id));
+	let id = Identifier.make(name, pkg);
+	let shown = statedContract(guardsOf(id), params);
+	let note: string | undefined;
+	/* a generic asks nothing itself, what a value of no class with a method of its own meets is the default method */
+	if(shown === undefined && (RBasePackageStore.generics as readonly string[]).includes(name)) {
+		id = Identifier.make(`${name}.default`, pkg);
+		shown = statedContract(guardsOf(id), params);
+		note = `${name} is an S3 generic, a value whose class has no method of its own reaches ${name}.default, which asks this`;
+	}
+	/* a function of a package R does not attach on startup is written with it */
+	return shown === undefined ? undefined : contractCard(Identifier.toPreludeString(id), shown.formals, shown.guards, { qualified: Identifier.toString(id), note }, () => undefined);
+}
+
 /** the hover card: what the database knows about the name, then what flowR made of this script */
-function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
+function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = [], contracted?: HTMLElement): HTMLElement {
 	const dom = el('div', 'cm-valuetip');
 	const line = (text: string, cls: string): void => dom.append(el('div', cls, text));
 	if(known !== undefined) {
@@ -615,6 +650,9 @@ function tip(known: Signature | undefined, said: string | undefined, complaints:
 	}
 	if(said !== undefined) {
 		line(said, 'tsaid');
+	}
+	if(contracted !== undefined) {
+		dom.append(contracted);
 	}
 	for(const found of complaints) {
 		dom.append(complaint(found, 'tlint'));
@@ -2460,7 +2498,7 @@ function shapeOf(domain: unknown): string | undefined {
 interface Bounds { lower?: number, upper?: number }
 
 /** the value, the data frame shape, or where it comes from; asked once per name and remembered */
-interface Known { said?: string, pkg?: string, local: boolean }
+interface Known { said?: string, pkg?: string, local: boolean, defs?: readonly string[] }
 const described = new Map<string, Known>();
 async function describe(criterion: string): Promise<Known> {
 	const remembered = described.get(criterion);
@@ -2495,7 +2533,8 @@ async function describe(criterion: string): Promise<Known> {
 			said: [shape, resolved.length > 0 ? `value ${resolved.join(' or ')}` : undefined, from.length > 0 ? `defined in line ${from.join(', ')}` : undefined]
 				.filter(Boolean).join(' · ') || undefined,
 			pkg:   attached,
-			local: origins.length > 0 && origins.every(o => o.proc === undefined)
+			local: origins.length > 0 && origins.every(o => o.proc === undefined),
+			defs:  origins.map(o => String(o.id))
 		};
 	} catch{ /* a name flowR cannot place */ }
 	described.set(criterion, answer);
@@ -2859,13 +2898,15 @@ async function analyze(): Promise<number> {
 		{ type: 'dependencies' },
 		/* off by default as a rule, but a script that does not parse is the first thing to say */
 		{ type: 'linter' }, { type: 'linter', rules: ['syntactically-valid'] },
+		{ type: 'inspect-fn-guards' },
 		...files.some(f => /(^|\/)DESCRIPTION$/.test(f.name)) ? [{ type: 'project' }] : [],
 		...slicesFor(lastCriteria = pinnedCriteria().length > 0 ? pinnedCriteria() : criterion === undefined ? [] : [criterion])
 	] as never) as unknown as {
-		dependencies?:   Record<string, readonly Dependency[]>,
-		project?:        ProjectQueryResult,
-		linter?:         { results?: Record<string, { results?: Finding[], '.meta'?: object }>, '.meta'?: { timing?: number } },
-		'static-slice'?: { results?: Record<string, { reconstruct?: { code?: string | readonly string[], files?: readonly { path?: string, code: string }[] }, slice?: { result?: Iterable<string | number> } }> }
+		dependencies?:        Record<string, readonly Dependency[]>,
+		project?:             ProjectQueryResult,
+		linter?:              { results?: Record<string, { results?: Finding[], '.meta'?: object }>, '.meta'?: { timing?: number } },
+		'inspect-fn-guards'?: InspectFnGuardsQueryResult,
+		'static-slice'?:      { results?: Record<string, { reconstruct?: { code?: string | readonly string[], files?: readonly { path?: string, code: string }[] }, slice?: { result?: Iterable<string | number> } }> }
 	};
 	const took = performance.now() - started;
 	showStats({ parse: parsed, normalize: normalizing, dataflow, lint: answers.linter?.['.meta']?.timing ?? 0 }, info.graph);
@@ -3110,10 +3151,30 @@ async function analyze(): Promise<number> {
 		lints.append(linkRow(head, lines), ...rows);
 	}
 	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
+	contractContext = built.inspectContext();
+	shownContracts = programContracts(answers['inspect-fn-guards']?.guards ?? {}, info.graph, idMap, placeIn(idMap, elsewhere));
+	showContracts(shownContracts);
 	panel.append(...sliceBlock);
 	showFolds();
 	showMarks();
 	return took;
+}
+
+/** what each function of the script asks of its calls, one card per definition */
+function showContracts(contracts: readonly ProgramContract[]): void {
+	const body = section(`Contracts: ${contracts.length}`, PlaygroundBox.Contracts, contracts.length === 0 ? undefined : 'inferred, what a call has to fulfill');
+	if(contracts.length === 0) {
+		body.append(el('p', 'empty', 'no function of the script checks its arguments'));
+		return;
+	}
+	const list = el('div', 'contracts');
+	list.dataset.mark = PlaygroundBox.Contracts;
+	for(const c of contracts) {
+		const row = el('div', 'card fncontract');
+		row.append(el('div', 'tcall', `${c.name}(${c.formals.join(', ')})`), contractCard(c.name, c.formals, c.guards, { program: c }, place => reveal(place.file, place.line)));
+		list.append(linkRow(row, [c.file === undefined ? c.line : undefined]));
+	}
+	body.append(list);
 }
 
 let wholeSlice = shared.wholeSlice;

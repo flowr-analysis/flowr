@@ -350,6 +350,47 @@ code, pre { font-family: var(--mono); }
 	color: var(--muted); font-size: .76rem; margin-top: .25rem;
 }
 .cm-valuetip .tlint .rule { flex: none; font-size: .68rem; }
+/* a contract as the signature browser shows it, a little tighter: each formal in its hue, operators set apart, conditions breaking at their connectives */
+.contract { --hue: var(--muted); margin-top: .3rem; font-family: system-ui, sans-serif; }
+.cm-valuetip .contract { padding-top: .3rem; border-top: 1px solid var(--border); }
+.contract .hue0 { --hue: #3b73c4; } .contract .hue1 { --hue: #c27a12; } .contract .hue2 { --hue: #2f9e6a; }
+.contract .hue3 { --hue: #b4489a; } .contract .hue4 { --hue: #7a5cd6; } .contract .hue5 { --hue: #c2453b; }
+.contract .result { --hue: #5f7486; }
+.contract .chead { margin: 0 0 .2rem; font-size: .74rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.contract .label { font-variant: small-caps; letter-spacing: .04em; }
+.contract .origin { font-size: .66rem; padding: 0 .4rem; border-radius: .7rem; border: 1px solid var(--border); }
+.contract .origin.inferred { color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
+.contract .origin.stated { color: color-mix(in srgb, #7a5cd6 70%, var(--muted)); }
+.contract .rver { font-size: .7rem; }
+.contract a.at { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: .7rem; }
+.contract a.at:hover { text-decoration: underline; }
+/* the rows share their columns, so the conditions line up under each other */
+.contract .ctable { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .05rem .6rem; }
+.contract .crow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline; padding: .05rem .35rem; border-radius: .35rem; font-size: .78rem; }
+.contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.contract code { font-family: var(--mono); }
+.contract code.arg { font-size: .72rem; padding: 0 .3rem; border-radius: .3rem; color: color-mix(in srgb, var(--hue) 80%, var(--fg)); background: color-mix(in srgb, var(--hue) 12%, transparent); }
+.contract code.cond { display: inline-block; padding-left: 1.2em; text-indent: -1.2em; font-size: .74rem; color: var(--fg); white-space: normal; }
+.contract code.cond .seg { display: inline-block; text-indent: 0; }
+.contract .cond .arg { color: color-mix(in srgb, var(--hue) 85%, var(--fg)); font-weight: 500; }
+.contract .cond a.fn { color: inherit; text-decoration: none; }
+.contract .cond a.fn:hover { color: var(--accent); text-decoration: underline; }
+.contract abbr { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); cursor: help; }
+.contract .from { display: block; padding-left: 1.2em; font-size: .7rem; color: var(--muted); }
+.contract .from .via { font-style: italic; }
+.contract .from code.at { font-size: .7rem; color: color-mix(in srgb, var(--fg) 70%, var(--muted)); }
+.contract q.message { font-style: italic; color: var(--fg); }
+.contract .sep { color: var(--muted); }
+.contract .why { margin-top: .2rem; }
+.contract .why > summary { cursor: pointer; font-size: .72rem; color: var(--muted); padding: .1rem .35rem; }
+.contract .not { color: color-mix(in srgb, #c2453b 62%, var(--muted)); }
+.contract .or { color: color-mix(in srgb, #1f8a96 72%, var(--fg)); margin: 0 .2em; }
+.contract .and, .contract .cmp, .contract .unless { color: var(--muted); }
+.contract .word, .contract .unless { font-style: italic; }
+.contract .lit { background: color-mix(in srgb, var(--hue, var(--accent)) 20%, transparent); border-radius: .25rem; }
+#panel .contracts { display: grid; gap: .5rem; }
+#panel .fncontract .tcall { font-family: var(--mono); font-size: .8rem; font-weight: 600; }
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
 .right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); overflow: hidden; }

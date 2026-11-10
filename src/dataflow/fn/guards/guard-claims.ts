@@ -725,7 +725,7 @@ export function claimConditions(this: void, formal: string, { types, unclassedTy
 	const ofTypes = (named: readonly string[], unclassed: boolean) => {
 		const left = typeNames(AnyType).filter(t => !named.includes(t));
 		const said = left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
-		return unclassed ? `is.object(${formal}) || ${said}` : said;
+		return unclassed ? `${said} unless is.object(${formal})` : said;
 	};
 	const range = (measure: string, [lower, upper]: ClaimedRange) => {
 		const of = measure === 'value' ? formal : `${measure}(${formal})`;

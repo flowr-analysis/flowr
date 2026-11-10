@@ -17,8 +17,19 @@ succeeds <- function(e) {
   if(t %in% c("closure", "builtin", "special")) "function" else if(t %in% c("S4", "externalptr")) "other" else t
 }
 .guards_unquoted <- function(v) if(is.call(v) && identical(v[[1]], as.name("quote"))) eval(v) else v
-.guards_claims <- function(args, formals, report) {
+.guards_holds <- function(f, condition, args) {
+  g <- f
+  body(g) <- parse(text = condition)[[1]]
+  sink(nullfile())
+  on.exit(sink())
+  tryCatch(isTRUE(all(suppressWarnings(do.call(g, args)))), error = function(e) FALSE)
+}
+.guards_claims <- function(args, formals, report, f) {
   for(n in intersect(names(formals), names(args))) .guards_claim(.guards_unquoted(args[[n]]), formals[[n]], n, report)
+  for(n in names(formals)) for(k in formals[[n]]$cases) if(.guards_holds(f, k$when, args)) {
+    if(n %in% names(args)) .guards_claim(.guards_unquoted(args[[n]]), k$claim, paste(n, "if", k$when), report)
+    for(r in k$relations) if(!.guards_holds(f, r$holds, args) && (is.null(r$unless) || !.guards_holds(f, r$unless, args))) report(paste("relation", r$holds, "if", k$when), n, args)
+  }
 }
 .guards_claim <- function(v, claim, n, report) {
   if(!is.null(claim$types) && !(.guards_type(v) %in% claim$types)) report("types", n, v)
@@ -68,7 +79,7 @@ succeeds <- function(e) {
       sink()
       if(!holds) found <- c(found, paste0(clauses[[i]], " with ", paste(deparse(args), collapse = "")))
     }
-    .guards_claims(args, formals, report)
+    .guards_claims(args, formals, report, f)
     for(r in setdiff(required, names(args))) found <- c(found, paste("required", r))
   }
   cat(unique(found), sep = "\n")

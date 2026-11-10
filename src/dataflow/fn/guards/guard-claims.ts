@@ -4,7 +4,7 @@ import { BoundedSetDomain } from '../../../abstract-interpretation/domains/bound
 import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
 import { AnyType, RValueType, type GuardFacts, type GuardFactsLookup, type ReturnedValue, type RValueTypes } from '../../environments/guard-facts';
 import { setEquals } from '../../../util/collections/set';
-import { typeNames } from './guard-knowledge';
+import { appliesFormal, typeNames } from './guard-knowledge';
 
 /** The inclusive bounds of a number, the upper one `Infinity` if there is none; JSON turns that into `null`, so it is stated as such. */
 export type ClaimedRange = readonly [lower: number | null, upper: number | null];
@@ -34,6 +34,25 @@ export interface FormalClaim {
 	readonly whole?:      boolean
 	/** what the formal has to complete into a name that exists, like `paste0("f_", x)` */
 	readonly resolves?:   readonly ClaimedName[]
+	/** what holds in each of the cases a branch on the formal tells apart, like `if(is.logical(center)) ... else ...` */
+	readonly cases?:      readonly FormalCase[]
+}
+
+/** One of the cases a branch on a formal tells apart, with what a normal return makes sure of in it. */
+export interface FormalCase {
+	/** the condition of the case, in R syntax */
+	readonly when:       string
+	/** what holds of the formal in the case, the condition included */
+	readonly claim:      FormalClaim
+	/** what relates the formal to others in the case, see {@link ClaimedRelation} */
+	readonly relations?: readonly ClaimedRelation[]
+}
+
+/** A condition with the conditions of the path it was found on, see {@link casesOf}. */
+export interface CaseClause {
+	readonly requires: GuardTerm
+	/** what held on the way to the condition, outermost first */
+	readonly under?:   readonly GuardTerm[]
 }
 
 /** A name a function looks up at run time, built from a formal. */
@@ -237,7 +256,7 @@ function ofCheck(this: void, call: GuardCall, formal: BrandedIdentifier, facts: 
 		const [{ value: generic }, { value: object }] = call.args;
 		return isFormal(object, formal) && generic.kind === 'constant' ? { ...Unconstrained, resolves: new Map([[`${generic.lexeme}.class(${formal})`, { expression: `paste0(${generic.lexeme}, ".", class(${formal}))`, prefix: `${String(generic.value)}.`, suffix: '' }]]) } : Unconstrained;
 	}
-	if(facts(name)?.applies !== undefined && isFormal(call.args[0]?.value, formal)) {
+	if(appliesFormal(facts(name)) && isFormal(call.args[0]?.value, formal)) {
 		return { ...Unconstrained, callable: true };
 	}
 	const check = facts(name)?.check;
@@ -454,6 +473,49 @@ export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[]
 	});
 }
 
+/** The conditions that hold in the case `when`: a clause offering what the case rules out loses that alternative, one offering the case itself asks nothing. */
+function inCase(this: void, clauses: readonly CaseClause[], when: GuardTerm, otherwise: GuardTerm): { readonly all: GuardTerm[], readonly own: GuardTerm[] } {
+	const [yes, no] = [GuardTerm.render(when), new Set(GuardTerm.disjuncts(otherwise).map(d => GuardTerm.render(d)))];
+	const all: GuardTerm[] = [...GuardTerm.conjuncts(when)];
+	const own: GuardTerm[] = [];
+	for(const { requires } of clauses) {
+		const alternatives = GuardTerm.disjuncts(requires);
+		if(alternatives.some(a => GuardTerm.render(a) === yes)) {
+			continue;
+		}
+		const kept = alternatives.filter(a => !no.has(GuardTerm.render(a)));
+		if(kept.length + no.size === alternatives.length) {
+			own.push(GuardTerm.any(...kept));
+		}
+		all.push(GuardTerm.any(...kept));
+	}
+	return { all, own };
+}
+
+/**
+ * The cases of each formal: the first branch on it alone that the conditions were found under, as `if(is.logical(center)) ... else ...`,
+ * where both ways something more is asked of it, each with what a normal return makes sure of in it.
+ */
+export function casesOf(this: void, clauses: readonly CaseClause[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): Record<BrandedIdentifier, FormalCase[]> {
+	const cases: Record<BrandedIdentifier, FormalCase[]> = {};
+	const branches = [...new Map(clauses.flatMap(c => c.under ?? []).map(term => [GuardTerm.render(term), term])).values()];
+	for(const formal of formals) {
+		for(const when of branches.filter(b => setEquals(GuardTerm.formalsOf(b), new Set([formal])))) {
+			const otherwise = GuardTerm.truth(when, false, facts);
+			const split = [[when, inCase(clauses, when, otherwise)], [otherwise, inCase(clauses, otherwise, when)]] as const;
+			if(!split.every(([, { own }]) => own.some(c => GuardTerm.formalsOf(c).has(formal)))) {
+				continue;
+			}
+			cases[formal] = split.map(([term, { all }]) => {
+				const relations = relationsOf(all, facts).filter(r => r.formals.includes(formal));
+				return { when: GuardTerm.render(term), claim: toClaim(all.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained)), ...(relations.length > 0 ? { relations } : {}) };
+			});
+			break;
+		}
+	}
+	return cases;
+}
+
 /** Whether every value passing `conditions` passes `implied` as far as the types can tell; as a wrong guess only loses a clause, not what is left. */
 export function impliedBy(this: void, implied: GuardTerm, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): boolean {
 	const alternatives = GuardTerm.disjuncts(implied);
@@ -662,7 +724,7 @@ export function claimConditions(this: void, formal: string, { types, plainTypes,
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */
-export function claimWords(this: void, { types, plainTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
+export function claimWords(this: void, { types, plainTypes, values, partial, classes, bounds, notNA, callable, whole, resolves, cases }: FormalClaim): string[] {
 	const range = (what: string, [lower, upper]: ClaimedRange) => lower !== null && lower === upper ? `${what} = ${lower}`
 		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
 	return [
@@ -674,8 +736,14 @@ export function claimWords(this: void, { types, plainTypes, values, partial, cla
 		notNA ? 'not NA' : '',
 		callable ? 'callable' : '',
 		whole ? 'whole number' : '',
-		...(resolves ?? []).map(r => `${r.expression} exists`)
+		...(resolves ?? []).map(r => `${r.expression} exists`),
+		...(cases ?? []).map(c => `if ${c.when}: ${[...claimWords(c.claim), ...(c.relations ?? []).map(r => r.holds)].join(', ')}`)
 	].filter(w => w !== '');
+}
+
+/** Each case of a claim as its condition and what holds in it, see {@link claimConditions}. */
+export function caseConditions(this: void, formal: string, { cases }: FormalClaim): string[] {
+	return (cases ?? []).map(c => `if ${c.when}: ${[...claimConditions(formal, c.claim), ...(c.relations ?? []).map(r => r.holds)].join(' && ')}`);
 }
 
 /** What a call returns in a few words, see {@link claimWords}: what holds of it, and the formal it hands back. */

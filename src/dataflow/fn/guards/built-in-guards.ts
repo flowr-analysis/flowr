@@ -1,5 +1,5 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
-import { PkgName } from '../../environments/identifier';
+import { Identifier, PkgName } from '../../environments/identifier';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import { messageOf, type FunctionGuards, type GuardClause } from './function-guards';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -8,21 +8,35 @@ import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import { claimsOf, readingOf, type FormalClaim } from './guard-claims';
-import { defaultGuardFacts, Demands } from './guard-knowledge';
+import { defaultGuardFacts, passes } from './guard-knowledge';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /** What is known about a function without a program to read it from: {@link FunctionGuards} without the clauses, which point at code. */
 export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<Pick<FunctionGuards, 'relations' | 'conditional' | 'returns' | 'passes'>> {
 	/** see {@link FunctionGuards.required} */
-	readonly required?: readonly BrandedIdentifier[]
+	readonly required?:   readonly BrandedIdentifier[]
 	/** see {@link FunctionGuards.formals} */
-	readonly formals?:  Readonly<Record<BrandedIdentifier, FormalClaim>>
+	readonly formals?:    Readonly<Record<BrandedIdentifier, FormalClaim>>
 	/** the R version they were read off, for what a closure checks, which another version may check differently */
-	readonly readOff?:  string
+	readonly readOff?:    string
 	/** why each part of {@link StatedGuards.requires} is in effect */
-	readonly because?:  readonly GuardReason[]
+	readonly because?:    readonly GuardReason[]
+	/** the S3 generic it is a method of, written `pkg::name`, and the class it is the method for */
+	readonly methodOf?:   { readonly generic: string, readonly class: string }
+	/** for an S3 generic, the formal it dispatches on */
+	readonly dispatches?: BrandedIdentifier
+	/** for an S3 generic, its methods, each written `pkg::name` */
+	readonly methods?:    readonly string[]
+	/** every function the conditions call, written `pkg::name` where the package is known, the base packages R attaches on startup included, which the conditions leave out */
+	readonly calls?:      readonly string[]
+}
+
+/** The functions the terms call, see {@link StatedGuards.calls}. */
+export function callsOfTerms(this: void, terms: readonly GuardTerm[]): string[] {
+	return uniqueArray(terms.flatMap(term => GuardTerm.callsOf(term).map(id => Identifier.toString(id))));
 }
 
 /** Why a condition is in effect: the code that fails if it does not hold, see {@link GuardClause}. */
@@ -95,21 +109,22 @@ export type BaseGuards = Readonly<Record<string, Readonly<Record<string, StatedG
 
 /** What R fails on for a function written in C, as the built-in definitions state it, `undefined` if flowR does not know of any. */
 function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | undefined {
-	const requirements = defaultGuardFacts()(name)?.asks;
-	if(requirements === undefined) {
+	const asks = defaultGuardFacts()(name)?.asks;
+	if(asks === undefined) {
 		return undefined;
 	}
-	const formals = Object.keys(requirements);
-	const stated = Object.entries(requirements).flatMap(([formal, demand]) => {
+	const formals = Object.keys(asks);
+	const stated = Object.entries(asks).flatMap(([formal, failures]) => {
 		/* what the dots hold is several values, none of which a formal of the name `...` could stand for in R code */
 		const other = formals.find(f => f !== formal);
-		return formal === '...' ? [] : [[formal, Demands[demand](GuardTerm.formal(formal), other === undefined ? undefined : GuardTerm.formal(other))] as const];
+		return formal === '...' ? [] : failures.map(f => [formal, passes(f, GuardTerm.formal(formal), () => false, other === undefined ? undefined : GuardTerm.formal(other))] as const);
 	});
 	if(stated.length === 0) {
 		return undefined;
 	}
 	const claims = claimsOf(stated.map(([, term]) => term), stated.map(([formal]) => formal), defaultGuardFacts());
-	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(claims).length > 0 ? { formals: claims } : {}) };
+	const calls = callsOfTerms(stated.map(([, term]) => term));
+	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(claims).length > 0 ? { formals: claims } : {}), ...(calls.length > 0 ? { calls } : {}) };
 }
 
 /** Everything with stated guards, as `[package, name]`. */

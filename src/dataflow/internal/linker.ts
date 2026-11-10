@@ -17,7 +17,7 @@ import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType, FunctionDispatch } from '../graph/vertex';
 import { type Environment, REnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { ExitPoint } from '../info';
-import { ControlDependency, negateControlDependency, doesExitPointPropagateCalls } from '../info';
+import { ControlDependency, negateControlDependency, doesExitPointPropagateCalls, withCds } from '../info';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -423,7 +423,8 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		if(!Dataflow.hasEdge(graph, id, def.id, EdgeType.Calls)) {
 			const exits = linkFunctionCallWithSingleTarget(graph, def, info, idMap);
 			if(exits.length > 0 && escapesAnonymousFunction(graph, id, def.id, idMap)) {
-				propagateExitPoints.push(...exits);
+				/* it is the call that raises what its callee raises, so what runs after it only runs if the call returns */
+				propagateExitPoints.push(...exits.map(exit => ({ ...exit, cds: withCds(exit.cds, [{ id }]) })));
 			}
 		}
 	}

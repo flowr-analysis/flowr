@@ -1,4 +1,4 @@
-import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
+import { assertSliced, assertSliceKeeps, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
@@ -344,8 +344,10 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('C-B7-on-exit-return-keeps-raise', 'f <- function(x) { on.exit(return(5)); stopifnot(is.numeric(x)); 1 }\nprint(f("a"))', '2@print', 'f <- function(x) {\n        on.exit(return(5))\n        stopifnot(is.numeric(x))\n    }\nprint(f("a"))');
 		/* the call that may raise is an exit of the program */
 		assertSliced(label('RA-B1-try-around-forced-promise', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'g <- function(a) { r <- try(a, silent = TRUE); 1 }\ng(stop("lazy"))\nprint("alive")', ['3@print'], 'g <- function(a) {\n        try(a, silent = TRUE)\n        1\n    }\ng(stop("lazy"))\nprint("alive")', { cfgExcludeProperties: ['single-entry-and-exit'] });
-		/* the call that may raise is an exit of the program */
-		assertSliced(label('RA-B2-kept-arguments-stay-in-body', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(1, 2))\nprint("valid")', ['3@print'], 'validate <- function(x) {\n        is.numeric(x)\n        all(x >= 0)\n    }\nprint("valid")', { cfgExcludeProperties: ['single-entry-and-exit'] });
+		/* the call raises what its callee raises, so what follows depends on the call and not only on the stopifnot within */
+		assertSliced(label('RA-B2-a-validating-call-stays', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(1, 2))\nprint("valid")', ['3@print'], 'validate <- function(x) {\n        stopifnot(is.numeric(x), all(x >= 0))\n        invisible(TRUE)\n    }\nvalidate(c(1, 2))\nprint("valid")', { cfgExcludeProperties: ['single-entry-and-exit'] });
+		/* in R, `validate(c(-1, 2))` stops the program before the print */
+		assertSliceKeeps('RA-B2b a validating call that raises stays', shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(-1, 2))\nprint("valid")', '3@print', { kept: ['validate(c(-1, 2))', 'stopifnot(is.numeric(x), all(x >= 0))'] });
 		counterexample('RA-B3-rm-reads-what-it-removes', 'mean <- function(x) stop("shadow")\nrm(mean)\nprint(mean(1:3))', '2@rm', 'mean <- function(x) { }\nrm(mean)');
 		counterexample('RA-B3b-rm-of-a-variable', 'x <- 1\nrm(x)', '2@rm', 'x <- 1\nrm(x)');
 	});

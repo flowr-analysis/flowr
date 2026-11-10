@@ -186,17 +186,14 @@ export class Hits {
 		row.append(head);
 		const formals = guards === undefined ? [] : contractFormals(formalsOf(args), formalsOf(declared ?? ''), guards);
 		if(guards !== undefined) {
-			row.append(teaser(name, guards, formals, chosen?.pkg.name + '::' + name));
+			row.append(teaser(name, guards, formals));
 		}
 		const ambient = entry.ambientIn(chosen?.pkg.name);
 		if(ambient.length > 0) {
 			row.append(ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name));
 		}
-		const s3 = s3Line(entry, formalsOf(args));
-		if(s3 !== undefined) {
-			row.append(s3);
-		}
-		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen)));
+		/* how it takes part in S3 dispatch is for the opened view, the card stays one line or two */
+		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen), s3Line(entry, formalsOf(args))));
 		this.list.append(row);
 	}
 
@@ -219,7 +216,7 @@ export class Hits {
 	}
 
 	/** one line per package exporting the name, with its signature there and where it is written */
-	private owners(entry: Entry, contracted?: HTMLElement): HTMLDivElement {
+	private owners(entry: Entry, contracted?: HTMLElement, s3?: HTMLElement): HTMLDivElement {
 		const { name } = entry;
 		const list = el('div', 'owns');
 		for(const owner of entry.shown) {
@@ -280,7 +277,7 @@ export class Hits {
 		});
 		list.append(ask);
 		const box = el('div', 'detail');
-		box.append(...(contracted === undefined ? [] : [contracted]), list);
+		box.append(...(s3 === undefined ? [] : [s3]), ...(contracted === undefined ? [] : [contracted]), list);
 		return box;
 	}
 
@@ -432,11 +429,17 @@ const FunctionAbout: Readonly<Record<string, string>> = {
 	'match.fun':      'the function a value stands for: the function itself, or the one a name or symbol is bound to, failing otherwise'
 };
 
+/** the R version a contract was read off and the day, `R 4.5.3 · read off 2026-04-01`, from the `version@date` of {@link Guards}, empty for a stated one */
+function readOffWords(readOff: string): string {
+	const [r, date] = readOff.split('@');
+	return readOff === '' ? '' : 'R ' + r + (date === undefined ? '' : ' \u00b7 read off ' + date);
+}
+
 /** where a contract comes from: read off the R code of the function, or stated by flowR for one written in C */
 function originTag(readOff: string): HTMLElement {
 	return readOff === ''
 		? titled(el('span', 'origin stated', 'stated'), 'flowR states this of a function written in C')
-		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function in R ' + readOff + ', so another version of R may ask for less or more');
+		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function (' + readOffWords(readOff) + '), so another version of R may ask for less or more');
 }
 
 /** the formals a relation speaks of, in the order of the signature */
@@ -445,14 +448,13 @@ function related(holds: string, formals: readonly string[]): string[] {
 }
 
 /** The contract within the row: where it comes from, the formals it speaks of, and what relates them; the row opens the rest */
-function teaser(name: string, guards: Guards, formals: readonly string[], key: string): HTMLElement {
+function teaser(name: string, guards: Guards, formals: readonly string[]): HTMLElement {
 	const [, , , readOff = '', , , returns = []] = guards;
 	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
 	const line = el('div');
 	const claimed = claimsByFormal(guards, formals);
 	line.append(el('span', 'label', 'contract'), originTag(readOff), ...spokenOf(guards, formals).map(formal => formalMark(guardedChip(el('code', hueOf(formals.indexOf(formal)), formal), formal, claimed.get(formal)), formal)),
-		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]),
-		rawToggle(box, 'contracts', key, 'the builtIns entry of the inspect-fn-guards query for ' + key));
+		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
 	box.append(line);
 	return box;
 }
@@ -504,9 +506,16 @@ function breakAtTop(code: HTMLElement): void {
 	}
 }
 
-/** A `{ }` toggle showing what flowR returns for `key` below `target`, pretty-printed and copyable, unpacked on the first click. */
+/** `(<lead> as json)`, its `json` a toggle showing what flowR returns for `key` below `target`, pretty-printed and copyable, unpacked on the first click */
+function asJson(target: HTMLElement, of: keyof RawAnswers, key: string, what: string, lead = ''): HTMLElement {
+	const said = el('span', 'asjson');
+	said.append('(' + (lead === '' ? '' : lead + ' ') + 'as ', rawToggle(target, of, key, what), ')');
+	return said;
+}
+
+/** the toggle of {@link asJson} */
 function rawToggle(target: HTMLElement, of: keyof RawAnswers, key: string, what: string): HTMLButtonElement {
-	return button('rawbtn', '{ }', 'the raw JSON flowR returns: ' + what + '. Click to show or hide', event => {
+	return button('rawbtn', 'json', 'the raw JSON flowR returns: ' + what + '. Click to show or hide', event => {
 		event.stopPropagation();
 		const open = [...target.children].find(child => child.classList.contains('raw'));
 		if(open !== undefined) {
@@ -554,7 +563,8 @@ function ambientBlock(name: string, families: readonly AmbientFamily[], key: str
 		const line = el('div', 'aline');
 		line.append(at === 0 ? el('span', 'label', 'ambient') : el('span'), titled(el('span', 'fam', label), description), said);
 		if(at === 0) {
-			said.append(rawToggle(box, 'ambient', key, 'the ambient summary flowR states for ' + key));
+			/* only shown once the row is open, see the page's styles */
+			said.append(asJson(box, 'ambient', key, 'the ambient summary flowR states for ' + key));
 		}
 		box.append(line);
 	});
@@ -600,11 +610,12 @@ function s3Line(entry: Entry, shown: readonly string[]): HTMLElement | undefined
 
 /** a method as a link to it, marked when flowR knows its contract */
 function methodLink(method: Entry, generic: string): Part[] {
-	const owners = method.owners.map(owner => owner.pkg.name).join(', ');
-	/* the generic's name is implied, so a method reads as its class */
+	const owners = el('span', 'owners');
+	owners.append(...method.owners.slice(0, Shown).map(owner => packageLink(owner.pkg)), ...method.owners.length > Shown ? ['+' + (method.owners.length - Shown)] : []);
+	/* the generic's name is implied, so a method reads as its class, followed by the packages defining it */
 	return [link('method', '.' + method.name.slice(generic.length + 1), search(method.name), method.name + ': S3 method of ' + generic + ' for class '
-		+ method.name.slice(generic.length + 1) + ', from ' + owners + (method.contracted ? '. flowR knows what a call of it has to fulfill' : '')),
-	...method.contracted ? [titled(el('span', 'hascontract', '\u2713'), 'flowR knows what a call of ' + method.name + ' has to fulfill')] : []];
+		+ method.name.slice(generic.length + 1) + (method.contracted ? '. flowR knows what a call of it has to fulfill' : '')),
+	...method.contracted ? [titled(el('span', 'hascontract', '\u2713'), 'flowR knows what a call of ' + method.name + ' has to fulfill')] : [], owners];
 }
 
 /**
@@ -661,7 +672,12 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 	const box = el('div', 'contract');
 	const url = owner?.sourceUrl;
 	if(owner !== undefined) {
-		box.title = 'the contract of ' + owner.pkg.name + '::' + name + ' ' + owner.pkg.version + (owner.file === undefined ? '' : ', implemented in ' + owner.file + (owner.line === undefined ? '' : ':' + owner.line));
+		const key = owner.pkg.name + '::' + name;
+		const head = titled(el('p', 'chead'), readOffWords(guards[3] ?? ''));
+		head.append('of ' + key + ' ' + owner.pkg.version, ...owner.file === undefined || url === undefined ? [] : [' \u00b7 implemented in ',
+			blank(link('src', owner.file + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + key + ' is written'))],
+		' ', asJson(box, 'contracts', key, 'the builtIns entry of the inspect-fn-guards query for ' + key, 'result'));
+		box.append(head);
 	}
 	box.append(...dispatchOf(name, guards, chip, owner));
 	const parts = new Map(stated.map(([formal, said]) => [formal, said]));
@@ -689,16 +705,20 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 		why.addEventListener('click', event => event.stopPropagation());
 		why.append(el('summary', undefined, 'detailed conditions and failures'));
 		const table = el('div', 'ctable');
-		table.append(...conditions.map(([holds, kind, fails, via, message, reads = '', brief = '']) => {
+		table.append(...conditions.map(([holds, kind, fails, via, message, reads = '', brief = '', loc = '']) => {
 			/* what reads better than flowR's notation is shown, the condition as R evaluates it on hover */
 			const code = titled(el('code', 'cond'), reads === '' ? undefined : holds);
 			code.append(...marked(reads === '' ? holds : reads));
 			const chain = via === '' ? [] : via.split(', ');
 			const from = el('span', 'from');
 			const shown = brief === '' ? fails : brief;
+			/* where the failing code is, by its line within the closure as R prints it (base R keeps no source references), else by the function it is in */
+			const [fn, line, column] = loc === '' ? [chain.at(-1) ?? name] : [loc.slice(0, loc.lastIndexOf(':', loc.lastIndexOf(':') - 1)), ...loc.split(':').slice(-2)];
+			const failsAt = fails + ', in ' + fn + (line === undefined ? '' : ', line ' + line + ' column ' + column + ' of its closure as R prints it')
+				+ (owner?.file === undefined ? '' : ' (defined in ' + owner.file + (owner.line === undefined ? '' : ':' + owner.line) + ')');
 			from.append(
 				...(message === '' ? [] : [el('q', 'message', message), ...fails === '' ? [] : [el('span', 'sep', ' \u00b7 ')]]),
-				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), url === undefined ? titled(el('code', 'at', shown), fails) : blank(link('at', shown, url, fails + ', in ' + (chain.at(-1) ?? name) + (owner?.file === undefined ? '' : ' of ' + owner.file + (owner.line === undefined ? '' : ':' + owner.line))))]),
+				...(fails === '' ? [] : [el('span', 'where', kind === 'explicit' ? 'raised by ' : 'raised by R in '), url === undefined ? titled(el('code', 'at', shown), failsAt) : blank(link('at', shown, url, failsAt))]),
 				/* where it is raised is only said if that is not the function itself, whose code the failing call links to */
 				...(fails === '' || (chain.at(-1) ?? name).replace(/^.*::/, '') === name ? [] : [' in ', ...located(chain.at(-1) ?? name, owner)]),
 				...(chain.length < 2 ? [] : [el('span', 'via', ', reached through '), ...chain.slice(0, -1).flatMap((fn, at) => [...at > 0 ? ['; '] : [], ...located(fn, owner)])])

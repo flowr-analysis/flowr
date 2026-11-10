@@ -776,7 +776,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);
-	information.graph.addEdge(rootId, source.info.id, quoteSource ? EdgeType.NonStandardEvaluation : EdgeType.Reads);
+	information.graph.addEdge(rootId, useSourceIds[0], quoteSource ? EdgeType.NonStandardEvaluation : EdgeType.Reads);
 
 	return {
 		environment:       information.environment,

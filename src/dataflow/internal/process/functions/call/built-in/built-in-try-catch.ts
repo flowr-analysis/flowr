@@ -451,7 +451,8 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		/* what a later iteration runs follows what an earlier one may raise, which the loop carries */
 		const loop = RLoopConstructs.is(node);
 		const sites = RNode.directChildren(node).flatMap(child => child === EmptyArgument ? [] : order(child, loop ? [...before, node.info.id] : before));
-		if(!CallTypes.has(node.type)) {
+		/* code after an unconditional exit is never analyzed, so it has no vertex and neither runs nor raises */
+		if(!CallTypes.has(node.type) || !graph.hasVertex(node.info.id)) {
 			return sites;
 		}
 		const raising = raises(node);

@@ -333,8 +333,8 @@ function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, s
 	}
 }
 
-/** Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
-export function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
+/** Whether an error raised by the call `from` still leaves the expression it is written in (the whole program for `undefined`): redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
+export function errorEscapes(from: NodeId, expression: NodeId | undefined, idMap: AstIdMap, graph: DataflowGraph): boolean {
 	for(let node = raisedAt(from, idMap, graph); node !== undefined && node.info.id !== expression;) {
 		const parent = RNode.directParent(node, idMap);
 		if(parent === undefined) {
@@ -713,6 +713,11 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 			callees.add(inner.functionName.info.id);
 			/* the call vertex carries the call's id, its name symbol has no vertex of its own */
 			references.push({ nodeId: inner.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
+		} else if(RExpressionList.is(inner)) {
+			/* the braces of a group name the group, which already calls `{` */
+			for(const brace of inner.grouping ?? []) {
+				callees.add(brace.info.id);
+			}
 		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
 			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
 		}
@@ -957,7 +962,8 @@ export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs
 	recordFound(graph, accessId, fieldDefs?.map(d => d.nodeId).filter(d => !NodeId.isBuiltIn(d)) ?? [], call);
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
-		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
+		/* a parameter is defined by its parameter node, which has no vertex */
+		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId && fd.type !== ReferenceType.Parameter) {
 			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
 		}
 		if(returnsFunctions && (fd.type & (ReferenceType.Function | ReferenceType.Unknown)) !== 0) {

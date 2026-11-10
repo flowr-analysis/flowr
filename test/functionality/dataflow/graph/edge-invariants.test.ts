@@ -20,6 +20,17 @@ const Corpus = [
 	'library(glue)\nx <- 5\nglue("{x}")'
 ];
 
+/** Code flowR leaves unanalyzed, chained replacements, and frames read by field: every edge has to end at a vertex. */
+const Dangling = [
+	'tryCatch({ stop("e"); cat("a") }, error = function(e) 1)',
+	'withRestarts({ cat("a"); invokeRestart("r"); cat("b") }, r = function() NULL)',
+	'f <- function() { cat("a"); invokeRestart("r"); cat("b") }\nwithRestarts(f(), r = function() cat("h"))',
+	'f <- function(x) { environment()$x; stopifnot(is.numeric(x)); 1 }',
+	'n <- 0; x <- 1; e <- new.env()\ndelayedAssign("p", {n <- x}, eval.env = e)\np',
+	'colnames(a) <- colnames(b) <- 1:3',
+	'colnames(Y$a) <- colnames(Y$b) <- NULL'
+];
+
 describe('Dataflow', withTreeSitter(ts => {
 	describe('edge invariants', () => {
 		test.each(Corpus)('an edge always states a type: %s', async(code) => {
@@ -33,6 +44,13 @@ describe('Dataflow', withTreeSitter(ts => {
 				}
 			}
 			assert.deepStrictEqual(typeless, [], 'an edge that states nothing has to be removed, not kept');
+		});
+
+		test.each(Dangling)('every edge connects vertices: %s', async(code) => {
+			const graph = (await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps()).dataflow.graph;
+			const dangling = [...graph.edges()].flatMap(([from, targets]) => [...targets.keys()]
+				.filter(to => !graph.hasVertex(from) || (!graph.hasVertex(to) && !NodeId.isBuiltIn(to))).map(to => `${from} -> ${to}`));
+			assert.deepStrictEqual(dangling, []);
 		});
 
 		test(label('the reverse index forgets a removed edge as well', ['name-normal'], ['dataflow']), async() => {

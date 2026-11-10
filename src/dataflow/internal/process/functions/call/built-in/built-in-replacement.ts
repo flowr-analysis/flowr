@@ -97,6 +97,9 @@ export function processReplacementFunction<OtherInfo>(
 	if(DfgVertex.isFunctionCall(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
+	/* the call the assignment made, or for a nested target (`names(x$a) <- v`) the replacement it continued with, takes the value last */
+	const assigned = DfgVertex.isFunctionCall(createdVert) ? createdVert : res.graph.getVertex(res.entryPoint);
+	const valueArg = DfgVertex.isFunctionCall(assigned) ? assigned.args.at(-1) : undefined;
 	const targetVert = res.graph.getVertex(RArgument.valueOf(args[0])?.info.id as NodeId);
 	if(DfgVertex.isVariableDefinition(targetVert)) {
 		(targetVert as Writable<typeof targetVert>).par = true;
@@ -125,9 +128,12 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => {
+			args.map((a, i) => {
 				if(RArgument.isEmpty(a)) {
 					return undefined;
+				} else if(i === args.length - 1 && a.name === undefined && valueArg !== undefined && valueArg !== EmptyArgument) {
+					/* the value is where the assignment found it, the vertex of an inner replacement is not its `<-` */
+					return { entryPoint: valueArg.nodeId };
 				}
 				const entry = a.name === undefined ? RArgument.unnamedValueOf(a) : a;
 				return entry === undefined ? undefined : { entryPoint: entry.info.id };

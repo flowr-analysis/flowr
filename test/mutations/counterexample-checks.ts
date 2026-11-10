@@ -8,7 +8,7 @@ import { Counterexamples, type Counterexample } from './counterexample-corpus';
 import { MutationShardsDir, type MutationShardDetails } from './mutation-details';
 import { mutants, originalKey, type Mutants } from './mutants';
 import { rIsAtLeast } from '../functionality/_helper/r-version';
-import type { MutationPass, ReplObservation } from '../functionality/_helper/r-mutations';
+import type { MutationPass, QueryObservation, ReplObservation } from '../functionality/_helper/r-mutations';
 import { MutationPasses, observeQueries, observeRepl, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 
@@ -33,14 +33,23 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 	async function run(what: string): Promise<string> {
 		/* a slice that drops what ends a loop runs forever, which must fail its test rather than hang the shell for every later one */
 		const guarded = `tryCatch({ setTimeLimit(elapsed = 10, transient = TRUE); eval(parse(text = ${JSON.stringify(what)})) }, error = function(e) cat("R error:", conditionMessage(e), "\n"), finally = setTimeLimit())`;
-		/* every program runs in a fresh directory of its own, so a slice dropping its `setwd` writes nothing into the repository */
-		await shell.sendCommandWithOutput('flowr_wd <- getwd(); flowr_op <- options(); flowr_search <- search(); flowr_dir <- tempfile("flowr-run-"); dir.create(flowr_dir); setwd(flowr_dir)');
-		const lines = await shell.sendCommandWithOutput(guarded, { automaticallyTrimOutput: true });
-		/* a program may change the working directory or attach packages, which the next one must not see */
-		await shell.sendCommandWithOutput('setwd(flowr_wd); unlink(flowr_dir, recursive = TRUE); options(flowr_op); graphics.off(); for(p in setdiff(search(), flowr_search)) try(detach(p, character.only = TRUE), silent = TRUE); rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast"))');
+		/*
+		 * every program runs in a fresh directory of its own, so a slice dropping its `setwd` writes nothing into the repository,
+		 * and what it changes (working directory, generator kind, attached packages) is undone for the next one, all in one round trip
+		 */
+		const before = 'invisible({ flowr_wd <- getwd(); flowr_op <- options(); flowr_search <- search(); flowr_dir <- tempfile("flowr-run-"); dir.create(flowr_dir); setwd(flowr_dir) })';
+		const after = 'invisible({ setwd(flowr_wd); unlink(flowr_dir, recursive = TRUE); options(flowr_op); suppressWarnings(RNGkind("default", "default", "default")); graphics.off(); for(p in setdiff(search(), flowr_search)) try(detach(p, character.only = TRUE), silent = TRUE); rm(list = setdiff(ls(all.names = TRUE), "flowr_get_ast")) })';
+		const lines = await shell.sendCommandWithOutput(`${before}; ${guarded}; ${after}`, { automaticallyTrimOutput: true });
 		return lines.join('\n');
 	}
 	const observed = new Map<string, Promise<ReplObservation>>();
+	const queried = new Map<string, Promise<QueryObservation>>();
+	/** what the queries report about an original, which every mutant of it is compared against */
+	function queriesOf(code: string): Promise<QueryObservation> {
+		const known = queried.get(code) ?? observeQueries(shell, code);
+		queried.set(code, known);
+		return known;
+	}
 	function replOf(target: Counterexample): Promise<ReplObservation> {
 		const known = observed.get(target.code) ?? observeRepl(shell, target);
 		observed.set(target.code, known);
@@ -107,7 +116,7 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 						assert.isUndefined(error, `the pass fails on:\n${target.code}`);
 						const checked = mutant as Counterexample;
 						await check(checked);
-						assert.deepStrictEqual(await observeQueries(shell, checked.code, checked.renames), await observeQueries(shell, target.code),
+						assert.deepStrictEqual(await observeQueries(shell, checked.code, checked.renames), await queriesOf(target.code),
 							`the mutation changes what the queries report about the program, it is:\n${checked.code}`);
 						await checkRepl(checked, target, pass);
 						exercised.checkedMutants.add(`${group}: ${target.name} [${pass.name}]`);

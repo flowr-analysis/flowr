@@ -1,10 +1,10 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import type { Printable } from './ansi';
 
 /** The text as a regex matches it literally */
-export function escapeRegex(text: string): string {
-
-	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function escapeRegex(text: Printable): string {
+	return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -150,7 +150,7 @@ export function dropRawStringSurround(value: string): string {
  * The `prefix.suffix` readings of a dotted R name, longest prefix first, which is the order S3 dispatch
  * resolves them in (`as.data.frame.matrix` reads as `as.data.frame` before `as.data`).
  */
-export function* dottedSplits(name: string): Generator<readonly [prefix: string, suffix: string]> {
+export function* dottedSplits<S extends string>(name: S): Generator<readonly [prefix: string, suffix: string]> {
 	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
 		yield [name.slice(0, dot), name.slice(dot + 1)];
 	}
@@ -161,6 +161,17 @@ export function* dottedSplits(name: string): Generator<readonly [prefix: string,
  * analysis result: `localeCompare` reads the machine's locale and ICU build, so it would make two users
  * analyzing the same code disagree (`da` orders `A` before `a`, `en-US` the other way round).
  */
-export function compareByCodeUnit(a: string, b: string): number {
+export function compareByCodeUnit<S extends string>(a: S, b: S): number {
 	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+export type RQuote = '"' | '\'' | '`';
+
+/** Splits off the matching R quotes (double, single, or backtick) wrapping `str`, escapes are not interpreted. */
+export function splitRQuotes<S extends string>(str: S): { readonly quote: RQuote | undefined, readonly content: string } {
+	const quote = str[0];
+	if(str.length > 1 && (quote === '"' || quote === '\'' || quote === '`') && str[str.length - 1] === quote) {
+		return { quote, content: str.slice(1, -1) };
+	}
+	return { quote: undefined, content: str };
 }

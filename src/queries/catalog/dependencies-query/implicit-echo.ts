@@ -4,6 +4,7 @@ import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { DependencyInfo } from './dependencies-query-format';
+import { StdOut } from './dependency-values';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -22,6 +23,7 @@ import { callIdentifierOf, isPlot } from './plot-objects';
 import { inputVariablesAt } from './data-flow';
 import { ExpectFunctionNames } from './function-info/test-functions';
 import type { FunctionInfo } from './function-info/function-info';
+import { OperatorUsedAs } from '../../../dataflow/environments/default-builtin-config/base-operators';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
 function echoedValue(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation, invisible: readonly FunctionInfo[], seen: Set<NodeId> = new Set()): RNode<ParentInformation> | undefined {
@@ -71,7 +73,7 @@ const Assigning: readonly BuiltInProcName[] = [BuiltInProcName.Assignment, Built
 
 function isAssignment(node: RNode<ParentInformation> | undefined, dataflow: DataflowInformation): boolean {
 	const vertex = node === undefined ? undefined : dataflow.graph.getVertex(node.info.id);
-	return (RBinaryOp.is(node) && RBinaryOp.getOperatorInfo(node)?.usedAs === 'assignment') || Assigning.some(p => DfgVertex.hasOrigin(vertex, p));
+	return (RBinaryOp.is(node) && RBinaryOp.getOperatorInfo(node)?.usedAs === OperatorUsedAs.Assignment) || Assigning.some(p => DfgVertex.hasOrigin(vertex, p));
 }
 
 /** whether the list is a `( )` group rather than a `{ }` block, which is what makes its value visible */
@@ -173,7 +175,7 @@ export function collectImplicitEchoes(ast: NormalizedAst, dataflow: DataflowInfo
 				continue;
 			}
 			const inputs = inputVariablesAt(dataflow, ast, echoed.info.id);
-			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: 'stdout', implicit: true, inputVariables: inputs.length > 0 ? inputs : undefined });
+			result.push({ nodeId: echoed.info.id, functionName: echoName(echoed, dataflow), value: StdOut, implicit: true, inputVariables: inputs.length > 0 ? inputs : undefined });
 		}
 	}
 }

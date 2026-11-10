@@ -5,6 +5,7 @@
  */
 
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 
 /** The definition location of the binding, with a file path usually relative to the package project root. */
 export interface SigDefinitionLocation {
@@ -16,10 +17,10 @@ export interface SigDefinitionLocation {
 export interface LibraryExports {
 	/** R version identifier (see `RVersion.parse`) */
 	readonly version:    string;
-	readonly exported:   readonly string[];
+	readonly exported:   readonly BrandedIdentifier[];
 	/** defined-but-not-exported identifiers (only available when internal names are stored, which we usually avoid in the db) */
-	readonly internal:   readonly string[];
-	readonly deprecated: readonly string[];
+	readonly internal:   readonly BrandedIdentifier[];
+	readonly deprecated: readonly BrandedIdentifier[];
 	/**
 	 * S3 classes this package version OWNS: it registers at least one S3 method for the class (its NAMESPACE's
 	 * `S3method(generic, class)`) AND exports a same-named constructor function. See {@link FnProp.S3Owner}.
@@ -32,7 +33,9 @@ export interface LibraryExports {
 	/** package documentation url base in case this package is found at a different endpoint */
 	readonly cranUrl?:   string;
 	/** definition location per identifier, if the database carries them */
-	readonly locations?: ReadonlyMap<string, SigDefinitionLocation>;
+	readonly locations?: ReadonlyMap<BrandedIdentifier, SigDefinitionLocation>;
+	/** the package each re-exported name comes from (`importFrom(magrittr, "%>%")` plus `export("%>%")`), if the database carries it */
+	readonly reexports?: ReadonlyMap<BrandedIdentifier, BrandedNamespace>;
 }
 
 export const SigDbMagic = 'flowr-sigdb';
@@ -115,11 +118,13 @@ export type SigParam = number | [nameIdx: number, props: number] | [nameIdx: num
 export type Sig = SigParam[];
 /**
  * One function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when
- * absent), with an optional trailing `topicIdx` (the Rd help topic, present only when it differs from the name).
- * The trailing element is additive: readers that stop at `line` ignore it, so older bundles stay readable.
+ * absent), with an optional trailing `topicIdx` (the Rd help topic, -1 when it equals the name) and, after it, an
+ * optional `reexportIdx` (the package a re-export comes from).
+ * The trailing elements are additive: readers that stop at `line` ignore them, so older bundles stay readable.
  */
 export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
-	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number]
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number, reexportIdx: number];
 
 /** the object system a class record belongs to, mirroring {@link ClassSystem} in a single on-disk byte */
 export const enum SigClassSystem { S4 = 0, RefClass = 1, S7 = 2, R6 = 3 }
@@ -197,7 +202,7 @@ export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>
 export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
 
 /** Every package the database knows, mapped from its name to its {@link SigDbPkgMeta}. */
-export type SigDbPkgMetaIndex = Record<string, SigDbPkgMeta>;
+export type SigDbPkgMetaIndex = Record<BrandedNamespace, SigDbPkgMeta>;
 
 /**
  * Temporal tier of a bundle's packages:
@@ -241,7 +246,7 @@ export interface SigDb {
 	/** unique per-package blobs */
 	blobs:     PkgBlob[];
 	/** package name to its index into {@link SigDb.blobs} */
-	pkgs:      Record<string, number>;
+	pkgs:      Record<BrandedNamespace, number>;
 	/** package name to its {@link SigDbPkgMeta} */
 	meta:      SigDbPkgMetaIndex;
 }
@@ -253,16 +258,18 @@ export interface SigParamInfo {
 	readonly default?: string;
 }
 export interface SigFunctionInfo {
-	readonly name:    string;
+	readonly name:        string;
 	/** bitfield of {@link FnProp} (must set {@link FnProp.Exported} for exported functions) */
-	readonly props:   number;
-	readonly params:  readonly SigParamInfo[];
+	readonly props:       number;
+	readonly params:      readonly SigParamInfo[];
 	/** named callees (order/duplication irrelevant; deduped + sorted internally) */
-	readonly callees: readonly string[];
-	readonly file?:   string;
-	readonly line?:   number;
+	readonly callees:     readonly string[];
+	readonly file?:       string;
+	readonly line?:       number;
 	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
-	readonly topic?:  string;
+	readonly topic?:      string;
+	/** the package this name is re-exported from: the package defines nothing of the name, it imports and exports it */
+	readonly reexportOf?: string;
 }
 /** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
 export interface SigDependencyInfo {
@@ -300,7 +307,7 @@ export interface SigClassInfo {
 	/** the record is a class union, so {@link SigClassInfo.supers} are its members (see {@link ClassProp.Union}) */
 	readonly union?:   boolean;
 	/** The package defining the class, when not the one carrying the record (see {@link ClassProp.Foreign}); absent when self-defined. */
-	readonly package?: string;
+	readonly package?: BrandedNamespace;
 }
 
 /** one declared member of a {@link SigClassInfo}: an S4 slot, an S7 property, an RC field, or an R6 entry */

@@ -1,8 +1,9 @@
 import { type LintingResult, type LintingRule, prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { SourceLocation } from '../../util/range';
-import { Unknown, type DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { SourceLocation, type Line } from '../../util/range';
+import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { ConsoleStreams, Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
@@ -22,7 +23,7 @@ export interface OverwrittenFileResult extends LintingResult {
 	/** the file written again */
 	readonly file:      string
 	/** the line of the earlier write the later one replaces */
-	readonly firstLine: number | undefined
+	readonly firstLine: Line | undefined
 }
 
 export interface OverwrittenFileConfig extends MergeableRecord {
@@ -34,9 +35,6 @@ export interface OverwrittenFileMetadata extends MergeableRecord {
 	/** the number of distinct files written to */
 	readonly totalFiles: number
 }
-
-/** what goes to the console is printed, not written over */
-const ConsoleStreams: ReadonlySet<string> = new Set(['stdout', 'stderr']);
 
 /** `append = TRUE`, or a connection opened in an append mode like `file(p, "a")` */
 function appends(id: NodeId, idMap: AstIdMap, opens: (id: NodeId) => boolean): boolean {

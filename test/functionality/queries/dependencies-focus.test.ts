@@ -5,11 +5,11 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { uniqueArray } from '../../../src/util/collections/arrays';
-import { SourceRange } from '../../../src/util/range';
+import { SourceRange, type Line } from '../../../src/util/range';
 
 describe('Dependencies query focus', withTreeSitter(parser => {
 	/** the lines of `code` that take part in the dependencies at `focus` */
-	async function focusedLines(code: string, focus: readonly SlicingCriterion[]): Promise<number[] | undefined> {
+	async function focusedLines(code: string, focus: readonly SlicingCriterion[]): Promise<Line[] | undefined> {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(requestFromInput(code));
 		const { dependencies } = await analyzer.query([{ type: 'dependencies', focus }]);

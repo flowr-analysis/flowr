@@ -143,7 +143,8 @@ export function unliftRValue(value: Value): RValue | 'fn-def' | (RValue | 'fn-de
 		case 'set': {
 			return isValue(value.elements) && value.elements.length === 1 ? unliftRValue(value.elements[0]) : undefined;
 		}
-		case 'missing': {
+		case 'missing':
+		case 'list': {
 			return undefined;
 		}
 		case 'function-definition':

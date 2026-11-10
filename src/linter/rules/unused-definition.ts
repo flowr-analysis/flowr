@@ -19,7 +19,7 @@ import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { RS3Generics } from '../../data/r-s3-generics.generated';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
@@ -28,7 +28,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { CallProp, ImpureProps } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics, s3GroupGenericMembers } from '../../dataflow/environments/group-generics';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { DataflowInformation } from '../../dataflow/info';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -39,7 +39,7 @@ import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { isTop } from '../../dataflow/eval/values/r-value';
 
 export interface UnusedDefinitionResult extends LintingResult {
-	variableName?: string
+	variableName?: BrandedIdentifier
 }
 
 export interface UnusedDefinitionConfig extends MergeableRecord {
@@ -66,13 +66,13 @@ const DotsParameter = '...';
  * (`print(x)` on an object of that class), so it is used without a textual call. Kept per configuration,
  * as a process-wide memo would let the first analyzer's built-ins answer for every later one.
  */
-function knownS3Generics(index: BuiltInIndex): ReadonlySet<string> {
+function knownS3Generics(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
 	return new Set([...Object.keys(RS3Generics.genericFormals), ...Object.keys(RGroupGenerics),
 		...index.with(CallProp.Generic).map(g => Identifier.getName(g))]);
 }
 
 /** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
-function isDispatched(generic: string, called: ReadonlySet<string>): boolean {
+function isDispatched(generic: BrandedIdentifier, called: ReadonlySet<BrandedIdentifier>): boolean {
 	const group = s3GroupGenericMembers(generic);
 	return called.has(generic) || (group?.some(member => called.has(member)) ?? false);
 }
@@ -87,9 +87,9 @@ const PackageHookFunctions = new Set<string>([
 
 interface PackageInfo {
 	/** all names the project exports via its `NAMESPACE` (functions, symbols, patterns, S3 methods as `generic.class`) */
-	readonly exported:   ReadonlySet<string>
+	readonly exported:   ReadonlySet<BrandedIdentifier>
 	/** S3 generics the project's `NAMESPACE` declares methods for (via `S3method(generic, class)`) */
-	readonly s3Generics: ReadonlySet<string>
+	readonly s3Generics: ReadonlySet<BrandedIdentifier>
 }
 
 /** Gathers the analyzed project's own `NAMESPACE` exports and declared S3 generics (empty when it is not a package). */
@@ -102,12 +102,12 @@ function collectPackageInfo(data: ReadonlyFlowrAnalysisProvider): PackageInfo {
 }
 
 /** Collects the names of every function call in the graph, so we can tell whether an S3 generic is dispatched anywhere. */
-export function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
+export function collectCalledNames(dfg: DataflowGraph): ReadonlySet<BrandedIdentifier> {
 	return new Set(dfg.verticesOfType(VertexType.FunctionCall).map(([, vertex]) => Identifier.getName(vertex.name)));
 }
 
 /** S3 (`UseMethod`) and S4/S7 (`standardGeneric`) generic dispatchers, invoked indirectly by R's dispatch. */
-const GenericDispatchers = new Set<string>(['UseMethod', 'standardGeneric']);
+const GenericDispatchers = new Set<BrandedIdentifier>(['UseMethod', 'standardGeneric']);
 
 /** Whether a function body is a single call to a generic dispatcher. */
 function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
@@ -123,7 +123,7 @@ function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
 }
 
 /** Whether `name` reads as `generic.class` for a generic that is known, declared, or called, so R dispatches to it by that name. */
-export function isS3MethodName(name: string, ctx: ReadOnlyFlowrAnalyzerContext, called: ReadonlySet<string>, declared: ReadonlySet<string> = new Set()): boolean {
+export function isS3MethodName(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext, called: ReadonlySet<BrandedIdentifier>, declared: ReadonlySet<BrandedIdentifier> = new Set()): boolean {
 	/* every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`) */
 	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
 		const generic = name.slice(0, dot);
@@ -139,7 +139,7 @@ export function isS3MethodName(name: string, ctx: ReadOnlyFlowrAnalyzerContext, 
  * an S3 method for a dispatched generic, or - when {@link UnusedDefinitionConfig#excludeExportedDefinitions} is set -
  * a package export.
  */
-function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<string>, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+function isConsideredUsed(lexeme: BrandedIdentifier | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<BrandedIdentifier>, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	if(lexeme === undefined) {
 		return false;
 	}
@@ -171,7 +171,7 @@ function hasContractedSignature(
 	ast: NormalizedAst,
 	config: UnusedDefinitionConfig,
 	pkg: PackageInfo,
-	called: ReadonlySet<string>,
+	called: ReadonlySet<BrandedIdentifier>,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): boolean {
 	let inParameter = false;
@@ -198,19 +198,19 @@ function hasContractedSignature(
  * `binds` is the assignment being removed, whose own {@link CallProp.Scope} is the binding this is all about and
  * so says nothing; the same property on a call within it, as `assign` states, is an effect of its own.
  */
-function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
-	const vertex = df.graph.getVertex(id);
+function doesMoreThanCompute(id: NodeId, graph: DataflowGraph, environment: REnvironmentInformation | undefined, binds: NodeId | undefined): boolean {
+	const vertex = graph.getVertex(id);
 	if(!DfgVertex.isFunctionCall(vertex)) {
 		return false;
 	}
 	/* two properties do not count: the `Scope` effect of the assignment being removed, which is the binding itself, and
 	   the `MayPure` of `do.call(f, args)` with a known `f`, as `f` is checked on its own as part of the value */
-	const ignored = (id === binds ? CallProp.Scope : 0) | (runsOnlyKnownFunctions(vertex, df) ? CallProp.MayPure : 0);
-	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), { props: ImpureProps.props & ~ignored, tags: ImpureProps.tags });
+	const ignored = (id === binds ? CallProp.Scope : 0) | (runsOnlyKnownFunctions(vertex, graph, environment) ? CallProp.MayPure : 0);
+	return FunctionSemantics.call.props.hasAny(callFnProps(id, graph, environment), { props: ImpureProps.props & ~ignored, tags: ImpureProps.tags });
 }
 
 /** whether the functions handed to a call like `do.call(f, args)` are all known, see {@link Dataflow.callsOnlyKnownFunctions} */
-function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): boolean {
+function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph, environment: REnvironmentInformation | undefined): boolean {
 	const handed = vertex.args.map(FunctionArgument.getReference)
 		.filter(r => r !== undefined && RSymbol.is(graph.idMap?.get(r)) && DfgVertex.isFunctionCall(graph.getVertex(r))) as NodeId[];
 	return handed.length > 0 && handed.every(h => Dataflow.callsOnlyKnownFunctions(h, graph, environment));
@@ -254,18 +254,16 @@ function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAs
 }
 
 /** Whether the definition's value has obligations, like side effects, so the definition cannot be removed. */
-function hasImportantArgs(definedBys: readonly NodeId[], df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
-	const dfg = df.graph;
+function hasImportantArgs(definedBys: readonly NodeId[], dfg: DataflowGraph, environment: REnvironmentInformation | undefined, binds: NodeId | undefined): boolean {
 	/* removing `u <- (runif(1))` removes the `runif` call too, which changes the random seed; calls in a function body defined there do not run */
 	const values = definedBys.filter(d => d !== binds).map(d => dfg.idMap?.get(d)).filter(isNotUndefined);
 	const runs = RNode.collectAllIdsWithStop(values, RFunctionDefinition.is).union(new Set(definedBys));
-	return runs.values().some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, binds)
+	return runs.values().some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, dfg, environment, binds)
 		|| dfg.edgesTo(d).values().some(edge => DfEdge.includesType(edge, InterestingEdgesTargets))
 		|| dfg.edgesFrom(d).entries().some(([target, edge]) => DfEdge.includesType(edge, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target)));
 }
 
-function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFix[] | undefined {
-	const dfg = df.graph;
+function quickFixForUnused(variable: RNode<ParentInformation>, dfg: DataflowGraph, environment: REnvironmentInformation | undefined, ast: NormalizedAst): LintQuickFix[] | undefined {
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
 	if(variable.info.role === RoleInParent.Accessed || variable.info.role === RoleInParent.ForVariable) {
@@ -274,7 +272,7 @@ function quickFixForUnused(variable: RNode<ParentInformation>, df: Pick<Dataflow
 	}
 	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
 	const assignment = getAssignmentPeer(variable, ast, dfg);
-	if(hasImportantArgs(definedBys, df, assignment?.statement.info.id ?? variable.info.parent)) {
+	if(hasImportantArgs(definedBys, dfg, environment, assignment?.statement.info.id ?? variable.info.parent)) {
 		return undefined;
 	}
 	const totalRangeToRemove = SourceLocation.merge([
@@ -391,7 +389,7 @@ export const UNUSED_DEFINITION = {
 					variableName: NodeId.recoverBareName(node.info.id, normalize.idMap),
 					involvedId:   node.info.id,
 					loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-					quickFix:     quickFixForUnused(node, dataflow, normalize)
+					quickFix:     quickFixForUnused(node, dataflow.graph, dataflow.environment, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			})),
 			'.meta': metadata

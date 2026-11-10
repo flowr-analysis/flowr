@@ -1,3 +1,4 @@
+import { Identifier, ReferenceType  } from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -7,8 +8,7 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../../../graph/df-helper';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { convertFnArguments } from '../common';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -21,29 +21,16 @@ import { FunctionArgument } from '../../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../../util/assert';
+import { ClosureRefs } from '../../../../linker';
 
 interface BuiltInPurrrFormulaConfiguration {
-	/**
-	 * Maps the created variable/variable to bind in the formula, to the argument that produces it.
-	 * For example:
-	 * ```ts
-	 * {
-	 * '.x': { index: 0, name: '.x' },
-	 * '.y': { index: 1, name: '.y' }
-	 * }
-	 * ```
-	 */
-	args:       Record<string, { index: number, name: string }>,
-	/**
-	 * This represents the special argument that represents the formula.
-	 * We map all additional arguments that are not in `ignore` to this list.
-	 */
-	'.f':       { index: number; name: string };
+	/** Maps the created variable/variable to bind in the formula, to the argument that produces it. */
+	args:       Record<BrandedIdentifier, { index: number, name: BrandedIdentifier }>,
+	/** This represents the special argument that represents the formula. We map all additional arguments that are not in `ignore` to this list. */
+	'.f':       { index: number; name: BrandedIdentifier };
 	/** arguments to additionally ignore when mapping the formulae */
-	ignore?:    string[];
-	/**
-	 * if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return
-	 */
+	ignore?:    BrandedIdentifier[];
+	/** if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return */
 	returnArg?: string;
 }
 
@@ -84,9 +71,7 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 	}
 }
 
-/**
- * Support for R's purr formula: `map(df, ~ .x + 1)`.
- */
+/** Support for R's purr formula: `map(df, ~ .x + 1)`. */
 export function processPurrrFormula<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -96,7 +81,7 @@ export function processPurrrFormula<OtherInfo>(
 ): DataflowInformation {
 	const { information, callArgs } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.PurrrFormula });
 
-	const params: Record<string, string> = {};
+	const params: Record<BrandedIdentifier, BrandedIdentifier> = {};
 	for(const key of Object.keys(config.args)) {
 		params[config.args[key].name] = config.args[key].name;
 	}
@@ -131,6 +116,11 @@ export function processPurrrFormula<OtherInfo>(
 	if(RFunctionDefinition.is(formulaNode)) {
 		const fdef = formulaNode as RFunctionDefinition<ParentInformation & OtherInfo>;
 		information.graph.addEdge(rootId, fdef.info.id, EdgeType.Calls);
+		/* the call runs the definition here, so what its body reads is resolved here */
+		const called = information.graph.getVertex(fdef.info.id);
+		if(DfgVertex.isFunctionDefinition(called)) {
+			ClosureRefs.resolveOpenIngoing(information.graph, rootId, called, data.environment);
+		}
 		try {
 			argToParamMap = FunctionSemantics.call.match.onCallAndLink(filteredCallArgs, fdef.parameters, information.graph);
 		} catch(e) {
@@ -183,15 +173,15 @@ export function processPurrrFormula<OtherInfo>(
 		}
 	}
 
-	const ignore = new Set(config.ignore ?? []);
+	const ignore = new Set<BrandedIdentifier>(config.ignore ?? []);
 	RNode.visitAst<ParentInformation & OtherInfo>(formulaNode, (node) => {
 		if(RSymbol.is(node)) {
 			const sym = node;
-			const name = sym.content as unknown as string;
+			const name = Identifier.getName(sym.content);
 			if(ignore.has(name)) {
 				return false;
 			}
-			const mappingKey = config.args[name]?.name;
+			const mappingKey = Object.hasOwn(config.args, name) ? config.args[name].name : undefined;
 			if(mappingKey) {
 				const pid = (argMaps.get(mappingKey) ?? [])[0];
 				if(!pid) {

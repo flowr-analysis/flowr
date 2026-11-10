@@ -6,7 +6,7 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../../dataflow/environments/identifier';
 import { namesWith } from '../../linter-util';
 import { ArgProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { FileRole } from '../../../project/context/flowr-file';
@@ -77,13 +77,13 @@ export interface PackageRuntimeConfig extends MergeableRecord {
 export type PackageRuntimeMetadata = MergeableRecord;
 
 /** calls binding names in ways a scan of the assignments does not see, so an export may be defined after all */
-const DynamicDefiners: ReadonlySet<string> = new Set(['assign', 'delayedAssign', 'makeActiveBinding', 'eval', 'evalq', 'sys.source', 'list2env', 'source']);
+const DynamicDefiners: ReadonlySet<BrandedIdentifier> = new Set(['assign', 'delayedAssign', 'makeActiveBinding', 'eval', 'evalq', 'sys.source', 'list2env', 'source']);
 
 /** calls whose definitions put names into the namespace no scan of the code sees, such as the `.__C__` metadata of a class */
-const MetadataDefiners: ReadonlySet<string> = new Set(['setClass', 'setClassUnion', 'setRefClass', 'setGeneric', 'setMethod', 'setValidity', 'setOldClass']);
+const MetadataDefiners: ReadonlySet<BrandedIdentifier> = new Set(['setClass', 'setClassUnion', 'setRefClass', 'setGeneric', 'setMethod', 'setValidity', 'setOldClass']);
 
 interface Definitions {
-	readonly names:    ReadonlySet<string>
+	readonly names:    ReadonlySet<BrandedIdentifier>
 	/** whether the code may define names that no assignment states */
 	readonly dynamic:  boolean
 	/**
@@ -96,11 +96,11 @@ interface Definitions {
 }
 
 /** the names the top level of the package code binds, including the generics `setGeneric` creates */
-function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly string[], declaring: ReadonlySet<string>): Definitions {
-	const names = new Set<string>(data);
+function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly BrandedIdentifier[], declaring: ReadonlySet<BrandedIdentifier>): Definitions {
+	const names = new Set<BrandedIdentifier>(data);
 	let dynamic = false;
 	let metadata = false;
-	const topLevelCalls: string[] = [];
+	const topLevelCalls: BrandedIdentifier[] = [];
 	const idMap = ast.idMap;
 	for(const node of projectNodes(ast)) {
 		if(!pkg.isPackageCode(node.info.file)) {
@@ -145,7 +145,7 @@ const NamespaceInternals = ['.packageName', '.__NAMESPACE__.', '.__S3MethodsTabl
 
 /** whether a namespace exports anything: an export, a registered S3 method, or a pattern that `matches` a name */
 function exportsAnything(ns: NamespaceInfo, matches: (pattern: string) => boolean): boolean {
-	return ns.exportedSymbols.length + ns.exportedFunctions.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length + ns.exportS3Generics.size > 0
+	return ns.exportedSymbols.length + ns.exportedS4Methods.length + ns.exportedS4Classes.length + ns.exportS3Generics.size > 0
 		|| ns.exportedPatterns.some(matches)
 		|| [...ns.conditional?.values() ?? []].some(c => exportsAnything(c, matches));
 }
@@ -155,7 +155,7 @@ function exportsAnything(ns: NamespaceInfo, matches: (pattern: string) => boolea
  * which is fine only for a package that `shipsData`, as its data sets are what it offers.
  * A pattern is only judged where the definitions are known (none `hidden` in binary files) and it reads the same in R and JavaScript.
  */
-function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRuntimeConfig, hidden: boolean, shipsData: boolean, at: (name: string) => SourceLocation, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRuntimeConfig, { hidden, shipsData }: { readonly hidden: boolean, readonly shipsData: boolean }, at: (name: BrandedIdentifier) => SourceLocation, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const certainty = defs.dynamic ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain;
 	const judged = !hidden && !defs.opaque && !defs.metadata;
 	const names = [...defs.names, ...NamespaceInternals];
@@ -185,7 +185,7 @@ function lineMatching(text: string | undefined, pattern: RegExp): number | undef
 }
 
 /** the line of the first NAMESPACE directive mentioning `name` */
-function lineOf(text: string | undefined, name: string): number | undefined {
+function lineOf(text: string | undefined, name: BrandedIdentifier | BrandedNamespace): number | undefined {
 	return lineMatching(text, new RegExp(`(^|[(,\\s"'\`])${escapeRegex(name)}([)\\s,"'\`]|$)`));
 }
 
@@ -223,7 +223,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	const text = nsFile.rawText?.();
 	const relative = path.relative(files.root, nsFile.path()).split(path.sep).join('/');
 	/* the objects of `R/sysdata.rda` live in the namespace as well, under names only the binary file knows */
-	exportChecks(ns, defs, config, files.entries.some(e => e.relative === 'R/sysdata.rda'), shipsData, pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
+	exportChecks(ns, defs, config, { hidden: files.entries.some(e => e.relative === 'R/sysdata.rda'), shipsData }, pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
 	if(defs.opaque) {
 		return;
 	}
@@ -231,7 +231,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	/* a package may export what it imports (`importFrom(magrittr, "%>%")` and `export("%>%")`) */
 	const imported = new Set([...ns.importedPackages.values()].flatMap(v => v === 'all' ? [] : v));
 	const importsWhole = [...ns.importedPackages.values()].includes('all');
-	for(const name of config.checkExports ? [...ns.exportedSymbols, ...ns.exportedFunctions] : []) {
+	for(const name of config.checkExports ? ns.exportedSymbols : []) {
 		if(!defs.names.has(name) && !imported.has(name) && !importsWhole) {
 			add({ certainty, loc: files.locate(relative, lineOf(text, name)), kind: 'undefined-export', message: `undefined export: '${name}', installing the package fails` });
 		}
@@ -270,7 +270,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	}
 }
 
-function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, writers: ReadonlyMap<string, ReadonlySet<string>>, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, writers: ReadonlyMap<BrandedIdentifier, ReadonlySet<BrandedIdentifier>>, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const entries = files.entries.filter(e => !e.isDirectory).map(e => e.relative);
 	const testFiles = entries.filter(f => /^tests\/[^/]+\.[rR]$/.test(f));
 	const testthatFiles = entries.filter(f => /^tests\/testthat\/test[^/]*\.[rR]$/.test(f));
@@ -374,7 +374,7 @@ export const PACKAGE_RUNTIME = {
 			add({ certainty: LintingResultCertainty.Certain, loc: files.locate(installed), kind: 'not-source-package', message: `${installed} belongs to an installed package, R CMD check needs the package sources` });
 		}
 		const index = ctx.env.builtInIndex;
-		const writers = new Map<string, Set<string>>(namesWith(index, SemanticCallTag.Writes).values().map(n => [n, new Set<string>()]));
+		const writers = new Map<BrandedIdentifier, Set<BrandedIdentifier>>(namesWith(index, SemanticCallTag.Writes).values().map(n => [n, new Set<BrandedIdentifier>()]));
 		for(const p of index.params(ArgProp.Resource)) {
 			writers.get(Identifier.getName(p.call))?.add(p.name);
 		}

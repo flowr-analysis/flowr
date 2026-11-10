@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
@@ -12,19 +12,14 @@ Using the example code `x <- 1
 print(x)` (with the `print(x)` in the second line), the following query returns the origins of `x` in the code:
 
 ```json
-[
-  {
-    "type": "origin",
-    "criterion": "2@x"
-  }
-]
+[ { "type": "origin",   "criterion": "2@x" } ]
 ```
 
 (This can be shortened to `@origin (2@x) "x <- 1\nprint(x)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **origin** (4 ms)\
+Query: **origin** (13 ms)\
 &nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ {"type":0,"id":0}
 
@@ -46,53 +41,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 x <- 1
 print(x)
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
-
-```mermaid
-flowchart LR
-    1{{"`*#91;RNumber#93;* **1**
-      *1.6* (**id: 1**)`"}}
-    0["`*#91;RSymbol#93;* **x**
-      *1.1* (**id: 0**, v: 1)`"]
-    2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-6* (**id: 2**)
-    arg: (0, 1)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    4(["`*#91;RSymbol#93;* **x**
-      *2.7* (**id: 4**)`"])
-    6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
-      *2.1-8* (**id: 6**)
-    arg: (4)`"]]
-    built-in:print["`Built-In:
-print`"]
-    style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    1 -.->|"flow"| 0
-    linkStyle 0 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 2
-    0 -->|"defined-by"| 1
-    2 -->|"reads, arg"| 1
-    2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 5 stroke:gray;
-    2 -.->|"flow"| 4
-    linkStyle 6 stroke:gray,color:gray;
-    4 -->|"reads"| 0
-    4 -.->|"flow"| 6
-    linkStyle 8 stroke:gray,color:gray;
-    6 -->|"reads, returns, arg"| 4
-    6 -.->|"reads, calls"| built-in:print
-    linkStyle 10 stroke:gray;
-```
-
-</details>
 
 </details>
 	

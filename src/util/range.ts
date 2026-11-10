@@ -3,6 +3,11 @@ import type { Accessor } from './accessor';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
+/** A 1-based line in a source file. */
+export type Line = number & { __brand?: 'line' };
+/** A 1-based column in a source line. */
+export type Column = number & { __brand?: 'column' };
+
 /**
  * A source position in a file.
  *
@@ -12,12 +17,12 @@ import type { RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/
  * {@link SourceRange.getEnd} hand one out and {@link SourceRange.formatPosition} prints it.
  * @see {@link SourceRange|source ranges} for describing ranges of source positions.
  */
-export type SourcePosition = [
+export type SourcePosition = [/** starts with 1 */
+	line:   Line,
 	/** starts with 1 */
-	line:   number,
-	/** starts with 1 */
-	column: number
+	column: Column
 ];
+
 
 /**
  * **Please note** that for multi-file projects we also have a {@link SourceLocation|source location} type that includes the file name.
@@ -28,13 +33,13 @@ export type SourcePosition = [
  * @see {@link SourceRange.format} and related utility functions for working with source ranges.
  * @see {@link SourceRange.view} if you prefer property access (`range.startLine`) over these functions.
  */
-export type SourceRange = [
+export type SourceRange = readonly [
 	/** inclusive start position */
-	startLine:   number,
-	startColumn: number,
+	startLine: Line,
+	startColumn: Column,
 	/** inclusive end position */
-	endLine:     number,
-	endColumn:   number
+	endLine: Line,
+	endColumn: Column
 ];
 
 /**
@@ -42,7 +47,7 @@ export type SourceRange = [
  * @see {@link SourceLocation.format} and related utility functions for working with source locations.
  * @see {@link SourceLocation.view} if you prefer property access (`loc.startLine`, `loc.file`) over these functions.
  */
-export type SourceLocation = [...r: SourceRange, f?: string];
+export type SourceLocation = readonly [...r: SourceRange, f?: string];
 
 /**
  * Anything that denotes a place in the source: a plain tuple ({@link SourceRange} or {@link SourceLocation})
@@ -91,11 +96,11 @@ export const SourceRange = {
 	/**
 	 * Returns the start line of a source range, or `undefined` if there is no range.
 	 */
-	getStartLine:   ((range?: SourceLocation) => range?.[0]) as Accessor<SourceLocation, number>,
+	getStartLine:   ((range?: SourceLocation) => range?.[0]) as Accessor<SourceLocation, Line>,
 	/**
 	 * Returns the start column of a source range, or `undefined` if there is no range.
 	 */
-	getStartColumn: ((range?: SourceLocation) => range?.[1]) as Accessor<SourceLocation, number>,
+	getStartColumn: ((range?: SourceLocation) => range?.[1]) as Accessor<SourceLocation, Column>,
 	/**
 	 * Returns the end position of a source range, or `undefined` if there is no range.
 	 */
@@ -103,11 +108,11 @@ export const SourceRange = {
 	/**
 	 * Returns the end line of a source range, or `undefined` if there is no range.
 	 */
-	getEndLine:     ((range?: SourceLocation) => range?.[2]) as Accessor<SourceLocation, number>,
+	getEndLine:     ((range?: SourceLocation) => range?.[2]) as Accessor<SourceLocation, Line>,
 	/**
 	 * Returns the end column of a source range, or `undefined` if there is no range.
 	 */
-	getEndColumn:   ((range?: SourceLocation) => range?.[3]) as Accessor<SourceLocation, number>,
+	getEndColumn:   ((range?: SourceLocation) => range?.[3]) as Accessor<SourceLocation, Column>,
 	/**
 	 * Creates a source range from the given line and column numbers.
 	 * @param sl - start line
@@ -115,7 +120,7 @@ export const SourceRange = {
 	 * @param el - end line
 	 * @param ec - end column
 	 */
-	from(this: void, sl: number | string, sc: number | string, el: number | string = sl, ec: number | string = sc): SourceRange {
+	from(this: void, sl: Line | string, sc: Column | string, el: Line | string = sl, ec: Column | string = sc): SourceRange {
 		return [Number(sl), Number(sc), Number(el), Number(ec)];
 	},
 	/**
@@ -150,10 +155,11 @@ export const SourceRange = {
 	merge(this: void, rs: readonly (SourceLocation | undefined)[]): SourceRange {
 		const rsSafe: SourceLocation[] = rs.filter(isNotUndefined);
 		guard(rsSafe.length > 0, 'Cannot merge no ranges');
-		return rsSafe.reduce<SourceRange>(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => [
-			...(sl < nsl || (sl === nsl && sc < nsc) ? [sl, sc] : [nsl, nsc]),
-			...(el > nel || (el === nel && ec > nec) ? [el, ec] : [nel, nec])
-		] as SourceRange, [rsSafe[0][0], rsSafe[0][1], rsSafe[0][2], rsSafe[0][3]]);
+		return rsSafe.reduce<SourceRange>(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => {
+			const keepStart = sl < nsl || (sl === nsl && sc < nsc);
+			const keepEnd = el > nel || (el === nel && ec > nec);
+			return [keepStart ? sl : nsl, keepStart ? sc : nsc, keepEnd ? el : nel, keepEnd ? ec : nec];
+		}, [rsSafe[0][0], rsSafe[0][1], rsSafe[0][2], rsSafe[0][3]]);
 	},
 	/**
 	 * @returns true iff `r1` starts and ends before `r2` starts (i.e., if `r1` and `r2` do not overlap and `r1` comes before `r2`
@@ -192,7 +198,7 @@ export const SourceRange = {
 	 * Checks if a given position (line, column) is contained within the range.
 	 * Omitting the column checks whether the line is covered at all.
 	 */
-	containsPosition(this: void, [sl, sc, el, ec]: SourceLocation, line: number, column?: number): boolean {
+	containsPosition(this: void, [sl, sc, el, ec]: SourceLocation, line: Line, column?: Column): boolean {
 		if(line < sl || line > el) {
 			return false;
 		} else if(column === undefined) {
@@ -250,7 +256,7 @@ export const SourceRange = {
 	 * "Fuzzy" position match, as opposed to requiring a node to *start* exactly at the position.
 	 * @see {@link SourceRange.innermostNodes} to narrow the result down to the deepest matches
 	 */
-	nodesContaining<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], line: number, column?: number): RNodeWithParent<OtherInfo>[] {
+	nodesContaining<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], line: Line, column?: Column): RNodeWithParent<OtherInfo>[] {
 		return nodes.filter(node => {
 			const range = SourceRange.fromNode(node);
 			if(range === undefined) {
@@ -356,11 +362,15 @@ export const SourceLocation = {
 	getEndColumn:   SourceRange.getEndColumn,
 	/** @see {@link SourceRange.isValid} */
 	isValid:        SourceRange.isValid,
+	/** Whether `x` is a location rather than, for example, the node it is the location of. */
+	is(this: void, x: unknown): x is SourceLocation {
+		return Array.isArray(x);
+	},
 	/**
 	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
 	 */
 	from(this: void, range: SourceRange, file?: string): SourceLocation {
-		return file !== undefined ? [...range, file] : range;
+		return file !== undefined ? [...range, file] : [...range];
 	},
 	/**
 	 * The {@link SourceLocation|source location} of an AST node, file included.
@@ -473,22 +483,22 @@ export class SourceLocationView {
 	}
 
 	/** inclusive line the location starts on (starts with 1) */
-	get startLine(): number {
+	get startLine(): Line {
 		return this.raw[0];
 	}
 
 	/** inclusive column the location starts at (starts with 1) */
-	get startColumn(): number {
+	get startColumn(): Column {
 		return this.raw[1];
 	}
 
 	/** inclusive line the location ends on */
-	get endLine(): number {
+	get endLine(): Line {
 		return this.raw[2];
 	}
 
 	/** inclusive column the location ends at */
-	get endColumn(): number {
+	get endColumn(): Column {
 		return this.raw[3];
 	}
 
@@ -528,7 +538,7 @@ export class SourceLocationView {
 	}
 
 	/** Whether the given position lies within this location; omitting the column checks the line alone. */
-	contains(line: number, column?: number): boolean {
+	contains(line: Line, column?: Column): boolean {
 		return SourceRange.containsPosition(this.raw, line, column);
 	}
 

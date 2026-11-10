@@ -91,9 +91,19 @@ describe('R mutations', { concurrent: false }, withShell(shell => {
 		});
 	});
 
+	describe('nested call rewritten as a pipe', () => {
+		test('a namespaced call keeps its namespace', async() => {
+			const mutant = await mutate(shell, { code: 'r <- as.numeric(stats::filter(1:3, c(1, 1)))\nprint(r)', criterion: '2@r', expected: '[1]  3  5 NA' }, passOf('nested call rewritten as a pipe'));
+			assert.strictEqual(mutant?.code, 'r <- 1:3 |> stats::filter(c(1, 1)) |> as.numeric()\nprint(r)');
+		});
+	});
+
 	describe('split string literal', () => {
 		test('the package of a library call is taken as written, named or not', async() => {
 			assert.isUndefined(await mutate(shell, { code: 'library(package = "stats")\nr <- 1\nprint(r)', criterion: '3@r', expected: '[1] 1' }, passOf('split string literal')));
+		});
+		test('the package detach takes off the search path is taken as written as well', async() => {
+			assert.isUndefined(await mutate(shell, { code: 'library(stats4)\ndetach("package:stats4")\nr <- 1\nprint(r)', criterion: '4@r', expected: '[1] 1' }, passOf('split string literal')));
 		});
 		test('any other literal is split', async() => {
 			const mutant = await mutate(shell, { code: 'nm <- "vvv"\nprint(nm)', criterion: '2@nm', expected: '[1] "vvv"' }, passOf('split string literal'));

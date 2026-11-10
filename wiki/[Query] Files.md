@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Files Query">Files Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the files matching the given criteria.\
@@ -35,19 +35,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 ```r
 
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered no unknown side effects during the analysis.
-
-```mermaid
-flowchart LR
-```
-
-</details>
 
 </details>
 	

@@ -98,6 +98,10 @@ export enum BuiltInProcName {
 	Try = 'builtin:try',
 	/** for `attach` calls that inject environment contents into the search path, see {@link processAttach} */
 	Attach = 'builtin:attach',
+	/** for `detach` and `unloadNamespace`, see {@link processDetach} */
+	Detach = 'builtin:detach',
+	/** for `conflicted::conflict_prefer` and `conflicts_prefer`, see {@link processPrefer} */
+	Prefer = 'builtin:prefer',
 	EnvContents = 'builtin:env-contents',
 	ListToEnv = 'builtin:list2env',
 	/** for `new.env` and related environment-creation calls, see {@link processNewEnv} */
@@ -116,4 +120,15 @@ export enum BuiltInProcName {
 	WhileLoop = 'builtin:wl',
 	/** for `with` calls that evaluate an expression inside a named environment, see {@link processWithEnv} */
 	With = 'builtin:with',
+}
+const ProcNamePrefix = 'builtin:';
+
+/** Whether an origin of a call is the name of a built-in processor, rather than, for example, `'function'`. */
+export function isBuiltInProcName(this: void, origin: string): origin is BuiltInProcName {
+	return origin.startsWith(ProcNamePrefix);
+}
+
+/** The processor name without what marks it as one, as the id of the processor's built-in is made from it. */
+export function bareProcName(this: void, proc: BuiltInProcName): string {
+	return proc.slice(ProcNamePrefix.length);
 }

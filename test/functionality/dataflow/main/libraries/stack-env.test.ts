@@ -87,12 +87,12 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 
 	assertDataflow(label('as.environment("package:pkgA")$fa resolves to the package export', ['search-path', 'dynamic-environment-resolution']), ts,
 		'library(pkgA)\nas.environment("package:pkgA")$fa',
-		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
+		emptyGraph().autoPrints([10], true).recordAmbientAccess(3, { reads: ['#lib-paths'], writes: ['#search-path:pkgA', '#search-path'] }).addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
 	assertDataflow(label('parent.env(globalenv())$fa reaches the attached package export', ['search-path', 'dynamic-environment-resolution']), ts,
 		'library(pkgA)\nparent.env(globalenv())$fa',
-		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
+		emptyGraph().autoPrints([11], true).recordAmbientAccess(3, { reads: ['#lib-paths'], writes: ['#search-path:pkgA', '#search-path'] }).addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
 	assertDataflow(label('list2env(envir = globalenv()) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,

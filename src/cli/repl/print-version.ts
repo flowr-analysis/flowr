@@ -1,6 +1,6 @@
-import type { KnownParser } from '../../r-bridge/parser';
+import { type KnownParser, ParserName } from '../../r-bridge/parser';
 import { retrieveVersionInformation } from '../../util/version';
-import { defaultSigDbPath, readManifestDate, type SigDbScope } from '../../project/sigdb/manifest';
+import { defaultSigDbPath, readManifestDate } from '../../project/sigdb/manifest';
 import { formatter, italic } from '../../util/text/ansi';
 import { pathToFileURL } from 'url';
 
@@ -10,7 +10,7 @@ import { pathToFileURL } from 'url';
 export async function versionReplString(parser: KnownParser): Promise<string> {
 	const version = await retrieveVersionInformation(parser);
 	const rVersion = version.r === 'none' ? '' : version.r === 'unknown' ? ', R version unknown' : `, R v${version.r}`;
-	const treeSitterVer = parser.name === 'tree-sitter' ? `, R grammar v${parser.treeSitterVersion()}` : '';
+	const treeSitterVer = parser.name === ParserName.TreeSitter ? `, R grammar v${parser.treeSitterVersion()}` : '';
 	return `flowR repl v${version.flowr}${rVersion}${treeSitterVer} (${version.engine} engine)`;
 }
 
@@ -34,7 +34,7 @@ function sigDbSummaryString(): string {
 	};
 	add('current', defaultSigDbPath('current'));
 	add('base', defaultSigDbPath('base'));
-	add('full-history', defaultSigDbPath('full') ?? defaultSigDbPath('history' as SigDbScope));
+	add('full-history', defaultSigDbPath('full') ?? defaultSigDbPath('history'));
 	if(entries.length === 0) {
 		return it('no sigdb');
 	}

@@ -82,6 +82,11 @@ describe('Range', () => {
 		assertOverlap('lines apart', SourceRange.from(1, 5, 1, 9), SourceRange.from(3, 1, 3, 2), false);
 	});
 	describe('SourceLocation', () => {
+		test('a location never is the range it is made of', () => {
+			const range = SourceRange.from(1, 1, 2, 4);
+			assert.notStrictEqual(SourceLocation.from(range), range);
+			assert.deepStrictEqual(SourceLocation.from(range), range);
+		});
 		const located = SourceLocation.from(SourceRange.from(1, 1, 2, 4), 'a.R');
 		test('the range of a location carries no file', () => {
 			assert.deepStrictEqual(SourceLocation.getRange(located), SourceRange.from(1, 1, 2, 4));

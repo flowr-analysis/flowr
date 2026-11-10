@@ -129,6 +129,19 @@ f <- function(x) {
 if(TRUE) 1 else 2
 `
 	},
+	'code-clones': {
+		configType: 'CodeClonesConfig', ruleType:   'CODE_CLONES', testfile:   'lint-code-clones',
+		example:    `
+normalize <- function(v) {
+	m <- mean(v)
+	(v - m) / sd(v)
+}
+scale_it <- function(values) {
+	mu <- mean(values)
+	(values - mu) / sd(values)
+}
+`
+	},
 	'useless-loop': {
 		configType: 'UselessLoopConfig', ruleType:   'USELESS_LOOP', testfile:   'lint-useless-loop',
 		example:    'for(i in c(1)) { print(i) }'
@@ -265,6 +278,35 @@ function(x) {
 		configType: 'PackageRuntimeConfig', ruleType:   'PACKAGE_RUNTIME', testfile:   'cmd-check/lint-package-runtime',
 		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\nexportPattern("^api_")\n' } }
 	},
+	'secret-exfiltration': {
+		configType: 'SecretExfiltrationConfig', ruleType:   'SECRET_EXFILTRATION', testfile:   'lint-secret-exfiltration',
+		example:    `
+key <- Sys.getenv("API_KEY")
+server <- function(input, output, session) {
+  httr2::request("https://api.example.org") |>
+    httr2::req_auth_bearer_token(key)
+  httr::GET(input$url, httr::add_headers(Authorization = key))
+  output$debug <- renderPrint(Sys.getenv())
+  message("calling with ", key)
+  message("key set: ", nzchar(key))
+  httr::GET(paste0("https://api.example.org/?key=", key))
+}
+`,
+		config: { optIn: ['url'] }
+	},
+	'process-state-in-session': {
+		configType: 'ProcessStateInSessionConfig', ruleType:   'PROCESS_STATE_IN_SESSION', testfile:   'lint-process-state-in-session',
+		example:    `
+counter <- reactiveVal(0)
+addResourcePath("data", "/srv/data")
+server <- function(input, output, session) {
+  user <<- input$name
+  options(digits = input$digits)
+  counter(counter() + 1)
+  output$plot <- renderPlot(plot(load_for(session$user, input$n))) |> bindCache(input$n)
+}
+`
+	},
 	'autoload-files': {
 		configType: 'AutoloadConfig', ruleType:   'AUTOLOAD_FILES', testfile:   'cmd-check/lint-autoload-files',
 		example:    { code: 'f <- function() 1', files: { '.RProfile': 'system("rm -rf /")' } }
@@ -368,11 +410,10 @@ More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/li
 /** runs the linter query on a rule's wiki example, refusing an example that shows no finding or an error */
 async function exampleQuery(parser: KnownParser, name: LintingRuleNames, example: string | PackageExample, config: object = {}): Promise<string> {
 	const queries = [{ type: 'linter', rules: [{ name, config: config as never }] }] as const;
-	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { collapseQuery: true, withJson: false })
+	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { withJson: false })
 		: await showQuery(parser, `${fileProtocol}${ExampleRoot}/R/code.R`, queries, {
-			collapseQuery: true,
-			withJson:      false,
-			files:         [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
+			withJson: false,
+			files:    [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
 		});
 	if(shown.includes('_no findings_') || shown.includes('Error during execution of rule') || shown.includes('rules failed to execute')) {
 		throw new Error(`the wiki example of ${name} must show a finding: ${shown}`);
@@ -459,7 +500,7 @@ For example:
 
 ${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
-	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseResult: false });
 	return `Running ${getReplCommand('query')} with \`@linter ${JSON.stringify(code)}\` analyzes the code and returns any issues found.
 Formatted more nicely, this returns:
 

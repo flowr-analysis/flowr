@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type {
@@ -32,6 +33,12 @@ export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
 	readonly removal?:   boolean
 }
 
+/** One slice: the sliced ids, and the reconstructed code unless the query asked for {@link SliceQueryOptions#noReconstruction}. */
+export type StaticSliceResult = Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>
+	& Partial<Pick<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, 'reconstruct'>>
+	/** the packages the slice calls into, only set with {@link SliceQueryOptions#reportPackages} */
+	& { packages?: readonly BrandedNamespace[] };
+
 export interface StaticSliceQueryResult extends BaseQueryResult {
 	/**
 	 * only contains the results of the slice steps to not repeat ourselves, this does not contain the reconstruction
@@ -41,12 +48,7 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	 * (i.e., the result of `JSON.stringify`) for the ones given none. Without a name, multiple slice queries
 	 * with the same query configuration are therefore _not_ re-executed.
 	 */
-	results: Record<string,
-		(Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
-		Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>)
-		/** the packages the slice calls into, only set with {@link SliceQueryOptions#reportPackages} */
-		& { packages?: readonly string[] }
-	>
+	results: Record<string, StaticSliceResult>
 }
 
 const SliceCriterionHelp = [
@@ -84,6 +86,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 export const StaticSliceQueryDefinition = {
 	title:           'Static Slice Query',
 	executor:        executeStaticSliceQuery,
+	perQueryResults: true,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result): boolean => summarizeSliceResults<StaticSliceQuery>(
 		formatter, 'static-slice', queryResults as QueryResults<'static-slice'>['static-slice'], result,
 		(key, q) => `Slice ${q === undefined ? `"${key}"` : `for {${q.criteria.join(', ')}}`}`

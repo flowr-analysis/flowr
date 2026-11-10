@@ -1,3 +1,4 @@
+import { hooksUnder } from '../../../../../hooks';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
@@ -132,7 +133,7 @@ export function processWhileLoop<OtherInfo>(
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph,
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
-		hooks:             condition.hooks.concat(body.hooks),
+		hooks:             condition.hooks.concat(conditionIsAlwaysTrue ? body.hooks : hooksUnder(body.hooks, cdTrue)),
 		kill:              loopKill,
 	};
 }

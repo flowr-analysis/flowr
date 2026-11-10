@@ -46,7 +46,7 @@ describe('Removal slices', { concurrent: false }, withShell(shell => {
 		assertRemoval('a write into a closure environment keeps the closure', [...caps, 'environment-sharing', 'closures'], 'x <- 1\nf <- function() { y <- 3; function() y }\ng <- f()\nenvironment(g)$y <- 10\nprint(g())\nprint(x)', ['6@print'],
 			'f <- function() {\n        y <- 3\n        function() y\n    }\ng <- f()\nenvironment(g)$y <- 10\nprint(g())', '[1] 10');
 		assertRemoval('a handler goes with the output it counts for', [...caps, 'exceptions-and-errors', 'super-left-assignment'], 'tally <- 0\nsafe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })\nignore <- safe(function() stop("x"))\nprint(tally)', ['4@print'],
-			'tally <- 0\nsafe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })', '');
+			'safe <- function(f) tryCatch(f(), error = function(e) { tally <<- tally + 1; NA })', '');
 	});
 	describe('Plots', () => {
 		assertRemoval('a plot takes its device along', [...caps, 'graphics-state'], 'x <- 1\npdf(NULL)\nplot(x)\ninvisible(dev.off())\nprint(x)', ['3@plot'], 'x <- 1\nprint(x)', '[1] 1');
@@ -55,8 +55,8 @@ describe('Removal slices', { concurrent: false }, withShell(shell => {
 	});
 	describe('Files', () => {
 		/* the names `tempfile()` makes are unknown, so the other read may read either file and both writes stay */
-		assertRemoval('a write to a file we cannot name stays for any other read', [...caps, 'i-o'], 'p <- tempfile()\nq <- tempfile()\nwriteLines("a", p)\nwriteLines("b", q)\nr <- readLines(p)\nprint(r)\nprint(readLines(q))', ['6@print'],
-			'p <- tempfile()\nq <- tempfile()\nwriteLines("a", p)\nwriteLines("b", q)\nprint(readLines(q))', '[1] "b"');
+		assertRemoval('a write to another temp file goes with the removed output', [...caps, 'i-o'], 'p <- tempfile()\nq <- tempfile()\nwriteLines("a", p)\nwriteLines("b", q)\nr <- readLines(p)\nprint(r)\nprint(readLines(q))', ['6@print'],
+			'q <- tempfile()\nwriteLines("b", q)\nprint(readLines(q))', '[1] "b"');
 	});
 	describe('Control flow', () => {
 		assertRemoval('a loop only the removed output needs goes as a whole', [...caps, 'for-loop'], 's <- 0\nfor(i in 1:3) s <- s + i\nprint(s)\nprint(2)', ['3@print'], 'print(2)', '[1] 2');

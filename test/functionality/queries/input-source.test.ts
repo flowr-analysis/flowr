@@ -67,8 +67,8 @@ describe('A configured built-in reaches the classifier', { concurrent: false }, 
 			'the configured built-in has to be part of the system inputs');
 		assert.notInclude((defaultInputClassifierConfig(new FlowrAnalyzerContext(FlowrConfig.default()))[InputType.System] as readonly Identifier[]).map(Identifier.toString), 'base::launchIt',
 			'and it must not leak into the default configuration');
-		const out = await analyzer.query([{ type: 'input-sources', criterion: '2@eval' }]);
-		assert.deepStrictEqual(out['input-sources'].results['2@eval'].flatMap(s => s.types), [InputType.System]);
+		const out = await analyzer.query({ type: 'input-sources', criterion: '2@eval' });
+		assert.deepStrictEqual(out.results['2@eval'].flatMap(s => s.types), [InputType.System]);
 	});
 }));
 
@@ -480,7 +480,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('whether a handler answers depends on the whole block', 'x <- tryCatch({ readLines("a"); 1 }, error = function(e) 2)\nfoo(x)', q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Constant] }]
 		});
-		testQuery('a namespaced call of a package outside base R is no base function', "x <- config::get('n')\nfoo(x)", q('2@foo'), {
+		testQuery('a namespaced call of a package outside base R is no base function', "x <- mypkg::fetch_value('n')\nfoo(x)", q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]
 		});
 		testQuery('a database answers with its own data', "x <- sqldf::sqldf('select 1')\nfoo(x)", q('2@foo'), {

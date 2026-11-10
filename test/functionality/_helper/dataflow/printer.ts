@@ -31,7 +31,7 @@ export function wrap(id: string | NodeId | undefined): string {
  * Control dependencies as the dataflow test expectations spell them.
  * @param cds - the dependencies to print, absent for a node under none
  */
-export function wrapControlDependencies(cds: ControlDependency[] | undefined): string {
+export function wrapControlDependencies(cds: readonly ControlDependency[] | undefined): string {
 	if(cds === undefined) {
 		return 'undefined';
 	} else {

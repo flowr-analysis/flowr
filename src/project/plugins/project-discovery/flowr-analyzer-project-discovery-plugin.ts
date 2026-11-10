@@ -4,8 +4,7 @@ import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
-import { getAllFilesSync, rPackageSourceRegex } from '../../../util/files';
-import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { getAllFilesSync, RPath, rPackageSourceRegex } from '../../../util/files';
 import fs from 'fs';
 import path from 'path';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from '../../context/classify-project-kind';
@@ -30,7 +29,7 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 // `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources, as are the `.S`/`.s`/`.q` files below `R/`
 export const discoverRSourcesRegex = new RegExp(`(\\.(r|rmd|rmarkdown|ipynb|qmd|rnw)|(^|[\\\\/])\\.?Rprofile(\\.site)?)$|${rPackageSourceRegex.source}`, 'i');
 // matched against the posix path relative to the project root
-export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
+export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|\.rvenv|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 export const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
 /** Options for {@link collectRequests}; unset fields fall back to the module defaults. */
@@ -56,9 +55,9 @@ export function collectRequests(files: Iterable<string>, root: string, opts: Col
 	const requests: (RParseRequest | FlowrFile<string>)[] = [];
 	for(const file of files) {
 		const relativePath = path.relative(root, file);
-		if(supportedExtensions.test(relativePath) && (!onlyTraversePaths || onlyTraversePaths.test(relativePath)) && !excludePathsRegex.test(platformDirname(relativePath))) {
+		if(supportedExtensions.test(relativePath) && (!onlyTraversePaths || onlyTraversePaths.test(relativePath)) && !excludePathsRegex.test(RPath.dirname(relativePath))) {
 			requests.push({ content: file, request: 'file' });
-			if(RprofileFilePattern.test(platformBasename(relativePath))) {
+			if(RprofileFilePattern.test(RPath.basename(relativePath))) {
 				// parse requests skip the file plugins, so emit a file too to have the profile tagged
 				requests.push(new FlowrTextFile(file));
 			}
@@ -124,7 +123,7 @@ export class FlowrAnalyzerFullProjectDiscoveryPlugin extends FlowrAnalyzerProjec
 }
 
 // noise directories pruned from the scoped walk on top of `ignorePathsWith`: build output, checks, rendered docs, and packaged data
-const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|inst\/(extdata|doc))(\/|$)/i;
+const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|\.rvenv|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|inst\/(extdata|doc))(\/|$)/i;
 // binary/data blobs, dropped even inside an otherwise kept directory
 const noiseFiles = /\.(rds|rda|rdata|rd|png|jpe?g|gif|svg|pdf|ico|zip|tar|t?gz|bz2|xz|so|o|a|dll|dylib|exe|jar|woff2?|ttf|eot|feather|parquet|xls[xm]?|docx?|pptx?)$/i;
 const descriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
@@ -133,8 +132,8 @@ const metadataFilePatterns = [
 	descriptionFilePattern,
 	/^NAMESPACE(\.txt)?$/i,
 	/^NEWS(\.(rd|md))?$/i,
-	/^(renv|rv|uvr|packrat)\.lock$/i,
-	/^(rproject|uvr)\.toml$/i,
+	/^(renv|rv|uvr|packrat|rproj|.+\.r)\.lock$/i,
+	/^(rproject|uvr|rproj)\.toml$/i,
 	/license(\.md|\.txt)?$/i,
 	RprofileFilePattern,
 	RenvironFilePattern

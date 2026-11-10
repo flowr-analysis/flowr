@@ -1,27 +1,27 @@
 import { assertReconstructed, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe } from 'vitest';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Simple', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const [id, code, caps] of [
-			[0, 'x <- 5', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
-			[0, 'x <- 5; y <- 9', ['name-normal', 'numbers', 'semicolons', ...OperatorDatabase['<-'].capabilities]],
-			[2, '{ x <- 5 }', ['grouping', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
-			[2, '{ x <- 5; y <- 9 }', ['grouping', 'name-normal', 'numbers', 'semicolons', ...OperatorDatabase['<-'].capabilities]],
+			[0, 'x <- 5', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities]],
+			[0, 'x <- 5; y <- 9', ['name-normal', 'numbers', 'semicolons', ...BuiltInOperators.byName['<-'].capabilities]],
+			[2, '{ x <- 5 }', ['grouping', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities]],
+			[2, '{ x <- 5; y <- 9 }', ['grouping', 'name-normal', 'numbers', 'semicolons', ...BuiltInOperators.byName['<-'].capabilities]],
 		] as [number, string, FlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, 'x');
 		}
 	});
 	describe('Nested Assignments', () => {
 		for(const [code, id, expected, caps] of [
-			['12 + (supi <- 42)', 0, '12', ['grouping', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'precedence']],
-			['y <- x <- 42', 1, 'x', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence']],
-			['y <- x <- 42', 0, 'y', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence']],
-			['for (i in 1:20) { x <- 5 }', 6, 'x', ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]]
+			['12 + (supi <- 42)', 0, '12', ['grouping', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['+'].capabilities, 'precedence']],
+			['y <- x <- 42', 1, 'x', ['name-normal', 'numbers', 'return-value-of-assignments', ...BuiltInOperators.byName['<-'].capabilities, 'precedence']],
+			['y <- x <- 42', 0, 'y', ['name-normal', 'numbers', 'return-value-of-assignments', ...BuiltInOperators.byName['<-'].capabilities, 'precedence']],
+			['for (i in 1:20) { x <- 5 }', 6, 'x', ['for-loop', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities]]
 		] as [string, number, string, FlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected);
 		}
@@ -41,8 +41,8 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 		describe('repeat', () => {
 			const pool: [string, NodeId | NodeId[], string, FlowrCapabilityId[]][] = [
 				['repeat { x }', 2, 'x', ['repeat-loop', 'name-normal']],
-				['repeat { x <- 5; y <- 9 }', 2, 'x', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']],
-				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5\n9', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']]
+				['repeat { x <- 5; y <- 9 }', 2, 'x', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'semicolons', 'numbers']],
+				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5\n9', ['repeat-loop', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'semicolons', 'numbers']]
 			];
 			for(const [code, id, expected, caps] of pool) {
 				assertReconstructed(label(code, caps), shell, code, id, expected);
@@ -50,17 +50,17 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 		});
 
 		describe('while', () => {
-			const fiveNineCaps: FlowrCapabilityId[] = ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons'];
+			const fiveNineCaps: FlowrCapabilityId[] = ['while-loop', 'logical', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons'];
 			const pool: [string, NodeId | NodeId[], string, FlowrCapabilityId[]][] = [
 				['while(TRUE) { x }', 3, 'x', ['while-loop', 'logical', 'name-normal']],
-				['while(TRUE) { x <- 5 }', 3, 'x', ['while-loop', 'logical', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
+				['while(TRUE) { x <- 5 }', 3, 'x', ['while-loop', 'logical', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities]],
 				['while(TRUE) { x <- 5; y <- 9 }', 3, 'x', fiveNineCaps],
 				['while(TRUE) { x <- 5; y <- 9 }', [10, 3], 'while(TRUE) x', fiveNineCaps],
 				['while(TRUE) { x <- 5; y <- 9 }', [10, 3, 5], 'while(TRUE) x <- 5', fiveNineCaps],
 				['while(TRUE) { x <- 5; y <- 9 }', [10, 6], 'while(TRUE) y', fiveNineCaps],
 				['while(TRUE) { x <- 5; y <- 9 }', [3, 4, 6], 'x <- 5\ny', fiveNineCaps],
-				['while(x + 2 > 3) { x <- 0 }', [7], 'x', ['while-loop', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']],
-				['while(x + 2 > 3) { x <- 0 }', [0, 7], 'while(x + 2 > 3) x', ['while-loop', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']]
+				['while(x + 2 > 3) { x <- 0 }', [7], 'x', ['while-loop', 'binary-operator', 'infix-calls', ...BuiltInOperators.byName['+'].capabilities, 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers']],
+				['while(x + 2 > 3) { x <- 0 }', [0, 7], 'while(x + 2 > 3) x', ['while-loop', 'binary-operator', 'infix-calls', ...BuiltInOperators.byName['+'].capabilities, 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers']]
 			];
 			for(const [code, id, expected, caps] of pool) {
 				assertReconstructed(label(code, caps), shell, code, id, expected);
@@ -75,7 +75,7 @@ describe('Simple', { concurrent: false }, withShell(shell => {
         12 -> x
       }
     `;
-			const caps: FlowrCapabilityId[] = ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['->'].capabilities, 'newlines'];
+			const caps: FlowrCapabilityId[] = ['for-loop', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['->'].capabilities, 'newlines'];
 			const pool: [string, NodeId | NodeId[], string][] = [
 				[largeFor, 0, 'for(i in 1:20) {}'],
 				[largeFor, 6, 'y'],
@@ -93,14 +93,14 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 		});
 	});
 	describe('Failures in practice', () => {
-		assertReconstructed(label('Reconstruct expression list in call', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments', 'call-normal', 'newlines']), shell, `
+		assertReconstructed(label('Reconstruct expression list in call', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'unnamed-arguments', 'call-normal', 'newlines']), shell, `
 a <- foo({
     a <- b()
 
     c <- 3
     })`, 0, 'a');
 
-		const caps: FlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator'];
+		const caps: FlowrCapabilityId[] = ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator'];
 		assertReconstructed(label('Reconstruct access in pipe (variable)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 2, 'x');

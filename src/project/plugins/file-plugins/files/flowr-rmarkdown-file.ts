@@ -76,7 +76,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 				ctx:            this.context,
 				referenceChain: [this.path()]
 			});
-			if(childPath === undefined) {
+			if(childPath === undefined || childPath.length === 0) {
 				continue;
 			}
 			if(childPath.length > 1) {

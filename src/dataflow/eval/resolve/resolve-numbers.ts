@@ -1,6 +1,6 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { Identifier } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../environments/identifier';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
@@ -146,7 +146,7 @@ function numeric(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): Operand |
 }
 
 /** the name a node calls, whether it is written as an operator or as a plain call of the quoted operator */
-function calledName(node: RNodeWithParent): string | undefined {
+function calledName(node: RNodeWithParent): BrandedIdentifier | undefined {
 	switch(node.type) {
 		case RType.UnaryOp:
 		case RType.BinaryOp:
@@ -185,7 +185,7 @@ function apply(fold: NumericFn['fold'], operands: readonly Operand[]): number | 
  * number, a logical (counting as its `0`/`1`), or a vector of numbers, which folds elementwise. Anything that
  * does not resolve, a result that is not finite, and a vector length mismatch all stay `Top`.
  */
-function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
+export function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const name = calledName(args.node);
 	const fn = name === undefined ? undefined : NumericFns[name as keyof typeof NumericFns] as NumericFn | undefined;
 	if(fn === undefined) {
@@ -214,15 +214,3 @@ function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
 	return folded === undefined ? Top : vectorFrom(folded.map(n => intervalFrom(n, n)));
 }
 
-/**
- * Folding the numeric and bitwise built-ins, from an operator to `sqrt`.
- *
- * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
- * {@link NodeValue} or {@link Resolve}.
- */
-export const NumericFold = {
-	/** every numeric built-in that is folded, see {@link NumericFns} */
-	fns:  NumericFns,
-	/** What a numeric call amounts to; see {@link resolveAsNumeric}. */
-	call: resolveAsNumeric
-} as const;

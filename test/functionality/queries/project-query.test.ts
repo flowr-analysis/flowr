@@ -7,7 +7,7 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../
 import { SigDatabase } from '../../../src/project/sigdb/reader';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { FnProp, type SigVersionInfo } from '../../../src/project/sigdb/schema';
-import { executeQueries } from '../../../src/queries/query';
+import { executeQueries, Query } from '../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
 import { ansiFormatter } from '../../../src/util/text/ansi';
 import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -103,7 +103,7 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.project.basePackages = ['methods', 'ggplot2'];
 		});
-		const deps = (await executeQueries({ analyzer: await analyzeProject(parser, db, dir, config) }, [{ type: 'project' }])).project.dependencies;
+		const deps = (await Query.one({ analyzer: await analyzeProject(parser, db, dir, config) }, { type: 'project' })).dependencies;
 		expect(deps?.base).toBe(2);
 		expect(deps?.covered).toBe(1);
 	});
@@ -127,8 +127,8 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const analyzer = await analyzeProject(parser, db, dir);
 
 		// the scripts are known as requests, so the kind does not have to wait for the dataflow
-		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('shiny-app');
-		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('shiny-app');
+		expect((await Query.one({ analyzer }, { type: 'project' })).kind).toBe('shiny-app');
+		expect((await Query.one({ analyzer }, { type: 'project', withDf: true })).kind).toBe('shiny-app');
 	});
 
 	test(label('classifies a shiny app that ships a DESCRIPTION as a shiny app, not a package', [], ['other']), async() => {
@@ -136,7 +136,7 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		fs.writeFileSync(path.join(dir, 'app.R'), 'library(shiny)\ny <- 2\n');
 		const analyzer = await analyzeProject(parser, db, dir);
 
-		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('shiny-app');
+		expect((await Query.one({ analyzer }, { type: 'project', withDf: true })).kind).toBe('shiny-app');
 	});
 
 	test(label('classifies a DESCRIPTION with an explicit shiny type as a shiny app', [], ['other']), async() => {
@@ -144,22 +144,22 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const analyzer = await analyzeProject(parser, db, dir);
 
 		// the DESCRIPTION is known without dataflow, so the type alone settles the kind
-		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('shiny-app');
+		expect((await Query.one({ analyzer }, { type: 'project' })).kind).toBe('shiny-app');
 	});
 
 	test(label('still classifies a plain package with a package type as a package', [], ['other']), async() => {
 		const dir = writePackage(tmp, 'plainpkg', 'Type: Package\nVersion: 1.0.0\n', 'x <- 1\n');
 		const analyzer = await analyzeProject(parser, db, dir);
 
-		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('package');
+		expect((await Query.one({ analyzer }, { type: 'project', withDf: true })).kind).toBe('package');
 	});
 
 	test(label('checks whether dataflow has been performed when the query is run with withDf', [], ['other']), async() => {
 		const dir = writePackage(tmp, 'dfapkg', 'Version: 1.0.0\n', 'x <- 1\n');
 		const analyzer = await analyzeProject(parser, db, dir);
 
-		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: false }])).project.dfaPerformed).toBe(false);
-		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.dfaPerformed).toBe(true);
+		expect((await Query.one({ analyzer }, { type: 'project', withDf: false })).dfaPerformed).toBe(false);
+		expect((await Query.one({ analyzer }, { type: 'project', withDf: true })).dfaPerformed).toBe(true);
 	});
 
 	test(label('reports the files considered part of the project, and their roles', [], ['other']), async() => {
@@ -169,8 +169,8 @@ describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 		const analyzer = await analyzeProject(parser, db, dir);
 
 		// test the results for the default query
-		const defaultResults = await executeQueries({ analyzer }, [{ type: 'project' }]);
-		const defaultProject = defaultResults.project;
+		const defaultResults = await Query.one({ analyzer }, { type: 'project' });
+		const defaultProject = defaultResults;
 		expect(defaultProject.roleCounts?.[FileRole.VirtualEnv]).toBe(1);
 		expect(defaultProject.roleFiles).toBeUndefined();
 

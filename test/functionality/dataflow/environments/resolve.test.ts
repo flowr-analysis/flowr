@@ -162,7 +162,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		});
 		testWithGraphAndEnvironment('Not yet supported', resolveWith => {
 			// Not yet Supported
-			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
+			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', setFrom(interval(57)), Allow.Top, resolveWith);
 			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
 
 			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);

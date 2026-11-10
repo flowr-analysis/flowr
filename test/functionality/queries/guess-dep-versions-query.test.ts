@@ -3,7 +3,7 @@ import { label } from '../_helper/label';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../_helper/guess-dep-versions';
 import { FlowrConfig } from '../../../src/config';
-import { executeQueries, SupportedQueries } from '../../../src/queries/query';
+import { executeQueries, SupportedQueries, Query } from '../../../src/queries/query';
 import { discardingReplOutput } from '../_helper/repl';
 import { explodeDependencyVersions } from '../../../src/project/dependency-version-space';
 import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
@@ -37,8 +37,8 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			name:          'current',
 			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespace)).content().current
 		}));
-		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions', ...scenario.query }]);
-		return res['guess-dep-versions'];
+		const res = await Query.one({ analyzer }, { type: 'guess-dep-versions', ...scenario.query });
+		return res;
 	}
 
 	test('a named argument only added in a later version raises the lower bound', async() => {
@@ -953,7 +953,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 					pkgB: { downloads: 9000, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
 				}
 			});
-			const run = async() => (await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' }]))['guess-dep-versions'];
+			const run = async() => (await Query.one({ analyzer }, { type: 'guess-dep-versions' }));
 			const first = await run();
 			const second = await run();
 			expect(second.dependencies).toEqual(first.dependencies);

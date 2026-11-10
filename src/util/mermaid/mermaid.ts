@@ -1,3 +1,4 @@
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { toBase64 } from '../text/url-encoding';
 
 
@@ -70,7 +71,7 @@ export const Mermaid = {
 	/**
 	 * Escapes a string or number to be used as a mermaid node id.
 	 */
-	escapeId(this: void, text: string | number): string {
+	escapeId(this: void, text: string | number | NodeId): string {
 		/* each character is spelled by its code, so `built-in:{` and `built-in:+` stay apart */
 		text = String(text).replace(/[^\w:\-./]/g, charCode);
 		/* a dash before a dash or a dot reads as the start of a link, e.g. the id of `$<-.grouped_df` would cut the line in two */

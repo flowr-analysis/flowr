@@ -5,6 +5,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { REnvironment } from '../../../../../src/dataflow/environments/environment';
+import { FunctionDispatch } from '../../../../../src/dataflow/graph/vertex';
 
 describe('S3 Function Calls', withTreeSitter(ts => {
 	assertDataflow(label('Simple S3 dispatch', ['function-calls', 'oop-s3', 'oop-s3-dispatch']), ts,
@@ -25,7 +26,7 @@ f <- function(x) {
 				out:               [],
 				hooks:             [],
 				unknownReferences: []
-			}, { mode: ['s3'] }),
+			}, { mode: [FunctionDispatch.S3] }),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	assertDataflow(label('Simple S3 dispatch with NextMethod', ['function-calls', 'oop-s3', 'oop-s3-dispatch', 'oop-s3-inheritance']), ts,

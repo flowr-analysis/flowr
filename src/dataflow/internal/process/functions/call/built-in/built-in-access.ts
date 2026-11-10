@@ -15,12 +15,13 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { rebindAliases, resolveSymbolToEnvir } from './built-in-envir-utils';
 import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
 import { accessedFieldName, linkFieldReads } from '../../../../linker';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { resolveConstructorInstanceEnvState } from './built-in-class-generator';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -37,17 +38,7 @@ function tableAssignmentProcessor<OtherInfo>(
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.TableAssignment }).information;
 }
 
-/**
- * Processes different types of access operations.
- *
- * Example:
- * ```r
- * a[i]
- * a$foo
- * a[[i]]
- * a@foo
- * ```
- */
+/** Processes different types of access operations. e.g. `a[i] a$foo a[[i]] a@foo`. */
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -92,7 +83,7 @@ export function processAccess<OtherInfo>(
 			&& args.length >= 2 && args[1] !== EmptyArgument) {
 		const stackEnvState = resolveNodeToStackEnv(head.value, data);
 		const envState = stackEnvState
-			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
+			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : resolveConstructorInstanceEnvState(head.value, data));
 		if(envState) {
 			const fieldName = accessedFieldName(RArgument.valueOf(args[1]), config.treatIndicesAsString);
 			const fieldDefs = fieldName
@@ -107,17 +98,7 @@ export function processAccess<OtherInfo>(
 
 	return {
 		...info,
-		/*
-		 * Keep active nodes in case of assignments etc.
-		 * We make them maybe as a kind of hack.
-		 * This way when using
-		 * ```ts
-		 * a[[1]] <- 3
-		 * a[[2]] <- 4
-		 * a
-		 * ```
-		 * the read for a will use both accesses as potential definitions and not just the last one!
-		 */
+		/* Keep active nodes in case of assignments etc. We make them maybe as a kind of hack. */
 		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
@@ -127,15 +108,7 @@ export function processAccess<OtherInfo>(
 	};
 }
 
-/**
- * Processes different types of number-based access operations.
- *
- * Example:
- * ```r
- * a[i]
- * a[[i]]
- * ```
- */
+/** Processes different types of number-based access operations. e.g. `a[i] a[[i]]`. */
 function processNumberBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -161,19 +134,21 @@ function processNumberBasedAccess<OtherInfo>(
 	if(existing !== undefined) {
 		data.environment.current.writableMemory.set(':=', existing);
 	}
-	if(head.value && outInfo.definitionRootNodes.length > 0) {
-		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, cds: [] },
-			outInfo.definitionRootNodes,
-			rootId, data
-		);
+	const table = head.value;
+	if(table && outInfo.definitionRootNodes.length > 0) {
+		/* the table changes in place: the change reads the table it changes, and every variable holding it sees the change */
+		const name = table.lexeme ?? '';
+		const before = (Resolve.byName(name, fnCall.information.environment) ?? []).filter(d => !NodeId.isBuiltIn(d.nodeId));
+		const [environment, envId] = rebindAliases(fnCall.information.environment, name, table.info.id, rootId);
+		fnCall.information.environment = environment;
+		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name, nodeId: table.info.id, definedAt: rootId, cds: [], envId }, outInfo.definitionRootNodes, rootId, data);
+		before.forEach(d => fnCall.information.graph.addEdge(table.info.id, d.nodeId, EdgeType.Reads));
 	}
 
 	return fnCall;
 }
 
-/**
- * Converts symbol arguments to string arguments within the specified range.
- */
+/** Converts symbol arguments to string arguments within the specified range. */
 export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = args.slice();
 	// if the argument is a symbol, we convert it to a string for this perspective
@@ -198,15 +173,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEm
 	return newArgs;
 }
 
-/**
- * Processes different types of string-based access operations.
- *
- * Example:
- * ```r
- * a$foo
- * a@foo
- * ```
- */
+/** Processes different types of string-based access operations. e.g. `a$foo a@foo`. */
 function processStringBasedAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

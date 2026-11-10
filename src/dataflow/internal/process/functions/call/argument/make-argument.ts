@@ -1,3 +1,4 @@
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SourceRange } from '../../../../../../util/range';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -25,7 +26,7 @@ export function toUnnamedArgument<OtherInfo>(
 		location: node.location ?? SourceRange.invalid(),
 		info:     {
 			...node.info,
-			id: node.info.id + '-arg'
+			id: NodeId.argumentOf(node.info.id)
 		},
 		name:  undefined,
 		value: node

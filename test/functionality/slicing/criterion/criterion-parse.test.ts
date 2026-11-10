@@ -109,6 +109,13 @@ describe('Slicing criteria', withTreeSitter(ts => {
 			expect(fullTextOf('1^', idMap)).toBe('x <- 1');
 		});
 
+		test('a top-level block is found from its braces and its body', async() => {
+			const idMap = await idMapOf(ts, 'x <- 1\n{\n  y <- 2\n}');
+			for(const line of ['2^', '3^', '4^'] as const) {
+				expect(nodeOf(line, idMap)?.type, line).toBe(RType.ExpressionList);
+			}
+		});
+
 		test('the first statement wins when several share the line', async() => {
 			const idMap = await idMapOf(ts, 'a <- 1; b <- 2');
 			expect(fullTextOf('1^', idMap)).toBe('a <- 1');

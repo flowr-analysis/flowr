@@ -1,3 +1,4 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import {
@@ -8,8 +9,8 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 
 export interface FunctionInfo {
-	name:            string;
-	packageOrigin:   string;
+	name:            BrandedIdentifier;
+	packageOrigin:   BrandedNamespace;
 	isExported:      boolean;
 	isS3Generic:     boolean;
 	s3TypeDispatch?: string;
@@ -33,11 +34,12 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 	readonly name: string;
 
 	/**
-	 * Get the function information for the given function name and optional class name.
-	 * @param name      - The name of the function to get information for.
-	 * @param className - The optional class name (e.g., for S3 generics).
+	 * Get the function information for the given package, function name, and optional S3 class.
+	 * @param pkg            - The package the function belongs to.
+	 * @param name           - The name of the function to get information for.
+	 * @param s3TypeDispatch - The optional class name (e.g., for S3 generics).
 	 */
-	getFunctionInfo(name: string, className?: string): FunctionInfo | FunctionInfo[] | undefined;
+	getFunctionInfo(pkg: BrandedNamespace, name: BrandedIdentifier, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined;
 }
 
 /**
@@ -49,7 +51,7 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerFunctionsContext {
 	public readonly name = 'flowr-analyzer-functions-context';
 
-	private functionInfo: Map<string, FunctionInfo[]> = new Map<string, FunctionInfo[]>();
+	private functionInfo: Map<BrandedIdentifier, FunctionInfo[]> = new Map<BrandedIdentifier, FunctionInfo[]>();
 
 	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
@@ -96,7 +98,7 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 		functionInfo.isS4Class ||= other.isS4Class;
 	}
 
-	public getFunctionInfo(pkg: string, name: string, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
+	public getFunctionInfo(pkg: BrandedNamespace, name: BrandedIdentifier, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
 		if(s3TypeDispatch) {
 			return this.functionInfo.get(name)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
 		} else if(name.includes('.')) {
@@ -111,6 +113,6 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 	}
 
 	public reset(): void {
-		this.functionInfo = new Map<string, FunctionInfo[]>();
+		this.functionInfo = new Map<BrandedIdentifier, FunctionInfo[]>();
 	}
 }

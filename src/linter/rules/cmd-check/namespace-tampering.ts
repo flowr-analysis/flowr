@@ -7,7 +7,7 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { NodeValue } from '../../../dataflow/eval/resolve/node-value';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
@@ -34,7 +34,7 @@ export interface NamespaceTamperingResult extends CmdCheckResult {
 	/** the namespace tampered with, if known */
 	readonly namespace?: string
 	/** for `.Internal`, the internal function called */
-	readonly internal?:  string
+	readonly internal?:  BrandedIdentifier
 }
 
 export interface NamespaceTamperingConfig extends MergeableRecord {
@@ -45,7 +45,7 @@ export interface NamespaceTamperingConfig extends MergeableRecord {
 export type NamespaceTamperingMetadata = MergeableRecord;
 
 /** the calls that name a namespace by the package name they are handed */
-const NamespaceGetters: ReadonlySet<string> = new Set(['asNamespace', 'getNamespace', 'loadNamespace']);
+const NamespaceGetters: ReadonlySet<BrandedIdentifier> = new Set(['asNamespace', 'getNamespace', 'loadNamespace']);
 
 
 /** the package a namespace argument names, `'own'` for the package's own one, `undefined` if unknown */

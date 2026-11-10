@@ -17,6 +17,13 @@ function nodeLabels(mermaid: string): string[] {
 const awkwardName = 'we`ird.R';
 
 describe('Dataflow mermaid', withTreeSitter(parser => {
+	test('marks a linked unknown side effect like a plain one', async() => {
+		const result = await createDataflowPipeline(parser, { context: contextFromInput('f()') }).allRemainingSteps();
+		const graph = result.dataflow.graph;
+		const [id] = graph.rootIds();
+		graph.markIdForUnknownSideEffects(id, { type: 'link-to-last-call', callName: /^g$/ });
+		assert.include(DataflowMermaid.raw(graph), 'stroke:red');
+	});
 	async function build(simplified: boolean): Promise<string> {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-mermaid-'));
 		try {

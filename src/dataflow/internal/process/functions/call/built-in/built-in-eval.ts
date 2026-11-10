@@ -17,28 +17,32 @@ import { isUndefined } from '../../../../../../util/assert';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
-import { ReferenceType } from '../../../../../environments/identifier';
-import type { InGraphIdentifierDefinition, Identifier } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import type { NamedInGraphIdentifierDefinition, BrandedIdentifier } from '../../../../../environments/identifier';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { pipedCall, resolveConstantString, routeWrittenToStackEnv } from './built-in-envir-utils';
+import { envirOf, pipedCall, resolveArgToEnvirOrAmbiguous, resolveConstantString, routeWrittenToStackEnv, unknownIfAmbiguous } from './built-in-envir-utils';
+import { evaluateInEnvir } from './built-in-local';
+import { processDataflowFor } from '../../../../../processor';
+import { REnvironment } from '../../../../../environments/environment';
+import { CapturingCalls } from '../quoted';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { evaluatesCapturedCode } from './built-in-ambient-state';
+import { callNamedFunction, resolveFunctionArgument, type ResolvedFunctionArgument } from './built-in-apply';
+import type { FunctionArgument } from '../../../../../graph/graph';
 
-const SymbolConstructors: ReadonlySet<string> = new Set(['as.name', 'as.symbol']);
-const PasteFunctions: ReadonlySet<string> = new Set(['paste', 'paste0']);
-const StringParsers: ReadonlySet<string> = new Set(['str2lang', 'str2expression']);
+const SymbolConstructors: ReadonlySet<BrandedIdentifier> = new Set(['as.name', 'as.symbol']);
+const PasteFunctions: ReadonlySet<BrandedIdentifier> = new Set(['paste', 'paste0']);
+const StringParsers: ReadonlySet<BrandedIdentifier> = new Set(['str2lang', 'str2expression']);
 const SyntacticName = /^[.a-zA-Z][.a-zA-Z0-9_]*$/;
 
 /** the formals of `eval(expr, envir, enclos)` */
 const EvalParameterNames = ['expr', 'envir', 'enclos'] as const;
 
-/**
- * Process a call to `eval()`, trying to resolve the code being evaluated if possible.
- */
+/** Process a call to `eval()`, trying to resolve the code being evaluated if possible. */
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -87,12 +91,26 @@ export function processEvalCall<OtherInfo>(
 		escapeWritesToParentFrame(evalArgument, rootId, data, information);
 	}
 
+	const quoted = config.supportFunctionCall ? undefined : quotedCodeOf(evalArgument, data);
+	if(quoted !== undefined) {
+		return evaluateQuoted(quoted, config.parentFrame || namesParentFrame(envirArg?.value, data) ? undefined : envirArg, rootId, information, data);
+	}
+
+	const constructed = config.supportFunctionCall ? undefined : constructedCallOf(evalArgument, data);
+	if(constructed !== undefined) {
+		if(envirArg !== undefined) {
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+		}
+		const [called, callId] = callNamedFunction(information, constructed.fn, constructed.args, rootId, data, undefined, `${rootId}-call`);
+		called.graph.addEdge(rootId, callId, EdgeType.Returns);
+		return called;
+	}
+
 	const code: string[] | undefined = resolveEvalToCode(evalArgument as RNode<never>, config, data);
 
 	if(code) {
 		if(envirArg !== undefined) {
-			/* the code runs in another environment, so its definitions do not land in the current one and
-			 * pretending they do would produce wrong edges */
+			/* the code runs in another environment, so its definitions do not land in the current one and pretending they do would produce wrong edges */
 			handleUnknownSideEffect(information.graph, information.environment, rootId);
 		}
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId);
@@ -122,6 +140,85 @@ export function processEvalCall<OtherInfo>(
 	return evaluatesCapturedCode(information, rootId, data);
 }
 
+/** the entry in {@link DataflowProcessorInformation#referenceChain} of evaluating `code`, so code evaluating itself (`q <- quote(eval(q))`) is not unrolled forever */
+function evaluationOf(code: NodeId): string {
+	return `eval:${String(code)}`;
+}
+
+/** The code `eval` runs, if it is written down: what a quoting call captures (`eval(quote(x <- 1))`), or what each binding of a name captures (`q <- quote(x <- 1); eval(q)`). */
+function quotedCodeOf<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly RNode<OtherInfo & ParentInformation>[] | undefined {
+	const val = pipedCall(node, data) ?? node;
+	const code = RSymbol.is(val)
+		? Resolve.byNameAndType(val.content, data.environment, ReferenceType.Variable)?.map(d => capturedBy(boundValueOf(d.nodeId, data), data))
+		: [capturedBy(val, data)];
+	return code === undefined || code.length === 0 || code.some(isUndefined) ? undefined : code as RNode<OtherInfo & ParentInformation>[];
+}
+
+/** The one expression a call to a built-in capturing code (`quote`, `bquote`, `expression`) holds on to, unless it is being evaluated already; `substitute(expr, env)` replaces names before anything runs. */
+function capturedBy<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
+	if(!RFunctionCall.isNamed(node)) {
+		return undefined;
+	}
+	const defs = Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function);
+	const target = defs?.length === 1 && defs[0].type === ReferenceType.BuiltInFunction ? defs[0] : undefined;
+	const index = target?.processorName === BuiltInProcName.Quote ? target.config?.quoteArgumentsWithIndex
+		: target !== undefined && CapturingCalls.has(Identifier.getName(node.functionName.content)) ? 0 : undefined;
+	const code = index === undefined || node.arguments.length !== index + 1 ? undefined : RArgument.valueOf(node.arguments[index]);
+	return code === undefined || data.referenceChain.includes(evaluationOf(code.info.id)) ? undefined : code;
+}
+
+/** the value a definition binds, `quote(x)` for `q` in `q <- quote(x)` */
+function boundValueOf<OtherInfo>(target: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
+	const assignment = data.completeAst.idMap.get(data.completeAst.idMap.get(target)?.info.parent ?? '');
+	return RBinaryOp.is(assignment) ? assignment.lhs.info.id === target ? assignment.rhs : assignment.lhs : undefined;
+}
+
+/** Processes the code the quoted values `nodes` hold where the call `rootId` may evaluate it: `do.call(f, list(quote(n <- 5)))` calls `f(n <- 5)`, so the code runs when `f` forces that argument, which is unknown here, hence it runs maybe. */
+export function evaluateQuotedArguments<OtherInfo>(
+	nodes:       readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
+	rootId:      NodeId,
+	information: DataflowInformation,
+	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const maybe = { ...data, cds: [...data.cds ?? [], { id: rootId, when: true }] };
+	for(const node of nodes) {
+		const code = node === undefined ? undefined : quotedCodeOf(node, data);
+		if(code !== undefined) {
+			information = evaluateQuoted(code, undefined, rootId, information, maybe);
+		}
+	}
+	return information;
+}
+
+/** Runs the quoted `code` where `eval` runs it: right here, or in the environment `envir` names (see {@link evaluateInEnvir}); with several candidates, each may be the one. */
+function evaluateQuoted<OtherInfo>(
+	code:        readonly RNode<OtherInfo & ParentInformation>[],
+	envir:       PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined,
+	rootId:      NodeId,
+	information: DataflowInformation,
+	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const routing = envir === undefined ? undefined : resolveArgToEnvirOrAmbiguous(envir, data);
+	const at = { ...data, environment: information.environment, cds: code.length > 1 ? [...(data.cds ?? []), { id: rootId, when: true }] : data.cds };
+	const results = code.map(c => {
+		const inner = { ...at, referenceChain: [...at.referenceChain, evaluationOf(c.info.id)] };
+		return envir === undefined ? processDataflowFor(c, inner) : evaluateInEnvir(c, envirOf(routing), rootId, inner);
+	});
+	const result: DataflowInformation = {
+		...information,
+		graph:       results.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
+		environment: results.map(r => r.environment).reduce((acc, e) => REnvironment.append(acc, e)),
+		in:          information.in.concat(results.flatMap(r => r.in), results.flatMap(r => r.unknownReferences)),
+		out:         information.out.concat(results.flatMap(r => r.out)),
+		exitPoints:  information.exitPoints.concat(results.flatMap(r => r.exitPoints)),
+		hooks:       information.hooks.concat(results.flatMap(r => r.hooks))
+	};
+	for(const r of results) {
+		result.graph.addEdge(rootId, r.entryPoint, EdgeType.Returns);
+	}
+	unknownIfAmbiguous(routing, result, rootId);
+	return result;
+}
 
 function namesParentFrame<OtherInfo>(
 	envir: RNode<OtherInfo & ParentInformation> | undefined,
@@ -137,7 +234,7 @@ function escapeWritesToParentFrame<OtherInfo>(
 	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation
 ): void {
-	const written: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+	const written: (NamedInGraphIdentifierDefinition)[] = [];
 	RNode.visitAst<OtherInfo & ParentInformation>(expr, inner => {
 		if(!RSymbol.is(inner) || !DfgVertex.isVariableDefinition(information.graph.getVertex(inner.info.id))) {
 			return false;
@@ -157,6 +254,42 @@ function escapeWritesToParentFrame<OtherInfo>(
 	const routed = routeWrittenToStackEnv({ ...information, out: written }, information.environment, rootId);
 	information.environment = routed.environment;
 	information.out = [...information.out, ...written];
+}
+
+/** The call a constructing call builds, the function it names and the arguments it hands over: `call("f", x)`, or `as.call(list(as.name("f"), x))`, written there or bound once to a name. */
+function constructedCallOf<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): { fn: ResolvedFunctionArgument, args: FunctionArgument[] } | undefined {
+	const val = pipedCall(node, data) ?? node;
+	if(RSymbol.is(val)) {
+		const defs = Resolve.byName(val.content, data.environment);
+		const source = defs?.length === 1 ? boundValueOf(defs[0].nodeId, data) : undefined;
+		return source === undefined || RSymbol.is(source) ? undefined : constructedCallOf(source, data);
+	}
+	const parts = RFunctionCall.isNamed(val, 'call') && Resolve.isBuiltIn(val.functionName.content, data.environment, ReferenceType.Function) ? val.arguments
+		: RFunctionCall.isNamed(val, 'as.call') && Resolve.isBuiltIn(val.functionName.content, data.environment, ReferenceType.Function) ? listEntriesOf(RFunctionCall.soleArgument(val.arguments)?.value, data)
+			: undefined;
+	const named = parts === undefined ? undefined : RArgument.valueOf(parts[0]);
+	const name = RFunctionCall.isNamed(named, SymbolConstructors) && Resolve.isBuiltIn(named.functionName.content, data.environment, ReferenceType.Function)
+		? RFunctionCall.soleArgument(named.arguments)?.value : named;
+	const fn = name === undefined ? undefined : resolveFunctionArgument(name, data, { unquoteFunction: true });
+	if(fn === undefined || fn.anonymous || parts === undefined) {
+		return undefined;
+	}
+	return { fn: { ...fn, asString: true }, args: parts.slice(1).map(handedOver) };
+}
+
+/** The entries of a `list(...)` written out. */
+function listEntriesOf<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] | undefined {
+	return RFunctionCall.isNamed(node, 'list') && Resolve.isBuiltIn(node.functionName.content, data.environment, ReferenceType.Function) ? node.arguments : undefined;
+}
+
+/** An argument handed over to the constructed call, as the vertex the argument was processed to. */
+function handedOver<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>): FunctionArgument {
+	if(arg === EmptyArgument) {
+		return EmptyArgument;
+	} else if(arg.name === undefined) {
+		return { nodeId: arg.value?.info.id ?? arg.info.id, cds: undefined, type: ReferenceType.Argument };
+	}
+	return { nodeId: arg.info.id, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument };
 }
 
 function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
@@ -188,9 +321,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		} else if(RSymbol.is(val)) {
 			/* `nm <- as.name("w"); eval(nm)`: a name bound once to code we can read is that code */
 			const defs = Resolve.byName(val.content, data.environment);
-			const target = defs?.length === 1 ? defs[0].nodeId : undefined;
-			const assignment = target === undefined ? undefined : data.completeAst.idMap.get(data.completeAst.idMap.get(target)?.info.parent ?? '');
-			const source = RBinaryOp.is(assignment) ? assignment.lhs.info.id === target ? assignment.rhs : assignment.lhs : undefined;
+			const source = defs?.length === 1 ? boundValueOf(defs[0].nodeId, data) : undefined;
 			return source === undefined || RSymbol.is(source) ? undefined : resolveEvalToCode(source, config, data);
 		} else {
 			return undefined;

@@ -3,11 +3,13 @@ import { VertexType } from '../../../../../graph/vertex';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
-import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation } from '../known-call-handling';
+import { NseArguments, NseKind } from '../nse-kind';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -24,16 +26,19 @@ import { REnvironment } from '../../../../../environments/environment';
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
 const withParamsFallback = ['data', 'expr'] as const;
 
-/** Normal call analysis, marking the data-masked arguments (columns of the data) as NSE. */
+/** Normal call analysis, marking the data-masked arguments (columns of the data) as NSE; `expr` runs in a frame of its own built from the data. */
 function markAsMaskedFallback<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	expr?:  RNode<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With, keepArgumentGraphs: true });
+	const patchData = expr === undefined ? undefined : (d: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) =>
+		RArgument.valueOf(args[i]) === expr ? { ...d, environment: REnvironment.pushLocal(d.environment) } : d;
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With, keepArgumentGraphs: true, patchData });
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst, { kind: NseKind.DataMasked });
-	return information;
+	return expr === undefined ? information : { ...information, environment: REnvironment.popLocal(information.environment) };
 }
 
 /**
@@ -78,7 +83,7 @@ export function processWithEnv<OtherInfo>(
 	const envirRouting = resolveArgToEnvirOrAmbiguous(dataArg, data);
 	const envirResolution = envirOf(envirRouting);
 	if(!envirResolution) {
-		const fallback = markAsMaskedFallback(name, args, rootId, data);
+		const fallback = markAsMaskedFallback(name, args, rootId, data, exprArg.value);
 		/* only a definition or a call we cannot see into (a closure of `data`) can write to a `data` we cannot pin down */
 		if((!fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done || callsOpaque(fallback.graph, rootId)) && !unknownIfAmbiguous(envirRouting, fallback, rootId)) {
 			return mayWriteInto(dataArg.value, fallback, rootId, data);

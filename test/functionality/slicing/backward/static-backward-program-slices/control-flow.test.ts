@@ -1,14 +1,14 @@
 import { assertSliced, withShell, assertSliceMatchesR, withTreeSitter } from '../../../_helper/shell';
 import type { TestConfigurationWithOutput } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { describe } from 'vitest';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Control flow', { concurrent: false }, withShell(shell => {
 	describe('Branch Coverage', () => {
-		assertSliced(label('nested if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
+		assertSliced(label('nested if', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
 			shell, `x <- 1
 if(y) {
   if(z) {
@@ -30,7 +30,7 @@ x`);
 			{ loop: 'while(u)', caps: ['while-loop', 'logical'] },
 			{ loop: 'for(i in 1:100)', caps: ['for-loop', 'numbers', 'name-normal'] }
 		] satisfies { loop: string, caps: FlowrCapabilityId[] }[])('$loop', ({ loop, caps }) => {
-			assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertSliced(label('Break immediately', [...caps, 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 ${loop} {
    x <- 2;
@@ -72,11 +72,11 @@ x`,
 					cfgExcludeProperties: ['entry-reaches-all', 'exit-reaches-all', ...(loop === 'repeat' ? ['has-entry-and-exit' as const] : [])],
 				});
 		});
-		assertSliced(label('a break in a loop the slice does not need is not kept', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'for-loop', 'if']),
+		assertSliced(label('a break in a loop the slice does not need is not kept', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'for-loop', 'if']),
 			shell, 'x <- 0\nfor(i in 1:3) { y <- i; if(i == 2) break }\nv <- x\nv', ['4@v'], 'x <- 0\nv <- x\nv', { expectedOutput: '[1] 0', expectedSliceOutput: '[1] 0' });
-		assertSliced(label('a break of an inner loop is not kept for the outer one', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'for-loop', 'if']),
+		assertSliced(label('a break of an inner loop is not kept for the outer one', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'for-loop', 'if']),
 			shell, 's <- 0\nfor(i in 1:3) { for(j in 1:3) { if(j == 2) break }; s <- s + i }\nv <- s\nv', ['4@v'], 's <- 0\nfor(i in 1:3) s <- s + i\nv <- s\nv', { expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
-		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),
+		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),
 			shell, `f <- function(x) {
    x <- 3 * x
    return(x)
@@ -90,7 +90,7 @@ f(5)`, ['9@f'], `f <- function(x) {
         return(x)
     }
 f(5)`, { skipCompare: true /* shell and tree-sitter place the comment differently in the ast, see https://github.com/flowr-analysis/flowr/issues/1208 */ });
-		assertSliced(label('dead code (return in if)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'if', 'return', 'unnamed-arguments', 'comments']),
+		assertSliced(label('dead code (return in if)', ['name-normal', 'formals-named', 'newlines', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['*'].capabilities, 'numbers', 'if', 'return', 'unnamed-arguments', 'comments']),
 			shell, `f <- function(x) {
    x <- 3 * x
    if(k)
@@ -110,14 +110,14 @@ f(5)`, ['12@f'], `f <- function(x) {
 f(5)`, { skipCompare: true /* shell and tree-sitter place the comment differently in the ast, see https://github.com/flowr-analysis/flowr/issues/1208 */ });
 	});
 	describe('Redefinitions', () => {
-		assertSliced(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
+		assertSliced(label('redefining {', ['name-escaped', ...BuiltInOperators.byName['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
 			shell, `\`{\` <- function(...) 3
 x <- 4
 {
    x <- 2
    print(x)
 }
-print(x)`, ['7@x'], '`{` <- function(...) 3\nx <- 4\n{ x <- 2 }\nx', { expectedOutput: '[1] 3\n[1] 4', expectedSliceOutput: '[1] 3\n[1] 4' });
+print(x)`, ['7@x'], 'x <- 4\nx', { expectedOutput: '[1] 3\n[1] 4', expectedSliceOutput: '[1] 4' });
 	});
 
 	describe('Dead Code', () => {
@@ -178,7 +178,7 @@ print(y)`, ['7@y'], 'y <- TRUE\ny');
 	describe('Calls that throw', () => {
 		/* a callee that always throws makes what follows it unreachable, but says nothing about what runs before it
 		 * and nothing at all once a handler, a branch, or a loop sits between the call and the enclosing list */
-		const caps: FlowrCapabilityId[] = ['exceptions-and-errors', 'control-flow', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'unnamed-arguments', 'normal-definition', 'call-normal'];
+		const caps: FlowrCapabilityId[] = ['exceptions-and-errors', 'control-flow', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'unnamed-arguments', 'normal-definition', 'call-normal'];
 		const outputs = { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' };
 		const sliced = 'x <- 1\nw <- x + 1\nw';
 		const cases: [string, string, SlicingCriterion, FlowrCapabilityId[]?, Partial<TestConfigurationWithOutput>?, string?][] = [

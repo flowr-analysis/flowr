@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Control-Flow Query">Control-Flow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides the control-flow of the program.\
@@ -28,20 +28,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "control-flow": {
-    ".meta": {},
-    "controlFlow": {
-      "graph": {"roots":[0,1,5],"vtxInfos":[[0,[2,0]],[1,[1,1]],[5,[1,5]]],"bbChildren":[],"edgeInfos":[[0,[[1,0]]],[1,[[5,0]]]],"mayHaveBasicBlocks":false},
-      "entryPoints": [0],
-      "exitPoints": [5],
-      "returns": [],
-      "breaks": [],
-      "nexts": []
-    }
-  },
-  ".meta": {}
-}
+{"control-flow":{".meta":{},"controlFlow":{"graph":{"roots":[0,1,5],"vtxInfos":[[0,[2,0]],[1,[1,1]],[5,[1,5]]],"bbChildren":[],"edgeInfos":[[0,[[1,0]]],[1,[[5,0]]]],"mayHaveBasicBlocks":false},"entryPoints":[0],"exitPoints":[5],"returns":[],"breaks":[],"nexts":[]}},".meta":{}}
 ```
 
 </details>
@@ -51,17 +38,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
 
 ```json
-[
-  {
-    "type": "control-flow",
-    "config": {
-      "simplificationPasses": [
-        "unique-cf-sets",
-        "to-basic-blocks"
-      ]
-    }
-  }
-]
+[ { "type": "control-flow",   "config": { "simplificationPasses": [ "unique-cf-sets",     "to-basic-blocks" ] } } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
@@ -78,26 +55,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "control-flow": {
-    ".meta": {},
-    "controlFlow": {
-      "returns": [],
-      "entryPoints": ["bb-0"],
-      "exitPoints": ["bb-0"],
-      "breaks": [],
-      "nexts": [],
-      "graph": {
-        "roots": ["bb-0"],
-        "vtxInfos": [["bb-0",[3,"bb-0",[[2,0],[1,1],[1,5]]]]],
-        "bbChildren": [[0,"bb-0"],[1,"bb-0"],[5,"bb-0"]],
-        "edgeInfos": [],
-        "mayHaveBasicBlocks": true
-      }
-    }
-  },
-  ".meta": {}
-}
+{"control-flow":{".meta":{},"controlFlow":{"returns":[],"entryPoints":["bb-0"],"exitPoints":["bb-0"],"breaks":[],"nexts":[],"graph":{"roots":["bb-0"],"vtxInfos":[["bb-0",[3,"bb-0",[[2,0],[1,1],[1,5]]]]],"bbChildren":[[0,"bb-0"],[1,"bb-0"],[5,"bb-0"]],"edgeInfos":[],"mayHaveBasicBlocks":true}}},".meta":{}}
 ```
 
 </details>
@@ -129,17 +87,7 @@ We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 If, on the other hand, you want to prune dead code edges:
 
 ```json
-[
-  {
-    "type": "control-flow",
-    "config": {
-      "simplificationPasses": [
-        "unique-cf-sets",
-        "analyze-dead-code"
-      ]
-    }
-  }
-]
+[ { "type": "control-flow",   "config": { "simplificationPasses": [ "unique-cf-sets",     "analyze-dead-code" ] } } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
@@ -156,20 +104,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "control-flow": {
-    ".meta": {},
-    "controlFlow": {
-      "returns": [],
-      "entryPoints": [0],
-      "exitPoints": [5],
-      "breaks": [],
-      "nexts": [],
-      "graph": {"roots":[0,1,5],"vtxInfos":[[0,[2,0]],[1,[1,1]],[5,[1,5]]],"bbChildren":[],"edgeInfos":[[0,[[1,0]]],[1,[[5,0]]]],"mayHaveBasicBlocks":false}
-    }
-  },
-  ".meta": {}
-}
+{"control-flow":{".meta":{},"controlFlow":{"returns":[],"entryPoints":[0],"exitPoints":[5],"breaks":[],"nexts":[],"graph":{"roots":[0,1,5],"vtxInfos":[[0,[2,0]],[1,[1,1]],[5,[1,5]]],"bbChildren":[],"edgeInfos":[[0,[[1,0]]],[1,[[5,0]]]],"mayHaveBasicBlocks":false}}},".meta":{}}
 ```
 
 </details>
@@ -198,18 +133,7 @@ We used the following simplifications: `unique-cf-sets`, `analyze-dead-code` .
 Or, completely remove dead code:
 
 ```json
-[
-  {
-    "type": "control-flow",
-    "config": {
-      "simplificationPasses": [
-        "unique-cf-sets",
-        "analyze-dead-code",
-        "remove-dead-code"
-      ]
-    }
-  }
-]
+[ { "type": "control-flow",   "config": { "simplificationPasses": [ "unique-cf-sets",     "analyze-dead-code",     "remove-dead-code" ] } } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
@@ -226,20 +150,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "control-flow": {
-    ".meta": {},
-    "controlFlow": {
-      "returns": [],
-      "entryPoints": [0],
-      "exitPoints": [5],
-      "breaks": [],
-      "nexts": [],
-      "graph": {"roots":[0,1,5],"vtxInfos":[[0,[2,0]],[1,[1,1]],[5,[1,5]]],"bbChildren":[],"edgeInfos":[[0,[[1,0]]],[1,[[5,0]]]],"mayHaveBasicBlocks":false}
-    }
-  },
-  ".meta": {}
-}
+{"control-flow":{".meta":{},"controlFlow":{"returns":[],"entryPoints":[0],"exitPoints":[5],"breaks":[],"nexts":[],"graph":{"roots":[0,1,5],"vtxInfos":[[0,[2,0]],[1,[1,1]],[5,[1,5]]],"bbChildren":[],"edgeInfos":[[0,[[1,0]]],[1,[[5,0]]]],"mayHaveBasicBlocks":false}}},".meta":{}}
 ```
 
 </details>

@@ -1,5 +1,5 @@
 import { bold, faint, supportsHyperlinks } from './text/ansi';
-import type { KnownParser } from '../r-bridge/parser';
+import { type KnownParser, ParserName } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
@@ -38,7 +38,7 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 		name = input.name;
 	} else {
 		const parserInformation = input.parserInformation();
-		r = parserInformation.name === 'r-shell' ? (await parserInformation.rVersion()) : 'unknown';
+		r = parserInformation.name === ParserName.Shell ? (await parserInformation.rVersion()) : 'unknown';
 		name = parserInformation.name;
 	}
 

@@ -15,21 +15,22 @@ import { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-sym
 import { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RAccess } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { SourceRange } from '../../../../src/util/range';
+import { SourceLocation, SourceRange, type Line, type Column } from '../../../../src/util/range';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { callFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import { ArgProp, CallProp, ImpureProps, SemanticCallTag, type BuiltInFnInfo } from '../../../../src/dataflow/environments/built-in-props';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { BuiltInEvalName } from '../../../../src/dataflow/environments/built-in-eval-name';
-import { Identifier, ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { Identifier, ReferenceType, type BrandedIdentifier } from '../../../../src/dataflow/environments/identifier';
+import { EnvType, REnvironment } from '../../../../src/dataflow/environments/environment';
 import { BuiltInEvalHandlerMapper } from '../../../../src/dataflow/environments/built-in';
 import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInOperators } from '../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 export interface MutationTarget {
 	/** the program to mutate */
@@ -109,7 +110,7 @@ export class MutationProgram {
 	}
 
 	/** the index of the given position (both one-based) in the code */
-	offset(line: number, column: number): number {
+	offset(line: Line, column: Column): number {
 		return this.lineStarts[line - 1] + column - 1;
 	}
 
@@ -129,6 +130,13 @@ export class MutationProgram {
 	/** the token `node` is made of, the name of a call rather than the call */
 	token(node: RNode<ParentInformation>): string {
 		return this.slice(SourceRange.ownFromNode(node) ?? this.span(node));
+	}
+
+	/** how `call` names what it calls, with the namespace it may give (`stats::filter`) */
+	callee(call: RFunctionCall<ParentInformation> & { named: true }): string {
+		const [sl, sc] = this.span(call);
+		const [, , el, ec] = SourceRange.ownFromNode(call.functionName) ?? this.span(call.functionName);
+		return this.slice([sl, sc, el, ec]);
 	}
 
 	/** every node below `node` (the whole program if there is none) in the order they are written */
@@ -159,7 +167,7 @@ export class MutationProgram {
 	}
 
 	/** the statements on each line, by line number */
-	statementsOn(line: number): RNodeWithParent[] {
+	statementsOn(line: Line): RNodeWithParent[] {
 		return this.statements.filter(s => this.span(s)[0] === line);
 	}
 
@@ -192,7 +200,7 @@ export class MutationProgram {
 
 	/** whether `node` is an assignment of any kind, `<-`, `=`, `->`, `<<-` or `->>` */
 	static isAssignment(node: RNode<ParentInformation>): node is RBinaryOp<ParentInformation> {
-		return RBinaryOp.is(node) && OperatorDatabase[node.operator]?.usedAs === 'assignment';
+		return RBinaryOp.is(node) && BuiltInOperators.byName[node.operator]?.usedAs === 'assignment';
 	}
 
 	/**
@@ -314,7 +322,7 @@ export class MutationProgram {
 			}
 			const info = RFunctionCall.is(parent) ? this.callInfo(parent) : undefined;
 			if(info !== undefined && (FunctionSemantics.call.props.hasAny(info, CallProp.Lang)
-				|| FunctionSemantics.call.props.hasAny(info, [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage]))) {
+				|| FunctionSemantics.call.props.hasAny(info, [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage, SemanticCallTag.DetachesPackage]))) {
 				return true;
 			}
 		}
@@ -326,8 +334,26 @@ export class MutationProgram {
 		return this.nodes().filter((n): n is RString<ParentInformation> => RString.is(n) && n.content.quotes === '"' && n.content.flag !== 'raw' && !n.lexeme.includes('\\'));
 	}
 
+	/** whether a package the program attaches exports `name`, whose binding R locks against a `<<-` */
+	attachedExports(name: string): boolean {
+		return [...REnvironment.searchPath(this.dataflow.environment.current)].some(l => l.t === EnvType.Namespace && l.memory.has(name as never));
+	}
+
+	/** whether a call takes `name` as a name it deparses (`save(x)`), which a non-syntactic name breaks */
+	namedByCall(name: string): boolean {
+		return this.nodes().some(n => {
+			if(!RSymbol.is(n) || Identifier.getName(n.content) !== name) {
+				return false;
+			}
+			const arg = RNode.directParent(n, this.ast.idMap);
+			const call = arg === undefined ? undefined : RNode.directParent(arg, this.ast.idMap);
+			const info = RFunctionCall.is(call) ? this.callInfo(call) : undefined;
+			return info !== undefined && 'namesIn' in info;
+		});
+	}
+
 	/** whether a string literal spells `name` out, so a renaming would leave it behind */
-	spellsOut(name: string): boolean {
+	spellsOut(name: BrandedIdentifier): boolean {
 		const word = new RegExp(`(?<![\\w.])${escapeRegex(name)}(?![\\w.])`);
 		return this.nodes().some(n => RString.is(n) && word.test(n.content.str));
 	}
@@ -380,7 +406,7 @@ export class Rewrite {
 
 	/** replaces the code `node` (or the range) spans */
 	replace(at: RNode<ParentInformation> | SourceRange, text: string): this {
-		const [sl, sc, el, ec] = Array.isArray(at) ? at : this.program.span(at);
+		const [sl, sc, el, ec] = SourceLocation.is(at) ? at : this.program.span(at);
 		this.edits.push({ from: this.program.offset(sl, sc), to: this.program.offset(el, ec) + 1, text });
 		return this;
 	}

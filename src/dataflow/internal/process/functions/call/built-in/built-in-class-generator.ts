@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -7,7 +8,7 @@ import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveListToEnvState } from './built-in-list';
 import { findReturnsEnvState } from './built-in-envir-utils';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -21,8 +22,8 @@ import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 import { linkS4Declaration } from './built-in-s-four';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
-const MethodListArguments = ['public', 'methods'];
-const FieldListArguments = ['fields', 'private'];
+const MethodListArguments: readonly BrandedIdentifier[] = ['public', 'methods'];
+const FieldListArguments: readonly BrandedIdentifier[] = ['fields', 'private'];
 
 /** Processes an `R6Class`/`setRefClass` generator call, tagging it so the assignment layer can record its method list. */
 export function processClassGenerator<OtherInfo>(
@@ -38,7 +39,7 @@ export function processClassGenerator<OtherInfo>(
 	return info;
 }
 
-/** The method env of a class generator's `public`/`methods` `list(...)` (via {@link resolveListToEnvState}); `undefined` if absent. */
+/** The env an instance of a class generator's class carries: its `public`/`methods` and `fields`/`private` lists (via {@link resolveListToEnvState}), or an empty one, as every R6 or reference class object is an environment, shared by every variable holding it. */
 export function resolveClassMethodsToEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
@@ -53,7 +54,7 @@ export function resolveClassMethodsToEnvState<OtherInfo>(
 		const resolved = list === undefined ? undefined : resolveListToEnvState(list, envState ? { environment: envState } : data, values);
 		envState = resolved ?? envState;
 	}
-	return envState;
+	return envState ?? REnvironment.pushLocal(data.environment);
 }
 
 const ConstructorField = 'new';

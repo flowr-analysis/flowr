@@ -6,7 +6,7 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { DfgVertex } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import { Identifier } from '../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../dataflow/environments/identifier';
 import type { BuiltInIndex } from '../dataflow/environments/query-fn-props';
 import type { PropSelector } from '../dataflow/environments/built-in-props';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
@@ -14,7 +14,7 @@ import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** The certainty, involved node, and location of a finding at a node or location. */
 export function at(where: RNode<ParentInformation> | SourceLocation | undefined, certain = true): Pick<LintingResult, 'certainty' | 'involvedId' | 'loc'> {
-	const node = Array.isArray(where) ? undefined : where;
+	const node = SourceLocation.is(where) ? undefined : where;
 	return {
 		certainty:  certain ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain,
 		involvedId: node?.info.id,
@@ -43,7 +43,7 @@ export function builtInOf(graph: DataflowGraph, id: NodeId): Identifier | undefi
 }
 
 /** Whether the call `id` resolves to a built-in of one of the plain `names`, wherever it was imported from. */
-export function callsBuiltIn(graph: DataflowGraph, id: NodeId, names: string | ReadonlySet<string>): boolean {
+export function callsBuiltIn(graph: DataflowGraph, id: NodeId, names: BrandedIdentifier | ReadonlySet<BrandedIdentifier>): boolean {
 	const builtIn = builtInOf(graph, id);
 	return builtIn !== undefined && (typeof names === 'string' ? names === Identifier.getName(builtIn) : names.has(Identifier.getName(builtIn)));
 }
@@ -56,6 +56,6 @@ export function callHas(graph: DataflowGraph, id: NodeId, index: BuiltInIndex, p
 }
 
 /** The plain names of the built-ins carrying one of the `props`, to filter AST-only code (no dataflow) by what flowR states. */
-export function namesWith(index: BuiltInIndex, props: PropSelector): ReadonlySet<string> {
+export function namesWith(index: BuiltInIndex, props: PropSelector): ReadonlySet<BrandedIdentifier> {
 	return new Set(index.with(props).map(n => Identifier.getName(n)));
 }

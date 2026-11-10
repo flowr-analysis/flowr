@@ -1,6 +1,5 @@
 /**
- * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
@@ -17,7 +16,7 @@ import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { Identifier } from '../environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { happensInEveryBranch } from '../info';
@@ -40,8 +39,7 @@ export interface ArgumentRolesOptions {
 }
 
 /**
- * What each definition in `ids` does with its formals, as {@link ArgProps}. A formal is {@link ArgProp.Alias}
- * only when the result is *always* that formal; every other bit is what the calls in the body state for it.
+ * What each definition in `ids` does with its formals, as {@link ArgProps}.
  * @useInstead {@link FunctionSemantics.argumentRoles}
  */
 export function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
@@ -66,16 +64,15 @@ export interface LookupState {
 
 /** @see {@link LookupState}; also how far a value is followed back, for the walks that need to know. */
 interface RoleState extends LookupState {
-	readonly maxDepth: number
-	/**
-	 * What {@link rolesOfCall} answered for a call, as the walks ask the same calls over and over and matching
-	 * arguments to formals is the expensive part. Lives for the one run and is dropped with it.
-	 */
-	readonly args:     Map<NodeId, ArgumentProps>
+	readonly maxDepth:   number
+	/** What {@link rolesOfCall} answered for a call, as the walks ask the same calls over and over and matching arguments to formals is the expensive part. */
+	readonly args:       Map<NodeId, ArgumentProps>
+	/** what {@link identityFrom} found per node and depth, for the walks that may reuse it; lives for the one run as well */
+	readonly identities: Map<NodeId, Identity[]>
 }
 
 function roleStateOf(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
-	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map() };
+	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map(), identities: new Map() };
 }
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
@@ -105,28 +102,74 @@ const NotStatedByACall = ArgProp.Alias | ArgProp.NoDefault;
 
 /** What `nodes` always yield, following identity-preserving steps only: `if(c) x else x` is `x`, `if(c) x else y` neither. */
 function identityOf(nodes: readonly NodeId[], state: RoleState): Set<NodeId> {
-	return intersect(nodes.map(node => identityFrom(node, state, 0, new Set())));
+	return intersect(nodes.map(node => identityFrom(node, state, 0, new Set()).found));
 }
 
-function identityFrom(node: NodeId, state: RoleState, depth: number, open: Set<NodeId>): Set<NodeId> {
-	const found = new Set<NodeId>([node]);
-	if(depth > state.maxDepth || open.has(node)) {
-		return found;
+/** What {@link identityFrom} found for a node at a depth. */
+interface Identity {
+	readonly found:   ReadonlySet<NodeId>
+	/** the nodes the walk asked whether they are open */
+	readonly touched: ReadonlySet<NodeId>
+	/** those of them that were open when the walk started */
+	readonly open:    ReadonlySet<NodeId>
+}
+
+/** Whether the walk that found `known` would find the same with the given nodes open. */
+function holdsWith(known: Identity, open: ReadonlySet<NodeId>): boolean {
+	let shared = 0;
+	for(const id of open) {
+		if(known.touched.has(id)) {
+			if(!known.open.has(id)) {
+				return false;
+			}
+			shared++;
+		}
 	}
+	return shared === known.open.size;
+}
+
+const NoNodes: ReadonlySet<NodeId> = new Set();
+
+function identityFrom(node: NodeId, state: RoleState, depth: number, open: Set<NodeId>): Identity {
+	if(depth > state.maxDepth) {
+		return { found: new Set([node]), touched: NoNodes, open: NoNodes };
+	} else if(open.has(node)) {
+		const self = new Set([node]);
+		return { found: self, touched: self, open: self };
+	}
+	const byDepth = state.identities.get(node);
+	const cached = byDepth?.[depth];
+	if(cached !== undefined && holdsWith(cached, open)) {
+		return cached;
+	}
+	const found = new Set<NodeId>([node]);
+	const touched = new Set<NodeId>([node]);
+	const before = [...open];
 	open.add(node);
+	const walk = (next: NodeId): ReadonlySet<NodeId> => {
+		const reached = identityFrom(next, state, depth + 1, open);
+		for(const id of reached.touched) {
+			touched.add(id);
+		}
+		return reached.found;
+	};
 	const [branches, steps] = sameValueAs(node, state);
 	for(const step of steps) {
-		for(const id of identityFrom(step, state, depth + 1, open)) {
+		for(const id of walk(step)) {
 			found.add(id);
 		}
 	}
 	if(branches.length > 0) {
-		for(const id of intersect(branches.map(branch => identityFrom(branch, state, depth + 1, open)))) {
+		for(const id of intersect(branches.map(walk))) {
 			found.add(id);
 		}
 	}
 	open.delete(node);
-	return found;
+	const identity: Identity = { found, touched, open: new Set(before.filter(id => touched.has(id))) };
+	const atDepth = byDepth ?? [];
+	atDepth[depth] = identity;
+	state.identities.set(node, atDepth);
+	return identity;
 }
 
 /** What every one of the sets holds; nothing at all when there is not a single set. */
@@ -134,10 +177,7 @@ function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
 	return sets.length === 0 ? new Set() : sets.slice(1).reduce<Set<NodeId>>((acc, s) => acc.intersection(s), new Set(sets[0]));
 }
 
-/**
- * The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes.
- * An access (`x$a`, `pkg::name`) draws a `Returns` edge too, but hands back a part, so nothing follows through one.
- */
+/** The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes. */
 function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
@@ -182,7 +222,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	const roles = new Map<NodeId, ArgProps>();
 	const add = (node: NodeId, props: ArgProps): void => {
 		/* forcing `if(c) a else b` evaluates only one of `a` and `b`, so neither is forced for certain */
-		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set());
+		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set()).found;
 		const written = writtenFormal(node, byName, state);
 		for(const formal of aliasTargets(node, byName, state)) {
 			const own = always === undefined || always.has(formal) || formal === written ? props : props & ~ArgProp.Forced;
@@ -223,11 +263,8 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 		.map(([target]) => target);
 }
 
-/**
- * Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not
- * identity). An argument a call never evaluates has no origin to follow (`quote(x)`), so its written name answers.
- */
-function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): Set<NodeId> {
+/** Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not identity). */
+function aliasTargets(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeId>, state: RoleState): Set<NodeId> {
 	const found = new Set<NodeId>([node]);
 	const queue: [NodeId, number][] = [[node, 0]];
 	for(let at = 0; at < queue.length; at++) {
@@ -250,18 +287,15 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: 
 	return found;
 }
 
-/**
- * The formal parameter a symbol argument names. In `f <- function(x) quote(x)` the `x` of `quote` is never evaluated,
- * so no edge links it to the formal `x`, and its name is all there is to go by.
- */
-function writtenFormal(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): NodeId | undefined {
+/** The formal parameter a symbol argument names. */
+function writtenFormal(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeId>, state: RoleState): NodeId | undefined {
 	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
 	return name === undefined ? undefined : byName.get(name);
 }
 
 /** The formals of `definition` by name, for {@link writtenFormal}. */
-function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<string, NodeId> {
-	const byName = new Map<string, NodeId>();
+function formalsByName(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<BrandedIdentifier, NodeId> {
+	const byName = new Map<BrandedIdentifier, NodeId>();
 	for(const formal of Object.keys(definition.params)) {
 		const name = NodeId.recoverBareName(NodeId.normalize(formal), state.graph.idMap);
 		if(name !== undefined) {

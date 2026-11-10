@@ -126,6 +126,7 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 export const DoesCallQueryDefinition = {
 	title:           'Does-Call Query',
 	executor:        executeDoesCallQuery,
+	perQueryResults: true,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'does-call'>['does-call'];
 		result.push(`Query: ${bold('does-call', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);

@@ -38,6 +38,7 @@ export const HappensBeforeKey = {
 export const HappensBeforeQueryDefinition = {
 	title:           'Happens-Before Query',
 	executor:        executeHappensBefore,
+	perQueryResults: true,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'happens-before'>['happens-before'];
 		result.push(queryHeader('happens-before', formatter, out['.meta'].timing));

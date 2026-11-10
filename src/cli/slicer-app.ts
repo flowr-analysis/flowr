@@ -15,6 +15,7 @@ import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
 import { FlowrConfig } from '../config';
+import { ParserName } from '../r-bridge/parser';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -50,7 +51,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 });
 
 async function getSlice() {
-	const slicer = new BenchmarkSlicer('r-shell');
+	const slicer = new BenchmarkSlicer(ParserName.Shell);
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 

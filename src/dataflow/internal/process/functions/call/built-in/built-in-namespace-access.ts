@@ -7,7 +7,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedNamespace, type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { VertexType } from '../../../../../graph/vertex';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -33,11 +33,11 @@ export function processNamespaceAccess<OtherInfo>(
 	const nsNode  = args[0].value;
 	const symNode = args[1].value;
 
-	let namespace:  string | undefined;
-	let symbolName: string | undefined;
+	let namespace:  BrandedNamespace | undefined;
+	let symbolName: BrandedIdentifier | undefined;
 
 	if(RSymbol.is(nsNode)) {
-		namespace = Identifier.getName(nsNode.content);
+		namespace = Identifier.getName(nsNode.content) as string;
 	} else if(nsNode && RString.is(nsNode)) {
 		namespace = nsNode.content.str;
 	}

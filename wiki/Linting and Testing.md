@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-10-27, 20:45:07 UTC (v2.16.7, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-11-08, 14:25:27 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
@@ -51,6 +51,14 @@ You can run the tests by issuing (some quick benchmarks may be available with `n
 npm run test
 ```
 
+By default, this only runs the tests affected by your uncommitted changes, that is, the tests that import a changed file directly or through other files (see [`vitest --changed`](https://vitest.dev/guide/cli#changed)).
+This already works on the very first run and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (`-t`), `npm run test` runs exactly those instead, changed or not.
+Changes to the test setup, the test files under `test/testfiles`, the vitest configuration, or `package.json` run every test.
+Use `npm run test:all` to run every test, `npm run test:branch` for the tests affected by all changes against `main`, and `npm run test:related -- <files>` for the tests depending on the given source files (see [`vitest related`](https://vitest.dev/guide/cli#vitest-related)).
+CI, `npm run test:full`, and `npm run checkup` always run every test.
+The section on [running only some tests](#running-only-some-tests) explains when the selection may be too broad or too narrow.
+
 Within the commandline,
 this should automatically drop you into a watch mode which will automatically re-run (potentially) affected tests if you change the code.
 If, at any time there are too many errors for you to comprehend, you can use `--bail=<value>` to stop the tests after a certain number of errors.
@@ -91,7 +99,7 @@ This folder contains three special and important elements:
 > [!WARNING]
 > 
 > We name all test files using the `.test.ts` suffix and try to run them in parallel.
-> Whenever this is impossible (e.g., when using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L88"><code><span title="Produces a shell session for you, can be used within a describe block. Pass { concurrent: false } to the describe, the RShell does not fare well with parallelization.">withShell</span></code></a>), pass `{ concurrent: false }` to the
+> Whenever this is impossible (e.g., when using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L87"><code><span title="Produces a shell session for you, can be used within a describe block. Pass { concurrent: false } to the describe, the RShell does not fare well with parallelization.">withShell</span></code></a>), pass `{ concurrent: false }` to the
 > `describe` to disable parallel execution for the respective test (otherwise, such tests are flaky):
 > 
 > 
@@ -134,20 +142,20 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L413"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L470"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L39"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L412"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts#L470"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L38"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L386"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L385"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
   The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L391"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L390"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
   For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:
 
 ```typescript
 
-assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+assertDataflow(label('without distractors', [...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 	shell, '`a` <- 2\na',
 	emptyGraph()
 		.use('2@a')
@@ -163,7 +171,12 @@ assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilit
 #### 🤏 Running Only Some Tests
 
 To run only some tests, vitest allows you to [filter](https://vitest.dev/guide/filtering.html) tests. 
-Besides, you can use the watch mode (with `npm run test`) to only run tests that are affected by your changes.
+By default, `npm run test` already runs only the tests affected by your uncommitted changes, even on the first run, and its watch mode re-runs the tests affected by every further change.
+For other selections, use `npm run test:branch` for all changes against `main`, `npm run test:related -- <files>` for the tests depending on the given files, or `npm run test:all` for every test.
+These scripts build on vitest's [`--changed`](https://vitest.dev/guide/cli#changed) and [`related`](https://vitest.dev/guide/cli#vitest-related) commands, which follow the imports of the test files.
+Most tests import the shared test helpers and the setup, so the selection is often broader than you might expect.
+Changes to the test setup, the test files under `test/testfiles`, the vitest configuration, or `package.json` run every test.
+Other data files and generated files are not visible in the imports and may select too few tests. When in doubt, run `npm run test:all`.
 
 <a id='system-tests'></a>
 ### 💽 System Tests
@@ -204,7 +217,7 @@ checkup`, where `npm run checkup -- mutations` runs just this job.
 
 The suite has three pieces:
 
-- the 40 passes, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L653"><code><span title="every pass a mutant is generated for; add to this list to check another rewrite">MutationPasses</span></code></a> in [test/functionality/_helper/mutation](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation).
+- the 40 passes, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L655"><code><span title="every pass a mutant is generated for; add to this list to check another rewrite">MutationPasses</span></code></a> in [test/functionality/_helper/mutation](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation).
 - the corpus of programs and the invariant checks run against their mutants, in [test/mutations/counterexample-checks.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/counterexample-checks.ts).
 - pass-level unit tests, in [test/mutations/r-mutations.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/r-mutations.test.ts), checking each pass on its own rather than against the corpus.
 
@@ -239,7 +252,7 @@ The passes fall into 9 categories: `formatting and noise`, `assignment spelling`
 - `braced right hand side`: `x <- 1` becomes `x <- { 1 }`
 - `assign call`: `x <- 1` becomes `assign("x", 1)`, except on the line of the criterion, which has to keep naming the variable
 - `equals assignment`: `x <- 1` becomes `x = 1`
-- `top level super assignment`: `x <- 1` becomes `x <<- 1`, except for a name an attached base package exports, as a `<<-` would try to change that binding
+- `top level super assignment`: `x <- 1` becomes `x <<- 1`, except for a name an attached package exports, as a `<<-` would try to change that locked binding
 
 </details>
 
@@ -312,9 +325,9 @@ Besides, every mutant and every chain of a pass and the 4 passes after it is ana
 every query on tree-sitter, without R, in [test/mutations/robustness.ts](https://github.com/flowr-analysis/flowr/tree/main/test/mutations/robustness.ts): none of these
 tens of thousands of programs may make flowR fail, overflow the stack, or hang.
 
-A pass is a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L38"><code><span title="one rewrite, applied to every counterexample it fits">MutationPass</span></code></a> and sees the program as a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L75"><code><span title="A program to mutate, as flowR sees it: the statements of its normalized AST, the dataflow graph, and what the built-in configuration states about the calls it makes. Passes ask this instead of reading the code as text.">MutationProgram</span></code></a>: its normalized
+A pass is a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-passes.ts#L38"><code><span title="one rewrite, applied to every counterexample it fits">MutationPass</span></code></a> and sees the program as a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L76"><code><span title="A program to mutate, as flowR sees it: the statements of its normalized AST, the dataflow graph, and what the built-in configuration states about the calls it makes. Passes ask this instead of reading the code as text.">MutationProgram</span></code></a>: its normalized
 AST and dataflow graph, and what the built-in configuration states about each call. It edits the code through
-a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L374"><code><span title="Text edits to a MutationProgram , applied all at once so each names its place in the original code. The criterion moves along with the lines edits add or remove before it.">Rewrite</span></code></a>, which moves the criterion along with the lines the edits add or remove.
+a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/mutation/mutation-program.ts#L400"><code><span title="Text edits to a MutationProgram , applied all at once so each names its place in the original code. The criterion moves along with the lines edits add or remove before it.">Rewrite</span></code></a>, which moves the criterion along with the lines the edits add or remove.
 
 A complete run writes how many passes, counterexamples and mutants it checked, and
 [scripts/test-label-counts.ts](https://github.com/flowr-analysis/flowr/tree/main/scripts/test-label-counts.ts) adds these numbers to the
@@ -411,7 +424,7 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 <a id='flowr-specific-rules'></a>
 ### 🧭 flowR-Specific Rules
 
-flowR groups its functions in helper objects (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L9"><code><span title="An edge consist of only of the type (source and target are encoded with the Dataflow Graph). Multiple edges are encoded by joining the respective type bits.">DfEdge</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L33"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>, and
+flowR groups its functions in helper objects (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/edge.ts#L9"><code><span title="An edge consist of only of the type (source and target are encoded with the Dataflow Graph). Multiple edges are encoded by joining the respective type bits.">DfEdge</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/resolve-helper.ts#L38"><code><span title="The helper object for resolution: from a name to the definitions it may refer to, and from a node to the value(s) it may hold. Resolve.info and Resolve.infoOf state *where* to resolve, which everything below takes; from an analyzer that is one call, with no need to assemble the graph, the id map and the context by hand. Take the narrowest entry point that answers your question, they differ a lot i...">Resolve</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L37"><code><span title="What a NodeId is: the identity of a node within one analysis, plus the built-in and pkg::fn names encoded as one, and the ways to read a name back out of it.">NodeId</span></code></a>, and
 friends) so that there is one obvious entry point per topic. Two rules of the
 [`flowr` plugin](https://github.com/flowr-analysis/flowr-lint) keep the code on those entry points, both part of `npm run lint`.
 Each is fixed on the spot where the replacement is already imported, and offered as an editor suggestion otherwise.
@@ -488,4 +501,4 @@ You can also set the `Auto Attach Filter` setting to automatically attach the de
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L22"><code>FlowrLogger</code></a>. They obey to, for example, the <span title="Description (Command Line Argument): Run with verbose logging (will be passed to the corresponding script)">`--verbose`</span>
 option. Throughout *flowR*, we use the `log` object (or subloggers of it) for logging.
 To create your own logger, you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L26"><code>FlowrLogger::<i>getSubLogger</i></code></a>.
-For example, check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/static/static-slicer.ts#L25"><code>slicerLogger</code></a> for the static slicer.
+For example, check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/static/static-slicer.ts#L27"><code>slicerLogger</code></a> for the static slicer.

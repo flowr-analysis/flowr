@@ -1,5 +1,5 @@
 import { prettyPrint, LintingResultCertainty } from '../../linter-format';
-import { SourceLocation } from '../../../util/range';
+import { SourceLocation, type Line } from '../../../util/range';
 import { type CmdCheckResult, type PackageInfo, packageInfo } from './cmd-check-util';
 import { type PackageFiles, packageFiles } from './package-files';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
@@ -14,7 +14,7 @@ export interface FileResult<K extends string> extends CmdCheckResult {
 /** Collects findings located at package files; findings of the kinds in `skip` are dropped. */
 export function fileFindings<K extends string>(pf: PackageFiles, skip: readonly K[] = []) {
 	const results: FileResult<K>[] = [];
-	const add = (kind: K, file: string, message: string, line?: number, certainty = LintingResultCertainty.Certain) => {
+	const add = (kind: K, file: string, message: string, line?: Line, certainty = LintingResultCertainty.Certain) => {
 		if(!skip.includes(kind)) {
 			results.push({ certainty, involvedId: undefined, loc: pf.locate(file, line), kind, file, message });
 		}

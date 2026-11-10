@@ -192,7 +192,7 @@ describe('inline source()', { concurrent: false }, () => {
 			{ type: 'static-slice', criteria: ['2@N'], inlineSources: true }
 		]);
 		const [entry] = Object.values(out.results);
-		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
 		const code = entry.reconstruct.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
@@ -206,7 +206,7 @@ describe('inline source()', { concurrent: false }, () => {
 			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
 		]);
 		const [entry] = Object.values(out.results);
-		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
 		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
 	});
 	test('banners mark where a spliced file begins and ends', async() => {
@@ -217,7 +217,7 @@ describe('inline source()', { concurrent: false }, () => {
 			{ type: 'static-slice', criteria: ['2@N'], inlineSources: 'banner' }
 		]);
 		const [entry] = Object.values(out.results);
-		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
 		expect(entry.reconstruct.code).toBe('# ---- a ----\nN <- 9\n# ---- end of a ----\nN');
 	});
 	test('a sourced file the project also analyzes on its own is still inlined', async() => {
@@ -228,7 +228,7 @@ describe('inline source()', { concurrent: false }, () => {
 			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
 		]);
 		const [entry] = Object.values(out.results);
-		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
 		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
 		expect(entry.reconstruct.inlineWarnings).toEqual([]);
 	});

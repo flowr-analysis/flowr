@@ -8,7 +8,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import { FlowrNamespaceFile, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, importOrigin, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrConfig } from '../../../../src/config';
 
 
@@ -98,6 +98,17 @@ importMethodsFrom(BiocGenerics,combine)`));
 		});
 	});
 
+	describe('re-exports', function() {
+		test(label('an importFrom names where the name comes from, an import of a whole package does not', ['project-namespace'], ['other']), () => {
+			const ns = ctx.deps.getDependency('current')?.namespaceInfo;
+			assert.isDefined(ns);
+			assert.strictEqual(importOrigin('alpha', ns), 'scales');
+			assert.strictEqual(importOrigin('setNames', ns), 'stats');
+			assert.isUndefined(importOrigin('ggplot', ns), 'a name the package defines itself');
+			assert.isUndefined(importOrigin('enquo', ns), 'import(rlang) does not tell which names rlang exports');
+		});
+	});
+
 	describe('S3 methods - fortify', function() {
 		test('All fortify methods registered in namespaceInfo', () => {
 			const deps = ctx.deps.getDependency('current');
@@ -158,14 +169,21 @@ importMethodsFrom(BiocGenerics,combine)`));
 
 		test('exportMethods / exportClasses split their arguments too', () => {
 			const info = simple('exportMethods(show, summary)\nexportClasses("A", "B")').current;
-			assert.includeMembers(info.exportedFunctions, ['show', 'summary', 'A', 'B']);
-			assert.strictEqual(info.exportedFunctions.length, 4);
+			assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
+			assert.deepEqual(info.exportedS4Classes, ['A', 'B']);
+			assert.deepEqual(info.exportedSymbols, [], 'S4 exports are no ordinary exports');
 		});
 
 		test('single-symbol and quoted exports still parse (no regression)', () => {
 			const info = simple('export("+")\nexport(ggplot)').current;
 			assert.includeMembers(info.exportedSymbols, ['+', 'ggplot']);
 			assert.isFalse(info.exportedSymbols.includes('"+"'));
+		});
+
+		test('exportMethods on a primitive generic exports nothing, as in R', () => {
+			const info = simple('exportMethods("[", "+", `$`, rep, as.difftime)\nexport(log)').current;
+			assert.deepEqual(info.exportedS4Methods, ['as.difftime']);
+			assert.deepEqual(info.exportedSymbols, ['log']);
 		});
 
 		test('importClassesFrom / importMethodsFrom record the source package like importFrom', () => {

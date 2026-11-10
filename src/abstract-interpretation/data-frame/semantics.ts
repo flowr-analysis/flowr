@@ -404,10 +404,18 @@ function applySummarizeSemantics(
 	});
 }
 
+/** Which rows of the two data frames a join keeps beyond the matching ones. */
+export enum JoinType {
+	Inner = 'inner',
+	Left = 'left',
+	Right = 'right',
+	Full = 'full'
+}
+
 function applyJoinSemantics(
 	value: DataFrameDomain,
 	{ other, by }: { other: DataFrameDomain, by: (string | undefined)[] | undefined },
-	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
+	options?: { join?: JoinType, natural?: boolean }
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
 	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
@@ -445,20 +453,20 @@ function applyJoinSemantics(
 		duplicateCols = undefined;
 		productRows = false;
 	}
-	const joinType = options?.join ?? 'inner';
+	const joinType = options?.join ?? JoinType.Inner;
 	let rows: PosIntervalDomain;
 
 	switch(joinType) {
-		case 'inner':
+		case JoinType.Inner:
 			rows = value.rows.max(other.rows).widenDown();
 			break;
-		case 'left':
+		case JoinType.Left:
 			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.upper] : Bottom);
 			break;
-		case 'right':
+		case JoinType.Right:
 			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.upper] : Bottom);
 			break;
-		case 'full':
+		case JoinType.Full:
 			rows = mergeInterval(value.rows, other.rows);
 			break;
 		default:

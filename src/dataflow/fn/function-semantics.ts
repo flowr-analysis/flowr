@@ -1,6 +1,6 @@
 import { inferFunctions } from './function-props';
 import { exceptionsOfFunction } from './exceptions-of-function';
-import { promiseDependencies, promiseForcing, settleJumpsInPromises, strictnessOfEach } from './strict-function';
+import { promiseDependencies, promiseForcing, settleDefinitionsInPromises, settleJumpsInPromises, strictnessOfEach } from './strict-function';
 import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
@@ -15,21 +15,8 @@ import { UnsupportedFunctions } from '../../abstract-interpretation/unsupported-
 import type { DataflowGraphVertexInfo } from '../graph/vertex';
 
 /**
- * The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which
- * formals it forces, and what it declares as a class. It replaces the seven single-purpose helper objects
- * that used to sit one per file under `src/dataflow/fn/`.
+ * The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class.
  * @helper api
- * @example
- * ```ts
- * FunctionSemantics.props(definitions, graph);            // what the definitions do with what they get
- * FunctionSemantics.exceptions(definition, callGraph);    // what they may raise
- * FunctionSemantics.strictness(definitions, graph);       // which formals they force
- * FunctionSemantics.isHigherOrder(definition, graph);     // whether they call what they are handed
- * FunctionSemantics.argumentRoles(definitions, graph);    // what each formal is used as
- * FunctionSemantics.classes.declared(graph);              // the classes the project declares
- * FunctionSemantics.call.props.hasAny(stated, CallProp.Scope);   // what flowR states one call does
- * FunctionSemantics.call.match(call, formals);            // how R binds its arguments
- * ```
  */
 export const FunctionSemantics = {
 	name:            'FunctionSemantics',
@@ -41,6 +28,8 @@ export const FunctionSemantics = {
 	strictness:      strictnessOfEach,
 	/** Settles what a jump within a promise does, once the calls are linked. */
 	settleJumpsInPromises,
+	/** Settles what a definition within a promise does, once the calls are linked. */
+	settleDefinitionsInPromises,
 	/** What a node within promises depends on for running at all. */
 	promiseDependencies,
 	/** How surely the holder of a promise forces it. */
@@ -51,10 +40,7 @@ export const FunctionSemantics = {
 	argumentRoles:   argumentRolesOfFunctions,
 	/** The reflective argument bits of one definition. */
 	frameReflection: reflectiveRolesOf,
-	/**
-	 * What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of
-	 * them it does not simply evaluate.
-	 */
+	/** What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of them it does not simply evaluate. */
 	call:            {
 		/** What flowR states a call does (it reads a file, it asks the user, ...). */
 		props:       CallProps,

@@ -72,8 +72,10 @@ describe('Resolve Value Query', withTreeSitter(parser => {
 
 	testQuery('An element at a known position', 'x <- c("a", "b")\ny <- x[[2]]\ny', ['3@y'], [[setFrom(stringFrom('b'))]]);
 	testQuery('An element at a position not known is any of them', 'x <- c("a", "b")\nk <- sample(2, 1)\ny <- x[[k]]\ny', ['4@y'], [[setFrom(stringFrom('a'), stringFrom('b'))]]);
-	testQuery('A definition in a loop holds what any round gives it', 's <- c("p", "q")\nk <- 0L\nwhile(k < 2) { k <- k + 1L; i <- s[[k]]; y <- paste0(i, ".txt") }\ny', ['4@y'], [[setFrom(stringFrom('p.txt'), stringFrom('q.txt'))]]);
-	testQuery('A definition depending on an earlier round stays unknown', 'x <- 0\nwhile(x < 3) x <- x + 1\ny <- x\ny', ['4@y'], [[Top]]);
+	testQuery('A definition in a loop holds what the last round gives it', 's <- c("p", "q")\nk <- 0L\nwhile(k < 2) { k <- k + 1L; i <- s[[k]]; y <- paste0(i, ".txt") }\ny', ['4@y'], [[setFrom(stringFrom('q.txt'))]]);
+	testQuery('A definition depending on an earlier round of a counted loop', 'x <- 0\nwhile(x < 3) x <- x + 1\ny <- x\ny', ['4@y'], [[setFrom(intervalFrom(3, 3))]]);
+	testQuery('A loop that never runs keeps the value before it', 'x <- 42\nwhile(x < 10) { x <- x + 1 }\nprint(x)', ['3@x'], [[setFrom(intervalFrom(42, 42))]]);
+	testQuery('A definition depending on an earlier round of a loop not counted stays unknown', 'x <- 0\nwhile(x < length(commandArgs())) x <- x + 1\ny <- x\ny', ['4@y'], [[Top]]);
 	testQuery('Local defined by a call', 'p <- file.path("data", "x.csv")\nread.csv(p)', ['2@p'], [[setFrom(stringFrom('data/x.csv'))]]);
 
 	/* the project root `here` prefixes is implicit, so what it folds to is the path below it */
@@ -160,7 +162,7 @@ df <- df[2,]
 df[1] <- c(1,2,3)
 print(df)
 		`, ['5@df'], [[Top]]);
-		testQuery('Loops kill', 'x <- 42\nwhile(x < 10) { x <- x + 1 }\nprint(x)', ['3@x'], [[Top]]);
+		testQuery('Loops kill', 'x <- 42\nwhile(x < sample(10, 1)) { x <- x + 1 }\nprint(x)', ['3@x'], [[Top]]);
 
 	});
 

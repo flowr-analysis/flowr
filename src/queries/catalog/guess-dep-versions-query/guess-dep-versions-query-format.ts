@@ -2,10 +2,10 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import Joi from 'joi';
 import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, italic, faint, color, Colors, type OutputFormatter } from '../../../util/text/ansi';
+import { bold, italic, faint, color, Colors, type OutputFormatter, type Printable } from '../../../util/text/ansi';
 import { RVersion, type VersionString } from '../../../util/r-version';
 import { arraysGroupBy, uniqueArray } from '../../../util/collections/arrays';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { helpPageUrl } from '../signature-query/signature-query-executor';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { VersionSelection, type FlowrConfig } from '../../../config';
@@ -25,7 +25,7 @@ import type { RVersionOrigin } from '../../../project/context/flowr-analyzer-con
 export interface GuessDepVersionsQuery extends BaseQueryFormat {
 	readonly type:           'guess-dep-versions';
 	/** restrict the guess to these packages; omit to guess for every declared and used dependency */
-	readonly packages?:      readonly string[];
+	readonly packages?:      readonly BrandedNamespace[];
 	/** only consider versions released on or before this day, written `YYYY.MM.DD` (also `YYYY` or `YYYY.MM`) */
 	readonly date?:          string;
 	/** cap the number of candidate versions listed per dependency in the result (default {@link DefaultCandidateCap}) */
@@ -45,7 +45,7 @@ export interface GuessExplodeOptions {
 	/** iterate each dependency's versions newest-first (default) or oldest-first */
 	readonly order?:  'newest' | 'oldest';
 	/** a version to prefer per dependency when it survives the constraints (package name to version) */
-	readonly prefer?: Readonly<Record<string, VersionString>>;
+	readonly prefer?: Readonly<Record<BrandedNamespace, VersionString>>;
 	/** cap the number of combinations considered; the ones that cannot be loaded together are skipped, not returned */
 	readonly limit?:  number;
 }
@@ -118,7 +118,7 @@ export interface GuessedDependency {
 	/** set when the constraints contradict each other so that no version can satisfy them all */
 	readonly unsatisfiable?:      boolean;
 	/** the other packages this one shares a version with, so its range is not independent of theirs */
-	readonly linkedWith?:         readonly string[];
+	readonly linkedWith?:         readonly BrandedNamespace[];
 	/**
 	 * The other packages whose version requirements this one's version choice interacts with, so the two cannot be
 	 * picked independently (`A 0.2.5` requiring `B == 0.2.1` while `A 0.3.0` requires `B == 0.3.2`). A partner marked
@@ -153,7 +153,7 @@ export interface GuessedDependency {
 	 */
 	readonly orphan?:             boolean;
 	/** the undefined orphan function names that inferred this package (only set when {@link orphan}), e.g. `['ggplot']` */
-	readonly orphanFunctions?:    readonly string[];
+	readonly orphanFunctions?:    readonly BrandedIdentifier[];
 	/** per {@link orphanFunctions} entry, where the undefined call is and why it was pinned on this package */
 	readonly orphanEvidence?:     readonly OrphanEvidenceView[];
 	/**
@@ -380,7 +380,7 @@ function formatCombinations(n: number): string {
 }
 
 /** a list, truncated with a `(+n)` tail once it gets long, so it stays on one readable line */
-function truncatedList(items: readonly string[], shown = 4): string {
+function truncatedList(items: readonly Printable[], shown = 4): string {
 	return items.length > shown ? `${items.slice(0, shown).join(', ')} (+${items.length - shown})` : items.join(', ');
 }
 

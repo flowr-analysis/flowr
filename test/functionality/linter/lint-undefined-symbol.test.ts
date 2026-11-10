@@ -26,6 +26,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('builtin is not flagged', parser, 'print("hi")\nc(1, 2)',
 				'undefined-symbol', []);
 
+			/* the file the program saves holds the variables it saved */
+			assertLinter('a variable restored by load from a file the program saved is not flagged', parser, 'x <- 5\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)',
+				'undefined-symbol', []);
+			assertLinter('a load into an environment keeps the environment defined', parser, 'x <- 5\nsave(x, file = "x.RData")\ne <- new.env()\nload("x.RData", envir = e)\nprint(e$x)',
+				'undefined-symbol', []);
+			assertLinter('a variable saved by name is restored as well', parser, 'x <- 5\nsave(list = c("x"), file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)',
+				'undefined-symbol', []);
+
 			assertLinter('a call of an accessed function is not flagged', parser, 'f <- function(coord, d) coord$transform(d, 1)\nf(list(transform = identity), 2)',
 				'undefined-symbol', []);
 

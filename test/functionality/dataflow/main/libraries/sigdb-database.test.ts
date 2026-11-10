@@ -1,5 +1,5 @@
 import { SigDict } from '../../../../../src/project/sigdb/dict';
-import { afterAll, describe, expect, test } from 'vitest';
+import { afterAll, assert, describe, expect, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { SigDatabase, SigDatabaseSet, readSignatureDb, verifyShardedDatabase } from '../../../../../src/project/sigdb/reader';
@@ -185,6 +185,34 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 			expect(byName.get('lag')?.topic, variant).toBe('lead-lag');
 			expect(byName.get('select')?.topic, variant).toBeUndefined();
 			expect(byName.get('mutate')?.topic, variant).toBeUndefined();
+			rd.close();
+		}
+	});
+
+	test('the origin of a re-export round-trips (surviving the frequency reorder), with and without a topic', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		const shared = ['common', 'common', 'common'];
+		b.addVersion('p', '1.0', ver([
+			{ name: '%>%', props: FnProp.Exported, params: [], callees: [], reexportOf: 'magrittr' },
+			{ name: 'tibble', props: FnProp.Exported, params: [], callees: shared, topic: 'reexports', reexportOf: 'tibble' },
+			{ name: 'own', props: FnProp.Exported, params: [], callees: shared, topic: 'own-topic' },
+			{ name: 'plain', props: FnProp.Exported, params: [], callees: shared }
+		]));
+		const dir = sigTmpDir('sigdb-reexport-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		const variants = [`db${SigDbExt}`, `db${SigDbExt}.br`, ...(zstdSupported() ? [`db${SigDbExt}.zst`] : [])];
+		for(const variant of variants) {
+			const rd = await SigDatabase.open(path.join(dir, variant), { cacheDir: sigTmpDir('sigdb-reexport-cache-') });
+			const byName = new Map(rd.functions('p', '1.0')?.map(f => [f.name, f]));
+			expect(byName.get('%>%')?.reexportOf, variant).toBe('magrittr');
+			expect(byName.get('%>%')?.topic, variant).toBeUndefined();
+			expect(byName.get('tibble')?.reexportOf, variant).toBe('tibble');
+			expect(byName.get('tibble')?.topic, variant).toBe('reexports');
+			expect(byName.get('own')?.reexportOf, variant).toBeUndefined();
+			expect(byName.get('own')?.topic, variant).toBe('own-topic');
+			expect(byName.get('plain')?.reexportOf, variant).toBeUndefined();
+			expect(rd.lookup('p', '1.0')?.reexports, variant).toEqual(new Map([['%>%', 'magrittr'], ['tibble', 'tibble']]));
 			rd.close();
 		}
 	});
@@ -556,6 +584,43 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		// filtering everything away is an error, not a silent empty set
 		await expect(SigDatabaseSet.openManifest(manifestFile, { cacheDir, includeShards: ['nope'] }))
 			.rejects.toThrow(/no shards left/);
+	});
+
+	test('a shard whose file is gone is dropped instead of failing every lookup routed to it', async() => {
+		const dir = sigTmpDir('sigdb-missing-');
+		const cacheDir = sigTmpDir('sigdb-missing-cache-');
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), builder().buildSharded(meta, specs), manifestFile);
+		const all = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		const gone = all.manifest.shards.find(s => s.id === 'current-top');
+		all.close();
+		assert(gone !== undefined);
+		for(const f of fs.readdirSync(dir).filter(f => f.startsWith(gone.path))) {
+			fs.rmSync(path.join(dir, f));
+		}
+
+		const set = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		expect(set.manifest.shards.map(s => s.id)).not.toContain('current-top');
+		expect(set.lookup('mva')).toBeDefined();
+		set.close();
+	});
+
+	test('a truncated decompressed cache file is decompressed again', async() => {
+		const dir = sigTmpDir('sigdb-trunc-');
+		const cacheDir = sigTmpDir('sigdb-trunc-cache-');
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), builder().buildSharded(meta, specs), manifestFile);
+		const first = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		await first.preload();
+		const expected = first.lookup('hot')?.exported;
+		first.close();
+		for(const f of fs.readdirSync(cacheDir).filter(f => f.endsWith('.sigs.ndjson'))) {
+			fs.truncateSync(path.join(cacheDir, f), 3);
+		}
+
+		const again = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		expect(again.lookup('hot')?.exported).toEqual(expected);
+		again.close();
 	});
 
 	test('verification catches a tampered shard hash', async() => {

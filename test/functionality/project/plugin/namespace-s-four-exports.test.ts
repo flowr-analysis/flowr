@@ -11,9 +11,9 @@ S3method(print, rel)
 `;
 
 /** the context-parsed path needs a real analyzer, which is what tells the S4 directives apart */
-async function contextParsed(): Promise<{ info: NamespaceInfo, fn: (name: string) => FunctionInfo[] }> {
+async function contextParsed(namespace = Namespace): Promise<{ info: NamespaceInfo, fn: (name: string) => FunctionInfo[] }> {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
-	analyzer.addFile(new FlowrInlineTextFile('NAMESPACE', Namespace));
+	analyzer.addFile(new FlowrInlineTextFile('NAMESPACE', namespace));
 	analyzer.addFile(new FlowrInlineTextFile('test.R', 'x <- 1'));
 	analyzer.addRequest({ request: 'file', content: 'test.R' });
 	await analyzer.dataflow();
@@ -33,8 +33,8 @@ test('exportMethods/exportClasses are reported apart from ordinary exports, yet 
 	assert.deepEqual(info.exportedSymbols, ['plainFunction']);
 	assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
 	assert.deepEqual(info.exportedS4Classes, ['Account', 'Ledger']);
-	assert.notInclude(info.exportedFunctions, 'show', 'an S4 method is no longer an ordinary export');
-	assert.notInclude(info.exportedFunctions, 'Account');
+	assert.notInclude(info.exportedSymbols, 'show', 'an S4 method is no ordinary export');
+	assert.notInclude(info.exportedSymbols, 'Account');
 	for(const name of ['plainFunction', 'show', 'summary', 'Account', 'Ledger']) {
 		assert.isTrue(isExportedInInfo(name, info), `${name} is exported`);
 		assert.include(getExportedNames(info), name);
@@ -49,4 +49,13 @@ test.each([
 	const [found] = fn(name);
 	assert.strictEqual(!!found?.isS4Method, isS4Method, name);
 	assert.strictEqual(!!found?.isS4Class, isS4Class, name);
+});
+
+test('exportMethods on a primitive generic exports nothing, as in R', async() => {
+	const { info } = await contextParsed('exportMethods("+", "[", `$`, "[[<-", rep, Arith, as.difftime)\nexport(log)');
+	assert.deepEqual(info.exportedS4Methods, ['Arith', 'as.difftime']);
+	for(const name of ['+', '[', '$', '[[<-', 'rep']) {
+		assert.isFalse(isExportedInInfo(name, info), `${name} stays with base`);
+	}
+	assert.isTrue(isExportedInInfo('log', info), 'an explicit export of a primitive name is still an export');
 });

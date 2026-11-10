@@ -178,7 +178,11 @@ jobs:
   test-mutations:
     needs: [ debug ]
     name: "🧬 Mutation Tests"
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    # the release workflow runs them in full for a release commit
+    if: ${{
+              (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main')
+          && !startsWith(github.event.head_commit.message, '[release:')
+      }}
     runs-on: ubuntu-22.04
     timeout-minutes: 65
     steps:
@@ -209,7 +213,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # a branch checks a fifth of the mutants, other ones on every push, main and the release check all of them
       - name: "🧬 Run Mutation Tests"
+        env:
+          FLOWR_MUTATION_SAMPLE: ${{ (inputs.force-full || github.ref == 'refs/heads/main') && '1' || '0.2' }}
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
 
       - name: "⬆️ Upload Test Label Details"
@@ -269,7 +276,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:all -- --run --allowOnly=false"
 
 
   performance-test:

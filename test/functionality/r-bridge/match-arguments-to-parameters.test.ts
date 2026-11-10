@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../src/dataflow/environments/identifier';
 import { afterAll, describe, expect, test } from 'vitest';
 import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -12,7 +13,7 @@ const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: n
 /** minimal positional (unnamed) argument */
 const pos = (): PotentiallyEmptyRArgument => ({ name: undefined } as unknown as PotentiallyEmptyRArgument);
 
-const match = (args: readonly PotentiallyEmptyRArgument[], params: readonly string[]) =>
+const match = (args: readonly PotentiallyEmptyRArgument[], params: readonly BrandedIdentifier[]) =>
 	FunctionSemantics.call.match.toNames(args, params);
 
 describe('RFunctionCall.matchArgumentsToParameters (R argument matching)', () => {

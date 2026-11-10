@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
 <h2 id="Resolve Value Query">Resolve Value Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides access to flowR's value tracking (which is configurable)\
@@ -14,22 +14,14 @@ print(x)
 print(y)` (with newlines), the following query returns all values of `x` in the code:
 
 ```json
-[
-  {
-    "type": "resolve-value",
-    "criteria": [
-      "3@x",
-      "4@y"
-    ]
-  }
-]
+[ { "type": "resolve-value",   "criteria": [ "3@x",    "4@y" ] } ]
 ```
 
 (This can be shortened to `@resolve-value (3@x;4@y) "x <- 1\ny <-2\nprint(x)\nprint(y)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **resolve-value** (7 ms)\
+Query: **resolve-value** (20 ms)\
 &nbsp;&nbsp;&nbsp;╰ Values for {3@x, 4@y}\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [1L, 1L], [2L, 2L]
 
@@ -40,42 +32,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "resolve-value": {
-    ".meta": {},
-    "results": {
-      "{\"type\":\"resolve-value\",\"criteria\":[\"3@x\",\"4@y\"]}": {
-        "values": [
-          {
-            "type": "set",
-            "elements": [
-              {
-                "type": "interval",
-                "start": {"type":"number","value":{"markedAsInt":true,"num":1,"complexNumber":false}},
-                "end": {"type":"number","value":{"markedAsInt":true,"num":1,"complexNumber":false}},
-                "startInclusive": true,
-                "endInclusive": true
-              }
-            ]
-          },
-          {
-            "type": "set",
-            "elements": [
-              {
-                "type": "interval",
-                "start": {"type":"number","value":{"markedAsInt":true,"num":2,"complexNumber":false}},
-                "end": {"type":"number","value":{"markedAsInt":true,"num":2,"complexNumber":false}},
-                "startInclusive": true,
-                "endInclusive": true
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  ".meta": {}
-}
+{"resolve-value":{".meta":{},"results":{"{\"type\":\"resolve-value\",\"criteria\":[\"3@x\",\"4@y\"]}":{"values":[{"type":"set","elements":[{"type":"interval","start":{"type":"number","value":{"markedAsInt":true,"num":1,"complexNumber":false}},"end":{"type":"number","value":{"markedAsInt":true,"num":1,"complexNumber":false}},"startInclusive":true,"endInclusive":true}]},{"type":"set","elements":[{"type":"interval","start":{"type":"number","value":{"markedAsInt":true,"num":2,"complexNumber":false}},"end":{"type":"number","value":{"markedAsInt":true,"num":2,"complexNumber":false}},"startInclusive":true,"endInclusive":true}]}]}}},".meta":{}}
 ```
 
 </details>
@@ -88,83 +45,6 @@ y <-2
 print(x)
 print(y)
 ```
-
-<details>
-
-<summary style="color:gray">Dataflow Graph of the R Code</summary>
-
-The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 9 (linked), 13 (linked)) during the analysis.
-
-```mermaid
-flowchart LR
-    1{{"`*#91;RNumber#93;* **1**
-      *1.6* (**id: 1**)`"}}
-    0["`*#91;RSymbol#93;* **x**
-      *1.1* (**id: 0**, v: 1)`"]
-    2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *1.1-6* (**id: 2**)
-    arg: (0, 1)`"]]
-    built-in:_60_-["`Built-In:
-#60;#45;`"]
-    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    4{{"`*#91;RNumber#93;* **2**
-      *2.5* (**id: 4**)`"}}
-    3["`*#91;RSymbol#93;* **y**
-      *2.1* (**id: 3**, v: 4)`"]
-    5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
-      *2.1-5* (**id: 5**)
-    arg: (3, 4)`"]]
-    7(["`*#91;RSymbol#93;* **x**
-      *3.7* (**id: 7**)`"])
-    9[["`*#91;RFunctionCall#93;* base#58;#58;**print**
-      *3.1-8* (**id: 9**)
-    arg: (7)`"]]
-    built-in:print["`Built-In:
-print`"]
-    style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    11(["`*#91;RSymbol#93;* **y**
-      *4.7* (**id: 11**)`"])
-    13[["`*#91;RFunctionCall#93;* base#58;#58;**print**
-      *4.1-8* (**id: 13**)
-    arg: (11)`"]]
-    1 -.->|"flow"| 0
-    linkStyle 0 stroke:gray,color:gray;
-    0 -->|"defined-by, flow"| 2
-    0 -->|"defined-by"| 1
-    2 -->|"reads, arg"| 1
-    2 -->|"returns, arg"| 0
-    2 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 5 stroke:gray;
-    2 -.->|"flow"| 4
-    linkStyle 6 stroke:gray,color:gray;
-    4 -.->|"flow"| 3
-    linkStyle 7 stroke:gray,color:gray;
-    3 -->|"defined-by, flow"| 5
-    3 -->|"defined-by"| 4
-    5 -->|"reads, arg"| 4
-    5 -->|"returns, arg"| 3
-    5 -.->|"reads, calls"| built-in:_60_-
-    linkStyle 12 stroke:gray;
-    5 -.->|"flow"| 7
-    linkStyle 13 stroke:gray,color:gray;
-    7 -->|"reads"| 0
-    7 -.->|"flow"| 9
-    linkStyle 15 stroke:gray,color:gray;
-    9 -->|"reads, returns, arg"| 7
-    9 -.->|"reads, calls"| built-in:print
-    linkStyle 17 stroke:gray;
-    9 -.->|"flow"| 11
-    linkStyle 18 stroke:gray,color:gray;
-    11 -->|"reads"| 3
-    11 -.->|"flow"| 13
-    linkStyle 20 stroke:gray,color:gray;
-    13 -->|"reads, returns, arg"| 11
-    13 -.->|"reads, calls"| built-in:print
-    linkStyle 22 stroke:gray;
-```
-
-</details>
 
 </details>
 	

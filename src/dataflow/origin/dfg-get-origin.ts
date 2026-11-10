@@ -1,3 +1,4 @@
+import { isBuiltInProcName } from '../environments/built-in-proc-name';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../graph/vertex';
@@ -172,7 +173,7 @@ function getVariableDefinitionOrigin(dfg: DataflowGraph, vtx: DataflowGraphVerte
 
 function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall): Origin[] | undefined {
 	// check for built-ins:
-	const builtInTarget = call.origin !== 'unnamed' && call.origin.filter(o => o.startsWith('builtin:'));
+	const builtInTarget = call.origin !== 'unnamed' && call.origin.filter(isBuiltInProcName);
 
 	let origins: Origin[] | undefined = builtInTarget ? builtInTarget.map(o => ({
 		type: OriginType.BuiltInFunctionOrigin,

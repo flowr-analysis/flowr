@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 15:03:10 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Call-Context Query">Call-Context Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds all calls in a set of files that matches specified criteria.\
@@ -29,36 +29,12 @@ Re-using the example code from above, the following query attaches all calls to 
 all calls that start with `read_` to the kind `input` but only if they are not locally overwritten, and the subkind `csv-file`, and links all calls to `points` to the last call to `plot`:
 
 ```json
-[
-  {
-    "type": "call-context",
-    "callName": "^mean$",
-    "kind": "visualize",
-    "subkind": "text"
-  },
-  {
-    "type": "call-context",
-    "callName": "^read_",
-    "kind": "input",
-    "subkind": "csv-file",
-    "callTargets": "global"
-  },
-  {
-    "type": "call-context",
-    "callName": "^points$",
-    "kind": "visualize",
-    "subkind": "plot",
-    "linkTo": {
-      "type": "link-to-last-call",
-      "callName": "^plot$"
-    }
-  }
-]
+[ { "type": "call-context",   "callName": "^mean$",   "kind": "visualize",   "subkind": "text" },  { "type": "call-context",   "callName": "^read_",   "kind": "input",   "subkind": "csv-file",   "callTargets": "global" },  { "type": "call-context",   "callName": "^points$",   "kind": "visualize",   "subkind": "plot",   "linkTo": { "type": "link-to-last-call",    "callName": "^plot$" } } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (3 hits):\
@@ -72,16 +48,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {
-    ".meta": {},
-    "kinds": {
-      "input": {"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}},
-      "visualize": {"subkinds":{"text":[{"id":31,"name":"mean"},{"id":87,"name":"mean"}],"plot":[{"id":79,"name":"points","linkedIds":[67]}]}}
-    }
-  },
-  ".meta": {}
-}
+{"call-context":{".meta":{},"kinds":{"input":{"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}},"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":87,"name":"mean"}],"plot":[{"id":79,"name":"points","linkedIds":[67]}]}}}},".meta":{}}
 ```
 
 </details>
@@ -104,18 +71,12 @@ my_test_function()
 Now let's say we want to query _all_ uses of the `my_test_function`:
 
 ```json
-[
-  {
-    "type": "call-context",
-    "callName": "^my_test_function",
-    "includeAliases": true
-  }
-]
+[ { "type": "call-context",   "callName": "^my_test_function",   "includeAliases": true } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **.** (3 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.** (3 hits): _`foo()`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar()`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1)), _`my_test_function()`_ (L.5)
 
@@ -126,13 +87,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {
-    ".meta": {},
-    "kinds": {".":{"subkinds":{".":[{"id":4,"name":"foo","aliasRoots":[1]},{"id":12,"name":"bar","aliasRoots":[1]},{"id":14,"name":"my_test_function"}]}}}
-  },
-  ".meta": {}
-}
+{"call-context":{".meta":{},"kinds":{".":{"subkinds":{".":[{"id":4,"name":"foo","aliasRoots":[1]},{"id":12,"name":"bar","aliasRoots":[1]},{"id":14,"name":"my_test_function"}]}}}},".meta":{}}
 ```
 
 </details>

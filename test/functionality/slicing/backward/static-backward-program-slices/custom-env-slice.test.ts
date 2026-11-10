@@ -37,6 +37,13 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		keepsAll(`${name} with includeCallees`, capabilities, code, criteria, { includeCallees: true });
 	}
 
+	/** the call surely replaces what the second line of `code` writes, so only that line is dropped */
+	function dropsReplacedWithAndWithoutCallees(name: string, capabilities: readonly FlowrCapabilityId[], code: string, criteria: SlicingCriteria) {
+		const kept = code.split('\n').filter((_, i) => i !== 1).join('\n');
+		assertSliced(label(name, capabilities), shell, code, criteria, kept);
+		assertSliced(label(`${name} with includeCallees`, capabilities), shell, code, criteria, kept, { includeCallees: true });
+	}
+
 	describe('assign and get', () => {
 		const e1New = 'e1 <- new.env()';
 		const e1AssignX = 'assign("x", 42, envir=e1)';
@@ -246,10 +253,10 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 	});
 
 	describe('envir argument is a function parameter (unresolvable at definition time)', () => {
-		keepsAllWithAndWithoutCallees('assign(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
+		dropsReplacedWithAndWithoutCallees('assign(envir=parameter) inside a function keeps f and its call site, not the write it replaces', ['dynamic-environment-resolution', 'local-envir-argument'],
 			paramEnvProgram('a', 'assign("a", 42, envir = en)'), ['6@print']);
 
-		keepsAllWithAndWithoutCallees('local(expr, envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
+		dropsReplacedWithAndWithoutCallees('local(expr, envir=parameter) inside a function keeps f and its call site, not the write it replaces', ['dynamic-environment-resolution', 'local-envir-argument'],
 			paramEnvProgram('x', 'local(x <- 42, envir = en)'), ['6@print']);
 
 		keepsAllWithAndWithoutCallees('list2env(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
@@ -325,7 +332,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			envWithXThenX,
 			['3@x'],
-			`${assignX42}\nx`,
+			envWithXThenX,
 			{ flowrConfig: noTrack }
 		);
 	});

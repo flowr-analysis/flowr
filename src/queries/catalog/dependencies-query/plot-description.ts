@@ -1,7 +1,8 @@
-import { type DependencyInfo, Constant, Unknown } from './dependencies-query-format';
+import type { DependencyInfo } from './dependencies-query-format';
+import { Constant, Unknown } from './dependency-values';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
@@ -16,7 +17,7 @@ interface TitleArgument {
 }
 
 /** where a call states the title of the plot it draws onto; every other call is asked for `main` */
-const TitleArguments: Readonly<Record<string, TitleArgument>> = {
+const TitleArguments: Readonly<Record<BrandedIdentifier, TitleArgument>> = {
 	ggtitle: { argIdx: 0, argName: 'label' },
 	labs:    { argName: 'title' }
 };

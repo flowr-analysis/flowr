@@ -9,6 +9,8 @@ import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorat
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowBudgetExhaustion } from '../gas';
+import { ExitPointType } from './environments/built-in-kinds';
+export { ExitPointType } from './environments/built-in-kinds';
 
 /**
  * A control dependency links a vertex to the control flow element which
@@ -62,6 +64,10 @@ export const ControlDependency = {
 	/** The dependencies of `a` that `b` is not subject to as well. */
 	minus(this: void, a: readonly ControlDependency[], b: readonly ControlDependency[]): ControlDependency[] {
 		return a.filter(cd => !b.some(other => sameControlDependency(other, cd)));
+	},
+	/** A string telling the dependencies apart (by condition and branch), empty for none. */
+	key(this: void, cds: readonly ControlDependency[] | undefined): string {
+		return cds?.map(cd => `${String(cd.id)}:${String(cd.when)}`).join(',') ?? '';
 	}
 } as const;
 
@@ -99,22 +105,6 @@ export function negateControlDependency(cd: ControlDependency): ControlDependenc
 	};
 }
 
-/**
- * Classifies the type of exit point encountered.
- * @see {@link ExitPoint}
- */
-export const enum ExitPointType {
-	/** The exit point is the implicit (last executed expression of a function/block) */
-	Default = 0,
-	/** The exit point is an explicit `return` call (or an alias of it) */
-	Return = 1,
-	/** The exit point is an explicit `break` call (or an alias of it) */
-	Break = 2,
-	/** The exit point is an explicit `next` call (or an alias of it) */
-	Next = 3,
-	/** The exit point is caused by an error being thrown, e.g., by `stop` or `stopifnot` */
-	Error = 4
-}
 
 /**
  * Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution).
@@ -143,7 +133,7 @@ export interface ExitPoint {
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly cds?:   ControlDependency[]
+	readonly cds?:   readonly ControlDependency[]
 }
 
 /** `exit` leaving through the construct `rootId`, which keeps the jump it stands for. */
@@ -154,7 +144,7 @@ export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
 /**
  * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
-export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: readonly ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
 	for(const ep of add) {
 		if(ep.type !== ExitPointType.Default) {
 			existing.push(ep);
@@ -355,7 +345,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 /**
  * Calculates the difference between two lists of control dependencies.
  */
-export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
+export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: readonly ControlDependency[] | undefined, b: readonly ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
 			info.report.addComment(`${info.position}Different control dependencies: ${JSON.stringify(a)} vs. ${JSON.stringify(b)}`);

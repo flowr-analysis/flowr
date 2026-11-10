@@ -39,7 +39,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
-	readonly cds:                  ControlDependency[] | undefined
+	readonly cds:                  readonly ControlDependency[] | undefined
 	/**
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */

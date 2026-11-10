@@ -1,3 +1,4 @@
+import type { IdentifierReference } from '../../../../../environments/identifier';
 import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
@@ -31,22 +32,29 @@ import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ControlFlow } from '../../../../control-flow';
 import { REnvironment } from '../../../../../environments/environment';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
+import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import type { FnSig } from '../../../../../environments/built-in-props';
+import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, routeWrittenToStackEnv, unknownIfAmbiguous } from './built-in-envir-utils';
 
-/**
- * Infers working directories based on the given option and reference chain
- */
+let parserForSource: RShellExecutor | undefined;
+/** parses what is sourced while an asynchronous shell analyzes: a fresh R per call, without the default packages, which parsing does not need, so it starts in a third of the time */
+function sourceParser(): RShellExecutor {
+	return parserForSource ??= new RShellExecutor({ env: { R_DEFAULT_PACKAGES: 'NULL' } });
+}
+
+/** Infers working directories based on the given option and reference chain */
 export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly (string | undefined)[]): string[] {
 	switch(option) {
 		case InferWorkingDirectory.MainScript:
-			return referenceChain[0] ? [platformDirname(referenceChain[0])] : [];
+			return referenceChain[0] ? [RPath.dirname(referenceChain[0])] : [];
 		case InferWorkingDirectory.ActiveScript: {
 			const active = referenceChain.at(-1);
-			return active ? [platformDirname(active)] : [];
+			return active ? [RPath.dirname(active)] : [];
 		} case InferWorkingDirectory.AnyScript:
-			return referenceChain.filter(isNotUndefined).map(platformDirname);
+			return referenceChain.filter(isNotUndefined).map(RPath.dirname);
 		default:
 			return [];
 	}
@@ -54,28 +62,8 @@ export function inferWdFromScript(option: InferWorkingDirectory, referenceChain:
 
 const AnyPathSeparator = /[/\\]/g;
 
-/**
- * Return the basename of a path in a platform-agnostic way
- * @see {@link platformDirname} - for the dirname counterpart
- */
-export function platformBasename(p: string): string {
-	return RPath.basename(p);
-}
-
-/**
- * Return the dirname of a path in a platform-agnostic way
- */
-export function platformDirname(p: string): string {
-	return RPath.dirname(p);
-}
-
 function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
-}
-
-/** the replacement rules as patterns, compiled once rather than once per candidate path */
-function compileReplacements(replacements: readonly Record<string, string>[]): readonly (readonly [RegExp, string])[][] {
-	return replacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
 }
 
 function applyReplacements(path: string, replacements: readonly (readonly [RegExp, string])[][]): string[] {
@@ -92,10 +80,10 @@ function candidatePaths(seed: string, dropPaths: DropPathsOption | undefined): s
 	if(dropPaths !== DropPathsOption.Once && dropPaths !== DropPathsOption.All) {
 		return [seed];
 	}
-	const basename = platformBasename(seed);
+	const basename = RPath.basename(seed);
 	const tryPaths = [seed, basename];
 	if(dropPaths === DropPathsOption.All) {
-		const dirs = platformDirname(seed).split(AnyPathSeparator);
+		const dirs = RPath.dirname(seed).split(AnyPathSeparator);
 		if(dirs.length !== 1 || dirs[0] !== '.') {
 			for(let i = 0; i < dirs.length; i++) {
 				tryPaths.push(path.join(...dirs.slice(i), basename));
@@ -105,12 +93,7 @@ function candidatePaths(seed: string, dropPaths: DropPathsOption | undefined): s
 	return tryPaths;
 }
 
-/**
- * Tries to find sourced by a source request and returns the first path that exists
- * @param resolveSource - options for lax file sourcing
- * @param seed          - the path originally requested in the `source` call
- * @param data          - more information on the loading context
- */
+/** Tries to find sourced by a source request and returns the first path that exists */
 export function findSource(
 	resolveSource: FlowrLaxSourcingOptions | undefined,
 	seed: string,
@@ -123,7 +106,7 @@ export function findSource(
 
 	let tryPaths = candidatePaths(seed, resolveSource?.dropPaths);
 	if(resolveSource?.applyReplacements) {
-		const r = compileReplacements(resolveSource.applyReplacements);
+		const r = resolveSource.applyReplacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
 		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 
@@ -144,9 +127,7 @@ export function findSource(
 	return [...found];
 }
 
-/**
- * Processes a named function call (i.e., not an anonymous function)
- */
+/** Processes a call to `source` or `sys.source`, analyzing the file it names in the caller's frame or the environment its {@link envIn} formal names. */
 export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -158,18 +139,30 @@ export function processSourceCall<OtherInfo>(
 		/** should this function call be followed, even when the configuration disables it? */
 		forceFollow?:         boolean
 		ambient?:             AmbientStateAccess | readonly AmbientStateAccess[]
+		/** the formals, to find the file and the environment however they are passed */
+		sig?:                 FnSig
+		/** the formal naming the environment to evaluate in, `local` for `source` (`TRUE`/`FALSE` there name the caller's frame or the global one) */
+		envIn?:               string
 	}
 ): DataflowInformation {
-	if(args.length !== 1) {
-		dataflowLogger.warn(`Expected exactly one argument for source currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+	const bound = FunctionSemantics.call.match.toNames(args, config.sig?.map(([formal]) => formal) ?? ['file']);
+	const sourceFileArgument = bound.get('file');
+	if(sourceFileArgument === undefined) {
+		dataflowLogger.warn('Expected a file argument for source, skipping');
+		const unknown = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		handleUnknownSideEffect(unknown.graph, unknown.environment, rootId);
+		return unknown;
 	}
+	const localArg = bound.get(config.envIn ?? 'local');
+	const routing = localArg === undefined || RLogical.is(localArg.value) ? undefined : resolveArgToEnvirOrAmbiguous(localArg, data);
+	const resolution = envirOf(routing);
+	/* without an environment to evaluate in (or `local = FALSE`) the code runs in the global one, wherever the call is */
+	const global = (localArg === undefined || (RLogical.is(localArg.value) && !localArg.value.content)) && !data.environment.current.globalEnv
+		? { level: 0, current: REnvironment.findGlobal(data.environment.current) } : undefined;
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: DataflowInformation.initialize(rootId, data);
 	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, config.ambient);
-
-	const sourceFileArgument = args[0];
 
 	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
@@ -178,15 +171,20 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	let sourceFile: string[] | undefined;
-	if(sourceFileArgument !== EmptyArgument && RString.is(sourceFileArgument?.value)) {
+	if(RString.is(sourceFileArgument.value)) {
 		sourceFile = [RString.unquote(sourceFileArgument.lexeme)];
-	} else if(sourceFileArgument !== EmptyArgument) {
+	} else {
 		sourceFile = NodeValue.knownStringsOf(sourceFileArgument.info.id, data);
 	}
 	const path = sourceFile?.length === 1 ? RString.unquote(sourceFile[0]) : undefined;
 	const filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : undefined;
+	if(localArg !== undefined && !RLogical.is(localArg.value) && resolution === undefined) {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		return withAmbient();
+	}
 	if(filepath !== undefined && filepath.length > 0) {
-		let result = information;
+		const evaluatedIn = resolution?.envirData.environment ?? global;
+		let result = evaluatedIn ? { ...information, environment: evaluatedIn } : information;
 		const origCds = data.cds?.slice() ?? [];
 		const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 		const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
@@ -205,7 +203,20 @@ export function processSourceCall<OtherInfo>(
 			const getId = sourcedDeterministicCountingIdGenerator(idPrefix, name.location);
 			result = sourceRequest(rootId, { request: 'file', content: f }, data, result, maybe, getId);
 		}
-		return result;
+		if(evaluatedIn === undefined) {
+			return result;
+		}
+		const evaluated = {
+			...result,
+			...resolution === undefined || resolution.stack === 'global' ? readGlobally(result, information) : {},
+			environment: { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, result.environment.current) }
+		};
+		if(resolution === undefined) {
+			return routeWrittenToStackEnv(evaluated, data.environment, rootId);
+		}
+		const routed = routeWrittenToEnvir(evaluated, resolution, rootId, data.environment);
+		unknownIfAmbiguous(routing, routed, rootId);
+		return routed;
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
@@ -213,14 +224,18 @@ export function processSourceCall<OtherInfo>(
 	return withAmbient();
 }
 
+/** The reads of code evaluated in the global environment, which no frame of the function running it binds; the `call`'s own reads stay as they are. */
+function readGlobally(result: DataflowInformation, call: DataflowInformation): Pick<DataflowInformation, 'in' | 'unknownReferences'> {
+	const own = new Set([...call.in, ...call.unknownReferences]);
+	const global = (refs: readonly IdentifierReference[]) => refs.map(r => own.has(r) ? r : { ...r, global: true });
+	return { in: global(result.in), unknownReferences: global(result.unknownReferences) };
+}
+
 /** the files parsed for an inclusion, a requested file is not among them and its inclusions share its nodes */
 const includedFiles = new WeakSet<RProjectFile<unknown>>();
 
-/**
- * Processes a source request with the given dataflow processor information and existing dataflow information
- * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
- */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false): DataflowInformation {
+/** Processes a source request with the given dataflow processor information and existing dataflow information Otherwise, this can be an {@link RProjectFile} representing a standalone source file */
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false, rootIsCall = true): DataflowInformation {
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
 	let filePath: string | undefined;
@@ -255,7 +270,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		if(requested) {
 			fst = requested;
 		} else {
-			const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
+			const parsed = (!data.parser.async ? data.parser : sourceParser()).parse(textRequest.r, data.ctx);
 			const normalized = (typeof parsed !== 'string' ?
 				normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 				: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
@@ -286,7 +301,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	}
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
-	if(!String(rootId).startsWith('file-')) {
+	if(rootIsCall) {
 		if(evaluatedByRoot) {
 			/* the call evaluates the code and builds its result from it, so the value flows into the call */
 			for(const exit of dataflow.exitPoints) {
@@ -323,9 +338,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	};
 }
 
-/**
- * Processes a standalone source file (i.e., not from a source function call)
- */
+/** Processes a standalone source file (i.e., not from a source function call) */
 export function standaloneSourceFile<OtherInfo>(
 	idx: number,
 	file: RProjectFile<OtherInfo & ParentInformation>,
@@ -343,13 +356,10 @@ export function standaloneSourceFile<OtherInfo>(
 		...data,
 		environment:    information.environment,
 		referenceChain: [file.filePath]
-	}, information, false);
+	}, information, false, undefined, false, false);
 }
 
-/**
- * Folds the results of analyzing sourced code back into the information of the call that asked for it, which
- * `eval` and the string templates both need: the code contributes everything it reads, writes, and leaves open.
- */
+/** Folds the results of analyzing sourced code back into the information of the call that asked for it, which `eval` and the string templates both need: the code contributes everything it reads, writes, and leaves open. */
 export function mergeSourced(information: DataflowInformation, sourced: readonly DataflowInformation[]): DataflowInformation {
 	if(sourced.length === 0) {
 		return information;

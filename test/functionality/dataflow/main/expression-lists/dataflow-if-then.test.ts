@@ -2,13 +2,13 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 function getAssignOrigin(assign: string): { origin: BuiltInProcName[] } | object {
 	return assign === '<<-' || assign === '->' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
@@ -38,6 +38,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 								.calls('11', NodeId.toBuiltIn('{'))
 								.call('12', 'if', [argumentInCall('3'), argumentInCall('7'), argumentInCall('11')], { returns: ['7', '11'], reads: ['3', NodeId.toBuiltIn('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 								.calls('12', NodeId.toBuiltIn('if'))
+								.autoPrints(['12'], true)
 								.constant('1')
 								.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 								.constant('6', { cds: [{ id: '12', when: true }] })
@@ -45,11 +46,12 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 						} else {
 							baseGraph.call('8', 'if', [argumentInCall('3'), argumentInCall('7'), EmptyArgument], { returns: ['7'], reads: ['3', NodeId.toBuiltIn('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 								.calls('8', NodeId.toBuiltIn('if'))
+								.autoPrints(['8'], true)
 								.constant('1')
 								.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 								.constant('6', { cds: [{ id: '8', when: true }] });
 						}
-						assertDataflow(label('read previous def in cond', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if']),
+						assertDataflow(label('read previous def in cond', [...BuiltInOperators.byName[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if']),
 							shell,
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
 							baseGraph
@@ -63,20 +65,21 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 							.calls('7', NodeId.toBuiltIn('{'))
 							.call(cd[0].id, 'if', [argumentInCall('3'), argumentInCall('7'), EmptyArgument], { returns: ['7'], reads: ['3', NodeId.toBuiltIn('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 							.calls(cd[0].id, NodeId.toBuiltIn('if'))
+							.autoPrints([cd[0].id], true)
 							.constant('1')
 							.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 							.constant('3');
 						// otherwise will be pruned by TRUE
-						assertDataflow(label('read previous def in then', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
+						assertDataflow(label('read previous def in then', [...BuiltInOperators.byName[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
 							shell,
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
 							previousGraph
 						);
 					});
 				}
-				assertDataflow(label('read previous def in else', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
+				assertDataflow(label('read previous def in else', [...BuiltInOperators.byName[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'logical']),
 					shell,
-					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,  emptyGraph()
+					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,  emptyGraph().autoPrints([12], true)
 						.use('10', 'x')
 						.reads('10', '0')
 						.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true, ...getAssignOrigin(assign) })
@@ -91,9 +94,9 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 				);
 			});
 			describe('write within if', () => {
-				assertDataflow(label('without else directly together', ['if', 'logical', 'name-normal', ...OperatorDatabase[assign].capabilities, 'numbers', 'newlines']),
+				assertDataflow(label('without else directly together', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName[assign].capabilities, 'numbers', 'newlines']),
 					shell,
-					`if(TRUE) { x ${assign} 2 }\nx`, emptyGraph()
+					`if(TRUE) { x ${assign} 2 }\nx`, emptyGraph().autoPrints([8]).autoPrints([7], true)
 						.use('8', 'x')
 						.reads('8', '3')
 						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn(assign), 4], onlyBuiltIn: true, ...getAssignOrigin(assign) })
@@ -106,9 +109,9 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 						.constant('4')
 						.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 				);
-				assertDataflow(label('def in else read afterwards', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase[assign].capabilities, 'newlines']),
+				assertDataflow(label('def in else read afterwards', ['if', 'logical', 'numbers', 'name-normal', ...BuiltInOperators.byName[assign].capabilities, 'newlines']),
 					shell,
-					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,  emptyGraph()
+					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,  emptyGraph().autoPrints([12]).autoPrints([11], true)
 						.use('12', 'x')
 						.reads('12', '7')
 						.call('9', assign, [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [NodeId.toBuiltIn(assign), 8], onlyBuiltIn: true, ...getAssignOrigin(assign) })
@@ -122,9 +125,9 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 						.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				);
 
-				assertDataflow(label('def in then and else read afterward', ['if', 'name-normal', ...OperatorDatabase[assign].capabilities, 'numbers', 'newlines']),
+				assertDataflow(label('def in then and else read afterward', ['if', 'name-normal', ...BuiltInOperators.byName[assign].capabilities, 'numbers', 'newlines']),
 					shell,
-					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,  emptyGraph()
+					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,  emptyGraph().autoPrints([14]).autoPrints([13], true)
 						.use('0', 'z')
 						.use('14', 'x')
 						.reads('14', ['3', '9'])
@@ -148,7 +151,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 	}
 	describe('Branch Coverage', () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
-		assertDataflow(label('assignment both branches in if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1\nif(r) { x <- 2 } else { x <- 3 }\n y <- x',  emptyGraph()
+		assertDataflow(label('assignment both branches in if', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1\nif(r) { x <- 2 } else { x <- 3 }\n y <- x',  emptyGraph().autoPrints([16], true)
 			.use('3', 'r')
 			.use('18', 'x')
 			.reads('18', ['6', '12'])
@@ -175,7 +178,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 			.defineVariable('17', 'y', { definedBy: ['18', '19'] })
 		);
 
-		assertDataflow(label('assignment if one branch', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if', 'numbers']), shell, 'x <- 1\nif(r) { x <- 2 } \n y <- x',  emptyGraph()
+		assertDataflow(label('assignment if one branch', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'if', 'numbers']), shell, 'x <- 1\nif(r) { x <- 2 } \n y <- x',  emptyGraph().autoPrints([10], true)
 			.use('3', 'r')
 			.use('12', 'x')
 			.reads('12', ['6', '0'])
@@ -196,10 +199,10 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 			.defineVariable('11', 'y', { definedBy: ['12', '13'] })
 		);
 
-		assertDataflow(label('assignment if multiple variables with else', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if']),
+		assertDataflow(label('assignment if multiple variables with else', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if']),
 			shell,
 			'x <- 1 \n y <- 2 \n if(r){ x <- 3 \n y <- 4} else {x <- 5} \n w <- x \n z <- y',
-			emptyGraph()
+			emptyGraph().autoPrints([22], true)
 				.use('6', 'r')
 				.use('24', 'x')
 				.reads('24', ['9', '18'])
@@ -238,7 +241,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 				.defineVariable('23', 'w', { definedBy: ['24', '25'] })
 				.defineVariable('26', 'z', { definedBy: ['27', '28'] })
 		);
-		assertDataflow(label('assignment in else block', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1 \n if(r){} else{x <- 2} \n y <- x',  emptyGraph()
+		assertDataflow(label('assignment in else block', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if']), shell, 'x <- 1 \n if(r){} else{x <- 2} \n y <- x',  emptyGraph().autoPrints([13], true)
 			.use('3', 'r')
 			.use('15', 'x')
 			.reads('15', ['0', '9'])
@@ -260,7 +263,7 @@ describe('Lists with if-then constructs', { concurrent: false }, withShell(shell
 			.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: false }] })
 			.defineVariable('14', 'y', { definedBy: ['15', '16'] })
 		);
-		assertDataflow(label('nested if else', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
+		assertDataflow(label('nested if else', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
 			shell, `x <- 1
 if(y) {
   if(z) {
@@ -271,7 +274,7 @@ if(y) {
 } else {
   x <- 4
 }
-print(x)`,  emptyGraph()
+print(x)`,  emptyGraph().autoPrints([31]).autoPrints([27], true)
 				.use('3', 'y')
 				.use('6', 'z', { cds: [{ id: '27', when: true }] })
 				.use('29', 'x')
@@ -331,7 +334,7 @@ print(x)`,  emptyGraph()
 if(y) {
    assign("a", function() 1)
 }
-a()`,  emptyGraph()
+a()`,  emptyGraph().autoPrints([17, 19], true)
 				.use('5', 'y')
 				.call('4', '<-', [argumentInCall('0'), argumentInCall('3')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true })
 				.calls('4', NodeId.toBuiltIn('<-'))
@@ -368,8 +371,8 @@ a()`,  emptyGraph()
 				})
 				.defineVariable('9', '"a"', { definedBy: ['13', '15'], cds: [{ id: '17', when: true }] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
-		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created-resolved']),
-			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
+		assertDataflow(label('assign from get', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created-resolved']),
+			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph().autoPrints([15])
 				.use('9-get-name', '"b"')
 				.reads('9-get-name', '0')
 				.use('13', 'a')
@@ -379,7 +382,7 @@ a()`,  emptyGraph()
 				.argument('2', ['1', '0'])
 				.argument(9, '9-get-name')
 				.returns(9, '9-get-name')
-				.call('9', 'get', [argumentInCall('9-get-name')], { returns: [], reads: [NodeId.toBuiltIn('get'), '9-get-name'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('b', '0', '2') })
+				.call('9', 'get', [argumentInCall('9-get-name')], { returns: [], reads: [NodeId.toBuiltIn('get'), '9-get-name'], onlyBuiltIn: true, keepsEnvironment: true, environment: defaultEnv().defineVariable('b', '0', '2') })
 				.calls('9', NodeId.toBuiltIn('get'))
 				.argument('11', '9')
 				.call('11', 'assign', [argumentInCall('4'), argumentInCall('9')], { returns: ['4'], reads: [NodeId.toBuiltIn('assign'), 9], onlyBuiltIn: true, environment: defaultEnv().defineVariable('b', '0', '2') })
@@ -394,19 +397,19 @@ a()`,  emptyGraph()
 				.defineVariable('4', '"a"', { definedBy: ['9', '11'] })
 				.markIdForUnknownSideEffects('15')
 		);
-		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created-resolved']),
+		assertDataflow(label('get in function', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created-resolved']),
 			shell, `a <- 5
 f <- function() {
   get("a")
 }
-f()`,  emptyGraph()
+f()`,  emptyGraph().autoPrints([14], true)
 				.use('9-get-name', '"a"', undefined, false)
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 				.calls('2', NodeId.toBuiltIn('<-'))
 				.argument(2, [1, 0])
 				.argument(9, '9-get-name')
 				.returns(9, '9-get-name')
-				.call('9', 'get', [argumentInCall('9-get-name')], { returns: [], reads: ['9-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+				.call('9', 'get', [argumentInCall('9-get-name')], { returns: [], reads: ['9-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, keepsEnvironment: true, environment: defaultEnv().pushEnv() }, false)
 				.calls('9', NodeId.toBuiltIn('get'))
 				.argument('10', '9')
 				.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv() }, false)
@@ -430,12 +433,12 @@ f()`,  emptyGraph()
 				})
 				.defineVariable('3', 'f', { definedBy: ['11', '12'] })
 		);
-		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created-resolved']),
+		assertDataflow(label('get in function argument', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created-resolved']),
 			shell, `a <- 5
 f <- function(a = get("a")) {
   a
 }
-f()`, emptyGraph()
+f()`, emptyGraph().autoPrints([17], true)
 				.use('8-get-name', '"a"', { cds: [{ id: '4', when: true, byPromise: true }] }, false)
 				.reads('8-get-name', '4')
 				.use('12', 'a', undefined, false)
@@ -445,7 +448,7 @@ f()`, emptyGraph()
 				.argument('2', ['1', '0'])
 				.argument(8, '8-get-name')
 				.returns(8, '8-get-name')
-				.call('8', 'get', [argumentInCall('8-get-name')], { returns: [], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, environment: defaultEnv().pushEnv(), cds: [{ id: '4', when: true, byPromise: true }] }, false)
+				.call('8', 'get', [argumentInCall('8-get-name')], { returns: [], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, keepsEnvironment: true, environment: defaultEnv().pushEnv(), cds: [{ id: '4', when: true, byPromise: true }] }, false)
 				.argument('13', '12')
 				.call('13', '{', [argumentInCall('12')], { returns: ['12'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv().defineParameter('a', '4', '9') }, false)
 				.calls('13', NodeId.toBuiltIn('{'))
@@ -497,7 +500,7 @@ if(TRUE) {
 } else {
 	x <- 2
 }
-x`, emptyGraph()
+x`, emptyGraph().autoPrints([17]).autoPrints([16], true)
 				.defineVariable('1@x', 'x', { definedBy: ['1@1', '1@<-'] })
 				.call('1@<-', '<-', [argumentInCall('1@x'), argumentInCall('1@1')], { returns: ['1@x'], onlyBuiltIn: true, reads: [NodeId.toBuiltIn('<-'), '1@1'] })
 				.calls('1@<-', NodeId.toBuiltIn('<-'))

@@ -12,7 +12,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import { runSearch } from '../../../search/flowr-search-executor';
 import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
 import { Record } from '../../../util/record';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { AttachedBasePackages } from '../../../util/r-base-packages';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { REnvironment } from '../../../dataflow/environments/environment';
@@ -25,11 +25,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const results: Record<string, InputSources> = {};
 	const nast = await analyzer.normalize();
 	const df = await analyzer.dataflow();
-	const ctx = analyzer.inspectContext();
-	const defaultConfig = addAll(
-		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
-		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
-	);
+	const defaultConfig = await analyzer.derive(resolveDefaultConfig, () => resolveDefaultConfig(analyzer));
 	const packages = unqualifiedPackages(analyzer, df.environment);
 
 	for(const query of queries) {
@@ -61,11 +57,20 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	};
 }
 
+/** The default classifier config with the configured entries added, its searches (e.g. linter rules) resolved. */
+async function resolveDefaultConfig(analyzer: ReadonlyFlowrAnalysisProvider): Promise<InputClassifierConfig<InputClassifierFunctionIdentifiers>> {
+	const ctx = analyzer.inspectContext();
+	return addAll(
+		await resolveSearches(analyzer, defaultInputClassifierConfig(ctx)),
+		await resolveSearches(analyzer, ctx.config.inputSources ?? {})
+	);
+}
+
 /**
  * The packages whose exports are usable without a namespace: those R has on its search path at the end of the
  * program, the ones the project declares, and the base packages R attaches on startup.
  */
-function unqualifiedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<string> {
+function unqualifiedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<BrandedNamespace> {
 	return new Set([
 		...REnvironment.attachedPackages(environment.current),
 		...analyzer.inspectContext().deps.getDependencies().map(d => d.name),
@@ -104,7 +109,7 @@ async function resolveSearches(analyzer: ReadonlyFlowrAnalysisProvider, config: 
 			continue;
 		} else if(value === undefined || Array.isArray(value)) {
 			// entries may be written as `pkg::fn` strings in the configuration, which only mean the namespaced function once parsed
-			result[key] = (value as InputClassifierFunctionIdentifiers | undefined)?.map(e => typeof e === 'string' ? Identifier.parse(e) : e);
+			result[key] = (value as InputClassifierFunctionIdentifiers | undefined)?.map(e => typeof e === 'string' ? Identifier.parse(String(e)) : e);
 		} else {
 			const searchResult = await runSearch(value as FlowrSearchLike, analyzer);
 			result[key] = searchResult.getElements().map(element => element.node.info.id);

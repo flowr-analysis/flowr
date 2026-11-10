@@ -1,3 +1,4 @@
+import type { BrandedNamespace, BrandedIdentifier } from '../../../src/dataflow/environments/identifier';
 import {
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
@@ -41,11 +42,11 @@ export function withSigDb(builder: FlowrAnalyzerBuilder, sigDb: SigDbSource): Fl
 }
 
 /** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
-export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
-export function controlledSigDb(pkg: string, exports: readonly string[]): PackageSignatureSource;
-export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PackageSignatureSource {
+export function controlledSigDb(pkgs: Record<BrandedNamespace, readonly BrandedIdentifier[]>): PackageSignatureSource;
+export function controlledSigDb(pkg: BrandedNamespace, exports: readonly BrandedIdentifier[]): PackageSignatureSource;
+export function controlledSigDb(pkgOrPkgs: BrandedNamespace | Record<BrandedNamespace, readonly BrandedIdentifier[]>, exports?: readonly BrandedIdentifier[]): PackageSignatureSource {
 	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
-	const view = (pkg: string): LibraryExports | undefined => pkg in pkgs
+	const view = (pkg: BrandedNamespace): LibraryExports | undefined => pkg in pkgs
 		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], s3Classes: [], s4Classes: [], cran: true }
 		: undefined;
 	return {
@@ -137,6 +138,19 @@ export function assertLinterFields<Name extends LintingRuleNames>(
 	assertLinterWithCleanup(`${ruleName}: ${JSON.stringify(code)}`, parser, code, ruleName, expected, undefined, setup as DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup, statedFields(expected));
 }
 
+/** Like {@link assertLinterFields}, with a rule config, and `line` standing for the first line of a result's `loc` */
+export function assertLinterLines<Name extends LintingRuleNames>(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	ruleName: Name,
+	expected: Record<string, unknown>[],
+	config?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
+) {
+	const fields = statedFields(expected);
+	assertLinterWithCleanup(name, parser, code, ruleName, expected, undefined, config, r => fields({ ...r, line: (r as { loc?: readonly number[] }).loc?.[0] ?? (r as { line?: number }).line }) as Record<string, unknown>);
+}
+
 /** extra setup of {@link assertLinterPackage}: the package files besides the linted one, and where the linted code lives */
 export type PackageTestSetup = {
 	/** files of the package by their path below the package root; `DESCRIPTION` defaults to a minimal one, `null` drops it */
@@ -175,8 +189,8 @@ export function assertLintedLines(name: string, parser: KnownParser, code: strin
 	test(name, async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(code);
-		const linted = await analyzer.query([{ type: 'linter', rules: [rule] }]);
-		const results = (linted.linter.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
+		const linted = await analyzer.query({ type: 'linter', rules: [rule] });
+		const results = (linted.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
 		assert.deepStrictEqual(results.map(r => r.loc[0]), lines, `${rule} should report the lines ${JSON.stringify(lines)}`);
 	});
 }

@@ -243,8 +243,8 @@ describe('flowR linter', withTreeSitter(parser => {
 					}
 					const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 					analyzer.addRequest(`file://${root}`);
-					const res = await analyzer.query([{ type: 'linter', rules: ['compiled-code'] }]);
-					const found = (res.linter.results['compiled-code'] as unknown as { results: { kind: string, message: string, loc: unknown[] }[] }).results;
+					const res = await analyzer.query({ type: 'linter', rules: ['compiled-code'] });
+					const found = (res.results['compiled-code'] as unknown as { results: { kind: string, message: string, loc: unknown[] }[] }).results;
 					assert.lengthOf(found, 1);
 					assert.strictEqual(found[0].kind, 'whether package can be installed');
 					assert.strictEqual(found[0].loc[4], path.join(root, 'NAMESPACE'));

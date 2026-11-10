@@ -14,6 +14,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsPackratPlugin,
 	FlowrAnalyzerPackageVersionsRenvPlugin,
+	FlowrAnalyzerPackageVersionsRigPlugin,
 	FlowrAnalyzerPackageVersionsRvPlugin,
 	FlowrAnalyzerPackageVersionsUvrPlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
@@ -99,12 +100,33 @@ Hash: 5f0e0e0a1b7bcd8c9fb20c3f8bbb7ea1
 Requires: digest, gtable
 `;
 
+/** a rig rproj.lock in the shape of `RprojLock` in rig's `src/rproj.rs`: one target per R version and platform */
+const rigLock = (targets: readonly [rVersion: string, packages: readonly [string, string][]][]) => `version = 7
+${targets.map(([r, pkgs]) => `
+[[targets]]
+r_version = "${r}"
+platform = "x86_64-unknown-linux-gnu-ubuntu-24.04"
+direct_dependencies = [{ name = "dplyr", constraint = ">= 1.1.0" }]
+${pkgs.map(([name, version]) => `
+[[targets.packages]]
+package = "${name}"
+version = "${version}"
+binary = true
+platform = "x86_64-unknown-linux-gnu-ubuntu-24.04"
+dependencies = []
+metadata = {}
+sources = ["https://p3m.dev/cran/latest/bin/linux/noble-x86_64/4.5/src/contrib/${name}_${version}.tar.gz"]
+target = "${name}_${version}.tar.gz"
+groups = ["main"]`).join('\n')}`).join('\n')}
+`;
+
 function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 	const ctx = new FlowrAnalyzerContext(
 		FlowrConfig.default(),
 		[
 			new FlowrAnalyzerVirtualEnvFilePlugin(),
 			new FlowrAnalyzerPackageVersionsRvPlugin(),
+			new FlowrAnalyzerPackageVersionsRigPlugin(),
 			new FlowrAnalyzerPackageVersionsRenvPlugin(),
 			new FlowrAnalyzerPackageVersionsUvrPlugin(),
 			new FlowrAnalyzerPackageVersionsPackratPlugin()
@@ -117,7 +139,7 @@ function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 describe('Lockfile versions', () => {
 	test(label('rv.lock pins every package, including builtin ones', ['version-manager-rv'], ['other']), () => {
 		const ctx = ctxWith('rv.lock', rvLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		// `7.3-65` is an R version, where `-` separates a component just like `.` does
 		assert.sameDeepMembers(got, [['R6', '2.6.1'], ['MASS', '7.3.65'], ['ggplot2', '3.5.1']]);
 	});
@@ -128,7 +150,7 @@ describe('Lockfile versions', () => {
 
 	test(label('uvr.lock pins every package, including the dev ones', ['version-manager-uvr'], ['other']), () => {
 		const ctx = ctxWith('uvr.lock', uvrLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['ggplot2', '3.4.4'], ['dplyr', '1.1.4'], ['testthat', '3.2.1']]);
 	});
 
@@ -144,13 +166,13 @@ describe('Lockfile versions', () => {
 
 	test(label('renv.lock pins every package', ['version-manager-renv'], ['other']), () => {
 		const ctx = ctxWith('renv.lock', renvLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R6', '2.5.1'], ['cli', '3.6.4']]);
 	});
 
 	test(label('packrat.lock pins every package', ['version-manager-packrat'], ['other']), () => {
 		const ctx = ctxWith('packrat.lock', packratLock);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R6', '2.1.2'], ['ggplot2', '2.1.0']]);
 	});
 
@@ -158,7 +180,30 @@ describe('Lockfile versions', () => {
 		assert.strictEqual(ctxWith('packrat.lock', packratLock).meta.getRVersion(), '3.2.3');
 	});
 
+	test(label('rproj.lock pins what its single target resolved, and its R version', ['version-manager-rig'], ['other']), () => {
+		const ctx = ctxWith('rproj.lock', rigLock([['4.5.1', [['dplyr', '1.1.4'], ['vctrs', '0.6-5']]]]));
+		assert.sameDeepMembers(ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]), [['dplyr', '1.1.4'], ['vctrs', '0.6.5']]);
+		assert.strictEqual(ctx.meta.getRVersion(), '4.5.1');
+	});
+
+	test(label('targets that disagree pin nothing for that package, nor for R', ['version-manager-rig'], ['other']), () => {
+		const ctx = ctxWith('rproj.lock', rigLock([
+			['4.5.1', [['dplyr', '1.1.4'], ['cli', '3.6.5']]],
+			['4.4.3', [['dplyr', '1.1.3'], ['cli', '3.6.5'], ['only44', '1.0']]]
+		]));
+		assert.sameDeepMembers(ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]), [['cli', '3.6.5'], ['only44', '1.0']]);
+		assert.isUndefined(ctx.meta.getRVersion());
+	});
+
+	test(label('a script lockfile sits beside its script', ['version-manager-rig'], ['other']), () => {
+		assert.sameMembers(ctxWith('analysis.R.lock', rigLock([['4.5.1', [['cli', '3.6.5']]]])).deps.getDependencies().map(d => d.name), ['cli']);
+		assert.isEmpty(ctxWith('analysis.lock', rigLock([['4.5.1', [['cli', '3.6.5']]]])).deps.getDependencies(), 'no script lock without the script');
+		assert.isEmpty(ctxWith('.R.lock', rigLock([['4.5.1', [['cli', '3.6.5']]]])).deps.getDependencies(), 'nor without a script name');
+	});
+
 	test('a broken lockfile is skipped rather than throwing', () => {
+		assert.deepStrictEqual(ctxWith('rproj.lock', '[[targets]\nr_version = ').deps.getDependencies(), []);
+		assert.deepStrictEqual(ctxWith('rproj.lock', 'version = 7\ntargets = "no"\n').deps.getDependencies(), []);
 		assert.deepStrictEqual(ctxWith('rv.lock', '[[packages]\nname = ').deps.getDependencies(), []);
 		assert.deepStrictEqual(ctxWith('renv.lock', '{not json').deps.getDependencies(), []);
 		assert.deepStrictEqual(ctxWith('uvr.lock', '[[package]\nname = ').deps.getDependencies(), []);
@@ -214,5 +259,34 @@ describe('packrat within a discovered project', () => {
 		const loaded = ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<inline>');
 		assert.include(loaded, 'init.R', 'the bootstrap script stays visible');
 		assert.notInclude(loaded, 'installed.R', 'packrat/lib holds installed sources and is ignored');
+	});
+});
+
+describe('rig within a discovered project', () => {
+	let root: string;
+	beforeAll(() => {
+		root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-rig-'));
+		fs.mkdirSync(path.join(root, '.rvenv', 'lib', 'dplyr', 'R'), { recursive: true });
+		fs.writeFileSync(path.join(root, 'rproj.toml'), '[project]\nname = "sample"\nversion = "0.1.0"\n\n[dependencies]\nR = ">= 4.4"\ndplyr = ">= 1.1"\n');
+		fs.writeFileSync(path.join(root, 'rproj.lock'), rigLock([['4.5.1', [['dplyr', '1.1.4']]]]));
+		fs.writeFileSync(path.join(root, 'main.R'), 'library(dplyr)');
+		fs.writeFileSync(path.join(root, 'report.R'), '# /// script\n# [dependencies]\n# cli = "*"\n# ///\ncli::cli_text("hi")\n');
+		fs.writeFileSync(path.join(root, 'report.R.lock'), rigLock([['4.5.1', [['cli', '3.6.5']]]]));
+		fs.writeFileSync(path.join(root, '.rvenv', 'lib', 'dplyr', 'R', 'installed.R'), 'junk <- 1');
+	});
+	afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+
+	test(label('the manifest, the script block and both lockfiles are read, the project library is not', ['version-manager-rig', 'project-library'], ['other']), async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addRequest({ request: 'project', content: root });
+		const ctx = analyzer.inspectContext();
+		assert.sameMembers(ctx.files.getFilesByRole(FileRole.VirtualEnv).map(f => path.basename(f.path())), ['rproj.lock', 'report.R.lock']);
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Manifest).map(f => path.basename(f.path())), ['rproj.toml']);
+		assert.strictEqual(ctx.meta.getProjectName(), 'sample');
+		assert.strictEqual(ctx.meta.getRVersion(), '4.5.1', 'the manifest states a requirement, the lockfile what it resolved to');
+		assert.sameMembers(ctx.deps.getDependencies().map(d => d.name), ['R', 'dplyr', 'cli']);
+		const loaded = ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<inline>');
+		assert.include(loaded, 'main.R');
+		assert.notInclude(loaded, 'installed.R', '.rvenv/lib holds installed sources and is ignored');
 	});
 });

@@ -2,7 +2,7 @@ import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier } from '../../../../environments/identifier';
+import { type BrandedIdentifier, type NodesByName, Identifier } from '../../../../environments/identifier';
 import { EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../graph/vertex';
@@ -28,8 +28,8 @@ export interface ForceSites {
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
 export
 interface NameIndex {
-	readonly definitions: ReadonlyMap<string, NodeId[]>
-	readonly uses:        ReadonlyMap<string, NodeId[]>
+	readonly definitions: NodesByName
+	readonly uses:        NodesByName
 }
 
 /** The vertices of `type` by their unquoted name. */
@@ -39,8 +39,8 @@ export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idM
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
-function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, string, boolean])[] {
-	const names: (readonly [NodeId, string, boolean])[] = [];
+function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, BrandedIdentifier, boolean])[] {
+	const names: (readonly [NodeId, BrandedIdentifier, boolean])[] = [];
 	const callees = new Set<NodeId>();
 	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
 		/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
@@ -48,7 +48,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			return true;
 		} else if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
-			/* a call reads the function it names, so `evalq(f())` needs the definition of `f` */
+			/* a call reads the function it names, so `eval(quote(f()))` needs the definition of `f` */
 			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
 				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
 				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
@@ -71,15 +71,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 	return names;
 }
 
-/**
- * An expression R evaluates at a time we cannot pin down: the body a `delayedAssign` binds, forced at some
- * later read of the name, or a promise a closure carries past the call that created it.
- *
- * Since the moment is open, every binding the expression may meet is a candidate, and symmetrically so:
- * a name it reads may read any definition of that name, and a name it writes may be read by any use of it.
- * That is the may-analysis both directions ask for, so nothing the expression really depends on, and nothing
- * really depending on it, can be missed.
- */
+/** An expression R evaluates at a time we cannot pin down: the body a `delayedAssign` binds, forced at some later read of the name, or a promise a closure carries past the call that created it. */
 export const Deferred = {
 	/** Where each name is bound and read, built once and shared by every deferred expression in the graph. */
 	indexOf<Info>(this: void, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): NameIndex {
@@ -89,11 +81,7 @@ export const Deferred = {
 		};
 	},
 
-	/**
-	 * The reads that may be the one forcing `binding`: every read of it that no other read always precedes,
-	 * since an earlier read would already have forced it and cached the value.
-	 * With `viaClosures`, a closure reading a `delayedAssign` binding forces it when called.
-	 */
+	/** The reads that may be the one forcing `binding`: every read of it that no other read always precedes, since an earlier read would already have forced it and cached the value. */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph, viaClosures = false): readonly NodeId[] {
 		const reads = Dataflow.sourcesOf(graph, binding, EdgeType.Reads);
 		const readSet = new Set(reads);
@@ -111,11 +99,7 @@ export const Deferred = {
 		return reads.filter(r => first.has(r)).concat(calls);
 	},
 
-	/**
-	 * Links the writes an expression performs to the uses that may observe them, for a call evaluating the
-	 * expression at a point control flow can pin down (`eval`). The reads are settled by the evaluating call
-	 * itself, against the environment in effect there, so only this direction is left open.
-	 */
+	/** Links the writes an expression performs to the uses that may observe them, for a call evaluating the expression at a point control flow can pin down (`eval`). */
 	publish<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, at: NodeId, sites: readonly NodeId[], cfg?: ControlFlowGraph): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));
@@ -123,7 +107,7 @@ export const Deferred = {
 		let reachedFromSites: ReadonlySet<NodeId> | undefined;
 		for(const [node, name] of within.filter(([, , writes]) => writes)) {
 			/* a write leaving the evaluating frame lands whenever a call of the closure evaluating it does */
-			const escapes = DfgVertex.hasOrigin(graph.getVertex(idMap.get(node)?.info.parent ?? ''), BuiltInProcName.SuperAssignment);
+			const escapes = Dataflow.superAssigns(graph, idMap.get(node)?.info.parent ?? '');
 			for(const site of escapes ? sites : []) {
 				if(site !== at) {
 					graph.addEdge(node, site, EdgeType.SideEffectOnCall);
@@ -139,12 +123,7 @@ export const Deferred = {
 		}
 	},
 
-	/**
-	 * Links the expression rooted at `expr` to the bindings it may meet when it is evaluated. Given the reads
-	 * that may force it, control flow rules out what no force can reach; without them every binding stays a
-	 * candidate. An argument (`inCallerFrame`) is evaluated in the frame of its call, so the parameters and local
-	 * bindings of the function forcing it are none it can meet, even though they come before the force.
-	 */
+	/** Links the expression rooted at `expr` to the bindings it may meet when it is evaluated. */
 	link<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, forces?: ForceSites, inCallerFrame = false): void {
 		const within = namesWithin(expr, graph, idMap);
 		const own = new Set(within.map(([id]) => id));

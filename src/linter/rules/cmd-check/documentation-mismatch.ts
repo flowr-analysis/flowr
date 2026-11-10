@@ -17,7 +17,7 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../dataflow/environments/identifier';
 import path from 'path';
 import { rootDescriptionFile } from './package-files';
 import { type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
@@ -33,9 +33,9 @@ export type DocumentationMismatchKind =
 
 export interface DocumentationMismatchResult extends CmdCheckResult {
 	readonly kind:      DocumentationMismatchKind
-	readonly name:      string
+	readonly name:      BrandedIdentifier
 	readonly rdFile?:   string
-	readonly function?: string
+	readonly function?: BrandedIdentifier
 }
 
 export interface DocumentationMismatchConfig extends MergeableRecord {
@@ -186,6 +186,8 @@ function infinite(num: number): Literal | undefined {
 	return num === Infinity ? 'k:Inf' : num === -Infinity ? 'k:-Inf' : undefined;
 }
 
+const RConstantNames: readonly BrandedIdentifier[] = ['NULL', 'NA', 'Inf', 'NaN'];
+
 function literalOfCode(node: RNode<ParentInformation> | undefined): Literal | undefined {
 	switch(node?.type) {
 		case RType.String:  return `s:${contentOf(node.content) ?? node.content.str}`;
@@ -197,7 +199,7 @@ function literalOfCode(node: RNode<ParentInformation> | undefined): Literal | un
 		}
 		case RType.Symbol: {
 			const name = Identifier.getName(node.content);
-			return ['NULL', 'NA', 'Inf', 'NaN'].includes(name) ? `k:${name}` : undefined;
+			return RConstantNames.includes(name) ? `k:${name}` : undefined;
 		}
 		default: return undefined;
 	}
@@ -265,10 +267,10 @@ const UsageStart = /\\usage\s*\{/;
 const ArgumentsStart = /\\arguments\s*\{/;
 
 /** a function defined at the top level of the package code, by every name it may be called as */
-type CodeFunctions = ReadonlyMap<string, RFunctionDefinition<ParentInformation>>;
+type CodeFunctions = ReadonlyMap<BrandedIdentifier, RFunctionDefinition<ParentInformation>>;
 
 /** the formals of the function a usage name stands for; `foo.bar<-` may also be the replacement function `foo<-.bar` */
-function codeFunctionFor(name: string, fns: CodeFunctions): { name: string, def: RFunctionDefinition<ParentInformation> } | undefined {
+function codeFunctionFor(name: BrandedIdentifier, fns: CodeFunctions): { name: BrandedIdentifier, def: RFunctionDefinition<ParentInformation> } | undefined {
 	const candidates = [name];
 	if(name.endsWith('<-')) {
 		const plain = name.slice(0, -2);
@@ -285,7 +287,7 @@ function codeFunctionFor(name: string, fns: CodeFunctions): { name: string, def:
 	return undefined;
 }
 
-function signature(name: string, args: readonly string[]): string {
+function signature(name: BrandedIdentifier, args: readonly BrandedIdentifier[]): string {
 	return `${name}(${args.join(', ')})`;
 }
 
@@ -388,7 +390,7 @@ function checkPage(page: RdPage, rdName: string, path: string, raw: string | und
 			calls.push(parsed);
 		}
 	}
-	const add = (kind: DocumentationMismatchKind, name: string, message: string, loc: SourceLocation, fn?: string) => {
+	const add = (kind: DocumentationMismatchKind, name: BrandedIdentifier, message: string, loc: SourceLocation, fn?: BrandedIdentifier) => {
 		out.push({ certainty: LintingResultCertainty.Certain, involvedId: undefined, loc, kind, name, rdFile: rdName, function: fn, message });
 	};
 	const usageLoc = (call: UsageCall) => rdLoc(path, raw, UsageStart, usageNeedles(call.name));

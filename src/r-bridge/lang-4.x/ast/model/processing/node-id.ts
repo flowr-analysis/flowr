@@ -1,11 +1,10 @@
-import { RString } from '../nodes/r-string';
-import type { AstIdMap } from './decorate';
+import type { AstIdMap, ParentInformation } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { DfgVertex } from '../../../../../dataflow/graph/vertex';
-import { RNode } from '../model';
+import type { RNode } from '../model';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
-import { compareByCodeUnit } from '../../../../../util/text/strings';
+import { compareByCodeUnit, splitRQuotes } from '../../../../../util/text/strings';
 
 /**
  * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
@@ -20,10 +19,15 @@ export type NodeId<T extends string | number = string | number> = T & { __brand?
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
-function startsNumeric(id: string): boolean {
+const ArgumentSuffix = '-arg';
+
+function startsNumeric<S extends string>(id: S): boolean {
 	const c = id.charCodeAt(0);
 	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
+
+/** see {@link NodeId.anonymousCall} */
+const AnonymousCallPrefix = 'anon-';
 
 /**
  * What a {@link NodeId} is: the identity of a node within one analysis, plus the built-in and `pkg::fn`
@@ -40,6 +44,14 @@ export const NodeId = {
 	compare(this: void, a: NodeId, b: NodeId): number {
 		const [x, y] = [NodeId.normalize(a), NodeId.normalize(b)];
 		return typeof x === 'number' && typeof y === 'number' ? x - y : compareByCodeUnit(String(x), String(y));
+	},
+	/** The id of the argument flowR wraps around a node handed over without one, like the left side of `x |> f()`. */
+	argumentOf(this: void, id: NodeId): NodeId {
+		return `${id}${ArgumentSuffix}`;
+	},
+	/** The node an argument of {@link NodeId.argumentOf} wraps, `undefined` for any other id. */
+	wrappedByArgument(this: void, id: NodeId): NodeId | undefined {
+		return typeof id === 'string' && id.endsWith(ArgumentSuffix) ? id.slice(0, -ArgumentSuffix.length) : undefined;
 	},
 	/**
 	 * Normalizes a node id by converting numeric strings to numbers.
@@ -133,7 +145,16 @@ export const NodeId = {
 	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
 	 */
 	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
-		return idMap?.get(id)?.lexeme;
+		return NodeId.nodeOf(id, idMap)?.lexeme;
+	},
+	/** The id of the call the dataflow graph makes up for an anonymous function a call runs (`lapply(x, function(v) v)`, a `tryCatch` handler). */
+	anonymousCall(this: void, functionId: NodeId): NodeId {
+		return AnonymousCallPrefix + String(functionId);
+	},
+	/** The node `id` belongs to; for a made-up {@link NodeId.anonymousCall} the anonymous function it calls. */
+	nodeOf<Info>(this: void, id: NodeId, idMap: AstIdMap<Info> | undefined): RNode<Info & ParentInformation> | undefined {
+		const node = idMap?.get(id);
+		return node !== undefined || typeof id !== 'string' || !id.startsWith(AnonymousCallPrefix) ? node : idMap?.get(NodeId.normalize(id.slice(AnonymousCallPrefix.length)));
 	},
 	/**
 	 * The name the {@link RNode|node} the id belongs to binds or reads, without the backticks or quotes R lets it be
@@ -142,11 +163,12 @@ export const NodeId = {
 	 */
 	recoverBareName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
 		const lexeme = NodeId.recoverName(id, idMap);
-		return lexeme === undefined ? undefined : RString.unquote(lexeme);
+		return lexeme === undefined ? undefined : splitRQuotes(lexeme).content;
 	},
 	/**
 	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and
-	 * the lexeme of anything else.
+	 * the lexeme of anything else. It reads the lexeme itself, as the AST helpers would make loading the identifiers expensive.
+	 * @lintIgnore
 	 * @see {@link NodeId.recoverName} - for the lexeme alone, which needs no graph
 	 */
 	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
@@ -158,9 +180,9 @@ export const NodeId = {
 		if(node === undefined) {
 			return undefined;
 		}
-		const lexeme = RNode.ownLexeme(node) ?? '';
+		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
 		if(DfgVertex.isUse(vertex)) {
-			return RString.unquote(lexeme);
+			return splitRQuotes(lexeme).content;
 		}
 		return lexeme;
 	}

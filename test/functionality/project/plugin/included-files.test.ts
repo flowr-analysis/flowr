@@ -46,4 +46,12 @@ describe('Included files', { concurrent: false }, withTreeSitter(parser => {
 			'other.Rmd': '```{r}\nlibrary(cli)\n```\n'
 		}), ['p.Rmd', 'other.Rmd']);
 	});
+
+	test('an unresolvable knitr child leaves the chunk inline', async() => {
+		const dir = fs.mkdtempSync(path.join(tmp, 'p-'));
+		fs.writeFileSync(path.join(dir, 'p.Rmd'), '```{r child="missing.Rmd"}\n```\n```{r}\nx <- 1\n```\n');
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+		analyzer.addRequest('file://' + dir);
+		assert.isDefined(await analyzer.dataflow());
+	});
 }));

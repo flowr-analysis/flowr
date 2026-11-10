@@ -4,14 +4,14 @@ import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
-import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
-import { happensBefore } from '../../control-flow/happens-before';
+import { happensBefore, happensBeforeEach } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
@@ -71,8 +71,10 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
+const PackageArguments: readonly BrandedIdentifier[] = ['package', 'lib.loc'];
+
 function namesPackage(node: RNode<ParentInformation>): boolean {
-	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && ['package', 'lib.loc'].includes(Identifier.getName(a.name.content)));
+	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && PackageArguments.includes(Identifier.getName(a.name.content)));
 }
 
 async function urlExists(url: string): Promise<boolean> {
@@ -165,8 +167,9 @@ export const FILE_PATH_VALIDITY = {
 			// check if any write to the same file happens before the read, and exclude this case if so
 			const writesToFile = results.write.filter((r): r is typeof r & { nodeId: NodeId } =>
 				r.nodeId !== undefined && samePath(r.value as string, path, resolveSource?.ignoreCapitalization));
-			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, id));
-			if(writesBefore.includes(Ternary.Always)) {
+			const writers = new Set(writesToFile.map(w => w.nodeId));
+			const writesBefore = happensBeforeEach(cfg, writers, id);
+			if(writesBefore.values().some(w => w === Ternary.Always)) {
 				metadata.totalWritesBeforeAlways++;
 				return [];
 			}
@@ -183,7 +186,7 @@ export const FILE_PATH_VALIDITY = {
 			};
 			const near = findSource(laxOptions, path, { referenceChain, ctx });
 			const quickFix = dfg.idMap && near?.length ? buildDidYouMeanFix(dfg.idMap, nodeId, path, near[0]) : undefined;
-			const maybeWrittenBefore = writesBefore.length > 0 && writesBefore.every(w => w === Ternary.Maybe);
+			const maybeWrittenBefore = writers.size > 0 && writesBefore.size === writers.size;
 			const uncertain = maybeWrittenBefore || guardedByFileQuery(df, id, path, data);
 			return verdict(false, path, uncertain ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, quickFix);
 		}));

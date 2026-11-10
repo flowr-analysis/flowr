@@ -1,3 +1,4 @@
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { log } from '../../../util/log';
 import path from 'path';
 import type { ProjectDependencyStats, ProjectQuery, ProjectQueryResult } from './project-query-format';
@@ -12,7 +13,7 @@ import { baseRPackages } from '../../../util/r-base-packages';
  * Collects dependency statistics from what the project declares, cross-referenced with the
  * loaded signature database(s) to report how many dependencies we can cover.
  */
-function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrAnalyzerDependenciesContext, basePackages: ReadonlySet<string>): ProjectDependencyStats {
+function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrAnalyzerDependenciesContext, basePackages: ReadonlySet<BrandedNamespace>): ProjectDependencyStats {
 	const imports = declared.imports ?? [];
 	const dependsAll = declared.depends ?? [];
 	const rEntry = dependsAll.find(d => d.name === 'R');
@@ -68,7 +69,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	}
 
 	const ctx = analyzer.inspectContext();
-	const basePackages = new Set(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
+	const basePackages = new Set<BrandedNamespace>(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
 
 	let roleCounts: Record<FileRole, number> | undefined;
 	let roleFiles: Record<FileRole, readonly string[]> | undefined;

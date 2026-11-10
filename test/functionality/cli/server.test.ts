@@ -17,7 +17,7 @@ import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
-import type { SliceRequestMessage } from '../../../src/cli/repl/server/messages/message-slice';
+import type { SliceRequestMessage, SliceResponseMessage } from '../../../src/cli/repl/server/messages/message-slice';
 import type { FlowrErrorMessage } from '../../../src/cli/repl/server/messages/message-error';
 import { assert, describe, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
@@ -198,6 +198,26 @@ describe('flowr', () => {
 			assert.exists(response.results['call-context'], 'Expected the query to return at least one result');
 			assert.exists(response.results['.meta'], 'Expected the query to return at least one result');
 			assert.equal(response.results['call-context']['kinds']['.']['subkinds']['.'].length, 1, 'We should find one call to print!');
+		}));
+
+		test.skipIf(skip)('Process a Slice', withSocket(shell, async socket => {
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:      'request-file-analysis',
+				id:        '42',
+				filetoken: 'super-token',
+				filename:  'x',
+				content:   'x <- 1\ny <- 2\nx + 1'
+			});
+			await socket.waitForMessage('response-file-analysis');
+			fakeSend<SliceRequestMessage>(socket, {
+				type:      'request-slice',
+				id:        '21',
+				filetoken: 'super-token',
+				criterion: ['3@x']
+			});
+			await socket.waitForMessage('response-slice');
+			const response = socket.getMessages(['hello', 'response-file-analysis', 'response-slice'])[2] as SliceResponseMessage;
+			assert.strictEqual(response.results.reconstruct.code, 'x <- 1\nx');
 		}));
 
 		test.skipIf(skip)('Invalidate a file token', withSocket(shell, async socket => {

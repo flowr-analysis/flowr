@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Compound Query">Compound Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Combines multiple queries of the same type into one, specifying common arguments.\
@@ -15,24 +15,7 @@ For example, consider the following compound query that combines two call-contex
 assigned to the kind `visualize` and the subkind `text` (using the example code from above):
 
 ```json
-[
-  {
-    "type": "compound",
-    "query": "call-context",
-    "commonArguments": {
-      "kind": "visualize",
-      "subkind": "text"
-    },
-    "arguments": [
-      {
-        "callName": "^mean$"
-      },
-      {
-        "callName": "^print$"
-      }
-    ]
-  }
-]
+[ { "type": "compound",   "query": "call-context",   "commonArguments": { "kind": "visualize",    "subkind": "text" },   "arguments": [ { "callName": "^mean$" },    { "callName": "^print$" } ] } ]
 ```
 
 _Results (prettified and summarized):_
@@ -48,10 +31,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":36,"name":"print"},{"id":87,"name":"mean"},{"id":89,"name":"print"}]}}}},
-  ".meta": {}
-}
+{"call-context":{".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":36,"name":"print"},{"id":87,"name":"mean"},{"id":89,"name":"print"}]}}}},".meta":{}}
 ```
 
 </details>
@@ -59,14 +39,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 In this specific scenario, the following query would be equivalent:
 
 ```json
-[
-  {
-    "type": "call-context",
-    "callName": "^(mean|print)$",
-    "kind": "visualize",
-    "subkind": "text"
-  }
-]
+[ { "type": "call-context",   "callName": "^(mean|print)$",   "kind": "visualize",   "subkind": "text" } ]
 ```
 
  <details> <summary style="color:gray">Show Results</summary>
@@ -84,10 +57,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":36,"name":"print"},{"id":87,"name":"mean"},{"id":89,"name":"print"}]}}}},
-  ".meta": {}
-}
+{"call-context":{".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean"},{"id":36,"name":"print"},{"id":87,"name":"mean"},{"id":89,"name":"print"}]}}}},".meta":{}}
 ```
 
 </details>
@@ -100,26 +70,7 @@ In the following, we (by default) want all calls to not resolve to a local defin
 want to resolve to a local definition:
 
 ```json
-[
-  {
-    "type": "compound",
-    "query": "call-context",
-    "commonArguments": {
-      "kind": "visualize",
-      "subkind": "text",
-      "callTargets": "global"
-    },
-    "arguments": [
-      {
-        "callName": "^mean$"
-      },
-      {
-        "callName": "^print$",
-        "callTargets": "local"
-      }
-    ]
-  }
-]
+[ { "type": "compound",   "query": "call-context",   "commonArguments": { "kind": "visualize",    "subkind": "text",    "callTargets": "global" },   "arguments": [ { "callName": "^mean$" },    { "callName": "^print$",     "callTargets": "local" } ] } ]
 ```
 
 _Results (prettified and summarized):_
@@ -135,10 +86,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean","calls":["built-in"]},{"id":87,"name":"mean","calls":["built-in"]}]}}}},
-  ".meta": {}
-}
+{"call-context":{".meta":{},"kinds":{"visualize":{"subkinds":{"text":[{"id":31,"name":"mean","calls":["built-in"]},{"id":87,"name":"mean","calls":["built-in"]}]}}}},".meta":{}}
 ```
 
 </details>

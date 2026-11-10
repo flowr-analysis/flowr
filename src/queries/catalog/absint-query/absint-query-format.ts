@@ -8,7 +8,7 @@ import type { MultiValueDomain, MultiValueStateDomain } from '../../../abstract-
 import type { AbstractProduct } from '../../../abstract-interpretation/domains/partial-product-domain';
 import type { StateDomain } from '../../../abstract-interpretation/domains/state-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/core';
+import type { CommandCompletions } from '../../../cli/repl/completion';
 import { lastCriterionFragment, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfig } from '../../../config';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';

@@ -1,7 +1,7 @@
 import type { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
-import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
-import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
+import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
+import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -21,6 +21,7 @@ import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
+import { TaintAnalysis, type TaintAnalysisBuilder } from '../taint-analysis/builder/taint-analysis';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { VertexType } from '../dataflow/graph/vertex';
 import { Dataflow } from '../dataflow/graph/df-helper';
@@ -167,11 +168,45 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	peekCallGraph(): CallGraph | undefined;
 	/**
+	 * A value computed from the current analysis once per `key` (e.g. the function computing it), shared by
+	 * every query and linter rule asking for it until the analysis is invalidated.
+	 * Keep in mind that:
+	 * - the key is compared by identity, so use a module-level function or object, not a fresh closure per call
+	 * - the value is kept in memory until the analysis changes, so derive small summaries, not copies of the graph
+	 * - `compute` runs against the configured gas bounds only, and a result computed under pressure is returned but not kept
+	 * - a failed computation is not kept, the next caller runs it again
+	 * @example
+	 * ```ts
+	 * const pdgs = await analyzer.derive(computePdgs, async() => computePdgs(await analyzer.dataflow()));
+	 * ```
+	 */
+	derive<T>(key: object, compute: () => Promise<T>): Promise<T>;
+	/**
 	 * Access the query API for the request.
-	 * @param query   - The list of queries.
+	 * Pass a single query to get its result directly (see {@link Query.one}), a failing query then throws.
+	 * Pass a list of queries to get a record of their results by query type, where a failing query type is reported
+	 * as an error without affecting the others.
+	 * Keep in mind that:
+	 * - a single query is the one to use if you ask for one thing, a list is for several kinds of results of one
+	 *   analysis. Queries of the same type in a list run as one batch, while the single form returns the one
+	 *   entry of a query with {@link SupportedQuery#perQueryResults} (for `static-slice`, `{ slice, reconstruct }`)
+	 * - the list form does not throw but reports `{ error }` for the failing type, so check before you use a result
+	 * - queries share the analysis (and its cache) of the analyzer, so adding a request after a query invalidates it
+	 * @param query   - The query or the list of queries.
 	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
+	 * @example
+	 * ```ts
+	 * const { reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
+	 * const results = await analyzer.query([{ type: 'id-map' }, { type: 'static-slice', criteria: ['3@x'] }]);
+	 * const { slice } = results['static-slice'].results['3@x']; // keyed by the criteria
+	 * ```
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
+	query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
+	/**
+	 * Access the taint analysis API for the request.
+	 */
+	taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names>;
 	/**
 	 * Run a search on the current analysis.
 	 * @param search  - The search to run.
@@ -270,7 +305,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
-		if(this.parser.name === 'tree-sitter') {
+		if(this.parser.name === ParserName.TreeSitter) {
 			return this.parser.parse(request, this.ctx);
 		} else {
 			const ts = new TreeSitterExecutor();
@@ -284,40 +319,19 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
-		for(const r of request) {
-			if(typeof r === 'string') {
-				const trimmed = r.slice(fileProtocol.length);
-				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
-					this.addAnalysisRequest({ request: 'project', content: trimmed });
-				} else {
-					this.addRequestFromInput(r);
-				}
-			} else {
-				this.addAnalysisRequest(r);
+		/* added at once, so that every request knows the folders of the others when its files are added */
+		this.ctx.addRequests(request.flatMap((r): RAnalysisRequest | readonly RAnalysisRequest[] => {
+			if(typeof r !== 'string') {
+				return r;
 			}
-		}
+			const trimmed = r.slice(fileProtocol.length);
+			return r.startsWith(fileProtocol) && !isFilePath(trimmed) ? { request: 'project', content: trimmed } : requestFromInput(r);
+		}));
 		return this;
 	}
 
 	public addFile(...f: (string | FlowrFileProvider | RParseRequestFromFile)[]): this {
 		this.ctx.addFiles(f);
-		return this;
-	}
-
-	/**
-	 * Add a request created from the given input.
-	 * This is a convenience method that uses {@link requestFromInput} internally.
-	 */
-	private addRequestFromInput(input: Parameters<typeof requestFromInput>[0]): this {
-		this.addAnalysisRequest(requestFromInput(input));
-		return this;
-	}
-
-	/**
-	 * Add one or multiple requests to analyze the builder.
-	 */
-	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
-		this.ctx.addRequests((Array.isArray(request) ? request : [request]) as RAnalysisRequest[]);
 		return this;
 	}
 
@@ -371,16 +385,24 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.cache.peekCallGraph();
 	}
 
-	public async query<
-		Types extends SupportedQueryTypes = SupportedQueryTypes
-	>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>> {
-		return this.ctx.gas.withGas(options?.gas, () => executeQueries({ analyzer: this }, query));
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		return this.cache.derive(key, compute);
+	}
+
+	public async query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
+	public async query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
+	public async query(query: Query | Queries, options?: FlowrAnalysisOptions): Promise<unknown> {
+		return this.ctx.gas.withGas(options?.gas, () => Array.isArray(query) ? executeQueries({ analyzer: this }, query as Queries) : Query.one({ analyzer: this }, query as Query));
 	}
 
 	public async runSearch<
 		Search extends FlowrSearchLike
 	>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
 		return this.ctx.gas.withGas(options?.gas, () => runSearch(search, this));
+	}
+
+	public taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names> {
+		return TaintAnalysis.create<Names>(this);
 	}
 
 	/**
@@ -398,9 +420,11 @@ function qualifyInBackground(graph: DataflowGraph): void {
 	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
 	let next = 0;
 	const step = () => {
-		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
-			Dataflow.qualify(calls[next], graph, false);
-		}
+		graph.sharingTargetWalks(() => {
+			for(const end = Math.min(next + 256, calls.length); next < end; next++) {
+				Dataflow.qualify(calls[next], graph, false);
+			}
+		});
 		if(next < calls.length) {
 			later(step);
 		}

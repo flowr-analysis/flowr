@@ -9,6 +9,8 @@ import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ReachSummaries } from '../../util/fixpoint';
+import { Monoid } from '../../util/monoid';
 
 /** What flowR states about the built-in a call names, see {@link BuiltInFnInfo}. */
 export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
@@ -20,9 +22,7 @@ export interface FrameReflectionOptions {
 }
 
 /**
- * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
- * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
- * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
+ * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none).
  * @useInstead {@link FunctionSemantics.frameReflection}
  */
 export function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, { known }: FrameReflectionOptions): ArgProps {
@@ -79,21 +79,13 @@ const CarryingEdges = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Returns | E
 
 /** The nodes carrying what the reflective call handed out: the call itself, the names stored under it, and reads of them. */
 function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): Set<NodeId> {
-	const carrying = new Set<NodeId>([frame]);
-	const successors = new Map<NodeId, readonly NodeId[]>();
-	for(const node of definition.subflow.graph) {
+	const body = definition.subflow.graph;
+	const carries = new ReachSummaries<NodeId, boolean>(node => {
 		const vertex = graph.getVertex(node);
 		/* a call reading the frame is what uses it, so it is a consumer rather than another name for it, and carries nothing on */
-		successors.set(node, DfgVertex.isFunctionCall(vertex) && !passesOn(vertex) ? [] : Dataflow.targetsOf(graph, node, CarryingEdges));
-	}
-	Dataflow.propagateToFixpoint(successors.keys(), successors, id => {
-		if(carrying.has(id) || !(successors.get(id) ?? []).some(to => carrying.has(to))) {
-			return false;
-		}
-		carrying.add(id);
-		return true;
-	});
-	return carrying;
+		return !body.has(node) || node === frame || (DfgVertex.isFunctionCall(vertex) && !passesOn(vertex)) ? [] : Dataflow.targetsOf(graph, node, CarryingEdges);
+	}, node => node === frame, Monoid.any);
+	return new Set([frame, ...body.values().filter(node => carries.of(node))]);
 }
 
 /** Whether the call hands what it was given straight on: storing a frame under a name is no use of it. */

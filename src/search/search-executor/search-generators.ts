@@ -5,21 +5,20 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
 import { SourceRange } from '../../util/range';
-import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
+import { type Query, type QueryResults, type SupportedQuery, executeQueries, SupportedQueries, executeQueriesOfSameType } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { LintingResultCertainty } from '../../linter/linter-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
-import { log } from '../../util/log';
+import { searchLogger } from '../search-logger';
 import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
-
-export const searchLogger = log.getSubLogger({ name: 'search' });
+import { ParserName } from '../../r-bridge/parser';
 
 /**
  * This is a union of all possible generator node types
@@ -114,7 +113,11 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	from:       readonly Query[],
 	certainty?: LintingResultCertainty
 }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-	const result = await executeQueries({ analyzer: input }, args.from);
+	/* one (non-virtual) query, the common case, skips the grouping of a batch */
+	const [only] = args.from;
+	const result = (args.from.length === 1 && only.type in SupportedQueries
+		? { [only.type]: await executeQueriesOfSameType({ analyzer: input }, args.from), '.meta': { timing: 0 } }
+		: await executeQueries({ analyzer: input }, args.from)) as QueryResults;
 
 	// collect involved nodes
 	const { idMap } = await input.normalize();
@@ -125,8 +128,11 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		}
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
-		for(const node of (queryDef.flattenInvolvedNodes?.(content as BaseQueryResult, args.from, args.certainty) ?? [])) {
-			nodes.add({ node: idMap.get(node) as RNode<ParentInformation> });
+		for(const id of (queryDef.flattenInvolvedNodes?.(content as BaseQueryResult, args.from, args.certainty) ?? [])) {
+			const node = NodeId.nodeOf(id, idMap);
+			if(node !== undefined) {
+				nodes.add({ node });
+			}
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}
@@ -155,7 +161,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.slice(1) : c));
 
 	const info = input.parserInformation();
-	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
+	guard(info.name === ParserName.TreeSitter, 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
 	const result = await info.treeSitterQuery(args.source);
 	const relevant = result.filter(c => captures.has(c.name));
 
@@ -194,11 +200,11 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 }
 
 /**
- * Gets the search generator function for the given name
+ * Runs the search generator described by the given node
  */
-export function getGenerator<Name extends GeneratorNames>(name: Name): typeof generators[Name] {
-	if(!generators[name]) {
-		throw new Error(`Unknown generator: ${name}`);
+export function runGenerator(node: FlowrSearchGeneratorNode, input: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
+	if(!generators[node.name]) {
+		throw new Error(`Unknown generator: ${node.name}`);
 	}
-	return generators[name];
+	return (generators[node.name] as (input: ReadonlyFlowrAnalysisProvider, args: typeof node.args) => Promise<FlowrSearchElements<ParentInformation>>)(input, node.args);
 }

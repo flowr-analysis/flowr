@@ -14,7 +14,7 @@ import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -107,7 +107,7 @@ class InputClassifier {
 		private readonly dfg: DataflowGraph,
 		private readonly config: InputClassifierConfig<InputClassifierFunctionIdentifiers>,
 		private readonly fullDfg?: DataflowGraph,
-		private readonly packages?: ReadonlySet<string>,
+		private readonly packages?: ReadonlySet<BrandedNamespace>,
 		private readonly environment?: REnvironmentInformation
 	) {}
 
@@ -126,7 +126,7 @@ class InputClassifier {
 	}
 
 	/** whether the package the given entry needs is attached (unknown package information lets everything through) */
-	private hasPackage(name: string | undefined): boolean {
+	private hasPackage(name: BrandedNamespace | undefined): boolean {
 		return name === undefined || this.packages === undefined || this.packages.has(name);
 	}
 
@@ -239,7 +239,7 @@ class InputClassifier {
 	}
 
 	/** the id of the argument named `argName`, or of the one at `argIdx` if it is passed positionally */
-	private argumentReference(call: DataflowGraphVertexFunctionCall, argIdx: number, argName: string): NodeId | undefined {
+	private argumentReference(call: DataflowGraphVertexFunctionCall, argIdx: number, argName: BrandedIdentifier): NodeId | undefined {
 		const named = call.args.find(a => FunctionArgument.hasName(a, argName));
 		const arg = named ?? call.args[argIdx];
 		if(arg === undefined || (named === undefined && FunctionArgument.isNamed(arg))) {
@@ -392,7 +392,7 @@ class InputClassifier {
 		});
 	}
 
-	private accessedField(call: DataflowGraphVertexFunctionCall): string | undefined {
+	private accessedField(call: DataflowGraphVertexFunctionCall): BrandedIdentifier | undefined {
 		const ref = call.args[1] === undefined ? undefined : FunctionArgument.getReference(call.args[1]);
 		const node = ref === undefined ? undefined : this.dfg.idMap?.get(ref);
 		if(RString.is(node)) {
@@ -840,18 +840,18 @@ class InputClassifier {
  */
 export interface LinkedInputObject {
 	/** the name of the object, e.g. `input` */
-	readonly name:        string,
+	readonly name:        BrandedIdentifier,
 	/** how reads of the object (or of its fields) are to be classified */
 	readonly type:        InputType,
 	/**
 	 * If given, the object only counts as linked if the function binding it declares all of these parameters as well
 	 * (e.g., shiny's `function(input, output, session)`). Without this, every `input` would be treated as the framework's.
 	 */
-	readonly withParams?: readonly string[],
+	readonly withParams?: readonly BrandedIdentifier[],
 	/** the package that has to be attached for this object to exist, e.g. `shiny` */
 	readonly requires?:   string,
 	/** if given, only these fields are inputs (`session$clientData` is, `session$userData` is not) and the object itself is none */
-	readonly fields?:     readonly string[],
+	readonly fields?:     readonly BrandedIdentifier[],
 	/** how the framework declares the entries of this object, so a read of `input$n` links to the `textInput("n", ...)` defining it */
 	readonly declaredBy?: LinkedInputDeclaration
 }
@@ -861,7 +861,7 @@ export interface LinkedInputDeclaration {
 	/** the declaring calls, e.g. shiny's `textInput`, `selectInput`, ... */
 	readonly calls:   readonly Identifier[],
 	/** the name of the argument holding the entry's name */
-	readonly argName: string,
+	readonly argName: BrandedIdentifier,
 	/** the index of that argument when it is passed positionally */
 	readonly argIdx:  number
 }
@@ -874,7 +874,7 @@ export interface LinkedInputEntryPoint {
 	/** the call taking the function, e.g. `shiny::shinyApp` */
 	readonly call:    Identifier,
 	/** the name of the argument holding the function */
-	readonly argName: string,
+	readonly argName: BrandedIdentifier,
 	/** the index of that argument when it is passed positionally */
 	readonly argIdx:  number,
 	/** which {@link LinkedInputObject} the framework binds to each parameter, by position; `undefined` leaves one alone */
@@ -885,7 +885,7 @@ export interface LinkedInputEntryPoint {
 export interface NarrowingFunction {
 	readonly call:    Identifier,
 	/** the name of the bounding argument */
-	readonly argName: string,
+	readonly argName: BrandedIdentifier,
 	/** the index of the bounding argument when it is passed positionally */
 	readonly argIdx:  number
 }
@@ -913,7 +913,7 @@ function isBoundAsLinkedObject(node: RNode<ParentInformation>, obj: LinkedInputO
 		return true;
 	}
 	for(const fn of enclosingFunctions(node, idMap)) {
-		const params = new Set(fn.parameters.map(p => p.name.content as string));
+		const params = new Set(fn.parameters.map(p => Identifier.getName(p.name.content)));
 		if(params.has(obj.name)) {
 			return obj.withParams.every(p => params.has(p));
 		}
@@ -924,7 +924,7 @@ function isBoundAsLinkedObject(node: RNode<ParentInformation>, obj: LinkedInputO
 const PlumberEndpoint = /^#\*\s*@(?:get|post|put|delete|patch|head|options|any|use)\b/i;
 
 /** the replacements that may write a binding of an environment, as `e$x <- v` does */
-const FieldReplacements: ReadonlySet<string> = new Set(['$<-', '[[<-']);
+const FieldReplacements: ReadonlySet<BrandedIdentifier> = new Set(['$<-', '[[<-']);
 
 const LoopTypes: ReadonlySet<RType> = new Set([RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
 
@@ -938,12 +938,12 @@ function runsAfter(later: RNode<ParentInformation> | undefined, node: RNode<Pare
 	return RNode.iterateParents(node, idMap).every(p => RFunctionDefinition.is(p) ? around.has(p) : !LoopTypes.has(p.type) || !around.has(p));
 }
 
-function declarationKey(object: string, field: string): string {
+function declarationKey(object: BrandedIdentifier, field: BrandedIdentifier | string): string {
 	return `${object}\u0000${field}`;
 }
 
 /** whether reading `field` of the given object is an input; an object restricted to {@link LinkedInputObject.fields} is none as a whole */
-function fieldIsInput(obj: LinkedInputObject, field: string | undefined): boolean {
+function fieldIsInput(obj: LinkedInputObject, field: BrandedIdentifier | undefined): boolean {
 	return obj.fields === undefined || (field !== undefined && obj.fields.includes(field));
 }
 
@@ -968,7 +968,7 @@ export interface InputSource extends MergeableRecord {
 	 * Argument name when this source originates from a named argument of the criterion function call,
 	 * or the accessed field when it originates from a {@link LinkedInputObject} (e.g. `n` for `input$n`).
 	 */
-	name?:       string,
+	name?:       BrandedIdentifier,
 	/** the concrete scalar value when the source is a constant or a pure alias of one */
 	value?:      ConstantValue,
 	/** where the framework entry this source reads is declared, e.g. the `textInput("n", ...)` behind an `input$n` */
@@ -991,7 +991,7 @@ export type InputClassifierFunctionIdentifiers = readonly (Identifier | NodeId)[
  * means a namespaced entry if that package is attached - just like in R, where the search path decides.
  * With `packages` left out (no package information at all) any bare call may mean it.
  */
-function callMeans(called: Identifier, id: Identifier, packages?: ReadonlySet<string>): boolean {
+function callMeans(called: Identifier, id: Identifier, packages?: ReadonlySet<BrandedNamespace>): boolean {
 	if(Identifier.matches(id, called)) {
 		return true;
 	}
@@ -1042,7 +1042,7 @@ export interface InputClassifierConfig<Functions extends InputClassifierFunction
  * For the scope escape analysis, pass on the full, non-reduced DFG as `fullDfg`, and the packages attached in the
  * program as `packages` so that bare calls only match the entries of packages that are actually in scope.
  */
-export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph, packages?: ReadonlySet<string>, environment?: REnvironmentInformation): InputSources {
+export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph, packages?: ReadonlySet<BrandedNamespace>, environment?: REnvironmentInformation): InputSources {
 	const vtx = dfg.getVertex(id);
 	const c = new InputClassifier(dfg, config, fullDfg, packages, environment);
 	if(!DfgVertex.isFunctionCall(vtx)) {

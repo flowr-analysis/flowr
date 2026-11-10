@@ -1,4 +1,5 @@
 import { coerce, Range, SemVer, satisfies as semverSatisfies } from 'semver';
+import { compareRVersions } from './r-version-order';
 
 
 function makeVersion(version: string, original: string) {
@@ -65,7 +66,8 @@ function normalizeVersions(versions: string): string {
 			parts.push(prefix);
 		}
 		const versionPart = match[1];
-		parts.push(normalizeVersion(versionPart));
+		// keep what separated it from the previous part, else `>= 1.0 < 2.0` would run together
+		parts.push(/^\s*/.exec(versionPart)?.[0] + normalizeVersion(versionPart));
 		index = match.index + versionPart.length;
 	}
 	if(index < versions.length) {
@@ -120,20 +122,7 @@ export const RVersion = {
 	 * numerically, shorter versions padded with zeros (`0.4-9 < 0.4.10 < 1.0`). Negative/zero/positive for
 	 * `a` less than/equal to/greater than `b`.
 	 */
-	compare(this: void, a: string | undefined, b: string | undefined): number {
-		// an absent version sorts below any concrete one (so ascending order puts `undefined` first, descending last)
-		if(a === undefined || b === undefined) {
-			return a === b ? 0 : a === undefined ? -1 : 1;
-		}
-		const pa = a.split(/[.-]/), pb = b.split(/[.-]/);
-		for(let i = 0; i < Math.max(pa.length, pb.length); i++) {
-			const x = Number(pa[i] ?? 0) || 0, y = Number(pb[i] ?? 0) || 0;
-			if(x !== y) {
-				return x - y;
-			}
-		}
-		return 0;
-	},
+	compare: compareRVersions,
 
 	/**
 	 * Like {@link parse} but never undefined: a truly un-coercible version sorts as `0.0.0` while keeping its
@@ -196,7 +185,8 @@ export const RRange = {
 			return makeRange(range, range);
 		} catch{ /* try to normalize R range to SemVer */ }
 		try {
-			return makeRange(normalizeVersions(range), range);
+			// a comma joins requirements as semver's space does (`>= 1.0, < 2.0`, as rig and cargo write them)
+			return makeRange(normalizeVersions(range.replaceAll(/\s*,\s*/g, ' ')), range);
 		} catch{ /* unparseable even after normalization -> report as "no constraint" */ }
 		return undefined;
 	},

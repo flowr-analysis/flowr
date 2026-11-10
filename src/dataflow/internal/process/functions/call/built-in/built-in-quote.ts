@@ -11,7 +11,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { dataflowLogger } from '../../../../../logger';
 import { Dataflow } from '../../../../../graph/df-helper';
-import type { IdentifierReference } from '../../../../../environments/identifier';
+import type { NodesByName, BrandedIdentifier, IdentifierReference } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { FunctionArgument } from '../../../../../graph/graph';
@@ -79,8 +79,8 @@ export function processQuote<OtherInfo>(
 }
 
 /** The uses within `expr`, by name, to match a `substitute` env list against. */
-function usesByName(expr: DataflowInformation): ReadonlyMap<string, NodeId[]> {
-	const useMap = new Map<string, NodeId[]>();
+function usesByName(expr: DataflowInformation): NodesByName {
+	const useMap = new Map<BrandedIdentifier, NodeId[]>();
 	for(const vType of [VertexType.Use, VertexType.FunctionCall]) {
 		for(const [useId] of expr.graph.verticesOfType(vType)) {
 			const rn = NodeId.recoverName(useId, expr.graph.idMap);
@@ -99,7 +99,7 @@ function usesByName(expr: DataflowInformation): ReadonlyMap<string, NodeId[]> {
 
 /** `substitute(expr, list(a = 1))` replaces the listed names within `expr`. */
 function applyEnvListReplacement(information: DataflowInformation, env: DataflowInformation, expr: DataflowInformation): void {
-	let useMap: ReadonlyMap<string, NodeId[]> | undefined = undefined;
+	let useMap: NodesByName | undefined = undefined;
 	try {
 		/* traverse the env processed DFG to find list calls (prefix-aware handling) */
 		Dataflow.visitDfg(env.graph, env.entryPoint, (vtx) => {

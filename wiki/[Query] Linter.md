@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-25, 20:08:08 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
@@ -17,7 +17,7 @@ For a script reading `read.csv("i_do_not_exist.csv")`, the following query retur
 
 _Results (prettified and summarized):_
 
-Query: **linter** (25 ms)\
+Query: **linter** (20 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -38,7 +38,9 @@ Query: **linter** (25 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Overwritten File** (overwritten-file): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
-&nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_
+&nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
+&nbsp;&nbsp;&nbsp;╰ **Secret Exfiltration** (secret-exfiltration): _no findings_\
+&nbsp;&nbsp;&nbsp;╰ **Process State in Session** (process-state-in-session): _no findings_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -47,46 +49,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "linter": {
-    "results": {
-      "deprecated-functions": {"results":[],".meta":{"builtin":0,"sigdb":0}},
-      "file-path-validity": {
-        "results": [{"involvedId":3,"loc":[1,1,1,30],"filePath":"i_do_not_exist.csv","certainty":"certain"}],
-        ".meta": {"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}
-      },
-      "seeded-randomness": {
-        "results": [],
-        ".meta": {"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}
-      },
-      "absolute-file-paths": {"results":[],".meta":{"totalConsidered":1,"totalUnknown":0}},
-      "unused-definitions": {"results":[],".meta":{"totalConsidered":0}},
-      "network-functions": {"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},
-      "dataframe-access-validation": {"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},
-      "dead-code": {"results":[],".meta":{}},
-      "useless-loop": {"results":[],".meta":{"numOfUselessLoops":0}},
-      "problematic-inputs": {"results":[],".meta":{}},
-      "stop-call": {"results":[],".meta":{"consideredNodes":0}},
-      "roxygen-arguments": {"results":[],".meta":{}},
-      "no-leaked-credentials": {"results":[],".meta":{"totalChecked":1}},
-      "undefined-symbol": {
-        "results": [],
-        ".meta": {
-          "totalFunctionCalls": 1,
-          "totalVariableUses": 0,
-          "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}
-        }
-      },
-      "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
-      "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
-      "overwritten-file": {"results":[],".meta":{"totalFiles":0}},
-      "unescaped-arguments": {"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},
-      "namespace-access": {"results":[],".meta":{"unresolved":0}}
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
+{"linter":{"results":{"deprecated-functions":{"results":[],".meta":{"builtin":0,"sigdb":0}},"file-path-validity":{"results":[{"involvedId":3,"loc":[1,1,1,30],"filePath":"i_do_not_exist.csv","certainty":"certain"}],".meta":{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}},"seeded-randomness":{"results":[],".meta":{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}},"absolute-file-paths":{"results":[],".meta":{"totalConsidered":1,"totalUnknown":0}},"unused-definitions":{"results":[],".meta":{"totalConsidered":0}},"network-functions":{"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},"dataframe-access-validation":{"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},"dead-code":{"results":[],".meta":{}},"useless-loop":{"results":[],".meta":{"numOfUselessLoops":0}},"problematic-inputs":{"results":[],".meta":{}},"stop-call":{"results":[],".meta":{"consideredNodes":0}},"roxygen-arguments":{"results":[],".meta":{}},"no-leaked-credentials":{"results":[],".meta":{"totalChecked":1}},"undefined-symbol":{"results":[],".meta":{"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}}},"unused-import":{"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},"unclosed-connection":{"results":[],".meta":{"totalOpened":0,"totalClosed":0}},"overwritten-file":{"results":[],".meta":{"totalFiles":0}},"unescaped-arguments":{"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},"namespace-access":{"results":[],".meta":{"unresolved":0}},"secret-exfiltration":{"results":[],".meta":{"secretSinkCalls":0}},"process-state-in-session":{"results":[],".meta":{"sessionFunctions":0}}},".meta":{}},".meta":{}}
 ```
 
 </details>
@@ -101,7 +64,7 @@ You can also configure which rules to apply and what settings to use for these r
 
 _Results (prettified and summarized):_
 
-Query: **linter** (7 ms)\
+Query: **linter** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30
@@ -113,18 +76,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "linter": {
-    "results": {
-      "file-path-validity": {
-        "results": [{"involvedId":3,"loc":[1,1,1,30],"filePath":"i_do_not_exist.csv","certainty":"certain"}],
-        ".meta": {"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}
-      }
-    },
-    ".meta": {}
-  },
-  ".meta": {}
-}
+{"linter":{"results":{"file-path-validity":{"results":[{"involvedId":3,"loc":[1,1,1,30],"filePath":"i_do_not_exist.csv","certainty":"certain"}],".meta":{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}}},".meta":{}},".meta":{}}
 ```
 
 </details>

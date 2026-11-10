@@ -1,5 +1,15 @@
+config
+conflicted
+data.table
+DBI
 dplyr
 ggplot2
+knitr
+mockery
+needs
 purrr
 readr
+rmarkdown
+RSQLite
 withr
+yaml

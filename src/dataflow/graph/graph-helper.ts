@@ -5,6 +5,7 @@ import { GraphDiff, GraphDifferenceReport, initDiffContext } from '../../util/di
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
 import { DataflowGraph, UnknownSideEffect } from './graph';
+import { AmbientAccess } from './ambient-access';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -30,7 +31,6 @@ export interface ReachOptions {
 
 /**
  * The underlying functions which work for any graph* like view.
- * Use {@link Dataflow} for the dataflow graph and {@link CallGraph} for the call graph, both spread this object in.
  * @useInstead {@link Dataflow}
  * @helper dataflow
  */
@@ -38,25 +38,13 @@ export const GraphHelper = {
 	name:      'GraphHelper',
 	/** Maps to the mermaid-centric visualization helper for dataflow graphs and their views */
 	visualize: {
-		/**
-		 * Mermaid rendering helper for dataflow graphs
-		 * - {@link DataflowMermaid.url}, {@link DataflowMermaid.raw} - to render the graph as a mermaid graph (e.g., in markdown or the mermaid live editor)
-		 * - {@link DataflowMermaid.convert} - for the underlying transformation
-		 * @see {@link DataflowMermaid}
-		 */
+		/** Mermaid rendering helper for dataflow graphs - {@link DataflowMermaid.url}, {@link DataflowMermaid.raw} - to render the graph as a mermaid graph (e.g., in markdown or the mermaid live editor) - {@link DataflowMermaid.convert} - for the underlying transformation */
 		mermaid: DataflowMermaid,
 		quads:   { convert: df2quads }
 	},
-	/**
-	 * The pieces a graph comparison is built from, for a view that brings its own edge shape.
-	 * @see {@link GraphHelper.diffGraphs} - which is what you want for two dataflow graphs
-	 */
+	/** The pieces a graph comparison is built from, for a view that brings its own edge shape. */
 	diff: GraphDiff,
-	/**
-	 * Compare two dataflow graphs and return a report on the differences.
-	 * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
-	 * @see {@link diffOfControlFlowGraphs} - for control flow graphs
-	 */
+	/** Compare two dataflow graphs and return a report on the differences. */
 	diffGraphs<G extends DataflowGraph>(this: void, left: NamedGraph<G>, right: NamedGraph<G>, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
 		if(left.graph === right.graph) {
 			return new GraphDifferenceReport();
@@ -65,9 +53,7 @@ export const GraphHelper = {
 		diffDataflowGraph(ctx);
 		return ctx.report;
 	},
-	/**
-	 * Inverts the given dataflow graph by reversing all edges.
-	 */
+	/** Inverts the given dataflow graph by reversing all edges. */
 	invertGraph<G extends DataflowGraph>(this: void, graph: G, cleanEnv: REnvironmentInformation): G {
 		const invertedGraph = new DataflowGraph(graph.idMap);
 		for(const [, v] of graph.vertices(true)) {
@@ -80,26 +66,21 @@ export const GraphHelper = {
 		}
 		return invertedGraph as G;
 	},
-	/**
-	 * Resolves the dataflow graph ids from slicing criterion form to ids.
-	 * This returns a **new** graph with the resolved ids.
-	 * The main use-case for this is testing - if you do not know/want to fix the specific id,
-	 * you can use, e.g. `2@x` as a placeholder for the first x in the second line!
-	 */
+	/** Resolves the dataflow graph ids from slicing criterion form to ids. */
 	resolveGraphCriteria<G extends DataflowGraph>(graph: G, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): G {
 		const resolveMap = idMap ?? graph.idMap;
 		guard(resolveMap !== undefined, 'idMap must be provided to resolve the graph');
 
-		const cache = new Map<string, NodeId>();
+		const cache = new Map<NodeId, NodeId>();
 
-		const resolve = (id: string | NodeId): NodeId => {
-			const cached = cache.get(id as string);
+		const resolve = (id: NodeId): NodeId => {
+			const cached = cache.get(id);
 			if(cached !== undefined) {
 				return cached;
 			}
 			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id;
 
-			cache.set(id as string, resolved);
+			cache.set(id, resolved);
 			return resolved;
 		};
 
@@ -131,21 +112,17 @@ export const GraphHelper = {
 			const { id, linkTo } = UnknownSideEffect.split(unknown);
 			resultGraph.markIdForUnknownSideEffects(resolve(id), linkTo);
 		}
+		for(const id of graph.ambientAccessIds()) {
+			resultGraph.recordAmbientAccess(resolve(id), AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
+		}
 
 		return resultGraph as G;
 	},
-	/**
-	 * The ids of the parameters of a function definition, in order (empty if it has none).
-	 * @see {@link Dataflow.argumentsBoundTo} - for the arguments a parameter is bound to
-	 */
+	/** The ids of the parameters of a function definition, in order (empty if it has none). */
 	parametersOf(this: void, definition: DataflowGraphVertexFunctionDefinition): NodeId[] {
 		return Object.keys(definition.params ?? {}).map(NodeId.normalize);
 	},
-	/**
-	 * The function definition vertices the call with the given id is linked to by a {@link EdgeType.Calls} edge (none if it is unresolved or built-in).
-	 * @see {@link Dataflow.calleeIdsOf} - for their ids only
-	 * @see {@link Dataflow.callTargetsOf} - which also follows aliases and includes built-ins
-	 */
+	/** The function definition vertices the call with the given id is linked to by a {@link EdgeType.Calls} edge (none if it is unresolved or built-in). */
 	*calleesOf(this: void, graph: DataflowGraph, id: NodeId): Generator<DataflowGraphVertexFunctionDefinition> {
 		for(const [target, edge] of graph.edgesFrom(id)) {
 			const callee = DfEdge.includesType(edge, EdgeType.Calls) ? graph.getVertex(target) : undefined;
@@ -154,10 +131,7 @@ export const GraphHelper = {
 			}
 		}
 	},
-	/**
-	 * The ids of the arguments a parameter of a function definition is bound to on calls ({@link EdgeType.DefinedByOnCall}), empty if there are none.
-	 * @see {@link Dataflow.parametersOf}
-	 */
+	/** The ids of the arguments a parameter of a function definition is bound to on calls ({@link EdgeType.DefinedByOnCall}), empty if there are none. */
 	*argumentsBoundTo(this: void, graph: DataflowGraph, parameter: NodeId): Generator<NodeId> {
 		for(const [argument, edge] of graph.edgesFrom(parameter)) {
 			if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall)) {
@@ -165,16 +139,11 @@ export const GraphHelper = {
 			}
 		}
 	},
-	/**
-	 * The ids reachable from `seed` (itself included) by following outgoing edges in the graph.
-	 * @see {@link ReachOptions} - for restricting the edge types, the visited ids, and the stopping points
-	 * @see {@link Dataflow.reaches} - if you only need to know whether one id reaches another
-	 */
+	/** The ids reachable from `seed` (itself included) by following outgoing edges in the graph. */
 	reachable<G extends DataflowGraph>(this: void, graph: G, seed: NodeId | Iterable<NodeId>, { follow, consider, cds, stopAt }: ReachOptions = {}): Set<NodeId> {
 		const pending: NodeId[] = typeof seed === 'object' ? [...seed] : [seed];
 		const visited = new Set<NodeId>();
-		while(pending.length > 0) {
-			const current = pending.pop() as NodeId;
+		for(let current = pending.pop(); current !== undefined; current = pending.pop()) {
 			if(visited.has(current) || (consider !== undefined && !consider.has(current))) {
 				continue;
 			}
@@ -194,15 +163,12 @@ export const GraphHelper = {
 		}
 		return visited;
 	},
-	/**
-	 * Determines whether there is a path from `from` to `to` in the given graph (via any edge type, only respecting direction)
-	 */
+	/** Determines whether there is a path from `from` to `to` in the given graph (via any edge type, only respecting direction) */
 	reaches<G extends DataflowGraph>(this: void, from: NodeId, to: NodeId, graph: G, knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set())): boolean {
 		const visited: Set<NodeId> = new Set();
 		const toVisit: NodeId[] = [from];
 
-		while(toVisit.length > 0) {
-			const currentId = toVisit.pop() as NodeId;
+		for(let currentId = toVisit.pop(); currentId !== undefined; currentId = toVisit.pop()) {
 			if(visited.has(currentId)) {
 				continue;
 			}

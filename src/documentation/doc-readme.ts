@@ -198,7 +198,7 @@ The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode'
 	
 ${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
-	const res = await showQuery(treeSitter, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	const res = await showQuery(treeSitter, code, [{ type: 'linter' }], { showCode: false, collapseResult: false });
 	return await documentReplSession(treeSitter, [{
 		command:     `:query @linter ${JSON.stringify(code)}`,
 		description: `

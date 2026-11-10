@@ -52,8 +52,7 @@ export class BasicCfgGuidedVisitor<
 		const graph = this.config.controlFlow.graph;
 		const forward = this.config.defaultVisitingOrder === 'forward';
 		const stack = Array.from(start);
-		while(stack.length > 0) {
-			const current = stack.pop() as NodeId;
+		for(let current; (current = stack.pop()) !== undefined;) {
 
 			if(!this.visitNode(current)) {
 				continue;

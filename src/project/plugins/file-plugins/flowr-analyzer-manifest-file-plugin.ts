@@ -2,10 +2,11 @@ import { FlowrAnalyzerPatternFilePlugin } from './flowr-analyzer-file-plugin';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
-import { FlowrRProjectFile, FlowrUvrManifestFile } from './files/flowr-manifest-files';
+import { FlowrRigProjectFile, FlowrRProjectFile, FlowrUvrManifestFile } from './files/flowr-manifest-files';
 
 const RProjectFilePattern = /^rproject\.toml$/i;
 const UvrManifestFilePattern = /^uvr\.toml$/i;
+const RigProjectFilePattern = /^rproj\.toml$/i;
 
 /**
  * Tags a project manifest with the {@link FileRole.Manifest} role and lifts it, so the meta plugins reading it
@@ -40,5 +41,19 @@ export class FlowrAnalyzerUvrManifestFilePlugin extends FlowrAnalyzerManifestFil
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): [FlowrFileProvider, true] {
 		return [FlowrUvrManifestFile.from(file, FileRole.Manifest), true];
+	}
+}
+
+/** Lifts a rig `rproj.toml` to a {@link FlowrRigProjectFile}. */
+export class FlowrAnalyzerRigProjectFilePlugin extends FlowrAnalyzerManifestFilePlugin {
+	public readonly name = 'flowr-analyzer-rig-project-file-plugin';
+	public readonly description = 'Marks the rproj.toml manifest of a rig project.';
+
+	constructor(pathPattern: RegExp = RigProjectFilePattern) {
+		super(pathPattern);
+	}
+
+	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): [FlowrFileProvider, true] {
+		return [FlowrRigProjectFile.from(file, FileRole.Manifest), true];
 	}
 }

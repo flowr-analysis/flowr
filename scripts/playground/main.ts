@@ -2202,11 +2202,11 @@ async function focusRelated(node: DepNode | undefined): Promise<void> {
 	}
 	try {
 		const built = await analyzer();
-		const answer = await built.query([{ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) }]);
+		const answer = await built.query({ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) });
 		if(request !== focusRequest) {
 			return;
 		}
-		related = { code, key: node.key, ids: new Set([...ids, ...answer.dependencies['.meta'].focus ?? []].map(String)) };
+		related = { code, key: node.key, ids: new Set([...ids, ...answer['.meta'].focus ?? []].map(String)) };
 	} catch{ /* what cannot be sliced grays nothing out */ }
 	paintRelated();
 }
@@ -2884,7 +2884,7 @@ async function analyze(): Promise<number> {
 	const parts = sliced[0]?.reconstruct?.files?.filter(f => f.code.trim() !== '').map(f => ({ path: f.path ?? 'unknown', code: f.code }));
 	const reconstructed = sliced[0]?.reconstruct?.code;
 	const code: Rebuilt | undefined = parts ?? (typeof reconstructed === 'object' ? reconstructed.join('\n') : reconstructed);
-	const linesOf = (result: Iterable<string | number> = []) => uniqueArray([...result]
+	const linesOf = (result: Iterable<NodeId | number> = []) => uniqueArray([...result]
 		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
 		.filter((l): l is number => typeof l === 'number'));
 	const sliceLinesOf = sliced.map(r => linesOf(r.slice?.result)).reduce<number[] | undefined>((a, b) => a?.filter(l => b.includes(l)) ?? b, undefined) ?? [];
@@ -3182,7 +3182,10 @@ function showExample(project: readonly [string, string][], note: string): void {
 const siteRoot = location.pathname.replace(/v\/[^/]+\/?$/, '');
 const versionTag = document.getElementById('version');
 const release = versionTag?.dataset.release?.replace(/^v/, '');
-void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : [], () => []).then((versions: readonly string[]) => {
+/* a kept playground reads the current release off the page the site serves, which it patches anyway and so is cached */
+const currentRelease = siteRoot === location.pathname ? Promise.resolve(release)
+	: fetch(`${siteRoot}index.html`).then(r => r.ok ? r.text() : '', () => '').then(page => /data-release="v?([^"]+)"/.exec(page)?.[1]);
+void Promise.all([fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<string[]> : [], () => []), currentRelease]).then(([versions, current]: [readonly string[], string | undefined]) => {
 	const go = (to: string) => () => location.assign(`${to}${location.search}${location.hash}`);
 	/* a link that insists on a release opens it, or the kept one of the same minor release */
 	const asked = shared.release;
@@ -3196,7 +3199,7 @@ void fetch(`${siteRoot}v/index.json`).then(r => r.ok ? r.json() as Promise<strin
 		}
 	}
 	const pick = iconButton('versions', 'open the playground of an earlier release', 'M4 6l4 4 4-4', () => openMenu(pick, [
-		'Playground of', { label: 'the current release', run: go(siteRoot) },
+		'Playground of', { label: current === undefined ? 'the current release' : `the current release (${current})`, run: go(siteRoot) },
 		...versions.length === 0 ? ['no earlier release kept on this site'] : versions.map(v => ({ label: `flowR ${v}`, run: go(`${siteRoot}v/${v}/`) })),
 		...release === undefined ? [] : ['', { label: `Copy a link to flowR ${release}`, title: 'the link opens this release of flowR, also once newer ones are out', run: () => copyLink(release) }]
 	]));

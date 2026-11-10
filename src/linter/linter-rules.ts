@@ -41,6 +41,9 @@ import { PACKAGE_METAFILES } from './rules/cmd-check/package-metafiles';
 import { RD_FILES } from './rules/cmd-check/rd-files';
 import { PACKAGE_DATA } from './rules/cmd-check/package-data';
 import { PACKAGE_RUNTIME } from './rules/cmd-check/package-runtime';
+import { SECRET_EXFILTRATION } from './rules/secret-exfiltration';
+import { PROCESS_STATE_IN_SESSION } from './rules/process-state-in-session';
+import { CODE_CLONES } from './rules/code-clones';
 import { AUTOLOAD_FILES } from './rules/autoload-files';
 
 /**
@@ -90,14 +93,24 @@ export const LintingRules = {
 	'rd-files':                        RD_FILES,
 	'package-data':                    PACKAGE_DATA,
 	'package-runtime':                 PACKAGE_RUNTIME,
+	'package-runtime':                 PACKAGE_RUNTIME,
+	'secret-exfiltration':             SECRET_EXFILTRATION,
+	'process-state-in-session':        PROCESS_STATE_IN_SESSION,
+	'code-clones':                     CODE_CLONES,
 	'autoload-files':                  AUTOLOAD_FILES
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;
 
+/** the rule registered under the name, typed by what its name stands for */
+export function getLintingRule<Name extends LintingRuleNames>(name: Name): LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>> {
+	return LintingRules[name] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+}
+
 export type LintingRuleMetadata<Name extends LintingRuleNames> =
 	typeof LintingRules[Name] extends LintingRule<infer _Result, infer Metadata, infer _Config, infer _Info, infer _Elements> ? Metadata : never;
 export type LintingRuleResult<Name extends LintingRuleNames> =
 	typeof LintingRules[Name] extends LintingRule<infer Result, infer _Metadata, infer _Config, infer _Info, infer _Elements> ? Result : never;
-export type LintingRuleConfig<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never;
+export type LintingRuleConfig<Name extends LintingRuleNames> = Name extends LintingRuleNames
+	? typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never
+	: never;

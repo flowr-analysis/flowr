@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../src/dataflow/environments/identifier';
 import { describe, test, expect } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -10,7 +11,7 @@ describe('undefined-symbol-util', withTreeSitter(parser => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest(requestFromInput('f <- function(p) {\n  a <- 1\n  if (p) { b <- 2 }\n  for (i in 1:2) { c <- 3 }\n}'));
 		const defined = collectScopeDefinedNames((await analyzer.dataflow()).graph);
-		const all = new Set<string>();
+		const all = new Set<BrandedIdentifier>();
 		for(const names of defined.values()) {
 			for(const n of names) {
 				all.add(n);

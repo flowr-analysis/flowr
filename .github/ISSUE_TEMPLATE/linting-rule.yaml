@@ -27,6 +27,7 @@ body:
         - Bogus Return
         - Call Arguments
         - Class String Comparison
+        - Code Clones
         - Compiled Code
         - Dataframe Access Validation
         - Dead Code
@@ -50,9 +51,11 @@ body:
         - Package Runtime
         - Package Structure
         - Problematic Inputs
+        - Process State in Session
         - Rd Files
         - Roxygen Arguments
         - S3 Method Consistency
+        - Secret Exfiltration
         - Seeded Randomness
         - Software Has License
         - Software Has Tests

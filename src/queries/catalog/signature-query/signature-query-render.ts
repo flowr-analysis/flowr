@@ -7,6 +7,7 @@ import { baseRPackages } from '../../../util/r-base-packages';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
@@ -44,7 +45,7 @@ const BuiltInMark = '[flowR built-in]';
 const baseSet = new Set(baseRPackages());
 
 /** a package name linked to its CRAN page (unless it is base R / the `R` language pseudo-package) */
-function linkPackage(name: string, f: OutputFormatter): string {
+function linkPackage(name: BrandedNamespace, f: OutputFormatter): string {
 	return name === 'R' || baseSet.has(name) ? name : f.hyperlink(name, cranPageUrl(name), true);
 }
 
@@ -57,7 +58,7 @@ function linkLocation(file: string, line: number | undefined, url: string | unde
 /** render one parameter: without a default in yellow, non-forced (lazily evaluated) italicised, default dimmed */
 function renderParameter(f: OutputFormatter, p: SignatureFunctionView['parameters'][number]): string {
 	if(p.name === '...') {
-		return p.name;
+		return String(p.name);
 	}
 	const forced = (p.props & ArgProp.Forced) !== 0;
 	const lazy = forced ? {} : { style: FontStyles.Italic };
@@ -131,7 +132,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 			result.push(`      ╰ ${italic('flowR', f)}   ${italic('reads it as', f)} ${bold(fn.name, f)}(${fn.flowr.parameters.join(', ')})`);
 		}
 	}
-	const listLine = (label: string, items: readonly string[], max: number): void => {
+	const listLine = (label: string, items: readonly BrandedIdentifier[], max: number): void => {
 		if(!items.length) {
 			return;
 		}

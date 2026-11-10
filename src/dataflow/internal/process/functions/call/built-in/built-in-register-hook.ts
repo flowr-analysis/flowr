@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -21,17 +22,15 @@ export interface RegisterHookConfig {
 	hook: KnownHooks;
 	args: {
 		/** the expression to register as hook */
-		expr:   { idx?: number, name: string },
+		expr:   { idx?: number, name: BrandedIdentifier },
 		/** argument to control whether to add or replace the current hook */
-		add?:   { idx?: number, name: string, default: boolean },
+		add?:   { idx?: number, name: BrandedIdentifier, default: boolean },
 		/** argument to control whether to run the hook before or after other hooks */
-		after?: { idx?: number, name: string, default: boolean },
+		after?: { idx?: number, name: BrandedIdentifier, default: boolean },
 	}
 }
 
-/**
- * Process a hook such as `on.exit`
- */
+/** Process a hook such as `on.exit` */
 export function processRegisterHook<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -39,7 +38,7 @@ export function processRegisterHook<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RegisterHookConfig
 ): DataflowInformation {
-	const params = {
+	const params: Record<BrandedIdentifier, string> = {
 		[config.args.expr.name]: 'expr',
 	};
 	if(config.args.add) {
@@ -94,7 +93,8 @@ export function processRegisterHook<OtherInfo>(
 	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default : isSet(afterIds);
 
 	const info = res.information;
-	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({
+	/* `on.exit()` registers nothing, which replaces the hooks registered before unless it adds */
+	const hooks: HookInformation[] = Array.from(wrappedFunctions.size === 0 ? [rootId] : wrappedFunctions, id => ({
 		type:  config.hook,
 		id,
 		cds:   data.cds,

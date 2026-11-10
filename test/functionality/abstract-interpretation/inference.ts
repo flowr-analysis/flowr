@@ -3,6 +3,7 @@ import { isArray } from '../../../src/util/collections/arrays';
 import { AbstractInterpreter, type AbsintAnalysis, type AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
 import type { AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import type { AbstractProduct } from '../../../src/abstract-interpretation/domains/partial-product-domain';
+import type { StateDomain } from '../../../src/abstract-interpretation/domains/state-domain';
 import { FlowrConfig } from '../../../src/config';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
@@ -14,7 +15,7 @@ import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processin
 import type { RShell } from '../../../src/r-bridge/shell';
 import { SlicingCriterion, type SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../src/util/assert';
-import { SourceRange } from '../../../src/util/range';
+import { SourceRange, type Line } from '../../../src/util/range';
 import { Record } from '../../../src/util/record';
 import { decorateLabelContext, type TestLabel } from '../_helper/label';
 import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../_helper/shell';
@@ -53,7 +54,7 @@ export interface InferenceTestOptions {
 interface TestEntry<Domain extends AnyAbstractDomain> {
 	criterion: SlicingCriterion,
 	node:      RSymbol<ParentInformation>,
-	line:      number
+	line:      Line
 	inferred:  Domain | undefined,
 }
 
@@ -138,6 +139,29 @@ export function getInferredValueForCriterion<Domains extends AbstractProduct, Ke
 ): Domains[Key] | undefined {
 	const nodeId = resolveInferenceNodeId(inference.config.normalizedAst.idMap, criterion);
 	return inference.getAbstractValue(nodeId, type);
+}
+
+/**
+ * Retrieves the inferred abstract value for a given slicing criterion from the state domain.
+ * @param idMap - The node ID map.
+ * @param stateDomain - The state domain from which the inferred value should be inferred.
+ * @param criterion - The slicing criterion for which to retrieve the inferred value.
+ * @returns The inferred abstract value for the given slicing criterion, or `undefined` if no value was inferred for it.
+ */
+export function getInferredValueForCriterionFromStateDomain<Domain extends AnyAbstractDomain>(
+	idMap: AstIdMap<ParentInformation>,
+	stateDomain: StateDomain<Domain>,
+	criterion: SlicingCriterion
+): Domain | undefined {
+	let nodeId = SlicingCriterion.parse(criterion, idMap);
+	const node = idMap.get(nodeId);
+
+	if(node?.info.role === RoleInParent.FunctionCallName) {
+		nodeId = node.info.parent ?? nodeId;
+	}
+	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
+
+	return stateDomain.get(nodeId);
 }
 
 /**

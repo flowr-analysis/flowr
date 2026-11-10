@@ -11,7 +11,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
-import { searchLogger } from './search-executor/search-generators';
+import { searchLogger } from './search-logger';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -285,6 +285,11 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 /** A filter expression resolved to the function testing one element. */
 export type PreparedFilter = (element: FlowrSearchElement<ParentInformation>, data: { dataflow: DataflowInformation }) => boolean;
 
+function bindFilter(name: FlowrFilterName, args: unknown): PreparedFilter {
+	const handler = FlowrFilters[name] as FlowrFilterFunction<unknown>;
+	return (e, d) => handler(e, args, d);
+}
+
 const compileVisit = {
 	and: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
 		const l = compileTree(left), r = compileTree(right);
@@ -308,12 +313,10 @@ const compileVisit = {
 		(e, d) => d.dataflow.graph.getVertex(e.node.info.id)?.tag === value,
 	'special': ({ value }: LeafSpecial): PreparedFilter => {
 		const name = typeof value === 'string' ? value : value.name;
-		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
-		const handler = FlowrFilters[name];
-		if(!handler) {
+		if(!FlowrFilters[name]) {
 			throw new Error(`Couldn't find special filter with name ${name}`);
 		}
-		return (e, d) => handler(e, args, d);
+		return bindFilter(name, typeof value === 'string' ? undefined : value.args);
 	}
 };
 
@@ -331,12 +334,9 @@ export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExp
 	if(filter instanceof FlowrFilterCombinator) {
 		return compileTree(filter.get());
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
-		const handler = FlowrFilters[filter as FlowrFilter];
-		return (e, d) => handler(e, undefined as unknown as FlowrFilterArgs<FlowrFilter>, d);
+		return bindFilter(filter as FlowrFilter, undefined);
 	} else if(typeof filter === 'object' && 'name' in filter) {
-		const handler = FlowrFilters[filter.name];
-		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return (e, d) => handler(e, args, d);
+		return bindFilter(filter.name, 'args' in filter ? filter.args : undefined);
 	} else {
 		return compileTree(FlowrFilterCombinator.is(filter).get());
 	}

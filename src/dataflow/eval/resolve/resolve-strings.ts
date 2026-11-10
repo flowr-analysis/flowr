@@ -1,9 +1,9 @@
 import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
-import { Identifier, PkgName } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier, PkgName } from '../../environments/identifier';
 import { isValue, RValue, Top, type Value } from '../values/r-value';
 import { setOf } from '../values/sets/set-constants';
 import { stringFrom } from '../values/string/string-constants';
@@ -96,7 +96,7 @@ export const StringFns = {
 } as const satisfies Record<string, StringFn>;
 
 /** the entries that join what they are handed, the ones a name at construction time may be built from */
-export const PasteLikeCalls: ReadonlySet<string> =
+export const PasteLikeCalls: ReadonlySet<BrandedIdentifier> =
 	new Set(Object.entries(StringFns as Record<string, StringFn>).filter(([, fn]) => fn.params.includes('...')).map(([name]) => name));
 
 /**
@@ -114,7 +114,7 @@ function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolv
 	if(ns !== undefined && ns !== known.pkg) {
 		return undefined;
 	}
-	const matched = matchCallArguments(node as unknown as RNodeWithParent, known.params, known.ignored);
+	const matched = matchCallArguments(node, known.params, known.ignored);
 	if(matched === undefined) {
 		return undefined;
 	}
@@ -226,7 +226,7 @@ function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation
  * number or logical the way `as.character` would), and a transformation like `basename(p)` when its argument
  * does. Anything that does not resolve stays `Top`.
  */
-function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
+export function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
 	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;
@@ -240,19 +240,3 @@ function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	return folded.length === 1 ? asValue(folded[0]) : setOf(folded.map(asValue));
 }
 
-/**
- * Folding the string built-ins, from `paste` to `basename`.
- *
- * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
- * {@link NodeValue} or {@link Resolve}.
- */
-export const StringFold = {
-	/** every string built-in that is folded, see {@link StringFns} */
-	fns:       StringFns,
-	/** the calls pasting their arguments together, see {@link PasteLikeCalls} */
-	pasteLike: PasteLikeCalls,
-	/** What a string call amounts to; see {@link resolveAsStringFn}. */
-	call:      resolveAsStringFn,
-	/** The string a call in the AST folds to; see {@link foldStringCall}. */
-	fold:      foldStringCall
-} as const;

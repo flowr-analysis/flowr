@@ -1,7 +1,23 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-27, 19:13:15 UTC (v2.16.6, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 11:35:56 UTC (v2.17.4, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
+In code, you run queries with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L392"><code>FlowrAnalyzer::<b>query</b></code></a>.
+Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
+For queries that report one entry per query (e.g., the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice)), the result is just that entry.
+A failing single query throws an error.
+
+```ts
+const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
+```
+
+Pass it a list of queries, and it answers with a record of the results by query type.
+Queries of the same type run together, and a failing query type is reported as an error without affecting the others:
+
+```ts
+const results = await analyzer.query([{ type: 'id-map' }, { type: 'dataflow' }]);
+const graph = results.dataflow.graph;
+```
 
 > [!NOTE]
 > There are many ways to query a dataflow graph created by flowR.
@@ -22,10 +38,14 @@ We support the following **active** queries (which we refer to as a `query`):
 
 1. [Abstract Interpretation Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Abstract-Interpretation) (`absint`):\
     Returns the abstract values inferred for every expression or at specific locations.
+1. [Ambient Access Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Ambient-Access) (`ambient-access`):\
+    What code reads and writes of the global state
 1. [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) (`call-context`):\
     Finds all calls in a set of files that matches specified criteria.
 1. [Call-Graph Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Graph) (`call-graph`):\
     Returns the call graph of the given code.
+1. [Code Clones Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Code-Clones) (`code-clones`):\
+    Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.
 1. [Config Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Config) (`config`):\
     Returns the current configuration of flowR.
 1. [Control-Flow Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Control-Flow) (`control-flow`):\
@@ -82,6 +102,8 @@ We support the following **active** queries (which we refer to as a `query`):
     Inspects the signature database: packages, function signatures, source and documentation links.
 1. [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice) (`static-slice`):\
     Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).
+1. [Taint Analysis Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Taint-Analysis) (`taint`):\
+    Returns the taint values inferred for every expression.
 
 Similarly, we support the following **virtual** queries: 
 
@@ -203,6 +225,10 @@ Valid item types:
                 - **criteria** [optional] _The slicing criteria of the nodes to get the inferred abstract values for._ (array)
                 Valid item types:
                     - (string)
+            - _The taint query conducts taint analyses and returns their results._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'taint'
+                - **defs** _The taint analyses to run._ (array)
             - _The file query finds files in the project based on their roles and path patterns._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'files'
@@ -447,7 +473,15 @@ Valid item types:
                 - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'Declares', 'Frames'
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Optional', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Console', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'DetachesPackage', 'Declares', 'Frames'
+            - _What code reads and writes of the global state (options, environment variables, devices, ...)._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'ambient-access'
+                - **criteria** [optional] _The code to ask for, each slicing criterion with all the code its node spans. Without, every file and the whole project._ (array)
+                Valid item types:
+                    - (string)
+                - **functions** [optional] _Also answer for every function definition the code writes._ (boolean)
+                - **includeCallees** [optional] _Whether what the called functions access counts as well (default true)._ (boolean)
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'
@@ -484,10 +518,10 @@ Valid item types:
                 - **rules** _The rules to lint for. If unset, all rules will be included._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'overwritten-file', 'unescaped-arguments', 'namespace-access', 'class-string-comparison', 'description-metadata', 'documentation-mismatch', 'non-ascii-code', 'true-false-abbreviation', 'bogus-return', 'package-hooks', 'global-environment-modification', 'namespace-tampering', 's3-method-consistency', 'foreign-function-calls', 'dependency-declaration', 'call-arguments', 'package-structure', 'compiled-code', 'package-metafiles', 'rd-files', 'package-data', 'package-runtime'
+                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'overwritten-file', 'unescaped-arguments', 'namespace-access', 'class-string-comparison', 'description-metadata', 'documentation-mismatch', 'non-ascii-code', 'true-false-abbreviation', 'bogus-return', 'package-hooks', 'global-environment-modification', 'namespace-tampering', 's3-method-consistency', 'foreign-function-calls', 'dependency-declaration', 'call-arguments', 'package-structure', 'compiled-code', 'package-metafiles', 'rd-files', 'package-data', 'package-runtime', 'secret-exfiltration', 'process-state-in-session', 'code-clones'
                     - (object)
                         - **name** [required] (string)
-                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'overwritten-file', 'unescaped-arguments', 'namespace-access', 'class-string-comparison', 'description-metadata', 'documentation-mismatch', 'non-ascii-code', 'true-false-abbreviation', 'bogus-return', 'package-hooks', 'global-environment-modification', 'namespace-tampering', 's3-method-consistency', 'foreign-function-calls', 'dependency-declaration', 'call-arguments', 'package-structure', 'compiled-code', 'package-metafiles', 'rd-files', 'package-data', 'package-runtime'
+                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'overwritten-file', 'unescaped-arguments', 'namespace-access', 'class-string-comparison', 'description-metadata', 'documentation-mismatch', 'non-ascii-code', 'true-false-abbreviation', 'bogus-return', 'package-hooks', 'global-environment-modification', 'namespace-tampering', 's3-method-consistency', 'foreign-function-calls', 'dependency-declaration', 'call-arguments', 'package-structure', 'compiled-code', 'package-metafiles', 'rd-files', 'package-data', 'package-runtime', 'secret-exfiltration', 'process-state-in-session', 'code-clones'
                         - **config** (object)
                 - **tags** [optional] _Lint for every rule carrying one of these tags, e.g. cmd-check for the R CMD check rules._ (array)
                 Valid item types:
@@ -542,6 +576,51 @@ Valid item types:
                 - **packages** [optional] _Restrict the package list to these names; every exporting package is considered when omitted._ (array)
                 Valid item types:
                     - (string)
+            - _Finds code clones with a configurable selection of algorithms (AST, token, and fingerprint based)._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'code-clones'
+                - **algorithms** [optional] _The clone detection algorithms to run (default: gst)._ (array)
+                Valid item types:
+                    - (string)
+                        Only allows: 'baxter', 'gst', 'winnowing'
+                - **perspective** [optional] _How the code is presented to the algorithms: as written (syntax), with sugar and newer R features rewritten (canonical, default), or additionally with single-use temporaries inlined along the dataflow (dataflow)._ (string)
+                    Only allows: 'syntax', 'canonical', 'dataflow'
+                - **config** [optional] _Thresholds and options of the algorithms, merged into the defaults._ (object)
+                    - **scope** [optional] (string)
+                        Only allows: 'all', 'cross-file'
+                    - **maxPairs** [optional] (number)
+                    - **gst** [optional] (object)
+                        - **tokens** (string)
+                            Only allows: 'normalized', 'exact'
+                        - **minimumMatchLength** (number)
+                        - **threshold** (number)
+                        - **unit** (string)
+                            Only allows: 'function', 'file'
+                    - **winnowing** [optional] (object)
+                        - **tokens** (string)
+                            Only allows: 'normalized', 'exact'
+                        - **k** (number)
+                        - **t** (number)
+                        - **threshold** (number)
+                        - **maxDocumentFrequency** (number)
+                        - **unit** (string)
+                            Only allows: 'function', 'file'
+                    - **baxter** [optional] (object)
+                        - **massThreshold** (number)
+                        - **similarityThreshold** (number)
+                - **exportIndex** [optional] _Also return the clone index of the analyzed files, to search against it later._ (boolean)
+                - **against** [optional] _Previously exported clone indices to search the analyzed files against. They must use the same perspective as the query._ (array)
+                Valid item types:
+                    - (object)
+                        - **format** [required] (string)
+                            Only allows: 'flowr-clone-index'
+                        - **version** [required] (number)
+                            Only allows: '1'
+                        - **perspective** [required] (string)
+                            Only allows: 'syntax', 'canonical', 'dataflow'
+                        - **files** [required] (array)
+                        Valid item types:
+                            - (object)
         - _Virtual queries (used for structure)_ (alternatives)
             - _Compound query used to combine queries of the same type_ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -679,12 +758,9 @@ library`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
     %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
     %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
     %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
@@ -749,6 +825,9 @@ library`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
+    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
+    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
     %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
@@ -872,12 +951,9 @@ read#95;csv`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
     %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
     %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
     %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
@@ -942,6 +1018,9 @@ read#95;csv`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
+    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
+    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
     %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
@@ -1010,6 +1089,7 @@ mean`"]
     36[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *10.1-8* (**id: 36**)
     arg: (34)`"]]
+    style 36 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -1097,12 +1177,9 @@ print`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
     %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
     %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
     %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
@@ -1167,6 +1244,9 @@ print`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
+    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
+    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
     %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
@@ -1280,12 +1360,9 @@ print`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
     %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
     %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
     %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
@@ -1350,6 +1427,9 @@ print`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
+    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
+    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
     %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
@@ -1470,12 +1550,9 @@ print`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
     %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
     %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
     %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
@@ -1540,6 +1617,9 @@ print`"]
     %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
     %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
     %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
+    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
+    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
+    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
     %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
@@ -1601,6 +1681,7 @@ print`"]
     67[["`*#91;RFunctionCall#93;* base#58;#58;**plot**
       *16.1-22* (**id: 67**)
     arg: (60, 65)`"]]
+    style 67 stroke:red,stroke-width:5px; 
     built-in:plot["`Built-In:
 plot`"]
     style built-in:plot stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -1637,6 +1718,7 @@ points`"]
     89[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *19.1-20* (**id: 89**)
     arg: (87)`"]]
+    style 89 stroke:red,stroke-width:5px; 
     1 -.->|"flow"| 3
     linkStyle 0 stroke:gray,color:gray;
     3 -->|"arg"| 1
@@ -1739,103 +1821,112 @@ points`"]
     48 -->|"arg"| 44
     48 -->|"reads"| 46
     48 -->|"arg"| 47
+    48 -->|"reads"| 3
+    48 -->|"reads"| 7
+    48 -->|"reads"| 11
     48 -.->|"flow"| 50
-    linkStyle 67 stroke:gray,color:gray;
+    linkStyle 70 stroke:gray,color:gray;
     50 -->|"reads, arg"| 48
+    50 -->|"reads"| 3
+    50 -->|"reads"| 7
+    50 -->|"reads"| 11
     50 -.->|"flow"| 52
-    linkStyle 69 stroke:gray,color:gray;
+    linkStyle 75 stroke:gray,color:gray;
     50 -->|"reads, arg"| 38
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
     52 -->|"reads"| 7
     52 -.->|"reads, calls"| built-in:_37__62__37_
-    linkStyle 74 stroke:gray;
+    linkStyle 80 stroke:gray;
     52 -.->|"flow"| 54
-    linkStyle 75 stroke:gray,color:gray;
+    linkStyle 81 stroke:gray,color:gray;
+    54 -->|"reads"| 3
+    54 -->|"reads"| 7
+    54 -->|"reads"| 11
     54 -.->|"flow"| 55
-    linkStyle 76 stroke:gray,color:gray;
+    linkStyle 85 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52
     55 -->|"reads, arg"| 54
     55 -.->|"reads, calls"| built-in:_43_
-    linkStyle 79 stroke:gray;
+    linkStyle 88 stroke:gray;
     55 -.->|"flow"| 57
-    linkStyle 80 stroke:gray,color:gray;
+    linkStyle 89 stroke:gray,color:gray;
     57 -->|"reads"| 18
     57 -.->|"flow"| 58
-    linkStyle 82 stroke:gray,color:gray;
+    linkStyle 91 stroke:gray,color:gray;
     58 -.->|"flow"| 60
-    linkStyle 83 stroke:gray,color:gray;
+    linkStyle 92 stroke:gray,color:gray;
     60 -->|"reads, returns, arg"| 57
     60 -->|"reads, arg"| 58
     60 -.->|"reads, calls"| built-in:_36_
-    linkStyle 86 stroke:gray;
+    linkStyle 95 stroke:gray;
     60 -.->|"flow"| 62
-    linkStyle 87 stroke:gray,color:gray;
+    linkStyle 96 stroke:gray,color:gray;
     62 -->|"reads"| 18
     62 -.->|"flow"| 63
-    linkStyle 89 stroke:gray,color:gray;
+    linkStyle 98 stroke:gray,color:gray;
     63 -.->|"flow"| 65
-    linkStyle 90 stroke:gray,color:gray;
+    linkStyle 99 stroke:gray,color:gray;
     65 -->|"reads, returns, arg"| 62
     65 -->|"reads, arg"| 63
     65 -.->|"reads, calls"| built-in:_36_
-    linkStyle 93 stroke:gray;
+    linkStyle 102 stroke:gray;
     65 -.->|"flow"| 67
-    linkStyle 94 stroke:gray,color:gray;
+    linkStyle 103 stroke:gray,color:gray;
     67 -->|"reads, arg"| 60
     67 -->|"reads, arg"| 65
     67 -.->|"reads, calls"| built-in:plot
-    linkStyle 97 stroke:gray;
+    linkStyle 106 stroke:gray;
     67 -.->|"flow"| 69
-    linkStyle 98 stroke:gray,color:gray;
+    linkStyle 107 stroke:gray,color:gray;
     69 -->|"reads"| 18
     69 -.->|"flow"| 70
-    linkStyle 100 stroke:gray,color:gray;
+    linkStyle 109 stroke:gray,color:gray;
     70 -.->|"flow"| 72
-    linkStyle 101 stroke:gray,color:gray;
+    linkStyle 110 stroke:gray,color:gray;
     72 -->|"reads, returns, arg"| 69
     72 -->|"reads, arg"| 70
     72 -.->|"reads, calls"| built-in:_36_
-    linkStyle 104 stroke:gray;
+    linkStyle 113 stroke:gray;
     72 -.->|"flow"| 74
-    linkStyle 105 stroke:gray,color:gray;
+    linkStyle 114 stroke:gray,color:gray;
     74 -->|"reads"| 18
     74 -.->|"flow"| 75
-    linkStyle 107 stroke:gray,color:gray;
+    linkStyle 116 stroke:gray,color:gray;
     75 -.->|"flow"| 77
-    linkStyle 108 stroke:gray,color:gray;
+    linkStyle 117 stroke:gray,color:gray;
     77 -->|"reads, returns, arg"| 74
     77 -->|"reads, arg"| 75
     77 -.->|"reads, calls"| built-in:_36_
-    linkStyle 111 stroke:gray;
+    linkStyle 120 stroke:gray;
     77 -.->|"flow"| 79
-    linkStyle 112 stroke:gray,color:gray;
+    linkStyle 121 stroke:gray,color:gray;
     79 -->|"reads, arg"| 72
     79 -->|"reads, arg"| 77
     79 -.->|"reads, calls"| built-in:points
-    linkStyle 115 stroke:gray;
+    linkStyle 124 stroke:gray;
     79 -.->|"flow"| 82
-    linkStyle 116 stroke:gray,color:gray;
+    linkStyle 125 stroke:gray,color:gray;
     79 -->|"reads"| 67
     82 -->|"reads"| 18
     82 -.->|"flow"| 83
-    linkStyle 119 stroke:gray,color:gray;
+    linkStyle 128 stroke:gray,color:gray;
     83 -.->|"flow"| 85
-    linkStyle 120 stroke:gray,color:gray;
+    linkStyle 129 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
     85 -.->|"reads, calls"| built-in:_36_
-    linkStyle 123 stroke:gray;
+    linkStyle 132 stroke:gray;
     85 -.->|"flow"| 87
-    linkStyle 124 stroke:gray,color:gray;
+    linkStyle 133 stroke:gray,color:gray;
     87 -->|"reads, arg"| 85
     87 -.->|"reads, calls"| built-in:mean
-    linkStyle 126 stroke:gray;
+    linkStyle 135 stroke:gray;
     87 -.->|"flow"| 89
-    linkStyle 127 stroke:gray,color:gray;
+    linkStyle 136 stroke:gray,color:gray;
     89 -->|"reads, returns, arg"| 87
     89 -.->|"reads, calls"| built-in:print
-    linkStyle 129 stroke:gray;
+    linkStyle 138 stroke:gray;
 ```
 
 (The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
@@ -1858,20 +1949,12 @@ For the specific use-case stated, you could use the [Call-Context Query](https:/
 Just as an example, the following [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) finds all calls to `read_csv` that are not overwritten:
 
 ```json
-[
-  {
-    "type": "call-context",
-    "callName": "^read_csv$",
-    "callTargets": "global",
-    "kind": "input",
-    "subkind": "csv-file"
-  }
-]
+[ { "type": "call-context",   "callName": "^read_csv$",   "callTargets": "global",   "kind": "input",   "subkind": "csv-file" } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))
 
@@ -1882,10 +1965,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {".meta":{},"kinds":{"input":{"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}}}},
-  ".meta": {}
-}
+{"call-context":{".meta":{},"kinds":{"input":{"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}}}},".meta":{}}
 ```
 
 </details>

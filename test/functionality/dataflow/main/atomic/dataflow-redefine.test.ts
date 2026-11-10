@@ -1,19 +1,19 @@
 import { assertDataflow, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('Redefining builtins', { concurrent: false }, withShell(shell => {
-	assertDataflow(label('if (print)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+	assertDataflow(label('if (print)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', ...BuiltInOperators.byName['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 
-   print(3)`,  emptyGraph()
+   print(3)`,  emptyGraph().autoPrints([11]).autoPrints([13], true)
 			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
 			.calls('6', NodeId.toBuiltIn('<-'))
 			.argument('6', ['5', '0'])
@@ -40,11 +40,11 @@ if(1)
 			.definesOnCall('7', '1')
 			.definedByOnCall('1', '7')
 			.constant('9', { cds: [{ id: '13', when: true, byPromise: true }] }).markIdForUnknownSideEffects('11'));
-	assertDataflow(label('if (assignment)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+	assertDataflow(label('if (assignment)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 
    x <- 3
-print(x)`, emptyGraph()
+print(x)`, emptyGraph().autoPrints([16]).autoPrints([12], true)
 			.use('14', 'x')
 			.reads('14', '8')
 			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
@@ -80,11 +80,11 @@ print(x)`, emptyGraph()
 			.constant('9', { cds: [{ id: '12', when: true, byPromise: true }] })
 			.defineVariable('8', 'x', { definedBy: ['9', '10'], cds: [{ id: '12', when: true, byPromise: true }] })
 			.markIdForUnknownSideEffects('16'));
-	assertDataflow(label('<-', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'name-escaped', ...OperatorDatabase['*'].capabilities, 'named-arguments']),
+	assertDataflow(label('<-', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'newlines', 'name-escaped', ...BuiltInOperators.byName['*'].capabilities, 'named-arguments']),
 		shell, `x <- 2
 \`<-\` <- \`*\`
 x <- 3
-print(y = x)`, emptyGraph()
+print(y = x)`, emptyGraph().autoPrints([13]).autoPrints([8], true)
 			.use('4', '`*`')
 			.reads('4', NodeId.toBuiltIn('*'))
 			.use('6', 'x', { cds: [{ id: '8', when: true, byPromise: true }] })
@@ -113,14 +113,14 @@ print(y = x)`, emptyGraph()
 			.defineVariable('3', '`<-`', { definedBy: ['4', '5'] })
 			.constant('7', { cds: [{ id: '8', when: true, byPromise: true }] })
 			.markIdForUnknownSideEffects('13'));
-	assertDataflow(label('<- in function', ['name-normal', 'name-escaped', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', ...OperatorDatabase['*'].capabilities, 'call-normal', 'unnamed-arguments']),
+	assertDataflow(label('<- in function', ['name-normal', 'name-escaped', ...BuiltInOperators.byName['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', ...BuiltInOperators.byName['*'].capabilities, 'call-normal', 'unnamed-arguments']),
 		shell, `f <- function() {
    x <- 2
    \`<-\` <- \`*\`
    x <- 3
 }
 y <- f()
-print(y)`, emptyGraph()
+print(y)`, emptyGraph().autoPrints([22], true)
 			.use('7', '`*`', undefined, false)
 			.reads('7', NodeId.toBuiltIn('*'))
 			.use('9', 'x', { cds: [{ id: '11', when: true, byPromise: true }] }, false)

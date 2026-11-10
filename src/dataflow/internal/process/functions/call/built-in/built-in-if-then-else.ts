@@ -1,3 +1,4 @@
+import { hooksUnder } from '../../../../../hooks';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
@@ -5,7 +6,7 @@ import { onlyLiterals } from '../../../../../eval/resolve/resolve';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -17,8 +18,8 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import { RNode, RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { REnvironment } from '../../../../../environments/environment';
@@ -52,17 +53,7 @@ function conditionalArgsOf<OtherInfo>(
 	return (['cond', 'yes', 'no'] as const).map(k => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }
 
-/** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
-function withinLoop(id: NodeId, idMap: AstIdMap<ParentInformation>): boolean {
-	const enclosing = RNode.findEnclosing(id, idMap, n => RFunctionDefinition.is(n) || RLoopConstructs.is(n));
-	return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
-}
-
-/**
- * Processes an if-then-else built-in function call.
- * For example, `if(cond) thenExpr else elseExpr` and `if(cond) thenExpr`.
- * The arguments will be either `[cond, thenExpr]` or `[cond, thenExpr, elseExpr]`.
- */
+/** Processes an if-then-else built-in function call. */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -91,12 +82,9 @@ export function processIfThenElse<OtherInfo>(
 	data = { ...data, environment: cond.environment };
 
 	/* within a loop, what the condition reads may change after it, for the next iteration */
-	const mayChange = !onlyLiterals(condArg) && withinLoop(rootId, data.completeAst.idMap);
+	const mayChange = !onlyLiterals(condArg) && RLoopConstructs.encloses(rootId, data.completeAst.idMap);
 	const values = mayChange ? undefined : NodeValue.setOf(condArg.info.id, data);
-	/*
-	 * `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition
-	 * says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here.
-	 */
+	/* `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here. */
 	const branchesAreLazy = config?.args === undefined;
 	const conditionIsAlways = (value: boolean) => branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === value) ?? false);
 	const alwaysFalse = conditionIsAlways(false);
@@ -139,10 +127,7 @@ export function processIfThenElse<OtherInfo>(
 	if(uncertain && otherwise !== undefined) {
 		makeAmbientWritesMaybe(otherwise.environment, cond.environment, finalEnvironment, cdFalse);
 	}
-	/*
-	 * we assign all branch references with a maybe marker; we do not merge even if they appear in both branches
-	 * because the maybe links will refer to different ids
-	 */
+	/* we assign all branch references with a maybe marker; we do not merge even if they appear in both branches because the maybe links will refer to different ids */
 	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) =>
 		uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
 	const ingoing: IdentifierReference[] = cond.in.concat(
@@ -205,7 +190,7 @@ export function processIfThenElse<OtherInfo>(
 		cfgExit:           reachesJoin ? rootId : undefined,
 		environment:       finalEnvironment,
 		graph:             nextGraph,
-		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
+		hooks:             uncertain ? cond.hooks.concat(hooksUnder(then?.hooks ?? [], cdTrue), hooksUnder(otherwise?.hooks ?? [], cdFalse)) : cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
 		kill:              killed,
 	};
 }

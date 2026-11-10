@@ -1,6 +1,5 @@
 /**
- * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -18,6 +17,7 @@ import { Resolve } from '../environments/resolve-helper';
 import { fallbackUntargetedCall } from '../graph/call-graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex, VertexType } from '../graph/vertex';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
@@ -33,11 +33,10 @@ import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
 import { isNotUndefined } from '../../util/assert';
 import { memoize } from '../../util/collections/defaultmap';
 import { Dataflow } from '../graph/df-helper';
+import { DemandSolver } from '../../util/fixpoint';
+import { ProgramOrder } from '../internal/program-order';
 
-/**
- * How a function treats its parameters: R hands arguments over as promises, so a parameter is strict when
- * calling the function is enough to force it.
- */
+/** How a function treats its parameters: R hands arguments over as promises, so a parameter is strict when calling the function is enough to force it. */
 export interface FunctionStrictness {
 	/** whether every parameter is forced */
 	readonly strict:     Ternary
@@ -45,30 +44,18 @@ export interface FunctionStrictness {
 	readonly parameters: Record<NodeId, Ternary>
 }
 
-/**
- * What an argument is used for when the call never evaluates it: quoted or read in another frame
- * ({@link ArgProp.Nse}), or looked at only for having been supplied ({@link ArgProp.Presence}).
- */
+/** What an argument is used for when the call never evaluates it: quoted or read in another frame ({@link ArgProp.Nse}), or looked at only for having been supplied ({@link ArgProp.Presence}). */
 const NotEvaluated = ArgProp.Nse | ArgProp.Presence;
 /** What reflection has to reach for a parameter to be evaluated by it (`as.list(environment())`, not `match.call()`/`nargs()`). */
 const MayEvaluate = ArgProp.Value | ArgProp.Forced;
-/**
- * The processors whose calls reach their first argument and the rest only on the way the run happens to
- * take: `switch` picks one of its branches, and `try`/`tryCatch` reach a handler only when one is needed.
- */
+/** The processors whose calls reach their first argument and the rest only on the way the run happens to take: `switch` picks one of its branches, and `try`/`tryCatch` reach a handler only when one is needed. */
 const LazyAfterFirst: readonly BuiltInProcName[] = [BuiltInProcName.Switch, BuiltInProcName.Try];
-/**
- * The processors putting off what they are given until a moment that may never come: a hook runs when the
- * function exits, and `Recall` starts the same function over rather than reading anything itself.
- */
+/** The processors putting off what they are given until a moment that may never come: a hook runs when the function exits, and `Recall` starts the same function over rather than reading anything itself. */
 const LazyThroughout: readonly BuiltInProcName[] = [BuiltInProcName.RegisterHook, BuiltInProcName.Recall];
 /** The processors dispatching to a method chosen at run time. */
 const DispatchProcessors: readonly BuiltInProcName[] = [BuiltInProcName.S3Dispatch, BuiltInProcName.S3DispatchNext, BuiltInProcName.S7Dispatch];
 
-/**
- * Whether the call hands the work to a method chosen at run time: flowR's own dispatch processors say so for
- * `UseMethod` and `NextMethod`, and {@link DispatchCallees} covers the ones it has no processor for.
- */
+/** Whether the call hands the work to a method chosen at run time: flowR's own dispatch processors say so for `UseMethod` and `NextMethod`, and {@link DispatchCallees} covers the ones it has no processor for. */
 function isDispatch(vertex: DataflowGraphVertexFunctionCall): boolean {
 	return hasProcessor(vertex, DispatchProcessors) || DispatchCallees.has(Identifier.getName(vertex.name));
 }
@@ -88,32 +75,24 @@ interface DispatchInformation {
 	readonly next:    readonly NodeId[]
 }
 
-/**
- * What one run of the analysis carries along: an argument handed to another function is only forced if that
- * function forces the parameter it binds to, so answering one definition regularly asks about others.
- */
+/** What one run of the analysis carries along: an argument handed to another function is only forced if that function forces the parameter it binds to, so answering one definition regularly asks about others. */
 interface StrictnessState {
-	readonly graph:       DataflowGraph
-	readonly idMap:       AstIdMap | undefined
+	readonly graph:      DataflowGraph
+	readonly idMap:      AstIdMap | undefined
 	/** the definition each parameter belongs to, to follow an argument into its callee */
-	readonly owner:       Map<NodeId, NodeId>
+	readonly owner:      Map<NodeId, NodeId>
 	/** the definitions whose body dispatches */
-	readonly dispatch:    Map<NodeId, DispatchInformation>
+	readonly dispatch:   Map<NodeId, DispatchInformation>
 	/** what flowR states about a built-in, see {@link BuiltInFnInfo} */
-	readonly fnInfo:      BuiltInLookup
+	readonly fnInfo:     BuiltInLookup
 	/** the value the condition of an `if` holds wherever it is reached, `undefined` if it may differ */
-	readonly branches:    (ifCall: NodeId) => boolean | undefined
+	readonly branches:   (ifCall: NodeId) => boolean | undefined
 	/** the definitions a call without a linked target leads back to, see {@link boundParameters} */
-	readonly untargeted:  Map<NodeId, readonly NodeId[]>
-	readonly known:       Map<NodeId, FunctionStrictness>
-	/** the definitions the current question rests on, so a cycle answers rather than loops */
-	readonly asking:      Set<NodeId>
-	/** whether a cycle was answered by assumption, which makes the result unfit to keep */
-	assumed:              boolean
-	/** results reached under an assumption, kept until the outermost question of their cycle is answered */
-	readonly provisional: Map<NodeId, FunctionStrictness>
-	/** what a cycle assumes of the definitions within it, the outcome of the round before */
-	assumptions:          ReadonlyMap<NodeId, FunctionStrictness>
+	readonly untargeted: Map<NodeId, readonly NodeId[]>
+	/** whether a call of a function flowR states nothing about leaves the question open, see {@link FunctionStrictnessesOptions#knownOnly} */
+	readonly knownOnly:  boolean
+	/** the strictness of each definition asked for, a cycle of definitions settled together */
+	readonly solver:     DemandSolver<NodeId, FunctionStrictness>
 }
 
 /** The definition a node sits in. */
@@ -169,27 +148,32 @@ function branchOutcomes(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext 
 	});
 }
 
-function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
+function strictnessStateOf(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined, constantBranches = true, knownOnly = false): StrictnessState {
 	const owner = new Map<NodeId, NodeId>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		for(const param of Object.keys(vertex.params)) {
 			owner.set(NodeId.normalize(param), id);
 		}
 	}
-	return {
+	const state: StrictnessState = {
 		graph,
-		idMap:       graph.idMap,
+		idMap:      graph.idMap,
 		owner,
-		dispatch:    dispatchingDefinitions(graph),
-		fnInfo:      builtInLookup(ctx),
-		branches:    branchOutcomes(graph, ctx),
-		untargeted:  new Map(),
-		known:       new Map(),
-		provisional: new Map(),
-		assumptions: new Map(),
-		asking:      new Set(),
-		assumed:     false
+		dispatch:   dispatchingDefinitions(graph),
+		fnInfo:     builtInLookup(ctx),
+		branches:   branchOutcomes(graph, constantBranches ? ctx : undefined),
+		untargeted: new Map(),
+		knownOnly,
+		solver:     new DemandSolver({
+			transfer:  id => computeStrictness(id, state),
+			equals:    sameStrictness,
+			/* a cycle starts out assuming every parameter is forced: a run that keeps recursing never returns, so that claims nothing */
+			initial:   id => uniform(parametersOf(id, graph), Ternary.Always),
+			rounds:    MaxCycleRounds,
+			exhausted: id => uniform(parametersOf(id, graph), Ternary.Maybe)
+		})
 	};
+	return state;
 }
 
 /** What is certain becomes a possibility once something may intervene. */
@@ -210,11 +194,7 @@ function conditionsBeyond(cds: readonly ControlDependency[] | undefined, definit
 	return ControlDependency.minus(cds ?? [], definition ?? []).filter(c => c.byPromise !== true);
 }
 
-/**
- * Built-ins force what they are given, and the ones that do not (`quote` and its relatives) leave no read of
- * the argument in the graph in the first place, so there is nothing to hold back here. A call of something
- * the code worked out for itself (`obj$method(...)`) is none of them, whichever way it was written.
- */
+/** Built-ins force what they are given, and the ones that do not (`quote` and its relatives) leave no read of the argument in the graph in the first place, so there is nothing to hold back here. */
 function isBuiltInCall(vertex: DataflowGraphVertexFunctionCall): boolean {
 	return vertex.origin !== 'unnamed'
 		&& !DfgVertex.hasOrigin(vertex, BuiltInProcName.Function)
@@ -227,11 +207,7 @@ function argumentValue(id: NodeId, idMap: AstIdMap): NodeId {
 	return RArgument.is(node) ? node.value?.info.id ?? id : id;
 }
 
-/**
- * Where the given node stands in the call's arguments. The graph names an argument by the value it wraps,
- * while the walk arrives at the argument itself, so both count as a hit; `-1` when neither does, which a
- * call whose arguments flowR rewrote (`on.exit` and the other deferred ones) is enough to bring about.
- */
+/** Where the given node stands in the call's arguments. */
 function argumentIndex(call: DataflowGraphVertexFunctionCall, child: NodeId, idMap: AstIdMap): number {
 	const value = argumentValue(child, idMap);
 	return call.args.findIndex(arg => arg !== EmptyArgument && (arg.nodeId === child || arg.nodeId === value));
@@ -245,10 +221,7 @@ function isCallee(call: RNodeWithParent, child: NodeId): boolean {
 	return (RFunctionCall.isNamed(call) ? call.functionName.info.id : call.calledFunction.info.id) === child;
 }
 
-/**
- * What flowR states the argument at `index` of the call is used for. A `...` covers every position from
- * where it is declared, which {@link FunctionSemantics.call.signature.propAt} takes care of.
- */
+/** What flowR states the argument at `index` of the call is used for. */
 function argProps(vertex: DataflowGraphVertexFunctionCall, index: number, state: StrictnessState): ArgProps {
 	const sig = index < 0 ? undefined : state.fnInfo(vertex.name)?.sig;
 	return sig === undefined ? 0 : Sig.propAt(Sig.layout(sig), index);
@@ -280,10 +253,23 @@ function parameterAt(definition: NodeId, index: number, idMap: AstIdMap, graph: 
 	return dotsBefore ? undefined : node.parameters[index]?.name.info.id;
 }
 
+/** Whether `id` is the dots handed on as they are (`g(...)`). */
+function handsOnDots(id: NodeId, idMap: AstIdMap): boolean {
+	const node = idMap.get(id);
+	return RSymbol.is(node) && node.content === Identifier.dotdotdot();
+}
+
+/** Whether `id`, bound to an argument, is a read of the dots by position (`..1`, `...elt(1)`) rather than a parameter. */
+function isElementRead(id: NodeId, graph: DataflowGraph): boolean {
+	const vertex = graph.getVertex(id);
+	return DfgVertex.isUse(vertex) || DfgVertex.isFunctionCall(vertex);
+}
 /** The parameters an argument of `call` binds to, by position in each definition an unlinked call may reach, `undefined` if unknown. */
+
 function boundParameters(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, graph: DataflowGraph, origins?: Map<NodeId, readonly NodeId[]>): NodeId[] | undefined {
 	const sources = new Set([argument, argumentValue(argument, idMap)]);
-	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall));
+	/* a call handed as the argument links on call what its own callees read as well, which binds no parameter, an argument to dots read by position only is bound to the reads of its position (`..1`) */
+	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall)).filter(p => idMap.get(p)?.info.role === RoleInParent.ParameterName || isElementRead(p, graph));
 	if(linked.length > 0 || Dataflow.calleeIdsOf(graph, call.id).length > 0) {
 		return linked;
 	}
@@ -298,11 +284,7 @@ function boundParameters(call: DataflowGraphVertexFunctionCall, argument: NodeId
 	return params.length > 0 && params.every(isNotUndefined) ? params : undefined;
 }
 
-/**
- * Whether handing `argument` to `call` forces it. An argument the call passes on is forced exactly as the
- * function receiving it forces the parameter it binds to; a call flowR cannot resolve, and one whose argument
- * it cannot match to a parameter, leave the question open.
- */
+/** Whether handing `argument` to `call` forces it. */
 function forcedByCallee(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, state: StrictnessState): Ternary {
 	const bound = boundParameters(call, argument, idMap, state.graph, state.untargeted);
 	return bound === undefined || bound.length === 0 ? Ternary.Maybe : agree(bound.map(param => handedTo(param, state)));
@@ -314,11 +296,7 @@ interface Forcing {
 	readonly onlyUnder?: readonly ControlDependency[]
 }
 
-/**
- * How far the given read of a parameter is unavoidable: it has to stand under no condition the definition
- * does not already stand under, must not sit in a function or a default of its own that may never be
- * reached, and must not merely be handed to something that leaves it alone.
- */
+/** How far the given read of a parameter is unavoidable: it has to stand under no condition the definition does not already stand under, must not sit in a function or a default of its own that may never be reached, and must not merely be handed to something that leaves it alone. */
 function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition, state: StrictnessState): Forcing {
 	const idMap = state.idMap;
 	if(idMap === undefined) {
@@ -357,6 +335,9 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 					return { value: Ternary.Never };
 				} else if((props & ArgProp.Forced) === 0
 					&& (hasProcessor(vertex, LazyThroughout) || (index !== 0 && hasProcessor(vertex, LazyAfterFirst)))) {
+					lazy = true;
+				} else if(state.knownOnly && state.fnInfo(vertex.name) === undefined) {
+					/* nothing says what the function does with the argument, it may just as well capture it unevaluated */
 					lazy = true;
 				}
 			}
@@ -408,63 +389,28 @@ function parameterIds(definition: NodeId, idMap: AstIdMap | undefined): readonly
 const MaxCycleRounds = 8;
 
 function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
-	const known = state.known.get(id) ?? state.provisional.get(id);
-	if(known !== undefined) {
-		return known;
-	}
+	return state.solver.of(id);
+}
+
+function parametersOf(id: NodeId, graph: DataflowGraph): readonly NodeId[] {
+	const vertex = graph.getVertex(id);
+	return DfgVertex.isFunctionDefinition(vertex) ? Object.keys(vertex.params) : [];
+}
+
+function uniform(params: readonly NodeId[], value: Ternary): FunctionStrictness {
+	return { strict: value, parameters: Object.fromEntries(params.map(param => [param, value])) };
+}
+
+function sameStrictness(a: FunctionStrictness, b: FunctionStrictness): boolean {
+	return a.strict === b.strict && Object.entries(a.parameters).every(([param, value]) => b.parameters[param as NodeId] === value);
+}
+
+function computeStrictness(id: NodeId, state: StrictnessState): FunctionStrictness {
 	const vertex = state.graph.getVertex(id);
 	if(!DfgVertex.isFunctionDefinition(vertex)) {
 		return { strict: Ternary.Never, parameters: {} };
 	}
 	const params = Object.keys(vertex.params);
-	if(state.asking.has(id)) {
-		/* a cycle starts out assuming every parameter is forced: a run that keeps recursing never returns, so that claims nothing */
-		state.assumed = true;
-		return state.assumptions.get(id) ?? uniform(params, Ternary.Always);
-	}
-	let result = computeStrictness(id, vertex, params, state);
-	if(!state.assumed) {
-		state.known.set(id, result);
-	} else if(state.asking.size === 0) {
-		/* the outermost question of a cycle: recompute it until a round is stable */
-		state.provisional.set(id, result);
-		let settled = false;
-		for(let round = 0; round < MaxCycleRounds && !settled; round++) {
-			state.assumptions = new Map(state.provisional);
-			state.provisional.clear();
-			state.assumed = false;
-			result = computeStrictness(id, vertex, params, state);
-			state.provisional.set(id, result);
-			settled = [...state.provisional].every(([other, r]) => sameStrictness(r, state.assumptions.get(other)));
-		}
-		if(settled) {
-			/* the fixpoint holds for the whole cycle, so none of it has to be worked out again */
-			for(const [other, r] of state.provisional) {
-				state.known.set(other, r);
-			}
-		} else {
-			result = uniform(params, Ternary.Maybe);
-		}
-		state.known.set(id, result);
-		state.assumptions = new Map();
-		state.assumed = false;
-		state.provisional.clear();
-	} else {
-		state.provisional.set(id, result);
-	}
-	return result;
-}
-
-function uniform(params: readonly string[], value: Ternary): FunctionStrictness {
-	return { strict: value, parameters: Object.fromEntries(params.map(param => [param, value])) };
-}
-
-function sameStrictness(a: FunctionStrictness, b: FunctionStrictness | undefined): boolean {
-	return b !== undefined && a.strict === b.strict && Object.entries(a.parameters).every(([param, value]) => b.parameters[param as NodeId] === value);
-}
-
-function computeStrictness(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition, params: readonly string[], state: StrictnessState): FunctionStrictness {
-	state.asking.add(id);
 	const dispatch = state.dispatch.get(id);
 	/* a dispatch, or reflection flowR could not follow, may read a parameter without any read of it showing in the code */
 	const reflective = (reflectiveRolesOf(vertex, state.graph, { known: state.fnInfo }) & MayEvaluate) !== 0;
@@ -479,48 +425,32 @@ function computeStrictness(id: NodeId, vertex: DataflowGraphVertexFunctionDefini
 	if(object !== undefined && parameters[object] !== undefined) {
 		parameters[object] = Ternary.Always;
 	}
-	state.asking.delete(id);
 	return { strict: TernaryLogic.and(...Object.values(parameters)), parameters };
 }
 
 /**
  * Determines whether the function with the given id is strict, i.e., whether calling it forces its arguments.
- * {@link Ternary#Always} says every call forces every parameter, {@link Ternary#Never} that no call forces
- * all of them, and {@link Ternary#Maybe} that it depends on the path taken, on the caller, or on a function
- * flowR could not resolve. A definition without parameters has nothing to leave unforced and is strict.
- *
- * The analysis follows an argument that is handed on into the function receiving it, and treats a read in a
- * default, in a loop, in a branch, or in a nested definition as one that may not happen. What a built-in
- * does with an argument is not guessed from its name: an argument stated {@link ArgProp.Nse} or
- * {@link ArgProp.Presence} is never evaluated, one stated {@link ArgProp.Forced} always is, and the calls
- * reaching an argument only on the way the run takes are the ones flowR hands to the processor that says so
- * (`switch` picking a branch, `try` reaching a handler, a hook running at exit).
- * A body reading its own call or frame ({@link CallProp.Frame}: `match.call()`, `nargs()`,
- * `as.list(environment())`) reaches every parameter without naming one, so none of them is answered `Never`.
- * For a generic, the methods reached by S3 dispatch decide: they agree on a parameter or it is left open,
- * while the object the dispatch is on is forced by the dispatch itself. A `NextMethod` carries the same
- * question on to the methods it reaches, matched by the position the parameter is written in.
- * An argument in `...` is followed to the parameter it binds to, whereas the method of an object flowR
- * cannot resolve (`obj$m(x)`) is one more thing it cannot claim anything about.
- * Cyclic dependencies between functions and calls flowR cannot resolve answer {@link Ternary#Maybe}, so this
- * only claims certainty where the code gives it.
- * What a built-in does with an argument comes from the {@link ArgProp} bits its signature states, so a
- * configured or overwritten built-in is the one that answers when the analyzer context is handed along.
  * @useInstead {@link FunctionSemantics.strictness}
  */
 export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
 	const state = strictnessStateOf(graph, ctx);
 	const result: Record<NodeId, FunctionStrictness> = {};
-	for(const id of ids) {
-		result[id] = strictnessOf(id, state);
-	}
+	graph.sharingTargetWalks(() => {
+		for(const id of ids) {
+			result[id] = strictnessOf(id, state);
+		}
+	});
 	return result;
 }
 
 /** What to ask for beyond the definitions themselves, see {@link strictnessOfEach}. */
 export interface FunctionStrictnessesOptions {
 	/** how to ask what a built-in states, so a configured or overwritten one answers */
-	readonly ctx?: ReadOnlyFlowrAnalyzerContext
+	readonly ctx?:              ReadOnlyFlowrAnalyzerContext
+	/** whether to resolve the condition of an `if` to a constant, which costs a value resolution per branch */
+	readonly constantBranches?: boolean
+	/** whether a call of a function flowR states nothing about leaves open whether it evaluates what it is handed, rather than counting as a built-in that does, for answers that must not claim a promise is forced when it is not */
+	readonly knownOnly?:        boolean
 }
 
 /** Where the promises bound to `params` may be forced: their reads, calls of closures capturing them, and the callees they are handed to. */
@@ -531,8 +461,11 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 			continue;
 		}
 		seen.add(param);
-		const owner = idMap.get(idMap.get(param)?.info.parent ?? -1)?.info.parent;
-		for(const read of Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
+		/* a read of the dots by position is bound to the argument itself */
+		const element = isElementRead(param, graph);
+		const binding = element ? Dataflow.targetsOf(graph, param, EdgeType.Reads).find(t => idMap.get(t)?.info.role === RoleInParent.ParameterName) : param;
+		const owner = idMap.get(idMap.get(binding ?? -1)?.info.parent ?? -1)?.info.parent;
+		for(const read of element ? [param] : Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
 			found.push(read);
 			/* only a closure within the function owning the parameter captures it, a read elsewhere is no call of one */
 			const closures: NodeId[] = [];
@@ -550,6 +483,9 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 				if(DfgVertex.isFunctionCall(call) && !isBuiltInCall(call)) {
 					const bound = boundParameters(call, read, idMap, graph) ?? [];
 					found.push(holder, ...forcingPointsOf(bound, graph, idMap, seen));
+				} else if(handsOnDots(read, idMap)) {
+					/* the dots are evaluated only by the call they are handed to */
+					found.push(holder);
 				}
 			}
 		}
@@ -557,13 +493,7 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 	return found;
 }
 
-/**
- * What a node within promises depends on to run: the holder of each `byPromise` dependency and where that promise may be forced.
- * @example
- * ```r
- * g(print(1))  # the print runs only when `g` forces its argument, so it depends on `g(...)` and on the reads of `g`'s parameter
- * ```
- */
+/** What a node within promises depends on to run: the holder of each `byPromise` dependency and where that promise may be forced. */
 export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph): NodeId[] {
 	const idMap = graph.idMap;
 	const found: NodeId[] = [];
@@ -587,14 +517,14 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 }
 
 /** How surely the holder of a promise forces it, asked for a node `inner` within the promise. */
-export function promiseForcing(this: void, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => Ternary {
+export function promiseForcing(this: void, graph: DataflowGraph, { ctx, constantBranches, knownOnly }: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => Ternary {
 	const idMap = graph.idMap;
 	let state: StrictnessState | undefined = undefined;
 	return (holder, inner) => {
 		if(idMap === undefined) {
 			return Ternary.Maybe;
 		}
-		state ??= strictnessStateOf(graph, ctx);
+		state ??= strictnessStateOf(graph, ctx, constantBranches, knownOnly);
 		if(state.owner.has(holder)) {
 			return handedTo(holder, state);
 		}
@@ -605,6 +535,63 @@ export function promiseForcing(this: void, graph: DataflowGraph, { ctx }: Functi
 		const argument = RNode.findEnclosing(inner, idMap, n => n.info.parent === holder);
 		return argument === undefined ? Ternary.Maybe : forcedByCallee(call, argument, idMap, state);
 	};
+}
+
+/** Whether nothing can ever evaluate the promise bound to the parameter: the function never reads it, not even through its frame, and calls nothing but built-ins that leave its frame alone, so no callee looks it up either. */
+function neverEvaluated(param: NodeId, state: StrictnessState): boolean {
+	const owner = state.owner.get(param);
+	const definition = owner === undefined ? undefined : state.graph.getVertex(owner);
+	if(!DfgVertex.isFunctionDefinition(definition) || state.dispatch.has(definition.id)
+		|| Dataflow.sourcesOf(state.graph, param, EdgeType.Reads).length > 0
+		|| reflectiveRolesOf(definition, state.graph, { known: state.fnInfo }) !== 0) {
+		return false;
+	}
+	return Dataflow.callsIn(definition, state.graph).every(([, call]) => call.onlyBuiltin);
+}
+
+/** The parameters the promise of `holder` holding `inner` is bound to, `undefined` if the holder is no call linked to definitions only. */
+function promisedParameters(holder: NodeId, inner: NodeId, state: StrictnessState, idMap: AstIdMap): readonly NodeId[] | undefined {
+	if(state.owner.has(holder)) {
+		return [holder];
+	}
+	const call = state.graph.getVertex(holder);
+	const targets = Dataflow.calleeIdsOf(state.graph, holder);
+	if(!DfgVertex.isFunctionCall(call) || targets.length === 0 || targets.some(t => NodeId.isBuiltIn(t) || !DfgVertex.isFunctionDefinition(state.graph.getVertex(t)))) {
+		return undefined;
+	}
+	const argument = RNode.findEnclosing(inner, idMap, n => n.info.parent === holder);
+	const bound = argument === undefined ? undefined : boundParameters(call, argument, idMap, state.graph);
+	return bound === undefined || bound.length === 0 ? undefined : bound;
+}
+
+/** Settles what a definition within a promise (`f(x <- 5)`) does once the calls are linked. */
+export function settleDefinitionsInPromises(this: void, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	let state: StrictnessState | undefined;
+	let forcing: ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
+	for(const [id, vertex] of graph.verticesOfType(VertexType.VariableDefinition)) {
+		const promised = vertex.cds?.filter(cd => cd.byPromise === true) ?? [];
+		if(promised.length === 0) {
+			continue;
+		}
+		state ??= strictnessStateOf(graph, ctx);
+		const known = state;
+		if(promised.some(cd => promisedParameters(cd.id, id, known, idMap)?.every(p => neverEvaluated(p, known)) === true)) {
+			for(const reader of Dataflow.sourcesOf(graph, id, EdgeType.Reads)) {
+				graph.removeEdgeType(reader, id, EdgeType.Reads);
+			}
+			continue;
+		}
+		forcing ??= promiseForcing(graph, { ctx, knownOnly: true });
+		const statement = ProgramOrder.runsOnceAt(id, graph);
+		if(statement === undefined || promised.length !== vertex.cds?.length || !promised.every(cd => forcing?.(cd.id, id) === Ternary.Always)) {
+			continue;
+		}
+		ProgramOrder.replaceEarlier(id, statement, graph, false);
+	}
 }
 
 /** Drops the resume of a jump within a promise ({@link ControlFlow.promise}) once the linked holder surely forces it. */

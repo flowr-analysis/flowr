@@ -5,6 +5,7 @@
  */
 import fs from 'fs';
 import type { SigDbPkgMetaIndex } from './schema';
+import type { BrandedNamespace } from '../../dataflow/environments/identifier';
 
 /** a byte range `[startByte, bytes]` in the plain `.ndjson` */
 export type ByteRange = [startByte: number, bytes: number];
@@ -22,7 +23,7 @@ export interface SigDbIndex {
 	/** per package-blob byte range (indexed by blob index) */
 	blobs:     ByteRange[];
 	/** package name to blob index */
-	pkgs:      Record<string, number>;
+	pkgs:      Record<BrandedNamespace, number>;
 	/** package name to metadata */
 	meta:      SigDbPkgMetaIndex;
 }

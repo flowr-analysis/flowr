@@ -152,7 +152,7 @@ class DataflowBuilderPrinter {
 		}
 	}
 
-	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
+	private controlDependenciesForArgument(id: NodeId): readonly ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
 		return this.graph.getVertex(id)?.cds;
@@ -244,7 +244,7 @@ class DataflowBuilderPrinter {
 		]);
 	}
 
-	private getControlDependencySuffix(arg: ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
+	private getControlDependencySuffix(arg: readonly ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
 			return `${prefix}cds: ${wrapControlDependencies(arg)}${suffix}`;
 		}

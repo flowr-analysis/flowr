@@ -3,12 +3,10 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type Enrichment,
-	type EnrichmentData,
-	type EnrichmentElementArguments,
 	type EnrichmentElementContent,
 	type EnrichmentSearchArguments,
 	type EnrichmentSearchContent,
-	Enrichments } from './search-executor/search-enrichers';
+	getEnrichment } from './search-executor/search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
@@ -127,7 +125,7 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a concise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
 	 */
 	public async enrich<E extends Enrichment>(data: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
-		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
+		const enrichmentData = getEnrichment(enrichment);
 		if(enrichmentData.enrichSearch !== undefined) {
 			this.enrichments = {
 				...this.enrichments ?? {},

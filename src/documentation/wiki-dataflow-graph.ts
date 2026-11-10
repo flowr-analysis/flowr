@@ -885,6 +885,17 @@ the edge names the vertex that decides (e.g. an \`if\`) and whether it is the br
 	return results.join('\n');
 }
 
+/** what `library(tidyverse)` would do, asked without analyzing any code */
+function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
+	const ctx = analyzer.context();
+	return {
+		attaches:  Dataflow.library.attaches(ctx, 'tidyverse'), // the search() entries it adds, dplyr, ggplot2, ... included
+		loads:     Dataflow.library.loads(ctx, 'tidyverse'),    // every namespace it loads, transitively, magrittr included
+		layers:    Dataflow.library.layers(ctx, 'tidyverse'),   // the namespace and imports environments it attaches
+		reexports: Dataflow.library.reexports(ctx, 'dplyr')     // what dplyr re-exports, `%>%` from magrittr included
+	};
+}
+
 async function dummyDataflow(): Promise<DataflowInformation> {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
 	analyzer.addRequest('x <- 1\nx + 1');
@@ -1159,7 +1170,21 @@ Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports 
 A global binding shadows a package export of the same name, exactly as in R.
 The most recently attached package is the nearest one, and re-attaching neither moves nor duplicates it.
 The \`pos\` argument attaches further down the search path instead, given either as a position or as the name of an existing entry (an unknown position or name falls back to the default of 2, directly below the global environment).
-Attaching inside a function propagates to the caller (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path).
+Attaching inside a function propagates to the caller (R attaches globally).
+A package attached in only one branch, or in a loop body that may not run, or by a function called in one, is only maybe attached: its exports may be what a name means, but so may whatever it would shadow.
+\`detach\` and \`unloadNamespace\` remove the entry again (named, by position, or the topmost one), uncovering what it masked.
+
+Attaching brings a package's \`Depends\` onto the search path below it (so the package masks them), and for a meta-package like \`tidyverse\` the core set of that version above it, while its \`Imports\` are only loaded: \`pkg::fn\` resolves for them, a bare \`fn\` does not.
+Besides \`library\` and \`require\`, the multi-package loaders \`pacman::p_load\`, \`librarian::shelf\`, \`xfun::pkg_attach\` and \`easypackages::libraries\` attach the same way.
+To ask what a \`library\` call does without analyzing any code, use ${ctx.link('Dataflow::library')}, which builds the very layers the analysis would:
+
+${ctx.code(askWhatLibraryDoes, { dropLinesStart: 1 })}
+
+It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the \`NAMESPACE\` files it read.
+A package R attaches on startup (\`methods\`, \`stats\`, ...) is on the search path already, so a \`Depends\` on it adds no entry.
+Packages R only loads, such as the \`magrittr\` of \`library(tidyverse)\`, are not attached: their functions are reachable through the re-exports of the attached ones (\`dplyr::%>%\` is \`magrittr::%>%\`).
+The analysis keeps such a re-export as an export of the re-exporting package, so the two stay apart, and gives it what flowR states about the origin; \`reexports\` names the origin of each.
+A signature database that records no re-exports falls back to what R reports for the package (\`scripts/gen-r-reexports.R\`, covering the tidyverse and other popular packages).
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)
@@ -1182,6 +1207,12 @@ ${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)', { ctx })}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and ${ctx.linkPage('wiki/Query API', 'queries')}) to handle these cases
 as they see fit.
+
+### Ambient Access
+
+Calls reading or changing global state (options, environment variables, the working directory, graphics devices, files, ...) are recorded in the graph with the pseudo variables (\`#option:digits\`, \`#wd\`, ...) they read and write (\`_ambientAccess\` if serialized as JSON).
+Use \`Dataflow.sideEffects.ambientAccess(graph, scope)\` to aggregate this for a file, a block, or any other set of ids (including what the functions called there access) and \`Dataflow.sideEffects.ambientAccessOfFunctions(graph)\` for every function. All of them, just like \`graph.ambientAccessOf(id)\` for a single call, answer with an \`AmbientAccess\` that maps the accessed state to the ids of the calls accessing it.
+Graphics calls are reported as \`draws\`. Set ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')} to also let them write the pseudo variable \`#canvas\`, which models what is drawn on the device.
 
 The \`load\` call above degrades to an unknown side effect only because the file could not be found.
 When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.

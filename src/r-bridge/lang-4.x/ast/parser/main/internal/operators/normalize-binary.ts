@@ -6,7 +6,6 @@ import { expensiveTrace } from '../../../../../../../util/log';
 import { startAndEndsWith } from '../../../../../../../util/text/strings';
 import type { RNode } from '../../../../model/model';
 import { RawRType, RType } from '../../../../model/type';
-import { OperatorsInRAst } from '../../../../model/operators';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { RFunctionCall, RUnnamedFunctionCall } from '../../../../model/nodes/r-function-call';
 import { RBinaryOp } from '../../../../model/nodes/r-binary-op';
@@ -18,6 +17,7 @@ import { RSymbol } from '../../../../model/nodes/r-symbol';
 import type { RParameter } from '../../../../model/nodes/r-parameter';
 import type { RFunctionDefinition } from '../../../../model/nodes/r-function-definition';
 import type { BrandedIdentifier } from '../../../../../../../dataflow/environments/identifier';
+import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
 
 /**
@@ -29,7 +29,7 @@ export function tryNormalizeBinary(
 	[lhs, operator, rhs]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
 ): RNode | undefined {
 	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`);
-	if(operator.name === RawRType.Special || OperatorsInRAst.has(operator.name) || operator.name === RawRType.Pipe || operator.name === RawRType.Pipebind) {
+	if(operator.name === RawRType.Special || BuiltInOperators.inRAst.has(operator.name) || operator.name === RawRType.Pipe || operator.name === RawRType.Pipebind) {
 		return parseBinaryOp(data, lhs, operator, rhs);
 	} else {
 		return undefined;

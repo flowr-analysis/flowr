@@ -161,7 +161,8 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const fn = (f: SigFunctionInfo): number => {
 		const base: SigFn = [strings.str(f.name), sig(f.params), cg(f.callees), f.props,
 			feats.locations && f.file ? strings.str(f.file) : -1, feats.locations ? f.line ?? -1 : -1];
-		const rec: SigFn = f.topic && f.topic !== f.name ? [...base, strings.str(f.topic)] : base;
+		const topic = f.topic && f.topic !== f.name ? strings.str(f.topic) : -1;
+		const rec: SigFn = f.reexportOf ? [...base, topic, strings.str(f.reexportOf)] : topic >= 0 ? [...base, topic] : base;
 		return fns.intern(rec.join(','), rec);
 	};
 	const depList = (list: readonly SigDependencyInfo[]): number => {
@@ -186,7 +187,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			c.supers.map(sup => strings.str(sup)),
 			c.slots.map(sl => sl.type === undefined ? strings.str(sl.name) : [strings.str(sl.name), strings.str(sl.type)] as [number, number])
 		];
-		const rec: SigClass = c.package !== undefined ? [...head, strings.str(c.package)] : head;
+		const rec: SigClass = c.package !== undefined ? [...head, strings.str(String(c.package))] : head;
 		return classes.intern(JSON.stringify(rec), rec);
 	};
 
@@ -490,9 +491,7 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 		for(const f of blob.fns) {
 			bump(f[0]);
 			bump(f[4]);
-			if(f[6] !== undefined) {
-				bump(f[6]);
-			}
+			f.slice(6).forEach(bump);
 		}
 		for(const list of blob.deps) {
 			for(const d of list) {
@@ -558,8 +557,10 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 			if(f[4] >= 0) {
 				f[4] = remap[f[4]];
 			}
-			if(f[6] !== undefined && f[6] >= 0) {
-				f[6] = remap[f[6]];
+			for(let i = 6; i < f.length; i++) {
+				if(f[i] >= 0) {
+					f[i] = remap[f[i]];
+				}
 			}
 		}
 		for(const list of blob.deps) {

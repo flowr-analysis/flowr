@@ -37,8 +37,8 @@ async function lintOnDisk(setup: (root: string) => void, config: Partial<Package
 		const analyzer = await new FlowrAnalyzerBuilder().build();
 		analyzer.addRequest(`file://${root}`);
 		await analyzer.dataflow();
-		const linted = await analyzer.query([{ type: 'linter', rules: [{ name: 'package-structure', config }] as never }]);
-		const results = (linted.linter.results['package-structure'] as unknown as { results: PackageStructureResult[] }).results;
+		const linted = await analyzer.query({ type: 'linter', rules: [{ name: 'package-structure', config }] as never });
+		const results = (linted.results['package-structure'] as unknown as { results: PackageStructureResult[] }).results;
 		return results.map(r => [r.kind, r.file] as [string, string]).sort();
 	} finally {
 		restorePermissions(root);

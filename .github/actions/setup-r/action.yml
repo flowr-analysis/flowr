@@ -62,11 +62,43 @@ runs:
       run: bash "${{ github.action_path }}/prepare-apt.sh"
 
     - name: "⬇️ Setup R (last retry)"
+      id: setup-r-last
       if: steps.setup-r-retry.outcome == 'failure'
+      continue-on-error: true
       uses: r-lib/actions/setup-r@v2
       with:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
+
+    # setup-r downloads from github.com, whose outages last longer than any of the retries above
+    - name: "⬇️ Install R from the package manager"
+      if: steps.setup-r-last.outcome == 'failure'
+      shell: bash
+      run: bash "${{ github.action_path }}/install-fallback.sh" r
+
+    # rmarkdown renders through pandoc, which only the linux package install brings along
+    - name: "⬇️ Setup Pandoc"
+      id: setup-pandoc
+      continue-on-error: true
+      uses: r-lib/actions/setup-pandoc@v2
+
+    - name: "⏳ Back off (Pandoc)"
+      if: steps.setup-pandoc.outcome == 'failure'
+      shell: bash
+      run: sleep ${{ inputs.retry-delay }}
+
+    - name: "⬇️ Setup Pandoc (retry)"
+      id: setup-pandoc-retry
+      if: steps.setup-pandoc.outcome == 'failure'
+      continue-on-error: true
+      uses: r-lib/actions/setup-pandoc@v2
+
+    # only rendering needs pandoc, so without it the tests still run and only those can fail
+    - name: "⬇️ Install Pandoc from the package manager"
+      if: steps.setup-pandoc-retry.outcome == 'failure'
+      continue-on-error: true
+      shell: bash
+      run: bash "${{ github.action_path }}/install-fallback.sh" pandoc
 
     - name: "📋 List the R packages"
       id: packages
@@ -80,9 +112,24 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: "📦 Install R Packages"
+      id: r-packages
       if: inputs.packages == 'true'
+      continue-on-error: true
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         cache: 'true'
         cache-version: '1'
+        # the qmd test files are only parsed, and its download from github.com fails jobs in an outage
+        install-quarto: 'false'
         extra-packages: ${{ steps.packages.outputs.list }}
+
+    - name: "📦 Install R Packages (without pak)"
+      if: steps.r-packages.outcome == 'failure'
+      shell: Rscript {0}
+      run: |
+        wanted <- readLines("${{ github.action_path }}/packages.txt")
+        repos <- getOption("repos")
+        repos["CRAN"] <- if(repos[["CRAN"]] == "@CRAN@") "https://cloud.r-project.org/" else repos[["CRAN"]]
+        install.packages(wanted, repos = repos)
+        missing <- setdiff(wanted, rownames(installed.packages()))
+        if(length(missing) > 0) stop("could not install ", paste(missing, collapse = ", "))

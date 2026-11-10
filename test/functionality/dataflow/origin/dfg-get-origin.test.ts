@@ -164,11 +164,13 @@ describe('Dataflow', withTreeSitter(ts => {
 			for(const [code, cap] of [
 				['quote(x)', 'built-in-quoting'],
 				['bquote(x)', 'built-in-quoting'],
-				['alist(x)', 'built-in-quoting'],
-				['evalq(x, e)', 'built-in-evaluation']
+				['alist(x)', 'built-in-quoting']
 			] as const) {
 				chk(`x <- 1\n${code}`, { '2@x': undefined }, label(code, [cap], ['dataflow']));
 			}
+			/* `evalq` evaluates its argument right away, in the calling frame or one that falls back to it */
+			chk('x <- 1\nevalq(x)', { '2@x': [ro('1@x')] }, label('evalq(x)', ['built-in-evaluation'], ['dataflow']));
+			chk('x <- 1\ne <- new.env()\nevalq(x, e)', { '3@x': [ro('1@x')] }, label('evalq(x, e)', ['built-in-evaluation'], ['dataflow']));
 			chk('x <- 1\nwhile(TRUE) print(x)', {
 				'2@x': [ro('1@x')]
 			}, label('a loop body is evaluated', ['while-loop'], ['dataflow']));

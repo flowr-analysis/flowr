@@ -8,7 +8,7 @@ import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
+import { type CommandCompletions, describeCompletion } from '../../../cli/repl/completion';
 import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
 import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/strings';

@@ -9,10 +9,10 @@ import type { SerializedTestLabel, TestLabel, TestLabelContext } from '../../tes
 import { TestSuites } from '../../test/functionality/summary-def';
 import { FlowrGithubGroupName, flowrSourceFileUrl } from './doc-util/doc-files';
 import { Playground } from '../util/text/playground-link';
-import { OperatorDatabase } from '../r-bridge/lang-4.x/ast/model/operators';
 import { highlightR, renderRToken, escapeHtml, type KnownNames } from '../util/text/r-highlight';
 import { DefaultMap } from '../util/collections/defaultmap';
 import { uniqueArray } from '../util/collections/arrays';
+import { BuiltInOperators } from '../dataflow/environments/default-builtin-config/base-operators';
 
 const testSuites = Object.values(TestSuites);
 const maxSignatureTests = 3;
@@ -48,12 +48,12 @@ const literalRegex = /(['"`])((?:\\.|(?!\1)[^\\\n])*)\1/g;
 /* suites about the tooling around the analysis, whose tests rarely show what a capability means */
 const toolingSuiteRegex = /\/(project|plugins?|cli|server|repl)\//;
 const genericWords: ReadonlySet<string> = new Set(['empty', 'single', 'simple', 'basic', 'test', 'next', 'one', 'two', 'all', 'some', 'multiple', 'other', 'foo', 'bar']);
-const operatorSpreadRegex = /\.{3}\s*OperatorDatabase\[\s*(['"])((?:\\.|(?!\1)[^])*?)\1\s*]\s*\.capabilities/g;
+const operatorSpreadRegex = /\.{3}\s*BuiltInOperators\.byName\[\s*(['"])((?:\\.|(?!\1)[^])*?)\1\s*]\s*\.capabilities/g;
 
 function claimedCapabilities(array: string): string[] {
 	const ids = [...array.matchAll(quotedStringRegex)].map(([,, id]) => id).filter(id => capabilityNames.has(id));
 	for(const [, , operator] of array.matchAll(operatorSpreadRegex)) {
-		ids.push(...OperatorDatabase[operator]?.capabilities ?? []);
+		ids.push(...BuiltInOperators.byName[operator]?.capabilities ?? []);
 	}
 	return uniqueArray(ids);
 }

@@ -1,3 +1,4 @@
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -8,7 +9,7 @@ import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { StackEnvKind } from '../../../dataflow/environments/default-builtin-config';
@@ -42,14 +43,14 @@ export type GlobalEnvironmentModificationKind =
 export interface GlobalEnvironmentModificationResult extends CmdCheckResult {
 	readonly kind:      GlobalEnvironmentModificationKind
 	/** the variable written, if known */
-	readonly variable?: string
+	readonly variable?: BrandedIdentifier
 }
 
 export interface GlobalEnvironmentModificationConfig extends MergeableRecord {
 	/** report `<<-` assignments that reach the global environment or a locked namespace binding (default `true`) */
 	readonly checkSuperAssignments: boolean
 	/** variables that may be assigned in the global environment (default `.Random.seed`, as `R CMD check` allows) */
-	readonly allowedGlobals:        readonly string[]
+	readonly allowedGlobals:        readonly BrandedIdentifier[]
 }
 
 export interface GlobalEnvironmentModificationMetadata extends MergeableRecord {
@@ -64,7 +65,7 @@ const EnvironmentWriters = {
 	attach: { what: 'what', pos: 'pos', name: 'name', 'warn.conflicts': 'warn.conflicts' }
 } as const;
 
-const WriterNames: ReadonlySet<string> = new Set(Object.keys(EnvironmentWriters));
+const WriterNames: ReadonlySet<BrandedIdentifier> = new Set(Object.keys(EnvironmentWriters));
 
 /** whether `node` denotes the global environment, directly or through variables bound to it */
 function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environment: REnvironmentInformation, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, depth = 0): boolean {
@@ -90,13 +91,23 @@ function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environmen
 	});
 }
 
+/** the variable an `assign` into the global environment writes (`undefined` if not constant) */
+export function globalAssignment(call: DataflowGraphVertexFunctionCall, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): { variable?: BrandedIdentifier } | undefined {
+	const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters.assign) as ReadonlyMap<string, readonly NodeId[]>;
+	const arg = (formal: string) => RArgument.valueOf(args.get(formal)?.length === 1 ? idMap.get(args.get(formal)?.[0] ?? '') : undefined);
+	const env = call.environment ?? df.environment;
+	const target = arg('x');
+	const global = denotesGlobalEnv(arg('envir'), env, df, idMap, ctx) || denotesGlobalPos(arg('pos')) || denotesGlobalEnv(arg('pos'), env, df, idMap, ctx);
+	return global ? { variable: RString.is(target) ? target.content.str : undefined } : undefined;
+}
+
 /** whether a `pos` argument names the global environment, which is the first entry of the search path */
 function denotesGlobalPos(node: RNode<ParentInformation> | undefined): boolean {
 	return (RNumber.is(node) && node.content.num === 1) || (RString.is(node) && node.content.str === '.GlobalEnv');
 }
 
 /** the variable an assignment target writes, looking through replacement calls and accesses (`names(x)`, `x$a`, `x[[1]]`) */
-function targetVariable(lhs: RNode<ParentInformation>): string | undefined {
+export function targetVariable(lhs: RNode<ParentInformation>): BrandedIdentifier | undefined {
 	switch(lhs.type) {
 		case RType.Symbol:
 			return Identifier.getName(lhs.content);
@@ -111,18 +122,18 @@ function targetVariable(lhs: RNode<ParentInformation>): string | undefined {
 	}
 }
 
-const LocalAssignments: ReadonlySet<string> = new Set(['<-', '=', '->']);
+const LocalAssignments: ReadonlySet<BrandedIdentifier> = new Set(['<-', '=', '->']);
 
 /**
  * The names a scope (a function definition or `local` call) binds itself: its parameters, the targets of its plain
  * assignments, its `for` variables, and the literal names it `assign`s; the functions nested in it bind their own.
  */
-function localBindings(scope: RNode<ParentInformation>, memo: Map<NodeId, ReadonlySet<string>>): ReadonlySet<string> {
+function localBindings(scope: RNode<ParentInformation>, memo: Map<NodeId, ReadonlySet<BrandedIdentifier>>): ReadonlySet<BrandedIdentifier> {
 	const known = memo.get(scope.info.id);
 	if(known !== undefined) {
 		return known;
 	}
-	const names = new Set<string>(RFunctionDefinition.is(scope) ? scope.parameters.map(p => Identifier.getName(p.name.content)) : []);
+	const names = new Set<BrandedIdentifier>(RFunctionDefinition.is(scope) ? scope.parameters.map(p => Identifier.getName(p.name.content)) : []);
 	RNode.visitAst(RFunctionDefinition.is(scope) ? scope.body : scope, node => {
 		if(RFunctionDefinition.is(node)) {
 			return true;
@@ -146,10 +157,10 @@ function isLocalCall(node: RNode<ParentInformation>): boolean {
 }
 
 /** the package hooks R runs before it locks the namespace, so a `<<-` in them may still set a package variable */
-const BeforeLocking: ReadonlySet<string> = new Set(['.onLoad']);
+const BeforeLocking: ReadonlySet<BrandedIdentifier> = new Set(['.onLoad']);
 
 /** what a `<<-` in a package function writes: a binding of an enclosing scope, the package namespace, or the global environment */
-function superAssignmentTarget(op: RNode<ParentInformation>, name: string, idMap: AstIdMap, topLevel: ReadonlySet<string>, memo: Map<NodeId, ReadonlySet<string>>): 'enclosing' | 'namespace' | 'global' | 'top-level' {
+export function superAssignmentTarget(op: RNode<ParentInformation>, name: BrandedIdentifier, idMap: AstIdMap, topLevel: ReadonlySet<BrandedIdentifier>, memo: Map<NodeId, ReadonlySet<BrandedIdentifier>>): 'enclosing' | 'namespace' | 'global' | 'top-level' {
 	let first = true;
 	let outermost: RFunctionDefinition<ParentInformation> | undefined;
 	for(let cur = op.info.parent === undefined ? undefined : idMap.get(op.info.parent); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
@@ -176,8 +187,8 @@ function superAssignmentTarget(op: RNode<ParentInformation>, name: string, idMap
 }
 
 /** the names the top level of the package code binds */
-function topLevelBindings(ast: NormalizedAst, isPackageCode: (file: string | undefined) => boolean): Set<string> {
-	const names = new Set<string>();
+function topLevelBindings(ast: NormalizedAst, isPackageCode: (file: string | undefined) => boolean): Set<BrandedIdentifier> {
+	const names = new Set<BrandedIdentifier>();
 	const idMap = ast.idMap;
 	for(const node of projectNodes(ast)) {
 		if(!RBinaryOp.is(node) || !LocalAssignments.has(node.operator) || !isPackageCode(node.info.file)) {
@@ -212,7 +223,7 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		const allowed = new Set(config.allowedGlobals);
 		const results: GlobalEnvironmentModificationResult[] = [];
 		let consideredCalls = 0;
-		const add = (node: RNode<ParentInformation>, kind: GlobalEnvironmentModificationKind, message: string, variable?: string) => results.push({ ...at(node), kind, ...(variable !== undefined ? { variable } : {}), message });
+		const add = (node: RNode<ParentInformation>, kind: GlobalEnvironmentModificationKind, message: string, variable?: BrandedIdentifier) => results.push({ ...at(node), kind, ...(variable !== undefined ? { variable } : {}), message });
 		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, WriterNames)) {
 			consideredCalls++;
 			const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters[name as keyof typeof EnvironmentWriters]);
@@ -227,13 +238,9 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 					add(node, 'attach', 'attach() puts an object on the search path, where it masks and is masked by others; access it directly or use with() instead');
 					break;
 				case 'assign': {
-					const target = valueOf(arg('x'));
-					const variable = RString.is(target) ? target.content.str : undefined;
-					if(variable !== undefined && allowed.has(variable)) {
-						break;
-					}
-					if(denotesGlobalEnv(valueOf(arg('envir')), env, df, idMap, ctx) || denotesGlobalPos(valueOf(arg('pos'))) || denotesGlobalEnv(valueOf(arg('pos')), env, df, idMap, ctx)) {
-						add(node, 'assign', `assign() writes ${variable === undefined ? 'a variable' : `'${variable}'`} into the global environment, which belongs to the user`, variable);
+					const global = globalAssignment(call, df, idMap, ctx);
+					if(global !== undefined && (global.variable === undefined || !allowed.has(global.variable))) {
+						add(node, 'assign', `assign() writes ${global.variable === undefined ? 'a variable' : `'${global.variable}'`} into the global environment, which belongs to the user`, global.variable);
 					}
 					break;
 				}
@@ -249,7 +256,7 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		}
 		if(config.checkSuperAssignments) {
 			const topLevel = topLevelBindings(ast, pkg.isPackageCode);
-			const scopes = new Map<NodeId, ReadonlySet<string>>();
+			const scopes = new Map<NodeId, ReadonlySet<BrandedIdentifier>>();
 			for(const node of projectNodes(ast)) {
 				if(!RBinaryOp.is(node) || (node.operator !== '<<-' && node.operator !== '->>') || !pkg.isPackageCode(node.info.file)) {
 					continue;

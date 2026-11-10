@@ -9,6 +9,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsPackratPlugin,
 	FlowrAnalyzerPackageVersionsRenvPlugin,
+	FlowrAnalyzerPackageVersionsRigPlugin,
 	FlowrAnalyzerPackageVersionsRvPlugin,
 	FlowrAnalyzerPackageVersionsUvrPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
@@ -45,10 +46,13 @@ import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
 import { FlowrAnalyzerVirtualEnvFilePlugin } from './file-plugins/flowr-analyzer-virtualenv-file-plugin';
 import {
+	FlowrAnalyzerRigProjectFilePlugin,
 	FlowrAnalyzerRProjectFilePlugin,
 	FlowrAnalyzerUvrManifestFilePlugin
 } from './file-plugins/flowr-analyzer-manifest-file-plugin';
 import {
+	FlowrAnalyzerMetaRigProjectFilePlugin,
+	FlowrAnalyzerMetaRigScriptPlugin,
 	FlowrAnalyzerMetaRProjectFilePlugin,
 	FlowrAnalyzerMetaUvrManifestFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-manifest-file-plugin';
@@ -72,6 +76,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsLibraryPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-library-plugin';
+import { FlowrAnalyzerPackageVersionsOnDemandPlugin } from './package-version-plugins/flowr-analyzer-package-versions-on-demand-plugin';
 import {
 	FlowrAnalyzerLoadingOrderIncludedFilesPlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
@@ -84,9 +89,11 @@ export const BuiltInPlugins = [
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:library', FlowrAnalyzerPackageVersionsLibraryPlugin],
+	['versions:on-demand', FlowrAnalyzerPackageVersionsOnDemandPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['versions:uvr', FlowrAnalyzerPackageVersionsUvrPlugin],
+	['versions:rig', FlowrAnalyzerPackageVersionsRigPlugin],
 	['versions:packrat', FlowrAnalyzerPackageVersionsPackratPlugin],
 	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
@@ -96,6 +103,8 @@ export const BuiltInPlugins = [
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['meta:uvr', FlowrAnalyzerMetaUvrManifestFilePlugin],
+	['meta:rig', FlowrAnalyzerMetaRigProjectFilePlugin],
+	['meta:rig-script', FlowrAnalyzerMetaRigScriptPlugin],
 	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
 	['file-roles:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['file-roles:inst', FlowrAnalyzerMetaInstFilesPlugin],
@@ -121,6 +130,7 @@ export const BuiltInPlugins = [
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
 	['file:uvr', FlowrAnalyzerUvrManifestFilePlugin],
+	['file:rig', FlowrAnalyzerRigProjectFilePlugin],
 	['file:rprofile', FlowrAnalyzerRprofileFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
 	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],

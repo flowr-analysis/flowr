@@ -1,10 +1,10 @@
+import type { BrandedIdentifier } from '../../environments/identifier';
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { contentOf, stringFromLiteral, unescapeRString } from './string/string-constants';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { assertUnreachable, guard } from '../../../util/assert';
-
-export const Top = { type: Symbol('⊤') };
-export const Bottom = { type: Symbol('⊥') };
+import { Top, Bottom } from '../../environments/built-in-kinds';
+export { Top, Bottom } from '../../environments/built-in-kinds';
 
 export type Lift<N> = N | typeof Top | typeof Bottom;
 export type Unlift<N> = N extends typeof Top ? never : N extends typeof Bottom ? never : N;
@@ -17,9 +17,7 @@ export interface ValueInterval<Limit extends ValueNumber = ValueNumber> {
 	endInclusive:   boolean
 }
 
-/**
- * An R vector with either a known set of elements or a known domain.
- */
+/** An R vector with either a known set of elements or a known domain. */
 export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>, Domain extends Lift<Value> = Lift<Value>> {
 	type:          'vector'
 	elements:      Elements
@@ -39,6 +37,16 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
 	type:  'string'
 	value: Str
 }
+/** One element of a {@link ValueList}, `name` is `undefined` for an element without one (`list(1)`). */
+export interface ValueListElement {
+	readonly name:  BrandedIdentifier | undefined
+	readonly value: Value
+}
+/** An R list with known elements in their order, each of which may still be unknown (`list(a = f(), b = 2)`). */
+export interface ValueList {
+	readonly type:     'list'
+	readonly elements: readonly ValueListElement[]
+}
 export interface ValueNull {
 	type: 'null'
 }
@@ -57,6 +65,7 @@ export interface ValueLogical {
 export type Value = Lift<
         ValueInterval
 		| ValueVector
+		| ValueList
         | ValueSet
         | ValueNumber
         | ValueString
@@ -81,9 +90,7 @@ export function isValue<V extends Lift<unknown>>(value: V): value is Unlift<V> {
 	return !isTop(value) && !isBottom(value);
 }
 
-/**
- * Treat a value as unlifted value, throws if it is top or bottom.
- */
+/** Treat a value as unlifted value, throws if it is top or bottom. */
 export function asValue<V extends Lift<unknown>>(value: V): Unlift<V> {
 	guard(isValue(value), 'Expected a value, but got a top or bottom value');
 	return value;
@@ -123,10 +130,7 @@ function renderString(value: RStringValue): string {
 }
 
 
-/**
- * A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well.
- * @param value - the value to print
- */
+/** A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well. */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
 		const t = v.type;
@@ -139,6 +143,8 @@ export function stringifyValue(value: Lift<Value>): string {
 				return tryStringifyBoTop(v.elements, e => {
 					return `<${stringifyValue(v.elementDomain)}> c(${e.map(stringifyValue).join(',')})`;
 				}, () => `⊤ (vector, ${stringifyValue(v.elementDomain)})`, () => `⊥ (vector, ${stringifyValue(v.elementDomain)})`);
+			case 'list':
+				return `list(${v.elements.map(e => e.name === undefined ? stringifyValue(e.value) : `${e.name} = ${stringifyValue(e.value)}`).join(', ')})`;
 			case 'set':
 				return tryStringifyBoTop(v.elements, e => {
 					return e.length === 1 ? stringifyValue(e[0]) : `{ ${e.map(stringifyValue).join(',')} }`;
@@ -162,12 +168,7 @@ export function stringifyValue(value: Lift<Value>): string {
 	});
 }
 /**
- * Reads the plain TS value a {@link Value} stands for, `undefined` whenever it stands for more than one, for
- * none, or for another kind. Prefer these over reaching into a value's shape by hand.
- *
- * This is the constant-folding view: it answers "is this one known constant" and nothing else. It runs no
- * fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated
- * abstract interpretation in `src/abstract-interpretation/`.
+ * Reads the plain TS value a {@link Value} stands for, `undefined` whenever it stands for more than one, for none, or for another kind.
  * @helper values
  */
 export const RValue = {
@@ -191,5 +192,15 @@ export const RValue = {
 	/** The string the value stands for. */
 	stringOf(this: void, value: Value): string | undefined {
 		return value.type === 'string' && isValue(value.value) ? value.value.str : undefined;
+	},
+	/** The logical value R takes the value to be as a condition (`if`), `undefined` if it is none or not known. */
+	truthOf(this: void, value: Value): boolean | undefined {
+		if(value.type === 'vector') {
+			return isValue(value.elements) && value.elements.length === 1 ? RValue.truthOf(value.elements[0]) : undefined;
+		} else if(value.type === 'logical') {
+			return typeof value.value === 'boolean' ? value.value : undefined;
+		}
+		const num = RValue.numberOf(value);
+		return num === undefined || Number.isNaN(num) ? undefined : num !== 0;
 	}
 } as const;

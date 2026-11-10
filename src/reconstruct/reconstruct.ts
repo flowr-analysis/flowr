@@ -3,7 +3,6 @@
  * See {@link reconstructToCode}.
  * @module
  */
-
 import { expensiveTrace, log, LogLevel } from '../util/log';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { guard } from '../util/assert';
@@ -33,6 +32,8 @@ import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-se
 import { Identifier } from '../dataflow/environments/identifier';
 import { type InlineWarning, sourcePathOf } from './inline/source-inline-map';
 import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
+import { OperatorUsedAs } from '../dataflow/environments/default-builtin-config/base-operators';
+import type { Line } from '../util/range';
 
 /**
  * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
@@ -187,7 +188,7 @@ function evaluatesToRhs(n: RBinaryOp<ParentInformation> | RPipe<ParentInformatio
 		return false;
 	}
 	const info = RBinaryOp.getOperatorInfo(n);
-	return info?.usedAs === 'assignment' && info.stringUsedInRAst !== RawRType.RightAssign;
+	return info?.usedAs === OperatorUsedAs.Assignment && info.stringUsedInRAst !== RawRType.RightAssign;
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
@@ -490,10 +491,8 @@ function reconstructFunctionCall(
 	}
 	if(!selected) {
 		const f = args.filter(a => a !== EmptyArgument && a.length !== 0) as Code[];
-		if(f.length === 0) {
-			return [];
-		} else if(f.length === 1) {
-			return f[0];
+		if(f.length <= 1 || (call.infixSpecial !== true && functionName.length === 0)) {
+			return f.flat();
 		}
 	}
 
@@ -630,7 +629,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 	}
 
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
-	const linesWithAutoSelected = new Set<number>();
+	const linesWithAutoSelected = new Set<Line>();
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node, ast);
 		if(result && node.location) {

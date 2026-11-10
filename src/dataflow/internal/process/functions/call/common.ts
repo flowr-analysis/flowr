@@ -1,7 +1,5 @@
 /**
  * Argument processing shared by the call processors.
- * Importing the `Resolve` helper here pulls the evaluator in before the built-in configuration is
- * initialized, so this file keeps the direct import.
  * @lintIgnore use-instead
  */
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
@@ -10,13 +8,16 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../../../environments/resolve-helper';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { hasEnvState, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from '../../../../environments/ambient-state-name';
-import { resolveByName } from '../../../../environments/resolve-by-name';
+import { resolveByName, scopeOf } from '../../../../environments/resolve-by-name';
+import { readRemovals } from '../../../../environments/apply-kill';
+import { type EnvironmentLookups, readEnvironmentContents } from './built-in/built-in-envir-utils';
 import { processFunctionArgument } from '../process-argument';
 import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -43,6 +44,8 @@ export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly alternativesFrom?: number
 	/** keep the graph of each processed argument its own, for a caller marking what lies within an argument */
 	readonly keepGraphs?:       boolean
+	/** whether the call only looks up bindings in an environment it is given, see {@link EnvironmentLookups} */
+	readonly lookup?:           boolean
 }
 
 export interface ProcessAllArgumentResult {
@@ -75,20 +78,12 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	}
 }
 
-/**
- * Converts function arguments into function argument references for a function call vertex.
- * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
- * This function also works after the arguments were unpacked, e.g., by {@link tryUnpackNoNameArg}.
- * @see convertFnArgument
- */
+/** Converts function arguments into function argument references for a function call vertex. */
 export function convertFnArguments<OtherInfo>(args: readonly (typeof EmptyArgument | RNode<OtherInfo & ParentInformation>)[]): FunctionArgument[] {
 	return args.map(convertFnArgument);
 }
 
-/**
- * Transforms a function argument into a function argument reference for a function call vertex.
- * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
- */
+/** Transforms a function argument into a function argument reference for a function call vertex. */
 export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
 	if(RArgument.isEmpty(arg)) {
 		return EmptyArgument;
@@ -98,20 +93,25 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 	return { nodeId: arg.info.id, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument };
 }
 
-/**
- * Whether `arg` is the value the pipe handed to the call `functionRootId`, which {@link processNamedCall}
- * spliced into its arguments. The pipe processes and links that value itself, so processing it here again
- * would duplicate it.
- */
+/** Whether `arg` is the value the pipe handed to the call `functionRootId`, which {@link processNamedCall} spliced into its arguments. */
 export function isPipedArgument<OtherInfo>(arg: unknown, functionRootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	return data.pipedArgument?.rootId === functionRootId && data.pipedArgument.argument === arg;
 }
 
+/** Whether the named call `call` surely calls a function the program defines. */
+function callsProgramFunction<OtherInfo>(call: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	const node = data.completeAst.idMap.get(call);
+	const defs = RFunctionCall.isNamed(node) ? Resolve.byName(node.functionName.content, data.environment) : undefined;
+	return defs !== undefined && defs.length > 0 && defs.every(d => d.type === ReferenceType.Function && !NodeId.isBuiltIn(d.nodeId));
+}
+
 /** Processes all arguments for a function call, updating the given final graph and environment. */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction, alternativesFrom, keepGraphs, lookup }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
+	/* a function of the program reads what its body reads, which linking the call decides, see `readArgumentContents` */
+	let readsContents: boolean | undefined;
 	const callArgs: FunctionArgument[] = [];
 	const processedArguments: (DataflowInformation | undefined)[] = [];
 	const remainingReadInArgs = [];
@@ -160,13 +160,19 @@ export function processAllArguments<OtherInfo>(
 			const refType = AmbientStateName.is(ingoing.name) ? ReferenceType.Variable
 				: DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
 					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, scopeOf(ingoing, data.environment), refType) : undefined;
+			if(tryToResolve !== undefined) {
+				readRemovals(finalGraph, inId, ingoing.name, data.environment);
+			}
 			/* unless one target is certainly of the current scope, a higher one may still be meant */
 			let mayHaveHigherTarget = true;
 			for(const resolved of tryToResolve ?? []) {
 				if(!isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 					mayHaveHigherTarget &&= !happensInEveryBranch(resolved.cds);
 					finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);
+					if(!lookup && hasEnvState(resolved) && (readsContents ??= !callsProgramFunction(functionRootId, data))) {
+						readEnvironmentContents(finalGraph, functionRootId, resolved);
+					}
 				}
 			}
 			if(mayHaveHigherTarget) {
@@ -193,11 +199,7 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly link?:                 DataflowGraphVertexAstLink
 }
 
-/**
- * Patches a function call vertex into the given dataflow graph.
- * This is mostly useful for built-in processors that have custom argument processing.
- * Otherwise, rely on {@link processKnownFunctionCall} instead.
- */
+/** Patches a function call vertex into the given dataflow graph. */
 export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {

@@ -15,7 +15,8 @@ import { convertFnArguments, patchFunctionCall } from '../common';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import { type EnvirResolution, envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { REnvironment } from '../../../../../environments/environment';
 
@@ -27,6 +28,8 @@ export interface LocalFunctionConfiguration {
 		/** The environment in `local(expr, env)` */
 		env:  string;
 	}
+	/** Without `env`, `expr` runs in the calling frame instead of a fresh one, as for `evalq`. */
+	readonly inCaller?: boolean
 }
 
 /** Processes a built-in 'local' function call. */
@@ -68,11 +71,7 @@ export function processLocal<OtherInfo>(
 		return dfEnv;
 	}
 
-	const baseEnvironment = envirResolution
-		? envirResolution.envirData.environment     // evaluate in the tracked custom env
-		: REnvironment.pushLocal(data.environment);   // normal new local scope
-
-	const dfExpr = processDataflowFor(expr, { ...data, environment: baseEnvironment });
+	const dfExpr = config.inCaller && env === undefined ? processDataflowFor(expr, data) : evaluateInEnvir(expr, envirResolution, rootId, data);
 	patchFunctionCall({
 		nextGraph:             dfEnv.graph,
 		rootId,
@@ -81,14 +80,6 @@ export function processLocal<OtherInfo>(
 		argumentProcessResult: env ? [dfExpr, dfEnv] : [dfExpr],
 		origin:                BuiltInProcName.Local
 	});
-
-	/* in `local({ y <- 1; function() y })` the read of `y` is linked now, as the frame of `local` is dropped below */
-	updateNestedFunctionClosures(dfExpr.graph, dfExpr.environment, []);
-	const resultEnvironment = envirResolution ? data.environment : REnvironment.popLocal(dfExpr.environment);
-	/* definitions of the local scope vanish with it, only what escaped it (e.g. via `<<-`) may bubble up */
-	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
-		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
-	);
 
 	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
 	graph.addEdge(rootId, expr.info.id, EdgeType.Returns);
@@ -105,18 +96,37 @@ export function processLocal<OtherInfo>(
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
-		environment:       resultEnvironment,
+		environment:       dfExpr.environment,
 		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints.filter(e => e.type !== ExitPointType.Return)),
 		graph,
 		entryPoint:        rootId,
 		cfgEntry,
 		cfgExit:           rootId,
 		in:                ingoing,
-		out:               escaping.concat(dfEnv.out),
+		out:               dfExpr.out.concat(dfEnv.out),
 		unknownReferences: []
 	};
 
 	unknownIfAmbiguous(envirRouting, baseResult, rootId);
+	return baseResult;
+}
 
-	return envirResolution ? routeWrittenToEnvir(baseResult, envirResolution, rootId, data.environment) : baseResult;
+/** Evaluates `expr` in the environment `envir` pins down, or in a fresh frame on top of the current one, as `local` and `eval(expr, envir)` do. */
+export function evaluateInEnvir<OtherInfo>(
+	expr: RNode<OtherInfo & ParentInformation>,
+	envir: EnvirResolution<OtherInfo> | undefined,
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const dfExpr = processDataflowFor(expr, { ...data, environment: envir?.envirData.environment ?? REnvironment.pushLocal(data.environment) });
+	/* in `local({ y <- 1; function() y })` the read of `y` is linked now, as the frame of `local` is dropped below */
+	updateNestedFunctionClosures(dfExpr.graph, dfExpr.environment, []);
+	if(envir !== undefined) {
+		const environment = { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, dfExpr.environment.current) };
+		return routeWrittenToEnvir({ ...dfExpr, environment }, envir, rootId, data.environment);
+	}
+	const environment = REnvironment.popLocal(dfExpr.environment);
+	/* definitions of the local scope vanish with it, only what escaped it may bubble up */
+	const out = dfExpr.out.filter(o => o.name !== undefined && Resolve.byNameAndType(o.name, environment, o.type)?.some(d => d.nodeId === o.nodeId));
+	return { ...dfExpr, environment, out };
 }

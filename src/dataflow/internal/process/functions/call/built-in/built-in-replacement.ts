@@ -1,3 +1,4 @@
+import type { Writable } from 'ts-essentials';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -27,11 +28,9 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
-/**
- * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
- * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.
- */
+/** Process a replacement function call like `<-`, `[[<-`, `$<-`, etc. These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`. */
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/** The last one has to be the value */
@@ -100,7 +99,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 	const targetVert = res.graph.getVertex(RArgument.valueOf(args[0])?.info.id as NodeId);
 	if(DfgVertex.isVariableDefinition(targetVert)) {
-		(targetVert as { par: boolean }).par = true;
+		(targetVert as Writable<typeof targetVert>).par = true;
 	}
 
 	/* an assignment that never defines a symbol target does not reach the hook, so the indices are processed here */
@@ -115,10 +114,7 @@ export function processReplacementFunction<OtherInfo>(
 	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
 	const targetNode = RArgument.valueOf(args[0]);
 	if(targetNode !== undefined && targetNode.info.id !== rootId) {
-		/*
-		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
-		 * (see the arguments of the call vertices), so the target is what this call continues from.
-		 */
+		/* `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced (see the arguments of the call vertices), so the target is what this call continues from. */
 		res.graph.addEdge(targetNode.info.id, rootId, EdgeType.FlowEdge);
 	}
 	res = { ...res, cfgEntry: cfgEntry ?? res.cfgEntry, cfgExit: rootId };
@@ -166,19 +162,21 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	if(RSymbol.is(firstArg)) {
+		/* the target may hold anything, `environment(f) <- e` changes a function */
 		res = {
 			...res,
-			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
+			in: [...res.in, { name: firstArg.content, type: ReferenceType.Unknown, nodeId: firstArg.info.id, cds: data.cds }]
 		};
 	} else if(firstArg !== undefined && RAccess.is(firstArg)) {
 		/* a nested target (e.g. `a$b$c <- 5`) is no variable read, it is read through its own accessor */
 		res.graph.addEdge(firstArg.info.id, NodeId.toBuiltIn(firstArg.operator), EdgeType.Reads);
 	}
 
-	// dispatches actually as S3:
-	const fns = res.in.filter(i => i.nodeId === rootId);
+	/* a built-in replacement dispatches to the `<name>.<class>` methods, while one the program defines runs and dispatches itself */
+	const own = Resolve.byNameAndType(name.content, data.environment, ReferenceType.Function);
+	const fns = own !== undefined && own.length > 0 && own.every(d => !NodeId.isBuiltIn(d.nodeId)) ? [] : res.in.filter(i => i.nodeId === rootId);
 	for(const fn of fns) {
-		(fn as { type: ReferenceType }).type = ReferenceType.S3MethodPrefix;
+		(fn as Writable<typeof fn>).type = ReferenceType.S3MethodPrefix;
 	}
 	// link the built-in replacement op
 	res.graph.addEdge(rootId, NodeId.toBuiltIn(Identifier.getName(name.content)), EdgeType.Calls | EdgeType.Reads);

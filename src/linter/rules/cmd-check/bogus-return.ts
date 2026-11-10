@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { MergeableRecord } from '../../../util/objects';
@@ -15,7 +16,7 @@ import { at, boundName, type CmdCheckResult, isQuoted, packageInfo, printer } fr
 
 export interface BogusReturnResult extends CmdCheckResult {
 	/** the name of the function the bare `return` is in, if it is bound to one */
-	readonly function?: string
+	readonly function?: BrandedIdentifier
 }
 
 export type BogusReturnConfig = MergeableRecord;

@@ -1,4 +1,4 @@
-import type { KnownParser, ParseStepOutput } from '../../r-bridge/parser';
+import { type KnownParser, type ParseStepOutput, ParserName } from '../../r-bridge/parser';
 import { FlowrCache, type InvalidationEvent, InvalidationEventType } from './flowr-cache';
 import {
 	createDataflowPipeline,
@@ -43,12 +43,13 @@ function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
  * and prefer the {@link FlowrAnalyzer}.
  */
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
-	private args:             FlowrAnalyzerCacheOptions<Parser>;
-	private pipeline:         AnalyzerPipelineExecutor<Parser> = undefined as unknown as AnalyzerPipelineExecutor<Parser>;
+	private args:              FlowrAnalyzerCacheOptions<Parser>;
+	private pipeline!:         AnalyzerPipelineExecutor<Parser>;
 	/** the steps of the tape run so far, which the next caller waits for */
-	private running:          Promise<unknown> = Promise.resolve();
-	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
-	private callGraphCache:   CallGraph | undefined = undefined;
+	private running:           Promise<unknown> = Promise.resolve();
+	private controlFlowCache!: FlowrAnalyzerControlFlowCache;
+	private callGraphCache:    CallGraph | undefined = undefined;
+	private derivedCache = new Map<object, Promise<unknown>>();
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {
 		super();
@@ -63,6 +64,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 		this.callGraphCache = undefined;
+		this.derivedCache = new Map();
 		this.computeIfAbsent(true, () => this.pipeline?.getResults(true));
 	}
 
@@ -121,6 +123,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
 		let g: T | undefined;
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
+			await this.prepareDataflow();
 			await this.pipeline.nextStep();
 		}
 
@@ -130,8 +133,20 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return g;
 	}
 
+	/** the normalized AST the dependency plugins already {@link FlowrAnalyzerDependenciesContext#prepare|prepared} for */
+	private prepared: unknown;
+
+	/** once the AST is there and the dataflow is not, the dependency plugins may wait for what the dataflow asks of them */
+	private async prepareDataflow(): Promise<void> {
+		const { normalize, dataflow } = this.get();
+		if(normalize !== undefined && dataflow === undefined && this.prepared !== normalize) {
+			this.prepared = normalize;
+			await this.args.context.deps.prepare(normalize);
+		}
+	}
+
 	private storeIncrementalSnapshotIfAvailable(): void {
-		if(this.args.parser.name !== 'tree-sitter') {
+		if(this.args.parser.name !== ParserName.TreeSitter) {
 			return;
 		}
 
@@ -227,6 +242,41 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			this.callGraphCache = CallGraph.compute((await this.dataflow(force)).graph);
 		}
 		return this.callGraphCache;
+	}
+
+	/**
+	 * A value computed from the current analysis once per `key`, dropped with the analysis.
+	 * A failed computation is not kept, so the next caller tries again.
+	 * Callers asking while it runs share the one promise, so a value of one analysis is never computed twice
+	 * concurrently. See {@link ReadonlyFlowrAnalysisProvider#derive} for what to keep in mind when choosing the `key`.
+	 * @example
+	 * ```ts
+	 * const first = cache.derive(key, compute);
+	 * const second = cache.derive(key, compute); // the same promise
+	 * ```
+	 */
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		const known = this.derivedCache.get(key) as Promise<T> | undefined;
+		if(known !== undefined) {
+			return known;
+		}
+		const store = this.derivedCache;
+		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one,
+		 * and a result computed under gas pressure (which may be incomplete) is handed out but not kept */
+		const forget = () => {
+			if(store.get(key) === computed) {
+				store.delete(key);
+			}
+		};
+		const computed: Promise<T> = this.args.context.gas.withFreshGas(compute).then(({ value, degraded }) => {
+			if(degraded) {
+				forget();
+			}
+			return value;
+		});
+		store.set(key, computed);
+		computed.catch(forget);
+		return computed;
 	}
 
 	/**

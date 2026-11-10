@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 15:21:58 UTC (v2.17.4), do not edit directly._
 <h2 id="Location Map Query">Location Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simple mapping of ids to their location in the source file\
@@ -37,29 +37,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "location-map": {
-    ".meta": {},
-    "map": {
-      "files": {"0":"@inline"},
-      "ids": {
-        "0": [0,[1,1,1,1]],
-        "1": [0,[1,5,1,5]],
-        "2": [0,[1,3,1,3]],
-        "3": [0,[2,1,2,1]],
-        "4": [0,[2,5,2,5]],
-        "5": [0,[2,3,2,3]],
-        "2-arg": [0,[1,3,1,3]],
-        "5-arg": [0,[2,3,2,3]],
-        "0-arg": [0,[1,1,1,1]],
-        "1-arg": [0,[1,5,1,5]],
-        "3-arg": [0,[2,1,2,1]],
-        "4-arg": [0,[2,5,2,5]]
-      }
-    }
-  },
-  ".meta": {}
-}
+{"location-map":{".meta":{},"map":{"files":{"0":"@inline"},"ids":{"0":[0,[1,1,1,1]],"1":[0,[1,5,1,5]],"2":[0,[1,3,1,3]],"3":[0,[2,1,2,1]],"4":[0,[2,5,2,5]],"5":[0,[2,3,2,3]],"2-arg":[0,[1,3,1,3]],"5-arg":[0,[2,3,2,3]],"0-arg":[0,[1,1,1,1]],"1-arg":[0,[1,5,1,5]],"3-arg":[0,[2,1,2,1]],"4-arg":[0,[2,5,2,5]]}}},".meta":{}}
 ```
 
 </details>
@@ -91,7 +69,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 </details>
 
-All locations are given as a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L31"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.
+All locations are given as a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L36"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.
 
 <details>
 

@@ -62,6 +62,11 @@ export interface IPipelineStepOrder<
 	readonly decorates?:   PipelineStepName
 }
 
+/** Declares the input `T` a step requires from the caller, it exists only in the type of {@link IPipelineStep#requiredInput}. */
+export function requires<T extends object>(): T {
+	return undefined as unknown as T;
+}
+
 /**
  * Defines what is to be known of a single step in a pipeline.
  * It wraps around a single {@link IPipelineStep#processor|processor} function, providing additional information.
@@ -89,7 +94,7 @@ export interface IPipelineStep<
 	 * Input configuration required to perform the respective steps.
 	 * Required inputs of dependencies do not have to, but can be repeated.
 	 * <p>
-	 * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
+	 * Use {@link requires} to indicate that the value is required but not provided.
 	 */
 	readonly requiredInput: object
 }

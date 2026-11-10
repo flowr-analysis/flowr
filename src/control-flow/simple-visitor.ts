@@ -18,8 +18,7 @@ export function visitCfgInReverseOrder(
 	const visited = new Set<NodeId>();
 	const queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(queue.length > 0) {
-		const current = queue.pop() as NodeId;
+	for(let current; (current = queue.pop()) !== undefined;) {
 		if(visited.has(current)) {
 			continue;
 		}
@@ -56,8 +55,7 @@ export function visitCfgInOrder(
 	const visited = new Set<NodeId>();
 	const queue = new ArrayQueue(startNodes);
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(!queue.isEmpty()) {
-		const current = queue.dequeue() as NodeId;
+	for(let current = queue.dequeue(); current !== undefined; current = queue.dequeue()) {
 		if(visited.has(current)) {
 			continue;
 		}

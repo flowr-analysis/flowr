@@ -1,6 +1,6 @@
 import type { FlowrSearchElement } from '../flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type Enrichment, type EnrichmentData, type EnrichmentElementContent, enrichmentContent, Enrichments } from './search-enrichers';
+import { type Enrichment, enrichmentContent, getEnrichment } from './search-enrichers';
 import type { MergeableRecord } from '../../util/objects';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
@@ -16,7 +16,7 @@ export type MapperArguments<M extends Mapper> = typeof Mappers[M] extends Mapper
 const Mappers = {
 	[Mapper.Enrichment]: {
 		mapper: (e: FlowrSearchElement<ParentInformation>, _data: ReadonlyFlowrAnalysisProvider, enrichment: Enrichment) => {
-			const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<Enrichment>>;
+			const enrichmentData = getEnrichment(enrichment);
 			const content = enrichmentContent(e, enrichment);
 			return content !== undefined ? enrichmentData.mapper?.(content) ?? [] : [];
 		}

@@ -1,6 +1,7 @@
 import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInfo } from './function-info';
+import { StdErr } from '../dependency-values';
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
-import { functionInfosFromProps } from './derived-functions';
+import { functionInfosFromProps, readingAndWritingApart } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
 import { LinkToLastGgPlot } from '../../../../dataflow/environments/default-builtin-config';
 import { computeReadFunctions } from './read-functions';
@@ -15,6 +16,8 @@ const OutputRedirects = [
 const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'save.image',  argIdx: 0, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
+	/* the write happens in the `GET` it configures, which the dataflow cannot tell, so only this category knows it */
+	{ package: 'httr', name: 'write_disk',  argIdx: 0, argName: 'path',    resolveValue: true },
 	/* without a `plot`, it saves `last_plot()` */
 	{ package: 'ggplot2', name: 'ggsave',  argIdx: 0, argName: 'filename', resolveValue: true, linkTo: [LinkToLastGgPlot] },
 	{
@@ -24,7 +27,7 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 		argIdx:         2,
 		argName:        'outFile',
 		resolveValue:   true,
-		defaultValue:   'stderr',
+		defaultValue:   StdErr,
 		ignoreIf:       'arg-true',
 		additionalArgs: {
 			val: { argIdx: 1, argName: 'silent' }
@@ -36,12 +39,12 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'graphics', name: 'stem',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
 	/* conditions and messages go to the message stream, which is stderr */
-	{ package: 'base',  name: 'message',    linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
-	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects, resolveValue: false, defaultValue: 'stderr' },
+	{ package: 'base',  name: 'message',    linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
+	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects, resolveValue: false, defaultValue: StdErr },
 	/* `output = "default"` shows the table where R prints */
 	{ package: 'modelsummary', name: 'modelsummary', argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
 	{ package: 'modelsummary', name: 'msummary',     argIdx: 1, argName: 'output', resolveValue: true, stringReplacements: { default: 'stdout' } },
@@ -53,6 +56,13 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base',  name: 'file.symlink',  argIdx: 1, argName: 'to',      resolveValue: true },
 	{ package: 'base',  name: 'file.link',     argIdx: 1, argName: 'to',      resolveValue: true },
 	{ package: 'utils', name: 'download.file', argIdx: 1, argName: 'destfile', resolveValue: true },
+	/* an archive unpacks into the working directory unless told otherwise */
+	{ package: 'utils',   name: 'unzip',           argIdx: 5, argName: 'exdir', resolveValue: true, defaultValue: '.', invisible: true },
+	{ package: 'utils',   name: 'untar',           argIdx: 3, argName: 'exdir', resolveValue: true, defaultValue: '.', invisible: true },
+	{ package: 'zip',     name: 'unzip',           argIdx: 4, argName: 'exdir', resolveValue: true, defaultValue: '.', invisible: true },
+	{ package: 'archive', name: 'archive_extract', argIdx: 1, argName: 'dir',   resolveValue: true, defaultValue: '.', invisible: true },
+	/* the name the file has with the extension added or dropped, `Unknown` of the query format, which imports this module */
+	...['gzip', 'gunzip', 'bzip2', 'bunzip2', 'compressFile', 'decompressFile'].map(name => ({ package: 'R.utils', name, argIdx: 1, argName: 'destname', resolveValue: true, defaultValue: 'unknown', invisible: true } as const)),
 	{ package: 'base', name: 'file', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'url', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'grDevices', name: 'jpeg',       argIdx: 0, argName: 'filename', resolveValue: true },
@@ -98,8 +108,9 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 
 /** The write entries the given built-in definitions imply, together with the ones written down here. */
 export function computeWriteFunctions(definitions: BuiltInDefinitions, read: FunctionInfo[] = computeReadFunctions(definitions)): FunctionInfo[] {
+	const apart = readingAndWritingApart(read, definitions);
 	return [
-		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...read], definitions),
+		...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...read.filter(f => !apart.has(f))], definitions),
 		...WriteFunctionsWithMore
 	];
 }

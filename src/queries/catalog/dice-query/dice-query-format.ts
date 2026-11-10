@@ -5,7 +5,7 @@ import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query'
 import Joi from 'joi';
 import { executeDiceQuery } from './dice-query-executor';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/core';
+import type { CommandCompletions } from '../../../cli/repl/completion';
 import type { FlowrConfig } from '../../../config';
 import { SharedSliceFlags, diceCriteriaParser, queryLineCode, sliceFlagCompletions, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
 import { type SliceQueryOptions, SliceQueryOptionsSchema, summarizeSliceResults } from '../slice-query-options';
@@ -80,6 +80,7 @@ function diceQueryCompleter(line: readonly string[], startingNewArg: boolean, _c
 export const DiceQueryDefinition = {
 	title:           'Dice Query',
 	executor:        executeDiceQuery,
+	perQueryResults: true,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result): boolean => summarizeSliceResults<DiceQuery>(
 		formatter, 'dice', queryResults as QueryResults<'dice'>['dice'], result,
 		(_, q) => q ? `Dice from {${q.from.join(', ')}} to {${q.to.join(', ')}}` : 'Dice'

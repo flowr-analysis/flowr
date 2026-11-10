@@ -299,6 +299,25 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
+	/**
+	 * What this frame binds `name` to for a `<<-` from a function written in it: its own binding, or, for the emptied stand-in of a function
+	 * around it, what the frame it stands in for held when the closure was created (see {@link superMemory}).
+	 */
+	public boundForSuper(name: BrandedIdentifier): readonly IdentifierDefinition[] | undefined {
+		return this.lookup(name) ?? this.superMemory?.get(name);
+	}
+
+	/** The binding a `<<-` from this frame replaces in a function frame around it, `undefined` if it binds globally, see {@link defineSuper}. */
+	public superTargetIn(name: BrandedIdentifier): readonly IdentifierDefinition[] | undefined {
+		for(let frame = this.parent; !frame.globalEnv && !frame.builtInEnv; frame = frame.parent) {
+			const bound = frame.boundForSuper(name);
+			if(bound !== undefined) {
+				return bound;
+			}
+		}
+		return undefined;
+	}
+
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }, append = false): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		/* isolate the cds from the originating reference, see {@link define} */
@@ -310,8 +329,7 @@ export class Environment implements IEnvironment {
 			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
 			return newEnvironment;
 		}
-		/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what it stood in for when the closure was created (see {@link superMemory}) */
-		const holdsName = (env: Environment) => env.lookup(name) !== undefined || env.superMemory?.has(name) === true;
+		const holdsName = (env: Environment) => env.boundForSuper(name) !== undefined;
 		let current = newEnvironment;
 		// `<<-` starts its search in the parent of the frame it runs in, a local binding of the same name is not its target, and falls back to the global env, never an attached package below it
 		while((current === newEnvironment || !holdsName(current)) && !current.globalEnv) {

@@ -12,7 +12,8 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { Identifier, ReferenceType, type BrandedIdentifier } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType, type BrandedIdentifier, type IdentifierDefinition } from '../../../../../environments/identifier';
+import type { DataflowGraph } from '../../../../../graph/graph';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -200,17 +201,24 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly Cont
 	return kills;
 }
 
-/** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
-function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
-	const closureFrame = envir.envDef.closureFrame === true;
-	/* whether `rm` removes a binding or warns that there is none depends on the definitions it removes, see `processRm` */
+/**
+ * Whether `rm` removes a binding or warns that there is none depends on the definitions it removes, so the call reads them:
+ * each name looked up with `definitionsOf` where `rm` removes it, the read going to `at` of each definition.
+ */
+function readRemoved<OtherInfo>(graph: DataflowGraph, rootId: NodeId, targets: RmTargets<OtherInfo>, definitionsOf: (name: BrandedIdentifier) => readonly IdentifierDefinition[] | undefined, at: (d: IdentifierDefinition) => NodeId = d => d.nodeId): void {
 	for(const { name } of targets.names) {
-		for(const definition of envir.envirData.environment.current.memory.get(Identifier.getName(name)) ?? []) {
-			if(!NodeId.isBuiltIn(definition.definedAt)) {
-				res.graph.addEdge(rootId, definition.definedAt, EdgeType.Reads);
+		for(const definition of definitionsOf(Identifier.getName(name)) ?? []) {
+			if(!NodeId.isBuiltIn(at(definition))) {
+				graph.addEdge(rootId, at(definition), EdgeType.Reads);
 			}
 		}
 	}
+}
+
+/** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
+function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
+	const closureFrame = envir.envDef.closureFrame === true;
+	readRemoved(res.graph, rootId, targets, name => envir.envirData.environment.current.memory.get(name), d => d.definedAt);
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId), closureFrame);
 	if(closureFrame) {
 		res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
@@ -268,15 +276,8 @@ export function processRm<OtherInfo>(
 		/* a function removing from the global frame removes for its callers, as `<<-` defines for them */
 		if(envir?.stack === 'global') {
 			res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
-			/* whether `rm` removes a binding or warns that there is none depends on the definitions it removes, see below */
 			const global = envir.envirData.environment.current;
-			for(const { name } of targets.names) {
-				for(const definition of global.lookup(Identifier.getName(name)) ?? global.superMemory?.get(Identifier.getName(name)) ?? []) {
-					if(!NodeId.isBuiltIn(definition.nodeId)) {
-						res.graph.addEdge(rootId, definition.nodeId, EdgeType.Reads);
-					}
-				}
-			}
+			readRemoved(res.graph, rootId, targets, name => global.boundForSuper(name));
 			return { ...res, environment: applyGlobalKills(res.environment, buildKills(targets, data.cds, rootId)) };
 		}
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope
@@ -288,14 +289,7 @@ export function processRm<OtherInfo>(
 		return res;
 	}
 
-	/* whether `rm` removes a binding or warns that there is none depends on the definitions it removes */
-	for(const { name } of targets.names) {
-		for(const definition of Resolve.byName(name, data.environment) ?? []) {
-			if(!NodeId.isBuiltIn(definition.nodeId)) {
-				res.graph.addEdge(rootId, definition.nodeId, EdgeType.Reads);
-			}
-		}
-	}
+	readRemoved(res.graph, rootId, targets, name => Resolve.byName(name, data.environment));
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
 	const kills = buildKills(targets, data.cds, rootId);
 	if(kills.length === 0) {

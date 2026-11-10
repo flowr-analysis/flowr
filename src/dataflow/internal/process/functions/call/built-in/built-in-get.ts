@@ -131,7 +131,7 @@ export function lexicalDefinitions(name: BrandedIdentifier, call: DataflowGraphV
 	}
 	let level = 0;
 	for(let frame = call.environment?.current; frame !== undefined && !frame.builtInEnv && frame.globalEnv !== true; frame = frame.parent) {
-		const found = [...frame.lookup(name) ?? frame.superMemory?.get(name) ?? [], ...level > 0 ? left[level - 1]?.lookup(name) ?? [] : []];
+		const found = [...frame.boundForSuper(name) ?? [], ...level > 0 ? left[level - 1]?.lookup(name) ?? [] : []];
 		definitions.push(...found);
 		if(found.some(d => d.cds === undefined)) {
 			return { definitions, definite: true };

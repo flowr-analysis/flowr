@@ -1,6 +1,6 @@
 import { inferFunctions } from './function-props';
 import { exceptionsOfFunction } from './exceptions-of-function';
-import { promiseDependencies, promiseForcing, promiseForcingPoints, settleDefinitionsInPromises, settleJumpsInPromises, strictnessOfEach } from './strict-function';
+import { promiseDependencies, promiseForcing, promiseForcingPoints, promiseRaises, settleDefinitionsInPromises, settleJumpsInPromises, strictnessOfEach } from './strict-function';
 import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
@@ -39,6 +39,8 @@ export const FunctionSemantics = {
 	promiseForcingPoints,
 	/** How surely the holder of a promise forces it. */
 	promiseForcing,
+	/** Whether an error within a promise surely leaves its holder. */
+	promiseRaises,
 	/** Whether one definition is higher-order, i.e. whether it calls what it is handed. */
 	isHigherOrder,
 	/** The roles of several definitions' formals, sharing the built-in lookups. */

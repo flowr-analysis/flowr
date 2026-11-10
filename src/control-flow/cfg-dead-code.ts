@@ -28,7 +28,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly cachedSwitch:     Map<NodeId, { id: NodeId | undefined } | 'unknown'> = new Map();
 	private readonly caught:           Map<NodeId, boolean> = new Map();
-	private forcing:                   ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
+	private raises:                    ((holder: NodeId, inner: NodeId) => boolean) | undefined;
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -150,14 +150,14 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	/** whether the call is in an argument that may never be evaluated: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
+	/** whether the call is in an argument that may never be evaluated or is caught where it is forced: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
 	private mayStayUnforced(id: NodeId): boolean {
 		const promised = this.config.dfg.getVertex(id)?.cds?.filter(cd => cd.byPromise === true) ?? [];
 		if(promised.length === 0) {
 			return false;
 		}
-		this.forcing ??= FunctionSemantics.promiseForcing(this.config.dfg, { ctx: this.config.ctx });
-		return promised.some(cd => this.forcing?.(cd.id, id) !== Ternary.Always);
+		this.raises ??= FunctionSemantics.promiseRaises(this.config.dfg, { ctx: this.config.ctx });
+		return promised.some(cd => this.raises?.(cd.id, id) !== true);
 	}
 
 	/**

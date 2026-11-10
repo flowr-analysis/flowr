@@ -9,7 +9,8 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ExitPoint } from '../info';
-import { ControlDependency } from '../info';
+import { ControlDependency, ExitPointType } from '../info';
+import { errorEscapes } from '../internal/linker';
 import type { DataflowGraph } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { NodeValue } from '../eval/resolve/node-value';
@@ -518,19 +519,36 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 		return found;
 	}
 	for(const cd of graph.getVertex(id)?.cds ?? []) {
-		if(cd.byPromise !== true) {
-			continue;
-		}
-		const call = graph.getVertex(cd.id);
-		if(DfgVertex.isFunctionCall(call)) {
-			const argument = RNode.findEnclosing(id, idMap, n => n.info.parent === cd.id);
-			const bound = argument === undefined ? [] : boundParameters(call, argument, idMap, graph) ?? [];
-			found.push(cd.id, ...forcingPointsOf(bound, graph, idMap));
-		} else {
-			found.push(...forcingPointsOf([cd.id], graph, idMap));
+		if(cd.byPromise === true) {
+			found.push(...DfgVertex.isFunctionCall(graph.getVertex(cd.id)) ? [cd.id] : [], ...forcingPointsOfPromise(cd.id, id, graph, idMap));
 		}
 	}
 	return found;
+}
+
+/** Where the promise that `holder` (a call handed it, or the binding of a `delayedAssign`) holds and `inner` lies in may be forced. */
+function forcingPointsOfPromise(holder: NodeId, inner: NodeId, graph: DataflowGraph, idMap: AstIdMap): NodeId[] {
+	const call = graph.getVertex(holder);
+	if(!DfgVertex.isFunctionCall(call)) {
+		return forcingPointsOf([holder], graph, idMap);
+	}
+	const argument = RNode.findEnclosing(inner, idMap, n => n.info.parent === holder);
+	return forcingPointsOf(argument === undefined ? [] : boundParameters(call, argument, idMap, graph) ?? [], graph, idMap);
+}
+
+/** Whether an error raised within the promise may be caught where it is forced, as `tryCatch(x, error = ...)` does within the callee. */
+function caughtWhereForced(holder: NodeId, inner: NodeId, graph: DataflowGraph): boolean {
+	const idMap = graph.idMap;
+	return idMap === undefined || forcingPointsOfPromise(holder, inner, graph, idMap).some(at => {
+		const fn = idMap.get(RNode.findEnclosing(at, idMap, RFunctionDefinition.is) ?? '');
+		return !errorEscapes(at, RFunctionDefinition.is(fn) ? fn.body.info.id : undefined, idMap, graph);
+	});
+}
+
+/** Whether an error raised by `inner` within the promise of `holder` surely leaves the holder: the holder always forces it and nowhere catches it. */
+export function promiseRaises(this: void, graph: DataflowGraph, options: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => boolean {
+	const forcing = promiseForcing(graph, options);
+	return (holder, inner) => forcing(holder, inner) === Ternary.Always && !caughtWhereForced(holder, inner, graph);
 }
 
 /** How surely the holder of a promise forces it, asked for a node `inner` within the promise. */
@@ -617,7 +635,7 @@ export function settleJumpsInPromises(this: void, graph: DataflowGraph, topLevel
 	const definitions = graph.verticesOfType(VertexType.FunctionDefinition).map(([, definition]) => definition.exitPoints);
 	for(const exit of [topLevel, ...definitions].flat()) {
 		for(const cd of exit.cds ?? []) {
-			if(cd.byPromise === true && forcing(cd.id, exit.nodeId) === Ternary.Always) {
+			if(cd.byPromise === true && forcing(cd.id, exit.nodeId) === Ternary.Always && (exit.type !== ExitPointType.Error || !caughtWhereForced(cd.id, exit.nodeId, graph))) {
 				graph.removeEdgeType(exit.nodeId, cd.id, EdgeType.FlowEdge);
 			}
 		}

@@ -57,6 +57,8 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, loc: [2, 1, 2, 1] },
 				{ certainty: LintingResultCertainty.Certain, loc: [3, 1, 3, 8], quickFix: [{ type: 'remove', loc: [3, 1, 3, 8], description: 'Remove the unreachable code' }] }
 			]);
+			assertLinter('a stop in an argument forced within tryCatch stops nothing', parser, 'f <- function(x) tryCatch(x, error = function(e) 1)\nf(stop("a"))\nprint(2)', 'dead-code', []);
+			assertLinter('a stop in an argument forced within try stops nothing', parser, 'f <- function(x) { r <- try(x, silent = TRUE); class(r) }\nf(stop("a"))\nprint(2)', 'dead-code', []);
 			assertLinter('try complex', parser, 'f <- function() { try(stop(1)); 2 }; f(); stop(1); 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 52, 1, 52], quickFix: [{ type: 'remove', loc: [1, 52, 1, 52], description: 'Remove the unreachable code' }] }
 			]);

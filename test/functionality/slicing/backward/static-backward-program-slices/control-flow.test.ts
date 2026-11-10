@@ -202,7 +202,7 @@ print(y)`, ['7@y'], 'y <- TRUE\ny');
 		assertSliced(label('abort in the block skips the rest of it', caps),
 			shell, 'f <- function() stop("s")\nx <- 1\ntry({ f(); x <- 2 }, silent = TRUE)\nprint(x)', ['4@x'], 'f <- function() stop("s")\nx <- 1\ntry({ f(); x <- 2 }, silent = TRUE)\nx', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('return in a handler leaves only the handler', [...caps, 'return']),
-			shell, 'f <- function() { tryCatch(stop("a"), error = function(e) return(1)); 2 }\nprint(f())', ['2@print'], 'f <- function() {\n        function(e) { }\n        2\n    }\nprint(f())', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+			shell, 'f <- function() { tryCatch(stop("a"), error = function(e) return(1)); 2 }\nprint(f())', ['2@print'], 'f <- function() 2\nprint(f())', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
 		assertSliced(label('try around a call whose effects are not needed', [...caps, 'side-effects-in-function-call']),
 			shell, 'f <- function() { z <<- 1; 2 }\nx <- 1\ntry(f(), silent = TRUE)\nv <- x\nv', ['5@v'], 'x <- 1\nv <- x\nv', { expectedOutput: '[1] 2\n[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('tryCatch around a call whose effects are not needed', [...caps, 'side-effects-in-function-call']),

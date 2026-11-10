@@ -348,6 +348,19 @@ function isHandedToACall(definition: RFunctionDefinition<ParentInformation>): bo
 	return definition.info.role === RoleInParent.FunctionCallArgument || definition.info.role === RoleInParent.ArgumentValue;
 }
 
+/** a definition handed to a call the slice drops is gone with it, even if the call sits in kept code: `tryCatch(return(1), error = function(e) 2)` */
+function handedToUnselectedCall(definition: RFunctionDefinition<ParentInformation>, config: ReconstructionConfiguration): boolean {
+	if(!isHandedToACall(definition)) {
+		return false;
+	}
+	for(const parent of RNode.iterateParents(definition, config.fullAst.idMap)) {
+		if(RFunctionCall.is(parent)) {
+			return !isSelected(config, parent);
+		}
+	}
+	return false;
+}
+
 function reconstructFunctionDefinition(
 	definition: RFunctionDefinition<ParentInformation>,
 	functionParameters: readonly Code[],
@@ -360,7 +373,7 @@ function reconstructFunctionDefinition(
 		const selected = isSelected(config, definition);
 		if(empty && selected) { // give function stub
 			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`);
-		} else if(!selected && !hasSelectedAncestor(definition, config)) {
+		} else if(!selected && (!hasSelectedAncestor(definition, config) || (empty && handedToUnselectedCall(definition, config)))) {
 			return isHandedToACall(definition) ? [] : body;
 		}
 	}

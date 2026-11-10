@@ -151,6 +151,10 @@ export const NodeId = {
 	anonymousCall(this: void, functionId: NodeId): NodeId {
 		return AnonymousCallPrefix + String(functionId);
 	},
+	/** Whether `id` is a made-up {@link NodeId.anonymousCall}. */
+	isAnonymousCall(this: void, id: NodeId): boolean {
+		return typeof id === 'string' && id.startsWith(AnonymousCallPrefix);
+	},
 	/** The node `id` belongs to; for a made-up {@link NodeId.anonymousCall} the anonymous function it calls. */
 	nodeOf<Info>(this: void, id: NodeId, idMap: AstIdMap<Info> | undefined): RNode<Info & ParentInformation> | undefined {
 		const node = idMap?.get(id);

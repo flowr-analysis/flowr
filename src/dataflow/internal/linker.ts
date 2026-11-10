@@ -28,6 +28,10 @@ import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
 import { scopeOf } from '../environments/resolve-by-name';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { RForLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInLookup } from '../fn/frame-reflection';
@@ -329,6 +333,37 @@ function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, s
 	}
 }
 
+/** Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
+export function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
+	for(let node = idMap.get(from); node !== undefined && node.info.id !== expression;) {
+		const parent = RNode.directParent(node, idMap);
+		if(parent === undefined) {
+			return true;
+		}
+		if(!errorPassesThrough(parent, node.info.id, graph)) {
+			return false;
+		}
+		node = parent;
+	}
+	return true;
+}
+
+/** Whether an error raised within the child `child` of `parent` is sure to be raised by `parent` as well. */
+function errorPassesThrough(parent: RNode<ParentInformation>, child: NodeId, graph: DataflowGraph): boolean {
+	if(RArgument.is(parent) || RExpressionList.is(parent)) {
+		return true;
+	} else if(RFunctionCall.is(parent)) {
+		/* a handler catches the error instead of passing it on */
+		return !DfgVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try);
+	} else if(RIfThenElse.is(parent) || RWhileLoop.is(parent)) {
+		/* only the condition is guaranteed to be evaluated */
+		return parent.condition.info.id === child;
+	} else if(RForLoop.is(parent)) {
+		return parent.vector.info.id === child;
+	}
+	return false;
+}
+
 /** What {@link linkFunctionCalls} reports for a call it linked. */
 export type CalledFunctions = {
 	functionCall:        NodeId,
@@ -377,7 +412,10 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	for(const def of functionDefs) {
 		/* we can skip this if we already linked it */
 		if(!Dataflow.hasEdge(graph, id, def.id, EdgeType.Calls)) {
-			propagateExitPoints.push(...linkFunctionCallWithSingleTarget(graph, def, info, idMap));
+			const exits = linkFunctionCallWithSingleTarget(graph, def, info, idMap);
+			if(exits.length > 0 && escapesAnonymousFunction(graph, id, def.id, idMap)) {
+				propagateExitPoints.push(...exits);
+			}
 		}
 	}
 	if(!isRoot || (functionDefs.size === 0 && builtIns.size === 0)) {
@@ -386,6 +424,16 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	/* a built-in reached through a variable (`p <- par; p(...)`) was not processed as that built-in */
 	const calledBuiltIns = builtIns.size > 0 ? [...builtIns] : undefined;
 	return { functionCall: id, called: [...functionDefs], propagateExitPoints, calledBuiltIns };
+}
+
+/** An anonymous function the call `id` runs calls the free function `fnId` it reads: whether what `fnId` raises leaves the anonymous function, which a handler around the call within it prevents. */
+function escapesAnonymousFunction(graph: DataflowGraph, id: NodeId, fnId: NodeId, idMap: AstIdMap): boolean {
+	const anonymous = NodeId.isAnonymousCall(id) ? NodeId.nodeOf(id, idMap) : undefined;
+	if(!RFunctionDefinition.is(anonymous) || anonymous.info.id === fnId) {
+		return true;
+	}
+	const within = Dataflow.sourcesOf(graph, fnId, EdgeType.Calls).filter(c => RNode.findEnclosing(c, idMap, RFunctionDefinition.is) === anonymous.info.id);
+	return within.length === 0 || within.some(c => errorEscapes(c, anonymous.body.info.id, idMap, graph));
 }
 
 /** Returns the called functions within `graph` (ideally a superset of `thisGraph`, the graph searched for calls), which can be used to merge the environments with the call; also links the corresponding arguments. */

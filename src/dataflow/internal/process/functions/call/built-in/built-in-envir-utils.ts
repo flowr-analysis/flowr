@@ -29,6 +29,8 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { MatchArgs } from '../../../../../graph/match-args';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { FnSig } from '../../../../../environments/built-in-props';
+import { noteUnknownMethods } from './built-in-expression-list';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 function stackKindOf(envState: REnvironmentInformation): StackEnv | undefined {
 	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : isEnclosingFrame(envState) ? 'enclosing' : undefined;
@@ -146,6 +148,11 @@ export function closureFrameResolution<OtherInfo>(node: RNode<OtherInfo & Parent
 	if(def?.name === undefined || NodeId.isBuiltIn(def.definedAt)) {
 		return undefined;
 	}
+	/* a closure written out at the top holds the global frame, which `h <- function() NULL` binds it in */
+	const global = REnvironment.findGlobal(data.environment.current);
+	if(def.value !== undefined && def.value.length > 0 && def.value.every(v => RFunctionDefinition.is(data.completeAst.idMap.get(v))) && global.memory.get(Identifier.getName(def.name))?.some(d => d.nodeId === def.nodeId)) {
+		return stackEnvirResolution({ current: global, level: 0 }, node.info.id, node.lexeme ?? '', data);
+	}
 	const envDef = { ...def, envState: def.envState ?? REnvironment.pushLocal(data.environment), envId: def.envId ?? def.nodeId, closureFrame: true } as const;
 	return { envirData: { ...data, environment: envDef.envState }, envDef, envirNodeId: node.info.id };
 }
@@ -256,12 +263,13 @@ export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyR
 	return undefined;
 }
 
-/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess; reports whether it did. */
+/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess (and what they bind may be any method); reports whether it did. */
 export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId): boolean {
 	if(routing !== 'ambiguous') {
 		return false;
 	}
 	handleUnknownSideEffect(result.graph, result.environment, rootId);
+	noteUnknownMethods(result.environment, rootId);
 	return true;
 }
 

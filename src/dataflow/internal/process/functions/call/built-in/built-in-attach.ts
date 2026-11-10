@@ -13,6 +13,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { resolveAttachPosition, resolveSymbolToEnvir } from './built-in-envir-utils';
+import { bindsUnknownNames } from './built-in-expression-list';
 import { Ambient } from '../../../../../environments/ambient-effect';
 import { keysOf } from './built-in-ambient-keys';
 import { UnknownKey } from '../../../../../environments/ambient-state-name';
@@ -40,7 +41,7 @@ export function processAttach<OtherInfo>(
 	const listed = envirResolution === undefined && RFunctionCall.isNamed(whatNode, AttachableLiterals)
 		&& whatNode.arguments.every(a => a !== EmptyArgument && a.name !== undefined && a.value !== undefined) ? whatNode.arguments as readonly RArgument<OtherInfo & ParentInformation>[] : undefined;
 	if(!envirResolution && !listed) {
-		handleUnknownSideEffect(result.graph, result.environment, rootId);
+		bindsUnknownNames(result.graph, result.environment, rootId);
 		return result;
 	}
 

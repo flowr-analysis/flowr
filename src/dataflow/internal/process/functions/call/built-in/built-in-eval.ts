@@ -1,4 +1,5 @@
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { bindsUnknownNames } from './built-in-expression-list';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
@@ -65,7 +66,7 @@ export function processEvalCall<OtherInfo>(
 	if(evalArgument === undefined) {
 		dataflowLogger.warn(`Expected an expression argument for eval, but got ${args.length} argument(s), skipping`);
 		const bail = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
-		handleUnknownSideEffect(bail.graph, bail.environment, rootId);
+		bindsUnknownNames(bail.graph, bail.environment, rootId);
 		return bail;
 	}
 
@@ -83,7 +84,7 @@ export function processEvalCall<OtherInfo>(
 
 	if(!data.ctx.config.solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
-		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		bindsUnknownNames(information.graph, information.environment, rootId);
 		return information;
 	}
 

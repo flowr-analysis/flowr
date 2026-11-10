@@ -22,7 +22,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
-import { noteOwnMethod } from './built-in-expression-list';
+import { bindsUnknownNames, noteOwnMethod } from './built-in-expression-list';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -38,7 +38,6 @@ import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
 import { matchArgumentsToParameters } from '../../../../../../util/arg-matching';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
@@ -194,7 +193,7 @@ export function processAssignmentLike<OtherInfo>(
 	const cls = classValue === undefined ? undefined : resolveConstantString(classValue, data);
 	if(config.targetClass !== undefined && cls === undefined) {
 		const info = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
-		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		bindsUnknownNames(info.graph, info.environment, rootId);
 		return info;
 	}
 	return assignOrdered<OtherInfo>(name, normalizedArgs, rootId, data, {
@@ -380,7 +379,7 @@ function processAssignmentTarget<OtherInfo>(
 		}
 		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.beforeDefine);
 		if(yieldsEnvironment(target.accessed, replaced.graph, data)) {
-			handleUnknownSideEffect(replaced.graph, replaced.environment, rootId);
+			bindsUnknownNames(replaced.graph, replaced.environment, rootId, source);
 		}
 		return replaced;
 	} else if(type === RType.Access) {
@@ -407,7 +406,7 @@ function processAssignmentTarget<OtherInfo>(
 
 	dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an unknown target type ${target.type} => unknown impact`);
 	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, origin: originOf(config) }).information;
-	handleUnknownSideEffect(info.graph, info.environment, rootId);
+	bindsUnknownNames(info.graph, info.environment, rootId, source);
 	return info;
 }
 
@@ -558,9 +557,10 @@ function tryRouteToCustomEnv<OtherInfo>(
 ): DataflowInformation | undefined {
 	const envirRouting = resolveEnvirArgOrAmbiguous(args, data, config.sig, config.environmentArg)
 		?? resolveFirstEnvirArg(args, data, config.sig, EnvirPositionFormals);
+	const value = args.length < 2 ? undefined : RArgument.valueOf(getEffectiveOrder(config, [args[0], args[1]])[1]);
 	if(envirRouting === 'ambiguous' || (!envirRouting && suppliesArg(args, config.sig, EnvirPositionFormals))) {
 		const info = processKnownFunctionCall({ name, args, rootId, data, origin: originOf(config) }).information;
-		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		bindsUnknownNames(info.graph, info.environment, rootId, value);
 		return info;
 	}
 	if(!envirRouting) {
@@ -569,7 +569,7 @@ function tryRouteToCustomEnv<OtherInfo>(
 		}
 		/* an environment we cannot name (`sys.frame(-1)`) may be any frame, so the write stays here and is kept as well */
 		const info = processAssignment(name, args, rootId, data, { ...config, environmentArg: undefined });
-		handleUnknownSideEffect(info.graph, info.environment, rootId);
+		bindsUnknownNames(info.graph, info.environment, rootId, value);
 		return info;
 	}
 

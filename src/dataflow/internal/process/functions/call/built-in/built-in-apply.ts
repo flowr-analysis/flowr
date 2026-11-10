@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { noteUnknownMethods } from './built-in-expression-list';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -251,6 +252,7 @@ export function callNamedFunction<OtherInfo>(
 	const targets = Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function);
 	if(targets?.some(t => t.type === ReferenceType.BuiltInFunction && CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
 		information.graph.markIdForUnknownSideEffects(rootId);
+		noteUnknownMethods(information.environment, rootId);
 	}
 	information.graph.updateToFunctionCall({
 		tag:         VertexType.FunctionCall,
@@ -258,7 +260,8 @@ export function callNamedFunction<OtherInfo>(
 		name:        functionName,
 		args:        args as FunctionArgument[],
 		environment: resolveInEnvironment === 'global' ? undefined : data.environment,
-		onlyBuiltin: resolveInEnvironment === 'global',
+		/* a name only built-ins bind (`do.call(format, ...)`) is a call of one, which may dispatch to the methods of the code */
+		onlyBuiltin: resolveInEnvironment === 'global' || (targets !== undefined && targets.length > 0 && targets.every(t => t.type === ReferenceType.BuiltInFunction)),
 		cds:         data.cds,
 		origin:      [BuiltInProcName.Function]
 	});

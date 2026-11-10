@@ -282,9 +282,28 @@ function envStateReturnedAt<OtherInfo>(nodeId: NodeId, graph: DataflowGraph, out
 		return undefined;
 	}
 	const environment = { environment: outEnvironment };
+	if(isOwnFrame(node, graph, outEnvironment)) {
+		return outEnvironment;
+	}
 	return (DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? resolveListToEnvState(node, environment) : undefined)
 		?? (DfgVertex.hasOrigin(vertex, BuiltInProcName.ClassGenerator) ? resolveClassMethodsToEnvState(node, environment) : undefined)
 		?? (RSymbol.is(node) ? Resolve.byNameAndType(node.content, outEnvironment, ReferenceType.Variable)?.find(hasEnvState)?.envState : undefined);
+}
+
+/** Whether `node` is the frame of the function being defined: a call of `environment()` or a variable of that frame bound to one (`self <- environment()`), the frame then holds everything the body bound by the time it returns. */
+function isOwnFrame(node: RNode<ParentInformation>, graph: DataflowGraph, outEnvironment: REnvironmentInformation): boolean {
+	const isEnvironmentCall = (n: RNode<ParentInformation> | undefined): boolean => {
+		const vertex = n === undefined ? undefined : graph.getVertex(n.info.id);
+		return RFunctionCall.isNamed(n, 'environment') && n.arguments.length === 0 && DfgVertex.isFunctionCall(vertex) && vertex.onlyBuiltin;
+	};
+	if(isEnvironmentCall(node)) {
+		return true;
+	}
+	if(!RSymbol.is(node)) {
+		return false;
+	}
+	const defs = outEnvironment.current.memory.get(Identifier.getName(node.content));
+	return defs !== undefined && defs.length > 0 && defs.every(d => (d as InGraphIdentifierDefinition).value?.some(v => isEnvironmentCall(graph.idMap?.get(v))) === true);
 }
 
 /** Retrieve the active environment when entering a function definition or call. */

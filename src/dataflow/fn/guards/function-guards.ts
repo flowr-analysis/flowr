@@ -39,7 +39,8 @@ import { s3GroupGenericOf } from '../../environments/group-generics';
 import { groupMethodConditions } from './group-method-guards';
 import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
 import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-linking';
-import { baseRExportOwner } from '../../../util/r-base-packages';
+import { baseRExportOwner, isBasePrimitive } from '../../../util/r-base-packages';
+import { RBaseGuards } from '../../../data/r-base-guards.generated';
 import { casesOf, claimsOf, conditionalClaimsOf, impliedBy, relationsOf, returnedFormalOf, returnsOf, type ClaimedName, type ClaimedRelation, type ConditionalClaim, type FormalCase, type FormalClaim, type ReturnedTerm } from './guard-claims';
 
 /** One condition every normal return of a function has passed; if it does not hold, the call fails. */
@@ -909,6 +910,25 @@ function boundArguments(this: void, vertex: DataflowGraphVertexFunctionCall, sig
 	return bound;
 }
 
+/**
+ * The formals of a function of base R written in R, not C, a missing formal of the caller may be handed to: R hands on a promise, and that only
+ * fails once the function evaluates it, which its own contract says it does (`matpoints(x, y)` hands a missing `y` to `matplot`, which asks `missing(y)`).
+ * Nothing for a function written in C, or one without a contract, which flowR's model describes as it is.
+ */
+function closureMissingOk(this: void, name: BrandedIdentifier, formals: readonly BrandedIdentifier[]): BrandedIdentifier[] {
+	const owner = baseRExportOwner(name);
+	if(owner === undefined || isBasePrimitive(name)) {
+		return [];
+	}
+	const stored = RBaseGuards[String(owner)]?.[String(name)];
+	/* without a contract of its own, flowR's model of the function (a generic forcing what it dispatches on) is all there is */
+	if(stored === undefined) {
+		return [];
+	}
+	const required = [...stored.required ?? [], ...stored.dispatches === undefined ? [] : [stored.dispatches]];
+	return formals.filter(f => !required.includes(f));
+}
+
 /** The arguments handed over which R evaluates for sure, in the order they are written, and those it may not. */
 function evaluatedAndNot(this: void, vertex: DataflowGraphVertexFunctionCall, state: GuardState): { readonly forced: RNodeWithParent[], readonly lazy: RNodeWithParent[] } {
 	const sig = knownNameOf(vertex.id, vertex, state) === undefined ? undefined : state.info(vertex.name)?.sig;
@@ -918,7 +938,8 @@ function evaluatedAndNot(this: void, vertex: DataflowGraphVertexFunctionCall, st
 	}
 	const bound = boundArguments(vertex, sig, state);
 	/* a special primitive matching its arguments itself takes a missing formal handed to some of its own as not given */
-	const missingOk = state.facts(Identifier.getName(vertex.name))?.missingOk ?? [];
+	const name = Identifier.getName(vertex.name);
+	const missingOk = [...state.facts(name)?.missingOk ?? [], ...closureMissingOk(name, sig.map(([formal]) => formal))];
 	const forcedIds = new Set(sig.filter(([, props]) => (props & ArgProp.Forced) !== 0).flatMap(([formal]) => (bound.get(formal) ?? []).filter(v => !missingOk.includes(formal) || !RSymbol.is(v))));
 	return { forced: values.filter(v => forcedIds.has(v)), lazy: values.filter(v => !forcedIds.has(v)) };
 }

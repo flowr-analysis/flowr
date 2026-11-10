@@ -68,6 +68,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			]);
 		});
 		describe('calls that may run', () => {
+			/* `matpoints` hands its missing `y` to `matplot`, which asks `missing(y)` */
+			assertLinter('a missing argument handed on to a closure that checks for it', parser, 'm <- matrix(1:6, 3)\nplot(1:3, ylim = c(0, 7))\nmatpoints(m)', 'call-contracts', []);
+			assertLinter('read.csv with text instead of a file', parser, 'd <- read.csv(text = "a,b\\n1,2")\nprint(d)', 'call-contracts', []);
 			for(const [label, code] of [
 				['a call within the contract', f + 'f(2)'],
 				['an unknown value', f + 'f(runif(1))'],

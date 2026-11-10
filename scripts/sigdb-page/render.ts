@@ -4,7 +4,7 @@ import { db, Owner, type AmbientFamily, type Entry, type Guards, type Package, t
 import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
-import { contract as contractView, formalChip, formalMark, hueOf, link, originTag, readOffWords, related, titled, type Part } from './contract-view';
+import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, readOffWords, related, titled, type Part } from './contract-view';
 
 /** a word of a signature with what it means, for its hover */
 function described(word: string): string {
@@ -127,6 +127,9 @@ export class Hits {
 		const { name } = entry;
 		const owners = entry.shown;
 		const row = el('li');
+		/* hovering a formal in the teaser or signature lights it up in the opened contract as well */
+		row.addEventListener('mouseover', event => light(row, (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-formal]')?.dataset.formal));
+		row.addEventListener('mouseout', () => light(row, undefined));
 		const head = el('div', 'head');
 		const named = titled(marked(name, this.asked.needle, at), 'click for every package that exports ' + name);
 		head.append(named);

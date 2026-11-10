@@ -3,7 +3,7 @@ import { namesAnErrorHandler, SessionConditionClasses } from '../../../../../fn/
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
+import { ExitPointType, happensInEveryBranch, leaveThrough, withCds } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -40,6 +40,21 @@ import { SourceRange } from '../../../../../../util/range';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
+
+/** the calls that only jump, group, or bind, which signal nothing of their own (what they evaluate is a site of its own) */
+const Silent: readonly BuiltInProcName[] = [BuiltInProcName.Return, BuiltInProcName.Break, BuiltInProcName.ExpressionList, BuiltInProcName.Assignment];
+
+/** Whether the block may signal anything at all: it calls something that is not just a jump, or reads a name nothing binds. */
+function hasSignalSite(block: RNode<ParentInformation>, graph: DataflowGraph): boolean {
+	for(const id of RNode.collectAllIds(block)) {
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.isFunctionCall(vertex) ? !Silent.some(s => DfgVertex.hasOrigin(vertex, s)) && Identifier.getName(vertex.name) !== 'next'
+			: DfgVertex.isUse(vertex) && Dataflow.targetsOf(graph, id, EdgeType.Reads).length === 0) {
+			return true;
+		}
+	}
+	return false;
+}
 
 /** Process a built-in try-catch or similar handler. */
 export function processTryCatch<OtherInfo>(
@@ -88,6 +103,14 @@ export function processTryCatch<OtherInfo>(
 		raising.push(...order(blockAst, []));
 	}
 	const errorRuns = error !== undefined && errorArg.size > 0 && runs(error);
+	/*
+	 * an exiting handler that may run leaves the block where the block signals, so a `return` (or `break`, or a raise the
+	 * construct lets out) later in the block only happens if nothing was signaled before: `tryCatch({ log(-1); return(1) }, warning = ...)`
+	 */
+	const preempted = aborts && (errorRuns || otherHandlers.some(h => runs(Identifier.getName(h.name)))) && blockAst !== undefined && hasSignalSite(blockAst, info.graph);
+	const unlessSignaled = (exits: readonly ExitPoint[]): readonly ExitPoint[] => preempted
+		? exits.map(e => e.type === ExitPointType.Default ? e : { ...e, cds: withCds(e.cds ?? data.cds, [{ id: rootId, when: false }]) })
+		: exits;
 	/* if the block raises an error in every case, the error handler is not constrained by it */
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
 	const errorExitPoints: ExitPoint[] = [];
@@ -101,11 +124,13 @@ export function processTryCatch<OtherInfo>(
 			const handlerExits = exitPointsOfHandler(arg.entryPoint, info.graph) ?? [];
 			errorExitPoints.push(...handlerExits.map(e => e.type === ExitPointType.Return ? { ...e, type: ExitPointType.Default } : e));
 		}
-		if(!blockArg.has(arg.entryPoint) || !catchesError) {
+		if(!blockArg.has(arg.entryPoint)) {
 			return arg.exitPoints;
+		} else if(!catchesError) {
+			return unlessSignaled(arg.exitPoints);
 		}
 		blockErrorExitPoints.push(...arg.exitPoints.filter(ep => ep.type === ExitPointType.Error).flatMap(a => a.cds));
-		return arg.exitPoints.filter(ep => ep.type !== ExitPointType.Error);
+		return unlessSignaled(arg.exitPoints.filter(ep => ep.type !== ExitPointType.Error));
 	});
 	if(errorExitPoints.length > 0) {
 		if(happensInEveryBranch(blockErrorExitPoints.some(isUndefined) ? undefined : blockErrorExitPoints as ControlDependency[])) {

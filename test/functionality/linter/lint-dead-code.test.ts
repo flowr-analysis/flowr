@@ -203,6 +203,17 @@ print(2)
 			]);
 		});
 
+		/* an exiting handler leaves the block where something signals, so what the block does after that may not happen */
+		describe('exits a handler may preempt', () => {
+			assertLinter('an error caught from an apply', parser, 'f <- function() {\n  tryCatch({\n    invisible(sapply(1:2, function(j) stop("x")))\n    return(1)\n  }, error = function(e) NULL)\n  cat("live")\n}\nf()', 'dead-code', []);
+			assertLinter('an error caught from a callee', parser, 'g <- function(j) stop("x")\nf <- function() {\n  tryCatch({\n    g(1)\n    return(1)\n  }, error = function(e) NULL)\n  cat("live")\n}\nf()', 'dead-code', []);
+			assertLinter('a warning caught before the return', parser, 'f <- function() {\n  tryCatch({\n    log(-1)\n    return(1)\n  }, warning = function(w) NULL)\n  cat("live")\n}\nf()', 'dead-code', []);
+			assertLinter('a warning caught before next', parser, 'for(i in 1:3) {\n  tryCatch({\n    log(-i)\n    next\n  }, warning = function(w) NULL)\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('nothing signals before the return', parser, 'f <- function() { tryCatch({ x <- 2; return(x) }, error = function(e) NULL); cat("dead") }\nf()', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 78, 1, 88], quickFix: [{ type: 'remove', loc: [1, 78, 1, 88], description: 'Remove the unreachable code' }] }
+			]);
+		});
+
 		describe('reflective name arguments', () => {
 			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
 			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);

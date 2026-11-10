@@ -796,6 +796,9 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test(label('what a call returns in words and conditions', ['name-normal'], ['other']), () => {
 		assert.deepStrictEqual(returnWords({ types: ['character'], bounds: { length: [1, 1] } }, 'x'), ['the value of x', 'character', 'length = 1']);
 		assert.deepStrictEqual(returnConditions({ types: ['character'] }, 'x'), ['identical(result, x)', 'typeof(result) in character']);
+		/* NULL is asked for by name, and has no elements a length bound could say more of */
+		assert.deepStrictEqual(returnConditions({ types: ['NULL'], bounds: { length: [0, 0] } }, undefined), ['is.null(result)']);
+		assert.deepStrictEqual(returnWords({ types: ['NULL'], bounds: { length: [0, 0] } }, undefined), ['NULL']);
 	});
 
 	/* what fails before any side effect, and what does not */

@@ -725,9 +725,14 @@ function setOf(this: void, words: readonly (string | number | boolean)[]): strin
 export function claimConditions(this: void, formal: string, { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
 	const ofTypes = (named: readonly string[], unclassed: boolean) => {
 		const left = typeNames(AnyType).filter(t => !named.includes(t));
-		const said = left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
+		/* NULL is the one value of its type, which R asks for by name */
+		const said = named.length === 1 && named[0] === 'NULL' ? `is.null(${formal})`
+			: left.length === 1 && left[0] === 'NULL' ? `!is.null(${formal})`
+				: left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
 		return unclassed ? `${said} unless is.object(${formal})` : said;
 	};
+	/* NULL has no elements, so a length bound says nothing more of it */
+	const onlyNull = types?.length === 1 && types[0] === 'NULL';
 	const range = (measure: string, [lower, upper]: ClaimedRange) => {
 		const of = measure === 'value' ? formal : `${measure}(${formal})`;
 		return lower !== null && lower === upper ? [`${of} == ${lower}`]
@@ -738,8 +743,8 @@ export function claimConditions(this: void, formal: string, { types, unclassedTy
 		...unclassedTypes === undefined ? [] : [ofTypes(unclassedTypes, true)],
 		...values === undefined ? [] : [`${formal} ${partial ? 'pmatches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`],
 		...classes === undefined ? [] : [classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`],
-		...Object.entries(bounds ?? {}).flatMap(([measure, bound]) => range(measure, bound)),
-		...notNA ? [`!anyNA(${formal})`] : [],
+		...Object.entries(bounds ?? {}).filter(([measure]) => !onlyNull || measure !== 'length').flatMap(([measure, bound]) => range(measure, bound)),
+		...notNA && !onlyNull ? [`!anyNA(${formal})`] : [],
 		...callable ? [`is.function(match.fun(${formal}))`] : [],
 		...whole ? [`trunc(${formal}) == ${formal}`] : [],
 		...(resolves ?? []).map(r => `exists(${r.expression})`)
@@ -750,12 +755,13 @@ export function claimConditions(this: void, formal: string, { types, unclassedTy
 export function claimWords(this: void, { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves, cases }: FormalClaim): string[] {
 	const range = (what: string, [lower, upper]: ClaimedRange) => lower !== null && lower === upper ? `${what} = ${lower}`
 		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
+	const onlyNull = types?.length === 1 && types[0] === 'NULL';
 	return [
 		types === undefined ? '' : typesInWords(types),
 		unclassedTypes === undefined ? '' : `${typesInWords(unclassedTypes)}, unless classed`,
 		values === undefined ? '' : `one of ${values.join(', ')}${partial ? ' (or a prefix)' : ''}`,
 		classes === undefined ? '' : `class ${listed(classes)}`,
-		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure, bound)),
+		...Object.entries(bounds ?? {}).filter(([measure]) => !onlyNull || measure !== 'length').map(([measure, bound]) => range(measure, bound)),
 		notNA ? 'not NA' : '',
 		callable ? 'callable' : '',
 		whole ? 'whole number' : '',

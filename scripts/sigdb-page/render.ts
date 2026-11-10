@@ -381,7 +381,10 @@ function teaser(name: string, guards: Guards | undefined, formals: readonly stri
 		const [, , , origin = '', , , returns = []] = guards;
 		const claimed = claimsByFormal(guards, formals);
 		line.append(el('span', 'label', 'contract'), originTag(origin), ...spokenOf(guards, formals).map(formal => formalMark(guardedChip(el('code', hueOf(formals.indexOf(formal)), formal), formal, claimed.get(formal)), formal)),
-			...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
+			/* a function that always returns NULL says so right away, it is called for what it does */
+			...(returns.length === 0 ? [] : returns.length === 1 && returns[0] === 'is.null(result)'
+				? [titled(el('code', 'result null', '\u2192 NULL'), 'a call that returns normally always returns NULL')]
+				: [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
 	}
 	if(ambient.length > 0) {
 		const words = db.ambientWords.families;

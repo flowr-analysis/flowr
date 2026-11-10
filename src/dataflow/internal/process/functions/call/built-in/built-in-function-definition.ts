@@ -15,7 +15,7 @@ import { resolveClassMethodsToEnvState } from './built-in-class-generator';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
@@ -27,7 +27,7 @@ import { type NextMethods, callsNextMethod, type DispatchContext, DispatchNarrow
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { EnvType, REnvironment } from '../../../../../environments/environment';
-import { EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
 import { isComputedLookup, linkComputedLookup } from './built-in-get';
@@ -41,10 +41,12 @@ import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/mod
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { queryFnProps } from '../../../../../environments/query-fn-props';
+import { fnEntry, queryFnProps } from '../../../../../environments/query-fn-props';
 import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 import { arraysGroupBy, uniqueArray } from '../../../../../../util/collections/arrays';
-import { groupGenericOf, s3MethodPrefixesOf, s4GroupGenericsOf } from '../../../../../environments/group-generics';
+import { groupGenericOf, S3Groups, s3MethodPrefixesOf, s4GroupGenericsOf } from '../../../../../environments/group-generics';
+import { InternalGenerics, RGenerics } from '../../../../../environments/default-builtin-config';
+import { RPrimitives } from '../../../../../../data/r-primitives.generated';
 import { DotsParameterName } from '../../../../../../util/arg-matching';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -660,6 +662,40 @@ function nextMethodsPerCall(next: NodeId, owner: NodeId, dispatch: NodeId, conte
 	return within === undefined ? undefined : runsOf(owner, new Set([owner]));
 }
 
+/** the processors of calls that run their R code as it is, handing on what they get */
+const RunsPlainCode: ReadonlySet<BuiltInProcName | undefined> = new Set([BuiltInProcName.Default, BuiltInProcName.DefaultReadAllArgs, BuiltInProcName.Apply]);
+
+/** The internal generics and the S3 groups, which R code may dispatch to on whatever it is handed, without naming them as a call the signature database records (`x[i]`). */
+const DispatchedInternally: readonly BrandedIdentifier[] = [...InternalGenerics, ...S3Groups];
+
+/** Whether the `call` may hand on an object a method may get: a constant (`structure(1, class = "a")`) has no class. */
+function handsObjects(call: DataflowGraphVertexFunctionCall, idMap: AstIdMap | undefined): boolean {
+	return call.args.some(a => a !== EmptyArgument && !RConstant.is(RArgument.valueOf(idMap?.get(a.nodeId))));
+}
+
+/**
+ * The generics a call of the built-in `name` may run on what it is handed besides its own: those the configuration states
+ * (`nrow(x)` asks `dim(x)`), else for a function of R code (`median`, `head`) every internal one as well as those its code
+ * calls (as the signature database knows), also through the default method of a generic it calls.
+ */
+function genericsRunWithin(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] {
+	const builtIn = ctx.env.builtInFunctionOf(name);
+	const stated = builtIn?.config?.dispatches;
+	const called = calleesOf(name, ctx)?.filter(c => RGenerics.has(c));
+	/* what the configuration states it dispatches to is all, a processor of its own models what the call does (`setMethod`), a primitive runs no R code, and a name flowR knows nothing of is no built-in */
+	if(stated !== undefined || (builtIn !== undefined && !RunsPlainCode.has(builtIn.processorName)) || RPrimitives.has(String(Identifier.getName(name))) || (called === undefined && builtIn === undefined)) {
+		return stated ?? [];
+	}
+	const generic = RGenerics.has(Identifier.getName(name)) ? [Identifier.getName(name)] : [];
+	const viaDefaults = [...generic, ...called ?? []].flatMap(g => calleesOf(Identifier.make(`${g}.default`), ctx)?.filter(c => RGenerics.has(c)) ?? []);
+	return uniqueArray([...DispatchedInternally, ...called ?? [], ...viaDefaults].map(String));
+}
+
+/** What the R code of the package function `name` calls, `undefined` if the signature database knows no code for it. */
+function calleesOf(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly BrandedIdentifier[] | undefined {
+	return fnEntry(name, ctx).entry?.callees;
+}
+
 /**
  * Update the closure links of all nested function calls, done once at the end of the script.
  * @lintIgnore vertex-has-origin
@@ -677,12 +713,18 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 	const runsOnceAt = memoize((id: NodeId) => ProgramOrder.runsOnceAt(id, graph));
 	const databaseInfoOf = memoize((name: Identifier) => ctx.functionInfo(name));
 	/* the generics a built-in dispatches to on its own whose methods the code binds */
-	const internalOf = memoize((name: Identifier) => ctx.env.builtInFunctionOf(name)?.config?.dispatches?.filter(g => generics.has(g) || shadowing.has(g)) ?? []);
+	const runWithin = memoize((name: Identifier) => genericsRunWithin(name, ctx));
+	const internalOf = memoize((name: Identifier) => generics.size === 0 && shadowing.size === 0 ? [] : runWithin(name).filter(g => generics.has(g) || shadowing.has(g)));
 	const environmentAt = memoize((id: NodeId) => {
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
 		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;
 	});
 	const narrower = new DispatchNarrower(graph, ctx);
+	/* the bindings of names we cannot tell that run, i.e. those at the top or in a function the code calls */
+	const unknownMethodsAt = (REnvironment.findBuiltIn(outEnvironment.current).unknownMethodsAt ?? []).filter(at => {
+		const fn = enclosingOf(at);
+		return fn === undefined || graph.edgesTo(fn).values().some(e => DfEdge.includesType(e, EdgeType.Calls));
+	});
 	/* per function, the `NextMethod` calls of its body */
 	const namedNextCalls = new Map<NodeId, NodeId[]>();
 	for(const [id, vertex] of calls) {
@@ -724,11 +766,15 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 			}
 			continue;
 		}
+		/* a method the code binds by a name we cannot tell may be one the call dispatches to */
+		if(unknownMethodsAt.some(at => !ProgramOrder.definedLater(at, runsOnceAt(id), graph)) && ((handsObjects(vertex, graph.idMap) && runWithin(name).length > 0) || dispatchesOnClass(name, environmentAt(id), databaseInfoOf))) {
+			graph.markIdForUnknownSideEffects(id);
+		}
 		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */
 		const mayDispatch = s3MethodPrefixesOf(name).some(p => generics.has(p));
 		/* a `setMethod("Arith", ...)` claims every member of the S4 group, so a built-in member may reach its methods */
 		const s4Groups = s4GroupGenericsOf(Identifier.getName(name)).filter(g => shadowing.has(g));
-		const internal = internalOf(name);
+		const internal = handsObjects(vertex, graph.idMap) ? internalOf(name) : [];
 		if(onlyBuiltin && !mayDispatch && s4Groups.length === 0 && internal.length === 0 && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
 			continue;
 		}
@@ -789,7 +835,14 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 		}
 		for(const method of internal.length === 0 ? [] : internalGenericMethods(internal, methodEnvironment(), graph).filter(m => !definedLater(m.nodeId))) {
 			graph.addEdge(id, method.nodeId, EdgeType.Reads);
-			linkedFunctionIds(new Set([method.nodeId]), graph).forEach(t => targets.add(t));
+			for(const target of linkedFunctionIds(new Set([method.nodeId]), graph)) {
+				targets.add(target);
+				/* the built-in goes on with what the method returns (`message(cnd)` prints what `conditionMessage` gives) */
+				const fn = graph.getVertex(target);
+				for(const exit of DfgVertex.isFunctionDefinition(fn) ? fn.exitPoints : []) {
+					graph.addEdge(id, exit.nodeId, EdgeType.Reads);
+				}
+			}
 		}
 		const decide = (info?: ClassFlowInfo) => {
 			const decided = narrowedDispatchOf(narrower, vertex, s3Objects, targets, definedLater, info);

@@ -10,6 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, isInGraphDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
@@ -28,7 +29,7 @@ import { instantiateEnvOps } from './built-in-deferred-env-ops';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
 import { applyAmbientStateOfCalledBuiltIns, autoPrints, mayForce, readsOfAutoPrint } from './built-in-ambient-state';
@@ -402,7 +403,9 @@ function ownMethodsCalledBy(thisGraph: DataflowGraph, environment: REnvironmentI
 	}
 	const found: CalledFunctions[] = [];
 	for(const [functionCall, ids] of methods) {
-		const called = [...getAllLinkedFunctionDefinitions(new Set(ids), graph)[0]];
+		/* a method bound actively (`makeActiveBinding`) is the function the binding returns once run */
+		const returned = ids.flatMap(i => activeFunctionsOf(i, graph)).flatMap(fn => (graph.getVertex(fn) as DataflowGraphVertexFunctionDefinition).exitPoints.map(e => e.nodeId));
+		const called = [...getAllLinkedFunctionDefinitions(new Set([...ids, ...returned]), graph)[0]];
 		if(called.length > 0) {
 			found.push({ functionCall, called, propagateExitPoints: [], alternatives: true });
 		}
@@ -423,6 +426,21 @@ export function noteOwnMethod(name: Identifier, environment: REnvironmentInforma
 			REnvironment.findBuiltIn(environment.current).methods = true;
 			return;
 		}
+	}
+}
+
+/** Notes that the call `id` binds names we cannot tell (`list2env(l)`), which may be a method of any generic, so a call of one running after it runs what we cannot tell (see `updateNestedFunctionCalls`). */
+export function noteUnknownMethods(environment: REnvironmentInformation, id: NodeId): void {
+	const builtIn = REnvironment.findBuiltIn(environment.current);
+	builtIn.methods = true;
+	(builtIn.unknownMethodsAt ??= []).push(id);
+}
+
+/** Marks `id` as binding names we cannot tell (`assign(nm, v, envir = e)`, `source(file)`), an unknown side effect that may bind a method as well, unless the `value` it binds is a constant. */
+export function bindsUnknownNames(graph: DataflowGraph, environment: REnvironmentInformation, id: NodeId, value?: RNode<ParentInformation>): void {
+	handleUnknownSideEffect(graph, environment, id);
+	if(!RConstant.is(value)) {
+		noteUnknownMethods(environment, id);
 	}
 }
 

@@ -24,13 +24,17 @@ const SetsRngKind = (formals: readonly string[]) => [{ ...Ambient.rng.adds, when
 /* closing a connection flushes what was written through it, so the file it leaves holds those writes */
 const ClosesConnection = [Ambient.files.reads, Ambient.files.writes] as const;
 
+/** what signaling or reporting a condition asks of it, any method of them may run */
+const ConditionAccessors = ['conditionMessage', 'conditionCall', 'as.character', 'as.vector'];
+
 /** what signals a message or a warning, handing on what it is given */
 const Signals: DefaultBuiltInProcessorConfiguration = {
 	keepArgumentOut: true,
 	props:           CallProp.Invisible,
 	tags:            [SemanticCallTag.Prints],
 	ambient:         Ambient.messageSink.adds,
-	sig:             sig({ '...': ArgProp.Alias | ArgProp.Forced })
+	sig:             sig({ '...': ArgProp.Alias | ArgProp.Forced }),
+	dispatches:      ConditionAccessors
 };
 
 /** what muffles the conditions its code signals */
@@ -39,7 +43,7 @@ const Suppresses: DefaultBuiltInProcessorConfiguration = { keepArgumentOut: true
 /** the restarts a signal establishes for its handlers, invoking them resumes the signaling call */
 const MuffleRestarts: readonly string[] = ['muffleWarning', 'muffleMessage'];
 /** what signals an error */
-const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }) };
+const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }), dispatches: ConditionAccessors };
 
 /** The built-in definitions of the base package. */
 export const BaseDefinitions = [
@@ -74,12 +78,12 @@ export const BaseDefinitions = [
 	fn(base('missing'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ x: ArgProp.Presence }) }, Primitive),
 	/* they fold everything they are handed into one result */
 	fn(base('sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'order', 'any'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigDots }, Primitive),
-	fn(base('data.frame', 'table'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigDotsDeparsed }, Primitive),
+	fn(base('data.frame', 'table'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigDotsDeparsed, dispatches: ['as.data.frame', 'as.character', 'as.vector', 'length', 'names', 'unique'] }, Primitive),
 	fn(base('cbind', 'rbind'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigDotsDeparsed }, Primitive),
 	/* the separator sits behind the `...`, so R (and the {@link FnSig}) only ever matches it by its full name */
-	fn(base('paste', 'paste0'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: sig({ '...': Forced.Value, sep: Forced.Value }), dispatches: ['as.character'] },
+	fn(base('paste', 'paste0'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: sig({ '...': Forced.Value, sep: Forced.Value }), dispatches: ['as.character', 'as.vector'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),
-	fn(base('file.path'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: sig({ '...': Forced.Value, fsep: Forced.Value }), dispatches: ['as.character'] },
+	fn(base('file.path'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: sig({ '...': Forced.Value, fsep: Forced.Value }), dispatches: ['as.character', 'as.vector'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),
 	/* `x` carries the data, whatever follows only tunes the result */
 	fn([...Identifier.fromAll(PkgName.Base, ['mean', /* running summaries & reordering */ 'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated',
@@ -135,7 +139,8 @@ export const BaseDefinitions = [
 	{ props: CallProp.Pure }, Primitive),
 
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
-	fn(base('which', 'which.max', 'which.min', 'seq_len', 'seq_along'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }, Primitive),
+	/* `seq_along(x)` asks `length(x)` and `which.max(x)` asks `xtfrm(x)` */
+	fn(base('which', 'which.max', 'which.min', 'seq_len', 'seq_along'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], dispatches: ['length', 'xtfrm'] }, Primitive),
 	/* `seq` dispatches, so `...` really is all it declares; the named formals belong to `seq.default`/`seq.int` */
 	fn(base('seq'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ '...': Forced.Value }) }, Primitive),
 	fn(base('scan'), BuiltInProcName.DefaultReadAllArgs,
@@ -220,8 +225,9 @@ export const BaseDefinitions = [
 		{ ambient: [SetsEntry(KeyedState.Locale, 'LANGUAGE'), SetsEntry(KeyedState.Env, 'LANGUAGE')], hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
 	fn([...base('mapply'), ...pkg(PkgName.Functools, 'Mapply')], BuiltInProcName.Apply,
 		{ indexOfFunction: 0, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
+	/* `X` is turned into a list first, by its `as.list` method */
 	fn(base('lapply', 'sapply', 'vapply'), BuiltInProcName.Apply,
-		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
+		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }), dispatches: ['as.list', 'as.vector', 'length', 'names'] }),
 	/* `vapply` takes the shape of the result before its `...`, so naming it keeps the positions honest */
 	fn(base('vapply'), BuiltInProcName.Apply,
 		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, 'FUN.VALUE': ArgProp.Shape, '...': ArgProp.Value }) },
@@ -233,12 +239,12 @@ export const BaseDefinitions = [
 	fn(base('outer'), BuiltInProcName.Apply,
 		{ indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, Y: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
 	fn(base('Filter'), BuiltInProcName.Apply,
-		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value }) }),
+		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value }), dispatches: ['as.list', 'as.vector', '['] }),
 	fn(base('Find', 'Position'), BuiltInProcName.Apply,
 		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value, right: ArgProp.Flag, nomatch: ArgProp.Value }) }),
 	fn(base('replicate'), BuiltInProcName.Default, { props: CallProp.MayPure, sig: sig({ n: Forced.Value, expr: ArgProp.Value, simplify: ArgProp.Flag }) }),
 	fn(base('Reduce'), BuiltInProcName.Apply,
-		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, folds: ['x', 'init'], props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value, init: ArgProp.Value, right: ArgProp.Flag, accumulate: ArgProp.Flag, simplify: ArgProp.Flag }) }),
+		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, folds: ['x', 'init'], props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value, init: ArgProp.Value, right: ArgProp.Flag, accumulate: ArgProp.Flag, simplify: ArgProp.Flag }), dispatches: ['as.list', 'as.vector', 'length'] }),
 	fn(base('rapply'), BuiltInProcName.Apply,
 		{ indexOfFunction: 1, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ object: ArgProp.NoDefault, f: ArgProp.NoDefault, classes: ArgProp.Forced, deflt: ArgProp.Forced, how: ArgProp.Forced, '...': 0 }) }),
 	fn(base('print'), BuiltInProcName.Default,
@@ -291,7 +297,7 @@ export const BaseDefinitions = [
 	fn([...pkg(PkgName.Rlang, 'abort'), ...pkg(PkgName.Cli, 'cli_abort'), ...pkg(PkgName.RmethodsS3, 'throw'), ...pkg(PkgName.Roo, 'throw'),
 		/* R.oo re-exports R.methodsS3::throw */ ...pkg(PkgName.Purrr, 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length')], BuiltInProcName.Default, Throws),
 	/* the block is evaluated whatever happens, the handlers only when something does, and an error keeps the value from coming back */
-	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, ambient: [{ ...Ambient.messageSink.adds, unless: { flag: 'silent' } }, Ambient.errorMessage.adds], sig: sig({ expr: Forced.Value }) }, Primitive),
+	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, ambient: [{ ...Ambient.messageSink.adds, unless: { flag: 'silent' } }, Ambient.errorMessage.adds], sig: sig({ expr: Forced.Value }), dispatches: ConditionAccessors }, Primitive),
 	/* an error it catches may set the last error message */
 	fn([...base('tryCatch'), ...pkg(PkgName.TryCatchLog, 'tryCatchLog')], BuiltInProcName.Try,
 		{ block: 'expr', handlers: { error: 'error', finally: 'finally' }, ambient: Ambient.errorMessage.adds, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee, finally: ArgProp.Nse }) }, Primitive),
@@ -457,8 +463,8 @@ export const BaseDefinitions = [
 		{ props: CallProp.Ambient, ambient: { ...Ambient.env.reads, member: { from: 'parameter', signature: ['x', 'unset', 'names', 'allowEmpty'], names: ['x'] }, handsBack: true }, sig: sig({ '...': ArgProp.Forced }) }),
 	/* turning a number into text reads `scipen` and `OutDec` */
 	fn(base('as.character', 'toString', 'formatC'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: SigXDots }, Primitive),
-	/* it formats each number with `format` */
-	fn(base('prettyNum'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: PrintDispatched, sig: SigXDots }, Primitive),
+	/* it formats each number with `format`, applied to `x` as a list */
+	fn(base('prettyNum'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: PrintDispatched, sig: SigXDots, dispatches: ['as.list', 'as.vector'] }, Primitive),
 	/* the local date and time zone follow `TZ` */
 	fn(base('Sys.Date', 'Sys.timezone', 'date'), BuiltInProcName.Default, { ambient: { ...Ambient.env.reads, member: { from: 'constant', keys: ['TZ'] } }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
 	fn(base('Sys.getlocale'), BuiltInProcName.Default, { ambient: { ...Ambient.locale.reads, member: { from: 'parameter', signature: ['category'], names: ['category'], fallback: 'LC_ALL' } }, sig: sig({ category: ArgProp.Forced }) }),
@@ -493,7 +499,7 @@ export const BaseDefinitions = [
 	replacement(base('body', 'formals'), ['<-', '<<-'],
 		{ readIndices: true, props: CallProp.Scope | CallProp.Lang, sig: sig({ fun: ArgProp.Value, value: ArgProp.Value | ArgProp.Injectable }) }),
 	/* the string and shape functions R declares formals for, restated one by one: the group above gives them what they do, this gives them the arguments they do it with (the names are R's own) */
-	fn(base('sprintf'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ fmt: Forced.Value, '...': Forced.Value }), dispatches: ['as.character'] },
+	fn(base('sprintf'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ fmt: Forced.Value, '...': Forced.Value }), dispatches: ['as.character', 'as.vector'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),
 	fn(base('format'), BuiltInProcName.DefaultReadAllArgs, { ambient: PrintDispatched, props: CallProp.Pure, sig: SigXDots }, { overrides: true, assumePrimitive: true }),
 	fn(base('grep'), BuiltInProcName.DefaultReadAllArgs,

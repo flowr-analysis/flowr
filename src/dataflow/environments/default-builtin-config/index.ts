@@ -32,7 +32,7 @@ import { PrimitiveLanguageDefinitions } from './guards-primitive-lang';
 import { markFormals } from './r-formals';
 
 export type { StatedSignature } from './shared-configs';
-export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics } from './shared-configs';
+export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics, RGenerics } from './shared-configs';
 
 /** What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be defined for several packages, so all of them are here; {@link statedSignatureOf} picks by package). */
 export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig): Map<BrandedIdentifier, StatedSignature[]> {

@@ -89,6 +89,8 @@ export class Environment implements IEnvironment {
 	locking?:              true;
 	/** set on the built-in environment once the code binds a method of a built-in generic (`length.foo`), which a call of the generic looks for from then on */
 	methods?:              true;
+	/** on the built-in environment, the calls binding names we cannot tell, each of which may be a method of any generic */
+	unknownMethodsAt?:     NodeId[];
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */

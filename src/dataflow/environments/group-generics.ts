@@ -54,7 +54,7 @@ export function s3GroupGenericMembers(name: BrandedIdentifier): readonly Branded
 }
 
 /** the S3 groups, `Ops` standing for the three S4 groups it unites and `Math` covering `Math2` */
-const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
+export const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
 
 const S3GroupOfMember: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new Map(
 	S3Groups.flatMap(group => (s3GroupGenericMembers(group) ?? []).map(member => [member, group as string])));
@@ -64,9 +64,12 @@ export function s3GroupGenericOf(name: BrandedIdentifier): BrandedIdentifier | u
 	return S3GroupOfMember.get(name);
 }
 
+/** the primitives that are another one, whose methods alone they run (`as.numeric(x)` runs `as.double.<class>`) */
+const DispatchesAs: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new Map([['as.numeric', 'as.double']]);
+
 /** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
 export function s3MethodPrefixesOf(name: Identifier): readonly BrandedIdentifier[] {
-	const plain = Identifier.getName(name);
+	const plain = DispatchesAs.get(Identifier.getName(name)) ?? Identifier.getName(name);
 	const group = s3GroupGenericOf(plain);
 	return group === undefined ? [plain] : [plain, group];
 }

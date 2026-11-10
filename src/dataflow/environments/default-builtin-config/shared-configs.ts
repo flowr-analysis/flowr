@@ -9,6 +9,7 @@ import { RBasePrimitives } from '../../../data/r-base-primitives.generated';
 import { RBasePackageStore } from '../../../data/r-base-packages.generated';
 import { NumberFormatOptions, PrintingOptions } from '../built-in-kinds';
 import { KeyedState, UnknownKey } from '../ambient-state-name';
+import { RGroupGenerics } from '../group-generics';
 import { Ambient, type AmbientFamilySummary, AmbientVerb } from '../ambient-effect';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
@@ -380,7 +381,7 @@ export const InternalGenerics: ReadonlySet<BrandedIdentifier> = new Set(['$', '[
 	'round', 'signif', 'trunc', 'cumsum', 'cumprod', 'cummax', 'cummin', 'as.character', 'as.integer', 'as.double',
 	'as.logical', 'as.complex', 'as.numeric', 'as.raw', 'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix',
 	'is.numeric', 'cbind', 'rbind', 'anyNA', 'as.environment', 'as.call', 'is.array', 'log2', 'log10', 'rep', 'seq.int',
-	'xtfrm']);
+	'xtfrm', 'unlist', 'as.vector', 'lengths', 'nchar', 'rep_len', ...Object.values(RGroupGenerics).flat()]);
 
 /** Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics} (no R body, so {@link fnInfoFromSignature} never sees them). */
 export const RGenerics: ReadonlySet<BrandedIdentifier> = new Set([...RBasePackageStore.generics, ...InternalGenerics]);

@@ -550,6 +550,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) !x', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || length(x) == 0 || is.object(x)');
 	guards('f <- function(x, n) { if(ncol(x) != nrow(n)) stop("dims"); 1 }', 'ncol(x) == nrow(n)');
 	guards('f <- function(x) { if(nlevels(x) < 2) stop("levels"); 1 }', 'nlevels(x) >= 2');
+	guards('f <- function(x) range(x)', 'is.numeric(x) || is.logical(x) || is.character(x) || is.null(x) || is.list(x) || is.expression(x) || is.object(x)');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));

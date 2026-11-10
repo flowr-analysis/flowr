@@ -58,6 +58,8 @@ const Logicals = (operator: string, decidesNot: BrandedIdentifier): GuardFacts =
 const InvalidType = "invalid 'type' of argument";
 const Summed: GuardFacts = { asks: { '...': dispatched(Calculable, InvalidType) }, computes: true };
 const Ordered: GuardFacts = { asks: { '...': dispatched(is('is.numeric', 'is.logical', 'is.character', 'is.null'), InvalidType) }, computes: true };
+/* `range.default`, which the primitive runs, flattens lists and expressions first */
+const Ranged: GuardFacts = { asks: { '...': dispatched(is('is.numeric', 'is.logical', 'is.character', 'is.null', 'is.list', 'is.expression'), InvalidType) }, computes: true };
 /* `all("a")` is `NA`, and `all(new.env())` holds, as an environment is empty to it */
 const Quantified: GuardFacts = { asks: { '...': dispatched(not('is.function', 'is.symbol', 'is.call'), 'cannot coerce to logical') }, computes: true, singleResult: true };
 const ComplexPart = (returns: RValueTypes): GuardFacts => ({ asks: { z: dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to function') }, required: ['z'], computes: true, returns: Dispatched('z', returns) });
@@ -118,7 +120,7 @@ export const PrimitiveOpsGuardFacts: Readonly<Record<BrandedIdentifier, GuardFac
 	'prod':           Summed,
 	'max':            Ordered,
 	'min':            Ordered,
-	'range':          Ordered,
+	'range':          Ranged,
 	'all':            Quantified,
 	'any':            Quantified,
 	'Re':             ComplexPart(Double),

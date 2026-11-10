@@ -214,6 +214,28 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .origin.inferred { color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
 #hits .origin.stated { color: color-mix(in srgb, #7a5cd6 70%, var(--muted)); }
 #hits .contract { margin-bottom: .6rem; }
+/* what a call does to the global state, a line per part, and how it takes part in S3 dispatch */
+#hits .ambient { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: .5rem; row-gap: .1rem; align-items: baseline; margin-top: .3rem; font-size: .78rem; color: var(--muted); }
+#hits .ambient .aline { display: contents; }
+#hits .ambient .fam { justify-self: start; font-size: .74rem; padding: 0 .4rem; border-radius: .7rem; border: 1px solid var(--border); color: color-mix(in srgb, #1f8a96 70%, var(--fg)); cursor: help; }
+#hits .ambient .acc { cursor: help; }
+#hits .ambient .acc.changes { color: var(--fg); }
+#hits .ambient .when, #hits .s3 .reach { font-style: italic; }
+#hits .ambient .sep, #hits .s3 .sep { color: var(--border); }
+#hits .s3 { margin-top: .3rem; font-size: .78rem; color: var(--muted); line-height: 1.6; }
+#hits .s3 .label { margin-right: .4rem; }
+#hits .s3 a { color: var(--fg); text-decoration: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; }
+#hits .s3 a:hover { color: var(--accent); text-decoration: underline; }
+#hits .s3 a.more { font-family: inherit; color: var(--muted); }
+#hits .s3 .hascontract { margin-left: .25rem; font-size: .68rem; color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
+#hits .s3 code { font-size: .74rem; }
+#hits .s3 code.arg { padding: 0 .25rem; border-radius: .3rem; color: color-mix(in srgb, var(--hue, var(--fg)) 80%, var(--fg)); background: color-mix(in srgb, var(--hue, var(--muted)) 12%, transparent); }
+#hits .rawbtn { margin-left: .4rem; padding: 0 .35rem; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .68rem; line-height: 1.4; cursor: pointer; border-radius: .3rem; border: 1px solid var(--border); background: none; color: var(--muted); opacity: .7; }
+#hits .rawbtn:hover { opacity: 1; color: var(--accent); border-color: var(--accent); }
+#hits .raw { grid-column: 1 / -1; position: relative; width: 100%; margin-top: .3rem; cursor: auto; }
+#hits .raw pre { margin: 0; max-height: 22rem; overflow: auto; padding: .5rem .7rem; border-radius: .4rem; background: var(--sunk); color: var(--fg); font-size: .72rem; white-space: pre; }
+#hits .raw .copy { position: absolute; top: .3rem; right: .5rem; font: inherit; font-size: .7rem; cursor: pointer; padding: .05rem .5rem; border-radius: .3rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
+#hits .raw .copy:hover { color: var(--accent); border-color: var(--accent); }
 #hits .contract .chead { margin: 0 0 .3rem; font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 #hits .contract .ctable { display: grid; gap: .1rem; }
 #hits .contract .crow { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: .8rem; align-items: baseline; padding: .25rem .5rem; border-radius: .4rem; font-size: .82rem; }
@@ -288,7 +310,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 	<span class="qwrap">
 		<div id="hl" class="hl" aria-hidden="true"></div>
 		<ul id="suggest" class="suggest" role="listbox" hidden></ul>
-		<input id="q" type="search" spellcheck="false" autocomplete="off" autofocus placeholder="dplyr::filter, or *([alias],*) [pure]" title="name(arguments)[function props]: [role] constrains an argument ([role]+ all of them, [role]? at least one), * stands for any arguments, [pure] or [invisible] constrains the function" aria-label="Function name">
+		<input id="q" type="search" spellcheck="false" autocomplete="off" autofocus placeholder="dplyr::filter, or *([alias],*) [pure]" title="name(arguments)[function props]: [role] constrains an argument ([role]+ all of them, [role]? at least one), * stands for any arguments, [pure] or [invisible] constrains the function; key:value asks about the contract, like param:enum, requires:is.numeric, length:x==1 (see ?)" aria-label="Function name">
 		<button type="button" id="help" class="helpbtn" title="how the search syntax works" aria-label="Search syntax help">?</button>
 	</span>
 	<span class="optwrap">
@@ -333,6 +355,17 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 		<li><button type="button" class="try" data-q="[pure] *">[pure]</button> a property of the call as a whole. It may come first, last or right after the name, and several add up</li>
 		<li><button type="button" class="try" data-q="[invisible] *([value]?)">[invisible] *([value]?)</button> combines with arguments</li>
 	</ul>
+	<h3>Contracts</h3>
+	<ul>
+		<li><button type="button" class="try" data-q="param:enum">param:enum</button> what a call has to fulfill to return normally, asked as <code>key:value</code>. Several add up, and a name narrows them: <button type="button" class="try" data-q="read* param:file:character">read* param:file:character</button></li>
+		<li><button type="button" class="try" data-q="requires:is.numeric">requires:is.numeric</button> a condition calls the function, which <code>requires:base::is.numeric</code> asks as well. A function from a package R does not attach on startup shows as <code>pkg::name</code>, and hovering any function names its package</li>
+		<li><button type="button" class="try" data-q="length:x==1">length:x==1</button> a bound implying the comparison, <button type="button" class="try" data-q="bound:>=0">bound:&gt;=0</button> of the value of any formal</li>
+		<li><button type="button" class="try" data-q="length(x) == 1">length(x) == 1</button> anything that is no plain name also finds the contracts that write it, and <button type="button" class="try" data-q="tools::file_ext">tools::file_ext</button> the contracts calling that function</li>
+	</ul>
+	<div class="words">
+		<div><h3>Contract keys</h3><dl id="helpcontracts"></dl></div>
+		<div><h3>Kinds of parameters, for <code>param:</code></h3><dl id="helpkinds"></dl></div>
+	</div>
 	<p>Only functions with a flowR signature can answer argument and property questions, and one signature has to satisfy all of it. Typing <code>[</code> lists the words that fit, grayed when nothing would match. The filter groups above ask the same without typing.</p>
 	<div class="words">
 		<div><h3>Argument roles</h3><dl id="helproles"></dl></div>
@@ -365,6 +398,9 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 <script type="application/json" id="guards">"<!--GUARDS-->"</script>
 <script type="application/json" id="groups">"<!--GROUPS-->"</script>
 <script type="application/json" id="generics">"<!--GENERICS-->"</script>
+<script type="application/json" id="ambient-words">"<!--AMBIENT-WORDS-->"</script>
+<!-- what flowR answers per function, gzipped and only unpacked once a reader opens one -->
+<script type="text/plain" id="raw"><!--RAW--></script>
 <!--FOOTER:sigdb-->
 <script type="application/json" id="topics-complete"><!--TOPICS-COMPLETE--></script>
 <script>

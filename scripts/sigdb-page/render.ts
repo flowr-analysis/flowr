@@ -1,6 +1,6 @@
-import { blank, el } from '../page-lib/dom';
+import { blank, button, el } from '../page-lib/dom';
 import { argsOf, norm, shortOf, wordsOf } from './query';
-import { db, Owner, type Entry, type Guards, type Package } from './database';
+import { db, Entry, ImplicitClasses, Owner, type AmbientFamily, type Guards, type Package, type RawAnswers } from './database';
 import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 
@@ -183,7 +183,8 @@ export class Hits {
 		if(args !== '' || props !== '') {
 			head.append(this.signature(name, args, props, guards));
 		}
-		for(const [system, generic] of dispatches) {
+		/* an S3 method has a line of its own below */
+		for(const [system, generic] of dispatches.filter(([system]) => system !== 'S3')) {
 			head.append(link('generic', system + ' method for ' + generic, search(generic), 'search for the generic this method dispatches for'));
 		}
 		const group = entry.group;
@@ -203,7 +204,15 @@ export class Hits {
 		row.append(head);
 		const formals = guards === undefined ? [] : contractFormals(formalsOf(args), formalsOf(declared ?? ''), guards);
 		if(guards !== undefined) {
-			row.append(teaser(name, guards, formals));
+			row.append(teaser(name, guards, formals, chosen?.pkg.name + '::' + name));
+		}
+		const ambient = entry.ambientIn(chosen?.pkg.name);
+		if(ambient.length > 0) {
+			row.append(ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name));
+		}
+		const s3 = s3Line(entry, formalsOf(args));
+		if(s3 !== undefined) {
+			row.append(s3);
 		}
 		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen)));
 		this.list.append(row);
@@ -383,8 +392,8 @@ function conjuncts(condition: string): string[] {
 }
 
 /** each formal in its own color and the operators set apart, so a long condition reads at a glance */
-function marker(formals: readonly string[], result = false): (code: string) => (string | HTMLElement)[] {
-	return code => code.split(/(\|\||&&|[<>=!]=|!|%in%|\b[A-Za-z.][A-Za-z0-9._]*\b(?:\()?)/).filter(part => part !== '').flatMap(part => {
+function marker(formals: readonly string[], result = false, calls: NonNullable<Guards[10]> = []): (code: string) => (string | HTMLElement)[] {
+	return code => code.split(/(\|\||&&|[<>=!]=|!|%in%|(?:\b[A-Za-z.][A-Za-z0-9._]*::)?\b[A-Za-z.][A-Za-z0-9._]*\b(?:\()?)/).filter(part => part !== '').flatMap(part => {
 		if(Operators[part] !== undefined) {
 			return [titled(el('span', Operators[part][0], part), Operators[part][1])];
 		} else if(result && part === 'result') {
@@ -394,7 +403,9 @@ function marker(formals: readonly string[], result = false): (code: string) => (
 		} else if(part.endsWith('(')) {
 			/* a function called in the condition leads to what is known of it */
 			const fn = part.slice(0, -1);
-			return [link('fn', fn, search(fn), FunctionAbout[fn] ?? 'search for ' + fn), '('];
+			/* the package shows on hover, also where R attaches it and the condition leaves it out */
+			const qualified = calls.find(([shown]) => shown === fn)?.[1] ?? fn;
+			return [link('fn', fn, search(qualified), qualified + ': ' + (FunctionAbout[fn] ?? 'search for it')), '('];
 		}
 		return [ClaimAbout[part] === undefined ? part : titled(el('abbr', undefined, part), ClaimAbout[part])];
 	});
@@ -444,14 +455,154 @@ function related(holds: string, formals: readonly string[]): string[] {
 }
 
 /** The contract within the row: where it comes from, the formals it speaks of, and what relates them; the row opens the rest */
-function teaser(name: string, guards: Guards, formals: readonly string[]): HTMLElement {
+function teaser(name: string, guards: Guards, formals: readonly string[], key: string): HTMLElement {
 	const [, , , readOff = '', , , returns = []] = guards;
 	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
 	const line = el('div');
 	line.append(el('span', 'label', 'contract'), originTag(readOff), ...spokenOf(guards, formals).map(formal => formalMark(el('code', hueOf(formals.indexOf(formal)), formal), formal)),
-		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
+		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]),
+		rawToggle(box, 'contracts', key, 'the builtIns entry of the inspect-fn-guards query for ' + key));
 	box.append(line);
 	return box;
+}
+
+/** A `{ }` toggle showing what flowR returns for `key` below `target`, pretty-printed and copyable, unpacked on the first click. */
+function rawToggle(target: HTMLElement, of: keyof RawAnswers, key: string, what: string): HTMLButtonElement {
+	return button('rawbtn', '{ }', 'the raw JSON flowR returns: ' + what + '. Click to show or hide', event => {
+		event.stopPropagation();
+		const open = [...target.children].find(child => child.classList.contains('raw'));
+		if(open !== undefined) {
+			open.remove();
+			return;
+		}
+		const box = el('div', 'raw');
+		box.addEventListener('click', inside => inside.stopPropagation());
+		const code = el('pre', undefined, 'unpacking ...');
+		const copy = button('copy', 'copy', 'copy the JSON', () => void navigator.clipboard?.writeText(code.textContent ?? '').then(() => copy.textContent = 'copied'));
+		box.append(copy, code);
+		target.append(box);
+		void db.raw().then(raw => {
+			const value = raw[of][key];
+			code.textContent = value === undefined ? 'flowR returns nothing for ' + key : JSON.stringify(value, null, 2);
+		}, () => code.textContent = 'the answers could not be unpacked in this browser');
+	});
+}
+
+/** the verbs that only look at the state, which step back behind the ones changing it */
+const Looks: ReadonlySet<string> = new Set(['reads']);
+
+/**
+ * What a call does to the global state, a line per part: `graphics device  starts a new plot · reads graphics parameters`.
+ * An access stated under conditions or for some entries reads as its label alone if it is also stated always and for all.
+ */
+function ambientBlock(name: string, families: readonly AmbientFamily[], key: string): HTMLElement {
+	const { families: words, verbs } = db.ambientWords;
+	const box = titled(el('div', 'ambient'), 'what a call of ' + name + ' does to the global state, as flowR declares it');
+	families.forEach(([family, accesses], at) => {
+		const [label = family, description = ''] = words[family] ?? [];
+		const said = el('span', 'accesses');
+		const byLabel = new Map<string, (typeof accesses)[number][]>();
+		for(const access of accesses) {
+			byLabel.set(access[2], [...byLabel.get(access[2]) ?? [], access]);
+		}
+		[...byLabel].forEach(([verb, variants], index) => {
+			const [part, access] = variants[0];
+			const about = (verbs[access]?.[1] ?? '') + (part === family ? '' : ' ' + (words[part]?.[1] ?? ''));
+			const always = variants.some(([, , , members, when]) => members.length === 0 && when.length === 0);
+			const details = always ? [] : variants.map(([, , , members, when]) => [...members, ...when].join(' '));
+			said.append(...index > 0 ? [el('span', 'sep', ' · ')] : [], titled(el('span', Looks.has(access) ? 'acc looks' : 'acc changes', verb), about),
+				...details.length === 0 ? [] : [el('span', 'when', ' (' + details.join('; ') + ')')]);
+		});
+		const line = el('div', 'aline');
+		line.append(at === 0 ? el('span', 'label', 'ambient') : el('span'), titled(el('span', 'fam', label), description), said);
+		if(at === 0) {
+			said.append(rawToggle(box, 'ambient', key, 'the ambient summary flowR states for ' + key));
+		}
+		box.append(line);
+	});
+	return box;
+}
+
+/** the group generics, by the formals they dispatch on, any of which may reach a method */
+const GroupFormals: Readonly<Record<string, readonly string[]>> = { Ops: ['e1', 'e2'], matrixOps: ['x', 'y'], Math: ['x'], Complex: ['z'], Summary: ['the first argument'] };
+
+/** at most this many methods are listed at a generic */
+const ShownMethods = 8;
+
+/**
+ * How the name takes part in S3 dispatch: at a generic, the methods the database knows, those with a contract marked;
+ * at a method, its generic, its class, and when dispatch reaches it. That is no claim about calls, as a method can be called directly.
+ */
+function s3Line(entry: Entry, shown: readonly string[]): HTMLElement | undefined {
+	const { name } = entry;
+	const generic = entry.dispatches.find(([system]) => system === 'S3')?.[1];
+	const methods = entry.s3Methods;
+	if(generic === undefined && methods.length === 0) {
+		return undefined;
+	}
+	const line = el('div', 's3');
+	if(methods.length > 0) {
+		/* base R first, then by how much the packages defining them are used */
+		const used = (method: Entry) => Math.max(...method.owners.map(owner => owner.pkg.base ? Infinity : owner.pkg.downloads));
+		const ranked = [...methods].sort((a, b) => Number(b.contracted) - Number(a.contracted) || used(b) - used(a) || (a.name < b.name ? -1 : 1));
+		line.append(titled(el('span', 'label', 'S3 methods'), 'the S3 methods of ' + name + ' the database knows, those flowR knows a contract for first, then those of base R, then by the downloads of their packages'),
+			...ranked.slice(0, ShownMethods).flatMap((method, at) => [...at > 0 ? [el('span', 'sep', ' · ')] : [], ...methodLink(method, name)]));
+		if(ranked.length > ShownMethods) {
+			line.append(el('span', 'sep', ' · '), link('more', '+' + (ranked.length - ShownMethods) + ' more', search(name + '.'), 'search for every name starting with ' + name + '.'));
+		}
+	}
+	if(generic !== undefined) {
+		const cls = name.slice(generic.length + 1);
+		line.append(...methods.length > 0 ? [el('br')] : [], titled(el('span', 'label', 'S3 method'), 'an implementation of the generic for one class'),
+			' of ', link('generic', generic, search(generic), 'search for the generic ' + generic + ' and its other methods'), ' for class ', el('code', 'cls', cls),
+			el('span', 'sep', ' · '), ...reachedBy(generic, cls, shown));
+	}
+	return line;
+}
+
+/** a method as a link to it, marked when flowR knows its contract */
+function methodLink(method: Entry, generic: string): Part[] {
+	const owners = method.owners.map(owner => owner.pkg.name).join(', ');
+	return [link('method', method.name, search(method.name), 'S3 method of ' + generic + ' for class ' + method.name.slice(generic.length + 1) + ', from ' + owners),
+		...method.contracted ? [titled(el('span', 'hascontract', '✓ contract'), 'flowR knows what a call of ' + method.name + ' has to fulfill')] : []];
+}
+
+/**
+ * When S3 dispatch from `generic` reaches its method for `cls`: the object dispatched on has the class, an implicit one (`numeric` for a
+ * plain double) only counting for an object without a class attribute and a generic that is no primitive, as those dispatch on objects only.
+ * The default method is reached whenever no other one applies.
+ */
+function reachedBy(generic: string, cls: string, shown: readonly string[]): Part[] {
+	const stated = db.stated.get(generic) ?? [];
+	const primitive = stated.some(entry => wordsOf(entry.props).includes('primitive'));
+	const [first] = (db.formals.get(generic)?.[0]?.[1] ?? formalsOf(stated[0]?.args ?? '').join(',')).split(',').map(f => f.trim()).filter(f => f !== '');
+	const group = GroupFormals[generic];
+	const on = group ?? [first === undefined || first === '...' ? 'the first argument' : first];
+	const formal = (f: string) => shown.includes(f) ? formalMark(el('code', 'arg ' + hueOf(shown.indexOf(f)), f), f) : el('code', 'arg', f);
+	const onWords = 'dispatch looks at ' + on.join(' or ') + (group === undefined
+		? ', the first formal of ' + generic + ', which UseMethod dispatches on unless the generic names another object'
+		: ', as the group generic ' + generic + ' does');
+	if(cls === 'default') {
+		const classes = new Set(new Entry(generic, db.ownersOf(generic)).s3Methods.map(method => method.name.slice(generic.length + 1)));
+		const free = [...ImplicitClasses].filter(c => !classes.has(c));
+		return [titled(el('span', 'reach', 'reached by dispatch when no other method applies'), onWords + '. A method can also be called directly, so this is no claim about the calls of it'),
+			...primitive || free.length === 0 ? [] : [el('span', 'sep', ' · '), titled(el('span', 'reach', free.length === ImplicitClasses.size ? 'no known method for any implicit class, so it takes every value without a class attribute' : 'no known method for the implicit classes ' + free.join(', ')),
+				'an object without a class attribute dispatches on its implicit class (.class2: matrix or array by its dimensions, then its type, integer and double also as numeric), '
+				+ 'so it reaches the default method when no method is known for any of them. A method of a package only applies once the package is loaded')]];
+	}
+	const implicit = ImplicitClasses.has(cls);
+	const test = (f: string): Part[] => {
+		if(f.includes(' ')) {
+			return [f + ' has class "' + cls + '"'];
+		}
+		return !implicit ? ['inherits(', formal(f), ', "' + cls + '")']
+			: primitive ? ['is.object(', formal(f), ') && "' + cls + '" %in% class(', formal(f), ')'] : ['"' + cls + '" %in% .class2(', formal(f), ')'];
+	};
+	const code = el('code', 'cond');
+	code.append(...on.flatMap((f, at) => [...at > 0 ? [' || '] : [], ...test(f)]));
+	return [titled(el('span', 'reach', 'reached by dispatch when '), onWords + (implicit
+		? '. ' + cls + ' is an implicit class, which an object without a class attribute has by its dimensions or type'
+		: '') + '. A method can also be called directly, so this is no claim about the calls of it'), code];
 }
 
 /** one row of a contract table, laid out like the rows of the packages */
@@ -463,8 +614,8 @@ function contractRow(cls: string, ...cells: readonly (string | Node)[][]): HTMLE
 
 /** What a call has to fulfill: per formal what holds, then, opened on demand, each condition with what fails without it and where. A default of a formal has no part in this */
 function contract(name: string, guards: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
-	const [requires, stated, because = [], , relations = [], required = [], returns = []] = guards;
-	const marked = marker(formals);
+	const [requires, stated, because = [], , relations = [], required = [], returns = [], , , , calls = []] = guards;
+	const marked = marker(formals, false, calls);
 	const chip = (formal: string) => formalMark(el('code', 'arg ' + hueOf(formals.indexOf(formal)), formal), formal);
 	const anded = (parts: readonly string[]) => parts.flatMap((part, at) => [...at > 0 ? [el('span', 'and word', ' and ')] : [], ...marked(part)]);
 	const box = el('div', 'contract');
@@ -473,6 +624,13 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 		const head = el('p', 'chead');
 		head.append('of ' + owner.pkg.name + '::' + name + ' ' + owner.pkg.version + ' \u00b7 implemented in ', blank(link('src', (owner.file ?? 'the sources') + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + owner.pkg.name + '::' + name + ' is written')));
 		box.append(head);
+	}
+	box.append(...dispatchOf(name, guards, chip, owner));
+	if(owner !== undefined) {
+		const key = owner.pkg.name + '::' + name;
+		const raw = el('p', 'chead');
+		raw.append('what flowR returns', rawToggle(box, 'contracts', key, 'the builtIns entry of the inspect-fn-guards query for ' + key));
+		box.append(raw);
 	}
 	const parts = new Map(stated.map(([formal, said]) => [formal, said]));
 	const rows = el('div', 'ctable');
@@ -489,7 +647,7 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 	}
 	if(returns.length > 0) {
 		const said = el('code', 'cond');
-		const result = marker(formals, true);
+		const result = marker(formals, true, calls);
 		said.append(...returns.flatMap((part, at) => [...at > 0 ? [el('span', 'and word', ' and ')] : [], ...result(part)]));
 		rows.append(contractRow('claim result', [titled(el('code', 'arg result', 'result'), 'the value a call returns normally')], [said]));
 	}
@@ -524,17 +682,41 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 	return box;
 }
 
+/** how a contract relates to others by S3 dispatch: a generic with the methods that have contracts as well, or a method with its generic and the other methods of that */
+function dispatchOf(name: string, guards: Guards, chip: (formal: string) => HTMLElement, owner: Owner | undefined): HTMLElement[] {
+	const [, , , , , , , , dispatch, methodOf] = guards;
+	const listed = (methods: readonly string[], said: string): Part[] => {
+		const shown = methods.filter(m => m !== (owner?.pkg.name ?? '') + '::' + name && db.guards.has(m));
+		return shown.length === 0 ? [] : [said, ...shown.flatMap((m, at) => [...at > 0 ? ['; '] : [], ...located(m, owner)])];
+	};
+	const lines: HTMLElement[] = [];
+	if(dispatch?.length === 2) {
+		const line = el('p', 'chead');
+		line.append('generic, dispatching on ', chip(dispatch[0]), ' (S3)', ...listed(dispatch[1], ' \u00b7 contracts also for: '));
+		lines.push(line);
+	}
+	if(methodOf?.length === 2) {
+		const [generic, cls] = methodOf;
+		const line = el('p', 'chead');
+		line.append('method of ', ...located(generic, owner), ' for class ', el('code', 'cls', cls), ...listed(db.guards.get(generic)?.[8]?.[1] ?? [], ' \u00b7 other methods: '));
+		lines.push(line);
+	}
+	return lines;
+}
+
 /** a function by name, then where the database says it is written, linking there, `home` being the function the contract is of and where an unqualified name is looked for */
 function located(fn: string, home: Owner | undefined): Part[] {
 	const qualified = fn.indexOf('::');
 	const [pkg, name] = qualified < 0 ? [home?.pkg.name, fn] : [fn.slice(0, qualified), fn.slice(qualified + 2)];
 	const owner = db.ownersOf(name).split(',').map(entry => entry === '' ? undefined : Owner.parse(entry)).find(o => o?.pkg.name === pkg);
 	const { file, line, sourceUrl } = owner ?? {};
+	/* a function of a package R does not attach on startup is written with it, and hovering names the package in any case */
+	const shown = titled(el('code', 'fn', pkg === undefined || (db.package(pkg)?.attached ?? false) ? name : pkg + '::' + name), pkg === undefined ? undefined : pkg + '::' + name);
 	if(file === undefined) {
-		return [el('code', 'fn', name)];
+		return [shown];
 	}
 	const at = file + (line === undefined ? '' : ':' + line);
-	return [el('code', 'fn', name), ', ', sourceUrl === undefined ? at : blank(link('src', at, sourceUrl, 'where ' + (pkg ?? '') + '::' + name + ' is written'))];
+	return [shown, ', ', sourceUrl === undefined ? at : blank(link('src', at, sourceUrl, 'where ' + (pkg ?? '') + '::' + name + ' is written'))];
 }
 
 /** marks `node` as speaking of `formal`, see {@link light} */

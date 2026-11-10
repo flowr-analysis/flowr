@@ -18,9 +18,37 @@ export type Guards = readonly [
 	/** what holds of the value a call returns normally, said of `result` */
 	returns?: readonly string[],
 	/** every formal the contract speaks of */
-	formals?: readonly string[]
+	formals?: readonly string[],
+	/** for an S3 generic, the formal it dispatches on and its methods, each `pkg::name`, empty for anything else */
+	dispatch?: readonly [on: string, methods: readonly string[]] | readonly [],
+	/** for an S3 method, its generic as `pkg::name` and the class it is for, empty for anything else */
+	methodOf?: readonly [generic: string, cls: string] | readonly [],
+	/** each function the conditions call, as the conditions write it and as `pkg::name` */
+	calls?: readonly (readonly [shown: string, qualified: string])[],
+	/** what a query about the contract is answered by, see `contractTokens` */
+	tokens?: readonly string[]
 ];
 import { FilterKind, filterOf } from './filters';
+
+/** one access of a function to a part of the global state, see `ambientSummaryOf` in `src/dataflow/environments/ambient-effect.ts` */
+export type AmbientAccess = readonly [part: string, access: string, label: string, members: readonly string[], when: readonly string[]];
+/** the accesses to one part of the global state and the parts belonging to it, the plot and the graphics parameters to the device */
+export type AmbientFamily = readonly [family: string, accesses: readonly AmbientAccess[]];
+
+/** how the page speaks of the parts of the global state and the accesses, from `AmbientFamilyInfo` and `AmbientVerbInfo` */
+export interface AmbientWordsOnPage {
+	readonly families: Readonly<Record<string, readonly [label: string, description: string, of: string]>>;
+	readonly verbs:    Readonly<Record<string, readonly [label: string, description: string]>>;
+}
+
+/** what flowR answers per function, as `pkg::name ->` the JSON it returns, see `rawForPage` in `scripts/sigdb-index.ts` */
+export interface RawAnswers {
+	readonly contracts: Readonly<Record<string, unknown>>;
+	readonly ambient:   Readonly<Record<string, unknown>>;
+}
+
+/** the names of the classes R gives a value without a class attribute for dispatch (`.class2`), from its dimensions and its type */
+export const ImplicitClasses: ReadonlySet<string> = new Set(['matrix', 'array', 'integer', 'double', 'numeric', 'function', 'character', 'logical', 'complex', 'raw', 'list', 'NULL', 'name', 'call', 'expression', 'environment']);
 
 /** the element the page template gives `id`, which it must have */
 export function byId<T extends Element = HTMLElement>(id: string): T {
@@ -47,6 +75,8 @@ export class Package {
 		readonly name: string,
 		readonly version: string,
 		readonly base: boolean,
+		/** R attaches it on startup, so its functions are written without the package */
+		readonly attached: boolean,
 		readonly downloads: number,
 		readonly exports: number,
 		readonly releases: number,
@@ -58,7 +88,7 @@ export class Package {
 
 	static read(line: string): Package {
 		const [name, version, base, downloads, exports, releases, since, archived, files, source] = line.split('\t');
-		return new Package(name, version, base === '1', Number(downloads), Number(exports), Number(releases), Number(since), archived === '1', files ?? '', source ?? '');
+		return new Package(name, version, base === '1' || base === '2', base === '2', Number(downloads), Number(exports), Number(releases), Number(since), archived === '1', files ?? '', source ?? '');
 	}
 
 	get repository(): RRepository {
@@ -103,9 +133,11 @@ export class Package {
 
 /** what flowR states about a name in one package */
 export interface Stated {
-	readonly pkg:   string;
-	readonly props: string;
-	readonly args:  string;
+	readonly pkg:     string;
+	readonly props:   string;
+	readonly args:    string;
+	/** what it does to the global state, empty if nothing */
+	readonly ambient: readonly AmbientFamily[];
 }
 
 /** a package exporting a name, see `encode` in `scripts/sigdb-index.ts` for the `index:flags:params:topic:file:line` it is read from */
@@ -197,6 +229,25 @@ export class Entry {
 		return this.stated.find(entry => entry.pkg === pkg) ?? this.stated.find(entry => entry.pkg === 'base') ?? this.stated[0];
 	}
 
+	/** what a call of it in `pkg` does to the global state, empty if nothing */
+	ambientIn(pkg: string | undefined): readonly AmbientFamily[] {
+		return this.statedFor(pkg)?.ambient ?? [];
+	}
+
+	/** the S3 methods the database knows for the name, each the entry of a method whose generic it is, empty if it is no generic */
+	get s3Methods(): readonly Entry[] {
+		if(!db.generics.has(this.name)) {
+			return [];
+		}
+		return db.withPrefix(this.name + '.').map(([name, raw]) => new Entry(name, raw))
+			.filter(method => method.dispatches.some(([system, generic]) => system === 'S3' && generic === this.name));
+	}
+
+	/** whether flowR knows a contract for the name in any package exporting it */
+	get contracted(): boolean {
+		return this.owners.some(owner => this.guardsIn(owner.pkg.name) !== undefined);
+	}
+
 	/** what a call of it has to fulfill in `pkg` */
 	guardsIn(pkg: string): Guards | undefined {
 		return db.guards.get(pkg + '::' + this.name);
@@ -236,7 +287,10 @@ export class Entry {
 			case FilterKind.Arg:     return this.stated.some(entry => argsOf(entry.args).some(([, roles]) => roles.includes(key)));
 			case FilterKind.Kind:    return this.kinds.includes(key);
 			case FilterKind.Flag:    return this.flagged(key as ExportFlag);
-			case FilterKind.Contract: return this.owners.some(owner => this.guardsIn(owner.pkg.name) !== undefined);
+			case FilterKind.Contract: return this.contracted;
+			case FilterKind.Ambient: return this.stated.some(entry => key === 'any'
+				? entry.ambient.length > 0 || wordsOf(entry.props).includes('ambient state')
+				: entry.ambient.some(([family]) => family === key));
 			default:                 return false;
 		}
 	}
@@ -244,10 +298,12 @@ export class Entry {
 
 class Database {
 	readonly kinds = readMap<string[]>('kinds');
-	readonly stated = new Map([...readMap<readonly (readonly [string, string, string])[]>('stated')]
-		.map(([name, entries]) => [name, entries.map(([pkg, props, args]): Stated => ({ pkg, props, args }))]));
+	readonly stated = new Map([...readMap<readonly (readonly [string, string, string, (readonly AmbientFamily[])?])[]>('stated')]
+		.map(([name, entries]) => [name, entries.map(([pkg, props, args, ambient = []]): Stated => ({ pkg, props, args, ambient }))]));
+	readonly ambientWords = readJson<AmbientWordsOnPage>('ambient-words');
+	private rawAnswers?: Promise<RawAnswers>;
 	readonly topics = readMap<string>('topics');
-	readonly generics: ReadonlySet<string> = new Set(readJson<string>('generics').split('\n').filter(Boolean));
+	readonly generics:   ReadonlySet<string> = new Set(readJson<string>('generics').split('\n').filter(Boolean));
 	readonly topicsComplete = readJson<boolean>('topics-complete');
 	readonly formals = readMap<[pkg: string, params: string][]>('formals');
 	readonly groups = readMap<string>('groups');
@@ -268,6 +324,29 @@ class Database {
 		this.packages = text.slice(between + 2).split('\n').map(line => Package.read(line));
 		this.byName = new Map(this.packages.map(pkg => [pkg.name, pkg]));
 		this.loaded = true;
+	}
+
+	/** what flowR answers per function, unpacked on the first ask */
+	raw(): Promise<RawAnswers> {
+		return this.rawAnswers ??= (async() => {
+			const encoded = (byId('raw').textContent ?? '').trim();
+			return JSON.parse(await inWorker(encoded).catch(() => unzip(encoded))) as RawAnswers;
+		})();
+	}
+
+	/** the lines of {@link names} for the names starting with `prefix`, as `[name, owners]`, which sit together as the names are sorted */
+	withPrefix(prefix: string): [name: string, owners: string][] {
+		const found: [string, string][] = [];
+		const first = this.names.indexOf('\n' + prefix);
+		let at = this.names.startsWith(prefix) ? 0 : first < 0 ? -1 : first + 1;
+		while(at >= 0) {
+			const end = this.names.indexOf('\n', at);
+			const line = this.names.slice(at, end < 0 ? this.names.length : end);
+			const tab = line.indexOf('\t');
+			found.push([line.slice(0, tab), line.slice(tab + 1)]);
+			at = end < 0 || !this.names.startsWith(prefix, end + 1) ? -1 : end + 1;
+		}
+		return found;
 	}
 
 	package(name: string | undefined): Package | undefined {

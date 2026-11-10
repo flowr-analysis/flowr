@@ -21,12 +21,14 @@ import { TestFunctions } from '../src/queries/catalog/dependencies-query/functio
 import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } from '../src/dataflow/environments/identifier';
-import { baseRExportOwner } from '../src/util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
 import { builtInGuards, namesWithGuards } from '../src/dataflow/fn/guards/built-in-guards';
-import { claimConditions, returnConditions } from '../src/dataflow/fn/guards/guard-claims';
-import type { Guards } from './sigdb-page/database';
+import { caseConditions, claimConditions, returnConditions } from '../src/dataflow/fn/guards/guard-claims';
+import type { AmbientWordsOnPage, Guards } from './sigdb-page/database';
+import { AmbientFamilyInfo, AmbientVerbInfo } from '../src/dataflow/environments/ambient-effect';
+import { contractTokens } from './sigdb-page/contract-search';
 
 export interface PackageEntry {
 	readonly name:      BrandedNamespace;
@@ -79,15 +81,53 @@ export function guardsForPage(): Record<string, Guards> {
 	return Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
 		const stated = builtInGuards(name, pkg);
 		const claims = [
-			...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, claimConditions(formal, claim)]),
-			/* a claim that holds unless something else lets the call through reads as that alternative or the claim */
-			...(stated?.conditional ?? []).map(({ formal, claim, unless }): [string, string[]] => [formal, [`${unless} || ${claimConditions(formal, claim).join(' && ')}`]])
+			...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, claim), ...caseConditions(formal, claim)]]),
+			/* a claim that holds unless something else lets the call through reads as that alternative or the claim, unless the cases of the formal say it shorter */
+			...(stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined).map(({ formal, claim, unless }): [string, string[]] => [formal, [`${unless} || ${claimConditions(formal, claim).join(' && ')}`]])
 		];
 		const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message, reads, brief }): [string, string, string, string, string, string, string] => [requires, kind, fails, via?.join(', ') ?? '', message ?? '', reads ?? '', brief ?? '']);
 		const result = returnConditions(stated?.returns, stated?.passes);
 		const named = [...new Set([...stated?.required ?? [], ...claims.map(([formal]) => formal), ...(stated?.relations ?? []).flatMap(r => r.formals), ...(stated?.because ?? []).flatMap(b => b.formals ?? [])])];
-		return stated === undefined || (stated.requires === '' && claims.length === 0 && (stated.required ?? []).length === 0 && result.length === 0) ? [] : [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []], result, named]]];
+		if(stated === undefined || (stated.requires === '' && claims.length === 0 && (stated.required ?? []).length === 0 && result.length === 0)) {
+			return [];
+		}
+		const calls = (stated.calls ?? []).map(qualified => Identifier.parse(qualified));
+		const tokens = contractTokens({
+			inferred:  stated.readOff !== undefined,
+			formals:   named,
+			claims:    stated.formals ?? {},
+			required:  stated.required ?? [],
+			calls:     calls.map(id => [Identifier.getName(id), Identifier.toString(id)]),
+			relations: (stated.relations ?? []).map(r => r.formals),
+			returns:   stated.returns
+		});
+		return [[`${pkg}::${name}`, [stated.requires, claims, because, stated.readOff ?? '', (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []], result, named,
+			stated.dispatches === undefined ? [] : [stated.dispatches, stated.methods ?? []], stated.methodOf === undefined ? [] : [stated.methodOf.generic, stated.methodOf.class],
+			calls.map(id => [Identifier.toPreludeString(id), Identifier.toString(id)]), tokens]]];
 	}));
+}
+
+/** The words a page needs to speak of the parts of the global state and the accesses to them, see {@link AmbientFamilyInfo}. */
+export function ambientWordsForPage(): AmbientWordsOnPage {
+	return {
+		families: Object.fromEntries(Object.entries(AmbientFamilyInfo).map(([family, { label, description, of }]) => [family, [label, description, of ?? '']])),
+		verbs:    Object.fromEntries(Object.entries(AmbientVerbInfo).map(([verb, { label, description }]) => [verb, [label, description]]))
+	};
+}
+
+/**
+ * What flowR answers about each function as it returns it, which a page shows on demand: the `builtIns` entry of the
+ * `inspect-fn-guards` query per `pkg::name` with a contract, and the ambient summary of `:signature` per `pkg::name` that
+ * touches the global state. Gzipped and base64-encoded, as only a reader opening one of them needs it.
+ */
+export function rawForPage(stated: ReadonlyMap<string, readonly StatedSignature[]>): string {
+	const contracts = Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
+		const guards = builtInGuards(name, pkg);
+		return guards === undefined ? [] : [[`${pkg}::${name}`, guards]];
+	}));
+	const ambient = Object.fromEntries([...stated].flatMap(([name, entries]) =>
+		entries.flatMap(({ pkg, ambient }) => ambient === undefined ? [] : [[`${pkg}::${name}`, ambient]])));
+	return zlib.gzipSync(Buffer.from(JSON.stringify({ contracts, ambient })), { level: 9 }).toString('base64');
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -374,7 +414,7 @@ export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<st
 	}
 	owners.delete('');   // an empty name would split the blob apart when the page reads it back
 	return {
-		packages: packages.map(p => [p.name, p.version, p.base ? '1' : '0', p.downloads, p.exports.size,
+		packages: packages.map(p => [p.name, p.version, p.base ? (AttachedBasePackageSet.has(p.name) ? '2' : '1') : '0', p.downloads, p.exports.size,
 			p.releases, p.since, p.archived ? '1' : '0', p.files.join('|'), p.source ?? ''].join('\t')).join('\n'),
 		/* alphabetical, which is what lets gzip fold the shared prefixes; a page ranks its own hits */
 		names: [...owners.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

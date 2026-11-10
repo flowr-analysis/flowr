@@ -12,7 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
-import { encode, guardsForPage, pack, readSigIndex } from './sigdb-index';
+import { ambientWordsForPage, encode, guardsForPage, pack, rawForPage, readSigIndex } from './sigdb-index';
 import { template, writePage, committedNote } from './html-page';
 
 /** bundles sigdb-page/main.ts as iife; module scripts are CORS-blocked when opened from disk */
@@ -70,8 +70,10 @@ async function main(): Promise<void> {
 	/* what flowR states about the names it defines, so a hit can show its signature next to the database's.
 	   `|` separates the words, `no default` and `changes scope` being two of them rather than four */
 	const stated = JSON.stringify(Object.fromEntries([...index.stated].map(([name, entries]) =>
-		[name, entries.map(({ pkg, props, args }) =>
-			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(',')])
+		[name, entries.map(({ pkg, props, args, ambient }) =>
+			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(','),
+				/* what it does to the global state, by part: `[family, [[part, access, label, members, when]]]` */
+				...ambient === undefined ? [] : [ambient.map(({ family, accesses }) => [family, accesses.map(({ part, access, label, members, when }) => [part, access, label, members, when])])]])
 		]))).replaceAll('</', '<\\/');
 	/* a replacement function, since the bundle holds `$` followed by a backtick, which a replacement string would expand */
 	const script = await pageScript();
@@ -87,6 +89,8 @@ async function main(): Promise<void> {
 		.replace('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
 		.replace('"<!--GUARDS-->"', JSON.stringify(guardsForPage()).replaceAll('</', '<\\/'))
 		.replace('"<!--GROUPS-->"', JSON.stringify(Object.fromEntries(index.groups)).replaceAll('</', '<\\/'))
+		.replace('"<!--AMBIENT-WORDS-->"', JSON.stringify(ambientWordsForPage()).replaceAll('</', '<\\/'))
+		.replace('<!--RAW-->', () => rawForPage(index.stated))
 		.replace('"<!--GENERICS-->"', JSON.stringify([...index.generics].sort().join('\n')).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));
 

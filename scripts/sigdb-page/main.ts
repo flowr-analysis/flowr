@@ -2,11 +2,12 @@ import { rankName } from '../../src/util/text/name-rank';
 import { button, el } from '../page-lib/dom';
 import type { Spec } from './query';
 import { argsOf, aboutWord, Vocabulary, WordKind, closed, completeAt, explainAt, problemsOf, globOf, isIncomplete, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
-import type { Stated } from './database';
+import type { Guards, Stated } from './database';
 import { byId, db, Entry } from './database';
 import { Hits } from './render';
-import { FilterBar, FilterKind, Mix } from './filters';
+import { ambientFilters, FilterBar, FilterKind, Mix } from './filters';
 import { ExportFlag } from './export-flags';
+import { answersAll, ContractKeys, ParamKinds, takeContractSpecs, type ContractSpec } from './contract-search';
 
 /** names and packages listed at once, and again with every click on "show more" */
 const Step = 100;
@@ -21,7 +22,10 @@ const q = byId<HTMLInputElement>('q'), mode = byId<HTMLSelectElement>('mode'), s
 const scope = byId<HTMLButtonElement>('scope'), filters = byId('filters'), status = byId('status'), hits = byId<HTMLUListElement>('hits');
 const picks = [...document.querySelectorAll<HTMLButtonElement>('.pick')];
 
-const filterBar = new FilterBar(filters, picks, () => void search());
+/* a chip for every part of the global state some function flowR states accesses, in the order the configuration words them */
+const accessed = new Set([...db.stated.values()].flatMap(entries => entries.flatMap(entry => entry.ambient.map(([family]) => family))));
+const filterBar = new FilterBar(filters, picks, () => void search(), ambientFilters(Object.entries(db.ambientWords.families)
+	.filter(([family]) => accessed.has(family)).map(([family, [label, description]]) => [family, label, description] as const)));
 scope.addEventListener('click', () => {
 	q.value = q.value.trim().replace(/^\?/, '').replace(/^[\w.]+:::?/, '');
 	void search();
@@ -142,13 +146,53 @@ function packagesOf(kept: readonly Match[], spec: Spec): number | undefined {
 	return seen.size === 0 ? undefined : seen.size;
 }
 
-/** what a query asks for, once its package and signature parts are taken apart */
-function parsed(text: string): { readonly spec: Spec, readonly inPackage?: string, readonly needle: string, readonly glob?: RegExp } {
+/** what a query asks for, once its package, signature, and contract parts are taken apart */
+function parsed(text: string): { readonly spec: Spec, readonly inPackage?: string, readonly needle: string, readonly glob?: RegExp, readonly contract: readonly ContractSpec[] } {
 	const spec = parseSpec(text.trim().replace(/^\?/, '').trim());
-	const qualified = /^([\w.]+):::?(.*)$/.exec(spec.rest);
-	const named = (qualified?.[2] ?? spec.rest).trim();
+	const { rest, specs: contract } = takeContractSpecs(spec.rest);
+	const qualified = /^([\w.]+):::?(.*)$/.exec(rest);
+	const named = (qualified?.[2] ?? rest).trim();
 	const glob = spec.nameRegex ?? globOf(named);
-	return { spec, inPackage: qualified?.[1], needle: glob === undefined ? named : '', glob };
+	return { spec, inPackage: qualified?.[1], needle: glob === undefined ? named : '', glob, contract };
+}
+
+/** the name of each contract with its guards, a contract being listed as `pkg::name` */
+function contracts(): (readonly [name: string, guards: Guards])[] {
+	return [...db.guards].map(([key, guards]) => [key.slice(key.indexOf('::') + 2), guards] as const);
+}
+
+/** each name a contract of which answers every part of `asked`, the needle narrowing the names */
+function contractHits(asked: readonly ContractSpec[], needle: string): Match[] {
+	const lower = needle.toLowerCase();
+	const found = new Map<string, Match>();
+	for(const [name, guards] of contracts()) {
+		const at = name.toLowerCase().indexOf(lower);
+		if(at >= 0 && !found.has(name) && answersAll(guards[11] ?? [], asked)) {
+			found.set(name, { entry: new Entry(name, db.ownersOf(name)), at, rank: at === 0 ? 0 : 2, score: 0 });
+		}
+	}
+	return [...found.values()];
+}
+
+/** whether the contract mentions `text`: as written within one of its conditions, or as the function a condition calls */
+function mentions(guards: Guards, text: string): boolean {
+	const [requires, claims, because = [], , relations = [], , returns = [], , , , , tokens = []] = guards;
+	return tokens.includes('requires:' + text) || [requires, ...claims.flatMap(([, said]) => said), ...because.flatMap(([holds, , , , , reads = '']) => [holds, reads]), ...relations.flat(), ...returns].some(said => said.includes(text));
+}
+
+/** the names whose contracts mention what was typed, apart from those `known` already, for a query that is no plain name */
+function mentionHits(text: string, known: ReadonlySet<string>): Match[] {
+	const typed = text.trim().replace(/\s+/g, ' ');
+	if(typed.length < 3 || /^[\w.]+$/.test(typed)) {
+		return [];
+	}
+	const found = new Map<string, Match>();
+	for(const [name, guards] of contracts()) {
+		if(!known.has(name) && !found.has(name) && mentions(guards, typed)) {
+			found.set(name, { entry: new Entry(name, db.ownersOf(name)), at: -1, rank: 6, score: 0 });
+		}
+	}
+	return [...found.values()];
 }
 
 /** whether any name flowR states a signature for would match the query, which is all that argument and property words can ask about */
@@ -177,8 +221,8 @@ async function search(): Promise<void> {
 	if(answered && isIncomplete(q.value)) {
 		return;
 	}
-	const { spec, inPackage, needle, glob } = parsed(q.value);
-	const constrained = glob !== undefined || spec.args !== undefined || spec.props.length > 0;
+	const { spec, inPackage, needle, glob, contract } = parsed(q.value);
+	const constrained = glob !== undefined || spec.args !== undefined || spec.props.length > 0 || contract.length > 0;
 	const run = ++pending;
 	hits.replaceChildren();
 	if(!db.loaded) {
@@ -187,7 +231,7 @@ async function search(): Promise<void> {
 			return;   // the reader typed on while it was being read
 		}
 	}
-	const matches = await scan(needle, run);
+	const matches = contract.length > 0 ? contractHits(contract, needle) : await scan(needle, run);
 	if(matches === undefined) {
 		return;
 	}
@@ -213,7 +257,9 @@ async function search(): Promise<void> {
 	}
 	const fitting = constrained ? inScope.filter(({ entry }) => fits(entry, spec, glob)) : inScope;
 	filterBar.offer(fitting.map(({ entry }) => entry));
-	const kept = onlyPackages ? [] : fitting.filter(({ entry }) => filterBar.passes(entry));
+	const named = onlyPackages ? [] : fitting.filter(({ entry }) => filterBar.passes(entry));
+	/* a condition or a qualified name finds the contracts saying it as well, in whichever package */
+	const kept = [...named, ...(onlyPackages || contract.length > 0 ? [] : mentionHits(q.value, new Set(named.map(({ entry }) => entry.name))).filter(({ entry }) => filterBar.passes(entry)))];
 	for(const { entry, at } of kept.slice(0, limit)) {
 		shown.name(entry, at);
 	}
@@ -409,6 +455,8 @@ byId('help').addEventListener('click', () => {
 for(const [id, kind] of [['helproles', WordKind.Role], ['helpprops', WordKind.Prop]] as const) {
 	byId(id).append(...Vocabulary[kind].flatMap(({ word, about }) => [el('dt', kind, word), el('dd', undefined, about)]));
 }
+byId('helpcontracts').append(...Object.values(ContractKeys).flatMap(([example, about]) => [el('dt', undefined, example), el('dd', undefined, about)]));
+byId('helpkinds').append(...Object.entries(ParamKinds).flatMap(([kind, [about]]) => [el('dt', undefined, kind), el('dd', undefined, about)]));
 for(const example of document.querySelectorAll<HTMLButtonElement>('.try')) {
 	example.addEventListener('click', () => {
 		q.value = example.dataset.q ?? '';

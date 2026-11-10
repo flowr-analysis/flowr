@@ -12,14 +12,17 @@ export enum FilterKind {
 	Kind = 'kind',
 	Prop = 'prop',
 	Arg = 'arg',
-	Contract = 'contract'
+	Contract = 'contract',
+	/** what a call does to the global state, `any` or by part, as the built-in configuration declares it */
+	Ambient = 'ambient'
 }
 
 /** the boxes the chips are grouped in */
 enum FilterGroup {
 	Traits = 'traits',
 	Prop = 'prop',
-	Arg = 'arg'
+	Arg = 'arg',
+	Ambient = 'ambient'
 }
 
 /** how the pressed chips combine */
@@ -29,7 +32,7 @@ export enum Mix {
 	None = 'none'
 }
 
-interface Filter {
+export interface Filter {
 	readonly kind:  FilterKind;
 	readonly key:   string;
 	readonly label: string;
@@ -56,7 +59,6 @@ const Filters: readonly Filter[] = [
 	{ kind: FilterKind.Prop, key: 'maybe pure', label: 'maybe pure', about: 'pure as long as the functions it calls are' },
 	{ kind: FilterKind.Prop, key: 'invisible', label: 'invisible', about: 'the result is returned invisibly, so it does not print at top level, like invisible(x)' },
 	{ kind: FilterKind.Prop, key: 'changes scope', label: 'changes scope', about: 'defines or removes variables in an environment, like assign' },
-	{ kind: FilterKind.Prop, key: 'ambient state', label: 'ambient state', about: 'reads state outside its arguments, like options or the working directory' },
 	{ kind: FilterKind.Arg, key: 'alias', label: 'alias arg', about: 'an argument is handed back as the result, like x in identity(x)' },
 	{ kind: FilterKind.Arg, key: 'forced', label: 'forced arg', about: 'an argument is evaluated whenever the call happens, like x in force(x)' },
 	{ kind: FilterKind.Arg, key: 'value', label: 'value arg', about: 'an argument contributes its value to the result, like x in sum(x)' },
@@ -65,12 +67,21 @@ const Filters: readonly Filter[] = [
 	{ kind: FilterKind.Arg, key: 'presence', label: 'presence arg', about: 'only whether an argument was supplied matters, like in missing()' }
 ];
 const Groups: Readonly<Record<FilterGroup, readonly [title: string, about: string]>> = {
-	[FilterGroup.Traits]: ['traits', 'what the name is: a method, deprecated, a reader, a writer, ...'],
-	[FilterGroup.Prop]:   ['function', 'what the call as a whole does or returns'],
-	[FilterGroup.Arg]:    ['arguments', 'what the call does with its arguments']
+	[FilterGroup.Traits]:  ['traits', 'what the name is: a method, deprecated, a reader, a writer, ...'],
+	[FilterGroup.Prop]:    ['function', 'what the call as a whole does or returns'],
+	[FilterGroup.Arg]:     ['arguments', 'what the call does with its arguments'],
+	[FilterGroup.Ambient]: ['ambient state', 'what the call does to the global state, like the graphics device, the options, or the random number generator']
 };
 
-const groupOf = (kind: FilterKind): FilterGroup => kind === FilterKind.Prop ? FilterGroup.Prop : kind === FilterKind.Arg ? FilterGroup.Arg : FilterGroup.Traits;
+const groupOf = (kind: FilterKind): FilterGroup => kind === FilterKind.Prop ? FilterGroup.Prop : kind === FilterKind.Arg ? FilterGroup.Arg : kind === FilterKind.Ambient ? FilterGroup.Ambient : FilterGroup.Traits;
+
+/** a chip for any access to the global state, and one per part of it `families` names, `[key, label, description]` each */
+export function ambientFilters(families: readonly (readonly [key: string, label: string, description: string])[]): Filter[] {
+	return [
+		{ kind: FilterKind.Ambient, key: 'any', label: 'any', about: 'reads or changes state outside its arguments, like options, the working directory, or the graphics device' },
+		...families.map(([key, label, description]) => ({ kind: FilterKind.Ambient, key, label, about: 'accesses the ' + label + ': ' + description }))
+	];
+}
 const idOf = (kind: FilterKind, key: string): string => kind + ':' + key;
 
 /** the kind and key of a chip `id` */
@@ -86,14 +97,14 @@ export class FilterBar {
 	private readonly chips = new Map<string, HTMLButtonElement>();
 	private readonly boxes: ReadonlyMap<FilterGroup, HTMLElement>;
 
-	constructor(parent: HTMLElement, private readonly picks: readonly HTMLButtonElement[], changed: () => void) {
+	constructor(parent: HTMLElement, private readonly picks: readonly HTMLButtonElement[], changed: () => void, extra: readonly Filter[] = []) {
 		this.boxes = new Map((Object.entries(Groups) as [FilterGroup, readonly [string, string]][]).map(([group, [title, about]]) => {
 			const box = el('span', 'group');
 			box.append(button('groupbtn', title, about, () => FilterBar.setOpen(box, box.dataset.open !== 'true')));
 			parent.append(box);
 			return [group, box] as const;
 		}));
-		for(const { kind, key, label, about } of Filters) {
+		for(const { kind, key, label, about } of [...Filters, ...extra]) {
 			const id = idOf(kind, key);
 			const chip = button(undefined, label, about + '. Click to filter by it, click again to drop it', () => {
 				this.press(id, !this.active.has(id));

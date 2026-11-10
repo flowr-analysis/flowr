@@ -11,6 +11,7 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
+import { datasetShape } from '../../util/r-datasets';
 import { AttachedBasePackages, BaseDatasets, baseRExportOwner } from '../../util/r-base-packages';
 import { nonBaseImports } from './unused-import';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -204,8 +205,12 @@ export const UNDEFINED_SYMBOL = {
 		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
 		const src = deps.signatures().sources();
 		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
+		const loadedNames = new Set<BrandedNamespace>(loadedPackages.map(p => p.name as BrandedNamespace));
+		/* the database records no data sets, which a loaded package makes available as lazy data */
+		const isDatasetOfLoadedPackage = (name: BrandedIdentifier): boolean =>
+			datasetShape(name, undefined, pkg => loadedNames.has(pkg)) !== undefined;
 		const isExportedByLoadedPackage = memoize((name: BrandedIdentifier): boolean =>
-			loadedPackages.some(p => p.has(name)) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
+			loadedPackages.some(p => p.has(name)) || isDatasetOfLoadedPackage(name) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
 
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);

@@ -46,6 +46,14 @@ describe('flowR linter', withTreeSitter(parser => {
 				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a name outside what assign binds is flagged', parser, 'for(i in 2000:2002) assign(paste0("year", i), 1)\nprint(year2005)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'year2005', kind: 'variable', loc: [2, 7, 2, 14] }], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name attached from a list is defined', parser, 'attach(list(att = 5), name = "mine")\nprint(att)\ndetach("mine")',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name attached from an environment is defined', parser, 'e <- new.env()\ne$att3 <- 4\nattach(e)\nprint(att3)',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a data set of a loaded package is defined', parser, 'library(dplyr)\nprint(starwars)',
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({ ...{ base: ['print'] }, dplyr: ['mutate'] }), checkVariables: true });
+			assertLinter('a data set of a package not loaded is flagged', parser, 'print(starwars)',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'starwars', kind: 'variable', loc: [1, 7, 1, 14] }], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a data set of datasets is defined', parser, 'summary(iris)\nhead(mtcars)', 'undefined-symbol', []);
 			assertLinter('a namespaced name is still checked', parser, 'library(somePkg)\nfoo()\nbase::fooo()', 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'fooo', kind: 'function', loc: [3, 1, 3, 12] }]);
 		});

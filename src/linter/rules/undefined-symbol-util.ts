@@ -33,7 +33,8 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 			return true;
 		}
 		const targetVtx = graph.getVertex(target);
-		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx)) {
+		/* a value is what `attach(list(a = 1))` binds the name to */
+		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx) || DfgVertex.isValue(targetVtx)) {
 			return true;
 		}
 	}

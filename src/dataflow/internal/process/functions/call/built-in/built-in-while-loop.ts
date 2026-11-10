@@ -94,7 +94,8 @@ export function processWhileLoop<OtherInfo>(
 	if(ControlFlow.alwaysExits(condition, data.cds)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
 		graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
-		return condition;
+		/* the condition's graph went into `graph` already, which a second merge refuses */
+		return { ...condition, graph };
 	}
 
 	const whenTrue: ControlDependency = { id: nameId, when: true };

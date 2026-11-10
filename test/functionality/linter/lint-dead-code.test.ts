@@ -183,6 +183,7 @@ print(2)
 		describe('returns in an else-if chain without a final else', () => {
 			assertLinter('braced chain', parser, 'test <- function(x, a, b, c) {\n\tif (x %in% 1:2) {\n\t\treturn(a)\n\t} else if (x %in% 3:4) {\n\t\treturn(b)\n\t}\n\tc\n}', 'dead-code', []);
 			assertLinter('unbraced chain', parser, 'test <- function(x, a, b, c) { if (x %in% 1:2) return(a) else if (x %in% 3:4) return(b) ; c }', 'dead-code', []);
+			assertLinter('a while whose condition stops is analyzed and leaves the body dead', parser, 'r <- tryCatch(while(stop("e")) cat("dead"), error = function(e) NULL)\ncat("live")', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [1, 32, 1, 42], quickFix: [emptied([1, 32, 1, 42])] }]);
 			assertLinter('called with a value no branch takes', parser, 'test <- function(x, a, b, c) { if (x %in% 1:2) return(a) else if (x %in% 3:4) return(b) ; c }\ntest(5, 1, 2, 3)', 'dead-code', []);
 			assertLinter('a symbol condition', parser, 'f <- function(x, y) { if (x) return(1) else if (y) return(2) ; 3 }', 'dead-code', []);
 			assertLinter('a chain in a for body', parser, 'f <- function(x) { for(i in x) { if(i == 1) return(1) else if(i == 2) return(2) }; 3 }', 'dead-code', []);

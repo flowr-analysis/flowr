@@ -18,14 +18,19 @@ import { statedGuardsOf } from '../src/dataflow/fn/guards/stated-guards';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
 import { builtInNames } from '../src/dataflow/environments/query-fn-props';
 import { Identifier } from '../src/dataflow/environments/identifier';
+import { ImplicitClasses } from '../src/dataflow/fn/guards/guard-knowledge';
 
 const Target = path.join('src', 'data', 'r-base-guards.generated.ts');
 
 interface Closure {
-	readonly pkg:      string
-	readonly name:     string
-	readonly exported: boolean
-	readonly code:     string
+	readonly pkg:         string
+	readonly name:        string
+	readonly exported:    boolean
+	readonly code:        string
+	/** the generic and class it is the S3 method of */
+	readonly methodOf?:   { readonly generic: string, readonly class: string }
+	/** the formal it dispatches on, for a generic */
+	readonly dispatches?: string
 }
 
 const quoted = (name: string): string => '`' + name + '`';
@@ -33,15 +38,19 @@ const definition = ({ name, code }: Closure): string => `${quoted(name)} <- ${co
 
 function readClosures(file: string, pkg: string): Closure[] {
 	return fs.readFileSync(file, 'utf8').split('\n').filter(l => l !== '').map(line => {
-		const [name, exported, code] = line.split('\t');
-		return { pkg, name, exported: exported === 'TRUE', code: code.replace(/\\(.)/g, (_, c: string) => c === 'n' ? '\n' : c) };
+		const [name, exported, code, generic, cls, dispatches] = line.split('\t');
+		return {
+			pkg, name, exported: exported === 'TRUE', code: code.replace(/\\(.)/g, (_, c: string) => c === 'n' ? '\n' : c),
+			...(generic === '' ? {} : { methodOf: { generic, class: cls } }),
+			...(dispatches === '' ? {} : { dispatches })
+		};
 	});
 }
 
 /** Adds what the closures state of the given names to `into`, leaving out those with nothing to state. */
-async function guardsIn(closures: readonly Closure[], fallback: string, names: ReadonlySet<string>, into: Record<string, StatedGuards>): Promise<void> {
+async function guardsIn(closures: readonly Closure[], names: ReadonlySet<string>, into: Record<string, StatedGuards>): Promise<void> {
 	const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
-	analyzer.addRequest(requestFromInput(closures.map(definition).join('\n') + fallback));
+	analyzer.addRequest(requestFromInput(closures.map(definition).join('\n')));
 	const owners = new Map(closures.map(c => [c.name, c.pkg]));
 	const { idMap } = await analyzer.normalize();
 	const { guards } = (await analyzer.query([{ type: 'inspect-fn-guards' }]))['inspect-fn-guards'];
@@ -83,16 +92,35 @@ async function guardsOfPackage(pkg: string, closures: readonly Closure[], others
 	const available = new Map([...others, ...own]);
 	if(pkg === 'base') {
 		for(const closure of exported) {
-			/* with a default method around, dispatching cannot fail for lack of a method */
-			const fallback = own.has(`${closure.name}.default`) ? `${quoted(`${closure.name}.default`)} <- function(...) NULL\n` : '';
-			const helpers = calledClosures([closure], available);
-			await guardsIn([closure, ...helpers], fallback, new Set([closure.name]), guards);
+			/* what a value without a class attribute runs of a generic counts, the other methods would only make the program larger */
+			const methods = closure.dispatches === undefined ? [] : (methodsOf.get(closure.name) ?? []).filter(m => m.methodOf?.class === 'default' || ImplicitClasses.includes(m.methodOf?.class ?? ''));
+			const helpers = calledClosures([closure, ...methods], available);
+			await guardsIn([closure, ...methods, ...helpers], new Set([closure.name]), guards);
 		}
 	} else {
-		await guardsIn([...closures, ...calledClosures(closures, available)], '', new Set(exported.map(c => c.name)), guards);
+		await guardsIn([...closures, ...calledClosures(closures, available)], new Set(exported.map(c => c.name)), guards);
 	}
-	return guards;
+	return Object.fromEntries(Object.entries(guards).map(([name, stated]) => [name, { ...stated, ...relationOf(own.get(name)) }]));
 }
+
+/** Every S3 method of the packages, by the generic it is for. */
+const methodsOf = new Map<string, Closure[]>();
+
+/** The generic a closure is a method of, or the methods a generic has, as {@link StatedGuards} states them. */
+function relationOf(this: void, closure: Closure | undefined): Pick<StatedGuards, 'methodOf' | 'methods' | 'dispatches'> {
+	if(closure === undefined) {
+		return {};
+	}
+	const generic = closure.methodOf === undefined ? undefined : genericsByName.get(closure.methodOf.generic);
+	const methods = closure.dispatches === undefined ? [] : (methodsOf.get(closure.name) ?? []).map(m => `${m.pkg}::${m.name}`).sort();
+	return {
+		...(closure.methodOf === undefined ? {} : { methodOf: { generic: generic === undefined ? closure.methodOf.generic : `${generic.pkg}::${generic.name}`, class: closure.methodOf.class } }),
+		...(closure.dispatches === undefined ? {} : { dispatches: closure.dispatches, ...(methods.length > 0 ? { methods } : {}) })
+	};
+}
+
+/** The generics of the packages by name, base winning as it is attached last. */
+const genericsByName = new Map<string, Closure>();
 
 async function main(): Promise<void> {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-base-guards-'));
@@ -102,6 +130,16 @@ async function main(): Promise<void> {
 	const packages = fs.readdirSync(dir).filter(f => f.endsWith('.closures.tsv')).sort().map(file => file.slice(0, -'.closures.tsv'.length)).map(pkg => [pkg, readClosures(path.join(dir, `${pkg}.closures.tsv`), pkg)] as const);
 	/* the exported closures of every package, base winning a name others export as well, as it is attached last */
 	const exports = new Map([...packages.filter(([pkg]) => pkg !== 'base'), ...packages.filter(([pkg]) => pkg === 'base')].flatMap(([, closures]) => closures.filter(c => c.exported).map(c => [c.name, c] as const)));
+	for(const closure of packages.flatMap(([, closures]) => closures)) {
+		if(closure.methodOf !== undefined) {
+			methodsOf.set(closure.methodOf.generic, [...methodsOf.get(closure.methodOf.generic) ?? [], closure]);
+		}
+	}
+	for(const closure of exports.values()) {
+		if(closure.dispatches !== undefined) {
+			genericsByName.set(closure.name, closure);
+		}
+	}
 	for(const [pkg, closures] of packages) {
 		all[pkg] = await guardsOfPackage(pkg, closures, exports);
 		console.log(`  ${pkg}: ${Object.keys(all[pkg]).length} functions`);

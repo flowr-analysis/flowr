@@ -137,6 +137,9 @@ export function calledDefinitions(graph: DataflowGraph, call: NodeId, idMap: Ast
 	return defs;
 }
 
+/** the replacement functions that rewrite a function, after which its formals and checks are no longer those of its definition */
+export const FormalsRewriters: ReadonlySet<BrandedIdentifier> = new Set(['formals<-', 'body<-', 'args<-']);
+
 /** Whether the node or an ancestor is quoted or otherwise evaluated elsewhere (`quote(...)`, a data mask). */
 export function isQuoted(graph: DataflowGraph, id: NodeId, idMap: AstIdMap): boolean {
 	for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {

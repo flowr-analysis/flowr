@@ -11,6 +11,10 @@ describe('flowR linter', withTreeSitter(parser => {
 		const f = 'f <- function(m) { if(m < 0) stop("m < 0"); stopifnot(is.numeric(m)); m }\n';
 		const generic = 'h <- function(x, ...) UseMethod("h")\nh.default <- function(x, ...) { stopifnot(is.numeric(x)); x }\n';
 		const sqrtFails = 'is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x) fails for';
+		describe('functions the program rewrites', () => {
+			assertLinter('formals<- changes what is required', parser, 'f <- function(a) a\nformals(f) <- alist(a = 5)\nf()', 'call-contracts', []);
+			assertLinter('body<- changes what is checked', parser, f + 'body(f) <- quote(m)\nf(-1)', 'call-contracts', []);
+		});
 		describe('calls that fail', () => {
 			assertLinter('a value below the bound', parser, f + 'f(-1)', 'call-contracts', [
 				{ certainty: Uncertain, loc: SourceRange.from(2, 1, 2, 5), function: 'f', broken: ['m >= 0 fails for m = -1'] }

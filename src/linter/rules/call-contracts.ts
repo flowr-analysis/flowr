@@ -12,7 +12,7 @@ import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { builtInLookup, fnEntry } from '../../dataflow/environments/query-fn-props';
-import { calledDefinitions, formalNames, isQuoted } from './cmd-check/cmd-check-util';
+import { calledDefinitions, FormalsRewriters, formalNames, isQuoted } from './cmd-check/cmd-check-util';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -320,9 +320,14 @@ export const CALL_CONTRACTS = {
 			graph, idMap, ctx, facts:         guardFactsOf(ctx),
 			mayAddMethods: generic => [...bindings.keys()].some(name => name.startsWith(`${generic}.`)) || (loads ??= loadsPackages(graph, ctx))
 		};
+		/* once the program rewrites a function (`formals(f) <- ...`), the contract of its definition no longer holds for the calls reaching it */
+		const rewritesFormals = [...graph.verticesOfType(VertexType.FunctionCall)].some(([, v]) => FormalsRewriters.has(Identifier.getName(v.name)));
 		const ofDefinitions = new Map<NodeId, Contract | undefined>();
 		const ofDefinition = (definition: RFunctionDefinition<ParentInformation>) => {
 			const id = definition.info.id;
+			if(rewritesFormals) {
+				return undefined;
+			}
 			if(!ofDefinitions.has(id)) {
 				const guards = FunctionSemantics.guards([id], graph, { ctx })[id];
 				ofDefinitions.set(id, guards === undefined ? undefined : { formals: formalNames(definition), required: guards.required, clauses: guards.clauses.map(c => c.requires) });

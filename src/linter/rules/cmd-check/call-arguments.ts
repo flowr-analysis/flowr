@@ -18,7 +18,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { at, boundName, calledDefinitions, isQuoted, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
+import { at, boundName, calledDefinitions, FormalsRewriters, isQuoted, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
 
 export type CallArgumentsKind =
 	/** a named argument no formal of the called function takes */
@@ -91,9 +91,6 @@ function targetsOf(id: NodeId, name: Identifier, df: DataflowInformation, idMap:
 	const known = packageFormals(origins.length === 1 && origins[0].type === OriginType.BuiltInFunctionOrigin ? origins[0].fn.name : name, ctx);
 	return known === undefined ? undefined : { formals: [known], certain: false };
 }
-
-/** the replacement functions that rewrite a function, after which its formals are no longer those of its definition */
-const FormalsRewriters: ReadonlySet<BrandedIdentifier> = new Set(['formals<-', 'body<-', 'args<-']);
 
 interface Mismatch {
 	readonly kind:      CallArgumentsKind

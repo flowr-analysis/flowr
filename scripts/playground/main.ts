@@ -24,7 +24,7 @@ import { LintQuickFixes } from '../../src/linter/linter-fix';
 import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../src/dataflow/environments/default-builtin-config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
-import { Identifier } from '../../src/dataflow/environments/identifier';
+import { Identifier, type BrandedNamespace } from '../../src/dataflow/environments/identifier';
 import { SliceDirection } from '../../src/util/slice-direction';
 import { SlicingCriterion } from '../../src/slicing/criterion/parse';
 import { rankName } from '../../src/util/text/name-rank';
@@ -68,6 +68,7 @@ import { fnEntry } from '../../src/dataflow/environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../src/project/context/flowr-analyzer-context';
 import type { InspectFnGuardsQueryResult } from '../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
+import { datasetsOf } from '../../src/util/r-datasets';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -892,7 +893,9 @@ function complete(context: CompletionContext): CompletionResult | null | Promise
 		...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
 		/* what the script attached is nearer than what flowR knows without it */
 		...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
-		...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
+		...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' })),
+		/* the data sets R finds as lazy data: those of datasets always, a package's once the script attaches it */
+		...['datasets', ...attached].flatMap(pkg => datasetsOf(pkg as BrandedNamespace).map(label => offer(label, needle, { pkg, type: 'variable', detail: `lazy data of ${pkg}, loaded on first use` })))
 	]);
 	/* within what a call evaluates in its data, as `filter(penguins, bi)` or `aes(x = bi)`, the columns of that data come first */
 	const line = context.state.doc.lineAt(word.to);

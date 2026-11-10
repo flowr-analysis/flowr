@@ -347,9 +347,10 @@ export const BaseDefinitions = [
 	fn(base('makeActiveBinding'), BuiltInProcName.Assignment,
 		{ targetVariable: true, mayHaveMoreArgs: true, callsSource: true, environmentArg: 'env', props: CallProp.Scope | CallProp.Invisible, sig: sig({ sym: ArgProp.Value, fun: ArgProp.Callee, env: ArgProp.Written }) },
 		Primitive),
-	/* a locked binding makes every later write to it fail */
-	fn(base('lockBinding', 'unlockBinding'), BuiltInProcName.Default, { hasUnknownSideEffects: true, props: CallProp.Invisible, sig: sig({ sym: Forced.Value, env: Forced.Value }) }),
-	fn(base('lockEnvironment'), BuiltInProcName.Default, { hasUnknownSideEffects: true, props: CallProp.Invisible, sig: sig({ env: Forced.Value, bindings: Forced.Flag }) }),
+	/* a locked binding makes every later write to it fail, and each of them fails if there is no binding to act on */
+	fn(base('lockBinding', 'unlockBinding'), BuiltInProcName.Get, { returnsValue: false, hasUnknownSideEffects: true, locks: true, props: CallProp.Invisible, sig: sig({ sym: Forced.Value, env: Forced.Value }) }),
+	fn(base('bindingIsLocked', 'bindingIsActive'), BuiltInProcName.Get, { returnsValue: false, props: CallProp.Pure, sig: sig({ sym: Forced.Value, env: Forced.Value }) }),
+	fn(base('lockEnvironment'), BuiltInProcName.Default, { hasUnknownSideEffects: true, locks: true, props: CallProp.Invisible, sig: sig({ env: Forced.Value, bindings: Forced.Flag }) }),
 	fn(base('delayedAssign'), BuiltInProcName.Assignment,
 		{ keepEnvironment: true, quoteSource: true, targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'assign.env', props: CallProp.Invisible | CallProp.Scope, sig: sig({ x: ArgProp.NoDefault, value: ArgProp.NoDefault | ArgProp.Nse, 'eval.env': Forced.Value, 'assign.env': ArgProp.Forced | ArgProp.Written }) },
 		Primitive),

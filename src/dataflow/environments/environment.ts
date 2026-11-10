@@ -85,6 +85,8 @@ export class Environment implements IEnvironment {
 	builtInEnv?:           true;
 	/** set on the built-in environment once a definition below binds a promise or a text connection, which reads then look for */
 	forcing?:              true;
+	/** set on the built-in environment once a call may have locked a binding or an environment, so binding a name may fail from then on */
+	locking?:              true;
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */

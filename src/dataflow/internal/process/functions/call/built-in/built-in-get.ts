@@ -28,6 +28,7 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import { ArgProp, type FnSig } from '../../../../../environments/built-in-props';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { recordFound } from '../../../../linker';
+import { markLocking } from './built-in-ambient-state';
 
 function namesDenotedBy<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
@@ -147,11 +148,16 @@ export function processGet<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: {
-		returnsValue?: boolean
-		sig?:          FnSig
+		returnsValue?:          boolean
+		hasUnknownSideEffects?: boolean
+		locks?:                 boolean
+		sig?:                   FnSig
 	} = {}
 ): DataflowInformation {
-	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', ...EnvirPositionFormals]);
+	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', 'env', ...EnvirPositionFormals]);
+	if(config.locks) {
+		markLocking(data.environment);
+	}
 
 	const retrieve = RArgument.unnamedValueOf(args[0]);
 	const targets = retrieve === undefined ? [] : synthesizeTargets(retrieve, name, rootId, data);
@@ -207,6 +213,9 @@ export function processGet<OtherInfo>(
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 	}
 
+	if(config.hasUnknownSideEffects) {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+	}
 	const isolatedTarget = resolution?.envirData.environment.current.builtInEnv === true;
 	const readsToDrop = isolatedTarget
 		? new Set(named.filter(isNotUndefined).map(t => t.entryPoint))

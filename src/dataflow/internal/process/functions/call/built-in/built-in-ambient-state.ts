@@ -283,6 +283,16 @@ export function markForcing(environment: REnvironmentInformation): void {
 	REnvironment.findBuiltIn(environment.current).forcing = true;
 }
 
+/** Notes that a call may lock a binding or an environment (`lockBinding`), after which binding a name may fail. */
+export function markLocking(environment: REnvironmentInformation): void {
+	REnvironment.findBuiltIn(environment.current).locking = true;
+}
+
+/** Whether a call seen so far may lock a binding, see {@link markLocking}. */
+export function mayLock(environment: REnvironmentInformation): boolean {
+	return REnvironment.findBuiltIn(environment.current).locking === true;
+}
+
 /** Whether a definition seen so far binds a promise or a text connection, see {@link markForcing}. */
 export function mayForce(environment: REnvironmentInformation): boolean {
 	return REnvironment.findBuiltIn(environment.current).forcing === true;

@@ -17,12 +17,12 @@ import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { errorsOfWarnings, maySignal, signalSites } from './built-in-ambient-state';
+import { errorsOfWarnings, mayLock, maySignal, signalSites } from './built-in-ambient-state';
 import { builtInLookup } from '../../../../../environments/query-fn-props';
 import { ArgProp, CallProp, CallProps, type FnSig } from '../../../../../environments/built-in-props';
 import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -78,7 +78,7 @@ export function processTryCatch<OtherInfo>(
 	if(blockInfo !== undefined && blockAst !== undefined && (catchesError || signaled.size > 0)) {
 		const targetsOf = (n: Identifier) => [data.environment, info.environment]
 			.flatMap(env => Resolve.byNameAndType(n, env, ReferenceType.Function) ?? []);
-		const order = raisingOrder(info.graph, builtInLookup(data.ctx), { rootId, targetsOf });
+		const order = raisingOrder(info.graph, builtInLookup(data.ctx), { rootId, targetsOf, locked: mayLock(data.environment) });
 		const raised = catchesError ? errorsOfWarnings(blockAst, info.environment, info.graph, data) : [];
 		for(const site of [...raised.map(r => r.nodeId), ...signaled]) {
 			info.graph.addEdge(site, rootId, EdgeType.Reads);
@@ -188,13 +188,34 @@ export function processTryCatch<OtherInfo>(
 		/* whether the block raises decides what the construct yields, its value or that of a handler */
 		info.graph.addEdge(rootId, id, EdgeType.Reads);
 	}
-	const environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
+	let environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
+	if(mayAbort) {
+		environment = keepOverwrittenBeforeRaise(escaping, raising, environment, data.completeAst.idMap, rootId);
+	}
 	return {
 		...info,
 		out:         info.out.concat(mayAbort ? makeAllMaybe(escaping, info.graph, environment, true) : escaping),
 		environment: applyKills(environment, escapingKills),
 		kill:        escapingKills
 	};
+}
+
+/** A write of the block that a later one of it overwrites survives if a raising site in between leaves the block: `{ x <- 1; warning("m"); x <- 2 }`. */
+function keepOverwrittenBeforeRaise(writes: readonly IdentifierReference[], raising: readonly NodeId[], environment: REnvironmentInformation, idMap: AstIdMap, rootId: NodeId): REnvironmentInformation {
+	const lastRaise = raising.map(id => idMap.get(id)?.location).filter(isNotUndefined).sort(SourceRange.compare).at(-1);
+	if(lastRaise === undefined) {
+		return environment;
+	}
+	for(const write of writes) {
+		const at = idMap.get(write.nodeId)?.location;
+		const { name } = write;
+		if(name === undefined || !('definedAt' in write) || at === undefined || SourceRange.compare(at, lastRaise) >= 0
+			|| Resolve.byName(name, environment)?.some(d => d.nodeId === write.nodeId)) {
+			continue;
+		}
+		environment = REnvironment.define({ ...write as InGraphIdentifierDefinition, name, cds: [...write.cds ?? [], { id: rootId, when: true }] }, false, environment);
+	}
+	return environment;
 }
 
 /** Links what a block catching errors may raise because a warning turns into one, where the `warn` option that does so is only known after linking: `g(options, warn = 2)` sets it through the function `g` is handed. */
@@ -316,7 +337,7 @@ function matchHandlers(given: readonly FunctionArgument[], config: TryConfig, gr
 }
 
 /** Orders the raising calls in every body a block catching errors may run, once per definition and after linking bound all calls. */
-export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext): void {
+export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext, environment: REnvironmentInformation): void {
 	const ordered = new Set<NodeId>();
 	const reach = (node: RNode<ParentInformation>) => {
 		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
@@ -327,7 +348,7 @@ export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: F
 			}
 		}
 	};
-	const order = raisingOrder(graph, builtInLookup(ctx), { reach });
+	const order = raisingOrder(graph, builtInLookup(ctx), { reach, locked: mayLock(environment) });
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const call = DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) ? idMap.get(id) : undefined;
 		for(const arg of RFunctionCall.is(call) ? call.arguments : []) {
@@ -342,7 +363,7 @@ export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: F
 }
 
 /** Makes every later call read the earlier ones that may raise, and those read the construct `rootId`; returns the raising ones. */
-function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, targetsOf, reach }: { rootId?: NodeId, targetsOf?: (name: Identifier) => readonly IdentifierDefinition[], reach?: (node: RNode<ParentInformation>) => void }) {
+function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, targetsOf, reach, locked }: { rootId?: NodeId, targetsOf?: (name: Identifier) => readonly IdentifierDefinition[], reach?: (node: RNode<ParentInformation>) => void, locked: boolean }) {
 	type Node = RNode<ParentInformation>;
 	const raises = (node: Node): boolean => {
 		const vertex = graph.getVertex(node.info.id);
@@ -350,8 +371,8 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
 			return true;
 		} else if(DfgVertex.isFunctionCall(vertex)) {
-			/* a built-in may raise on its own for what it is handed (`log("a")`, a locked binding), binding a name raises only for what its value does */
-			return !vertex.onlyBuiltin || vertex.origin === 'unnamed' || !(vertex.origin.every(o => NeverRaises.has(o)) || bindsName(node));
+			/* a built-in may raise on its own for what it is handed (`log("a")`, a locked binding), binding a name raises only for what its value does, unless it may be locked */
+			return !vertex.onlyBuiltin || vertex.origin === 'unnamed' || !(vertex.origin.every(o => NeverRaises.has(o)) || (!locked && bindsName(node)));
 		}
 		const targets = targetsOf?.(name) ?? [];
 		return targets.length === 0 || targets.some(t => !NodeId.isBuiltIn(t.nodeId));

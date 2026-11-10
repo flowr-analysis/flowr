@@ -750,7 +750,7 @@ function extractDataFlowGraph<OtherInfo>(
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 	linkLateWarningsAsErrors(df.graph, df.environment, completeAst.idMap);
 	linkHandlersToSignalSites(df.graph, df.environment, dfData);
-	orderRaisingBodies(df.graph, completeAst.idMap, ctx);
+	orderRaisingBodies(df.graph, completeAst.idMap, ctx, df.environment);
 	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	FunctionSemantics.settleDefinitionsInPromises(df.graph, { ctx });
 	/* these ask for the qualified names of many calls before they add an edge */

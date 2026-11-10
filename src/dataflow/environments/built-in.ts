@@ -37,7 +37,7 @@ import { processEvalCall } from '../internal/process/functions/call/built-in/bui
 import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import { type AmbientCondition, withImpliedAmbient } from './ambient-effect';
-import { applyAmbientEffects, holds, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import { applyAmbientEffects, holds, markLocking, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 import { Ternary } from '../../util/logic';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
@@ -152,6 +152,8 @@ export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	readonly namesIn?:             readonly string[],
 	/** Name that should be used for the origin (useful when needing to differentiate between functions like 'return' that use the default builtin processor) */
 	readonly useAsProcessor?:      BuiltInProcName
+	/** may lock a binding or an environment, see {@link markLocking} */
+	readonly locks?:               boolean
 }
 /** the {@link ResolveInfo} a handler continues to resolve with, plus the node it is asked to fold */
 export interface BuiltInEvalHandlerArgs extends ResolveInfo {
@@ -195,7 +197,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, cfgUnless, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame, readsDots }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, cfgUnless, alternativeArgsFrom, hasUnknownSideEffects, locks, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame, readsDots }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	if(scope !== undefined) {
 		/* what the scope does to the state around its code, then what the call itself does (`capture.output(..., file = "a.txt")` writes the file) */
@@ -269,6 +271,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 	if(hasUnknownSideEffects) {
 		handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects === true ? undefined : hasUnknownSideEffects);
+	}
+	if(locks) {
+		markLocking(data.environment);
 	}
 
 	const fnCallNames = treatAsFnCall?.[Identifier.getName(name.content)] ?? [];

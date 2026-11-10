@@ -520,7 +520,21 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 	}
 	for(const cd of graph.getVertex(id)?.cds ?? []) {
 		if(cd.byPromise === true) {
-			found.push(...DfgVertex.isFunctionCall(graph.getVertex(cd.id)) ? [cd.id] : [], ...forcingPointsOfPromise(cd.id, id, graph, idMap));
+			const forcing = forcingPointsOfPromise(cd.id, id, graph, idMap);
+			found.push(...DfgVertex.isFunctionCall(graph.getVertex(cd.id)) ? [cd.id] : [], ...forcing, ...forcing.flatMap(at => catchersOf(at, idMap, graph)));
+		}
+	}
+	return found;
+}
+
+/** The calls catching what is raised at `at` before it leaves its function, as `try(a)` does for what forcing the promise `a` raises. */
+function catchersOf(this: void, at: NodeId, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
+	const found: NodeId[] = [];
+	for(const node of RNode.iterateParents(idMap.get(at), idMap)) {
+		if(RFunctionDefinition.is(node)) {
+			break;
+		} else if(DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.Try)) {
+			found.push(node.info.id);
 		}
 	}
 	return found;

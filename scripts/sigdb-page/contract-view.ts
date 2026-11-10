@@ -193,7 +193,7 @@ export function contract(name: string, guards: Guards, formals: readonly string[
 	const box = el('div', 'contract');
 	box.append(...place.head?.(box) ?? []);
 	const parts = new Map(stated.map(([formal, said]) => [formal, said]));
-	const rows = titled(el('div', 'ctable'), 'per parameter what must hold, or the call fails with an error');
+	const rows = el('div', 'ctable');
 	for(const formal of spokenOf(guards, formals).filter(f => required.includes(f) || parts.has(f))) {
 		const said = el('code', 'cond');
 		said.append(...anded([...required.includes(formal) ? ['!missing(' + formal + ')'] : [], ...parts.get(formal) ?? []]));

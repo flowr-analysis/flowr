@@ -4,7 +4,7 @@ import { db, Owner, type AmbientFamily, type Entry, type Guards, type Package, t
 import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
-import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, originWords, related, titled, type Part } from './contract-view';
+import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, related, titled, type Part } from './contract-view';
 import { uniqueArray } from '../../src/util/collections/arrays';
 
 /** a word of a signature with what it means, for its hover */
@@ -232,16 +232,15 @@ export class Hits {
 			const row = el('div', 'own');
 			const who = blank(el('a', 'pkg', pkg.name));
 			if(owner.documented(name)) {
-				row.title = who.title = 'the manual page for ' + name + ' in ' + pkg.name;
+				who.title = 'the manual page for ' + name + ' in ' + pkg.name;
 				who.href = owner.manual(name);
 			} else {
 				row.classList.add('undocumented');
-				row.title = entry.group !== undefined && !pkg.base
+				who.href = pkg.manual();
+				who.title = entry.group !== undefined && !pkg.base
 					? name + ' has no manual page of its own in ' + pkg.name + ': an S4 method is documented under its '
 						+ name + ',<class>-method alias, so this links to the package documentation'
 					: name + ' has no manual page in ' + pkg.name + ', so this links to the package documentation';
-				who.href = pkg.manual();
-				who.title = 'no manual page is recorded for ' + name + ' in ' + pkg.name + ', so this links to the package documentation';
 			}
 			const own = entry.stated.find(stated => stated.pkg === pkg.name);
 			const args = own?.args || entry.declaredIn(pkg.name) || '';
@@ -375,7 +374,7 @@ export class Hits {
  * touches, each with what is said of it on hover; the row opens the rest.
  */
 function teaser(name: string, guards: Guards | undefined, formals: readonly string[], ambient: readonly AmbientFamily[]): HTMLElement {
-	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally and what it does to the global state, click to open');
+	const box = el('div', 'teaser');
 	const line = el('div');
 	if(guards !== undefined) {
 		const [, , , origin = '', , , returns = []] = guards;
@@ -477,7 +476,7 @@ const Looks: ReadonlySet<string> = new Set(['reads']);
  */
 function ambientBlock(name: string, families: readonly AmbientFamily[], key: string): HTMLElement {
 	const { families: words, verbs } = db.ambientWords;
-	const box = titled(el('div', 'ambient'), 'what a call of ' + name + ' does to the global state, as flowR declares it');
+	const box = el('div', 'ambient');
 	families.forEach(([family, accesses], at) => {
 		const [label = family, description = ''] = words[family] ?? [];
 		const said = el('span', 'accesses');
@@ -589,8 +588,8 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 		const shown = uniqueArray([...formals, ...probable.claims.map(([formal]) => formal)]);
 		const view = contractView(name, ['', probable.claims, [], '', [], [], [], shown], shown, {
 			head: () => {
-				const head = titled(el('p', 'chead probable'), 'read off the methods with a contract, a method of another package may ask less');
-				head.append(el('span', 'origin probable', 'probable'), ' as all ' + probable.methods.length + ' methods with a contract ask it:');
+				const head = el('p', 'chead probable');
+				head.append(titled(el('span', 'origin probable', 'probable'), 'read off the methods with a contract, a method of another package may ask less'), ' as all ' + probable.methods.length + ' methods with a contract ask it:');
 				return [head];
 			},
 			search,
@@ -612,7 +611,7 @@ function ownContract(name: string, guards: Guards, formals: readonly string[], o
 				return dispatchOf(name, guards, formalChip(formals), owner);
 			}
 			const key = owner.pkg.name + '::' + name;
-			const head = titled(el('p', 'chead'), originWords(guards[3] ?? ''));
+			const head = el('p', 'chead');
 			head.append('of ' + key + ' ' + owner.pkg.version, ...owner.file === undefined || url === undefined ? [] : [' \u00b7 implemented in ',
 				blank(link('src', owner.file + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + key + ' is written'))],
 			' ', asJson(box, 'contracts', key, 'the builtIns entry of the inspect-fn-guards query for ' + key, 'result'));

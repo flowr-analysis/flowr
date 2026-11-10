@@ -67,7 +67,7 @@ const OpenUpTo = 4;
  * with the failure it guards against. `go` jumps to a place of the script.
  */
 export function contractCard(name: string, formals: readonly string[], guards: Guards, from: { readonly program?: ProgramContract, readonly qualified?: string, readonly note?: string }, go: (place: Place) => void): HTMLElement {
-	const { program, qualified = name, note } = from;
+	const { program, note } = from;
 	const at = (place: Place, text: string): Part => {
 		const jump = link('at', text, '#', 'go to ' + text);
 		jump.addEventListener('click', event => (event.preventDefault(), go(place)));
@@ -81,7 +81,7 @@ export function contractCard(name: string, formals: readonly string[], guards: G
 	const head = el('div', 'chead');
 	head.append(el('span', 'label', 'contract'), ...origin, ...note === undefined ? [] : [titled(el('span', 'via', 'of ' + name), note)]);
 	const fn = (named: string) => titled(el('code', 'fn', named.replace(/^.*::/, '')), named);
-	const box = titled(contract(name, guards, formals, {
+	const box = contract(name, guards, formals, {
 		head:    () => [head],
 		search,
 		located: named => [fn(named)],
@@ -94,7 +94,7 @@ export function contractCard(name: string, formals: readonly string[], guards: G
 			const [line, column] = loc === '' ? [] : loc.split(':').slice(-2);
 			return { parts: [fn(loc === '' ? raiser : loc.split(':').slice(0, -2).join(':')), ...line === undefined ? [] : [', line ' + line + ':' + column]] };
 		}
-	}), 'what a call of ' + qualified + ' has to fulfill to return normally');
+	});
 	const why = box.querySelector('details.why');
 	if(why instanceof HTMLDetailsElement && program !== undefined && box.querySelectorAll('.crow.condition').length <= OpenUpTo) {
 		why.open = true;

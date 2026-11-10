@@ -1613,6 +1613,11 @@ function maxAbs(indices: readonly number[]): number {
 	return max;
 }
 
+/** whether the shape pins the number of columns down to exactly one */
+function isSingleColumn(shape: DataFrameDomain | undefined): boolean {
+	return shape !== undefined && shape.cols.isValue() && shape.cols.lower === 1 && shape.cols.upper === 1;
+}
+
 /**
  * Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations.
  */
@@ -1670,10 +1675,12 @@ function mapDataFrameIndexColRowAccess(
 			columns:   columns?.every(isIndex) ? columns.map(Math.abs) : columns
 		});
 	}
+	// A selection of rows from a data frame with exactly one column drops it to a vector, as `drop` defaults to `TRUE` there
+	const singleColumn = args.length === 2 && rowArg !== undefined && RArgument.isNotEmpty(rowArg) && (colArg === undefined || RArgument.isEmpty(colArg)) && isSingleColumn(ctx.getAbstractValue(dataFrame));
 	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
 	const dropExtent = access.operator === '[[' ? true :
 		args.length === 2 && typeof drop === 'boolean' ? drop :
-			rowArg !== undefined && columns?.length === 1 && (isColName(columns[0]) || columns[0] > 0);
+			singleColumn || rowArg !== undefined && columns?.length === 1 && (isColName(columns[0]) || columns[0] > 0);
 
 	if(!dropExtent) {
 		const rowSubset = rows === undefined || rows.every(row => row >= 0);

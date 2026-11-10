@@ -1252,6 +1252,22 @@ result <- df[, 1]
 
 		testShape(
 			`
+df <- data.frame(id = 1:3)
+result <- df[1, ]
+			`,
+			{ '2@result': undefined }
+		);
+
+		testShape(
+			`
+df <- data.frame(id = 1:3)
+result <- df[1, , drop = FALSE]
+			`,
+			{ '2@result': { colnames: [['id'], []], cols: [1, 1], rows: [1, 1] } }
+		);
+
+		testShape(
+			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c("id", "name")]
 			`,
@@ -1517,14 +1533,6 @@ result <- df[c(1, 1, 1, 1, 1), ]
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			testShape(
-				`
-df <- data.frame(id = 1:3)
-result <- df[1, ]
-				`,
-				['2@result']
-			);
-
 			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)

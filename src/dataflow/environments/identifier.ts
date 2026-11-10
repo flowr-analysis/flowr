@@ -4,7 +4,7 @@ import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { escapeRegex, splitRQuotes } from '../../util/text/strings';
-import { baseRExportOwner } from '../../util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
@@ -93,6 +93,11 @@ export const Identifier = {
 		}
 		return id.includes('::') ? JSON.stringify(id) : id;
 	}) as Accessor<Identifier, string>,
+	/** {@link Identifier.toString} as R reads it where the base packages R attaches on startup are on the search path: a name of theirs alone, any other qualified. */
+	toPreludeString(this: void, id: Identifier): string {
+		const namespace = Identifier.getNamespace(id);
+		return namespace === undefined || AttachedBasePackageSet.has(namespace) ? Identifier.getName(id) : Identifier.toString(id);
+	},
 	/** Check if two identifiers match. */
 	matches(this: void, id: Identifier, target: Identifier, s3: boolean = false): boolean {
 		const idName = Identifier.getName(id);

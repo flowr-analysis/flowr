@@ -1,6 +1,6 @@
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { summarizeClauses, type FunctionGuards } from './function-guards';
-import { reasonsOf, type StatedGuards } from './built-in-guards';
+import { callsOfTerms, reasonsOf, type StatedGuards } from './built-in-guards';
 
 /**
  * What of the {@link FunctionGuards} of a definition is worth stating without the program, as the signature
@@ -17,8 +17,10 @@ export function statedGuardsOf(this: void, guards: FunctionGuards, idMap: AstIdM
 	if(clauses.length === 0 && !hasFormals && guards.returns === undefined) {
 		return undefined;
 	}
+	const calls = callsOfTerms(clauses.map(c => c.requires));
 	return {
 		requires: summarizeClauses(clauses).requires,
+		...(calls.length > 0 ? { calls } : {}),
 		...(guards.required.length > 0 ? { required: guards.required } : {}),
 		...(hasFormals ? { formals: guards.formals } : {}),
 		...(guards.relations.length > 0 ? { relations: guards.relations } : {}),

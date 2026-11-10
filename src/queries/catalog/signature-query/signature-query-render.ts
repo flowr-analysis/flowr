@@ -8,7 +8,7 @@ import { claimWords, returnWords } from '../../../dataflow/fn/guards/guard-claim
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
-import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
@@ -105,7 +105,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 		result.push(`      ╰ ${italic('returns', f)}  ${returnWords(fn.guards.returns, fn.guards.passes).join(', ')}`);
 	}
 	for(const { requires, kind, fails, via } of fn.guards?.because ?? []) {
-		const where = `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}${via === undefined ? '' : `, reached through ${via.join(', ')}`}`;
+		const where = `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}${via === undefined ? '' : `, reached through ${via.map(v => Identifier.toPreludeString(Identifier.parse(v))).join(', ')}`}`;
 		result.push(`      ╰ ${italic('because', f)}  ${requires}: ${where}`);
 	}
 	if(fn.flowrOnly) {

@@ -1,4 +1,5 @@
-import type { BrandedIdentifier } from '../../environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../environments/identifier';
+import { baseRExportOwner } from '../../../util/r-base-packages';
 import { type GuardFactsLookup, RValueType } from '../../environments/guard-facts';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
@@ -36,6 +37,8 @@ export interface GuardCall {
 	readonly args:   readonly GuardArgument[]
 	/** the call resolves to the function of that name R ships with (not to a redefinition), so what flowR knows about that function applies */
 	readonly known?: boolean
+	/** the package the function called comes from, as flowR resolves the call, which the call is written with unless R attaches it on startup */
+	readonly pkg?:   BrandedNamespace
 }
 
 /**
@@ -231,10 +234,7 @@ function render(this: void, term: GuardTerm): string {
 	switch(term.kind) {
 		case 'formal':
 		case 'free':
-		{
-			const name = String(term.name);
-			return Syntactic.test(name) && !Reserved.has(name) ? name : `\`${name}\``;
-		}
+			return quoted(term.name);
 		case 'constant':
 			return term.lexeme;
 	}
@@ -252,7 +252,33 @@ function render(this: void, term: GuardTerm): string {
 		const spaced = term.fn === ':' ? ':' : ` ${term.fn} `;
 		return `${renderBelow(first, own)}${spaced}${renderBelow(second, own + 1)}`;
 	}
-	return `${term.fn}(${renderArgs(term.args)})`;
+	return `${calledName(term)}(${renderArgs(term.args)})`;
+}
+
+/** A name in R syntax, in backticks where R needs them. */
+function quoted(this: void, name: BrandedIdentifier): string {
+	const plain = String(name);
+	return Syntactic.test(plain) && !Reserved.has(plain) ? plain : `\`${plain}\``;
+}
+
+/** The function a call names, as {@link Identifier.toPreludeString} writes it. */
+function calledName(this: void, term: GuardCall): string {
+	return Identifier.toPreludeString(Identifier.mapName(term.pkg === undefined ? term.fn : Identifier.make(term.fn, term.pkg), quoted));
+}
+
+/** Every function the term calls, with the package it comes from where that is known, R's own for one flowR knows, leaving out the `&&` and `||` a term is built with. */
+function callsOf(this: void, term: GuardTerm, found: Map<string, Identifier> = new Map()): Map<string, Identifier> {
+	if(isCall(term) && term.known && (term.fn === '&&' || term.fn === '||')) {
+		term.args.forEach(arg => callsOf(arg.value, found));
+	} else if(isCall(term)) {
+		const pkg = term.pkg ?? (term.known ? baseRExportOwner(term.fn) : undefined);
+		const id = pkg === undefined ? term.fn : Identifier.make(term.fn, pkg);
+		found.set(Identifier.toString(id), id);
+		for(const arg of term.args) {
+			callsOf(arg.value, found);
+		}
+	}
+	return found;
 }
 
 function renderArgs(this: void, args: readonly GuardArgument[]): string {
@@ -369,6 +395,10 @@ export const GuardTerm = {
 	truth,
 	render,
 	formalsOf,
+	/** Every function the term calls, see {@link callsOf}. */
+	callsOf(this: void, term: GuardTerm): readonly Identifier[] {
+		return [...callsOf(term).values()];
+	},
 	readsFree,
 	substitute,
 	substituteCondition,

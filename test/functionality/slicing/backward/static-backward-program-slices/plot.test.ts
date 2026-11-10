@@ -350,5 +350,9 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		assertSliceKeeps('RA-B2b a validating call that raises stays', shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(-1, 2))\nprint("valid")', '3@print', { kept: ['validate(c(-1, 2))', 'stopifnot(is.numeric(x), all(x >= 0))'] });
 		counterexample('RA-B3-rm-reads-what-it-removes', 'mean <- function(x) stop("shadow")\nrm(mean)\nprint(mean(1:3))', '2@rm', 'mean <- function(x) { }\nrm(mean)');
 		counterexample('RA-B3b-rm-of-a-variable', 'x <- 1\nrm(x)', '2@rm', 'x <- 1\nrm(x)');
+		/* rm(list = <vector of names>) removes (and so reads) every one of the names */
+		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
+		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');
+		counterexample('SF-rm-list-variable-vector', 'nms <- c("a", "b")\na <- 1\nb <- 2\nrm(list = nms)\nprint(exists("b"))', '5@print', 'print(exists("b"))');
 	});
 }));

@@ -119,7 +119,8 @@ function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<O
 		if(!elements || elements.length === 0) {
 			targets.unknown = true;
 		} else {
-			for(const r of elements) {
+			// `list = c("a", "b")` (or a variable holding it) is a vector: it removes every one of its strings
+			for(const r of elements.flatMap(e => e.type === 'vector' && isValue(e.elements) ? e.elements : [e])) {
 				if(r.type === 'string' && isValue(r.value)) {
 					targets.names.push({ name: r.value.str, nodeId: value.info.id });
 				} else {

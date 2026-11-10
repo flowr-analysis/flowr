@@ -97,7 +97,8 @@ describe('References of an Expression List', withTreeSitter(parser => {
 		assertReferences('removal revived by a later write', 'x <- 1\nrm(x)\nx <- 2', { out: ['x'] });
 		assertReferences('removal of the whole scope', 'x <- 1\nrm(list = ls())\ny <- x', { in: ['x'], out: ['y'], kill: ['all'] });
 		assertReferences('whole scope removal with a later write', 'x <- 1\nrm(list = ls())\nx <- 2\nz <- x', { out: ['x', 'z'], kill: ['all'] });
-		assertReferences('unresolvable removal', 'x <- 1\nrm(list = c("x"))\ny <- x', { in: ['x'], out: ['x', 'y'], kill: ['unknown'] });
+		assertReferences('removal by a vector of names', 'x <- 1\nrm(list = c("x"))\ny <- x', { in: ['x'], out: ['y'], kill: ['x'] });
+		assertReferences('unresolvable removal', 'x <- 1\nrm(list = unknownNames())\ny <- x', { in: ['x'], out: ['x', 'y'], kill: ['unknown'] });
 		assertReferences('whole scope removal in a branch', 'x <- 1\ny <- 1\nif(c) { rm(list = ls()); y <- 2 }\nz <- x\nw <- y',
 			{ in: ['c', 'x'], out: ['w', 'x', 'y', 'z'], kill: ['all'] });
 		assertReferences('revived in one branch only', 'x <- 1\nrm(x)\nif(c) x <- 2\ny <- x', { in: ['c', 'x'], out: ['x', 'y'], kill: ['x'] });

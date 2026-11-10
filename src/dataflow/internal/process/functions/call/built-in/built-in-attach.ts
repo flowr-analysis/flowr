@@ -6,7 +6,8 @@ import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bri
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../../../../environments/resolve-helper';
 import { type BrandedIdentifier, Identifier, ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -61,6 +62,14 @@ export function processAttach<OtherInfo>(
 				type: ReferenceType.Variable,
 			});
 			result.graph.addEdge(inDef.nodeId, rootId, EdgeType.Reads);
+		}
+	}
+	/* R reports the names that are already bound (`The following object is masked _by_ .GlobalEnv`), so the call reads what they are bound to */
+	for(const { name: bound } of injected) {
+		for(const masking of Resolve.byName(bound, data.environment) ?? []) {
+			if(!NodeId.isBuiltIn(masking.nodeId)) {
+				result.graph.addEdge(rootId, masking.nodeId, EdgeType.Reads);
+			}
 		}
 	}
 	const attachedLayer = new Environment(result.environment.current).defineAll(injected);

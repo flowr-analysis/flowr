@@ -9,8 +9,8 @@ import type { Guards } from './database';
 export function guardsTuple(stated: StatedGuards | undefined): Guards | undefined {
 	const claims = [
 		...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, claim), ...caseConditions(formal, claim)]]),
-		/* a claim that holds unless something else lets the call through reads as that alternative or the claim, unless the cases of the formal say it shorter */
-		...(stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined).map(({ formal, claim, unless }): [string, string[]] => [formal, [grouped(`${unless} || ${allOf(claimConditions(formal, claim))}`)]])
+		/* a claim that holds unless something else lets the call through reads as the claim `unless` that, unless the cases of the formal say it shorter */
+		...(stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined).map(({ formal, claim, unless }): [string, string[]] => [formal, [grouped(`${allOf(claimConditions(formal, claim))} unless ${unless}`)]])
 	];
 	const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message, reads, brief, loc }): [string, string, string, string, string, string, string, string] =>
 		[requires, kind, fails, via?.join(', ') ?? '', message ?? '', reads ?? '', brief ?? '', loc === undefined ? '' : `${loc.fn}:${loc.line}:${loc.column}`]);

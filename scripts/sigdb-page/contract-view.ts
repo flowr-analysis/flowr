@@ -197,7 +197,9 @@ export function contract(name: string, guards: Guards, formals: readonly string[
 	for(const formal of spokenOf(guards, formals).filter(f => required.includes(f) || parts.has(f))) {
 		const said = el('code', 'cond');
 		said.append(...anded([...required.includes(formal) ? ['!missing(' + formal + ')'] : [], ...parts.get(formal) ?? []]));
-		rows.append(formalMark(contractRow('claim', [chip(formal)], [said]), formal));
+		/* a claim that holds unless something about other formals lets the call through speaks of those as well */
+		const others = related(said.textContent ?? '', formals).filter(f => f !== formal);
+		rows.append(formalMark(contractRow('claim', [chip(formal), ...others.flatMap(f => [' ', chip(f)])], [said]), formal));
 	}
 	for(const [holds, unless] of relations) {
 		const said = el('code', 'cond');

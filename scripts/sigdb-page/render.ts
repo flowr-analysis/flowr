@@ -470,8 +470,12 @@ function ambientBlock(name: string, families: readonly AmbientFamily[], key: str
 			const [part, access] = variants[0];
 			const about = (verbs[access]?.[1] ?? '') + (part === family ? '' : ' ' + (words[part]?.[1] ?? ''));
 			const always = variants.some(([, , , members, when]) => members.length === 0 && when.length === 0);
-			const details = always ? [] : variants.map(([, , , members, when]) => [...members, ...when].join(' '));
-			said.append(...index > 0 ? [el('span', 'sep', ' · ')] : [], titled(el('span', Looks.has(access) ? 'acc looks' : 'acc changes', verb), about),
+			/* the entries an access always names stand for the part, `reads digits, width`, only conditions go in parentheses */
+			const plain = (members: readonly string[]) => members.length > 0 && members.every(m => !m.includes(' '));
+			const named = always ? [] : uniqueArray(variants.filter(([, , , members, when]) => when.length === 0 && plain(members)).flatMap(([, , , members]) => members));
+			const details = always ? [] : variants.filter(([, , , members, when]) => when.length > 0 || !plain(members)).map(([, , , members, when]) => [...members, ...when].join(' '));
+			const shown = named.length === 0 ? verb : (verbs[access]?.[0] ?? verb.split(' ')[0]) + ' ' + named.join(', ');
+			said.append(...index > 0 ? [el('span', 'sep', ' · ')] : [], titled(el('span', Looks.has(access) ? 'acc looks' : 'acc changes', shown), about),
 				...details.length === 0 ? [] : [el('span', 'when', ' (' + details.join('; ') + ')')]);
 		});
 		const line = el('div', 'aline');

@@ -141,7 +141,10 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		return isSelected(config, exprList) ? plain('{}') : [];
 	} else if(subExpressions.length === 1) {
 		if(!isSelected(config, exprList)) {
-			return subExpressions[0];
+			/* a dropped call keeps its arguments as several expressions, which a body only holds within a block */
+			const kept = exprList.children[expressions.findIndex(e => e.length > 0)];
+			const several = exprList.info.parent !== undefined && RFunctionCall.is(kept) && !isSelected(config, kept) && subExpressions[0].length > 1;
+			return several ? [...plain('{'), ...indentBy(subExpressions[0], 1), ...plain('}')] : subExpressions[0];
 		}
 		const [fst] = subExpressions;
 		const g = exprList.grouping;

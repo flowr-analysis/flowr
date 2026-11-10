@@ -344,5 +344,7 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('C-B7-on-exit-return-keeps-raise', 'f <- function(x) { on.exit(return(5)); stopifnot(is.numeric(x)); 1 }\nprint(f("a"))', '2@print', 'f <- function(x) {\n        on.exit(return(5))\n        stopifnot(is.numeric(x))\n    }\nprint(f("a"))');
 		/* the call that may raise is an exit of the program */
 		assertSliced(label('RA-B1-try-around-forced-promise', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'g <- function(a) { r <- try(a, silent = TRUE); 1 }\ng(stop("lazy"))\nprint("alive")', ['3@print'], 'g <- function(a) {\n        try(a, silent = TRUE)\n        1\n    }\ng(stop("lazy"))\nprint("alive")', { cfgExcludeProperties: ['single-entry-and-exit'] });
+		/* the call that may raise is an exit of the program */
+		assertSliced(label('RA-B2-kept-arguments-stay-in-body', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(1, 2))\nprint("valid")', ['3@print'], 'validate <- function(x) {\n        is.numeric(x)\n        all(x >= 0)\n    }\nprint("valid")', { cfgExcludeProperties: ['single-entry-and-exit'] });
 	});
 }));

@@ -355,6 +355,8 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		assertSliceMatchesR(shell, 'RD-B2 printing two calls down', 'h <- function() cat("deep\\n")\nf <- function(a, b = a * 2) { h(); b }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
 		/* a promise leaves where a read forces it, `p` returning from `f` here */
 		assertSliceMatchesR(shell, 'RD-B3 a forced promise returns', 'f <- function() {\n  delayedAssign("p", return(1))\n  p\n  cat("dead\\n")\n}\nprint(f())', { whole: true });
+		/* what an exit hook prints is printed by the call registering it */
+		assertSliceMatchesR(shell, 'RD-B4 an exit hook prints', 'f <- function() {\n  for (i in 1:2) {\n    g <- function() { on.exit(cat("x\\n")); return(i) }\n    g()\n  }\n  cat("live\\n")\n}\nf()', { whole: true });
 		/* rm(list = <vector of names>) removes (and so reads) every one of the names */
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');

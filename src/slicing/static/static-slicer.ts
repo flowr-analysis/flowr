@@ -415,7 +415,9 @@ function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, stat
 		const [call, via] = next;
 		const ruledOut = ruledOutVia((graph.getVertex(call) as Partial<DataflowGraphVertexFunctionCall> | undefined)?.ruledOutAt, via);
 		const chain = [call, ...via].slice(0, MaxContextDepth);
-		for(const target of Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t) && (via.length > 0 || ruledOutHere?.has(t) !== true))) {
+		const callees = Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t) && (via.length > 0 || ruledOutHere?.has(t) !== true));
+		/* a function runs the exit hooks it keeps (its definition calls them), and prints what they print */
+		for(const target of [...callees, ...callees.flatMap(c => Dataflow.targetsOf(graph, c, EdgeType.Calls).filter(h => DfgVertex.isFunctionDefinition(graph.getVertex(h))))]) {
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
 			const first = !seen.has(target);
 			seen.add(target);

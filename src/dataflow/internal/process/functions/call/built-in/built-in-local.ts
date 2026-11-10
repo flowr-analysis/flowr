@@ -12,7 +12,8 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, isInGraphDefinition, ReferenceType } from '../../../../../environments/identifier';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { type EnvirResolution, envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
@@ -123,7 +124,18 @@ export function evaluateInEnvir<OtherInfo>(
 	updateNestedFunctionClosures(dfExpr.graph, dfExpr.environment, []);
 	if(envir !== undefined) {
 		const environment = { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, dfExpr.environment.current) };
-		return routeWrittenToEnvir({ ...dfExpr, environment }, envir, rootId, data.environment);
+		const own = envir.envirData.environment.current;
+		const idMap = data.completeAst.idMap;
+		/* a function the environment binds itself, as an active binding is, is looked up there: `evalq(a, e)` runs the `a` of `e` */
+		const boundInEnvir = (ref: IdentifierReference) => {
+			const defs = (ref.name === undefined ? undefined : own.lookup(Identifier.getName(ref.name)))?.filter(d => isInGraphDefinition(d) && d.value?.some(v => RFunctionDefinition.is(idMap.get(v))));
+			for(const def of defs ?? []) {
+				dfExpr.graph.addEdge(ref.nodeId, def.nodeId, EdgeType.Reads);
+			}
+			return defs !== undefined && defs.length > 0;
+		};
+		const linked = { ...dfExpr, environment, in: dfExpr.in.filter(r => !boundInEnvir(r)), unknownReferences: dfExpr.unknownReferences.filter(r => !boundInEnvir(r)) };
+		return routeWrittenToEnvir(linked, envir, rootId, data.environment);
 	}
 	const environment = REnvironment.popLocal(dfExpr.environment);
 	/* definitions of the local scope vanish with it, only what escaped it may bubble up */

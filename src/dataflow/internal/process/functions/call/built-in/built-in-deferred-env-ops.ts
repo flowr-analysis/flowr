@@ -5,7 +5,6 @@ import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lan
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -28,7 +27,7 @@ import type { CallContext } from '../../../../../eval/resolve/alias-tracking';
 import { recordFound } from '../../../../linker';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config/shared-configs';
-import { stackEnvKindOf } from './built-in-stack-env';
+import { callerGenerationsOf, stackEnvKindOf } from './built-in-stack-env';
 import { EnvironmentProducers, holdsValueOf, rebindAliases, rebindHolders } from './built-in-envir-utils';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -166,10 +165,9 @@ function frameGenerations(node: RNode<ParentInformation> | undefined, environmen
 	if(stackEnvKindOf(node, { environment }) === StackEnvKind.CallerFrame) {
 		return 1;
 	}
-	const call = RFunctionCall.isNamed(node, 'parent.frame') && node.arguments.length === 1 ? node : undefined;
-	const count = call === undefined ? undefined : RArgument.valueOf(call.arguments[0]);
-	const n = RNumber.is(count) ? count.content.num : undefined;
-	return call !== undefined && n !== undefined && Number.isInteger(n) && n > 1 && Resolve.isBuiltIn(call.functionName.content, environment, ReferenceType.Function) ? n : undefined;
+	const call = RFunctionCall.isNamed(node, 'parent.frame') || RFunctionCall.isNamed(node, 'sys.frame') ? node : undefined;
+	const n = callerGenerationsOf(call);
+	return call !== undefined && n !== undefined && n > 1 && Resolve.isBuiltIn(call.functionName.content, environment, ReferenceType.Function) ? n : undefined;
 }
 
 /** The closure whose frame `environment(fn)` names, see {@link closureFrameResolution}. */

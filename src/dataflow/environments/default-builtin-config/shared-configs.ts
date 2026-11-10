@@ -31,6 +31,8 @@ export const StackEnvBuiltins = {
 	environment:         StackEnvKind.Current,
 	'parent.env':        StackEnvKind.Parent,
 	'parent.frame':      StackEnvKind.CallerFrame,
+	/* `sys.frame(-1)` counts back from the current frame */
+	'sys.frame':         StackEnvKind.CallerFrame,
 	'as.environment':    StackEnvKind.Named,
 	/* `.env$x` reaches past the data mask */
 	'.env':              StackEnvKind.Current,

@@ -20,6 +20,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { GasOverrides } from '../../gas';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -196,6 +197,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 			if(node !== undefined && RNode.strictlyEnclosingFunction(site, idMap) === undefined) {
 				enqueue(RNode.topLevelStatement(node, idMap).info.id, baseEnvironment, baseEnvFingerprint);
 			}
+		}
+		/* a read running an active binding keeps its top-level statement, which would otherwise print what the read yields */
+		const read = strictlyEnclosing === undefined && DfgVertex.isFunctionCall(currentVertex) ? idMap.get(id) : undefined;
+		if(RSymbol.is(read)) {
+			enqueue(RNode.topLevelStatement(read, idMap).info.id, baseEnvironment, baseEnvFingerprint);
 		}
 		/* a call or a definition within a promise runs only when the promise is forced, within captured code only when it is evaluated */
 		if(DfgVertex.isFunctionCall(currentVertex) || DfgVertex.isVariableDefinition(currentVertex)) {

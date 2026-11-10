@@ -1,7 +1,7 @@
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { getAllLinkedFunctionDefinitions, linkFunctionCalls, linkWritesCarriedByLoop } from '../../../../linker';
+import { errorEscapes, getAllLinkedFunctionDefinitions, linkFunctionCalls, linkFunctionCallWithSingleTarget, linkWritesCarriedByLoop } from '../../../../linker';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -15,7 +15,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
@@ -28,10 +28,6 @@ import { instantiateEnvOps } from './built-in-deferred-env-ops';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
-import { RWhileLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
-import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
@@ -58,6 +54,30 @@ function activeFunctionsOf(target: NodeId, graph: DataflowGraph): NodeId[] {
 		.filter(fn => DfgVertex.isFunctionDefinition(graph.getVertex(fn)));
 }
 
+/** The active bindings of an environment the name `holder` held that the expression assigns to (`e$s <- v`, `e[["s"]] <- v`, `assign("s", v, envir = e)`), with the call assigning and the functions each runs. */
+function writtenActiveFields(holder: BrandedIdentifier, before: REnvironmentInformation, after: REnvironmentInformation, graph: DataflowGraph): [NodeId, NodeId, NodeId[]][] {
+	const states = (env: REnvironmentInformation) => (Resolve.byName(holder, env) ?? []).map(d => (d as InGraphIdentifierDefinition).envState?.current).filter(isNotUndefined);
+	const olds = states(before);
+	const fields: [NodeId, NodeId, NodeId[]][] = [];
+	for(const now of olds.length === 0 ? [] : states(after).filter(n => !olds.includes(n))) {
+		for(const [name, defs] of now.memory) {
+			const replaced = olds.flatMap(o => o.lookup(name) ?? []);
+			const added = defs.filter(d => !replaced.some(b => b.nodeId === d.nodeId) && !NodeId.isBuiltIn(d.definedAt));
+			for(const b of added.length > 0 ? replaced : []) {
+				const fns = activeFunctionsOf(b.nodeId, graph);
+				for(const d of fns.length > 0 ? added : []) {
+					fields.push([d.definedAt, b.nodeId, fns]);
+					/* the binding stays active, so the next access runs it again */
+					for(const fn of fns) {
+						graph.addEdge(d.nodeId, fn, EdgeType.Calls);
+					}
+				}
+			}
+		}
+	}
+	return fields;
+}
+
 /** Every access of an active binding runs its function, whether through an environment (`e$ab`, `get("ab", e)`, `as.list(e)`) or by assigning to it (`ab <- 2`): a read becomes a call of it, as one of the list does (see `activeReads`), the calls accessing it call it too and are handed back. */
 function callActiveBindingsAccessed(processed: DataflowInformation, before: REnvironmentInformation, graph: DataflowGraph, activeReads: IdentifierReference[]): NodeId[] {
 	const calls: NodeId[] = [];
@@ -73,7 +93,11 @@ function callActiveBindingsAccessed(processed: DataflowInformation, before: REnv
 		} else if(DfgVertex.isFunctionCall(vertex) && !fns.every(fn => Dataflow.hasEdge(graph, id, fn, EdgeType.Calls))) {
 			graph.addEdge(id, binding, EdgeType.Reads);
 			for(const fn of fns) {
-				graph.addEdge(id, fn, EdgeType.Calls);
+				const definition = graph.getVertex(fn);
+				if(DfgVertex.isFunctionDefinition(definition) && graph.idMap !== undefined) {
+					/* an access is no call of its own, so the binding's function sees what is bound where the access is */
+					linkFunctionCallWithSingleTarget(graph, definition, { ...vertex, environment: vertex.environment ?? before }, graph.idMap);
+				}
 			}
 			calls.push(id);
 		}
@@ -95,7 +119,50 @@ function callActiveBindingsAccessed(processed: DataflowInformation, before: REnv
 			}
 		}
 	}
+	/* the environment is named where it is written or read, `assign("s", v, envir = e)` only reads `e` */
+	const used = processed.graph.vertexIdsOfType(VertexType.Use).map(id => graph.idMap?.get(id)).filter(RSymbol.is).map(s => s.content);
+	const holders = new Set([...processed.out.map(r => r.name).filter(isNotUndefined), ...used].map(Identifier.getName));
+	for(const holder of holders) {
+		for(const [at, field, fns] of writtenActiveFields(holder, before, processed.environment, graph)) {
+			call(at, fns, field);
+		}
+	}
 	return calls;
+}
+
+/** A call handing an environment to a function reading it accesses the environment's active bindings, which only linking the call shows: `f <- function(env) env$a; f(e)`. */
+function bindingsCalledThroughCallees(processed: DataflowInformation, before: REnvironmentInformation, graph: DataflowGraph, known: readonly NodeId[]): ReturnType<typeof linkFunctionCalls> {
+	if(!mayForce(before)) {
+		return [];
+	}
+	return callActiveBindingsAccessed(processed, before, graph, []).filter(id => !known.includes(id)).map(functionCall => {
+		const fns = new Set(Dataflow.targetsOf(graph, functionCall, EdgeType.Reads).flatMap(t => activeFunctionsOf(t, graph)));
+		for(const callee of Dataflow.calleeIdsOf(graph, functionCall).filter(c => !fns.has(c))) {
+			readAccessesOfParameters(functionCall, graph.getVertex(callee), graph);
+		}
+		const called = [...fns].map(fn => graph.getVertex(fn)).filter(v => DfgVertex.isFunctionDefinition(v));
+		return { functionCall, called, propagateExitPoints: [] };
+	});
+}
+
+/** The call `call` runs the accesses of `callee` to what its parameters hold: `env$a` and `get(n, envir = env)` for the parameter `env`. */
+function readAccessesOfParameters(call: NodeId, callee: DataflowGraphVertexInfo | undefined, graph: DataflowGraph): void {
+	const idMap = graph.idMap;
+	if(!DfgVertex.isFunctionDefinition(callee) || idMap === undefined) {
+		return;
+	}
+	for(const param of Object.keys(callee.params)) {
+		for(const reader of Dataflow.sourcesOf(graph, NodeId.normalize(param), EdgeType.Reads)) {
+			const node = idMap.get(reader);
+			let access = node && RNode.directParent(node, idMap);
+			if(access !== undefined && RArgument.is(access)) {
+				access = RNode.directParent(access, idMap);
+			}
+			if(access !== undefined && DfgVertex.isFunctionCall(graph.getVertex(access.info.id))) {
+				graph.addEdge(call, access.info.id, EdgeType.Reads);
+			}
+		}
+	}
 }
 
 /** @returns whether `read` sees a definition */
@@ -188,37 +255,6 @@ function foldFrameIntoParent({ current, level }: REnvironmentInformation): REnvi
 		parent.writableMemory.set(name, definitions);
 	}
 	return { current: parent, level: level - 1 };
-}
-
-/** Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
-function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
-	for(let node = idMap.get(from); node !== undefined && node.info.id !== expression;) {
-		const parent = RNode.directParent(node, idMap);
-		if(parent === undefined) {
-			return true;
-		}
-		if(!errorPassesThrough(parent, node.info.id, graph)) {
-			return false;
-		}
-		node = parent;
-	}
-	return true;
-}
-
-/** Whether an error raised within the child `child` of `parent` is sure to be raised by `parent` as well. */
-function errorPassesThrough(parent: RNode<ParentInformation>, child: NodeId, graph: DataflowGraph): boolean {
-	if(RArgument.is(parent) || RExpressionList.is(parent)) {
-		return true;
-	} else if(RFunctionCall.is(parent)) {
-		/* a handler catches the error instead of passing it on */
-		return !DfgVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try);
-	} else if(RIfThenElse.is(parent) || RWhileLoop.is(parent)) {
-		/* only the condition is guaranteed to be evaluated */
-		return parent.condition.info.id === child;
-	} else if(RForLoop.is(parent)) {
-		return parent.vector.info.id === child;
-	}
-	return false;
 }
 
 const PrintName = Identifier.make('print');
@@ -436,6 +472,9 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, idMap, processed.graph, [...activeReads.map(r => r.nodeId), ...accessing]);
+		if(accessing.length > 0 || calledEnvs.length > 0) {
+			calledEnvs.push(...bindingsCalledThroughCallees(processed, environment, nextGraph, accessing));
+		}
 		if(printed) {
 			calledEnvs.push(...printMethodsOf(processed.entryPoint, environment, nextGraph, { graph: nextGraph, idMap, ctx: data.ctx, environment }));
 		}

@@ -15,6 +15,7 @@ import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../.
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RUnaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 
 /** The context needed to resolve a stack env: the current environment (for the global) and the built-in environment. */
 type StackEnvContext = Pick<DataflowProcessorInformation<never>, 'environment' | 'ctx'>;
@@ -63,11 +64,21 @@ export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<S
 	return kind === StackEnvKind.CallerFrame && !namesDirectCaller(node) ? undefined : kind;
 }
 
-/** Whether `parent.frame` as `node` is handed no generation count or the count 1. */
+/** Whether `parent.frame` as `node` is handed no generation count or the count 1, or `sys.frame` the count -1. */
 function namesDirectCaller<Info>(node: RNode<Info> | undefined): boolean {
+	return callerGenerationsOf(node) === 1;
+}
+
+/** How many calls up `parent.frame(n)` or `sys.frame(-n)` as `node` looks, with a constant `n`. */
+export function callerGenerationsOf<Info>(node: RNode<Info> | undefined): number | undefined {
 	const [n, ...rest] = RFunctionCall.is(node) ? node.arguments : [];
 	const value = n === undefined || n === EmptyArgument ? undefined : n.value;
-	return rest.length === 0 && (n === undefined || (RNumber.is(value) && value.content.num === 1));
+	const negated = RUnaryOp.is(value) && value.operator === '-' ? value.operand : undefined;
+	const count = RNumber.is(value) ? value.content.num : RNumber.is(negated) ? -negated.content.num : undefined;
+	const called = RFunctionCall.calledName(node);
+	const sysFrame = called !== undefined && Identifier.getName(called) === 'sys.frame';
+	const generations = sysFrame ? (count === undefined ? undefined : -count) : n === undefined ? 1 : count;
+	return rest.length === 0 && generations !== undefined && Number.isInteger(generations) && generations >= 1 ? generations : undefined;
 }
 
 /** The stack environment an AST `node` denotes directly: a `.GlobalEnv`/`.BaseEnv` symbol, a `globalenv()`/`baseenv()`/`emptyenv()` call, the current env via `environment()`, the parent via `parent.env(e)`, or a named search-path entry via `as.environment("package:x")`. */

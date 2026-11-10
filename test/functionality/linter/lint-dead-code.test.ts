@@ -61,6 +61,7 @@ print(2)
 			]);
 			assertLinter('a stop in an argument forced within tryCatch stops nothing', parser, 'f <- function(x) tryCatch(x, error = function(e) 1)\nf(stop("a"))\nprint(2)', 'dead-code', []);
 			assertLinter('a stop in an argument forced within try stops nothing', parser, 'f <- function(x) { r <- try(x, silent = TRUE); class(r) }\nf(stop("a"))\nprint(2)', 'dead-code', []);
+			assertLinter('a while condition on an outer variable the body redefines locally is not constant', parser, 'k <- 0\ng <- function() {\n  while(k < 2) {\n    k <- k + 1\n    if(runif(1) > 2) return(1)\n  }\n  cat("live")\n}\ng()', 'dead-code', []);
 			assertLinter('try complex', parser, 'f <- function() { try(stop(1)); 2 }; f(); stop(1); 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 52, 1, 52], quickFix: [{ type: 'remove', loc: [1, 52, 1, 52], description: 'Remove the unreachable code' }] }
 			]);

@@ -38,6 +38,7 @@ describe('While', { concurrent: false }, withShell(shell => {
 		.use('3', 'x')
 		.use('12', 'x', { cds: [{ id: 14, when: true }] })
 		.reads('12', '2')
+		.reads('3', '2')
 		.call('5', '-', [argumentInCall('3'), argumentInCall('4')], { returns: [], reads: [NodeId.toBuiltIn('-'), '3', '4'], onlyBuiltIn: true, origin: [BuiltInProcName.Default] })
 		.calls('5', NodeId.toBuiltIn('-'))
 		.call('6', '<-', [argumentInCall('2'), argumentInCall('5')], { returns: ['2'], reads: [NodeId.toBuiltIn('<-'), 5], origin: [BuiltInProcName.Assignment], onlyBuiltIn: true })

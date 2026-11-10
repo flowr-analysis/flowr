@@ -104,7 +104,7 @@ export function processWhileLoop<OtherInfo>(
 	const remainingInputs = linkInputs(bodyRead, information.environment, condition.in.concat(condition.unknownReferences), graph, true);
 	applyCdToReferences(body.out, cdTrue);
 
-	const nonLocalReads = findNonLocalReads(graph, new Set(condition.in.map(i => i.nodeId)));
+	const nonLocalReads = findNonLocalReads(graph);
 	linkCircularRedefinitionsWithinALoop(graph, produceNameSharedIdMap(nonLocalReads), body.out, body.environment);
 	linkAmbientStateWithinLoop(graph, bodyRead.concat(condition.in, condition.unknownReferences), body);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), graph);

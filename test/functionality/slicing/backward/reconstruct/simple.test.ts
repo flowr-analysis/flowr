@@ -27,6 +27,13 @@ describe('Simple', { concurrent: false }, withShell(shell => {
 		}
 	});
 
+	/* a dropped call keeps its arguments as several expressions, which a function body only holds within a block */
+	describe('Arguments of a dropped call', () => {
+		const code = 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }';
+		assertReconstructed(label('the kept arguments stay in the body', ['function-definitions', 'call-normal']), shell, code,
+			[0, 1, 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 24, 25],
+			'validate <- function(x) {\n        is.numeric(x)\n        all(x >= 0)\n    }');
+	});
 	describe('Access', () => {
 		for(const [code, id, expected, caps] of [
 			/* we are interested in 'a' not in the result of the access*/

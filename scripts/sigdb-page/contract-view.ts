@@ -60,7 +60,7 @@ function marker(search: (q: string) => string, formals: readonly string[], resul
 			return [titled(el('span', 'arg result', part), 'the value a call returns normally')];
 		} else if(formals.includes(part)) {
 			return [formalMark(el('span', 'arg ' + hueOf(formals.indexOf(part)), part), part)];
-		} else if(part.endsWith('(')) {
+		} else if(/^(?:[A-Za-z.][A-Za-z0-9._]*::)?[A-Za-z.][A-Za-z0-9._]*\($/.test(part)) {
 			/* a function called in the condition leads to what is known of it */
 			const fn = part.slice(0, -1);
 			/* the package shows on hover, also where R attaches it and the condition leaves it out */

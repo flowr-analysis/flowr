@@ -400,7 +400,7 @@ ${ctx.link('FunctionGuards::required')} names the formals a call has to supply, 
 
 Conditions speak about the values at the guard, so a formal that has been overwritten by then is read as what it was overwritten with.
 What R fails on by itself is stated in the built-in configuration together with the R versions it holds for, and the query goes by the R version the analyzer assumes (\`solver.sigdb.assumedRVersion\`, else R ${RBaseGuardsVersion}): a condition of \`if\` or \`while\` longer than one only fails since R 4.2.0, an operand of \`&&\` longer than one since R 4.3.0, and \`is.atomic(NULL)\` is false since R 4.4.0.
-S3 methods for \`length\` and \`is.numeric\` are assumed to keep their contract.
+S3 methods for \`length\` are assumed to keep their contract, while a type check like \`is.numeric(x)\` only claims a type for an \`x\` without a class attribute.
 Where a branch on a formal tells cases apart, like \`if(is.logical(center)) ... else ...\`, each claim has the \`cases\` with what holds in each of them.
 With \`kind\` the query keeps the conditions of one kind, \`onlyPure\` keeps the clean failures, and \`formals\` narrows the answer to the named formals.
 

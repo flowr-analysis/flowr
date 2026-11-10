@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { statedSignatureOf, statedSignatures } from '../../../../src/dataflow/environments/default-builtin-config';
 import { label } from '../../_helper/label';
 
-/** the formals of R 4.6.1, as `names(formals(f))` gives them (`formals(args(f))` for primitives), `write.csv` handing its dots to `write.table` */
+/** the formals of R 4.6.1 and the package versions of the generated table, as `names(formals(f))` gives them (`formals(args(f))` for primitives), `write.csv` handing its dots to `write.table` */
 const FormalsOfR: readonly (readonly [pkg: string, name: string, formals: string, stated?: string])[] = [
 	['base', 'commandArgs', 'trailingOnly'],
 	['base', 'scale', 'x,center,scale'],
@@ -33,7 +33,23 @@ const FormalsOfR: readonly (readonly [pkg: string, name: string, formals: string
 	['base', 'rep', 'x,...'],
 	['base', 'apply', 'X,MARGIN,FUN,...,simplify'],
 	['base', 'do.call', 'what,args,quote,envir'],
-	['base', 'Reduce', 'f,x,init,right,accumulate,simplify']
+	['base', 'Reduce', 'f,x,init,right,accumulate,simplify'],
+	['base', 'body', 'fun'],
+	['ggplot2', 'ggplot', 'data,mapping,...,environment'],
+	['ggplot2', 'theme_bw', 'base_size,base_family,header_family,base_line_size,base_rect_size,ink,paper,accent'],
+	['lattice', 'xyplot', 'x,data,...'],
+	['DBI', 'dbConnect', 'drv,...'],
+	['DBI', 'dbListTables', 'conn,...'],
+	['shiny', 'insertUI', 'selector,where,ui,multiple,immediate,session'],
+	['data.table', 'setindex', '...', 'x,...,verbose,physical'],
+	['knitr', 'purl', '...,documentation', 'input,output,tangle,text,quiet,envir,encoding,documentation']
+];
+
+/* names whose formals R does not tell (the package is not installed, or it exports no such function) */
+const Unverified: readonly (readonly [pkg: string, name: string])[] = [
+	['ggpubr', 'ggarrange'],
+	['patchwork', 'wrap_plots'],
+	['base', 'Sys.putenv']
 ];
 
 describe('Stated formals', () => {
@@ -43,5 +59,24 @@ describe('Stated formals', () => {
 			const sig = statedSignatureOf(stated, name, pkg);
 			assert.strictEqual(sig?.pkg, pkg);
 			assert.strictEqual(sig?.args?.map(([formal]) => formal).join(','), formals);
+			assert.isUndefined(sig?.unverified);
+		});
+	test(label('a function R declares no formals for states none', ['name-normal'], ['other']), () => {
+		const sig = statedSignatureOf(stated, 'plot.new', 'graphics');
+		assert.strictEqual(sig?.pkg, 'graphics');
+		assert.isUndefined(sig?.params);
+		assert.isUndefined(sig?.unverified);
+	});
+	test(label('a replacement states the call it is handed, under its own name', ['name-normal', 'replacement-functions'], ['other']), () => {
+		const sig = statedSignatureOf(stated, 'body<-', 'base');
+		assert.isTrue(sig?.unverified);
+		assert.strictEqual(sig?.params, 'fun, value');
+	});
+	test.each(Unverified.map(([pkg, name]) => [`${pkg}::${name}`, pkg, name] as const))(
+		label('%s is unverified and claims no `...` formal', ['name-normal'], ['other']), (_label, pkg, name) => {
+			const sig = statedSignatureOf(stated, name, pkg);
+			assert.strictEqual(sig?.pkg, pkg);
+			assert.isTrue(sig?.unverified);
+			assert.isUndefined(sig?.params);
 		});
 });

@@ -45,12 +45,15 @@ export const StackEnvBuiltins = {
 /** The package exporting each plotting function flowR models, so {@link namespacePlotFunctions} can namespace it instead of leaving it bare (bare stays always-on, which is the conservative default for an unknown owner). */
 export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdentifier[]>> = {
 	DHARMa:     ['plotSimulatedResiduals'],
+	emmeans:    ['emmip'],
 	ape:        ['tiplabels'],
 	car:        ['densityPlot', 'qqPlot'],
-	cowplot:    ['ggdraw', 'theme_map'],
+	corrplot:   ['corrplot'],
+	cowplot:    ['ggdraw', 'plot_grid', 'theme_map'],
 	fBasics:    ['boxPlot', 'densityPlot', 'histPlot'],
 	factoextra: ['fviz_cluster', 'fviz_dend', 'fviz_mca', 'fviz_mca_biplot', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_pca', 'fviz_pca_biplot', 'fviz_pca_ind', 'fviz_pca_var',
 		'fviz_screeplot'],
+	fields:     ['image.plot'],
 	forecast:   ['ggseasonplot'],
 	ggExtra:    ['ggMarginal', 'removeGrid', 'removeGridX', 'removeGridY', 'rotateTextX'],
 	ggalt:      ['geom_dumbbell', 'geom_encircle'],
@@ -91,8 +94,8 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdent
 		'theme_light', 'theme_linedraw', 'theme_minimal', 'theme_replace', 'theme_sub_axis', 'theme_sub_axis_bottom', 'theme_sub_axis_left', 'theme_sub_axis_right',
 		'theme_sub_axis_top', 'theme_sub_axis_x', 'theme_sub_axis_y', 'theme_sub_legend', 'theme_sub_panel', 'theme_sub_plot', 'theme_sub_strip', 'theme_test', 'theme_update',
 		'theme_void', 'xlab', 'xlim', 'ylab', 'ylim'],
-	ggpubr: ['ggballoonplot', 'ggbarplot', 'ggdensity', 'ggdonutchart', 'ggdotchart', 'ggdotplot', 'ggecdf', 'ggerrorplot', 'gghistogram', 'ggline', 'ggmaplot', 'ggpaired', 'ggpie',
-		'ggqqplot', 'ggscatterhist', 'ggstripchart', 'ggviolin', 'gradient_color'],
+	ggpubr: ['ggarrange', 'ggballoonplot', 'ggbarplot', 'ggboxplot', 'ggdensity', 'ggdonutchart', 'ggdotchart', 'ggdotplot', 'ggecdf', 'ggerrorplot', 'gghistogram', 'ggline', 'ggmaplot', 'ggpaired', 'ggpie',
+		'ggqqplot', 'ggscatter', 'ggscatterhist', 'ggstripchart', 'ggviolin', 'gradient_color'],
 	ggthemes: ['scale_color_calc', 'scale_color_canva', 'scale_color_colorblind', 'scale_color_continuous_tableau', 'scale_color_economist', 'scale_color_excel',
 		'scale_color_excel_new', 'scale_color_few', 'scale_color_fivethirtyeight', 'scale_color_gdocs', 'scale_color_gradient2_tableau', 'scale_color_gradient_tableau',
 		'scale_color_hc', 'scale_color_pander', 'scale_color_ptol', 'scale_color_solarized', 'scale_color_stata', 'scale_color_tableau', 'scale_color_wsj', 'scale_colour_calc',
@@ -112,7 +115,7 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdent
 	ggstatsplot: ['ggbarstats', 'ggbetweenstats', 'ggcoefstats', 'ggcorrmat', 'ggdotplotstats', 'gghistostats', 'ggpiestats', 'ggscatterstats', 'ggwithinstats', 'grouped_ggbarstats',
 		'grouped_ggbetweenstats', 'grouped_ggcorrmat', 'grouped_ggdotplotstats', 'grouped_gghistostats', 'grouped_ggpiestats', 'grouped_ggscatterstats',
 		'grouped_ggwithinstats'],
-	sjPlot:          ['plot_frq', 'plot_grpfrq', 'plot_likert', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab'],
+	sjPlot:          ['plot_frq', 'plot_grpfrq', 'plot_likert', 'plot_model', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab'],
 	EnhancedVolcano: ['EnhancedVolcano'],
 	qgraph:          ['centralityPlot', 'clusteringPlot', 'qgraph'],
 	semPlot:         ['semPaths'],
@@ -120,11 +123,12 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdent
 	mirt:            ['itemplot'],
 	gplots:          ['bandplot', 'barplot2', 'boxplot2', 'bubbleplot', 'heatmap.2', 'lmplot2', 'overplot', 'plotCI', 'plotmeans', 'residplot', 'sinkplot', 'textplot'],
 	gridExtra:       ['grid.arrange'],
-	lattice:         ['bwplot', 'dotplot', 'histogram', 'splom', 'stripplot', 'trellis.device', 'xyplot'],
+	lattice:         ['bwplot', 'dotplot', 'histogram', 'levelplot', 'splom', 'stripplot', 'trellis.device', 'xyplot'],
 	leaflet:         ['leaflet'],
 	magick:          ['image_draw', 'image_graph'],
 	maps:            ['map'],
 	openintro:       ['boxPlot', 'densityPlot', 'histPlot'],
+	patchwork:       ['wrap_plots'],
 	pheatmap:        ['pheatmap'],
 	jmcm:            ['bootcurve', 'meanplot', 'regressogram'],
 	seqinr:          ['dotPlot'],
@@ -294,15 +298,17 @@ export const WithSig: FnSig  = sig({ data: ArgProp.NoDefault | ArgProp.Written, 
 /** what flowR states about one of the functions it defines, in the words a page shows */
 export interface StatedSignature {
 	/** the package the definition is for, `base` when it names none */
-	readonly pkg:      BrandedNamespace;
-	/** The formals flowR models, `x, ...`, or `undefined` where it declares none (not R's own declaration). */
-	readonly params?:  string;
+	readonly pkg:         BrandedNamespace;
+	/** The formals flowR models, `x, ...`, or `undefined` where it declares none; R's own where {@link StatedSignature#unverified} is not set. */
+	readonly params?:     string;
+	/** set where R's formals were unknown when the table of them was generated (the package was not installed or exports no such function), so the stated ones stay */
+	readonly unverified?: true;
 	/** what it does, from {@link CallProps.labels}, `ambient state` for every function declaring an {@link AmbientEffect} */
-	readonly props:    readonly string[];
+	readonly props:       readonly string[];
 	/** each formal with what it is used for, from {@link ArgProps.words}; the roles read like the types R has none of */
-	readonly args?:    readonly (readonly [name: string, roles: readonly string[]])[];
+	readonly args?:       readonly (readonly [name: string, roles: readonly string[]])[];
 	/** what it does to the global state, by part and access, see {@link ambientSummaryOf} */
-	readonly ambient?: readonly AmbientFamilySummary[];
+	readonly ambient?:    readonly AmbientFamilySummary[];
 }
 
 /** The manual page documenting a base R primitive, for the ones not documented under their own name (a primitive is written in C, so no signature/source/help-topic extractor sees it; `sin` is documented under `Trig`). */

@@ -30,7 +30,7 @@ import { TestingDefinitions } from './unit-testing';
 import { GuardDefinitions, markGuards } from './guards';
 import { PrimitiveLanguageDefinitions } from './guards-primitive-lang';
 import { PrimitiveOpsGuardDefinitions } from './guards-primitive-ops';
-import { markFormals } from './r-formals';
+import { formalsOfR, functionsOfR, markFormals } from './r-formals';
 
 export type { StatedSignature } from './shared-configs';
 export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics, RGenerics } from './shared-configs';
@@ -41,13 +41,17 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 	for(const definition of definitions) {
 		const info = definition.type === 'constant' ? undefined : definition.config;
 		const ambient = ambientSummaryOf(info);
-		for(const id of definition.names) {
+		for(const id of definition.type === 'constant' ? definition.names : functionsOfR(definition)) {
 			const name = String(Identifier.getName(id));
 			const pkg = String(Identifier.getNamespace(id) ?? PkgName.Base);
 			const declared = info?.sig ?? [];
+			const unverified = definition.type !== 'constant' && formalsOfR(pkg, name) === undefined;
+			/* a lone `...` only says what every argument is used for when R's formals are unknown, it names no formal */
+			const named = declared.length > 0 && !(unverified && declared.every(([param]) => param === '...'));
 			const entry = {
 				pkg,
-				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
+				params: named ? declared.map(([param]) => param).join(', ') : undefined,
+				...unverified ? { unverified: true as const } : {},
 				props:  CallProps.labels(ambient.length > 0 || declaresAmbient(info) ? { ...info, props: (info?.props ?? 0) | CallProp.Ambient } : info),
 				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined,
 				...ambient.length > 0 ? { ambient } : {}

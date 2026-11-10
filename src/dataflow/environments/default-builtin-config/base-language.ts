@@ -1,7 +1,7 @@
 import { sig, Forced } from './shared-signatures';
 import { fn, replacement, pkg, Primitive, Deprecated } from './define-helpers';
 import { ExitPointType, NamedAccessOperators } from '../built-in-kinds';
-import { Identifier } from '../identifier';
+import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { BuiltInEvalName } from '../built-in-eval-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
@@ -60,7 +60,7 @@ export const LanguageDefinitions = [
 	fn(['if'], BuiltInProcName.IfThenElse, { sig: sig({ cond: ArgProp.NoDefault | ArgProp.Forced | ArgProp.Atomic, 'cons.expr': ArgProp.NoDefault, 'alt.expr': 0 }) }, Primitive),
 	/* a pipe hands back what the side it feeds hands back, which `Alias` is what states */
 	fn(['|>'], BuiltInProcName.Pipe, { pipePlaceholderName: '_', assignLhs: false, returnLhs: false, sig: sig({ lhs: ArgProp.Value, rhs: ArgProp.Alias }) }, Primitive),
-	fn([...Identifier.fromAllIn(MagrittrPipePackages, ['%>%']), '%!>%'], BuiltInProcName.Pipe,
+	fn([...Identifier.fromAllIn(MagrittrPipePackages, ['%>%']), ...pkg(PkgName.Magrittr, '%!>%')], BuiltInProcName.Pipe,
 		{ pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true, sig: sig({ lhs: ArgProp.Value, rhs: ArgProp.Alias }) }, Primitive),
 	fn(['function', '\\'], BuiltInProcName.FunctionDefinition, { sig: sig({ arglist: ArgProp.Nse, expr: ArgProp.NoDefault | ArgProp.Nse }) }, Primitive),
 	fn(['for'], BuiltInProcName.ForLoop,

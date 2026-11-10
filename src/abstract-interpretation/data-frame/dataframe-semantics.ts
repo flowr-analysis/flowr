@@ -1479,6 +1479,12 @@ function mapDataFrameJoin(
 		}
 	}
 
+	/* `by = c(k1 = "k2")` and `join_by(k1 == k2)` pair different columns, of which the result keeps only one of the two */
+	const byNode = byArg === undefined || byArg === EmptyArgument ? undefined : byArg.value;
+	if(RFunctionCall.isNamed(byNode) && (byNode.arguments.some(a => a !== EmptyArgument && a.name !== undefined) || Identifier.getName(byNode.functionName.content) === 'join_by')) {
+		byCols = undefined;
+	}
+
 	if(byCols?.some(isColName)) {
 		result.push({
 			operation: 'accessCols',

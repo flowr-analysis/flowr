@@ -452,6 +452,12 @@ byId('help').addEventListener('click', () => {
 		helpDialog.setAttribute('open', '');
 	}
 });
+/* a click on the backdrop lands on the dialog itself, not on anything within it, and closes it */
+helpDialog.addEventListener('click', event => {
+	if(event.target === helpDialog) {
+		helpDialog.close();
+	}
+});
 for(const [id, kind] of [['helproles', WordKind.Role], ['helpprops', WordKind.Prop]] as const) {
 	byId(id).append(...Vocabulary[kind].flatMap(({ word, about }) => [el('dt', kind, word), el('dd', undefined, about)]));
 }

@@ -170,6 +170,27 @@ print(2)
 			]);
 		});
 
+		/* #2810: an `else if` without a final `else` may take neither branch, so what follows still runs */
+		describe('returns in an else-if chain without a final else', () => {
+			assertLinter('braced chain', parser, 'test <- function(x, a, b, c) {\n\tif (x %in% 1:2) {\n\t\treturn(a)\n\t} else if (x %in% 3:4) {\n\t\treturn(b)\n\t}\n\tc\n}', 'dead-code', []);
+			assertLinter('unbraced chain', parser, 'test <- function(x, a, b, c) { if (x %in% 1:2) return(a) else if (x %in% 3:4) return(b) ; c }', 'dead-code', []);
+			assertLinter('called with a value no branch takes', parser, 'test <- function(x, a, b, c) { if (x %in% 1:2) return(a) else if (x %in% 3:4) return(b) ; c }\ntest(5, 1, 2, 3)', 'dead-code', []);
+			assertLinter('a symbol condition', parser, 'f <- function(x, y) { if (x) return(1) else if (y) return(2) ; 3 }', 'dead-code', []);
+			assertLinter('a chain in a for body', parser, 'f <- function(x) { for(i in x) { if(i == 1) return(1) else if(i == 2) return(2) }; 3 }', 'dead-code', []);
+			assertLinter('a chain of breaks in a repeat', parser, 'repeat { if(a) break else if(b) next }; 3', 'dead-code', []);
+			assertLinter('a chain of stops in a tryCatch', parser, 'tryCatch({ if(a) stop("x") else if(b) stop("y") }, error = function(e) 1); 3', 'dead-code', []);
+			assertLinter('a chain nested in an else', parser, 'f <- function(a, b, c) { if(a) { return(1) } else { if(b) return(2) else if(c) return(3) }; 4 }', 'dead-code', []);
+			assertLinter('a long chain', parser, 'f <- function(a, b, c, d) { if(a) return(1) else if(b) return(2) else if(c) return(3) else if(d) return(4); 5 }', 'dead-code', []);
+			assertLinter('a chain in a local', parser, 'local({ if(a) return(1) else if(b) return(2); 3 })', 'dead-code', []);
+			assertLinter('an inner if-else under a then whose else-if has no else', parser, 'f <- function(a, b) { if(a) { if(b) return(1) else return(2) } else if(b) return(3); 4 }', 'dead-code', []);
+			assertLinter('a full inner if-else under a full if', parser, 'f <- function(a, b) { if(a) { if(b) return(1) else return(2) } else return(3); 4 }', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 80, 1, 80], quickFix: [{ type: 'remove', loc: [1, 80, 1, 80], description: 'Remove the unreachable code' }] }
+			]);
+			assertLinter('a final else makes the tail dead', parser, 'f <- function(x, y) { if (x) return(1) else if (y) return(2) else return(4) ; 3 }', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 79, 1, 79], quickFix: [{ type: 'remove', loc: [1, 79, 1, 79], description: 'Remove the unreachable code' }] }
+			]);
+		});
+
 		describe('reflective name arguments', () => {
 			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
 			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);

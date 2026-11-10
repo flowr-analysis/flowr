@@ -183,6 +183,14 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly Cont
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
 	const closureFrame = envir.envDef.closureFrame === true;
+	/* whether `rm` removes a binding or warns that there is none depends on the definitions it removes, see `processRm` */
+	for(const { name } of targets.names) {
+		for(const definition of envir.envirData.environment.current.memory.get(Identifier.getName(name)) ?? []) {
+			if(!NodeId.isBuiltIn(definition.definedAt)) {
+				res.graph.addEdge(rootId, definition.definedAt, EdgeType.Reads);
+			}
+		}
+	}
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId), closureFrame);
 	if(closureFrame) {
 		res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
@@ -240,6 +248,15 @@ export function processRm<OtherInfo>(
 		/* a function removing from the global frame removes for its callers, as `<<-` defines for them */
 		if(envir?.stack === 'global') {
 			res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
+			/* whether `rm` removes a binding or warns that there is none depends on the definitions it removes, see below */
+			const global = envir.envirData.environment.current;
+			for(const { name } of targets.names) {
+				for(const definition of global.lookup(Identifier.getName(name)) ?? global.superMemory?.get(Identifier.getName(name)) ?? []) {
+					if(!NodeId.isBuiltIn(definition.nodeId)) {
+						res.graph.addEdge(rootId, definition.nodeId, EdgeType.Reads);
+					}
+				}
+			}
 			return { ...res, environment: applyGlobalKills(res.environment, buildKills(targets, data.cds, rootId)) };
 		}
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope

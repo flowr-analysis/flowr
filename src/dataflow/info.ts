@@ -145,9 +145,11 @@ export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
  * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
 export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: readonly ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+	/* an exit that follows a conditional one (`if(c) return(1); stop()`) only happens if the earlier one did not */
+	const notEarlier = invertExitCds.slice();
 	for(const ep of add) {
 		if(ep.type !== ExitPointType.Default) {
-			existing.push(ep);
+			existing.push(notEarlier.length > 0 ? { ...ep, cds: withCds(ep.cds ?? activeCds, notEarlier) } : ep);
 			const ownCds = ControlDependency.minus(ep.cds ?? [], activeCds ?? []);
 			appendCds(invertExitCds, ownCds.map(negateControlDependency));
 		}

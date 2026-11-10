@@ -23,7 +23,7 @@ function fibGraph() {
 		.calls('7@fib', '1@function')
 		.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
 		.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
-		.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
+		.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: [{ id: 15, when: false }] }], {
 			out:               [],
 			in:                [],
 			unknownReferences: [],

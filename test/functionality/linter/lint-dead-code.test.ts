@@ -190,6 +190,8 @@ print(2)
 			assertLinter('a chain of breaks in a repeat', parser, 'repeat { if(a) break else if(b) next }; 3', 'dead-code', []);
 			assertLinter('a chain of stops in a tryCatch', parser, 'tryCatch({ if(a) stop("x") else if(b) stop("y") }, error = function(e) 1); 3', 'dead-code', []);
 			assertLinter('a chain nested in an else', parser, 'f <- function(a, b, c) { if(a) { return(1) } else { if(b) return(2) else if(c) return(3) }; 4 }', 'dead-code', []);
+			assertLinter('a stop after a conditional return of a local function is not certain', parser, 'f <- function(cc) {\n  g <- function() {\n    if(!cc) return(1)\n    stop("x")\n  }\n  g()\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('an unconditional stop in a local function still ends the callers', parser, 'f <- function(cc) {\n  g <- function() {\n    stop("x")\n    cat("dead")\n  }\n  g()\n  cat("dead too")\n}', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [4, 5, 4, 15], quickFix: [{ type: 'remove', loc: [4, 5, 4, 15], description: 'Remove the unreachable code' }] }, { certainty: LintingResultCertainty.Certain, loc: [7, 3, 7, 17], quickFix: [{ type: 'remove', loc: [7, 3, 7, 17], description: 'Remove the unreachable code' }] }]);
 			assertLinter('a long chain', parser, 'f <- function(a, b, c, d) { if(a) return(1) else if(b) return(2) else if(c) return(3) else if(d) return(4); 5 }', 'dead-code', []);
 			assertLinter('a chain in a local', parser, 'local({ if(a) return(1) else if(b) return(2); 3 })', 'dead-code', []);
 			assertLinter('an inner if-else under a then whose else-if has no else', parser, 'f <- function(a, b) { if(a) { if(b) return(1) else return(2) } else if(b) return(3); 4 }', 'dead-code', []);

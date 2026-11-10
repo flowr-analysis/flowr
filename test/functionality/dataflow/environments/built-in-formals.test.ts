@@ -67,10 +67,10 @@ describe('Stated formals', () => {
 		assert.isUndefined(sig?.params);
 		assert.isUndefined(sig?.unverified);
 	});
-	test(label('a replacement states the call it is handed, under its own name', ['name-normal', 'replacement-functions'], ['other']), () => {
+	test(label('a replacement states the formals R declares for it, under its own name', ['name-normal', 'replacement-functions'], ['other']), () => {
 		const sig = statedSignatureOf(stated, 'body<-', 'base');
-		assert.isTrue(sig?.unverified);
-		assert.strictEqual(sig?.params, 'fun, value');
+		assert.isUndefined(sig?.unverified);
+		assert.strictEqual(sig?.params, 'fun, envir, value');
 	});
 	test.each(Unverified.map(([pkg, name]) => [`${pkg}::${name}`, pkg, name] as const))(
 		label('%s is unverified and claims no `...` formal', ['name-normal'], ['other']), (_label, pkg, name) => {

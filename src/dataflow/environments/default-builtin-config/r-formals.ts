@@ -88,13 +88,14 @@ function markedFormalsOf(id: Identifier): readonly BrandedIdentifier[] | undefin
  */
 export function markFormals(definitions: BuiltInDefinitions): BuiltInDefinitions {
 	return definitions.flatMap((def): BuiltInDefinitions => {
-		/* a replacement call hands its value on last and unnamed (`body<-`(f, v)), so R's formals (`fun, envir, value`) would bind it by position to the wrong one */
-		if(def.type !== 'function') {
+		if(def.type !== 'function' && def.type !== 'replacement') {
 			return [def];
 		}
+		/* a replacement call names its value `value`, as R does, so it binds by R's formals of `name<-` */
+		const ofR = new Map((def.names as readonly Identifier[]).map((id, at) => [id, functionsOfR(def)[at]] as const));
 		const groups = new Map<string | undefined, Identifier[]>();
 		for(const id of def.names as readonly Identifier[]) {
-			const key = markedFormalsOf(id)?.join(',');
+			const key = markedFormalsOf(ofR.get(id) ?? id)?.join(',');
 			groups.set(key, [...groups.get(key) ?? [], id]);
 		}
 		if(groups.size === 1 && groups.has(undefined)) {
@@ -104,9 +105,9 @@ export function markFormals(definitions: BuiltInDefinitions): BuiltInDefinitions
 			if(key === undefined) {
 				return { ...def, names };
 			}
-			const [first] = names;
+			const first = ofR.get(names[0]) ?? names[0];
 			const sig = withFormalsOf(String(Identifier.getNamespace(first) ?? PkgName.Base), String(Identifier.getName(first)), key === '' ? [] : key.split(','), def.config?.sig);
-			return { ...def, names, config: { ...def.config, sig } };
+			return { ...def, names, config: { ...def.config, sig } } as BuiltInDefinition;
 		});
 	});
 }

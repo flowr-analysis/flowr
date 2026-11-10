@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { WrittenBuiltinDefinitions } from '../src/dataflow/environments/default-builtin-config';
+import { functionsOfR } from '../src/dataflow/environments/default-builtin-config/r-formals';
 import { Identifier, PkgName } from '../src/dataflow/environments/identifier';
 
 const Reader = `
@@ -29,10 +30,8 @@ for (l in readLines("stdin")) {
 
 const wanted = new Set<string>();
 for(const def of WrittenBuiltinDefinitions) {
-	if(def.type === 'function') {
-		for(const id of def.names as readonly Identifier[]) {
-			wanted.add(`${String(Identifier.getNamespace(id) ?? PkgName.Base)}\t${String(Identifier.getName(id))}`);
-		}
+	for(const id of functionsOfR(def)) {
+		wanted.add(`${String(Identifier.getNamespace(id) ?? PkgName.Base)}\t${String(Identifier.getName(id))}`);
 	}
 }
 const output = execFileSync('Rscript', ['-e', Reader], { input: [...wanted].sort().join('\n') + '\n', encoding: 'utf8', maxBuffer: 1 << 26 });

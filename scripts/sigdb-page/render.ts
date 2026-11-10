@@ -86,19 +86,22 @@ function marked(name: string, needle: string, at: number): HTMLSpanElement {
 	return span;
 }
 
-/** toggles `detailOf` below `row` on a click that is not on a link */
-function opens(row: HTMLElement, detailOf: () => Node): void {
-	row.addEventListener('click', event => {
-		if((event.target as HTMLElement | null)?.closest('a')) {
-			return;
-		}
+/** toggles `detailOf` below `row` on a click that is not on a link, and returns what opens it right away */
+function opens(row: HTMLElement, detailOf: () => Node): () => void {
+	const toggle = () => {
 		const open = row.querySelector('.detail');
 		if(open) {
 			open.remove();
 		} else {
 			row.append(detailOf());
 		}
+	};
+	row.addEventListener('click', event => {
+		if(!(event.target as HTMLElement | null)?.closest('a')) {
+			toggle();
+		}
 	});
+	return toggle;
 }
 
 /** what a search asks for, which its hits are rendered against */
@@ -115,6 +118,9 @@ export interface Asked {
 
 /** renders the hits of one search */
 export class Hits {
+	/** whether a hit has opened on its own already */
+	private expanded = false;
+
 	constructor(private readonly list: HTMLElement, private readonly asked: Asked) {}
 
 	name(entry: Entry, at: number): void {
@@ -176,8 +182,13 @@ export class Hits {
 			row.append(ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name));
 		}
 		/* how it takes part in S3 dispatch is for the opened view, the card stays one line or two */
-		opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen), s3Line(entry)));
+		const open = opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen), s3Line(entry), chosen?.pkg.name));
 		this.list.append(row);
+		/* the name asked for, plain or qualified, opens right away, the first such hit only */
+		if(!this.expanded && name === this.asked.needle) {
+			this.expanded = true;
+			open();
+		}
 	}
 
 	package(pkg: Package, at: number): void {
@@ -199,7 +210,7 @@ export class Hits {
 	}
 
 	/** one line per package exporting the name, with its signature there and where it is written */
-	private owners(entry: Entry, contracted?: HTMLElement, s3?: HTMLElement): HTMLDivElement {
+	private owners(entry: Entry, contracted?: HTMLElement, s3?: HTMLElement, chosen?: string): HTMLDivElement {
 		const { name } = entry;
 		const list = el('div', 'owns');
 		for(const owner of entry.shown) {
@@ -240,27 +251,27 @@ export class Hits {
 			});
 			list.append(row);
 		}
-		/* what to ask flowR for parameters and the call graph, for the package row last hovered, copied on a click */
-		let command = '';
-		const ask = button('askbtn', '>_', '', event => {
-			event.stopPropagation();
-			void navigator.clipboard?.writeText(command).then(() => ask.textContent = 'copied');
-		});
+		/* what to ask flowR for parameters and the call graph, for the hit's package or the package row last hovered, copied on a click */
+		const ask = el('code', 'askcmd');
 		const asks = (qualified: string) => {
-			command = ':query @signature ' + qualified;
-			ask.title = 'for parameters and the call graph, ask flowR: ' + command + ' (click to copy)';
+			ask.textContent = ':query @signature ' + qualified;
+			ask.title = 'for parameters and the call graph, ask flowR this; click to copy';
 		};
-		const anyPackage = '* ' + name;
-		asks(anyPackage);
+		asks(chosen === undefined ? '* ' + name : chosen + '::' + name);
+		ask.addEventListener('click', event => {
+			event.stopPropagation();
+			void navigator.clipboard?.writeText(ask.textContent ?? '').then(() => ask.title = 'copied');
+		});
 		list.addEventListener('mouseover', event => {
 			const row = (event.target as HTMLElement | null)?.closest('.own');
 			if(row) {
 				asks((row.querySelector('.pkg')?.textContent ?? '') + '::' + name);
 			}
 		});
-		list.append(ask);
+		const head = el('div', 'dhead');
+		head.append(s3 ?? el('span'), ask);
 		const box = el('div', 'detail');
-		box.append(...(s3 === undefined ? [] : [s3]), ...(contracted === undefined ? [] : [contracted]), list);
+		box.append(head, ...(contracted === undefined ? [] : [contracted]), list);
 		return box;
 	}
 
@@ -456,9 +467,9 @@ function s3Line(entry: Entry): HTMLElement | undefined {
 		const used = (method: Entry) => Math.max(...method.owners.map(owner => owner.pkg.base ? Infinity : owner.pkg.downloads));
 		const ranked = [...methods].sort((a, b) => Number(b.contracted) - Number(a.contracted) || used(b) - used(a) || (a.name < b.name ? -1 : 1));
 		line.append(titled(el('span', 'label', 'S3 methods'), 'the S3 methods of ' + name + ' the database knows, those flowR knows a contract for first, then those of base R, then by the downloads of their packages'),
-			...ranked.slice(0, ShownMethods).flatMap((method, at) => [...at > 0 ? [el('span', 'sep', ' · ')] : [], methodLink(method, name)]));
+			...ranked.slice(0, ShownMethods).map(method => methodLink(method, name)));
 		if(ranked.length > ShownMethods) {
-			line.append(el('span', 'sep', ' · '), link('more', '+' + (ranked.length - ShownMethods), search(name + '.'), 'search for every name starting with ' + name + '.'));
+			line.append(link('more', '+' + (ranked.length - ShownMethods), search(name + '.'), 'search for every name starting with ' + name + '.'));
 		}
 	}
 	if(generic !== undefined) {
@@ -475,7 +486,7 @@ function methodLink(method: Entry, generic: string): HTMLElement {
 	const group = el('span', 'mgroup');
 	group.append(link('method', '.' + method.name.slice(generic.length + 1), search(method.name), method.name + ': S3 method of ' + generic + ' for class '
 		+ method.name.slice(generic.length + 1) + (method.contracted ? '. flowR knows what a call of it has to fulfill' : '')),
-	...method.contracted ? [titled(el('span', 'hascontract', '\u2713'), 'flowR knows what a call of ' + method.name + ' has to fulfill')] : [],
+	...method.contracted ? [titled(el('span', 'hascontract', '\u2713 contract'), 'flowR knows what a call of ' + method.name + ' has to fulfill: open it for the contract')] : [],
 	...method.owners.slice(0, Shown).map(owner => packageLink(owner.pkg, 'mpkg')), ...method.owners.length > Shown ? [el('span', 'mpkg more', '+' + (method.owners.length - Shown))] : []);
 	return group;
 }

@@ -40,7 +40,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private isUnconditionalJump(id: NodeId): boolean {
-		if(this.isCaught(id)) {
+		/* a `stop()` in a promise of `delayedAssign("x", stop())` does not run where it is written */
+		if(this.isCaught(id) || this.config.dfg.isQuoted(id)) {
 			return false;
 		}
 		const has = this.cachedStatements.get(id);
@@ -162,7 +163,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	/**
 	 * Whether an error raised here is caught before it can cut the flow, which is what `try` and `tryCatch`
-	 * do to a `stop()` nested in them. The enclosing calls come from the AST: in the control flow graph a
+	 * do to a `stop()` nested in them, or not raised here at all, as in `quote(stop())`, whose code an `eval` may
+	 * run elsewhere (which links it in place). The enclosing calls come from the AST: in the control flow graph a
 	 * construct is where its parts join again, so there is no edge that would delimit it on its own.
 	 */
 	private isCaught(id: NodeId): boolean {
@@ -171,7 +173,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return cached;
 		}
 		const result = RNode.iterateParents(this.getNormalizedAst(id), this.config.normalizedAst.idMap)
-			.some(node => DfgVertex.hasOrigin(this.getDataflowGraph(node.info.id), BuiltInProcName.Try));
+			.some(node => {
+				const vertex = this.getDataflowGraph(node.info.id);
+				return DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Quote);
+			});
 		this.caught.set(id, result);
 		return result;
 	}

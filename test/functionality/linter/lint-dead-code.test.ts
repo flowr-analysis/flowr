@@ -188,5 +188,14 @@ print(2)
 			assertLinter('a stop in a while body that may not run', parser, 'while(x) stop("never")\nprint("alive")', 'dead-code', []);
 			assertLinter('a return in a for body that may not run', parser, 'f <- function(x) { for(i in x) return(1); 2 }\nprint(f(integer(0)))', 'dead-code', []);
 		});
+
+		describe('quoted and delayed code', () => {
+			assertLinter('a quoted stop', parser, 'quote(stop("e"))\nprint("alive")', 'dead-code', []);
+			assertLinter('a quoted stop in a block', parser, 'quote({ x <- 1; stop("e") })\nprint("alive")', 'dead-code', []);
+			assertLinter('a delayed stop', parser, 'delayedAssign("p", stop("lazy"))\nprint("alive")', 'dead-code', []);
+			assertLinter('a quoted stop an eval runs', parser, 'e <- quote(stop("e"))\neval(e)\nprint("dead")', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 1, 3, 13], quickFix: [{ type: 'remove', loc: [3, 1, 3, 13], description: 'Remove the unreachable code' }] }
+			]);
+		});
 	});
 }));

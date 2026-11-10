@@ -349,7 +349,7 @@ function processAssignmentTarget<OtherInfo>(
 			})(),
 			rootId,
 			data,
-			information:              res.information,
+			information: res.information,
 		});
 	};
 	/** the target is a plain name, so the assignment defines it directly */

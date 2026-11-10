@@ -40,6 +40,7 @@ import { ClosureFrames } from '../graph/closure-frames';
 import { AmbientStateName } from '../environments/ambient-state-name';
 import { instanceBindingsOfMethod } from '../fn/class-declaration';
 import { ReachSummaries, unionOfSets } from '../../util/fixpoint';
+import { dataLoadNodesForNamespace } from './process/functions/call/built-in/built-in-library';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -208,6 +209,12 @@ function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunct
 			/* R looks the methods of a dispatch up where the generic is called first */
 			if(ingoing.type === ReferenceType.S3MethodPrefix && inCallee === undefined) {
 				defs = uniqueArrayMerge(defs, Resolve.byNameAndType(name, environment, ingoing.type) ?? []);
+			}
+			/* a data set nothing defines is the lazy data of a package attached by the time of the call, as for a read outside of a function */
+			if(defs.length === 0 && ingoing.type !== ReferenceType.Function && ingoing.type !== ReferenceType.BuiltInFunction) {
+				for(const load of dataLoadNodesForNamespace(environment, Identifier.getName(name))) {
+					graph.addEdge(ingoing.nodeId, load, EdgeType.Reads);
+				}
 			}
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				const { nodeId, type, value, definedAt, envState } = def;

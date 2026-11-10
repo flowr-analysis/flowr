@@ -7,7 +7,7 @@ import { patchFunctionCall } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { MemoryView } from '../../../../../environments/frame-memory';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { loadNodesForNamespace } from './built-in-library';
+import { dataLoadNodesForNamespace, loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -253,6 +253,12 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		}
 	}
 	if(probableTarget === undefined) {
+		/* a data set of an attached package (`starwars` after `library(dplyr)`) is bound by the load */
+		if(readName !== undefined && !(read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
+			for(const load of dataLoadNodesForNamespace(environments, Identifier.getName(readName))) {
+				nextGraph.addEdge(read.nodeId, load, EdgeType.Reads);
+			}
+		}
 		return false;
 	}
 

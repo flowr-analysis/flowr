@@ -74,6 +74,8 @@ export class Environment implements IEnvironment {
 	n?:                    BrandedNamespace;
 	/** which search-path layer this env is (package/namespace/imports), if any */
 	t?:                    EnvType;
+	/** the load (`library()`) that attached this package layer, set for a package shipping data sets, which the load binds as lazy data */
+	d?:                    NodeId;
 	/** if created by a closure, the node id of that closure */
 	private c?:            NodeId;
 	parent:                Environment;
@@ -224,6 +226,7 @@ export class Environment implements IEnvironment {
 		env.c = this.c;
 		env.n = this.n;
 		env.t = this.t;
+		env.d = this.d;
 		env.globalEnv = this.globalEnv;
 		env.superMemory = this.superMemory;
 		return env;

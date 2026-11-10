@@ -10,7 +10,7 @@ import { hasEnvState, ReferenceType } from '../../../../../environments/identifi
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
-import { resolveNodeToStackEnv } from './built-in-stack-env';
+import { isEnclosingFrame, resolveNodeToStackEnv } from './built-in-stack-env';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { dataflowLogger } from '../../../../../logger';
@@ -31,11 +31,11 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { FnSig } from '../../../../../environments/built-in-props';
 
 function stackKindOf(envState: REnvironmentInformation): StackEnv | undefined {
-	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : undefined;
+	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : isEnclosingFrame(envState) ? 'enclosing' : undefined;
 }
 
-/** The real stack environments a resolution can name, as opposed to a tracked custom env. */
-export type StackEnv = 'global' | 'base';
+/** The real stack environments a resolution can name, as opposed to a tracked custom env: `'enclosing'` is the frame of a function around the current one, see {@link isEnclosingFrame}. */
+export type StackEnv = 'global' | 'base' | 'enclosing';
 
 /** Result type for a successful envir-argument resolution. */
 export interface EnvirResolution<OtherInfo> {
@@ -45,7 +45,7 @@ export interface EnvirResolution<OtherInfo> {
 	readonly envDef:      EnvHolderDefinition;
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
 	readonly envirNodeId: NodeId;
-	/** which real stack env this resolves to, absent for a tracked custom env; only `'global'` reaches the real frame chain */
+	/** which real stack env this resolves to, absent for a tracked custom env; `'global'` and `'enclosing'` reach the real frame chain */
 	readonly stack?:      StackEnv;
 }
 
@@ -190,7 +190,7 @@ function freeEnvirResolution<OtherInfo>(name: Identifier, nodeId: NodeId, data: 
 function stackEnvirResolution<OtherInfo>(envState: REnvironmentInformation, nodeId: NodeId, lexeme: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
 	const envDef = { name: lexeme, nodeId, type: ReferenceType.Variable, definedAt: nodeId, envState } as EnvHolderDefinition;
-	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: envState.current.globalEnv === true ? 'global' : 'base' };
+	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: stackKindOf(envState) ?? 'base' };
 }
 
 /** The slots `envir` falls back to (`envir = as.environment(pos)`), so an environment handed to one of them is the target as well. */
@@ -267,7 +267,13 @@ export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo
 
 /** Resolves a symbol by name to an {@link EnvirResolution} when it holds a tracked environment. */
 export function resolveSymbolToEnvir<OtherInfo>(symbolName: Identifier, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
-	return envirOf(resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data));
+	return envirOf(resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable) ?? enclosingFrameHolders(symbolName, data.environment), nodeId, data));
+}
+
+/** The definitions of the free variable `name` of a body holding the frame of a function around (`e <- parent.env(environment())` in it): the body sees the frames around it emptied, which stand in for them (see {@link Environment#superMemory}). */
+function enclosingFrameHolders(name: Identifier, environment: REnvironmentInformation): readonly IdentifierDefinition[] | undefined {
+	const defs = environment.level > 0 ? environment.current.lookupLexically(Identifier.getName(name)) : undefined;
+	return defs?.length && defs.every(d => hasEnvState(d) && isEnclosingFrame(d.envState)) ? defs : undefined;
 }
 
 function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): readonly NamedInGraphIdentifierDefinition[] {
@@ -426,7 +432,7 @@ export function routeWrittenToStackEnv(result: DataflowInformation, into: REnvir
 export function routeWrittenToEnvir<OtherInfo>(result: DataflowInformation, resolution: EnvirResolution<OtherInfo>, rootId: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
 	let routed: DataflowInformation;
 	if(resolution.stack !== undefined) {
-		routed = resolution.stack === 'global' ? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt) : result;
+		routed = resolution.stack === 'base' ? result : routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt);
 	} else {
 		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, callerEnvironment, definedAt);
 	}

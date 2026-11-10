@@ -16,7 +16,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { rebindAliases, resolveSymbolToEnvir } from './built-in-envir-utils';
-import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
+import { isEnclosingFrame, resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
 import { accessedFieldName, linkFieldReads } from '../../../../linker';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -90,7 +90,8 @@ export function processAccess<OtherInfo>(
 				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
 			linkFieldReads(info.graph, name.info.id, fieldDefs, stackEnvState === undefined);
-			if(fieldName !== undefined && !fieldDefs?.length && stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame) {
+			/* the frame of the caller or of a function around is linked once it is known, as a free variable is */
+			if(fieldName !== undefined && !fieldDefs?.length && (stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame || isEnclosingFrame(envState))) {
 				info.in = [...info.in, { name: fieldName, nodeId: name.info.id, type: ReferenceType.Variable, cds: data.cds }];
 			}
 		}

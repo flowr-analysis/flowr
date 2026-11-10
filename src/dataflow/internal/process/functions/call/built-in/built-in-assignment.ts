@@ -22,6 +22,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
+import { noteOwnMethod } from './built-in-expression-list';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -43,7 +44,8 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { createFreshEnvState } from './built-in-new-env';
 import { holdsFunction, resolveListToEnvState } from './built-in-list';
 import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
-import { stackEnvStateFromSource } from './built-in-stack-env';
+import { frameNamedBy, returnsStackEnv, stackEnvStateFromSource } from './built-in-stack-env';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { REnvironment } from '../../../../../environments/environment';
@@ -111,7 +113,14 @@ function yieldsEnvironment<OtherInfo>(
 	graph: DataflowGraph,
 	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): boolean {
-	if(!RFunctionCall.isNamed(node)) {
+	if(RSymbol.is(node)) {
+		/* a variable holding what such a call returned, `e <- environment(f)`, where flowR does not know the environment */
+		return Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable)?.some(d => {
+			const assignment = data.completeAst.idMap.get(d.definedAt);
+			const value = RBinaryOp.is(assignment) ? [assignment.lhs, assignment.rhs].find(n => n.info.id !== d.nodeId) : undefined;
+			return returnsStackEnv(value, data);
+		}) === true;
+	} else if(!RFunctionCall.isNamed(node)) {
 		return false;
 	}
 	const vertex = graph.getVertex(node.info.id);
@@ -492,12 +501,18 @@ function tryRouteFieldEnvAssign<OtherInfo>(
 		definedAt: normalResult.entryPoint,
 		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
-	if(envirResolution.stack === 'global' && normalResult.graph.hasVertex(fieldNode.info.id)) {
-		/* `e$f <- v` with `e` the global frame (`e <- globalenv()`, or `environment()` at the top level) is `f <<- v` */
+	if((envirResolution.stack === 'global' || envirResolution.stack === 'enclosing') && normalResult.graph.hasVertex(fieldNode.info.id)) {
+		/* `e$f <- v` with `e` the global frame (`e <- globalenv()`, or `environment()` at the top level) or that of a function around (`e <- parent.env(environment())`) is `f <<- v` */
 		const definition = { ...fieldDef, nodeId: fieldNode.info.id };
 		normalResult.graph.setDefinitionOfVertex(definition, [source.info.id]);
 		normalResult.graph.addEdge(fieldNode.info.id, source.info.id, EdgeType.DefinedBy);
+		/* the field is bound by the replacement, which reads the environment it binds in */
+		normalResult.graph.addEdge(fieldNode.info.id, normalResult.entryPoint, EdgeType.DefinedBy);
 		normalResult.graph.addEdge(normalResult.entryPoint, envirResolution.envirNodeId, EdgeType.Reads);
+		if(data.environment.level > 0) {
+			markSuperAssigning(normalResult.graph, normalResult.entryPoint, fieldNode.info.id);
+		}
+		noteOwnMethod(fieldName, normalResult.environment, data.ctx);
 		return { ...normalResult, environment: REnvironment.define(definition, true, normalResult.environment) };
 	}
 	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
@@ -522,6 +537,15 @@ function tryRouteFieldEnvAssign<OtherInfo>(
 		return { ...normalResult, environment };
 	}
 	return { ...normalResult, environment: rebindHolders(environment, updatedEnvDef, newEnvState, rootId) };
+}
+
+/** Marks the replacement `call` as binding `target` as `<<-` does, so the closures around link it as they link a super assignment (see {@link Dataflow.superAssigns}). */
+function markSuperAssigning(graph: DataflowGraph, call: NodeId, target: NodeId): void {
+	const vertex = graph.getVertex(call);
+	if(DfgVertex.isFunctionCall(vertex) && vertex.origin !== 'unnamed') {
+		vertex.origin = [...vertex.origin, BuiltInProcName.SuperAssignment];
+		graph.addEdge(call, target, EdgeType.Returns);
+	}
 }
 
 /** When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible. */
@@ -550,7 +574,8 @@ function tryRouteToCustomEnv<OtherInfo>(
 	}
 
 	/* run the normal assignment path to get the correct graph structure, the call reads the environment it writes into */
-	const global = envirRouting.stack === 'global';
+	/* the global frame and that of a function around are bound into as `<<-` binds */
+	const global = envirRouting.stack === 'global' || envirRouting.stack === 'enclosing';
 	const normalResult = processAssignment(name, args, rootId, data, { ...config, environmentArg: undefined, superAssignment: global || config.superAssignment });
 	normalResult.graph.addEdge(rootId, envirRouting.envirNodeId, EdgeType.Reads);
 	/* pass rootId as definedAt so only defs made at this call site are routed */
@@ -583,6 +608,7 @@ export function processDefineArgument<OtherInfo>(
 	const bound = matchArgumentsToParameters(args.map(a => RArgument.isEmpty(a) ? undefined : a.name?.content), formals.map(([f]) => f));
 	const defineByCall = (node: NamedInGraphIdentifierDefinition) => {
 		info.environment = REnvironment.define(besideAmbientState(node), config.superAssignment, info.environment);
+		noteOwnMethod(node.name, info.environment, data.ctx);
 		/* defined by the call; the read edge is left intact */
 		if(node.nodeId !== rootId) {
 			info.graph.setDefinitionOfVertex(node, [rootId]);
@@ -633,6 +659,7 @@ export function markAsAssignment<OtherInfo>(
 		}
 	}
 	information.environment = REnvironment.define(besideAmbientState(nodeToDefine), assignmentConfig?.superAssignment, information.environment);
+	noteOwnMethod(nodeToDefine.name, information.environment, data.ctx);
 	information.environment = ambientWritesOfAssignment(information.graph, information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
 	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
 	const nid = nodeToDefine.nodeId;
@@ -673,7 +700,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	let frame: EnvirResolution<OtherInfo>['envDef'] | undefined;
 	if(data.ctx.config.solver.trackEnvironments) {
 		const valueEntry = valueEntryPointOf(sourceArg);
-		const stackEnv = stackEnvStateFromSource(sourceArg, data, valueEntry);
+		const stackEnv = stackEnvStateFromSource(sourceArg, data, valueEntry) ?? frameNamedBy(source, data);
 		frame = closureFrameResolution(source, data as DataflowProcessorInformation<OtherInfo & ParentInformation>)?.envDef;
 		if(frame !== undefined) {
 			/* the frame of a closure, shared with the variable holding the closure */

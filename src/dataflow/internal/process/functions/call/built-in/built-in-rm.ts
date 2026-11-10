@@ -1,3 +1,5 @@
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation, KillReference, ControlDependency } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
@@ -42,6 +44,9 @@ interface RmFrameArg<OtherInfo> {
 	readonly arg:    RArgument<OtherInfo & ParentInformation>;
 }
 
+/** the formals of `ls`, which R matches by unique prefix (`all = TRUE` is `all.names = TRUE`) */
+const LsFormals: readonly BrandedIdentifier[] = ['name', 'pos', 'envir', 'all.names', 'pattern', 'sorted'];
+
 /** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope */
 function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	if(!RFunctionCall.isNamed(value)) {
@@ -52,7 +57,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 		return false;
 	}
 	// a `pattern`/`envir` argument restricts the listing, so only a plain listing clears everything
-	const listsEverything = value.arguments.every(a => RArgument.isNamed(a) && ['all.names', 'sorted'].includes(Identifier.getName(a.name.content)));
+	const listsEverything = value.arguments.every(a => RArgument.isNamed(a) && ['all.names', 'sorted'].includes(findByPrefixIfUnique(Identifier.getName(a.name.content), LsFormals) ?? ''));
 	if(!listsEverything) {
 		return false;
 	}
@@ -240,7 +245,8 @@ export function processRm<OtherInfo>(
 		if(envir !== undefined && envir.stack === undefined && targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
 			return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
 		}
-		// any other frame we cannot identify, so the one we are analyzing stays untouched
+		/* any other frame, that of a function around or one we cannot identify, leaves the one we are analyzing untouched, but what it removes there is out of reach */
+		handleUnknownSideEffect(res.graph, res.environment, rootId);
 		return res;
 	}
 

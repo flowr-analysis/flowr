@@ -60,8 +60,23 @@ export function stackEnvKindOf<Info>(node: RNode<Info> | undefined, data: Pick<S
 	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
 		return undefined;
 	}
-	/* `parent.frame(2)` is the caller's caller, which no kind names */
-	return kind === StackEnvKind.CallerFrame && !namesDirectCaller(node) ? undefined : kind;
+	/* `sys.frame(0)` numbers the global frame, `parent.frame(2)` is the caller's caller, which no kind names */
+	return kind !== StackEnvKind.CallerFrame || namesDirectCaller(node) ? kind : numbersGlobalFrame(node) ? StackEnvKind.Global : undefined;
+}
+
+/** Whether `sys.frame` as `node` is handed the frame number 0, the global frame, or no number at all. */
+function numbersGlobalFrame<Info>(node: RNode<Info> | undefined): boolean {
+	if(!RFunctionCall.isNamed(node, 'sys.frame') || node.arguments.length > 1) {
+		return false;
+	}
+	const which = node.arguments[0];
+	return which === undefined || constantOf(valueOf(which)) === 0;
+}
+
+/** Whether `node` calls a built-in returning an environment of the stack, whichever one it is (`environment(f)`, `sys.frame(n)`). */
+export function returnsStackEnv<Info>(node: RNode<Info> | undefined, data: Pick<StackEnvContext, 'environment'>): boolean {
+	const name = RFunctionCall.calledName(node);
+	return name !== undefined && stackEnvKind(Identifier.getName(name)) !== undefined && Resolve.isBuiltIn(name, data.environment, ReferenceType.Function);
 }
 
 /** Whether `parent.frame` as `node` is handed no generation count or the count 1, or `sys.frame` the count -1. */
@@ -104,8 +119,12 @@ export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data:
 			return fixedStackEnv(kind, data);
 		case StackEnvKind.CallerFrame: // parent.frame(): the caller's frame, over-approximated to global (exact at a top-level call)
 			return fixedStackEnv(StackEnvKind.Global, data);
-		case StackEnvKind.Current: // environment() with no argument is the current environment
-			return firstArg === undefined ? { current: data.environment.current, level: data.environment.level } : undefined;
+		case StackEnvKind.Current: // environment() with no argument is the current environment, `environment(sys.function())` the one the function is defined in
+			if(firstArg === undefined) {
+				return { current: data.environment.current, level: data.environment.level };
+			}
+			return RFunctionCall.isNamed(firstArg, 'sys.function') && firstArg.arguments.length === 0 && Resolve.isBuiltIn(firstArg.functionName.content, data.environment, ReferenceType.Function)
+				? definingFrame(data.environment) : undefined;
 		case StackEnvKind.Parent: {
 			const inner = resolveNodeToStackEnv(firstArg, data);
 			return inner !== undefined && !inner.current.builtInEnv ? { current: inner.current.parent, level: inner.level } : undefined;
@@ -113,6 +132,15 @@ export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data:
 		case StackEnvKind.Named:
 			return RString.is(firstArg) ? asSearchPathEnv(firstArg.content.str, data) : undefined;
 	}
+}
+
+/** The frame the function running in `environment` is defined in, if it runs in one. */
+function definingFrame(environment: REnvironmentInformation): REnvironmentInformation | undefined {
+	let frame = environment.current;
+	while(frame.closure === undefined && !frame.globalEnv && !frame.builtInEnv) {
+		frame = frame.parent;
+	}
+	return frame.closure === undefined ? undefined : { current: frame.parent, level: environment.level };
 }
 
 /** Resolves a named search-path entry: a `.GlobalEnv`/`.BaseEnv` name, or `package:<name>` to that package's namespace layer. */
@@ -146,6 +174,17 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
 	return kind === StackEnvKind.Current && vertex.args.length === 0 && DfgVertex.hasOrigin(vertex, BuiltInProcName.Default)
 		? { current: data.environment.current, level: data.environment.level }
 		: undefined;
+}
+
+/** Whether `envState` is the frame of a function around the current one, which the body sees emptied (see {@link Environment#superMemory}): a write there binds as `<<-` does, a read there reads the name as a free variable of the body. */
+export function isEnclosingFrame(envState: REnvironmentInformation): boolean {
+	return envState.current.superMemory !== undefined && envState.current.globalEnv !== true;
+}
+
+/** The global frame or that of a function around the current one `node` denotes (`sys.frame(0)`, `parent.env(environment())`, `environment(sys.function())`), see {@link isEnclosingFrame}. */
+export function frameNamedBy<Info>(node: RNode<Info> | undefined, data: StackEnvContext): REnvironmentInformation | undefined {
+	const frame = resolveNodeToStackEnv(node, data);
+	return frame !== undefined && (frame.current.globalEnv === true || isEnclosingFrame(frame)) ? frame : undefined;
 }
 
 /** Whether a `$`/`[[` on the stack env `node` denotes reads through the enclosing scopes. */

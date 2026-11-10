@@ -207,6 +207,8 @@ print(2)
 			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
 			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);
 			assertLinter('get with envir', parser, 'e <- new.env()\nassign("x", 1, envir = e)\nprint(get("x", envir = e))', 'dead-code', []);
+			assertLinter('a return on the right of || leaves only when the left is false', parser, 'f <- function(cc) {\n  local({\n    cc || return(1)\n    stop("x")\n  })\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('a stop after a return on the right of && is not certain', parser, 'g <- function(cc) {\n  cc && return(1)\n  stop("x")\n}\nr <- tryCatch(g(TRUE), error = function(e) 0)\ncat("live")', 'dead-code', []);
 		});
 
 		describe('loops', () => {

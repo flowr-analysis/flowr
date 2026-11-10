@@ -643,13 +643,20 @@ export function settleDefinitionsInPromises(this: void, graph: DataflowGraph, { 
 	}
 }
 
+function isParameterName(id: NodeId, graph: DataflowGraph): boolean {
+	const node = graph.idMap?.get(id);
+	const parent = node === undefined ? undefined : graph.idMap?.get(node.info.parent as NodeId);
+	return RParameter.is(parent) && parent.name === node;
+}
+
 /** Drops the resume of a jump within a promise ({@link ControlFlow.promise}) once the linked holder surely forces it. */
 export function settleJumpsInPromises(this: void, graph: DataflowGraph, topLevel: readonly ExitPoint[], { ctx }: FunctionStrictnessesOptions = {}): void {
 	const forcing = promiseForcing(graph, { ctx });
 	const definitions = graph.verticesOfType(VertexType.FunctionDefinition).map(([, definition]) => definition.exitPoints);
 	for(const exit of [topLevel, ...definitions].flat()) {
 		for(const cd of exit.cds ?? []) {
-			if(cd.byPromise === true && forcing(cd.id, exit.nodeId) === Ternary.Always && (exit.type !== ExitPointType.Error || !caughtWhereForced(cd.id, exit.nodeId, graph))) {
+			/* a default sits in front of the body in the control flow, but R forces it where the parameter is first read, so the body before that read still runs */
+			if(cd.byPromise === true && !isParameterName(cd.id, graph) && forcing(cd.id, exit.nodeId) === Ternary.Always && (exit.type !== ExitPointType.Error || !caughtWhereForced(cd.id, exit.nodeId, graph))) {
 				graph.removeEdgeType(exit.nodeId, cd.id, EdgeType.FlowEdge);
 			}
 		}

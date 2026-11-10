@@ -14,6 +14,8 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		describe('simple', () => {
 			assertLinter('none', parser, 'x <- 1', 'dead-code', []);
+			assertLinter('a stop in a default read later keeps the body before the read live', parser, 'f <- function(x = stop("need x")) {\n  cat("A")\n  x\n}\nf(1)', 'dead-code', []);
+			assertLinter('a stop in a default read later keeps the read live', parser, 'f <- function(a, x = stop("need x")) {\n  y <- a\n  x\n}\nf(1)', 'dead-code', []);
 			/* the variables a load restores are made up for the call, they are no code of their own */
 			assertLinter('a load restoring what the program saved', parser, 'x <- 5\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)', 'dead-code', []);
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [

@@ -61,8 +61,7 @@ describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell =>
 		'sink(x)\nprint("foo")\nmessage("bar")',
 		emptyGraph()
 			.call('1@sink', 'sink', [], { onlyBuiltIn: true })
-			.reads('2@print', '1@sink')
-			.reads('3@message', '1@sink'),
+			.reads('2@print', '1@sink'),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true

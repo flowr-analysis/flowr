@@ -44,7 +44,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { queryFnProps } from '../../../../../environments/query-fn-props';
 import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 import { arraysGroupBy, uniqueArray } from '../../../../../../util/collections/arrays';
-import { groupGenericOf, s3GroupGenericOf, s4GroupGenericsOf } from '../../../../../environments/group-generics';
+import { groupGenericOf, s3MethodPrefixesOf, s4GroupGenericsOf } from '../../../../../environments/group-generics';
 import { DotsParameterName } from '../../../../../../util/arg-matching';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -489,13 +489,6 @@ function linkOwnS3Methods(call: DataflowGraphVertexFunctionCall, name: Identifie
 		graph.addEdge(call.id, def.nodeId, EdgeType.Reads);
 	}
 	return { methods: linkedFunctionIds(new Set(chosen.map(d => d.nodeId)), graph), objects: dispatched?.objects };
-}
-
-/** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
-function s3MethodPrefixesOf(name: Identifier): readonly BrandedIdentifier[] {
-	const plain = Identifier.getName(name);
-	const group = s3GroupGenericOf(plain);
-	return group === undefined ? [plain] : [plain, group];
 }
 
 /** The arguments the S3 dispatch of a call of a built-in generic looks at the class of, `undefined` if they are not clear. */

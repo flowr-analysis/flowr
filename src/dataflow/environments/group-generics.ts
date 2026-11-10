@@ -1,4 +1,4 @@
-import type { BrandedIdentifier } from './identifier';
+import { type BrandedIdentifier, Identifier } from './identifier';
 /** R's group generics, kept apart from the builtin configuration so anything may ask about them without pulling the whole dataflow setup in (the signature database does, and that would be a cycle). */
 
 const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
@@ -62,6 +62,13 @@ const S3GroupOfMember: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new M
 /** The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none. */
 export function s3GroupGenericOf(name: BrandedIdentifier): BrandedIdentifier | undefined {
 	return S3GroupOfMember.get(name);
+}
+
+/** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
+export function s3MethodPrefixesOf(name: Identifier): readonly BrandedIdentifier[] {
+	const plain = Identifier.getName(name);
+	const group = s3GroupGenericOf(plain);
+	return group === undefined ? [plain] : [plain, group];
 }
 
 /** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */

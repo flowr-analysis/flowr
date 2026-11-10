@@ -335,7 +335,7 @@ function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, s
 
 /** Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
 export function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
-	for(let node = idMap.get(from); node !== undefined && node.info.id !== expression;) {
+	for(let node = raisedAt(from, idMap, graph); node !== undefined && node.info.id !== expression;) {
 		const parent = RNode.directParent(node, idMap);
 		if(parent === undefined) {
 			return true;
@@ -346,6 +346,15 @@ export function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, 
 		node = parent;
 	}
 	return true;
+}
+
+/** Where what the call `from` raises surfaces: an anonymous function an apply runs raises where it is written, a handler (whose call an argument makes) where the construct running it is. */
+function raisedAt(from: NodeId, idMap: AstIdMap, graph: DataflowGraph): RNode<ParentInformation> | undefined {
+	if(!NodeId.isAnonymousCall(from)) {
+		return idMap.get(from);
+	}
+	const handler = Dataflow.sourcesOf(graph, from, EdgeType.Calls).map(c => idMap.get(c)).find(RArgument.is);
+	return handler === undefined ? NodeId.nodeOf(from, idMap) : RNode.directParent(handler, idMap);
 }
 
 /** Whether an error raised within the child `child` of `parent` is sure to be raised by `parent` as well. */
@@ -888,6 +897,15 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 	}
 }
 
+/** An access of an environment one of `refs` is bound to in `environment` reads its field: `function(i) e$a`. */
+function bindAccessedFields(refs: readonly IdentifierReference[], environment: REnvironmentInformation, graph: DataflowGraph, idMap: AstIdMap, call: NodeId): void {
+	for(const ref of refs) {
+		for(const { envState } of (ref.name === undefined ? undefined : Resolve.byNameAndType(ref.name, environment, ReferenceType.Variable)?.filter(hasEnvState)) ?? []) {
+			bindAccessedField(graph, ref.nodeId, envState, idMap, call);
+		}
+	}
+}
+
 /**
  * The open references a function definition still carries into its closure.
  * @helper api
@@ -896,6 +914,9 @@ export const ClosureRefs = {
 	name: 'ClosureRefs',
 	/** Resolves the open ingoing references of a definition called anonymously at `callId` against `environment`, links what resolves, and leaves only the references that stay open. */
 	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
+		if(graph.idMap !== undefined) {
+			bindAccessedFields(definition.subflow.in, environment, graph, graph.idMap, callId);
+		}
 		definition.subflow.in = linkInputs(definition.subflow.in, environment, [], graph, false, callId);
 	}
 } as const;

@@ -42,6 +42,7 @@ describe('Inspect Recursion Query', withTreeSitter(parser => {
 		/* a definition shadowing a built-in of the same name is looked up when the body runs, not when it is written */
 		testRecursion('a definition shadowing a built-in', 'c <- function(n) if(n > 0) c(n - 1) else 0', ['1@function']);
 		testRecursion('two definitions shadowing built-ins calling each other', 'c <- function(n) rev(n)\nrev <- function(n) c(n)', ['1@function', '2@function']);
+		testRecursion('a function calls an alias of itself', 'f <- function(...) g\ng <- f\nf()', ['1@function']);
 	});
 
 	describe('what only looks like recursion', () => {

@@ -256,5 +256,18 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('R4-B7b-else-if-value', 'sink("o.txt")\nif(FALSE) 1 else if(FALSE) 2 else sum(1, 2)\nsink()', '3@sink', 'sink("o.txt")\nif(FALSE) { } else if(FALSE) { } else sum(1, 2)\nsink()');
 		counterexample('R4-B8-print-closure', 'f <- function() 1\nsink("o.txt")\nprint(f)\nsink()', '4@sink', 'f <- function() 1\nsink("o.txt")\nprint(f)\nsink()');
 		counterexample('R4-B8b-autoprint-closure', 'sink("o.txt")\nf <- function(x) { y <- x + 1; y }\nf\nsink()', '4@sink', 'sink("o.txt")\nf <- function(x) {\n        y <- x + 1\n        y\n    }\nf\nsink()');
+		counterexample('R5-B1-custom-class-handler', 'sink("o.txt")\ntryCatch(stop(errorCondition("m", class = "my")), my = function(e) cat("my\\n"))\nsink()', '3@sink', 'sink("o.txt")\ntryCatch(stop(errorCondition("m", class = "my")), my = function(e) cat("my\\n"))\nsink()');
+		counterexample('R5-B1b-custom-class-caught', 'x <- 1\ntryCatch({ stop(errorCondition("m", class = "my")); x <- 2 }, my = function(e) NULL)\ny <- x', '3@y', 'x <- 1\ny <- x');
+		counterexample('R5-B1c-custom-class-calling', 'sink("o.txt")\ntry(withCallingHandlers(stop(errorCondition("m", class = "my")), my = function(e) cat("h\\n")), silent = TRUE)\nsink()', '3@sink', 'sink("o.txt")\ntry(withCallingHandlers(stop(errorCondition("m", class = "my")), my = function(e) cat("h\\n")), silent = TRUE)\nsink()');
+		counterexample('R5-B2-restart-jumps', 'n <- 0\nwithRestarts({ n <- 1; invokeRestart("r"); n <- 2 }, r = function() NULL)\ny <- n', '3@y', 'n <- 0\nn <- 1\ny <- n');
+		counterexample('R5-B2b-restart-in-body', 'n <- 0\nf <- function() { invokeRestart("r"); n <<- 2 }\nwithRestarts(f(), r = function() NULL)\ny <- n', '4@y', 'n <- 0\ny <- n');
+		counterexample('R5-B3-try-kept-unused', 'e <- new.env()\ne$a <- 1\nlockBinding("a", e)\nr <- try(e$a <- 2, silent = TRUE)\ny <- e$a', '5@y', 'e <- new.env()\ne$a <- 1\nlockBinding("a", e)\nr <- try(e$a <- 2, silent = TRUE)\ny <- e$a');
+		counterexample('R5-B3b-trycatch-kept-unused', 'sink("o.txt")\nr <- tryCatch(cat(log("a")), error = function(e) NULL)\ncat("x\\n")\nsink()', '4@sink', 'sink("o.txt")\nr <- tryCatch(cat(log("a")), error = function(e) NULL)\ncat("x\\n")\nsink()');
+		counterexample('R5-B4-raising-builtin-maybe', 'x <- 1\ntryCatch(x <- log("a"), error = function(e) NULL)\ny <- x', '3@y', 'x <- 1\ntryCatch(x <- log("a"), error = function(e) NULL)\ny <- x');
+		counterexample('R5-B4b-earlier-raise', 'x <- 1\ntry({ z <- 1 + "a"; x <- 2 }, silent = TRUE)\ny <- x', '3@y', 'x <- 1\ntry({\n    1 + "a"\n    x <- 2\n}, silent = TRUE)\ny <- x');
+		counterexample('R5-B5-forced-by-assign', 'sink("o.txt")\ndelayedAssign("p", { cat("forced\\n"); 1 })\nx <- p\nsink()', '4@sink', 'sink("o.txt")\ndelayedAssign("p", { cat("forced\\n"); 1 })\nx <- p\nsink()');
+		counterexample('R5-B5b-forced-by-call', 'sink("o.txt")\ndelayedAssign("p", { cat("forced\\n"); 1 })\nf <- function(a) a\nx <- f(p)\nsink()', '5@sink', 'sink("o.txt")\ndelayedAssign("p", { cat("forced\\n"); 1 })\nf <- function(a) a\nx <- f(p)\nsink()');
+		counterexample('R5-B6-forced-in-body', 'sink("o.txt")\ndelayedAssign("p", cat("forced\\n"))\nf <- function() { y <- p; 2 }\nr <- f()\nsink()', '5@sink', 'sink("o.txt")\ndelayedAssign("p", cat("forced\\n"))\nf <- function() {\n        p\n        2\n    }\nr <- f()\nsink()');
+		counterexample('R5-B6b-forced-in-env', 'sink("o.txt")\ne <- new.env()\ndelayedAssign("p", cat("forced\\n"), assign.env = e)\nx <- e$p\nsink()', '5@sink', 'sink("o.txt")\ne <- new.env()\ndelayedAssign("p", cat("forced\\n"), assign.env = e)\nx <- e$p\nsink()');
 	});
 }));

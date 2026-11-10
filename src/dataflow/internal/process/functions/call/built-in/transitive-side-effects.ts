@@ -8,7 +8,7 @@ import { attachExportVertex, attachLibrary } from './built-in-library';
 import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, BrandedNamespace, IdentifierDefinition, IdentifierReference } from '../../../../../environments/identifier';
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
-import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -225,9 +225,50 @@ export function linkUsesOfScopedInstances(this: void, graph: DataflowGraph): voi
 	}
 }
 
-/** The calls among `ids` of a promise read the global state where it is forced, after what the function forcing it may have `changed` (`function(code) { set.seed(1); code }`). */
-function linkAmbientReadsToWrites(graph: DataflowGraph, ids: ReadonlySet<NodeId>, changed: () => AmbientAccess): void {
+/** What a body runs after a call of a closure within it sees the global state that closure changes, which the body, processed before it learned of the callee, does not know of: `f <- function() { g(); print(pi) }` with `g` setting the `digits` option. */
+export function linkStatementsAfterCallsOfClosures(this: void, graph: DataflowGraph): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	let functions: ReadonlyMap<NodeId, AmbientAccess> | undefined;
+	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const closures = graph.isRoot(id) ? [] : Dataflow.calleeIdsOf(graph, id).filter(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+		const after = closures.length === 0 ? undefined : runsAfterWithinFunction(id, idMap);
+		if(after === undefined || after.size === 0) {
+			continue;
+		}
+		const changed = () => {
+			functions ??= ambientAccessOfFunctions(graph);
+			return Monoid.fold(AmbientAccess.monoid, closures.map(fn => functions?.get(fn) ?? AmbientAccess.empty));
+		};
+		for(const reader of linkAmbientReadsToWrites(graph, after, changed)) {
+			/* the reader sees the write only as the call runs it */
+			graph.addEdge(reader, id, EdgeType.Reads);
+		}
+	}
+}
+
+/** The nodes the function holding `id` may run after it: the later statements of each block around it, and all of a loop around it. */
+function runsAfterWithinFunction(id: NodeId, idMap: AstIdMap): Set<NodeId> {
+	const after = new Set<NodeId>();
+	const add = (nodes: readonly RNode<ParentInformation>[]) => nodes.forEach(n => RNode.collectAllIdsWithStop(n, RFunctionDefinition.is).forEach(i => after.add(i)));
+	let node = idMap.get(id);
+	for(let parent = node && RNode.directParent(node, idMap); parent !== undefined && node !== undefined && !RFunctionDefinition.is(parent); parent = RNode.directParent(parent, idMap)) {
+		if(RExpressionList.is(parent)) {
+			add(parent.children.slice(parent.children.indexOf(node) + 1));
+		} else if(RLoopConstructs.is(parent)) {
+			add([parent]);
+		}
+		node = parent;
+	}
+	return after;
+}
+
+/** The calls among `ids` of a promise read the global state where it is forced, after what the function forcing it may have `changed` (`function(code) { set.seed(1); code }`); returns the readers so linked. */
+function linkAmbientReadsToWrites(graph: DataflowGraph, ids: ReadonlySet<NodeId>, changed: () => AmbientAccess): NodeId[] {
 	let access: AmbientAccess | undefined;
+	const readers: NodeId[] = [];
 	for(const node of ids) {
 		for(const name of graph.ambientAccessOf(node)?.[AmbientAccessKind.Read].keys() ?? []) {
 			access ??= changed();
@@ -235,11 +276,13 @@ function linkAmbientReadsToWrites(graph: DataflowGraph, ids: ReadonlySet<NodeId>
 				for(const writer of access[kind].get(name) ?? []) {
 					if(!ids.has(writer)) {
 						graph.addEdge(node, writer, EdgeType.Reads);
+						readers.push(node);
 					}
 				}
 			}
 		}
 	}
+	return readers;
 }
 
 /** Whether the branches of `fn` a node stands under are taken in the frame `call` makes: a parameter holds what that call hands it, so a condition on it may be constant there. */

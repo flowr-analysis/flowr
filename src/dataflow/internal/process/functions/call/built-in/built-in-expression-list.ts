@@ -16,7 +16,7 @@ import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { readRemovals, cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
@@ -35,7 +35,7 @@ import { RForLoop } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { compactRecord } from '../../../../../../util/objects';
-import { applyAmbientStateOfCalledBuiltIns, autoPrints, readsOfAutoPrint } from './built-in-ambient-state';
+import { applyAmbientStateOfCalledBuiltIns, autoPrints, mayForce, readsOfAutoPrint } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
@@ -49,6 +49,53 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 		return true;
 	}
 	return own.length > 0 && happensInEveryBranch(own.flatMap(t => t.cds ?? []));
+}
+
+/** The functions an active binding (`makeActiveBinding`) bound by `target` runs, the binding itself or the call making it. */
+function activeFunctionsOf(target: NodeId, graph: DataflowGraph): NodeId[] {
+	const bindings = DfgVertex.isFunctionCall(graph.getVertex(target)) ? Dataflow.sourcesOf(graph, target, EdgeType.DefinedBy) : [target];
+	return bindings.flatMap(b => DfgVertex.isVariableDefinition(graph.getVertex(b)) ? Dataflow.targetsOf(graph, b, EdgeType.Calls) : [])
+		.filter(fn => DfgVertex.isFunctionDefinition(graph.getVertex(fn)));
+}
+
+/** Every access of an active binding runs its function, whether through an environment (`e$ab`, `get("ab", e)`, `as.list(e)`) or by assigning to it (`ab <- 2`): a read becomes a call of it, as one of the list does (see `activeReads`), the calls accessing it call it too and are handed back. */
+function callActiveBindingsAccessed(processed: DataflowInformation, before: REnvironmentInformation, graph: DataflowGraph, activeReads: IdentifierReference[]): NodeId[] {
+	const calls: NodeId[] = [];
+	const readIds = new Set(activeReads.map(r => r.nodeId));
+	const call = (id: NodeId, fns: readonly NodeId[], binding: NodeId) => {
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.isUse(vertex)) {
+			const node = graph.idMap?.get(id);
+			if(!readIds.has(id) && node !== undefined && RSymbol.is(node)) {
+				readIds.add(id);
+				activeReads.push({ nodeId: id, name: node.content, cds: vertex.cds, type: ReferenceType.Variable });
+			}
+		} else if(DfgVertex.isFunctionCall(vertex) && !fns.every(fn => Dataflow.hasEdge(graph, id, fn, EdgeType.Calls))) {
+			graph.addEdge(id, binding, EdgeType.Reads);
+			for(const fn of fns) {
+				graph.addEdge(id, fn, EdgeType.Calls);
+			}
+			calls.push(id);
+		}
+	};
+	for(const [id] of processed.graph.vertices(true)) {
+		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
+			const fns = activeFunctionsOf(target, graph);
+			if(fns.length > 0) {
+				call(id, fns, target);
+			}
+		}
+	}
+	for(const written of processed.out) {
+		const bound = written.name === undefined || !('definedAt' in written) ? [] : Resolve.byName(written.name, before) ?? [];
+		for(const binding of bound) {
+			const fns = binding.nodeId === written.nodeId ? [] : activeFunctionsOf(binding.nodeId, graph);
+			if(fns.length > 0) {
+				call((written as InGraphIdentifierDefinition).definedAt, fns, binding.nodeId);
+			}
+		}
+	}
+	return calls;
 }
 
 /** @returns whether `read` sees a definition */
@@ -383,11 +430,12 @@ export function processExpressionList<OtherInfo>(
 				(initialState ??= new Set()).add(read);
 			}
 		}
+		const accessing = mayForce(environment) ? callActiveBindingsAccessed(processed, environment, nextGraph, activeReads) : [];
 		for(const read of activeReads) {
 			nextGraph.updateToFunctionCall({ tag: VertexType.FunctionCall, id: read.nodeId, name: read.name as Identifier, args: [], environment, onlyBuiltin: false, cds: read.cds, origin: [BuiltInProcName.Function] });
 		}
 
-		const calledEnvs = linkFunctionCalls(nextGraph, idMap, processed.graph, activeReads.map(r => r.nodeId));
+		const calledEnvs = linkFunctionCalls(nextGraph, idMap, processed.graph, [...activeReads.map(r => r.nodeId), ...accessing]);
 		if(printed) {
 			calledEnvs.push(...printMethodsOf(processed.entryPoint, environment, nextGraph, { graph: nextGraph, idMap, ctx: data.ctx, environment }));
 		}

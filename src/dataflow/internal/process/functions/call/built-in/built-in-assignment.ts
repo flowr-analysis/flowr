@@ -264,8 +264,15 @@ function assignOrdered<OtherInfo>(
 	const vertex = source ? information.graph.getVertex(source.info.id) : undefined;
 	/* the function runs when the name is read, so what it reads is resolved there and not where it is bound */
 	if(DfgVertex.isFunctionDefinition(vertex)) {
+		markForcing(information.environment);
 		for(const written of information.out) {
 			information.graph.addEdge(written.nodeId, vertex.id, EdgeType.Calls);
+			/* binding a name that holds a regular binding fails */
+			for(const before of written.name === undefined ? [] : Resolve.byName(written.name, data.environment) ?? []) {
+				if(!NodeId.isBuiltIn(before.nodeId)) {
+					information.graph.addEdge(rootId, before.nodeId, EdgeType.Reads);
+				}
+			}
 		}
 	}
 	return information;

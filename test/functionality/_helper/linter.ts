@@ -1,6 +1,6 @@
 import type { BrandedNamespace, BrandedIdentifier } from '../../../src/dataflow/environments/identifier';
 import {
-	LintingRuleNames,
+	type LintingRuleNames,
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
 	type LintingRuleResult,

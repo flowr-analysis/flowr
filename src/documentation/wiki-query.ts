@@ -374,6 +374,7 @@ What counts as a guard:
 - \`stopifnot\`, \`assertthat::assert_that\`, \`match.arg\`, \`rlang::arg_match\`, and the \`assert_*\` functions of \`checkmate\`
 - what R itself fails on (the \`implicit\` kind), like \`strsplit\` for anything but a character vector, or \`x + 1\` for a value without a class that is no number
 - what a name has to resolve to: \`do.call(paste0("f_", x), list())\` needs \`exists(paste0("f_", x), mode = "function")\`, and \`UseMethod\` without a default needs a method
+- what the methods a dispatch runs ask: a \`UseMethod\` on a value without a class runs the \`default\` method or one of an implicit class like \`matrix\` or \`numeric\`, so the generic asks what they ask unless \`is.object(x)\`, and where flowR's narrowing of a dispatch per call decides the methods of a \`UseMethod\` or \`NextMethod\`, the call asks what all of them share. An operator or a member of a group generic asks what the \`Ops.foo\` or \`+.foo\` of the program asks of an operand of exactly the class \`foo\` next to one without a class, and what the only S4 method of the program asks of operands of its signature
 - the conditions of the functions a body calls for sure, in terms of what was handed to them, as well as the single expression of predicates like \`is_count <- function(v) is.numeric(v) && v >= 0\`
 
 Every entry of ${ctx.link('FunctionGuards::clauses')} is a ${ctx.link('GuardClause')} with the condition both as R code and as a ${ctx.link('GuardTerm')} tree, in which \`succeeds(e)\` stands for \`e\` not raising an error.
@@ -386,7 +387,9 @@ With \`builtIns\` the query states the same for functions of R: what their closu
 ${ctx.link('FunctionGuards::required')} names the formals a call has to supply, which the \`inspect-fn-props\` query reports as ${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}, next to ${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')} for every formal a condition reads.
 
 Conditions speak about the values at the guard, so a formal that has been overwritten by then is read as what it was overwritten with.
-R 4.3 is assumed, as with older versions a condition of length two does not fail, and S3 methods for \`length\` and \`is.numeric\` are assumed to keep their contract.
+What R fails on by itself is stated in the built-in configuration together with the R versions it holds for, and the query goes by the R version the analyzer assumes (\`solver.sigdb.assumedRVersion\`, else R ${RBaseGuardsVersion}): a condition of \`if\` or \`while\` longer than one only fails since R 4.2.0, an operand of \`&&\` longer than one since R 4.3.0, and \`is.atomic(NULL)\` is false since R 4.4.0.
+S3 methods for \`length\` and \`is.numeric\` are assumed to keep their contract.
+Where a branch on a formal tells cases apart, like \`if(is.logical(center)) ... else ...\`, each claim has the \`cases\` with what holds in each of them.
 With \`kind\` the query keeps the conditions of one kind, \`onlyPure\` keeps the clean failures, and \`formals\` narrows the answer to the named formals.
 
 Using the example code the following query returns the guards of the function:

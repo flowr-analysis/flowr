@@ -2,7 +2,9 @@ import type { BrandedIdentifier } from '../../environments/identifier';
 import { Identifier } from '../../environments/identifier';
 import type { BuiltInDefinitions } from '../../environments/built-in-config';
 import { DefaultBuiltinConfig } from '../../environments/default-builtin-config';
-import { GuardDemand, RValueType, type GuardFacts, type GuardFactsLookup, type RValueTypes } from '../../environments/guard-facts';
+import { RValueType, type GuardFacts, type GuardFactsLookup, type RCondition, type RFailure, type RValueTypes, type RVersions } from '../../environments/guard-facts';
+import { compareRVersions } from '../../../util/r-version-order';
+import { RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm, type GuardCall } from './guard-term';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
@@ -19,24 +21,44 @@ export function typeNames(this: void, types: RValueTypes): string[] {
 	return TypeNames.filter(([bit]) => (types & bit) !== 0).map(([, name]) => name);
 }
 
-/** What the given built-in definitions state of guards, by the bare name of a function. */
-export function guardFactsIn(this: void, definitions: BuiltInDefinitions): GuardFactsLookup {
+/** Whether the R version is one of the given ones. */
+export function holdsIn(this: void, { since, until }: RVersions, version: string): boolean {
+	return (since === undefined || compareRVersions(version, since) >= 0) && (until === undefined || compareRVersions(version, until) < 0);
+}
+
+/** The facts as they hold in the given R version. */
+function factsIn(this: void, { changed, ...facts }: GuardFacts, version: string): GuardFacts {
+	const merged = (changed ?? []).filter(c => holdsIn(c, version)).reduce<GuardFacts>((acc, c) => ({ ...acc, ...c.facts }), facts);
+	const asks = merged.asks === undefined ? undefined : Object.fromEntries(Object.entries(merged.asks).map(([formal, failures]) => [formal, failures.filter(f => holdsIn(f, version))]));
+	return asks === undefined ? merged : { ...merged, asks };
+}
+
+/** The classes S3 dispatch sees for a value without a class attribute, as `.class2` names them, beyond `default`. */
+export const ImplicitClasses: readonly string[] = ['matrix', 'array', 'integer', 'double', 'numeric', 'complex', 'character', 'logical', 'raw', 'list', 'function', 'NULL', 'environment', 'name', 'call', '(', '{', 'if', 'for', 'while', '<-', '=', 'expression', 'pairlist', 'externalptr', 'weakref', 'bytecode'];
+
+/** What the given built-in definitions state of guards in the given R version, by the bare name of a function. */
+export function guardFactsIn(this: void, definitions: BuiltInDefinitions, version: string = RBaseGuardsVersion): GuardFactsLookup {
 	const known = new Map<BrandedIdentifier, GuardFacts>();
 	for(const definition of definitions) {
 		if(definition.type === 'function') {
 			for(const [name, facts] of Object.entries(definition.config?.guards ?? {})) {
-				known.set(Identifier.getName(name), facts);
+				known.set(Identifier.getName(name), factsIn(facts, version));
 			}
 		}
 	}
 	return name => known.get(name);
 }
 
-let defaultFacts: GuardFactsLookup | undefined;
+const defaultFacts = new Map<string, GuardFactsLookup>();
 
-/** What the default built-in definitions state of guards. */
-export function defaultGuardFacts(this: void): GuardFactsLookup {
-	return defaultFacts ??= guardFactsIn(DefaultBuiltinConfig);
+/** What the default built-in definitions state of guards, by default in the R version the guards of the base packages were read off. */
+export function defaultGuardFacts(this: void, version: string = RBaseGuardsVersion): GuardFactsLookup {
+	let facts = defaultFacts.get(version);
+	if(facts === undefined) {
+		facts = guardFactsIn(DefaultBuiltinConfig, version);
+		defaultFacts.set(version, facts);
+	}
+	return facts;
 }
 
 /** Whether the function is stated to do nothing but compute a value. */
@@ -45,29 +67,11 @@ export function onlyComputesBy(this: void, facts: GuardFacts | undefined): boole
 }
 
 const is = (fn: BrandedIdentifier, of: GuardTerm): GuardTerm => GuardTerm.known(fn, of);
-const anyOf = (fns: readonly BrandedIdentifier[]): (of: GuardTerm) => GuardTerm => of => GuardTerm.any(...fns.map(fn => is(fn, of)));
-const isObject = (of: GuardTerm): GuardTerm => is('is.object', of);
-const hasLength = (of: GuardTerm, length: string): GuardTerm => GuardTerm.known('==', is('length', of), { kind: 'constant', lexeme: length, value: Number(length) });
 
 /** The name of a function as a string in R, for `exists`. */
 function exists(this: void, of: GuardTerm): GuardTerm {
 	return { kind: 'call', fn: 'exists', known: true, args: [{ value: of }, { name: 'mode', value: GuardTerm.string('function') }] };
 }
-
-const Arithmetic = anyOf(['is.numeric', 'is.logical', 'is.complex', 'is.null']);
-const Mathematical = anyOf(['is.numeric', 'is.logical', 'is.complex']);
-const NotLogical = (of: GuardTerm): GuardTerm => GuardTerm.any(is('is.numeric', of), is('is.logical', of), is('is.complex', of), is('is.raw', of), hasLength(of, '0'));
-const NotAFunction = (of: GuardTerm): GuardTerm => GuardTerm.known('!', is('is.function', of));
-const Comparable = (of: GuardTerm): GuardTerm => GuardTerm.all(NotAFunction(of), GuardTerm.known('!', is('is.environment', of)));
-const Subsettable = (of: GuardTerm): GuardTerm => GuardTerm.all(NotAFunction(of), GuardTerm.known('!', is('is.environment', of)), GuardTerm.known('!', is('is.symbol', of)));
-const ElementSubsettable = (of: GuardTerm): GuardTerm => GuardTerm.all(NotAFunction(of), GuardTerm.known('!', is('is.symbol', of)));
-const Dollar = (of: GuardTerm): GuardTerm => GuardTerm.any(is('is.null', of), GuardTerm.all(is('is.recursive', of), NotAFunction(of)));
-const IsCharacter = (of: GuardTerm): GuardTerm => is('is.character', of);
-const IsList = (of: GuardTerm): GuardTerm => is('is.list', of);
-const IsLogical = (of: GuardTerm): GuardTerm => is('is.logical', of);
-const IsEnvironment = (of: GuardTerm): GuardTerm => is('is.environment', of);
-const HasDim = (of: GuardTerm): GuardTerm => GuardTerm.known('!', is('is.null', is('dim', of)));
-const Named = (of: GuardTerm): GuardTerm => GuardTerm.any(is('is.character', of), is('is.symbol', of));
 
 /** Whether the term spells out a name at run time, like `paste0("f_", x)`. */
 export function composesName(this: void, term: GuardTerm): boolean {
@@ -92,63 +96,41 @@ export function callable(this: void, of: GuardTerm, resolves: (name: BrandedIden
 		: GuardTerm.any(is('is.function', of), own);
 }
 
-/** The escape of what dispatches: a classed value may bring a method of its own. */
-function dispatched(this: void, plain: (of: GuardTerm) => GuardTerm): Requirement {
-	return (of, other) => GuardTerm.any(plain(of), isObject(of), ...(other === undefined || other.kind === 'constant' ? [] : [isObject(other)]));
+/** The condition in terms of the value `of`, with `resolves` telling whether a function of the name is around, see {@link callable}. */
+function conditionOn(this: void, condition: RCondition, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean): GuardTerm {
+	if('is' in condition) {
+		return is(condition.is, condition.of === undefined ? of : is(condition.of, of));
+	} else if('not' in condition) {
+		return GuardTerm.known('!', conditionOn(condition.not, of, resolves));
+	} else if('any' in condition) {
+		return GuardTerm.any(...condition.any.map(c => conditionOn(c, of, resolves)));
+	} else if('all' in condition) {
+		return GuardTerm.all(...condition.all.map(c => conditionOn(c, of, resolves)));
+	} else if('length' in condition) {
+		return GuardTerm.known(condition.length, is('length', of), { kind: 'constant', lexeme: String(condition.to), value: condition.to });
+	}
+	return callable(of, resolves);
 }
 
-/** What a built-in asks of the value bound to one of its formals, `other` being the second operand of an operator. */
-export type Requirement = (of: GuardTerm, other?: GuardTerm) => GuardTerm;
-
-/** The condition each {@link GuardDemand} stands for. Every one is verified against R, and a dispatching one leaves out classed values. */
-export const Demands: Readonly<Record<GuardDemand, Requirement>> = {
-	[GuardDemand.Arithmetic]:         dispatched(Arithmetic),
-	[GuardDemand.Compared]:           dispatched(Comparable),
-	[GuardDemand.Mathematical]:       dispatched(Mathematical),
-	[GuardDemand.NotLogical]:         dispatched(NotLogical),
-	[GuardDemand.Dollar]:             dispatched(Dollar),
-	[GuardDemand.Subsettable]:        dispatched(Subsettable),
-	[GuardDemand.ElementSubsettable]: dispatched(ElementSubsettable),
-	[GuardDemand.Character]:          IsCharacter,
-	[GuardDemand.List]:               IsList,
-	[GuardDemand.Logical]:            IsLogical,
-	[GuardDemand.Environment]:        IsEnvironment,
-	[GuardDemand.HasDim]:             HasDim,
-	[GuardDemand.Named]:              Named
-};
-
-/** What R typically says when a {@link GuardDemand} fails, read off R itself. */
-export const DemandMessages: Readonly<Record<GuardDemand, string>> = {
-	[GuardDemand.Arithmetic]:         'non-numeric argument to binary operator',
-	[GuardDemand.Compared]:           'comparison is possible only for atomic and list types',
-	[GuardDemand.Mathematical]:       'non-numeric argument to mathematical function',
-	[GuardDemand.NotLogical]:         'invalid argument type',
-	[GuardDemand.Dollar]:             '$ operator is invalid for atomic vectors',
-	[GuardDemand.Subsettable]:        'object of type ... is not subsettable',
-	[GuardDemand.ElementSubsettable]: 'object of type ... is not subsettable',
-	[GuardDemand.Character]:          'non-character argument',
-	[GuardDemand.List]:               'second argument must be a list',
-	[GuardDemand.Logical]:            'argument is not logical',
-	[GuardDemand.Environment]:        'invalid envir argument',
-	[GuardDemand.HasDim]:             'incorrect number of dimensions',
-	[GuardDemand.Named]:              'invalid first argument'
-};
-
-/** What R says when a value handed over to be applied is no function. */
-export const NotCallableMessage = 'is not a function, character or symbol';
-
-/** What `if` and `while` say of a condition that is not one logical, see {@link condition}. */
-export const ConditionMessages = { length: 'argument is of length zero, or the condition has length > 1', na: 'missing value where TRUE/FALSE needed' } as const;
-
-/** What a boolean `||`/`&&` asks of each of its operands: one value at most, as an empty one still reads as `NA`, and no dispatch happens, but a class like `Date` may well hide a number from `is.numeric`. */
-export function logicalOperand(this: void, of: GuardTerm): GuardTerm {
-	const atMostOne = GuardTerm.known('<=', is('length', of), { kind: 'constant', lexeme: '1', value: 1 });
-	return GuardTerm.all(GuardTerm.any(is('is.logical', of), is('is.numeric', of), is('is.complex', of), isObject(of)), atMostOne);
+/** Whether the failure is about what can be applied, which also speaks of what is no formal, like a name spelled out at run time. */
+export function asksCallable(this: void, { requires }: RFailure): boolean {
+	return 'callable' in requires;
 }
 
-/** What `if` and `while` ask of a condition. */
-export function condition(this: void, of: GuardTerm): GuardTerm {
-	return GuardTerm.all(hasLength(of, '1'), GuardTerm.known('!', is('is.na', of)));
+/** Whether the function applies what one of its formals holds. */
+export function appliesFormal(this: void, facts: GuardFacts | undefined): boolean {
+	return Object.values(facts?.asks ?? {}).some(failures => failures.some(asksCallable));
+}
+
+/** What it takes for `of` not to make R raise the failure, `other` being the second operand of an operator, which may bring a method of its own as well. */
+export function passes(this: void, failure: RFailure, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean, other?: GuardTerm): GuardTerm {
+	const condition = conditionOn(failure.requires, of, resolves);
+	return failure.dispatches ? GuardTerm.any(condition, is('is.object', of), ...(other === undefined || other.kind === 'constant' ? [] : [is('is.object', other)])) : condition;
+}
+
+/** What R says on the failure for the value `of`. */
+export function messageFor(this: void, { message }: RFailure, of: GuardTerm): string {
+	return message.replace('%s', GuardTerm.render(of));
 }
 
 /** `succeeds(call)`, see {@link GuardTerm}. */

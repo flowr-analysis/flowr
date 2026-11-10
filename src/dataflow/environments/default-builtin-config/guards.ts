@@ -1,7 +1,7 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../built-in-config';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp } from '../built-in-props';
-import { AnyType, GuardDemand, RValueType, type CheckingCall, type GuardFacts, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
+import { AnyType, RValueType, type CheckingCall, type GuardFacts, type RCondition, type RFailure, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import { base, fn, pkg, Primitive } from './define-helpers';
@@ -24,12 +24,50 @@ const Count: ReturnedValue = { types: Integer, scalar: true, notNA: true, count:
 const Returns = (types: RValueTypes, more: Omit<ReturnedValue, 'types'> = {}): GuardFacts => ({ returns: { types, ...more } });
 const OpensFrame: GuardFacts = { opensFrame: true };
 
-const ArithmeticOperands = { asks: { e1: GuardDemand.Arithmetic, e2: GuardDemand.Arithmetic } };
-const ComparedOperands = { asks: { e1: GuardDemand.Compared, e2: GuardDemand.Compared } };
-const Math = { asks: { x: GuardDemand.Mathematical } };
-const Summary = { asks: { '...': GuardDemand.Arithmetic } };
-const Strings = { asks: { x: GuardDemand.Character } };
-const Pathed = { asks: { path: GuardDemand.Character } };
+const is = (...predicates: readonly BrandedIdentifier[]): RCondition => predicates.length === 1 ? { is: predicates[0] } : { any: predicates.map(p => ({ is: p })) };
+const not = (...predicates: readonly BrandedIdentifier[]): RCondition => ({ all: predicates.map(p => ({ not: { is: p } })) });
+const fails = (requires: RCondition, message: string, more: Omit<RFailure, 'requires' | 'message'> = {}): readonly RFailure[] => [{ requires, message, ...more }];
+const dispatched = (requires: RCondition, message: string): readonly RFailure[] => fails(requires, message, { dispatches: true });
+
+/* what R fails on by itself, each read off R; a dispatching one lets a classed value through, which may bring a method */
+const Calculable = is('is.numeric', 'is.logical', 'is.complex', 'is.null');
+const Arithmetic = dispatched(Calculable, 'non-numeric argument to binary operator');
+const Mathematical = dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to mathematical function');
+/* the members of the `Math` group with no complex version, which fail with 'unimplemented complex function' for one */
+const RealMathematical = dispatched(is('is.numeric', 'is.logical'), 'non-numeric argument to mathematical function');
+/* the cumulative ones coerce what they get to a number, which only a function, an environment, and the language cannot be, and the extremes do not order complex numbers */
+const Cumulated = dispatched(not('is.function', 'is.environment', 'is.language'), "cannot coerce type ... to vector of type 'double'");
+const Ordered = (name: string): readonly RFailure[] => [...Cumulated, ...dispatched({ not: { is: 'is.complex' } }, `'${name}' not defined for complex numbers`)];
+const NotLogical = dispatched({ any: [is('is.numeric', 'is.logical', 'is.complex', 'is.raw'), { length: '==', to: 0 }] }, 'invalid argument type');
+const Dollar = dispatched({ any: [{ is: 'is.null' }, { all: [{ is: 'is.recursive' }, { not: { is: 'is.function' } }] }] }, '$ operator is invalid for atomic vectors');
+const Subsettable = dispatched(not('is.function', 'is.environment', 'is.symbol'), 'object of type ... is not subsettable');
+const ElementSubsettable = dispatched(not('is.function', 'is.symbol'), 'object of type ... is not subsettable');
+const Text = (message: string): readonly RFailure[] => fails(is('is.character'), message);
+const Applied = fails({ callable: true }, "'%s' is not a function, character or symbol");
+/* a condition of more than one value only warned before R 4.2, which went by the first one */
+const Condition: readonly RFailure[] = [
+	{ requires: { length: '>=', to: 1 }, message: 'argument is of length zero' },
+	{ requires: { length: '<=', to: 1 }, message: 'the condition has length > 1', since: '4.2.0' },
+	{ requires: { not: { is: 'is.na' } }, message: 'missing value where TRUE/FALSE needed', since: '4.2.0' },
+	{ requires: { any: [{ length: '>=', to: 2 }, { not: { is: 'is.na' } }] }, message: 'missing value where TRUE/FALSE needed', until: '4.2.0' }
+];
+/* no dispatch happens, but a class like `Date` may hide a number from `is.numeric`, and an empty operand reads as `NA` */
+const LogicalOperand = (operand: string, operator: string): readonly RFailure[] => [
+	{ requires: is('is.logical', 'is.numeric', 'is.complex', 'is.object'), message: `invalid '${operand}' type in 'x ${operator} y'` },
+	{ requires: { length: '<=', to: 1 }, message: "'length = n' in coercion to 'logical(1)'", since: '4.3.0' }
+];
+
+const ArithmeticOperands = { asks: { e1: Arithmetic, e2: Arithmetic } };
+const Compared = (operator: string): GuardFacts => {
+	const operand = dispatched(not('is.function', 'is.environment'), `comparison (${operator}) is possible only for atomic and list types`);
+	return { asks: { e1: operand, e2: operand } };
+};
+const Math = { asks: { x: Mathematical } };
+const RealMath = { asks: { x: RealMathematical } };
+const Summary = { asks: { '...': dispatched(Calculable, "invalid 'type' of argument") } };
+const Prefixed = { asks: { x: Text('non-character object(s)') } };
+const Pathed = { asks: { path: Text('a character vector argument expected') } };
+const Logicals = (operator: string): GuardFacts => ({ ...OneLogical, asks: { x: LogicalOperand('x', operator), y: LogicalOperand('y', operator) } });
 
 /* `typeof` names each function kind on its own, `mode` lumps them */
 const TypeOf: Readonly<Record<string, RValueTypes>> = {
@@ -71,7 +109,7 @@ function camelCased(this: void, name: BrandedIdentifier): BrandedIdentifier {
 
 /**
  * What every function has to do with guards, per package, each verified against the package providing it.
- * `is.numeric` is false for a factor, so it is not exact, and `is.atomic(NULL)` is true before R 4.4.
+ * `is.numeric` is false for a factor, so it is not exact.
  */
 const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<BrandedIdentifier, GuardFacts>>>> = {
 	[PkgName.Base]: {
@@ -92,7 +130,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'is.list':           exact(List | Pairlist),
 		'is.pairlist':       exact(Null | Pairlist),
 		'is.numeric':        predicate(Numeric, { plain: true }),
-		'is.atomic':         predicate(Atomic | Null, { plain: true }),
+		'is.atomic':         { ...predicate(Atomic, { exact: true, plain: true }), changed: [{ until: '4.4.0', facts: predicate(Atomic | Null, { exact: true, plain: true }) }] },
 		'is.vector':         predicate(Atomic | List | Expression, { plain: true }),
 		'is.recursive':      predicate(List | Pairlist | Fn | Environment | Language | Expression | Other),
 		'is.primitive':      predicate(Fn),
@@ -120,48 +158,80 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'^':                 { ...ArithmeticOperands, computes: true },
 		'%%':                { ...ArithmeticOperands, computes: true },
 		'%/%':               { ...ArithmeticOperands, computes: true },
-		'<':                 ComparedOperands,
-		'<=':                ComparedOperands,
-		'>':                 ComparedOperands,
-		'>=':                ComparedOperands,
-		'==':                ComparedOperands,
-		'!=':                ComparedOperands,
-		'!':                 { asks: { x: GuardDemand.NotLogical } },
-		'$':                 { asks: { x: GuardDemand.Dollar }, computes: true },
-		'[':                 { asks: { x: GuardDemand.Subsettable }, computes: true },
-		'[[':                { asks: { x: GuardDemand.ElementSubsettable }, computes: true },
+		'<':                 Compared('<'),
+		'<=':                Compared('<='),
+		'>':                 Compared('>'),
+		'>=':                Compared('>='),
+		'==':                Compared('=='),
+		'!=':                Compared('!='),
+		'!':                 { asks: { x: NotLogical } },
+		'$':                 { asks: { x: Dollar }, computes: true },
+		'[':                 { asks: { x: Subsettable }, computes: true },
+		'[[':                { asks: { x: ElementSubsettable }, computes: true },
+		/* the `Math` group: each dispatches on a classed `x`, as `trunc` does for a `Date` */
 		'sqrt':              Math,
 		'abs':               Math,
 		'exp':               Math,
-		'log':               Math,
-		'floor':             Math,
-		'ceiling':           Math,
-		'round':             Math,
+		'log2':              Math,
+		'log10':             Math,
+		'cos':               Math,
+		'sin':               Math,
+		'tan':               Math,
+		'acos':              Math,
+		'asin':              Math,
+		'atan':              Math,
+		'cosh':              Math,
+		'sinh':              Math,
+		'tanh':              Math,
+		'acosh':             Math,
+		'asinh':             Math,
+		'atanh':             Math,
+		/* a complex `base` makes it take a string or `NULL` for `x` */
+		'log':               { missingOk: ['base'] },
+		'sign':              RealMath,
+		'floor':             RealMath,
+		'ceiling':           RealMath,
+		'trunc':             RealMath,
+		'expm1':             RealMath,
+		'log1p':             RealMath,
+		'cospi':             RealMath,
+		'sinpi':             RealMath,
+		'tanpi':             RealMath,
+		'gamma':             RealMath,
+		'lgamma':            RealMath,
+		'digamma':           RealMath,
+		'trigamma':          RealMath,
+		'round':             { ...Math, missingOk: ['digits'] },
+		'signif':            { ...Math, missingOk: ['digits'] },
+		'cumsum':            { asks: { x: Cumulated } },
+		'cumprod':           { asks: { x: Cumulated } },
+		'cummax':            { asks: { x: Ordered('cummax') } },
+		'cummin':            { asks: { x: Ordered('cummin') } },
 		'sum':               Summary,
 		'prod':              Summary,
-		'strsplit':          Strings,
-		'startsWith':        Strings,
-		'endsWith':          Strings,
+		'strsplit':          { asks: { x: Text('non-character argument') } },
+		'startsWith':        Prefixed,
+		'endsWith':          Prefixed,
 		'basename':          Pathed,
 		'dirname':           Pathed,
-		'sprintf':           { asks: { fmt: GuardDemand.Character }, returns: { types: Character } },
-		'file.exists':       { asks: { '...': GuardDemand.Character } },
-		'dir.exists':        { asks: { paths: GuardDemand.Character } },
-		'which':             { asks: { x: GuardDemand.Logical } },
-		'new.env':           { asks: { parent: GuardDemand.Environment } },
-		'apply':             { asks: { X: GuardDemand.HasDim } },
-		'assign':            { asks: { x: GuardDemand.Character } },
-		'get':               { asks: { x: GuardDemand.Named } },
-		'exists':            { asks: { x: GuardDemand.Named }, computes: true, singleResult: true, returns: OneTruth },
-		'do.call':           { asks: { args: GuardDemand.List }, applies: 'what' },
-		'match.fun':         { applies: 'FUN' },
-		'lapply':            { applies: 'FUN' },
-		'sapply':            { applies: 'FUN' },
-		'vapply':            { applies: 'FUN' },
-		'mapply':            { applies: 'FUN' },
-		'Map':               { applies: 'f' },
+		'sprintf':           { asks: { fmt: Text("'fmt' is not a character vector") }, returns: { types: Character } },
+		'file.exists':       { asks: { '...': Text('invalid \'file\' argument') } },
+		'dir.exists':        { asks: { paths: Text('invalid filename argument') } },
+		'which':             { asks: { x: fails(is('is.logical'), 'argument to \'which\' is not logical') } },
+		'new.env':           { asks: { parent: fails(is('is.environment'), '\'enclos\' must be an environment') } },
+		'apply':             { asks: { X: fails({ not: { is: 'is.null', of: 'dim' } }, 'dim(X) must have a positive length') } },
+		'assign':            { asks: { x: Text('invalid first argument') } },
+		'get':               { asks: { x: fails(is('is.character', 'is.symbol'), 'invalid first argument') } },
+		'exists':            { asks: { x: fails(is('is.character', 'is.symbol'), 'invalid first argument') }, computes: true, singleResult: true, returns: OneTruth },
+		'do.call':           { asks: { args: fails(is('is.list'), 'second argument must be a list'), what: fails({ callable: true }, "'what' must be a function or character string") } },
+		'match.fun':         { asks: { FUN: Applied } },
+		'lapply':            { asks: { FUN: Applied } },
+		'sapply':            { asks: { FUN: Applied } },
+		'vapply':            { asks: { FUN: Applied } },
+		'mapply':            { asks: { FUN: Applied } },
+		'Map':               { asks: { f: Applied } },
 		/* `Reduce` returns for an empty `x` before it looks at `f`, so it asks nothing of it */
-		'Filter':            { applies: 'f' },
+		'Filter':            { asks: { f: Applied } },
 		'inherits':          { computes: true, singleResult: true },
 		'identical':         SingleResult,
 		'isTRUE':            SingleResult,
@@ -171,8 +241,10 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'anyNA':             SingleResult,
 		'missing':           { singleResult: true, returns: OneTruth },
 		'requireNamespace':  { singleResult: true, returns: OneTruth },
-		'&&':                OneLogical,
-		'||':                OneLogical,
+		'&&':                Logicals('&&'),
+		'||':                Logicals('||'),
+		'if':                { asks: { cond: Condition } },
+		'while':             { asks: { cond: Condition } },
 		'nzchar':            { ...Computes, ...Returns(Logical) },
 		'class':             { ...Computes, ...Returns(Character) },
 		'oldClass':          { ...Computes, ...Returns(Character | Null) },
@@ -262,6 +334,7 @@ const Value = sig({ x: Forced.Value });
 export const GuardDefinitions = [
 	fn(base('is.environment', 'is.symbol', 'is.name', 'is.call', 'is.expression', 'is.language', 'is.pairlist', 'is.atomic', 'is.recursive', 'is.primitive', 'is.array', 'is.object', 'typeof', 'mode', 'storage.mode', 'oldClass', 'isTRUE', 'isFALSE'),
 		BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: Value }, Primitive),
+	fn(base('cospi', 'sinpi', 'tanpi', 'gamma', 'lgamma', 'digamma', 'trigamma'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: Value }, Primitive),
 	fn(base('anyNA'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ x: Forced.Value, recursive: Forced.Flag }) }, Primitive),
 	fn(base('all'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ '...': Forced.Value, 'na.rm': Forced.Flag }) }, Primitive),
 	fn(base('inherits'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ x: Forced.Value, what: Forced.Value, which: Forced.Flag }) }, Primitive),

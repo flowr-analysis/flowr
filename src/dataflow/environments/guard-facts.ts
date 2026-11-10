@@ -64,21 +64,31 @@ export interface CheckingCall {
 	readonly present?:            boolean
 }
 
-/** What a built-in may fail on for what one of its formals holds, each spelled out as a condition by {@link Demands}. */
-export enum GuardDemand {
-	Arithmetic         = 'arithmetic',
-	Compared           = 'compared',
-	Mathematical       = 'mathematical',
-	NotLogical         = 'not-logical',
-	Dollar             = 'dollar',
-	Subsettable        = 'subsettable',
-	ElementSubsettable = 'element-subsettable',
-	Character          = 'character',
-	List               = 'list',
-	Logical            = 'logical',
-	Environment        = 'environment',
-	HasDim             = 'has-dim',
-	Named              = 'named'
+/** A condition R checks of the value bound to a formal, stated as data so that a configuration can change it. */
+export type RCondition =
+	/** the predicate holds of the value, or of what `of` reads off it, like `is.null(dim(x))` */
+	| { readonly is: BrandedIdentifier, readonly of?: BrandedIdentifier }
+	| { readonly not: RCondition }
+	| { readonly any: readonly RCondition[] }
+	| { readonly all: readonly RCondition[] }
+	/** the length of the value compares to the given one */
+	| { readonly length: '==' | '<=' | '>=', readonly to: number }
+	/** the value can be applied as a function, which depends on the functions around */
+	| { readonly callable: true };
+
+/** The R versions something holds for, from `since` on and before `until`, either end open if left out. */
+export interface RVersions {
+	readonly since?: string
+	readonly until?: string
+}
+
+/** A failure R raises by itself if the value bound to a formal does not pass a condition. */
+export interface RFailure extends RVersions {
+	readonly requires:    RCondition
+	/** what R says, with `%s` for the value */
+	readonly message:     string
+	/** a value with a class attribute, or a classed other operand, may bring a method of its own, which lets anything through */
+	readonly dispatches?: boolean
 }
 
 /** What the value a function returns is like, whatever it was handed. */
@@ -106,18 +116,20 @@ export interface GuardFacts {
 	readonly check?:        CheckingCall
 	/** it fails unless each of its arguments is a single `TRUE`, as `stopifnot` does elsewhere, with the arguments that are no conditions */
 	readonly asserts?:      readonly BrandedIdentifier[]
-	/** what it asks of its formals on top of evaluating them */
-	readonly asks?:         Readonly<Record<BrandedIdentifier, GuardDemand>>
-	/** the formal holding what it applies at once */
-	readonly applies?:      BrandedIdentifier
+	/** what R fails on for the value of each formal on top of evaluating it, a `callable` condition marking the formal holding what it applies at once */
+	readonly asks?:         Readonly<Record<BrandedIdentifier, readonly RFailure[]>>
 	/** it yields one logical, no matter how long its arguments are */
 	readonly singleResult?: boolean
 	/** what it returns, or `argument` for the one argument it was handed, as `invisible` returns it; a predicate, a measure, and what {@link GuardFacts.reads} need not state it */
 	readonly returns?:      ReturnedValue | 'argument'
 	/** it does not do anything but compute, whatever else is stated of it */
 	readonly computes?:     boolean
+	/** the formals a missing formal can be handed to without an error, as the special primitives matching their arguments themselves take it as not given */
+	readonly missingOk?:    readonly BrandedIdentifier[]
 	/** it hands out a frame or writes to one in a way the dataflow does not see */
 	readonly opensFrame?:   boolean
+	/** what holds instead for some R versions, in place of what is stated above */
+	readonly changed?:      readonly (RVersions & { readonly facts: Omit<GuardFacts, 'changed'> })[]
 }
 
 /** What is stated about a function by its name alone, see {@link GuardFacts}. */

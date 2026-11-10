@@ -354,6 +354,8 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');
 		counterexample('SF-rm-list-variable-vector', 'nms <- c("a", "b")\na <- 1\nb <- 2\nrm(list = nms)\nprint(exists("b"))', '5@print', 'print(exists("b"))');
+		/* the handler reads n after the default of the parameter raised, so the write made before the raise stays */
+		counterexample('SF-handler-reads-write-before-default-raise', 'n <- 0\nf <- function(x = stop("need x")) {\n  n <<- n + 1\n  x\n}\nr <- tryCatch(f(), error = function(e) n)\nprint(r)', '7@print', 'n <- 0\nf <- function(x=stop("need x")) {\n        n <<- n + 1\n        x\n    }\nr <- tryCatch(f(), error = function(e) n)\nprint(r)');
 		/* the criterion evaluates the call in its argument, so it does what that call prints */
 		counterexample('SF-output-of-argument-call', 'f <- function() {\n  cat("a\\n")\n  cat("live\\n")\n}\nsuppressWarnings(f())', '5@suppressWarnings', 'f <- function() {\n        cat("a\\n")\n        cat("live\\n")\n    }\nsuppressWarnings(f())');
 		counterexample('SF-output-in-calling-handler-body', 'f <- function() {\n  withCallingHandlers({ warning("w"); cat("body\\n") }, warning = function(w) NULL)\n  cat("live\\n")\n}\nsuppressWarnings(f())', '5@suppressWarnings', 'f <- function() {\n        withCallingHandlers(cat("body\\n"), warning = function(w) NULL)\n        cat("live\\n")\n    }\nsuppressWarnings(f())');

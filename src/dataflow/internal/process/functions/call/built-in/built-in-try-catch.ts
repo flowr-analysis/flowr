@@ -8,6 +8,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -465,7 +466,9 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 			return false;
 		}
 		const read = Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads);
-		const promises = [...read, ...read.flatMap(t => Dataflow.sourcesOf(graph, t, EdgeType.DefinesOnCall))];
+		/* a parameter holds the argument handed to it, or its default if there is none */
+		const defaults = read.filter(t => RParameter.is(graph.idMap?.get(graph.idMap?.get(t)?.info.parent ?? '')));
+		const promises = [...read, ...read.flatMap(t => Dataflow.sourcesOf(graph, t, EdgeType.DefinesOnCall)), ...defaults.flatMap(t => Dataflow.targetsOf(graph, t, EdgeType.DefinedBy))];
 		return promises.some(t => {
 			const promised = graph.idMap?.get(t);
 			return promised !== undefined && DfgVertex.isFunctionCall(graph.getVertex(t)) && raises(promised);

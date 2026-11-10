@@ -448,7 +448,7 @@ function ambientBlock(name: string, families: readonly AmbientFamily[], key: str
 
 
 /** at most this many methods are listed at a generic */
-const ShownMethods = 6;
+const ShownMethods = 4;
 
 /**
  * How the name takes part in S3 dispatch: at a generic, the methods the database knows, those with a contract marked;
@@ -475,7 +475,8 @@ function s3Line(entry: Entry): HTMLElement | undefined {
 	if(generic !== undefined) {
 		const cls = name.slice(generic.length + 1);
 		line.append(...methods.length > 0 ? [el('br')] : [], titled(el('span', 'label', 'S3 method'), 'an implementation of the generic for one class'),
-			' of ', link('generic', generic, search(generic), 'search for the generic ' + generic + ' and its other methods'), ' for class ', el('code', 'cls', cls));
+			' of ', link('generic', generic, search(generic), 'search for the generic ' + generic + ' and its other methods'),
+			...cls === 'default' ? [titled(el('span', 'dflt', ' for the default case'), 'runs when no method fits the class of the dispatched value')] : [' for class ', el('code', 'cls', cls)]);
 	}
 	return line;
 }
@@ -487,7 +488,7 @@ function methodLink(method: Entry, generic: string): HTMLElement {
 	group.append(link('method', '.' + method.name.slice(generic.length + 1), search(method.name), method.name + ': S3 method of ' + generic + ' for class '
 		+ method.name.slice(generic.length + 1) + (method.contracted ? '. flowR knows what a call of it has to fulfill' : '')),
 	...method.contracted ? [titled(el('span', 'hascontract', '\u2713 contract'), 'flowR knows what a call of ' + method.name + ' has to fulfill: open it for the contract')] : [],
-	...method.owners.slice(0, Shown).map(owner => packageLink(owner.pkg, 'mpkg')), ...method.owners.length > Shown ? [el('span', 'mpkg more', '+' + (method.owners.length - Shown))] : []);
+	...method.owners.slice(0, 1).map(owner => packageLink(owner.pkg, 'mpkg')), ...method.owners.length > 1 ? [el('span', 'mpkg more', '+' + (method.owners.length - 1))] : []);
 	return group;
 }
 

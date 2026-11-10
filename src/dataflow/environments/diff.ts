@@ -5,6 +5,10 @@ import type { IdentifierReference } from './identifier';
 import { Identifier } from './identifier';
 import { diffControlDependencies } from '../info';
 
+function sameName(a: Identifier | undefined, b: Identifier | undefined): boolean {
+	return a === undefined || b === undefined ? a === b : Identifier.view(a)?.equals(b) === true;
+}
+
 /**
  * Compares two identifier references and reports differences.
  */
@@ -15,7 +19,7 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 		}
 		return;
 	}
-	if(a.name !== b.name) {
+	if(!sameName(a.name, b.name)) {
 		info.report.addComment(`${info.position}Different identifier names: ${info.leftname}: ${a.name ? Identifier.toString(a.name) : 'undefined'} vs. ${info.rightname}: ${b.name ? Identifier.toString(b.name) : 'undefined'}`);
 	}
 	if(a.nodeId !== b.nodeId) {
@@ -39,7 +43,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 		for(let i = 0; i < value.length; ++i) {
 			const aVal = sorted[i];
 			const bVal = sorted2[i];
-			if(aVal.name !== bVal.name) {
+			if(!sameName(aVal.name, bVal.name)) {
 				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name ? Identifier.toString(aVal.name) : 'undefined'} vs. ${info.rightname}: ${bVal.name ? Identifier.toString(bVal.name) : undefined}`);
 			}
 			if(aVal.nodeId !== bVal.nodeId) {

@@ -276,7 +276,7 @@ function memberWords(effect: AmbientEffect): readonly string[] {
 		case 'constant':       return member.keys;
 		case 'argument-names': return ['the names of the arguments'];
 		case 'unnamed':        return ['the unnamed arguments'];
-		case 'parameter':      return [`the one ${member.names.join(' or ')} names${member.fallback === undefined ? '' : `, ${member.fallback} without`}`];
+		case 'parameter':      return [`named by ${member.names.join(' or ')}${member.fallback === undefined ? '' : `, else ${member.fallback}`}`];
 	}
 }
 

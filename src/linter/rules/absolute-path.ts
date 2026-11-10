@@ -121,7 +121,7 @@ function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string
 
 /** A path built within a call that already reports it, as `file.path` within `read.csv`, is one finding. */
 function withoutNested(results: readonly AbsoluteFilePathResult[]): AbsoluteFilePathResult[] {
-	return results.filter((r, i) => !results.some((o, j) => i !== j && o.filePath === r.filePath
+	return results.filter((r, i) => !results.some((o, j) => i !== j && o.filePath === r.filePath && r.loc !== undefined && o.loc !== undefined
 		&& (SourceRange.isStrictSubsetOf(r.loc, o.loc) || (j < i && SourceRange.equals(r.loc, o.loc)))));
 }
 

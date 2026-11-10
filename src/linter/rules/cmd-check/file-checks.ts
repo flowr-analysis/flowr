@@ -44,4 +44,4 @@ export function firstLine(pf: PackageFiles, file: string, pattern: RegExp): numb
 }
 
 /** Pretty printing of a finding as its message and location. */
-export const MessageAtLocation = prettyPrint((r: { readonly message: string, readonly loc: SourceLocation }) => `${r.message} at ${SourceLocation.format(r.loc)}`);
+export const MessageAtLocation = prettyPrint((r: { readonly message: string, readonly loc: SourceLocation | undefined }) => `${r.message} at ${SourceLocation.format(r.loc)}`);

@@ -303,7 +303,7 @@ function onlyKeepSupersetOfUnused(elements: UnusedDefinitionResult[]): UnusedDef
 	}
 	return elements.filter(e => {
 		const otherLoc = SourceLocation.merge((e.quickFix?.map(q => q.loc) ?? [e.loc])) ?? SourceLocation.invalid();
-		return !locs.some(r => SourceLocation.compare(r, otherLoc) !== 0 && SourceLocation.isSubsetOf(otherLoc, r)); // there is no smaller remove
+		return !locs.some(r => SourceLocation.compare(r as SourceLocation, otherLoc) !== 0 && SourceLocation.isSubsetOf(otherLoc, r as SourceLocation)); // there is no smaller remove
 	});
 }
 

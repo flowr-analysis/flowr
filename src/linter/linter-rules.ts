@@ -93,7 +93,6 @@ export const LintingRules = {
 	'rd-files':                        RD_FILES,
 	'package-data':                    PACKAGE_DATA,
 	'package-runtime':                 PACKAGE_RUNTIME,
-	'package-runtime':                 PACKAGE_RUNTIME,
 	'secret-exfiltration':             SECRET_EXFILTRATION,
 	'process-state-in-session':        PROCESS_STATE_IN_SESSION,
 	'code-clones':                     CODE_CLONES,

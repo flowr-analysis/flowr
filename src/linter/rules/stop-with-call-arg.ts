@@ -5,7 +5,6 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
-import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
@@ -100,7 +99,7 @@ export const STOP_WITH_CALL_ARG = {
 						loc:        SourceLocation.fromNode(element.node),
 						quickFix:   callFalseFix(element.node as RFunctionCall<ParentInformation>)
 					}))
-					.filter(element => isNotUndefined(element.loc)) as Writable<StopWithCallResult>[],
+					.filter(element => isNotUndefined(element.loc)),
 			'.meta': meta
 		};
 	},

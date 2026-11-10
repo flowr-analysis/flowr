@@ -229,10 +229,11 @@ describe('Built-in properties', () => {
 	});
 
 	test(label('every name with guard facts is defined in its package and carries them', ['name-normal'], ['other']), () => {
-		const carried = new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function'
-			? (d.names as readonly Identifier[]).filter(id => d.config?.guards?.[Identifier.getName(id)] !== undefined)
-				.map(id => `${Identifier.getNamespace(id) ?? PkgName.Base}::${Identifier.getName(id)}`)
-			: []));
+		/* a replacement function carries them by the name R calls, like `names<-` */
+		const carried = new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'constant' ? [] : (d.names as readonly Identifier[])
+			.map(id => d.type === 'replacement' ? [Identifier.getNamespace(id), `${Identifier.getName(id)}<-`] as const : [Identifier.getNamespace(id), Identifier.getName(id)] as const)
+			.filter(([, name]) => d.config?.guards?.[name] !== undefined)
+			.map(([namespace, name]) => `${namespace ?? PkgName.Base}::${name}`)));
 		for(const [namespace, name] of namesWithGuardFacts()) {
 			assert.isTrue(carried.has(`${namespace}::${name}`), `${namespace}::${name} has facts but no definition`);
 		}

@@ -411,7 +411,7 @@ function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, stat
 	}
 	const found: NodeId[] = [];
 	const seen = new Set<NodeId>();
-	/* the functions that print, by themselves or through what they call */
+	/* the functions that print themselves */
 	const printsThrough = new Set<NodeId>();
 	/* each call with the calls that ran the function holding it, innermost first, which a dispatch decided per call depends on */
 	const calls: [NodeId, readonly NodeId[]][] = [...seeds].map(id => [id, []]);
@@ -428,14 +428,16 @@ function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, stat
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
 			const first = !seen.has(target);
 			seen.add(target);
-			const written = [...callee.subflow.graph].filter(inner => writers.has(inner));
 			if(first) {
+				const written = [...callee.subflow.graph].filter(inner => writers.has(inner));
 				found.push(...written);
+				if(written.length > 0) {
+					printsThrough.add(target);
+				}
 			}
 			/* what a callee prints is printed through the calls leading there, which a slice keeps as well: `f(3)` within `g` for `g()` */
-			if(written.length > 0 || printsThrough.has(target)) {
+			if(printsThrough.has(target)) {
 				found.push(...chain);
-				printsThrough.add(target);
 			}
 			for(const [innerCall, vertex] of Dataflow.callsIn(callee, graph)) {
 				/* a function run again by other calls decides its dispatches anew */

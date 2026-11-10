@@ -79,6 +79,9 @@ const Programs: readonly (readonly [name: string, code: string])[] = [
 	['<<- binds in a frame four functions up', 'v <- 10\nf0 <- function() {\n  f1 <- function() {\n    v <- 0\n    f2 <- function() {\n      f3 <- function() v <<- v + 1\n      f3()\n    }\n    f2()\n  }\n  f1()\n}\nf0()\nprint(v)'],
 	['get handed to sapply', 'a <- 1\nb <- 2\nr <- sapply(c("a", "b"), get)\nprint(r)'],
 	['get handed to do.call', 'a <- 1\nb <- 2\nr <- do.call(get, list("b"))\nprint(r)'],
+	['a field written by a closure lapply runs', 'e <- new.env(); e$s <- 0\ninvisible(lapply(1:3, function(i) e$s <- e$s + i))\nprint(e$s)'],
+	['a field written by a closure Reduce runs', 'e <- new.env(); e$n <- 0\ninvisible(Reduce(function(a, b) { e$n <- e$n + b; a }, 1:3, 0))\nprint(e$n)'],
+	['a field written by a handler', 'e <- new.env(); e$s <- 0\ntryCatch(stop("x"), error = function(err) e$s <- 5)\nprint(e$s)'],
 	['nested list fields', 'cfg <- list(out = list(name = "res"))\nassign(cfg$out$name, "ok")\nprint(res)']
 ];
 

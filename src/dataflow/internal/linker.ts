@@ -930,6 +930,15 @@ export const ClosureRefs = {
 	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
 		if(graph.idMap !== undefined) {
 			bindAccessedFields(definition.subflow.in, environment, graph, graph.idMap, callId);
+			/* what the closure writes into an environment a free variable holds is written by this call, as for a named call (see linkFreeReads) */
+			for(const ingoing of definition.subflow.in) {
+				for(const def of ingoing.name === undefined ? [] : Resolve.byNameAndType(ingoing.name, environment, ingoing.type) ?? []) {
+					if(hasEnvState(def) && !NodeId.isBuiltIn(def.nodeId) && !definition.subflow.graph.has(def.nodeId)) {
+						linkFieldWritesOnCall(graph, callId, definition.id, ingoing.nodeId, def.nodeId, def.envState, graph.idMap);
+						readEnvironmentContents(graph, callId, def);
+					}
+				}
+			}
 		}
 		definition.subflow.in = linkInputs(definition.subflow.in, environment, [], graph, false, callId);
 	}

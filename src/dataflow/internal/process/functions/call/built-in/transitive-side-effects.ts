@@ -168,12 +168,18 @@ export function linkStateWritesOfForcedPromises(this: void, graph: DataflowGraph
 	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const binding = FunctionSemantics.call.quoted.promisedBinding(graph, id);
 		const promise = binding === undefined ? [] : Dataflow.targetsOf(graph, id, EdgeType.NonStandardEvaluation);
-		const written = promise.length === 0 ? [] : [...ambientAccessOf(graph, promise.flatMap(p => [...RNode.collectAllIds(graph.idMap?.get(p))]))[AmbientAccessKind.Write].keys()];
+		const calls = promise.flatMap(p => [...RNode.collectAllIds(graph.idMap?.get(p))]).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)));
+		/* the calls of the promise changing the state, which run where it is forced even if its value goes unused */
+		const writers = calls.filter(c => ambientAccessOf(graph, [c])[AmbientAccessKind.Write].size > 0);
+		const written = writers.length === 0 ? [] : [...ambientAccessOf(graph, writers)[AmbientAccessKind.Write].keys()];
 		if(binding === undefined || written.length === 0) {
 			continue;
 		}
 		readers ??= new Map([...graph.ambientAccessIds()].map(r => [r, new Set(graph.ambientAccessOf(r)?.[AmbientAccessKind.Read].keys())]));
 		for(const site of FunctionSemantics.promiseForcingPoints(binding, graph)) {
+			for(const writer of writers) {
+				graph.addEdge(site, writer, EdgeType.Reads);
+			}
 			const statement = ProgramOrder.runsOnceAt(site, graph);
 			if(statement === undefined || written.every(name => graph.ambientAccessOf(site)?.[AmbientAccessKind.Write].has(name))) {
 				continue;

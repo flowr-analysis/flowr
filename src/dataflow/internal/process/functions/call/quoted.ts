@@ -99,6 +99,7 @@ export const Quoted = {
 		const cfgOnce = () => (cfg === null ? (cfg = controlFlow()) : cfg);
 		const masking: MaskingCall[] = [];
 		const evaluated: NodeId[] = [];
+		const promises: [binding: NodeId, promise: NodeId][] = [];
 		let sideEffects: ReadonlySet<NodeId> | undefined;
 		let installers: ReadonlySet<NodeId> | undefined;
 		const installersOnce = () => installers ??= languageInstallersOf(graph, environment);
@@ -138,7 +139,7 @@ export const Quoted = {
 				const forces = flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined;
 				Deferred.link(graph, promise, candidates, idMap, forces);
 				if(binding !== undefined) {
-					linkForcesToPromise(graph, binding, promise, sites ?? []);
+					promises.push([binding, promise]);
 				}
 				if(evalEnv !== undefined) {
 					graph.addEdge(promise, evalEnv.info.id, EdgeType.Reads);
@@ -167,6 +168,11 @@ export const Quoted = {
 					}
 				}
 			}
+		}
+		/* an evaluation reads a binding only once it is resolved (`eval(quote(v), e)`), so the reads of a promise are complete only now */
+		for(const [binding, promise] of promises) {
+			const flow = cfgOnce();
+			linkForcesToPromise(graph, binding, promise, flow === undefined ? [] : Deferred.forcedAt(graph, binding, flow, true));
 		}
 		for(const at of evaluated) {
 			Nse.unmark(graph, at);

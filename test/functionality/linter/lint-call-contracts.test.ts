@@ -31,7 +31,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 16), function: 'strsplit', broken: ['is.character(x) fails for x = 1'] }
 			]);
 			assertLinter('a negative length', parser, 'seq_len(-1)', 'call-contracts', [
-				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 11), function: 'seq_len', broken: ['is.atomic(length.out) && !is.raw(length.out) && length(length.out) >= 1 && (!is.numeric(length.out) || length(length.out) > 1 || length.out >= 0) fails for length.out = -1'] }
+				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 11), function: 'seq_len', broken: ['is.atomic(length.out) && !is.raw(length.out) && length(length.out) >= 1 && (!is.numeric(length.out) || length(length.out) >= 2 || length.out >= 0) fails for length.out = -1'] }
 			]);
 			assertLinter('sqrt of a string', parser, 'sqrt("a")', 'call-contracts', [
 				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 9), function: 'sqrt', broken: [`${sqrtFails} x = "a"`] }

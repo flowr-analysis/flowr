@@ -87,14 +87,14 @@ const Exact = (yes: RValueTypes): GuardFacts => Predicate(predicate(yes, { exact
 /* `is.finite` and its kin are only defined for atomic vectors */
 const Classified: GuardFacts = { asks: { x: dispatched(is('is.atomic', 'is.null'), 'default method not implemented for type') }, required: OneValue, computes: true, returns: Dispatched('x', Logical) };
 
+/** a single number is at least 0, R rejects even `-0.5` as a length */
+const SingleNonNegative: RCondition = { any: [{ not: { is: 'is.numeric' } }, { length: '>=', to: 2 }, { compare: '>=', to: 0 }] };
+
 /**
  * What the operators and the functions of the `Ops`, `Summary`, `Complex`, and `matrixOps` groups ask of their arguments, together with
  * R's sequences and its type predicates and coercions, each read off R 4.6.1.
  * What is asked of a value that may dispatch holds only without a class attribute.
  */
-/** a single number is at least 0, R rejects even `-0.5` as a length */
-const SingleNonNegative: RCondition = { any: [{ not: { is: 'is.numeric' } }, { length: '>', to: 1 }, { compare: '>=', to: 0 }] };
-
 export const PrimitiveOpsGuardFacts: Readonly<Record<BrandedIdentifier, GuardFacts>> = {
 	'+':              Arithmetic,
 	'-':              Arithmetic,

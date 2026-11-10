@@ -1,0 +1,78 @@
+import { describe } from 'vitest';
+import { assertSliceMatchesR, withTreeSitter } from '../../../_helper/shell';
+import { assertLinter } from '../../../_helper/linter';
+
+/**
+ * Counterexamples for the names `assign` and its relatives bind (#2811): the name is what the target evaluates to,
+ * the target itself is only read, and the environment written to decides who sees the binding.
+ * Each program runs in R, the slice for its last line has to print the same, and none of its code is dead.
+ */
+const Programs: readonly (readonly [name: string, code: string])[] = [
+	['the issue: a name from a list field', 'var <- list(name = "myvar", value = 42)\nassign(var$name, var$value, envir = environment())\nprint(myvar)'],
+	['a name held by a variable, which stays read', 'x <- "a"\nassign(x, 3)\nprint(paste(a, x))'],
+	['names from a loop', 'nm <- c("p", "q")\nfor(n in nm) assign(n, nchar(n))\nprint(p + q)'],
+	['a name from an indexed call', 'assign(paste0("v", 1:2)[2], 5)\nprint(v2)'],
+	['a name from a double bracket', 'cfg <- list(n = "z")\nassign(cfg[["n"]], 7)\nprint(z)'],
+	['a local name does not leak', 'f <- function() {\n  nm <- "loc"\n  assign(nm, 1)\n  exists("loc")\n}\nprint(c(f(), exists("loc")))'],
+	['into the global environment', 'f <- function() assign("g1", 10, envir = globalenv())\nf()\nprint(g1)'],
+	['into a new environment', 'e <- new.env()\nassign("k", 3, envir = e)\nprint(c(get("k", envir = e), exists("k")))'],
+	['a computed name into a new environment', 'e <- new.env()\nnm <- "k"\nassign(nm, 3, e)\nprint(e$k)'],
+	['into the caller', 'f <- function() assign("x", 5, envir = parent.frame())\ng <- function() {\n  x <- 1\n  f()\n  x\n}\nprint(g())'],
+	['a local shadow', 'x <- 1\nf <- function() {\n  assign("x", 2)\n  x\n}\nprint(c(f(), x))'],
+	['into .GlobalEnv', 'x <- 1\nf <- function() assign("x", 2, envir = .GlobalEnv)\nf()\nprint(x)'],
+	['local keeps its bindings', 'local({\n  assign("w", 4)\n})\nprint(exists("w"))'],
+	['the last value of the name counts', 'nm <- "a"\nnm <- "b"\nassign(nm, 1)\nprint(c(exists("a"), b))'],
+	['a name chosen by a branch', 'nm <- if(runif(1) > 2) "a" else "b"\nassign(nm, 1)\nprint(b)'],
+	['names of a list', 'vals <- list(a = 1, b = 2)\nfor(k in names(vals)) assign(k, vals[[k]])\nprint(a + b)'],
+	['mapply into the global environment', 'invisible(mapply(function(n, v) assign(n, v, envir = globalenv()), c("m1", "m2"), 1:2))\nprint(m1 + m2)'],
+	['lapply into the global environment', 'invisible(lapply(c("s1", "s2"), function(n) assign(n, n, envir = .GlobalEnv)))\nprint(s2)'],
+	['reassigning from itself', 'assign("x", 1)\nassign("x", x + 1)\nprint(x)'],
+	['a name read with get', 'x <- "y"\nassign(x, "z")\nassign(get(x), 3)\nprint(z)'],
+	['with into the global environment', 'obj <- list(id = "q")\nwith(obj, assign(id, 9, envir = globalenv()))\nprint(q)'],
+	['a helper assigning into its caller', 'h <- function(nm) assign(nm, 99, envir = parent.frame())\nh("r")\nprint(r)'],
+	['a helper with a default environment', 'h <- function(nm, env = parent.frame()) assign(nm, 1, env)\nf <- function() {\n  h("u")\n  u\n}\nprint(f())'],
+	['delayedAssign', 'delayedAssign("lz", {\n  cat("forced\\n")\n  5\n})\nprint(lz)'],
+	['delayedAssign with a computed name', 'nm <- "lz2"\ndelayedAssign(nm, 6)\nprint(lz2)'],
+	['makeActiveBinding', 'makeActiveBinding("ab", function() 42, environment())\nprint(ab)'],
+	['named arguments', 'assign(x = "kw", value = 3)\nprint(kw)'],
+	['named arguments swapped', 'assign(value = 3, x = "kw2")\nprint(kw2)'],
+	['rm of a computed name', 'nm <- "zz"\nassign(nm, 1)\nrm(list = nm)\nprint(exists("zz"))'],
+	['get of a computed name', 'nm <- "zz2"\nassign(nm, 1)\nprint(get(nm))'],
+	['mget of a computed name', 'nm <- "zz3"\nassign(nm, 1)\nprint(mget(nm))'],
+	['names from a vector', 'nms <- c("aa", "bb")\nassign(nms[1], 1)\nassign(nms[2], 2)\nprint(aa + bb)'],
+	['a list field within a function', 'f <- function() {\n  var <- list(name = "inner")\n  assign(var$name, 1)\n  inner\n}\nprint(f())'],
+	['the field changes after the assign', 'var <- list(name = "myvar", value = 42)\nassign(var$name, var$value)\nvar$name <- "other"\nprint(paste(myvar, var$name))'],
+	['local into an environment', 'e1 <- new.env()\nlocal({\n  assign("p1", 1)\n}, envir = e1)\nprint(e1$p1)'],
+	['sprintf names', 'assign(sprintf("%s_%d", "t", 1L), 8)\nprint(t_1)'],
+	['toupper names', 'nm <- toupper("abc")\nassign(nm, 1)\nprint(ABC)'],
+	['a redefinition after the assign', 'x <- 1\nassign("x", x * 10)\nx <- x + 1\nprint(x)'],
+	['a counter in the global environment', 'ff <- function() assign("cnt", cnt + 1, envir = globalenv())\ncnt <- 0\nff()\nff()\nprint(cnt)'],
+	['environment() as a variable', 'e <- environment()\nassign("q2", 2, e)\nprint(q2)'],
+	['a function', 'assign("f2", function(x) x * 2)\nprint(f2(4))'],
+	['a function under a computed name', 'nm <- "f3"\nassign(nm, function(x) x + 1)\nprint(f3(1))'],
+	['a function under a list field', 'obj <- list(nm = "f4")\nassign(obj$nm, function() "hi")\nprint(f4())'],
+	['a named vector element', 'x <- c(a = "n1")\nassign(x[["a"]], 1)\nprint(n1)'],
+	['both branches assign', 'nm <- "y1"\nif(runif(1) < 2) assign(nm, 1) else assign(nm, 2)\nprint(y1)'],
+	['a handler assigning globally', 'nm <- "y2"\ntryCatch(assign(nm, stop("no")), error = function(e) assign(nm, -1, envir = globalenv()))\nprint(y2)'],
+	['within a repeat', 'nm <- "y3"\nrepeat {\n  assign(nm, 1)\n  break\n}\nprint(y3)'],
+	['get0', 'nm <- "y4"\nassign(nm, 2)\nprint(get0(nm))'],
+	['sapply into the global environment', 'invisible(sapply(1:2, function(i) assign(paste0("o", i), i, envir = globalenv())))\nprint(o1 + o2)'],
+	['an update after the assign', 'nm <- "y5"\nassign(nm, 1)\ny5 <- y5 + 1\nprint(y5)'],
+	['a data frame', 'n <- "dd"\nassign(n, data.frame(a = 1:3))\nprint(nrow(dd))'],
+	['ls sees it', 'n <- "dd2"\nassign(n, 5)\nprint(ls(pattern = "^dd2$"))'],
+	['pos = 1', 'var <- list(name = "q9")\nassign(var$name, 1, pos = 1)\nprint(q9)'],
+	['a free name into the caller', 'nm <- "y6"\nf <- function() assign(nm, 3, envir = parent.frame())\nf()\nprint(y6)'],
+	['a closure assigning globally', 'mk <- function(n) function() assign(n, TRUE, envir = globalenv())\nmk("flag")()\nprint(flag)'],
+	['do.call of assign', 'nm <- "y8"\ndo.call(assign, list(nm, 4))\nprint(y8)'],
+	['eval of an assign', 'nm <- "y9"\neval(quote(assign(nm, 5)))\nprint(y9)'],
+	['an alias of the list', 'v <- list(n = "dyn")\nx <- v\nassign(x$n, 11)\nprint(dyn)'],
+	['the name and the value from one list', 'spec <- list(name = "total", value = 1:3)\nassign(spec$name, sum(spec$value))\nprint(total)'],
+	['nested list fields', 'cfg <- list(out = list(name = "res"))\nassign(cfg$out$name, "ok")\nprint(res)']
+];
+
+describe('assign and the environments it writes to', withTreeSitter(parser => {
+	for(const [name, code] of Programs) {
+		assertSliceMatchesR(parser, `${name}: the slice prints the same`, code, { whole: true });
+		assertLinter(`${name}: no dead code`, parser, code, 'dead-code', []);
+	}
+}));

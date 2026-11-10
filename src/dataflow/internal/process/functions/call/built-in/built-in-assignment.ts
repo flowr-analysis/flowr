@@ -30,6 +30,8 @@ import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/m
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
+import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { ControlFlow } from '../../../../control-flow';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { closureFrameResolution, type EnvirResolution, EnvironmentProducers, EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
@@ -357,13 +359,38 @@ function processAssignmentTarget<OtherInfo>(
 		return info;
 	};
 
+	/**
+	 * The target names what to define without being it: `x` of `assign(x, v)` is read, and so is `cfg` of `assign(cfg$name, v)`.
+	 * So the name gets a node of its own, as `load()` gives what it loads, rather than turning the target into a definition.
+	 */
+	const assignToComputedName = (targetName: Identifier) => {
+		const nameId = `${target.info.id}:assigned`;
+		data.completeAst.idMap.set(nameId, {
+			type:      RType.Symbol,
+			content:   targetName,
+			lexeme:    Identifier.toString(targetName),
+			location:  target.location,
+			namespace: undefined,
+			info:      { ...target.info, id: nameId, parent: rootId, role: RoleInParent.ExpressionListChild }
+		} as RNode<OtherInfo & ParentInformation>);
+		/* the value is the source's alone, what names it is an argument of the call the definition is defined by */
+		const info = toSymbol(args, nameId, targetName);
+		/* the name is bound once the call completes, and the program goes on from there */
+		ControlFlow.continuesWith(info.graph, info, nameId);
+		return { ...info, cfgExit: nameId };
+	};
+
 	if(type === RType.Symbol && !config.targetVariable) {
 		return assignToSymbol();
-	} else if(config.targetVariable && (type === RType.Symbol || type === RType.FunctionCall)) {
-		/* the target expression (`assign(x, v)` / `assign(paste0("cfg_", k), v)`) resolving to a constant name defines that name, keeping the reads that produced it; a dynamic name falls through to the unknown-target handling below */
+	} else if(config.targetVariable && type !== RType.String) {
+		/*
+		 * the target is an expression R evaluates to the name, be it `assign(x, v)`, `assign(paste0("cfg_", k), v)`, or `assign(cfg$name, v)` (#2811):
+		 * resolving to a constant name defines that name, keeping the reads that produced it; a dynamic name falls through to the unknown-target handling below.
+		 * Never does it define what it reads, `cfg` is no target of `assign(cfg$name, v)`.
+		 */
 		const resolvedName = resolveConstantString(target, data);
 		if(resolvedName !== undefined) {
-			return assignToSymbol(resolvedName + (config.targetSuffix ?? ''));
+			return assignToComputedName(resolvedName + (config.targetSuffix ?? ''));
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
@@ -766,6 +793,10 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	}
 
 	for(const write of writeNodes) {
+		/* a name the target only evaluates to has no vertex yet, see `assignToComputedName` */
+		if(!information.graph.hasVertex(write.nodeId)) {
+			information.graph.addVertex({ tag: VertexType.VariableDefinition, id: write.nodeId, cds: write.cds, source: useSourceIds }, data.environment);
+		}
 		markAsAssignment(information, write, useSourceIds, rootId, data, config);
 	}
 	if(frame !== undefined) {

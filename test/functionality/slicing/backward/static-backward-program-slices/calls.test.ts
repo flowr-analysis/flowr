@@ -13,6 +13,9 @@ import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/d
 import { extractCfg } from '../../../../../src/control-flow/control-flow-graph';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 
 assumeLoadedPackages('dplyr', 'magrittr', 'maps', 'plyr', 'inferference');
 
@@ -1452,8 +1455,15 @@ describe('Primer', { concurrent: false }, withShell(shell => {
 	describe('env: assign into the caller', () => {
 		const code = 'f <- function() {\n    var_name <- "x"\n    assign(var_name, 42, envir = parent.frame())\n}\nf()\nprint(x)';
 		assertSliced(sec('primer:env assign parent.frame'), shell, code, ['6@print'], 'f <- function() {\n        var_name <- "x"\n        assign(var_name, 42, envir = parent.frame())\n    }\nf()\nprint(x)', { expectedOutput: '[1] 42', expectedSliceOutput: '[1] 42' });
-		assertDataflow(sec('primer:env use of x reads the assign'), shell, code, emptyGraph().reads('6@x', '3@var_name'),
-			{ resolveIdsAsCriterion: true, expectIsSubgraph: true });
+		/* the name `var_name` evaluates to is defined, `var_name` itself is only read (#2811) */
+		test(decorateLabelContext(sec('primer:env use of x reads the assign'), ['dataflow']), async() => {
+			const result = await createDataflowPipeline(new TreeSitterExecutor(), { context: contextFromInput(code) }).allRemainingSteps();
+			const graph = result.dataflow.graph;
+			const varName = SlicingCriterion.parse('3@var_name', result.normalize.idMap);
+			const reads = Dataflow.targetsOf(graph, SlicingCriterion.parse('6@x', result.normalize.idMap), EdgeType.Reads);
+			assert.deepStrictEqual(reads, [`${varName}:assigned`]);
+			assert.isTrue(DfgVertex.isUse(graph.getVertex(varName)));
+		});
 	});
 	describe('nse', () => {
 		assertSliced(sec('primer:nse subset and with'), shell, 'df <- data.frame(x = c(-1, 2))\nsubset(df, x > 0)\nwith(df, mean(x))', ['3@with'], 'df <- data.frame(x = c(-1, 2))\nwith(df, mean(x))');

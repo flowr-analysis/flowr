@@ -148,7 +148,7 @@ scale_it <- function(values) {
 	},
 	'call-contracts': {
 		configType: 'CallContractsConfig', ruleType:   'CALL_CONTRACTS', testfile:   'lint-call-contracts',
-		example:    'f <- function(m) { if(m < 0) stop("m < 0"); stopifnot(is.numeric(m)); m }\nf(-1)\nstrsplit(1, "a")'
+		example:    'f <- function(x, n) { stopifnot(length(x) >= n); x }\nf(1:3, 5)\ng <- function(how = c("fast", "exact")) match.arg(how)\ng("slow")\ncombn(4, -1)\nstrsplit(1, "a")'
 	},
 	'stop-call': {
 		configType: 'StopWithCallConfig', ruleType:   'STOP_WITH_CALL_ARG', testfile:   'lint-stop-call',

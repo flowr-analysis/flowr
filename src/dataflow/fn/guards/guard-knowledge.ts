@@ -6,6 +6,7 @@ import { RValueType, type GuardFacts, type GuardFactsLookup, type RCondition, ty
 import { compareRVersions } from '../../../util/r-version-order';
 import { RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm, type GuardCall } from './guard-term';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
 
@@ -59,6 +60,11 @@ export function defaultGuardFacts(this: void, version: string = RBaseGuardsVersi
 		defaultFacts.set(version, facts);
 	}
 	return facts;
+}
+
+/** The facts the built-in definitions of `ctx` state in the R version it analyzes for, else the default ones. */
+export function guardFactsOf(this: void, ctx: ReadOnlyFlowrAnalyzerContext | undefined): GuardFactsLookup {
+	return ctx === undefined ? defaultGuardFacts() : guardFactsIn(ctx.env.builtInDefinitions, ctx.rVersionKnown ? ctx.resolvedRVersion : undefined);
 }
 
 /** Whether the function is stated to do nothing but compute a value. */

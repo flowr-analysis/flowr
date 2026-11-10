@@ -31,9 +31,9 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import { bindsOutside, type BuiltInLookup } from '../frame-reflection';
 import { definitionsBehind } from '../higher-order-function';
 import { memoize } from '../../../util/collections/defaultmap';
-import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant } from './guard-term';
+import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant, type GuardOuter } from './guard-term';
 import type { GuardFacts, GuardFactsLookup, RFailure } from '../../environments/guard-facts';
-import { type FormalTerms, asksCallable, callable, composesName, defaultGuardFacts, getAsExists, guardFactsIn, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
+import { type FormalTerms, asksCallable, callable, composesName, getAsExists, guardFactsOf, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
 import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-linking';
@@ -382,14 +382,16 @@ function namesFormal(this: void, argument: DataflowGraphVertexFunctionCall['args
 	return FunctionArgument.isNamed(argument) && names.includes(argument.name);
 }
 
-/** What the given arguments of the call bind the formals of the callee to, seen from the caller, with whether that leaves no formal unbound. */
-function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall, args: DataflowGraphVertexFunctionCall['args'], callee: Scope, scope: Scope, state: GuardState, depth: number): { readonly binding: GuardBinding, readonly complete: boolean } {
+/** What the caller states the value of an argument as, `undefined` if it cannot. */
+export type ArgumentTerm = (value: RNodeWithParent) => GuardTerm | undefined;
+
+/** What the given arguments of the call bind the formals `names` of the callee to, seen from the caller, with whether that leaves no formal unbound. */
+function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall, args: DataflowGraphVertexFunctionCall['args'], names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): { readonly binding: GuardBinding, readonly complete: boolean } {
 	const binding = new Map<BrandedIdentifier, GuardTerm>();
-	const names = formalNamesOf(callee);
 	const matched = MatchArgs.toSpec<BrandedIdentifier>(args, Object.fromEntries(names.map(n => [n, n])));
 	for(const [formal, ids] of matched) {
-		const value = formal === '...' || ids.length !== 1 ? undefined : valueOfArgument(ids[0], vertex, state);
-		const term = value === undefined ? undefined : termOf(value, scope, state, depth);
+		const value = formal === '...' || ids.length !== 1 ? undefined : valueOfArgument(ids[0], vertex, graph);
+		const term = value === undefined ? undefined : termOfArgument(value);
 		if(term !== undefined) {
 			binding.set(formal, term);
 		}
@@ -398,20 +400,18 @@ function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall,
 }
 
 /** What the arguments of the call bind the formals of the callee to for sure: what the dots hand on may name any formal, which moves the arguments given by position, so only the ones given by their full name stay. */
-function bindingOf(this: void, vertex: DataflowGraphVertexFunctionCall, callee: Scope, scope: Scope, state: GuardState, depth: number): GuardBinding {
-	const names = formalNamesOf(callee);
-	const args = MatchArgs.handsOnDots(vertex.args, state.graph) ? vertex.args.filter(a => namesFormal(a, names)) : vertex.args;
-	return bindingOfArguments(vertex, args, callee, scope, state, depth).binding;
+function bindingOf(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): GuardBinding {
+	const args = MatchArgs.handsOnDots(vertex.args, graph) ? vertex.args.filter(a => namesFormal(a, names)) : vertex.args;
+	return bindingOfArguments(vertex, args, names, graph, termOfArgument).binding;
 }
 
 /** What the arguments of a call handing on dots bind if the dots name nothing, which only keeps the arguments in front of the dots in place. */
-function bindingBesidesDots(this: void, vertex: DataflowGraphVertexFunctionCall, callee: Scope, scope: Scope, state: GuardState): ReturnType<typeof bindingOfArguments> | undefined {
-	const dots = vertex.args.findIndex(a => MatchArgs.handsOnDots([a], state.graph));
+function bindingBesidesDots(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): ReturnType<typeof bindingOfArguments> | undefined {
+	const dots = vertex.args.findIndex(a => MatchArgs.handsOnDots([a], graph));
 	if(dots < 0) {
 		return undefined;
 	}
-	const names = formalNamesOf(callee);
-	return bindingOfArguments(vertex, vertex.args.filter((a, at) => at < dots || namesFormal(a, names)), callee, scope, state, 0);
+	return bindingOfArguments(vertex, vertex.args.filter((a, at) => at < dots || namesFormal(a, names)), names, graph, termOfArgument);
 }
 
 /** Whether something the dots hand on bears a name, which only the function holding the dots can tell. */
@@ -419,17 +419,51 @@ const DotsBearNames = GuardTerm.known('!', GuardTerm.known('is.null', GuardTerm.
 const DotsBearNamesText = GuardTerm.render(DotsBearNames);
 
 /** Whether the dots of the callee are its own and a call leaves them without a name, as nothing it hands on could bear one: a name not spelled out in full may still end up in them. */
-function leavesDotsUnnamed(this: void, vertex: DataflowGraphVertexFunctionCall, callee: Scope, state: GuardState): boolean {
-	const names = formalNamesOf(callee);
-	return names.includes('...') && !MatchArgs.handsOnDots(vertex.args, state.graph) && vertex.args.every(a => !FunctionArgument.isNamed(a) || namesFormal(a, names));
+function leavesDotsUnnamed(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph): boolean {
+	return names.includes('...') && !MatchArgs.handsOnDots(vertex.args, graph) && vertex.args.every(a => !FunctionArgument.isNamed(a) || namesFormal(a, names));
+}
+
+/** What a call binds the formals of its callee to, see {@link callBinding}. */
+export interface CallBinding {
+	/** what the formals stand for for sure */
+	readonly binding:     GuardBinding
+	/** if the call hands on dots, what they stand for if the dots name nothing */
+	readonly besides?:    ReturnType<typeof bindingOfArguments>
+	/** the call leaves the dots of the callee without a name */
+	readonly dotsUnnamed: boolean
+}
+
+/**
+ * What the call binds the formals `names` of its callee to, by R's argument matching, the way the contract of a callee is inherited:
+ * `termOfArgument` states the value of an argument in the words of the caller.
+ */
+export function callBinding(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): CallBinding {
+	const besides = bindingBesidesDots(vertex, names, graph, termOfArgument);
+	/* with every formal bound and no dots to take more, anything further the dots hand on is an error, so nothing can move */
+	const binding = besides?.complete ? besides.binding : bindingOf(vertex, names, graph, termOfArgument);
+	return { binding, ...(besides === undefined ? {} : { besides }), dotsUnnamed: leavesDotsUnnamed(vertex, names, graph) };
+}
+
+/**
+ * A condition of a callee in the words of a caller binding its formals by `call`, see {@link callBinding}, with `outer` stating what the callee reads from outside:
+ * `requires` holds for sure, and `unlessNamed`, if the call hands on dots, holds as long as they name nothing.
+ */
+export function atCall(this: void, condition: GuardTerm, call: CallBinding, outer: GuardOuter | undefined, facts: GuardFactsLookup): { readonly requires: GuardTerm, readonly unlessNamed?: GuardTerm } {
+	const asked = call.dotsUnnamed ? GuardTerm.any(...GuardTerm.disjuncts(condition).filter(d => GuardTerm.render(d) !== DotsBearNamesText)) : condition;
+	const requires = GuardTerm.substituteCondition(asked, call.binding, outer, facts);
+	if(call.besides === undefined || call.besides.complete) {
+		return { requires };
+	}
+	const unlessNamed = GuardTerm.substituteCondition(asked, call.besides.binding, outer, facts);
+	return GuardTerm.render(unlessNamed) === GuardTerm.render(requires) ? { requires } : { requires, unlessNamed: GuardTerm.any(DotsBearNames, unlessNamed) };
 }
 
 /** The node of the value of an argument, a named argument being bound by the node that names it. */
-function valueOfArgument(this: void, argument: NodeId, vertex: DataflowGraphVertexFunctionCall, state: GuardState): RNodeWithParent | undefined {
+function valueOfArgument(this: void, argument: NodeId, vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph): RNodeWithParent | undefined {
 	const named = vertex.args.find(a => FunctionArgument.isNamed(a) && a.nodeId === argument);
-	const node = nodeOf(named !== undefined && FunctionArgument.isNamed(named) && named.valueId !== undefined ? named.valueId : argument, state);
+	const node = graph.idMap?.get(named !== undefined && FunctionArgument.isNamed(named) && named.valueId !== undefined ? named.valueId : argument);
 	/* `exists("x")` reads `x` through a symbol the dataflow made up, while the argument is what was written */
-	const written = node?.info.parent === undefined ? undefined : nodeOf(node.info.parent, state);
+	const written = node?.info.parent === undefined ? undefined : graph.idMap?.get(node.info.parent);
 	return written !== undefined && node !== undefined && !RNode.directChildren(written).includes(node) ? written : node;
 }
 
@@ -439,7 +473,7 @@ function inlined(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall
 	const callee = target === undefined || depth >= MaxTermDepth ? undefined : scopeOf(target, state);
 	const body = callee === undefined ? undefined : singleExpression(callee.definition, state);
 	const term = callee === undefined || body === undefined ? undefined : termOf(body, callee, state, depth + 1);
-	return term === undefined || callee === undefined ? undefined : GuardTerm.substitute(term, bindingOf(vertex, callee, scope, state, depth + 1));
+	return term === undefined || callee === undefined ? undefined : GuardTerm.substitute(term, bindingOf(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state, depth + 1)));
 }
 
 function callTerm(this: void, id: NodeId, fn: string, args: readonly GuardArgument[], state: GuardState): GuardCall | undefined {
@@ -851,7 +885,7 @@ function boundArguments(this: void, vertex: DataflowGraphVertexFunctionCall, sig
 	const names = sig.map(s => typeof s === 'string' ? s : s[0]);
 	const bound = new Map<BrandedIdentifier, RNodeWithParent[]>();
 	for(const [formal, ids] of MatchArgs.toSpec<BrandedIdentifier>(vertex.args, Object.fromEntries(names.map(n => [n, n])))) {
-		bound.set(formal, ids.map(id => valueOfArgument(id, vertex, state)).filter(n => n !== undefined));
+		bound.set(formal, ids.map(id => valueOfArgument(id, vertex, state.graph)).filter(n => n !== undefined));
 	}
 	return bound;
 }
@@ -859,7 +893,7 @@ function boundArguments(this: void, vertex: DataflowGraphVertexFunctionCall, sig
 /** The arguments handed over which R evaluates for sure, in the order they are written, and those it may not. */
 function evaluatedAndNot(this: void, vertex: DataflowGraphVertexFunctionCall, state: GuardState): { readonly forced: RNodeWithParent[], readonly lazy: RNodeWithParent[] } {
 	const sig = knownNameOf(vertex.id, vertex, state) === undefined ? undefined : state.info(vertex.name)?.sig;
-	const values = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state)).filter(n => n !== undefined);
+	const values = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined);
 	if(sig === undefined) {
 		return { forced: [], lazy: values };
 	}
@@ -959,32 +993,25 @@ function inherit(this: void, target: NodeId, vertex: DataflowGraphVertexFunction
 		run.effects = true;
 		return;
 	}
-	const besides = bindingBesidesDots(vertex, callee, scope, state);
-	/* with every formal bound and no dots to take more, anything further the dots hand on is an error, so nothing can move */
-	const binding = besides?.complete ? besides.binding : bindingOf(vertex, callee, scope, state, 0);
+	const call = callBinding(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state));
 	/* a closure reads the formals of the function it is called from as well */
 	const outer = (origin: NodeId) => {
 		const name = scope.formals.get(origin);
 		return name === undefined ? undefined : GuardTerm.formal(name);
 	};
-	const dotsUnnamed = leavesDotsUnnamed(vertex, callee, state);
 	for(const clause of contract.clauses) {
 		const inherited = { kind: clause.kind, pure: clause.pure, via: [vertex.id, ...clause.via ?? []], ...(clause.message === undefined ? {} : { message: clause.message }) };
-		const asked = dotsUnnamed ? GuardTerm.any(...GuardTerm.disjuncts(clause.requires).filter(d => GuardTerm.render(d) !== DotsBearNamesText)) : clause.requires;
-		const requires = GuardTerm.substituteCondition(asked, binding, outer, state.facts);
+		const { requires, unlessNamed } = atCall(clause.requires, call, outer, state.facts);
 		if(GuardTerm.formalsOf(requires).size > 0 || GuardTerm.isFalse(requires)) {
 			addClause(run, path, requires, clause.at, inherited);
 		}
-		if(besides !== undefined && !besides.complete) {
-			const unlessNamed = GuardTerm.substituteCondition(asked, besides.binding, outer, state.facts);
-			if(GuardTerm.formalsOf(unlessNamed).size > 0 && GuardTerm.render(unlessNamed) !== GuardTerm.render(requires)) {
-				addClause(run, path, GuardTerm.any(DotsBearNames, unlessNamed), clause.at, inherited);
-			}
+		if(unlessNamed !== undefined && GuardTerm.formalsOf(unlessNamed).size > 0) {
+			addClause(run, path, unlessNamed, clause.at, inherited);
 		}
 	}
 	if(path.length === 0) {
 		for(const formal of contract.required) {
-			const bound = binding.get(formal);
+			const bound = call.binding.get(formal);
 			if(bound?.kind === 'formal') {
 				run.read.add(bound.name);
 			}
@@ -1163,12 +1190,12 @@ function operatorMethods(this: void, name: BrandedIdentifier, vertex: DataflowGr
 	const { state, scope } = run;
 	const group = s3GroupGenericOf(name);
 	const s4 = group === undefined ? undefined : s4CandidatesFor(name, s4MethodsIn(state));
-	const operands = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state)).map(n => n === undefined ? undefined : termOf(n, scope, state));
+	const operands = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).map(n => n === undefined ? undefined : termOf(n, scope, state));
 	if(group === undefined || s4 === undefined || operands.length === 0 || operands.length > 2 || operands.includes(undefined)) {
 		return;
 	}
 	const terms = operands as GuardTerm[];
-	const bound = (callee: Scope) => bindingOf(vertex, callee, scope, state, 0);
+	const bound = (callee: Scope) => bindingOf(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state));
 	const unclassed = (others: readonly GuardTerm[]) => others.filter(o => o.kind !== 'constant').map(o => GuardTerm.known('is.object', o));
 	const classes = new Set([...state.methodClasses(name), ...state.methodClasses(group)]);
 	if(s4.length === 0) {
@@ -1192,7 +1219,7 @@ function operatorMethods(this: void, name: BrandedIdentifier, vertex: DataflowGr
 }
 
 function skippedArgument(this: void, argument: NodeId, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): Exit[] {
-	const value = valueOfArgument(argument, vertex, run.state);
+	const value = valueOfArgument(argument, vertex, run.state.graph);
 	return value === undefined ? [] : skipped(value, path, run);
 }
 
@@ -1241,7 +1268,7 @@ function walkCall(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		return [...before, ...vertex.args.filter(FunctionArgument.isNotEmpty).flatMap(a => skippedArgument(a.nodeId, vertex, path, run))];
 	}
 	const target = soleCallee(id, state);
-	const { forced, lazy } = target === undefined ? evaluatedAndNot(vertex, state) : { forced: [], lazy: vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state)).filter(n => n !== undefined) };
+	const { forced, lazy } = target === undefined ? evaluatedAndNot(vertex, state) : { forced: [], lazy: vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined) };
 	const exits = [...lazy.flatMap(value => skipped(value, path, run)), ...walkSequence(forced, path, run)];
 	const after = afterExits(path, exits);
 	if(after === undefined) {
@@ -1506,7 +1533,7 @@ function stateOf(this: void, graph: DataflowGraph, { ctx }: FunctionGuardsOption
 	const bindings = Dataflow.definitionsByName(graph);
 	const bindsFunction = memoize((name: BrandedIdentifier) => bindings.get(name).some(id => definitionsBehind(id, graph).size > 0));
 	const methodClasses = memoize((generic: BrandedIdentifier) => [...bindings.keys()].flatMap(fn => fn.startsWith(`${generic}.`) && bindsFunction(fn) ? [fn.slice(generic.length + 1)] : []));
-	return { graph, info: builtInLookup(ctx), facts: ctx === undefined ? defaultGuardFacts() : guardFactsIn(ctx.env.builtInDefinitions, ctx.rVersionKnown ? ctx.resolvedRVersion : undefined), contracts: new Map(), terms: new Map(), bindings, bindsFunction, methodClasses, depth: 0 };
+	return { graph, info: builtInLookup(ctx), facts: guardFactsOf(ctx), contracts: new Map(), terms: new Map(), bindings, bindsFunction, methodClasses, depth: 0 };
 }
 
 /** The claims with the cases of each formal. */

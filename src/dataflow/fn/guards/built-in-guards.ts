@@ -10,7 +10,8 @@ import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-l
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { claimsOf, conditionalClaimsOf, readingOf, relationsOf, returnedClaimOf, type FormalClaim } from './guard-claims';
-import { defaultGuardFacts, passes } from './guard-knowledge';
+import { defaultGuardFacts, messageFor, passes } from './guard-knowledge';
+import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsDate, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
@@ -147,23 +148,40 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 /** {@link StatedGuards} per package and name. */
 export type BaseGuards = Readonly<Record<string, Readonly<Record<string, StatedGuards>>>>;
 
+/** One condition R checks for a function written in C, on the formal it is about, with what R says if it does not hold. */
+export interface BuiltInClause {
+	readonly formal:   BrandedIdentifier
+	readonly requires: GuardTerm
+	readonly message:  string
+}
+
+/** What R fails on for a function written in C, as the built-in definitions `facts` state it, `undefined` if they state nothing. */
+export function builtInClauses(this: void, name: BrandedIdentifier, facts: GuardFactsLookup): BuiltInClause[] | undefined {
+	const asks = facts(name)?.asks;
+	if(asks === undefined) {
+		return undefined;
+	}
+	const formals = Object.keys(asks);
+	return Object.entries(asks).flatMap(([formal, failures]) => {
+		/* what the dots hold is several values, none of which a formal of the name `...` could stand for in R code */
+		const other = formals.find(f => f !== formal);
+		const of = GuardTerm.formal(formal);
+		return formal === '...' ? [] : failures.map(f => ({ formal, requires: passes(f, of, () => false, other === undefined ? undefined : GuardTerm.formal(other), GuardTerm.formal), message: messageFor(f, of) }));
+	});
+}
+
 /** What R fails on for a function written in C, and what it returns, as the built-in definitions state it, `undefined` if flowR does not know of any. */
 function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | undefined {
 	const facts = defaultGuardFacts()(name);
-	const asks = facts?.asks ?? {};
-	const formals = Object.keys(asks);
-	const stated = Object.entries(asks).flatMap(([formal, failures]) => {
-		/* what the dots hold is several values, none of which a formal of the name `...` could stand for in R code */
-		const other = formals.find(f => f !== formal);
-		return formal === '...' ? [] : failures.map(f => [formal, passes(f, GuardTerm.formal(formal), () => false, other === undefined ? undefined : GuardTerm.formal(other), GuardTerm.formal)] as const);
-	});
+	const formals = Object.keys(facts?.asks ?? {});
+	const stated = builtInClauses(name, defaultGuardFacts()) ?? [];
 	const returns = facts?.returns === undefined || facts.returns === 'argument' ? undefined : returnedClaimOf(facts.returns);
 	const passed = facts?.returns === 'argument' ? formals[0] : undefined;
 	if(stated.length === 0 && returns === undefined && passed === undefined) {
 		return undefined;
 	}
-	const terms = stated.map(([, term]) => term);
-	const claims = claimsOf(terms, stated.map(([formal]) => formal), defaultGuardFacts());
+	const terms = stated.map(c => c.requires);
+	const claims = claimsOf(terms, stated.map(c => c.formal), defaultGuardFacts());
 	const relations = relationsOf(terms, defaultGuardFacts());
 	const conditional = conditionalClaimsOf(terms, formals.filter(f => f !== '...'), defaultGuardFacts());
 	const calls = callsOfTerms(terms);

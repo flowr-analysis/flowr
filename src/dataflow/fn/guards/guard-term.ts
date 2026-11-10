@@ -351,7 +351,26 @@ function typeOfLiteral(this: void, term: GuardConstant): RValueType | undefined 
 	return undefined;
 }
 
-/** A predicate on a literal decided, as a literal has no attributes. */
+/** How R ranks the types `c` combines, the lowest first. */
+const CombinedRanks: readonly RValueType[] = [RValueType.Null, RValueType.Logical, RValueType.Integer, RValueType.Double, RValueType.Complex, RValueType.Character];
+
+/** The type and length of a literal, or of a `c(...)` of literals without names as R combines them, `undefined` where the lexemes do not settle it. */
+function shapeOfLiterals(this: void, term: GuardTerm): { readonly type: RValueType, readonly length: number } | undefined {
+	if(term.kind === 'constant') {
+		const type = typeOfLiteral(term);
+		return type === undefined ? undefined : { type, length: type === RValueType.Null ? 0 : 1 };
+	} else if(!isCall(term, 'c') || !term.known || term.args.some(a => a.name !== undefined || a.value.kind !== 'constant')) {
+		return undefined;
+	}
+	const types = term.args.map(a => typeOfLiteral(a.value as GuardConstant));
+	if(types.includes(undefined)) {
+		return undefined;
+	}
+	const length = types.filter(t => t !== RValueType.Null).length;
+	return { type: CombinedRanks[Math.max(0, ...types.map(t => CombinedRanks.indexOf(t as RValueType)))], length };
+}
+
+/** A predicate on literals decided, as literals have no attributes. */
 function decided(this: void, term: GuardTerm, facts: GuardFactsLookup): GuardTerm {
 	if(!isCall(term) || !term.known) {
 		return term;
@@ -361,13 +380,13 @@ function decided(this: void, term: GuardTerm, facts: GuardFactsLookup): GuardTer
 	}
 	const predicate = facts(term.fn)?.predicate;
 	const [arg] = term.args;
-	const type = term.args.length === 1 && arg.name === undefined && arg.value.kind === 'constant' ? typeOfLiteral(arg.value) : undefined;
-	if(predicate === undefined || type === undefined) {
+	const shape = term.args.length === 1 && arg.name === undefined ? shapeOfLiterals(arg.value) : undefined;
+	if(predicate === undefined || shape === undefined) {
 		return term;
-	} else if(predicate.classed || (predicate.yes & type) === 0) {
+	} else if(predicate.classed || (predicate.yes & shape.type) === 0 || (predicate.scalar && shape.length !== 1)) {
 		return False;
 	}
-	return predicate.exact || (predicate.plain && type !== RValueType.Null) ? True : term;
+	return predicate.exact || (predicate.plain && shape.type !== RValueType.Null) ? True : term;
 }
 
 /** {@link substitute} for a condition in negation normal form, where anything not statable can weaken into {@link True}, while the rest still holds. */
@@ -402,6 +421,7 @@ export const GuardTerm = {
 	readsFree,
 	substitute,
 	substituteCondition,
+	decided,
 	resolved,
 	/** The string a term always spells out: a literal, or a `paste0` or `sprintf("%s", .)` of literals. */
 	constantString(this: void, term: GuardTerm | undefined): string | undefined {

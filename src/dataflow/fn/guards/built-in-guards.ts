@@ -15,6 +15,7 @@ import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsDate, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
+import { parseGuardTerm } from './guard-ground';
 import { groupMethodConditions } from './group-method-guards';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
@@ -148,8 +149,60 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 	});
 }
 
-/** {@link StatedGuards} per package and name. */
-export type BaseGuards = Readonly<Record<string, Readonly<Record<string, StatedGuards>>>>;
+/**
+ * {@link StatedGuards} as the table of the base packages stores them, kept small: `requires` is left out where it is the
+ * conjunction of the reasons, see {@link joinedReasons}, and a location is `line:column`, prefixed by `pkg::name:` for one in another function.
+ */
+export type StoredGuards = Omit<StatedGuards, 'requires' | 'because'> & {
+	readonly requires?: string
+	readonly because?:  readonly (Omit<GuardReason, 'loc'> & { readonly loc?: string })[]
+};
+
+/** {@link StoredGuards} per package and name. */
+export type BaseGuards = Readonly<Record<string, Readonly<Record<string, StoredGuards>>>>;
+
+/** The conjunction of what the reasons require, as {@link StatedGuards.requires} writes it. */
+function joinedReasons(this: void, because: readonly { readonly requires: string }[]): string {
+	return because.map(r => because.length > 1 && r.requires.includes('||') ? `(${r.requires})` : r.requires).join(' && ');
+}
+
+/** The calls the reasons' conditions make, as {@link StatedGuards.calls} lists them, read back from their R syntax. */
+function callsOfReasons(this: void, because: readonly Pick<GuardReason, 'requires' | 'formals'>[]): string[] | undefined {
+	const formals = uniqueArray(because.flatMap(r => r.formals ?? []));
+	const terms = because.map(r => parseGuardTerm(r.requires, formals, defaultGuardFacts()));
+	return terms.every(t => t !== undefined) ? callsOfTerms(terms) : undefined;
+}
+
+/** The {@link StoredGuards} of `guards`, those of the function `self` (`pkg::name`). */
+export function storedGuardsOf(this: void, guards: StatedGuards, self: string): StoredGuards {
+	const { requires, because, calls, ...rest } = guards;
+	const derived = because === undefined ? undefined : callsOfReasons(because);
+	return {
+		...(because !== undefined && joinedReasons(because) === requires ? {} : { requires }),
+		...(calls === undefined || (derived !== undefined && derived.join() === calls.join()) ? {} : { calls }),
+		...rest,
+		...(because === undefined ? {} : { because: because.map(({ loc, ...reason }) => ({ ...reason, ...(loc === undefined ? {} : { loc: `${loc.fn === self ? '' : loc.fn + ':'}${loc.line}:${loc.column}` }) })) })
+	};
+}
+
+/** The {@link StatedGuards} that {@link storedGuardsOf} stored. */
+export function statedGuardsOfStored(this: void, stored: StoredGuards, self: string): StatedGuards {
+	const { requires, because, calls, ...rest } = stored;
+	const derived = calls ?? (because === undefined ? undefined : callsOfReasons(because));
+	return {
+		requires: requires ?? joinedReasons(because ?? []),
+		...(derived === undefined || derived.length === 0 ? {} : { calls: derived }),
+		...rest,
+		...(because === undefined ? {} : { because: because.map(({ loc, ...reason }) => {
+			if(loc === undefined) {
+				return reason;
+			}
+			const [line, column] = loc.split(':').slice(-2).map(Number);
+			const fn = loc.split(':').slice(0, -2).join(':');
+			return { ...reason, loc: { fn: fn === '' ? self : fn, line, column: column } };
+		}) })
+	};
+}
 
 /** One condition R checks for a function written in C, on the formal it is about, with what R says if it does not hold. */
 export interface BuiltInClause {
@@ -219,6 +272,7 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
  */
 export function builtInGuards(this: void, name: BrandedIdentifier, pkg: BrandedNamespace | undefined = baseRExportOwner(name)): StatedGuards | undefined {
 	const owner = pkg ?? PkgName.Base;
-	const read = RBaseGuards[String(owner)]?.[String(name)];
+	const stored = RBaseGuards[String(owner)]?.[String(name)];
+	const read = stored === undefined ? undefined : statedGuardsOfStored(stored, `${String(owner)}::${String(name)}`);
 	return read !== undefined ? { ...read, origin: { source: 'base-table', r: RBaseGuardsVersion, date: RBaseGuardsDate, pkg: owner, version: RBaseGuardsVersion } } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);
 }

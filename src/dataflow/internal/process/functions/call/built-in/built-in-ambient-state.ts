@@ -403,7 +403,7 @@ function changes(effect: AmbientEffect): boolean {
 }
 
 /** Whether the `condition` holds for the arguments `args`, what values are known decided with `data`. */
-function holds<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+export function holds<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
 	if(condition === 'no-arguments') {
 		return args.length === 0 ? Ternary.Always : Ternary.Never;
 	} else if(condition === 'query') {

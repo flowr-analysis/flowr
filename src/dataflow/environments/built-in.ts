@@ -36,8 +36,9 @@ import { processRm } from '../internal/process/functions/call/built-in/built-in-
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
-import { withImpliedAmbient } from './ambient-effect';
-import { applyAmbientEffects, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import { type AmbientCondition, withImpliedAmbient } from './ambient-effect';
+import { applyAmbientEffects, holds, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import { Ternary } from '../../util/logic';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
@@ -130,6 +131,8 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 
 export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	readonly cfg?:                 ExitPointType,
+	/** the call jumps as {@link DefaultBuiltInProcessorConfiguration#cfg} says unless this holds for its arguments */
+	readonly cfgUnless?:           AmbientCondition,
 	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
 	readonly alternativeArgsFrom?: number,
 	readonly readAllArguments?:    boolean,
@@ -192,7 +195,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame, readsDots }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, cfgUnless, alternativeArgsFrom, hasUnknownSideEffects, ambient, scope, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig, readsFrame, readsDots }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	if(scope !== undefined) {
 		/* what the scope does to the state around its code, then what the call itself does (`capture.output(..., file = "a.txt")` writes the file) */
@@ -285,7 +288,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		}
 	}
 
-	if(cfg !== undefined) {
+	if(cfg !== undefined && (cfgUnless === undefined || holds(cfgUnless, args, data) !== Ternary.Always)) {
 		/* the call jumps, so it never falls through to whatever follows it */
 		const exitPoints = res.exitPoints.filter(e => e.type !== ExitPointType.Default || e.nodeId !== rootId);
 		(res as Writable<typeof res>).exitPoints = [...exitPoints, { type: cfg, nodeId: rootId, cds: data.cds }];

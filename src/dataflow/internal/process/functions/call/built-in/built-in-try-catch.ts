@@ -1,5 +1,5 @@
 import type { Writable } from 'ts-essentials';
-import { namesAnErrorHandler } from '../../../../../fn/condition-handlers';
+import { namesAnErrorHandler, SessionConditionClasses } from '../../../../../fn/condition-handlers';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
@@ -37,6 +37,9 @@ import { Dataflow } from '../../../../../graph/df-helper';
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { SourceRange } from '../../../../../../util/range';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
 
 /** Process a built-in try-catch or similar handler. */
 export function processTryCatch<OtherInfo>(
@@ -58,10 +61,13 @@ export function processTryCatch<OtherInfo>(
 
 	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out: `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`. */
 	const aborts = config.aborts ?? true;
-	const catchesError = aborts && (error === undefined || namesAnErrorHandler(args));
-	/* a handler of another class runs once something in the block signals such a condition, an exiting one leaves the block there */
 	const blockInfo = res.processedArguments.find(a => a !== undefined && blockArg.has(a.entryPoint));
 	const blockAst = blockInfo && data.completeAst.idMap.get(blockInfo.entryPoint);
+	/* a handler runs only if something the block runs may signal what it handles, one for the session may run anywhere after */
+	const runs = (condition: BrandedIdentifier) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
+	/* an error may carry any class (`errorCondition(class = "my")`), so a handler of a class the block may signal catches it */
+	const catchesError = aborts && (error === undefined || namesAnErrorHandler(args) || otherHandlers.some(h => !SessionConditionClasses.has(Identifier.getName(h.name)) && runs(Identifier.getName(h.name))));
+	/* a handler of another class runs once something in the block signals such a condition, an exiting one leaves the block there */
 	const sitesOf = (condition: Identifier, link: boolean) => blockAst === undefined ? [] : signalSites(blockAst, Identifier.getName(condition), info.graph, data, link);
 	const signaled = new Set(aborts ? otherHandlers.flatMap(({ name: condition }) => sitesOf(condition, true)) : []);
 	/* a calling handler decides what a signal does as well (`invokeRestart("muffleWarning")`), so what signals stays with the construct */
@@ -81,8 +87,6 @@ export function processTryCatch<OtherInfo>(
 		(blockInfo.exitPoints as ExitPoint[]) = blockInfo.exitPoints.concat(raised);
 		raising.push(...order(blockAst, []));
 	}
-	/* a handler runs only if something the block runs may signal what it handles, one for the session may run anywhere after */
-	const runs = (condition: BrandedIdentifier) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
 	const errorRuns = error !== undefined && errorArg.size > 0 && runs(error);
 	/* if the block raises an error in every case, the error handler is not constrained by it */
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
@@ -346,7 +350,8 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
 			return true;
 		} else if(DfgVertex.isFunctionCall(vertex)) {
-			return !vertex.onlyBuiltin;
+			/* a built-in may raise on its own for what it is handed (`log("a")`, a locked binding), binding a name raises only for what its value does */
+			return !vertex.onlyBuiltin || vertex.origin === 'unnamed' || !(vertex.origin.every(o => NeverRaises.has(o)) || bindsName(node));
 		}
 		const targets = targetsOf?.(name) ?? [];
 		return targets.length === 0 || targets.some(t => !NodeId.isBuiltIn(t.nodeId));
@@ -378,6 +383,18 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		return raising ? [...sites, node.info.id] : sites;
 	};
 	return order;
+}
+
+/** the built-in constructs that raise nothing beyond what their parts do */
+const NeverRaises: ReadonlySet<BuiltInProcName> = new Set([BuiltInProcName.ExpressionList, BuiltInProcName.IfThenElse, BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop,
+	BuiltInProcName.Break, BuiltInProcName.Return, BuiltInProcName.Function, BuiltInProcName.FunctionDefinition, BuiltInProcName.Quote]);
+
+function bindsName(node: RNode<ParentInformation>): boolean {
+	if(!RBinaryOp.is(node) || RBinaryOp.getOperatorInfo(node)?.usedAs !== OperatorUsedAs.Assignment) {
+		return false;
+	}
+	const target = node.operator.startsWith('->') ? node.rhs : node.lhs;
+	return RSymbol.is(target) || RString.is(target);
 }
 
 const CallTypes: ReadonlySet<RType> = new Set([RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.Access, RType.Pipe, RType.IfThenElse, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop, RType.Break, RType.Next]);

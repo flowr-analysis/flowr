@@ -36,6 +36,8 @@ const Signals: DefaultBuiltInProcessorConfiguration = {
 /** what muffles the conditions its code signals */
 const Suppresses: DefaultBuiltInProcessorConfiguration = { keepArgumentOut: true, sig: sig({ expr: ArgProp.Alias | ArgProp.Forced, classes: ArgProp.Value }) };
 
+/** the restarts a signal establishes for its handlers, invoking them resumes the signaling call */
+const MuffleRestarts: readonly string[] = ['muffleWarning', 'muffleMessage'];
 /** what signals an error */
 const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }) };
 
@@ -295,9 +297,9 @@ export const BaseDefinitions = [
 	fn(base('withCallingHandlers'), BuiltInProcName.Try, { block: 'expr', aborts: false, handlers: {}, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }, Primitive),
 	/* its handlers run on what the session signals from then on */
 	fn(base('globalCallingHandlers'), BuiltInProcName.Try, { aborts: false, handlers: {}, sig: sig({ '...': ArgProp.Callee }) }, Primitive),
-	/* invoking a restart leaves the code for the function of that name */
+	/* invoking a restart leaves the code for the function of that name, one muffling a signal resumes where the signal was raised */
 	fn(base('withRestarts'), BuiltInProcName.Try, { block: 'expr', handlers: { error: 'error' }, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }),
-	fn(base('invokeRestart'), BuiltInProcName.Default, { sig: sig({ r: Forced.Value, '...': Forced.Value }) }, Primitive),
+	fn(base('invokeRestart'), BuiltInProcName.Default, { cfg: ExitPointType.Error, cfgUnless: { arg: 'r', formals: ['r'], is: MuffleRestarts }, props: CallProp.Throws, sig: sig({ r: Forced.Value, '...': Forced.Value }) }, Primitive),
 	fn([...base('stopifnot'), ...pkg(PkgName.AssertThat, 'assert_that')], BuiltInProcName.StopIfNot,
 		{ props: CallProp.Invisible | CallProp.Throws, sig: sig({ '...': 0, exprs: ArgProp.NoDefault, exprObject: ArgProp.NoDefault, local: 0 }) }),
 	/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
@@ -345,6 +347,9 @@ export const BaseDefinitions = [
 	fn(base('makeActiveBinding'), BuiltInProcName.Assignment,
 		{ targetVariable: true, mayHaveMoreArgs: true, callsSource: true, environmentArg: 'env', props: CallProp.Scope | CallProp.Invisible, sig: sig({ sym: ArgProp.Value, fun: ArgProp.Callee, env: ArgProp.Written }) },
 		Primitive),
+	/* a locked binding makes every later write to it fail */
+	fn(base('lockBinding', 'unlockBinding'), BuiltInProcName.Default, { hasUnknownSideEffects: true, props: CallProp.Invisible, sig: sig({ sym: Forced.Value, env: Forced.Value }) }),
+	fn(base('lockEnvironment'), BuiltInProcName.Default, { hasUnknownSideEffects: true, props: CallProp.Invisible, sig: sig({ env: Forced.Value, bindings: Forced.Flag }) }),
 	fn(base('delayedAssign'), BuiltInProcName.Assignment,
 		{ keepEnvironment: true, quoteSource: true, targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'assign.env', props: CallProp.Invisible | CallProp.Scope, sig: sig({ x: ArgProp.NoDefault, value: ArgProp.NoDefault | ArgProp.Nse, 'eval.env': Forced.Value, 'assign.env': ArgProp.Forced | ArgProp.Written }) },
 		Primitive),

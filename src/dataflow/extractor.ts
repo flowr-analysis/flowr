@@ -48,7 +48,8 @@ import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDa
 import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow } from './graph/df-helper';
 import { mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
-import { AmbientStateName } from './environments/ambient-state-name';
+import { AmbientStateName, MessageSinks, OutputSinks } from './environments/ambient-state-name';
+import { AmbientAccess, AmbientAccessKind } from './graph/ambient-access';
 import { UnnamedFunctionCallPrefix } from './internal/process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from './environments/built-in-proc-name';
 import { holdsValueOf } from './internal/process/functions/call/built-in/built-in-envir-utils';
@@ -471,6 +472,10 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	};
 	/* each added edge clears the graph's cached call names, but none of these edges changes what a call targets */
 	const prints = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
+	const diverts = (id: NodeId): boolean => {
+		const access = graph.ambientAccessOf(id);
+		return access !== undefined && AmbientAccess.names(access)[AmbientAccessKind.Write].some(state => state === OutputSinks.switched || state === MessageSinks.switched);
+	};
 	let cfg: ControlFlowGraph | undefined;
 	for(const reader of readers) {
 		let before: ReadonlySet<NodeId> | undefined;
@@ -481,8 +486,8 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			before ??= reachableTo(cfg ??= new ControlFlowGraph(graph), [reader.id]);
 			if(before.has(writer.id)) {
 				graph.addEdge(reader.id, writer.id, EdgeType.Reads);
-				/* whatever prints into a diverting writer (`print` after `sink(file)`) writes to the resource as well */
-				for(const id of Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads).filter(prints)) {
+				/* whatever prints into a diverting writer (`print` after `sink(file)`) writes to the resource as well, a writer that diverts nothing (`dir.create`) takes none of it */
+				for(const id of diverts(writer.id) ? Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads).filter(prints) : []) {
 					graph.addEdge(reader.id, id, EdgeType.Reads);
 				}
 			}

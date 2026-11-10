@@ -8,6 +8,7 @@ import { Dataflow } from '../../graph/df-helper';
 import { OriginType } from '../../origin/dfg-get-origin';
 import type { CallRuledOut, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../graph/vertex';
 import { DfgVertex } from '../../graph/vertex';
+import { DfEdge, EdgeType } from '../../graph/edge';
 import { ArgProp, CallProp, CallProps, ImpureProps, SemanticCallTag, type ArgProps, type FnSig } from '../../environments/built-in-props';
 import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../environments/identifier';
 import { BuiltInProcName } from '../../environments/built-in-proc-name';
@@ -288,6 +289,16 @@ function onceBoundLiteral(this: void, name: BrandedIdentifier, scope: Scope, sta
 	return term?.kind === 'constant' ? term : undefined;
 }
 
+/** Whether the read reads what a call of another function writes into this frame, rather than only a definition of the function itself. */
+function readsCallWrite(this: void, id: NodeId, scope: Scope, state: GuardState): boolean {
+	for(const [target, edge] of state.graph.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.Reads) && !scope.vertex.subflow.graph.has(target) && DfgVertex.isFunctionCall(state.graph.getVertex(target))) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /** What the symbol stands for in terms of the function it is read in: a formal, a value that was bound to a local, or a name from outside. */
 function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: GuardState, depth: number): GuardTerm | undefined {
 	const name = NodeId.recoverBareName(node.info.id, state.graph.idMap);
@@ -314,6 +325,10 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 		return isFormalName(name, scope) || inside.length > 0 ? undefined : { kind: 'free', name };
 	}
 	const [{ id }] = origins;
+	/* a call writing the name into this frame, like `assign("y", v, envir = parent.frame())` in a callee, gives it another value */
+	if(readsCallWrite(node.info.id, scope, state)) {
+		return isFormalName(name, scope) || scope.vertex.subflow.graph.has(id) ? undefined : { kind: 'free', name };
+	}
 	const free: GuardTerm = { kind: 'free', name, origin: id };
 	const formal = scope.formals.get(id);
 	if(formal !== undefined) {

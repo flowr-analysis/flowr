@@ -346,5 +346,7 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		assertSliced(label('RA-B1-try-around-forced-promise', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'g <- function(a) { r <- try(a, silent = TRUE); 1 }\ng(stop("lazy"))\nprint("alive")', ['3@print'], 'g <- function(a) {\n        try(a, silent = TRUE)\n        1\n    }\ng(stop("lazy"))\nprint("alive")', { cfgExcludeProperties: ['single-entry-and-exit'] });
 		/* the call that may raise is an exit of the program */
 		assertSliced(label('RA-B2-kept-arguments-stay-in-body', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(1, 2))\nprint("valid")', ['3@print'], 'validate <- function(x) {\n        is.numeric(x)\n        all(x >= 0)\n    }\nprint("valid")', { cfgExcludeProperties: ['single-entry-and-exit'] });
+		counterexample('RA-B3-rm-reads-what-it-removes', 'mean <- function(x) stop("shadow")\nrm(mean)\nprint(mean(1:3))', '2@rm', 'mean <- function(x) { }\nrm(mean)');
+		counterexample('RA-B3b-rm-of-a-variable', 'x <- 1\nrm(x)', '2@rm', 'x <- 1\nrm(x)');
 	});
 }));

@@ -9,7 +9,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { Identifier, ReferenceType, type BrandedIdentifier } from '../../../../../environments/identifier';
@@ -250,6 +250,14 @@ export function processRm<OtherInfo>(
 		return res;
 	}
 
+	/* whether `rm` removes a binding or warns that there is none depends on the definitions it removes */
+	for(const { name } of targets.names) {
+		for(const definition of Resolve.byName(name, data.environment) ?? []) {
+			if(!NodeId.isBuiltIn(definition.nodeId)) {
+				res.graph.addEdge(rootId, definition.nodeId, EdgeType.Reads);
+			}
+		}
+	}
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
 	const kills = buildKills(targets, data.cds, rootId);
 	if(kills.length === 0) {

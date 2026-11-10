@@ -184,6 +184,9 @@ print(2)
 			assertLinter('after infinite while', parser, 'while(TRUE){ foo }; 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 21, 1, 21], quickFix: [{ type: 'remove', loc: [1, 21, 1, 21], description: 'Remove the unreachable code' }] }
 			]);
+			assertLinter('a stop in a for body that may not run', parser, 'for(i in seq_len(0)) stop("never")\nprint("alive")', 'dead-code', []);
+			assertLinter('a stop in a while body that may not run', parser, 'while(x) stop("never")\nprint("alive")', 'dead-code', []);
+			assertLinter('a return in a for body that may not run', parser, 'f <- function(x) { for(i in x) return(1); 2 }\nprint(f(integer(0)))', 'dead-code', []);
 		});
 	});
 }));

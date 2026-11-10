@@ -163,7 +163,8 @@ export function processForLoop<OtherInfo>(
 		entryPoint:        name.info.id,
 		cfgEntry:          ControlFlow.entryOf(vector),
 		cfgExit:           rootId,
-		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		/* unless the body certainly runs, it only jumps away when it runs */
+		exitPoints:        filterOutLoopExitPoints(once ? body.exitPoints : body.exitPoints.map(e => ({ ...e, cds: [...e.cds ?? data.cds ?? [], cd[0]] }))),
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             variable.hooks.concat(vector.hooks, once ? body.hooks : hooksUnder(body.hooks, cd)),
 		kill:              loopKill,

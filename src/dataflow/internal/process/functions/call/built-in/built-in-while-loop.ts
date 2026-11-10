@@ -130,7 +130,8 @@ export function processWhileLoop<OtherInfo>(
 		entryPoint:        nameId,
 		cfgEntry:          conditionEntry,
 		cfgExit:           rootId,
-		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		/* unless the body certainly runs, it only jumps away when it runs */
+		exitPoints:        filterOutLoopExitPoints(conditionIsAlwaysTrue ? body.exitPoints : body.exitPoints.map(e => ({ ...e, cds: [...e.cds ?? data.cds ?? [], whenTrue] }))),
 		graph,
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             condition.hooks.concat(conditionIsAlwaysTrue ? body.hooks : hooksUnder(body.hooks, cdTrue)),

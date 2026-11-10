@@ -88,7 +88,8 @@ describe('flowR linter', withTreeSitter(parser => {
 				['quoted code', 'quote(sqrt("a"))'],
 				['a vector of numbers', 'sqrt(c(1, 2))'],
 				['a length whose first element is fine', 'seq_len(c(1, -2))'],
-				['a logical', 'sqrt(TRUE)']
+				['a logical', 'sqrt(TRUE)'],
+				['an option removed by NULL falls back to the default', 'options(my.opt = 3)\noptions(my.opt = NULL)\nx <- getOption("my.opt", "gone")\nwriteLines(x, "o.txt")']
 			] as const) {
 				assertLinter(label, parser, code, 'call-contracts', []);
 			}

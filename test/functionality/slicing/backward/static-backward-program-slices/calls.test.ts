@@ -749,6 +749,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('An overwritten option is dropped', 'options(digits=2)\noptions(digits=4)\nprint(1)', '3@print', 'options(digits=4)\nprint(1)');
 			// @signature built-in-options
 			optionCase('getOption reads the option it names', 'options(foo=2)\noptions(bar=3)\nx <- getOption("foo")', '3@x', 'options(foo=2)\nx <- getOption("foo")');
+			optionCase('an option removed with NULL gives the default', 'options(foo=2)\noptions(foo=NULL)\nx <- getOption("foo", 1)', '3@x', 'options(foo=NULL)\nx <- getOption("foo", 1)');
 			optionCase('getOption with a default', 'options(foo=2)\noptions(bar=3)\nx <- getOption("bar", 1)', '3@x', 'options(bar=3)\nx <- getOption("bar", 1)');
 			optionCase('getOption resolves the name', 'options(foo=2)\noptions(bar=3)\nk <- "bar"\nx <- getOption(k)', '4@x', 'options(bar=3)\nk <- "bar"\nx <- getOption(k)');
 			optionCase('getOption with an unknown name reads all options', 'f <- function(k) getOption(k)\noptions(foo=2)\noptions(bar=3)\nx <- f(u)', '4@x', 'f <- function(k) getOption(k)\noptions(foo=2)\noptions(bar=3)\nx <- f(u)');

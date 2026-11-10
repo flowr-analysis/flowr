@@ -126,7 +126,8 @@ function linkEntryValue<OtherInfo>(res: DataflowInformation, rootId: NodeId, sta
 		const setter = data.completeAst.idMap.get(nodeId);
 		const named = RFunctionCall.is(setter) && whole.has(nodeId) ? setter.arguments.filter(a => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === key) : [];
 		const value = named.length === 1 ? RArgument.valueOf(named[0]) : undefined;
-		if(value === undefined) {
+		/* setting an option to NULL removes it, so reading it hands back the default instead */
+		if(value === undefined || (RSymbol.is(value) && Identifier.getName(value.content) === 'NULL')) {
 			return;
 		}
 		values.push(value.info.id);

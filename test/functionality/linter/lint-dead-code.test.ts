@@ -139,6 +139,8 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 7], quickFix: [{ type: 'remove', loc: [4, 3, 4, 7], description: 'Remove the unreachable code' }] }
 			]);
 			assertLinter('empty fall-through arms are not dead', parser, 'f <- function(k) {\n  switch(k, a =, b = 2, c = 3)\n  after <- 1\n  after\n}', 'dead-code', []);
+			assertLinter('a call of several possible callees that only some stop is not certain to stop', parser, 'g <- function(k) {\n  h <- function() stop("e")\n  if(k) h <- function() 1\n  h()\n  cat("maybe")\n}\ng(TRUE)', 'dead-code', []);
+			assertLinter('a call of several possible callees that all stop stops', parser, 'g <- function(k) {\n  h <- function() stop("a")\n  if(k) h <- function() stop("b")\n  h()\n  cat("dead")\n}', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 13], quickFix: [{ type: 'remove', loc: [5, 3, 5, 13], description: 'Remove the unreachable code' }] }]);
 		});
 
 		describe('switch with a constant selector', () => {

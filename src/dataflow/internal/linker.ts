@@ -423,8 +423,10 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		if(!Dataflow.hasEdge(graph, id, def.id, EdgeType.Calls)) {
 			const exits = linkFunctionCallWithSingleTarget(graph, def, info, idMap);
 			if(exits.length > 0 && escapesAnonymousFunction(graph, id, def.id, idMap)) {
-				/* it is the call that raises what its callee raises, so what runs after it only runs if the call returns */
-				propagateExitPoints.push(...exits.map(exit => ({ ...exit, cds: withCds(exit.cds, [{ id }]) })));
+				/* it is the call that raises what its callee raises, so what runs after it only runs if the call returns;
+				   with several possible callees, an exit only some of them take is not certain */
+				const certain = (e: ExitPoint) => functionDefs.size <= 1 || [...functionDefs].every(d => d.exitPoints.some(o => o.type === e.type));
+				propagateExitPoints.push(...exits.map(e => ({ ...e, cds: withCds(e.cds, [certain(e) ? { id } : { id, when: true }]) })));
 			}
 		}
 	}

@@ -47,8 +47,8 @@ interface RmFrameArg<OtherInfo> {
 /** the formals of `ls`, which R matches by unique prefix (`all = TRUE` is `all.names = TRUE`) */
 const LsFormals: readonly BrandedIdentifier[] = ['name', 'pos', 'envir', 'all.names', 'pattern', 'sorted'];
 
-/** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope */
-function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+/** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope, or the whole of `target`, the environment `rm` removes from (`rm(list = ls(e), envir = e)`) */
+function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, target?: RNode<OtherInfo & ParentInformation>): boolean {
 	if(!RFunctionCall.isNamed(value)) {
 		return false;
 	}
@@ -56,13 +56,32 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 	if((fn !== 'ls' && fn !== 'objects') || (ns !== undefined && ns !== 'base')) {
 		return false;
 	}
-	// a `pattern`/`envir` argument restricts the listing, so only a plain listing clears everything
-	const listsEverything = value.arguments.every(a => RArgument.isNamed(a) && ['all.names', 'sorted'].includes(findByPrefixIfUnique(Identifier.getName(a.name.content), LsFormals) ?? ''));
+	// a `pattern` argument restricts the listing, and so does an environment that is not the one removed from, only a plain listing clears everything
+	const listsEverything = value.arguments.every((a, i) => {
+		if(RArgument.isEmpty(a)) {
+			return false;
+		}
+		const formal = a.name === undefined ? undefined : findByPrefixIfUnique(Identifier.getName(a.name.content), LsFormals);
+		if(formal === 'all.names' || formal === 'sorted') {
+			return true;
+		}
+		/* the first unnamed argument is `name`, an environment is taken as is */
+		return (formal === 'envir' || formal === 'name' || (a.name === undefined && i === 0)) && isSameEnvironment(a.value, target, data);
+	});
 	if(!listsEverything) {
 		return false;
 	}
 	// an explicit `base::` is always the built-in; otherwise only when `ls` is not shadowed
 	return ns === 'base' || Resolve.isBuiltIn(fn, data.environment, ReferenceType.Function);
+}
+
+/** whether both nodes are the same variable, bound by the same definitions */
+function isSameEnvironment<OtherInfo>(a: RNode<OtherInfo & ParentInformation> | undefined, b: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	if(!RSymbol.is(a) || !RSymbol.is(b) || a.content !== b.content) {
+		return false;
+	}
+	const [da, db] = [Resolve.byName(a.content, data.environment), Resolve.byName(b.content, data.environment)];
+	return da !== undefined && da.length > 0 && da.length === db?.length && da.every(d => db.some(o => o.nodeId === d.nodeId));
 }
 
 /** How a formal of `rm` contributes to the removal. */
@@ -106,13 +125,13 @@ function collectDotArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<Ot
 }
 
 /** Resolves the `list=` argument, recognizing a whole-scope clear via built-in `ls()` and concrete string vectors. */
-function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
+function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, envir: RNode<OtherInfo & ParentInformation> | undefined): void {
 	if(!value) {
 		return;
 	}
 	if(RString.is(value)) {
 		targets.names.push({ name: value.content.str, nodeId: value.info.id });
-	} else if(isBuiltInLsCall(value, data)) {
+	} else if(isBuiltInLsCall(value, data, envir)) {
 		targets.all = true;
 	} else {
 		const elements = NodeValue.setOf(value.info.id, data)?.elements;
@@ -137,6 +156,7 @@ function collectRmTargets<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): RmTargets<OtherInfo> {
 	const targets: RmTargets<OtherInfo> = { names: [], all: false, unknown: false };
+	const envirArg = RArgument.findNamed(args, 'envir')?.value;
 	for(const arg of args) {
 		if(RArgument.isEmpty(arg)) {
 			continue;
@@ -146,7 +166,7 @@ function collectRmTargets<OtherInfo>(
 				collectDotArg(targets, arg.value);
 				break;
 			case 'names':
-				collectListArg(targets, arg.value, data);
+				collectListArg(targets, arg.value, data, envirArg);
 				break;
 			case 'frame': {
 				const formal = arg.name?.content as RmFrameArg<OtherInfo>['formal'];
@@ -169,7 +189,7 @@ function collectRmTargets<OtherInfo>(
 function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly ControlDependency[] | undefined, killedBy: NodeId): KillReference[] {
 	const kills: KillReference[] = [];
 	if(targets.all) {
-		kills.push({ kind: 'all', cds });
+		kills.push({ kind: 'all', cds, killedBy });
 	}
 	if(targets.unknown) {
 		kills.push({ kind: 'unknown', cds });

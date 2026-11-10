@@ -271,10 +271,17 @@ export class Hits {
 				asks((row.querySelector('.pkg')?.textContent ?? '') + '::' + name);
 			}
 		});
-		const head = el('div', 'dhead');
-		head.append(s3 ?? el('span'), ask);
 		const box = el('div', 'detail');
-		box.append(head, ...(contracted === undefined ? [] : [contracted]), list);
+		/* without an S3 line the command joins the contract's header rather than taking a line of its own */
+		const chead = s3 === undefined ? contracted?.querySelector('.chead') : undefined;
+		if(chead) {
+			chead.append(ask);
+			box.append(contracted as HTMLElement, list);
+		} else {
+			const head = el('div', 'dhead');
+			head.append(s3 ?? el('span'), ask);
+			box.append(head, ...(contracted === undefined ? [] : [contracted]), list);
+		}
 		return box;
 	}
 

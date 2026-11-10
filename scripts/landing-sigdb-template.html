@@ -177,6 +177,13 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .dhead .s3 { flex: 1 1 20rem; min-width: 0; }
 #hits .askcmd { margin-left: auto; font-size: .7rem; color: var(--muted); cursor: copy; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #hits .askcmd:hover { color: var(--accent); }
+#hits .chead .askcmd { float: right; max-width: 50%; }
+/* on a narrow screen a package row keeps its name, version and link, the rest is in the hover and the opened view */
+@media (max-width: 40rem) {
+	#hits .own { grid-template-columns: minmax(0, auto) minmax(0, 1fr) 1rem; }
+	#hits .own .flags, #hits .own .src, #hits .own .tag { display: none; }
+	#hits .chead .askcmd { display: none; }
+}
 #hits li:hover { border-color: var(--accent); }
 #hits .name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
 #hits .name.value { font-weight: 500; font-style: italic; }

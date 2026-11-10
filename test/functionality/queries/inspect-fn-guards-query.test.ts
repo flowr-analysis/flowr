@@ -64,7 +64,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 
 	/* the guards as they are commonly written */
 	guards('f <- function(x) { if(!is.numeric(x)) stop("must be numeric"); x }', 'is.numeric(x)');
-	guards('f <- function(x) { stopifnot(is.numeric(x), x > 0); x }', 'is.numeric(x) && all(x > 0)');
+	guards('f <- function(x) { stopifnot(is.numeric(x), x > 0); x }', 'is.numeric(x) && (!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x > 0)');
 	guards('f <- function(x) { stopifnot("must" = is.character(x)); stopifnot(exprs = { length(x) == 1; nchar(x) > 0 }); x }', 'is.character(x) && length(x) == 1 && all(nchar(x) > 0)');
 
 	/* what an earlier return skips, and what a branch asks only of itself */
@@ -74,22 +74,22 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 
 	/* boolean structure */
 	guards('f <- function(x) { if(is.null(x) || length(x) != 1) stop("a"); 2 }', '!is.null(x) && length(x) == 1');
-	guards('f <- function(x) { if(!is.null(x) && x < 0) stop("a"); 2 }', '(is.null(x) || !is.function(x) && !is.environment(x) || is.object(x)) && (is.null(x) || x >= 0)');
+	guards('f <- function(x) { if(!is.null(x) && x < 0) stop("a"); 2 }', '(is.null(x) || !is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && (is.null(x) || x >= 0)');
 	guards('f <- function(x) { is.numeric(x) || stop("a"); 2 }', 'is.numeric(x)');
 	guards('f <- function(x) { is.numeric(x) && stop("a"); 2 }', '!is.numeric(x)');
 	guards('f <- function(x) { if(is.numeric(x)) 1 else stop("no") }', 'is.numeric(x)');
-	guards('f <- function(x) { if(any(x < 0)) stop("no"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x >= 0)');
-	guards('f <- function(x) { if(!all(x > 0)) stop("no"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0)');
+	guards('f <- function(x) { if(any(x < 0)) stop("no"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x >= 0)');
+	guards('f <- function(x) { if(!all(x > 0)) stop("no"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x > 0)');
 	guards('f <- function(x) { stopifnot(!any(is.na(x))); 1 }', 'all(!is.na(x))');
-	guards('f <- function(x) { stopifnot(x > 0 | x < -1); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0 | x < -1)');
-	guards('f <- function(x) { stopifnot(x > 0 & x < 5); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0) && all(x < 5)');
+	guards('f <- function(x) { stopifnot(x > 0 | x < -1); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x > 0 | x < -1)');
+	guards('f <- function(x) { stopifnot(x > 0 & x < 5); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x > 0) && all(x < 5)');
 	guards('f <- function(x) { if(isTRUE(x)) 1 else stop("x") }', 'isTRUE(x)');
 	guards('f <- function(x) { if(isFALSE(is.numeric(x))) stop("x"); 1 }', '!isFALSE(is.numeric(x))');
 	guards('f <- function(x) { if(x) stop("x"); 1 }', 'length(x) >= 1 && length(x) <= 1 && !is.na(x) && !as.logical(unclass(x))');
 	guards('f <- function(x) { stopifnot(x); 1 }', 'all(x)');
 
 	/* what a formal holds by the time of the guard */
-	guards('f <- function(x) { x <- as.character(x); if(!is.character(x)) stop("x"); 1 }', 'is.character(as.character(x))');
+	guards('f <- function(x) { x <- as.character(x); if(!is.character(x)) stop("x"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && is.character(as.character(x))');
 	guards('f <- function(x) { y <- x; if(!is.numeric(y)) stop("x"); 1 }', 'is.numeric(x)');
 	guards('f <- function(x) { n <- length(x); if(n != 1) stop("x"); 1 }', 'length(x) == 1');
 	guards('f <- function(x) { x <- x + 1; if(x < 0) stop("x"); 1 }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x)) && x + 1 >= 0');
@@ -128,16 +128,16 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(!is.function(x)) stop("n"); x(); 1 }', 'is.function(x)');
 	guards('f <- function(x) { if(nrow(x) < 1) stop("n"); 1 }', 'nrow(x) >= 1');
 	guards('f <- function(x) { if(nchar(x) == 0) stop("n"); 1 }', 'nchar(x) != 0');
-	guards('f <- function(x) { if(1 > x) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && 1 <= x');
+	guards('f <- function(x) { if(1 > x) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && 1 <= x');
 	guards('f <- function(x) { if(length(x) == 0) stop("n"); 1 }', 'length(x) != 0');
 	guards('f <- function(x) { if(length(x) > 3) stop("n"); 1 }', 'length(x) <= 3');
 	guards('f <- function(x) { if(identical(x, "a")) 1 else stop("no") }', 'identical(x, "a")');
 
 	/* what R fails on by itself */
 	guards('f <- function(x) { x + 1 }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x)');
-	guards('f <- function(x, y) { x + y }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x))');
+	guards('f <- function(x, y) { x + y }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.null(dim(x)) || is.null(dim(y)) || length(x) == length(y) || is.object(x) || is.object(y)) && (!is.null(dim(x)) || is.call(x) || is.null(dim(y)) || length(y) <= 1 || length(x) <= length(y) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x)) && (is.null(dim(y)) || is.null(dim(x)) || length(y) == length(x) || is.object(y) || is.object(x)) && (!is.null(dim(y)) || is.call(y) || is.null(dim(x)) || length(x) <= 1 || length(y) <= length(x) || is.object(y) || is.object(x))');
 	guards('f <- function(x) { -x + 1L }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x)');
-	guards('f <- function(x) { x > 1 }', '!is.function(x) && !is.environment(x) || is.object(x)');
+	guards('f <- function(x) { x > 1 }', '!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)');
 	guards('f <- function(x) { !x }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || length(x) == 0 || is.object(x)');
 	guards('f <- function(x) { x && TRUE }', '(is.logical(x) || is.numeric(x) || is.complex(x) || is.object(x)) && length(x) <= 1');
 	guards('f <- function(x) { TRUE || x }', '');
@@ -145,17 +145,17 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(x) 1 else 2 }', 'length(x) >= 1 && length(x) <= 1 && !is.na(x)');
 	guards('f <- function(x) { sum(x) }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x)');
 	guards('f <- function(x, y) { sum(x, y, 1) }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y))');
-	guards('f <- function(x) { sqrt(x) }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x)');
+	guards('f <- function(x) { sqrt(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && !identical(oldClass(x), "difftime") && (is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x))');
 	guards('f <- function(x) { log(x) }', '');
-	guards('f <- function(x) { round(x) }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x)');
-	guards('f <- function(x) { trunc(x) }', 'is.numeric(x) || is.logical(x) || is.object(x)');
-	guards('f <- function(x) { floor(x) + ceiling(x) }', 'is.numeric(x) || is.logical(x) || is.object(x)');
-	guards('f <- function(x) { sign(x) }', 'is.numeric(x) || is.logical(x) || is.object(x)');
-	guards('f <- function(x) { gamma(x) }', 'is.numeric(x) || is.logical(x) || is.object(x)');
-	guards('f <- function(x) { cos(x) }', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x)');
-	guards('f <- function(x) { cumsum(x) }', '!is.function(x) && !is.environment(x) && !is.language(x) || is.object(x)');
-	guards('f <- function(x) { cummax(x) }', '(!is.function(x) && !is.environment(x) && !is.language(x) || is.object(x)) && (!is.complex(x) || is.object(x))');
-	guards('f <- function(x) { if(trunc(x) != x) stop("whole"); 1 }', '(is.numeric(x) || is.logical(x) || is.object(x)) && (!is.function(x) && !is.environment(x) || is.object(x) || is.object(trunc(x))) && trunc(x) == x');
+	guards('f <- function(x) { round(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && (is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x))');
+	guards('f <- function(x) { trunc(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && (is.numeric(x) || is.logical(x) || is.object(x))');
+	guards('f <- function(x) { floor(x) + ceiling(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && (is.numeric(x) || is.logical(x) || is.object(x))');
+	guards('f <- function(x) { sign(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && (is.numeric(x) || is.logical(x) || is.object(x))');
+	guards('f <- function(x) { gamma(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && !identical(oldClass(x), "difftime") && (is.numeric(x) || is.logical(x) || is.object(x))');
+	guards('f <- function(x) { cos(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && !identical(oldClass(x), "difftime") && (is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x))');
+	guards('f <- function(x) { cumsum(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && !identical(oldClass(x), "difftime") && (!is.function(x) && !is.environment(x) && !is.language(x) || is.object(x))');
+	guards('f <- function(x) { cummax(x) }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && !identical(oldClass(x), "difftime") && (!is.function(x) && !is.environment(x) && !is.language(x) || is.object(x)) && (!is.complex(x) || length(x) == 0 || is.object(x))');
+	guards('f <- function(x) { if(trunc(x) != x) stop("whole"); 1 }', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && (is.numeric(x) || is.logical(x) || is.object(x)) && (!is.function(x) && !is.environment(x) || is.object(x) || is.object(trunc(x))) && trunc(x) == x');
 	guards('f <- function(x) { x$a }', 'is.null(x) || is.recursive(x) && !is.function(x) || is.object(x)');
 	guards('f <- function(x) { x$a <- 1; x }', '!is.function(x) && !is.symbol(x) || is.object(x)');
 	guards('f <- function(x) { x[1] }', '!is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x)');
@@ -202,10 +202,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(y, ...) { if(!is.numeric(y)) stop("y"); y }; f <- function(...) { g(...); 1 }', '');
 	guards('g <- function(y) { if(missing(y)) stop("y"); 1 }; f <- function(x) { g(x); 1 }', '!missing(x)');
 	guards('g <- function(y) { if(missing(y)) stop("y"); 1 }; f <- function(x) { g(); 1 }', 'FALSE');
-	guards('g <- function(y) { if(y > 0) { h2(y) }; 1 }; h2 <- function(z) { stopifnot(is.numeric(z)); 1 }; f <- function(x) { g(x); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && (x <= 0 || is.numeric(x))');
+	guards('g <- function(y) { if(y > 0) { h2(y) }; 1 }; h2 <- function(z) { stopifnot(is.numeric(z)); 1 }; f <- function(x) { g(x); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && (x <= 0 || is.numeric(x))');
 
 	/* predicates are seen through */
-	guards('is_pos <- function(v) is.numeric(v) && v > 0; f <- function(x) { if(!is_pos(x)) stop("n"); 1 }', 'is.numeric(x) && x > 0');
+	guards('is_pos <- function(v) is.numeric(v) && v > 0; f <- function(x) { if(!is_pos(x)) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && is.numeric(x) && x > 0');
 	guards('is_pos <- function(v) { return(is.numeric(v)) }; f <- function(x) { stopifnot(is_pos(x)); 1 }', 'is.numeric(x)');
 
 	/* recursion has to end */
@@ -245,7 +245,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x, y = is.null(x)) { if(y) stop("n"); 1 }', 'length(y) >= 1 && length(y) <= 1 && !is.na(y) && !as.logical(unclass(y))');
 	guards('f <- function(x) { eval(quote(x <- 1)); if(is.null(x)) stop("n"); 1 }', '');
 	guards('f <- function(x) { if(!requireNamespace("rlang", quietly = TRUE)) stop("n"); 1 }', '');
-	guards('LIM <- 3; f <- function(x) { if(x > LIM) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x <= 3');
+	guards('LIM <- 3; f <- function(x) { if(x > LIM) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && x <= 3');
 	guards('f <- function(x) { x |> is.null() |> isFALSE() |> stopifnot(); 1 }', '');
 	guards('f <- function(x) { if(is.null(x)) stop("n") else if(!is.numeric(x)) stop("m"); 1 }', '!is.null(x) && is.numeric(x)');
 	guards('f <- function(x, y) { if(length(x) != length(y)) stop("n"); 1 }', 'length(x) == length(y)');
@@ -291,7 +291,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { x = "a"; if(!is.character(x)) stop("n"); 1 }', '');
 	guards('f <- function(x) { "a" -> x; if(!is.character(x)) stop("n"); 1 }', '');
 	guards('f <- function(x) { x <- 1; if(FALSE) x <- 2; if(!is.numeric(x)) stop("n"); 1 }', '');
-	guards('f <- function(x) { names(x) <- "a"; if(is.null(names(x))) stop("n"); 1 }', 'is.object(x) || is.null("a") || !is.null(x) && !is.function(x) && !is.environment(x) && !is.symbol(x)');
+	guards('f <- function(x) { names(x) <- "a"; if(is.null(names(x))) stop("n"); 1 }', '');
 	guards('f <- function(x, y) { y <- x; x <- "a"; if(!is.numeric(y)) stop("n"); 1 }', 'is.numeric(x)');
 	guards('f <- function(x, y) { n <- length(x); x <- 1:5; if(n != 1) stop("n"); 1 }', 'length(x) == 1');
 
@@ -344,13 +344,13 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(length(x)) stop("n"); 1 }', '!length(x)');
 	guards('f <- function(x) { if(!length(x)) stop("n"); 1 }', 'length(x)');
 	guards('f <- function(x) { if(nchar(x)) stop("n"); 1 }', '!nchar(x)');
-	guards('f <- function(x) { if(!nzchar(x)) stop("n"); 1 }', 'nzchar(x)');
+	guards('f <- function(x) { if(!nzchar(x)) stop("n"); 1 }', '!is.function(x) && !is.environment(x) && nzchar(x)');
 	guards('f <- function(x) { if(x == "a") stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x != "a"');
 	guards('f <- function(x) { if(x != "a") stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x == "a"');
 	guards('f <- function(x) { if(x == 1) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x != 1');
-	guards('f <- function(x) { if(!is.na(x) && x > 1) stop("n"); 1 }', '(is.na(x) || !is.function(x) && !is.environment(x) || is.object(x)) && (is.na(x) || x <= 1)');
+	guards('f <- function(x) { if(!is.na(x) && x > 1) stop("n"); 1 }', '(is.na(x) || !is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && (is.na(x) || x <= 1)');
 	guards('f <- function(x) { if(xor(is.null(x), is.numeric(x))) stop("n"); 1 }', '!xor(is.null(x), is.numeric(x))');
-	guards('f <- function(x) { if(is.numeric(x) & x > 1) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && (!is.numeric(x) || x <= 1)');
+	guards('f <- function(x) { if(is.numeric(x) & x > 1) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && (!is.numeric(x) || x <= 1)');
 	guards('f <- function(x) { if(is.numeric(x) | is.character(x)) 1 else stop("n") }', 'is.numeric(x) || is.character(x)');
 	guards('f <- function(x) { stopifnot(is.numeric(x) || is.character(x)); 1 }', 'is.numeric(x) || is.character(x)');
 	guards('f <- function(x) { stopifnot(is.numeric(x) && length(x) == 1); 1 }', 'is.numeric(x) && length(x) == 1');
@@ -359,7 +359,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(any(!x %in% c("a", "b"))) stop("n"); 1 }', 'all(x %in% c("a", "b"))');
 	guards('f <- function(x) { if(!all(x %in% c("a", "b"))) stop("n"); 1 }', 'all(x %in% c("a", "b"))');
 	guards('f <- function(x) { if(any(c(TRUE, x))) stop("n"); 1 }', 'all(!c(TRUE, x))');
-	guards('f <- function(x) { if(any(x, na.rm = TRUE)) stop("n"); 1 }', '!any(x, na.rm = TRUE)');
+	guards('f <- function(x) { if(any(x, na.rm = TRUE)) stop("n"); 1 }', '(!is.function(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && !any(x, na.rm = TRUE)');
 	guards('f <- function(x) { if(isTRUE(all.equal(x, 1))) stop("n"); 1 }', '!isTRUE(all.equal(x, 1))');
 
 	/* class checks that say nothing or little */
@@ -374,9 +374,9 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(length(x) != 1L) stop("n"); 1 }', 'length(x) == 1L');
 	guards('f <- function(x) { if(length(x) < 1.5) stop("n"); 1 }', 'length(x) >= 1.5');
 	guards('f <- function(x) { if(NROW(x) < 2) stop("n"); 1 }', 'NROW(x) >= 2');
-	guards('f <- function(x) { if(x > 1 || x < -1) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x <= 1 && x >= -1');
-	guards('f <- function(x) { if(-1 > x) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && -1 <= x');
-	guards('f <- function(x) { if(x > 5) return(1); if(x < 0) stop("n"); 2 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && (x > 5 || x >= 0)');
+	guards('f <- function(x) { if(x > 1 || x < -1) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && x <= 1 && x >= -1');
+	guards('f <- function(x) { if(-1 > x) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && -1 <= x');
+	guards('f <- function(x) { if(x > 5) return(1); if(x < 0) stop("n"); 2 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && (x > 5 || x >= 0)');
 	guards('f <- function(x) { s <- "a"; if(x != s) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x == "a"');
 	guards('f <- function(x) { v <- c("a", "b"); if(!(x %in% v)) stop("n"); 1 }', 'x %in% c("a", "b")');
 
@@ -387,7 +387,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', '!is.null(...names()) || is.list(x)');
 	guards('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(y = x, ...) }', 'is.list(x)');
 	guards('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; f <- function(...) { g(...) }', '');
-	guards('f <- function(x) { if(!is.finite(x)) stop("n"); 1 }', 'is.finite(x)');
+	guards('f <- function(x) { if(!is.finite(x)) stop("n"); 1 }', '(is.atomic(x) || is.null(x) || is.object(x)) && is.finite(x)');
 	guards('f <- function(x) { if(is.na(x)) stop("n"); 1 }', '!is.na(x)');
 	guards('f <- function(x) { if(is.na(x)) return(1); 2 }', '');
 	guards('f <- function(x) { with(list(x = 1), stopifnot(is.character(x))); 1 }', '');
@@ -412,9 +412,9 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('g <- function(o) UseMethod("g"); g.default <- (function(o) 1); f <- function(x) { g(x); 2 }', '');
 	guards('g <- function(o) UseMethod("g"); g.default <<- function(o) 1; f <- function(x) { g(x); 2 }', '');
 	guards('g <- function(o) UseMethod("g"); g.default <- { function(o) 1 }; f <- function(x) { g(x); 2 }', '');
-	guards('LIM <- 3; LIM <- 4; f <- function(x) { if(x > LIM) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) || is.object(x)) && x <= 4');
-	guards('f <- function(x) { if(x > LIM) stop("n"); 1 }; LIM <- 3', '(!is.function(x) && !is.environment(x) || is.object(x)) && x <= 3');
-	guards('f <- function(x) { if(x > LIM) stop("n"); 1 }; if(FALSE) LIM <- 3', '(!is.function(x) && !is.environment(x) || is.object(x) || is.object(LIM)) && x <= LIM');
+	guards('LIM <- 3; LIM <- 4; f <- function(x) { if(x > LIM) stop("n"); 1 }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && x <= 4');
+	guards('f <- function(x) { if(x > LIM) stop("n"); 1 }; LIM <- 3', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && x <= 3');
+	guards('f <- function(x) { if(x > LIM) stop("n"); 1 }; if(FALSE) LIM <- 3', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x) || is.object(LIM)) && x <= LIM');
 	guards('g <- function(y) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', 'is.list(x)');
 	guards('g <- function(a, b) { stopifnot(is.list(a), is.character(b)); a }; f <- function(x, z, ...) { g(x, z, ...) }', 'is.list(x) && is.character(z)');
 	guards('g <- function(a, b = 1) { stopifnot(is.list(a), is.numeric(b)); a }; f <- function(x, ...) { g(x, ...) }', '!is.null(...names()) || is.list(x)');
@@ -442,8 +442,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { stopifnot(x %in% 1:3); x }', 'all(x %in% 1:3)');
 	guards('f <- function(x) { stopifnot(x == 1:2); x }', '(!is.function(x) && !is.environment(x) || is.object(x) || is.object(1:2)) && all(x == 1:2)');
 	guards('f <- function(x) { stopifnot(x %in% -(1:3)); x }', 'all(x %in% -(1:3))');
-	guards('f <- function(x) { stopifnot(x > 0, x > 5); x }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x > 0) && all(x > 5)');
-	guards('f <- function(x) { stopifnot(is.numeric(x), x > 5); x }', 'is.numeric(x) && all(x > 5)');
+	guards('f <- function(x) { stopifnot(x > 0, x > 5); x }', '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x > 0) && all(x > 5)');
+	guards('f <- function(x) { stopifnot(is.numeric(x), x > 5); x }', 'is.numeric(x) && (!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x > 5)');
 	guards('f <- function(x) { stopifnot(x == TRUE); x }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x == TRUE)');
 	guards('f <- function(x) { stopifnot(is.logical(x), x == TRUE); x }', 'is.logical(x) && all(x == TRUE)');
 	guards('f <- function(x) { stopifnot(x == 1); x }', '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x == 1)');
@@ -464,7 +464,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(is.environment(x)) stop("e"); 1 }', '!is.environment(x)');
 	guards('f <- function(x) { stopifnot(inherits(x, "function")); 1 }', 'inherits(x, "function")');
 	guards('f <- function(x) { if(is.integer(x)) stop("a"); 1 }', '!is.integer(x)');
-	guards('f <- function(x) { if(any(x)) stop("a"); 1 }', '!any(x)');
+	guards('f <- function(x) { if(any(x)) stop("a"); 1 }', '(!is.function(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && !any(x)');
 	guards('f <- function(x) { stopifnot(!x); 1 }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || length(x) == 0 || is.object(x)) && all(!x)');
 	guards('f <- function(x) { stopifnot(exists("x")); 1 }', 'exists("x")');
 	guards('f <- function(x) { if(!(exists("x"))) stop("a"); 1 }', 'exists("x")');
@@ -477,25 +477,25 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(is.null(x)) stop("a"); stopifnot(!is.integer(x)); 1 }', '!is.null(x) && !is.integer(x)');
 	guards('f <- function(x, g) { Reduce(g, x) }', '');
 	guards('f <- function(x, g) { Filter(g, x) }', 'is.function(g) || is.character(g) && exists(g, mode = "function") || is.symbol(g) || exists("g", mode = "function")');
-	guards('f <- function(x) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- 1; x }', '');
-	guards('f <- function(x, m) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- seq_len(x); n <- length(x); if(n < m) stop("n < m"); 1 }', '(is.numeric(x) && length(x) == 1L && x > 0 || !is.function(m) && !is.environment(m) || is.object(m) || is.object(length(x))) && (is.numeric(x) && length(x) == 1L && x > 0 || length(x) >= m)');
+	guards('f <- function(x) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- 1; x }', '!is.numeric(x) || length(x) != 1L || !is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)');
+	guards('f <- function(x, m) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- seq_len(x); n <- length(x); if(n < m) stop("n < m"); 1 }', '(!is.numeric(x) || length(x) != 1L || !is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && (!is.numeric(x) || length(x) != 1L || x <= 0 || is.atomic(x) && !is.raw(x) && length(x) >= 1) && (is.numeric(x) && length(x) == 1L && x > 0 || !is.function(m) && !is.environment(m) && !is.symbol(m) && !is.call(m) || is.object(m) || is.object(length(x))) && (is.numeric(x) && length(x) == 1L && x > 0 || length(x) >= m)');
 	guards('f <- function(x) { if(is.null(x)) x <- 1; stopifnot(is.numeric(x)); x }', 'is.null(x) || is.numeric(x)');
 	guards('f <- function(x, y) { if(y) x <- "a"; if(!is.character(x)) stop("c"); x }', 'length(y) >= 1 && length(y) <= 1 && !is.na(y) && (as.logical(unclass(y)) || is.character(x))');
 	guards('f <- function(x) { if(is.character(x)) x <- nchar(x); for(i in 1:2) x <- x + 1; stopifnot(x > 0); x }', '');
-	guards('f <- function(x, s) { if(is.numeric(x)) x <- seq_len(x); if(s) { if(is.factor(x)) x <- as.integer(x) }; x[1] }', '(is.numeric(x) || as.logical(unclass(s)) || !is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x)) && length(s) >= 1 && length(s) <= 1 && !is.na(s)');
+	guards('f <- function(x, s) { if(is.numeric(x)) x <- seq_len(x); if(s) { if(is.factor(x)) x <- as.integer(x) }; x[1] }', '(!is.numeric(x) || is.atomic(x) && !is.raw(x) && length(x) >= 1) && (is.numeric(x) || as.logical(unclass(s)) || !is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x)) && length(s) >= 1 && length(s) <= 1 && !is.na(s)');
 	guards('f <- function(x, a, b) { if(a) x <- 1; if(b) x <- "z"; stopifnot(is.character(x)); x }', 'length(a) >= 1 && length(a) <= 1 && !is.na(a) && (as.logical(unclass(a)) || as.logical(unclass(b)) || is.character(x)) && length(b) >= 1 && length(b) <= 1 && !is.na(b)');
 	guards('f <- function(FUN, extra) { if(missing(extra)) FUN(1) else FUN(1, extra) }', 'is.function(FUN) || exists("FUN", mode = "function")');
 	guards('f <- function(x, ...) UseMethod("f"); f.default <- function(x, center = TRUE) { stopifnot(is.numeric(x)); x }; f.foo <- function(x, ...) 1', '');
 	guards('f <- function(x) UseMethod("f"); f.default <- function(x) { stopifnot(is.numeric(x)); x }; f.character <- function(x) { if(length(x) != 1) stop("one"); 1 }', 'length(x) == 1');
 	guards('f <- function(x) UseMethod("f"); f.matrix <- function(x) { stopifnot(nrow(x) > 1); 1 }; f.default <- function(x) { stopifnot(is.numeric(x)); 1 }', 'is.numeric(x)');
-	guards('f <- function(x, y = 1) UseMethod("f"); f.default <- function(x, y = 2) { stopifnot(y > 1); 1 }', '(!is.function(y) && !is.environment(y) || is.object(y)) && all(y > 1)');
+	guards('f <- function(x, y = 1) UseMethod("f"); f.default <- function(x, y = 2) { stopifnot(y > 1); 1 }', '(!is.function(y) && !is.environment(y) && !is.symbol(y) && !is.call(y) || is.object(y)) && all(y > 1)');
 	guards('f <- function(x) { x <- 1; UseMethod("f") }; f.default <- function(x) { stopifnot(is.character(x)); 1 }', 'is.character(x)');
 	guards('g <- function(x) UseMethod("g"); g.default <- function(x) { stopifnot(is.numeric(x)); x }; f <- function(z) g(z)', 'is.object(z) || is.numeric(z)');
 	guards('g <- function(x, y) UseMethod("g"); g.default <- function(x, y) { stopifnot(is.numeric(y)); 1 }; g.foo <- function(x, y) 1; f <- function(z) g(1, z)', 'is.numeric(z)');
 	guards('g <- function(x, y) UseMethod("g"); g.default <- function(x, y) { stopifnot(is.numeric(y)); 1 }; g.foo <- function(x, y) NextMethod(); g.bar <- function(x, y) 2; f <- function(z) g(structure(1, class = "foo"), z)', 'is.numeric(z)');
-	guards('Ops.foo <- function(e1, e2) { stopifnot(is.numeric(unclass(e2))); 1 }; f <- function(x, y) x + y', '(!identical(oldClass(x), "foo") || is.object(y) || is.numeric(unclass(y))) && (!identical(oldClass(y), "foo") || is.object(x) || is.numeric(unclass(y))) && (is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x))');
-	guards('`+.foo` <- function(e1, e2) 1; Ops.foo <- function(e1, e2) stop("no"); f <- function(x, y) x + y', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x))');
-	guards('Math.foo <- function(x, ...) { if(length(x) > 1) stop("one"); 1 }; f <- function(x, d) round(d, x)', '(!identical(oldClass(d), "foo") || length(d) <= 1) && (is.numeric(d) || is.logical(d) || is.complex(d) || is.object(d))');
+	guards('Ops.foo <- function(e1, e2) { stopifnot(is.numeric(unclass(e2))); 1 }; f <- function(x, y) x + y', '(!identical(oldClass(x), "foo") || is.object(y) || is.numeric(unclass(y))) && (!identical(oldClass(y), "foo") || is.object(x) || is.numeric(unclass(y))) && (is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.null(dim(x)) || is.null(dim(y)) || length(x) == length(y) || is.object(x) || is.object(y)) && (!is.null(dim(x)) || is.call(x) || is.null(dim(y)) || length(y) <= 1 || length(x) <= length(y) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x)) && (is.null(dim(y)) || is.null(dim(x)) || length(y) == length(x) || is.object(y) || is.object(x)) && (!is.null(dim(y)) || is.call(y) || is.null(dim(x)) || length(x) <= 1 || length(y) <= length(x) || is.object(y) || is.object(x))');
+	guards('`+.foo` <- function(e1, e2) 1; Ops.foo <- function(e1, e2) stop("no"); f <- function(x, y) x + y', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.null(dim(x)) || is.null(dim(y)) || length(x) == length(y) || is.object(x) || is.object(y)) && (!is.null(dim(x)) || is.call(x) || is.null(dim(y)) || length(y) <= 1 || length(x) <= length(y) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x)) && (is.null(dim(y)) || is.null(dim(x)) || length(y) == length(x) || is.object(y) || is.object(x)) && (!is.null(dim(y)) || is.call(y) || is.null(dim(x)) || length(x) <= 1 || length(y) <= length(x) || is.object(y) || is.object(x))');
+	guards('Math.foo <- function(x, ...) { if(length(x) > 1) stop("one"); 1 }; f <- function(x, d) round(d, x)', '(!identical(oldClass(d), "foo") || length(d) <= 1) && !identical(oldClass(d), "factor") && !identical(oldClass(d), c("ordered", "factor")) && (is.numeric(d) || is.logical(d) || is.complex(d) || is.object(d))');
 
 	/* the primitives of the language: replacement functions, accessors, and what decides control flow */
 	guards('f <- function(x, v) { names(x) <- v; x }', '(is.object(x) || is.null(v) || !is.null(x) && !is.function(x) && !is.environment(x) && !is.symbol(x)) && (is.object(x) || !is.function(v) && !is.environment(v)) && (is.object(x) || is.null(v) || length(v) <= length(x))');
@@ -527,18 +527,41 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(a) { on.exit(NULL, add = a); 1 }', 'length(a) >= 1');
 	guards('f <- function(name) { .Primitive(name) }', 'is.character(name) && length(name) == 1');
 	guards('f <- function(x) { unCfillPOSIXlt(x) }', 'is.list(x) && length(unclass(x)) >= 9');
+	guards('f <- function(a, b) a %*% b', '(is.numeric(a) || is.logical(a) || is.complex(a) || is.object(a) || is.object(b)) && (!is.matrix(a) || !is.matrix(b) || ncol(a) == nrow(b) || is.object(a) || is.object(b)) && (is.numeric(b) || is.logical(b) || is.complex(b) || is.object(b) || is.object(a))');
+	guards('f <- function(a, b) crossprod(a, b)', '(is.numeric(a) || is.logical(a) || is.complex(a) || is.object(a) || is.object(b)) && (!is.matrix(a) || !is.matrix(b) || nrow(a) == nrow(b) || is.object(a) || is.object(b)) && (is.numeric(b) || is.logical(b) || is.complex(b) || is.null(b) || is.object(b) || is.object(a))');
+	guards('f <- function(a, b) tcrossprod(a, b)', '(is.numeric(a) || is.logical(a) || is.complex(a) || is.object(a) || is.object(b)) && (!is.matrix(a) || !is.matrix(b) || ncol(a) == ncol(b) || is.object(a) || is.object(b)) && (is.numeric(b) || is.logical(b) || is.complex(b) || is.null(b) || is.object(b) || is.object(a))');
+	guards('f <- function(x, y) x == y', '(!is.function(x) && !is.environment(x) || is.object(x) || is.object(y)) && (is.null(dim(x)) || is.null(dim(y)) || length(x) == length(y) || is.object(x) || is.object(y)) && (!is.null(dim(x)) || is.call(x) || is.null(dim(y)) || length(y) <= 1 || length(x) <= length(y) || is.object(x) || is.object(y)) && (!is.function(y) && !is.environment(y) || is.object(y) || is.object(x)) && (is.null(dim(y)) || is.null(dim(x)) || length(y) == length(x) || is.object(y) || is.object(x)) && (!is.null(dim(y)) || is.call(y) || is.null(dim(x)) || length(x) <= 1 || length(y) <= length(x) || is.object(y) || is.object(x))');
+	guards('f <- function(x, y) x & y', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || is.null(x) || is.object(x) || is.object(y)) && (is.null(dim(x)) || is.null(dim(y)) || length(x) == length(y) || is.object(x) || is.object(y)) && (!is.null(dim(x)) || is.call(x) || is.null(dim(y)) || length(y) <= 1 || length(x) <= length(y) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.raw(y) || is.null(y) || is.object(y) || is.object(x)) && (is.null(dim(y)) || is.null(dim(x)) || length(y) == length(x) || is.object(y) || is.object(x)) && (!is.null(dim(y)) || is.call(y) || is.null(dim(x)) || length(x) <= 1 || length(y) <= length(x) || is.object(y) || is.object(x))');
+	guards('f <- function(x, y) { if(x && y) 1 else 2 }', '(is.logical(x) || is.numeric(x) || is.complex(x) || is.object(x)) && length(x) <= 1 && (!as.logical(unclass(x)) || is.logical(y) || is.numeric(y) || is.complex(y) || is.object(y)) && (!as.logical(unclass(x)) || length(y) <= 1)');
+	guards('f <- function(x, y) { if(x || y) 1 else 2 }', '(is.logical(x) || is.numeric(x) || is.complex(x) || is.object(x)) && length(x) <= 1 && (as.logical(unclass(x)) || is.logical(y) || is.numeric(y) || is.complex(y) || is.object(y)) && (as.logical(unclass(x)) || length(y) <= 1)');
+	guards('f <- function(x) seq_len(x)', 'is.atomic(x) && !is.raw(x) && length(x) >= 1');
+	guards('f <- function(x) enc2utf8(x)', 'is.character(x)');
+	guards('f <- function(x) is.finite(x)', 'is.atomic(x) || is.null(x) || is.object(x)');
+	guards('f <- function(x) as.call(x)', '(is.list(x) || is.call(x) || is.expression(x)) && length(x) >= 1');
+	guards('f <- function(x) Re(x)', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x)');
+	guards('f <- function(x) xtfrm(x)', '!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) && !is.raw(x) || is.object(x)');
+	guards('f <- function(x) is.single(x)', 'FALSE');
+	guards('f <- function(x) max(x)', 'is.numeric(x) || is.logical(x) || is.character(x) || is.null(x) || is.object(x)');
+	guards('f <- function(x) nzchar(x)', '!is.function(x) && !is.environment(x)');
+	guards('f <- function(x) sin(x)', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && !identical(oldClass(x), "difftime") && (is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x))');
+	guards('f <- function(x) trunc(x)', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && (is.numeric(x) || is.logical(x) || is.object(x))');
+	guards('f <- function(x) abs(x)', '!identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor")) && !identical(oldClass(x), "Date") && !identical(oldClass(x), c("POSIXct", "POSIXt")) && !identical(oldClass(x), c("POSIXlt", "POSIXt")) && (is.numeric(x) || is.logical(x) || is.complex(x) || is.object(x))');
+	guards('f <- function(x, y) x * y', '(!identical(oldClass(x), "difftime") || is.object(y) || !inherits(x, "difftime") || !inherits(y, "difftime")) && (!identical(oldClass(y), "difftime") || is.object(x) || !inherits(x, "difftime") || !inherits(y, "difftime")) && (is.numeric(x) || is.logical(x) || is.complex(x) || is.null(x) || is.object(x) || is.object(y)) && (is.null(dim(x)) || is.null(dim(y)) || length(x) == length(y) || is.object(x) || is.object(y)) && (!is.null(dim(x)) || is.call(x) || is.null(dim(y)) || length(y) <= 1 || length(x) <= length(y) || is.object(x) || is.object(y)) && (is.numeric(y) || is.logical(y) || is.complex(y) || is.null(y) || is.object(y) || is.object(x)) && (is.null(dim(y)) || is.null(dim(x)) || length(y) == length(x) || is.object(y) || is.object(x)) && (!is.null(dim(y)) || is.call(y) || is.null(dim(x)) || length(x) <= 1 || length(y) <= length(x) || is.object(y) || is.object(x))');
+	guards('f <- function(x) !x', 'is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || length(x) == 0 || is.object(x)');
+	guards('f <- function(x, n) { if(ncol(x) != nrow(n)) stop("dims"); 1 }', 'ncol(x) == nrow(n)');
+	guards('f <- function(x) { if(nlevels(x) < 2) stop("levels"); 1 }', 'nlevels(x) >= 2');
 
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
 	claims('f <- function(x) { if(!is.integer(x)) stop("n"); x }', { x: { types: ['integer'] } }, ['x']);
-	claims('f <- function(x) { stopifnot(is.numeric(x)); x }', { x: { types: ['integer', 'double'] } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.numeric(x)); x }', { x: { plainTypes: ['integer', 'double'] } }, ['x']);
 	claims('f <- function(x) { if(is.null(x)) stop("n"); x }', { x: { types: AnythingBut('NULL') } }, ['x']);
 	claims('f <- function(x) { if(is.numeric(x)) stop("n"); 1 }', {}, ['x']);
-	claims('f <- function(x) { if(is.numeric(x) || is.character(x)) x else stop("n") }', { x: { types: ['integer', 'double', 'character'] } }, ['x']);
+	claims('f <- function(x) { if(is.numeric(x) || is.character(x)) x else stop("n") }', { x: { plainTypes: ['integer', 'double', 'character'] } }, ['x']);
 	claims('f <- function(x) { if(!is.data.frame(x)) stop("n"); 1 }', { x: { types: ['list'], plainTypes: [] } }, ['x']);
 	claims('f <- function(x) { x + 1 }', { x: { plainTypes: ['NULL', 'logical', 'integer', 'double', 'complex'] } }, ['x']);
 	claims('f <- function(x) { strsplit(x, "") }', { x: { types: ['character'] } }, ['x']);
-	claims('f <- function(x) { if(!is.numeric(x)) stop("n"); x + 1 }', { x: { types: ['integer', 'double'] } }, ['x']);
+	claims('f <- function(x) { if(!is.numeric(x)) stop("n"); x + 1 }', { x: { plainTypes: ['integer', 'double'] } }, ['x']);
 	claims('f <- function(mode = c("fast", "slow")) { mode <- match.arg(mode); mode }', { mode: { types: ['NULL', 'character'], values: ['fast', 'slow'], partial: true } }, []);
 	claims('f <- function(x) { if(!(x %in% c("a", "b"))) stop("n"); x }', { x: { values: ['a', 'b'] } }, ['x']);
 
@@ -563,9 +586,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		const guards = await guardsOfF(parser, 'f <- function(x, m) { if(is.numeric(x) && length(x) == 1L && x > 0) x <- seq_len(x); n <- length(x); if(n < m) stop("n < m"); stopifnot(m <= 10, length(x) > m || m == 0); 1 }');
 		assert.deepStrictEqual(guards?.relations.map(({ holds, formals, unless }) => ({ holds, formals, unless })), [
 			{ holds: 'length(x) >= m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0' },
+			{ holds: 'length(x) > m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0 || !is.function(m) && !is.environment(m) || is.object(m)' },
 			{ holds: 'length(x) > m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0 || m == 0' }
 		]);
-		assert.deepStrictEqual(guards?.relations[0].unlessClaim, { formal: 'x', claim: { types: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } } });
+		assert.deepStrictEqual(guards?.relations[0].unlessClaim, { formal: 'x', claim: { plainTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } } });
 	});
 
 	test('a claim that holds unless another formal lets the call through', async() => {
@@ -642,7 +666,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x = "a") { paste(x) }', {}, []);
 	claims('f <- function(x = c("a", "b")) { list(x) }', {}, []);
 	claims('f <- function(x = TRUE, n = 5L) { list(x, n) }', {}, []);
-	claims('f <- function(n = 5L) { if(!is.numeric(n)) stop("n"); n }', { n: { types: ['integer', 'double'] } }, []);
+	claims('f <- function(n = 5L) { if(!is.numeric(n)) stop("n"); n }', { n: { plainTypes: ['integer', 'double'] } }, []);
 	claims('f <- function(x = 1L) { stopifnot(is.character(x)); x }', { x: { types: ['character'] } }, []);
 	claims('f <- function(x = NULL) { if(is.null(x)) 1 else x }', {}, []);
 
@@ -658,8 +682,8 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; h <- function(x, ...) { g(x, ...) }; f <- function(v) { h(v) }', { v: { types: ['list', 'pairlist'] } }, []);
 	claims('f <- function(x) { if(x != "a" && x != "b") stop("n"); x }', { x: { plainTypes: AnythingBut('function', 'environment'), values: ['a', 'b'] } }, ['x']);
 	claims('f <- function(x) { switch(x, a = 1, b = 2, stop("no")) }', { x: { types: ['logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'expression', 'other'], values: ['a', 'b'], bounds: { length: [1, 1] } } }, ['x']);
-	claims('f <- function(x, y = 1) { stopifnot(x > 0, x <= 5, length(y) == 1L); x }', { x: { plainTypes: AnythingBut('function', 'environment') }, y: { bounds: { length: [1, 1] } } }, ['x']);
-	claims('f <- function(x) { stopifnot(is.numeric(x), x > 0, x <= 5); x }', { x: { types: ['integer', 'double'], bounds: { value: [0, 5] } } }, ['x']);
+	claims('f <- function(x, y = 1) { stopifnot(x > 0, x <= 5, length(y) == 1L); x }', { x: { plainTypes: AnythingBut('function', 'environment', 'symbol', 'language') }, y: { bounds: { length: [1, 1] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.numeric(x), x > 0, x <= 5); x }', { x: { plainTypes: ['integer', 'double'], bounds: { value: [0, 5] } } }, ['x']);
 	claims('f <- function(x) { if(length(x) == 0) stop("n"); x }', { x: { bounds: { length: [1, null] } } }, ['x']);
 	claims('f <- function(x) { if(nrow(x) > 3) stop("n"); x }', { x: { bounds: { nrow: [null, 3] } } }, ['x']);
 	claims('f <- function(x) { if(!inherits(x, c("a", "b"))) stop("n"); x }', { x: { classes: ['a', 'b'] } }, ['x']);
@@ -699,7 +723,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x) { stopifnot(nrow(x) > 0); 1 }', {}, ['x']);
 	claims('f <- function(x) { if(nrow(x) > 0) 1 else stop("n") }', { x: { bounds: { nrow: [1, null] } } }, ['x']);
 	claims('f <- function(x) { stopifnot(!is.na(x)); 1 }', { x: { notNA: true } }, ['x']);
-	claims('f <- function(x) { stopifnot(is.finite(x)); 1 }', { x: { notNA: true } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.finite(x)); 1 }', { x: { plainTypes: ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw'], notNA: true } }, ['x']);
 	claims('f <- function(x = 1) { if(missing(x)) stop("n"); 1 }', {}, ['x']);
 	claims('f <- function(x) { rlang::check_required(x); 1 }', {}, ['x']);
 	claims('g <- function(y) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(y = x, ...) }', { x: { types: ['list', 'pairlist'] } }, ['x']);
@@ -713,28 +737,29 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 
 	/* what is claimed about the value a call returns */
 	const OneTruth = { types: ['logical'], bounds: { length: [1, 1] }, notNA: true } as const;
-	returns('f <- function(x) { stopifnot(is.numeric(x)); x }', { types: ['integer', 'double'] }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x)); x }', { plainTypes: ['integer', 'double'] }, 'x');
 	returns('f <- function(x) { if(!is.character(x)) stop("n"); x }', { types: ['character'] }, 'x');
-	returns('f <- function(x) { stopifnot(is.numeric(x), length(x) == 1, x > 0); x }', { types: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x), length(x) == 1, x > 0); x }', { plainTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } }, 'x');
 	returns('f <- function(x) { if(!inherits(x, "foo")) stop("n"); invisible(x) }', { classes: ['foo'] }, 'x');
-	returns('f <- function(x) { stopifnot(is.numeric(x)); y <- x; return(invisible(y)) }', { types: ['integer', 'double'] }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x)); y <- x; return(invisible(y)) }', { plainTypes: ['integer', 'double'] }, 'x');
 	returns('g <- function(y) y; f <- function(x) { g(x) }', undefined, 'x');
-	returns('f <- function(x) { if(is.numeric(x)) x else "a" }', { types: ['integer', 'double', 'character'] });
-	returns('f <- function(x) { if(is.numeric(x)) { x } else { if(is.character(x)) x else NULL } }', { types: ['NULL', 'integer', 'double', 'character'] });
+	returns('f <- function(x) { if(is.numeric(x)) x else "a" }', { plainTypes: ['integer', 'double', 'character'] });
+	returns('f <- function(x) { if(is.numeric(x)) { x } else { if(is.character(x)) x else NULL } }', { plainTypes: ['NULL', 'integer', 'double', 'character'] });
 	returns('f <- function(x) { if(missing(x)) "none" else if(is.character(x)) x else stop("n") }', { types: ['character'] });
 	/* an `if` without an `else` returns `NULL` when not taken */
 	returns('f <- function(x) { if(is.numeric(x)) 1L }', { types: ['NULL', 'integer'], bounds: { length: [0, 1] } });
 	returns('f <- function(x) { if(x > 1) return(TRUE); length(x) }', { types: ['logical', 'integer', 'double'], bounds: { length: [1, 1] }, notNA: true });
-	returns('f <- function(x) { if(is.null(x)) return(NULL); as.character(x) }', { types: ['NULL', 'character'] });
+	/* a method of `as.character` for the class of `x` returns what it likes */
+	returns('f <- function(x) { if(is.null(x)) return(NULL); as.character(x) }', undefined);
 	returns('f <- function(x) { is.numeric(x) }', OneTruth);
 	returns('f <- function(x) { identical(x, 1) }', OneTruth);
-	returns('f <- function(x) { any(x) }', { types: ['logical'], bounds: { length: [1, 1] } });
+	returns('f <- function(x) { any(x) }', undefined);
 	returns('f <- function(x) { typeof(x) }', { types: ['character'], bounds: { length: [1, 1] }, notNA: true });
 	returns('f <- function(x) { nchar(x) }', { types: ['integer'] });
 	returns('f <- function(x) { nrow(x) }', { types: ['NULL', 'integer'], whole: true });
 	returns('f <- function(x) { stopifnot(is.character(x)); toupper(x) }', { types: ['character'] });
 	returns('f <- function(x) { paste0("a", x) }', { types: ['character'] });
-	returns('f <- function(x) { x <- as.integer(x); x }', { types: ['integer'] });
+	returns('f <- function(x) { x <- as.integer(x); x }', undefined);
 	returns('f <- function(x) { list(x) }', { types: ['list'] });
 	returns('f <- function(x) { c(1, 2L) }', { types: ['double'], values: [1, 2], bounds: { length: [2, 2], value: [1, 2] }, notNA: true, whole: true });
 	returns('f <- function(x) { c("a", NA) }', { types: ['character'], bounds: { length: [2, 2] } });
@@ -819,8 +844,29 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.strictEqual((await guardsOfF(parser, 'file_ext <- function(x) { print(x); x }\nf <- function(x) { if(file_ext(x) != "R") stop("a"); 1 }'))?.requires, 'file_ext(x) == "R"');
 	});
 	test(label('what the conditions call is known with its package', ['name-normal'], ['other']), () => {
-		assert.deepStrictEqual(builtInGuards('trunc')?.calls, ['base::is.numeric', 'base::is.logical', 'base::is.object']);
-		assert.strictEqual(builtInGuards('trunc')?.requires, 'is.numeric(x) || is.logical(x) || is.object(x)');
+		assert.deepStrictEqual(builtInGuards('trunc')?.calls, ['base::is.numeric', 'base::is.logical', 'base::is.object', 'base::!', 'base::identical', 'base::oldClass', 'base::c']);
+		/* `Math.factor` fails for every member, while `trunc.Date` and `Math.difftime` let a value of theirs through */
+		assert.strictEqual(builtInGuards('trunc')?.requires, '(is.numeric(x) || is.logical(x) || is.object(x)) && !identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor"))');
+	});
+	test(label('a primitive states relations, returns, and what it needs handed', ['name-normal'], ['other']), () => {
+		assert.deepStrictEqual(builtInGuards('%*%')?.relations?.map(r => r.holds), ['ncol(x) == nrow(y)']);
+		assert.deepStrictEqual(builtInGuards('crossprod')?.relations?.map(r => r.holds), ['nrow(x) == nrow(y)']);
+		assert.deepStrictEqual(builtInGuards('seq_len')?.returns, { types: ['integer', 'double'], bounds: { value: [0, null] }, notNA: true, whole: true });
+		assert.deepStrictEqual(builtInGuards('is.na')?.required, ['x']);
+		assert.strictEqual(builtInGuards('is.single')?.requires, 'FALSE');
+		/* `FALSE && "a"` never looks at the right operand */
+		assert.include(builtInGuards('&&')?.requires, '!isTRUE(x) || is.logical(y)');
+		/* a method of `as.integer` may return what it likes */
+		assert.deepStrictEqual(builtInGuards('as.integer')?.returns, { cases: [{ when: '!is.object(x)', claim: { types: ['integer'] } }] });
+	});
+	test(label('a member of a group generic asks what the methods of the base packages ask', ['name-normal'], ['other']), () => {
+		const sin = builtInGuards('sin')?.requires ?? '';
+		for(const cls of ['"factor"', '"Date"', 'c("POSIXct", "POSIXt")', '"difftime"']) {
+			assert.include(sin, `!identical(oldClass(x), ${cls})`);
+		}
+		assert.notInclude(sin, 'data.frame');
+		assert.include(builtInGuards('abs')?.requires, '!identical(oldClass(x), "Date")');
+		assert.notInclude(builtInGuards('abs')?.requires, '"difftime"');
 	});
 	test(label('a clause tells where it fails and through what', ['name-normal'], ['other']), async() => {
 		const { result, idMap } = await runQuery(parser, 'g <- function(y) { if(!is.numeric(y)) stop("n"); y }\nf <- function(x) { g(x) }', { type: 'inspect-fn-guards' });

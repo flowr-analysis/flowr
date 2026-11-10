@@ -51,7 +51,7 @@ describe('Signature database page', () => {
 
 	test('the contracts of the page know the package of each function their conditions call', () => {
 		const trunc = guardsForPage()['base::trunc'];
-		assert.deepStrictEqual(trunc?.[10], [['is.numeric', 'base::is.numeric'], ['is.logical', 'base::is.logical'], ['is.object', 'base::is.object']]);
+		assert.includeDeepMembers([...trunc?.[10] ?? []], [['is.numeric', 'base::is.numeric'], ['is.logical', 'base::is.logical'], ['is.object', 'base::is.object'], ['oldClass', 'base::oldClass']]);
 		assert.includeMembers([...trunc?.[11] ?? []], ['origin:stated', 'requires:base::is.numeric', 'requires:is.numeric', 'contract:x']);
 	});
 

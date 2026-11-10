@@ -91,7 +91,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	}
 	const origin = fn.guards?.readOff;
 	if(origin !== undefined && origin.source !== 'builtin' && origin.r !== fn.version) {
-		result.push(`      ╰ ${italic(`the guards below are those of R ${origin.r}${origin.date === undefined ? '' : `, read off ${origin.date}`}`, f)}`);
+		result.push(`      ╰ ${italic(`contracts of R ${origin.r}${origin.date === undefined ? '' : `, updated ${origin.date}`}`, f)}`);
 	}
 	for(const [formal, claim] of Object.entries(fn.guards?.formals ?? {})) {
 		result.push(`      ╰ ${italic('guard', f)}   ${formal}: ${claimWords(claim).join(', ')}`);

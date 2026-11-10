@@ -101,10 +101,10 @@ const FunctionAbout: Readonly<Record<string, string>> = {
 	'match.fun':      'the function a value stands for: the function itself, or the one a name or symbol is bound to, failing otherwise'
 };
 
-/** the R version a contract was read off and the day, `R 4.5.3 · read off 2026-04-01`, from the `version@date` of {@link Guards}, empty for a stated one */
+/** the R version a contract was read off and the day, `R 4.5.3 · updated 2026-04-01`, from the `version@date` of {@link Guards}, empty for a stated one */
 export function readOffWords(readOff: string): string {
 	const [r, date] = readOff.split('@');
-	return readOff === '' ? '' : 'R ' + r + (date === undefined ? '' : ' \u00b7 read off ' + date);
+	return readOff === '' ? '' : 'R ' + r + (date === undefined ? '' : ' \u00b7 updated ' + date);
 }
 
 /** where a contract comes from: read off the R code of the function, or stated by flowR for one written in C */

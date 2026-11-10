@@ -354,6 +354,9 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');
 		counterexample('SF-rm-list-variable-vector', 'nms <- c("a", "b")\na <- 1\nb <- 2\nrm(list = nms)\nprint(exists("b"))', '5@print', 'print(exists("b"))');
+		/* the criterion evaluates the call in its argument, so it does what that call prints */
+		counterexample('SF-output-of-argument-call', 'f <- function() {\n  cat("a\\n")\n  cat("live\\n")\n}\nsuppressWarnings(f())', '5@suppressWarnings', 'f <- function() {\n        cat("a\\n")\n        cat("live\\n")\n    }\nsuppressWarnings(f())');
+		counterexample('SF-output-in-calling-handler-body', 'f <- function() {\n  withCallingHandlers({ warning("w"); cat("body\\n") }, warning = function(w) NULL)\n  cat("live\\n")\n}\nsuppressWarnings(f())', '5@suppressWarnings', 'f <- function() {\n        withCallingHandlers(cat("body\\n"), warning = function(w) NULL)\n        cat("live\\n")\n    }\nsuppressWarnings(f())');
 		/* what on.exit registers runs last: the output before the function ends is kept although the registered stop() comes first in the text */
 		counterexample('SF-on-exit-raise-runs-last', 'f <- function() {\n  on.exit(stop("x"))\n  cat("live\\n")\n}\ntry(f(), silent = TRUE)', '5@try', 'f <- function() {\n        on.exit(stop("x"))\n        cat("live\\n")\n    }\ntry(f(), silent = TRUE)');
 		/* forcing a promise raises what it raises: the read of a delayedAssign or of a lazy parameter is part of the slice of the try around it */

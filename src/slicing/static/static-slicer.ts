@@ -134,12 +134,20 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		queue.add(id, emptyEnv, basePrint, false);
 	}
 
+	/* and so do the calls in its arguments, which it evaluates (`suppressWarnings(f())` prints what `f` prints), once the slice knows the calls dispatching to the methods they run */
+	let argumentWrites: NodeId[] | undefined = writesWithinCallees(
+		ids.flatMap(id => [...RNode.collectAllIdsWithStop(idMap.get(id), RFunctionDefinition.is)].filter(part => part !== id && DfgVertex.isFunctionCall(graph.getVertex(part)))), graph, PrintedOutput);
+
 	/* a drained queue completes the body slice, only then can a boundary decide whether its callers matter */
 	do{
 		while(queue.nonEmpty()) {
 			processNode();
 		}
 		resolveCalleeBoundaries();
+		if(!queue.nonEmpty() && argumentWrites !== undefined) {
+			argumentWrites.forEach(id => queue.add(id, emptyEnv, basePrint, false));
+			argumentWrites = undefined;
+		}
 	} while(queue.nonEmpty());
 
 	function processNode(current: NodeToSlice = queue.next()): void {

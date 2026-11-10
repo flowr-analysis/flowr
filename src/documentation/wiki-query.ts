@@ -361,53 +361,80 @@ registerQueryDocumentation('inspect-fn-guards', {
 	type:             'active',
 	shortDescription: 'Infer what functions ask of the calls they return from',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function(x, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  print(type)\n  sum(x)\n}';
+		const exampleCode = 'f <- function(x, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  sum(x)\n}';
+		const predicateConfig = `new FlowrAnalyzerBuilder().amendConfig(c => {
+	c.semantics.environment.overwriteBuiltIns.definitions = [{
+		type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+		config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } }
+	}];
+})`;
 		return `
-This query works out the *preconditions* of the functions of a program from the guards in their bodies, which ${ctx.link('FunctionSemantics')} answers as well.
-A call returning normally has passed every condition reported for it, so each of them is a *necessary* condition, and a call breaking one fails.
-flowR only states what it can be sure of: whatever it cannot state exactly (a loop body, a variable with several definitions, an unknown function a condition depends on)
-weakens the condition or drops it, it never makes one stronger than what the code asks for.
+This query works out the *contract* of every function of a program: what a call has to fulfill to return normally, read off the checks in the body.
+In the example below, \`f\` stops unless \`x\` is a non-negative number, and \`match.arg\` only lets \`type\` be \`"a"\` or \`"b"\`.
+The query states exactly that, per formal:
 
-What counts as a guard:
+${await showQuery(shell, exampleCode, [{ type: 'inspect-fn-guards' }], { showCode: true, ctx })}
 
-- \`stop\`, \`rlang::abort\`, and the other functions always failing, reached under any combination of \`if\`, \`&&\`, \`||\`, and \`switch\`, with what an earlier \`return\` skips being taken into account (\`a || is.numeric(x)\` for \`if(a) return(1); if(!is.numeric(x)) stop()\`)
-- \`stopifnot\`, \`assertthat::assert_that\`, \`match.arg\`, \`rlang::arg_match\`, and the \`assert_*\` functions of \`checkmate\`
-- what R itself fails on (the \`implicit\` kind), like \`strsplit\` for anything but a character vector, or \`x + 1\` for a value without a class that is no number
-- what a name has to resolve to: \`do.call(paste0("f_", x), list())\` needs \`exists(paste0("f_", x), mode = "function")\`, and \`UseMethod\` without a default needs a method
-- what the methods a dispatch runs ask: a \`UseMethod\` on a value without a class runs the \`default\` method or one of an implicit class like \`matrix\` or \`numeric\`, so the generic asks what they ask unless \`is.object(x)\`, and where flowR's narrowing of a dispatch per call decides the methods of a \`UseMethod\` or \`NextMethod\`, the call asks what all of them share. An operator or a member of a group generic asks what the \`Ops.foo\` or \`+.foo\` of the program asks of an operand of exactly the class \`foo\` next to one without a class, and what the only S4 method of the program asks of operands of its signature
-- the conditions of the functions a body calls for sure, in terms of what was handed to them, as well as the single expression of predicates like \`is_count <- function(v) is.numeric(v) && v >= 0\`
+### Where the contracts are used
 
-Every entry of ${ctx.link('FunctionGuards::clauses')} is a ${ctx.link('GuardClause')} with the condition both as R code and as a ${ctx.link('GuardTerm')} tree, in which \`succeeds(e)\` stands for \`e\` not raising an error.
-A clause is \`pure\` if the failure comes before anything other than computing a value, so a call failing on it leaves nothing behind, and ${ctx.link('FunctionGuards::pure')} is the conjunction of those clauses.
-On top of that ${ctx.link('FunctionGuards::formals')} holds what the conditions together claim about each formal, as a ${ctx.link('FormalClaim')}:
+- the \`call-contracts\` linting rule reports a call that cannot fulfill the contract of what it calls, like \`f(-1)\` or \`f("a")\`
+- the ${linkToQueryOfName('inspect-fn-props')} reports the formals a call has to supply (${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}) and those a condition reads (${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')})
+- the ${linkToQueryOfName('signature')} and the [signature browser](https://flowr-analysis.github.io/flowr/wiki/sigdb/) show the contracts of the functions of R and of packages
+- the playground shows the contract of the function under the cursor
+
+### Reading the result
+
+Each function the program defines gets ${ctx.link('FunctionGuards')}:
+
+- ${ctx.link('FunctionGuards::clauses')}: one ${ctx.link('GuardClause')} per check, with the condition as R code and as a ${ctx.link('GuardTerm')} tree (\`succeeds(e)\` stands for \`e\` not raising an error), whether R checks it itself (\`implicit\`, like \`x + 1\` for a value that is no number) or the code does (\`explicit\`, like the \`stop\` above), and the message of the failure
+- ${ctx.link('FunctionGuards::formals')}: what the conditions together claim of each formal, as a ${ctx.link('FormalClaim')}:
 
 | field | a normal return makes sure that |
 |---|---|
 | \`types\` | \`typeof(x)\` is one of these |
-| \`unclassedTypes\` | the same, but only for an \`x\` without a class attribute (a classed one may bring a method) |
-| \`values\`, \`partial\` | a string \`x\` is one of these, or with \`partial\` abbreviates one (\`match.arg\`) |
+| \`unclassedTypes\` | the same, but only for an \`x\` without a class (a classed one may bring its own method) |
+| \`values\`, \`partial\` | \`x\` is one of these strings, or with \`partial\` abbreviates one (\`match.arg\`) |
 | \`classes\` | \`x\` inherits from one of these |
 | \`bounds\` | \`x\` (\`value\`), \`length(x)\`, \`nchar(x)\`, \`nrow(x)\`, ... lie in this range |
-| \`whole\`, \`notNA\`, \`callable\` | \`trunc(x) == x\`, \`!anyNA(x)\`, \`x\` names or is a function |
+| \`whole\`, \`notNA\`, \`callable\` | \`trunc(x) == x\`, \`!anyNA(x)\`, \`x\` is or names a function |
 | \`resolves\` | a name built from \`x\`, like \`paste0("f_", x)\`, exists |
-| \`cases\` | what holds in each case a branch on \`x\` tells apart |
+| \`cases\` | what holds in each case a branch on \`x\` tells apart, like \`if(is.logical(center)) ... else ...\` |
 
-${ctx.link('FunctionGuards::conditions')} holds, per formal, the conditions the function checks itself as they read in R, so a \`stopifnot(x %% 2 == 0)\` is there even though no claim has words for it.
-A default value of a formal claims nothing, as it only fills in what a call leaves out: \`function(n = 5L)\` still takes \`n = 1.5\`, and only \`match.arg\` and \`rlang::arg_match\` read the default, namely as the values they allow.
-With a wrapper handing on dots, an argument given by position only stays in place if the dots name nothing, which is why \`f <- function(x, ...) g(x, ...)\` asks for \`!is.null(...names()) || is.list(x)\` unless the formals of \`g\` leave no room for anything else.
-With \`builtIns\` the query states the same for functions of R: what their closures check, read off R ${RBaseGuardsVersion} by \`scripts/gen-base-guards.ts\`, and what is known of those written in C, each with its \`origin\` (where it comes from, the R version and the date). The signature query and the [signature browser](https://flowr-analysis.github.io/flowr/wiki/sigdb/) show these as well.
-${ctx.link('FunctionGuards::required')} names the formals a call has to supply, which the \`inspect-fn-props\` query reports as ${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}, next to ${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')} for every formal a condition reads.
+- ${ctx.link('FunctionGuards::conditions')}: per formal the checks as they read in R, also those no claim has a word for, like \`stopifnot(x %% 2 == 0)\`
+- ${ctx.link('FunctionGuards::required')}: the formals a call has to supply
+- ${ctx.link('FunctionGuards::pure')}: the checks that fail before the function does anything but compute, so a call failing on them leaves nothing behind
 
-Conditions speak about the values at the guard, so a formal that has been overwritten by then is read as what it was overwritten with.
-What R fails on by itself is stated in the built-in configuration together with the R versions it holds for, and the query goes by the R version the analyzer assumes (\`solver.sigdb.assumedRVersion\`, else R ${RBaseGuardsVersion}): a condition of \`if\` or \`while\` longer than one only fails since R 4.2.0, an operand of \`&&\` longer than one since R 4.3.0, and \`is.atomic(NULL)\` is false since R 4.4.0.
-S3 methods for \`length\` are assumed to keep their contract, while a type check like \`is.numeric(x)\` only claims a type for an \`x\` without a class attribute.
-Where a branch on a formal tells cases apart, like \`if(is.logical(center)) ... else ...\`, each claim has the \`cases\` with what holds in each of them.
-With \`kind\` the query keeps the conditions of one kind, \`onlyPure\` keeps the clean failures, and \`formals\` narrows the answer to the named formals.
+The query takes \`kind\` (keep only \`implicit\` or \`explicit\` conditions), \`onlyPure\`, \`formals\` (only these formals), and \`builtIns\` (also state the contracts of the functions of R and of the packages flowR knows).
 
-Using the example code the following query returns the guards of the function:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-guards' }], { showCode: true, ctx })
-}
+### What counts as a check
+
+- \`stop\`, \`rlang::abort\`, and every other function that always fails, reached under \`if\`, \`&&\`, \`||\`, and \`switch\`, taking an earlier \`return\` into account: \`if(a) return(1); if(!is.numeric(x)) stop()\` asks \`a || is.numeric(x)\`
+- \`stopifnot\`, \`assertthat::assert_that\`, \`match.arg\`, \`rlang::arg_match\`, and the \`assert_*\` functions of \`checkmate\`
+- what R fails on by itself, like \`strsplit\` for anything but a character vector
+- names that have to resolve, like \`do.call(paste0("f_", x), list())\`, and a \`UseMethod\` without a default method
+- the methods a dispatch may run: a generic asks what its \`default\` method (or that of an implicit class like \`matrix\`) asks, unless \`is.object(x)\`
+- the contracts of the functions a body surely calls, in terms of what it hands them, and predicates of the program like \`is_count <- function(v) is.numeric(v) && v >= 0\`
+
+### Teaching flowR about more functions
+
+A contract can only be as good as what flowR knows about the functions a body calls. There are three places to add that knowledge:
+
+1. **A predicate or check of your own code base, without changing flowR.** Describe it in the configuration of the analyzer (the same \`overwriteBuiltIns\` works in a configuration file). With this, \`f <- function(x) { stopifnot(is_text(x)); x }\` claims that \`x\` is a character vector:
+
+${codeBlock('ts', predicateConfig)}
+
+   Besides \`predicate\`, the guard facts can state \`asks\` (what the function fails on per formal), \`required\` (formals a call has to give), \`check\` (the function fails unless its argument passes, like \`checkmate::assert_numeric\`), \`asserts\` (it fails unless every argument is \`TRUE\`, like \`stopifnot\`), and \`returns\`. All of them are typed in \`src/dataflow/environments/guard-facts.ts\`.
+2. **A function of R or a package that flowR should know for everyone.** Add its guard facts to the built-in configuration: \`src/dataflow/environments/default-builtin-config/guards.ts\` for functions of base R and packages, \`guards-primitive-ops.ts\` for the operators and math primitives. For example \`'which': { asks: { x: fails(is('is.logical'), 'argument to \\'which\\' is not logical') } }\` makes every \`which(x)\` ask for a logical \`x\`.
+3. **The closures of the base packages.** Their contracts are read off R itself with \`npx ts-node --transpile-only scripts/gen-base-guards.ts\`, which writes \`src/data/r-base-guards.generated.ts\` (currently from R ${RBaseGuardsVersion}). Rerun it after changing what flowR knows, as the base contracts are built on top of that knowledge.
+
+### Limits
+
+Every condition the query reports is *necessary*: a call that breaks one fails in R. What flowR cannot state exactly (a loop body, a variable with several definitions, a function it does not know) weakens a condition or drops it, it never makes one stronger than what the code asks for.
+
+- A condition speaks of the value at the check, so a formal overwritten before it is read as what it was overwritten with.
+- A default value claims nothing: \`function(n = 5L)\` still takes \`n = 1.5\`. Only \`match.arg\` and \`rlang::arg_match\` read the default, as the values they allow.
+- What R fails on depends on the R version flowR assumes (\`solver.sigdb.assumedRVersion\`, else R ${RBaseGuardsVersion}): a condition of \`if\` longer than one only fails since R 4.2.0, an operand of \`&&\` longer than one since R 4.3.0.
+- A missing argument handed on to another function written in R is only required if that function needs it, as R hands it on as a promise: \`matpoints(x)\` passes its missing \`y\` to \`matplot\`, which checks \`missing(y)\`.
 		`;
 	}
 });

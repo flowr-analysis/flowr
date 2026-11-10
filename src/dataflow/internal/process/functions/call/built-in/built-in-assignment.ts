@@ -685,6 +685,14 @@ export function markAsAssignment<OtherInfo>(
 			}
 		}
 	}
+	let superTarget: readonly IdentifierDefinition[] | undefined;
+	if(assignmentConfig?.superAssignment) {
+		/* `<<-` binds in the closest enclosing function frame that holds the name, which must stay for it to land there and not further out */
+		const name = Identifier.getName(nodeToDefine.name);
+		for(let frame = information.environment.current.parent; !frame.globalEnv && !frame.builtInEnv && superTarget === undefined; frame = frame.parent) {
+			superTarget = frame.lookup(name) ?? frame.superMemory?.get(name);
+		}
+	}
 	information.environment = REnvironment.define(besideAmbientState(nodeToDefine), assignmentConfig?.superAssignment, information.environment);
 	noteOwnMethod(nodeToDefine.name, information.environment, data.ctx);
 	information.environment = ambientWritesOfAssignment(information.graph, information.environment, nodeToDefine.name, rootIdOfAssignment, data.cds ? [...data.cds] : undefined, assignmentConfig?.superAssignment === true || data.environment.level === 0);
@@ -699,6 +707,11 @@ export function markAsAssignment<OtherInfo>(
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 	for(const [id] of information.graph.edgesFrom(nid)) {
 		information.graph.removeEdgeType(nid, id, EdgeType.Reads);
+	}
+	for(const def of superTarget ?? []) {
+		if(!NodeId.isBuiltIn(def.nodeId)) {
+			information.graph.addEdge(nid, def.nodeId, EdgeType.Reads);
+		}
 	}
 }
 

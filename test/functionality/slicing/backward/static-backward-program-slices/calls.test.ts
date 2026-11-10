@@ -904,7 +904,7 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 			assertSliced(label(name, superCaps), shell, code, [criterion], expected, { expectedOutput: out, expectedSliceOutput: out });
 		}
 		/* `<<-` searches the enclosing frames first, so this writes f's `x`, not the global one */
-		superCase('the enclosing function frame wins over the global one', 'f <- function() { x <- 2; h <- function() x <<- 9; h(); x }\nv <- f()\nv', '3@v', 'f <- function() {\n        h <- function() x <<- 9\n        h()\n        x\n    }\nv <- f()\nv', '[1] 9');
+		superCase('the enclosing function frame wins over the global one', 'f <- function() { x <- 2; h <- function() x <<- 9; h(); x }\nv <- f()\nv', '3@v', 'f <- function() {\n        x <- 2\n        h <- function() x <<- 9\n        h()\n        x\n    }\nv <- f()\nv', '[1] 9');
 		/* the write lands on f's `x`, so the global one is never touched and the call is irrelevant */
 		superCase('a write caught by an enclosing frame leaves the global one alone', 'x <- 1\nf <- function() { x <- 2; h <- function() x <<- 9; h() }\nf()\nv <- x\nv', '5@v', 'x <- 1\nv <- x\nv', '[1] 1');
 		/* control: a closure counter writes the frame it captured, so every call depends on the one before */

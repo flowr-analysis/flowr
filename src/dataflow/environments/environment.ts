@@ -310,8 +310,8 @@ export class Environment implements IEnvironment {
 		/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what it stood in for when the closure was created (see {@link superMemory}) */
 		const holdsName = (env: Environment) => env.lookup(name) !== undefined || env.superMemory?.has(name) === true;
 		let current = newEnvironment;
-		// `<<-` falls back to the global env, never an attached package below it
-		while(!holdsName(current) && !current.globalEnv) {
+		// `<<-` starts its search in the parent of the frame it runs in, a local binding of the same name is not its target, and falls back to the global env, never an attached package below it
+		while((current === newEnvironment || !holdsName(current)) && !current.globalEnv) {
 			const last = current;
 			current.parent = current.parent.clone(false);
 			current = current.parent;

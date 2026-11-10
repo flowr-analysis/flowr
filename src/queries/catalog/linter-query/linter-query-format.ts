@@ -176,8 +176,18 @@ export const LinterQueryDefinition = {
 			);
 			return true;
 		}
-		for(const [ruleName, results] of Object.entries(out.results)) {
-			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result, formatter);
+		const entries = Object.entries(out.results) as [LintingRuleNames, LintingResults<LintingRuleNames>][];
+		const withoutFindings = entries.filter(([, results]) => !LintingResults.isError(results) && results.results.length === 0);
+		/* with many rules, the ones without findings only bury those with findings, so they collapse to a count */
+		const collapse = withoutFindings.length > MaxRulesWithoutFindingsShown;
+		for(const [ruleName, results] of entries) {
+			if(!collapse || !withoutFindings.some(([name]) => name === ruleName)) {
+				addLintingRuleResult(ruleName, results, result, formatter);
+			}
+		}
+		if(collapse) {
+			const all = withoutFindings.length === entries.length ? 'all ' : '+';
+			result.push(`   ╰ ${italic(`${all}${withoutFindings.length} rules with no findings (:query* to see all)`, formatter)}`);
 		}
 		return true;
 	},
@@ -210,6 +220,9 @@ export const LinterQueryDefinition = {
 		}).filter(isNotUndefined);
 	}
 } as const satisfies SupportedQuery<'linter'>;
+
+/** cap on rules without findings listed one by one before they collapse to a `+N rules with no findings` line */
+const MaxRulesWithoutFindingsShown = 3;
 
 /** cap on findings shown per certainty before collapsing to a `+N more` line; the full set is in `:query*` JSON */
 const MaxFindingsShown = 10;

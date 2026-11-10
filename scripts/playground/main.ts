@@ -1321,12 +1321,38 @@ const SliceActions: readonly { readonly label: string, readonly key: string, rea
 	} }
 ];
 const sliceKeys = Prec.high(keymap.of(SliceActions.map(action => ({ key: action.key, run: () => (action.run(), true) }))));
+/** the name under the cursor as R code, which a backtick quotes unless it is syntactic, as `x`, `d$col`, or `obj@slot` */
+function viewableAtCursor(): string | undefined {
+	const head = editor.state.selection.main.head;
+	const line = editor.state.doc.lineAt(head);
+	const name = targetAt(line.text, line.number, head - line.from)?.name;
+	if(name === undefined) {
+		return undefined;
+	}
+	return /^(?:[A-Za-z]|\.(?![0-9]))[\w.]*(?:[$@](?:[A-Za-z]|\.(?![0-9]))[\w.]*)*$/.test(name) ? name : `\`${name.replaceAll('`', '\\`')}\``;
+}
+
+/** shows what `code` holds in R's `View()`, in the repl's R session, the one a run of the script leaves its variables in */
+function viewInR(code: string): void {
+	const drawer = document.getElementById('repl') as HTMLDetailsElement | null;
+	if(drawer !== null) {
+		drawer.open = true;
+	}
+	runRepl(`View(${code})`);
+}
+
 function sliceMenu(): MenuEntry[] {
 	const toggle = (flip: () => void) => () => (flip(), remember(), void run());
+	const viewable = viewableAtCursor();
 	return [
 		'flowR', ...SliceActions.map(a => ({ label: `${a.label}  (${a.key.replace('Alt-', 'alt+')})`, run: a.run })), '',
 		{ label: 'Intersect the pinned positions', checked: intersect, run: toggle(() => intersect = !intersect) },
-		{ label: 'Negative slice: step back the slice', checked: negative, run: toggle(() => negative = !negative) }
+		{ label: 'Negative slice: step back the slice', checked: negative, run: toggle(() => negative = !negative) },
+		...viewable === undefined ? [] : ['R', {
+			label: `View ${viewable} in R`,
+			title: `runs View(${viewable}) in the R session, which holds the variables of the last run`,
+			run:   () => viewInR(viewable)
+		}]
 	];
 }
 

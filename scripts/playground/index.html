@@ -198,6 +198,17 @@ code, pre { font-family: var(--mono); }
 .figure-tab.on { border-color: var(--accent); color: var(--fg); }
 .figure-view img { display: block; max-width: 100%; height: auto; border-radius: .3rem; background: #fff; }
 .figure-view { container-type: inline-size; }
+/* a View() of the script's: a table to scroll through in both directions, its head stays in sight */
+:is(#repl, #runr) .out .view { margin: .4rem 0; white-space: normal; }
+.view-scroll { max-height: min(24rem, 60vh); overflow: auto; border: 1px solid var(--border); border-radius: .3rem; }
+.view table { border-collapse: collapse; font-family: var(--mono); font-size: .75rem; }
+.view th, .view td { padding: .15rem .5rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; max-width: 24rem; overflow: hidden; text-overflow: ellipsis; }
+.view th { position: sticky; top: 0; background: var(--sunk); cursor: pointer; user-select: none; }
+.view th .cls { display: block; color: var(--muted); font-weight: normal; font-size: .65rem; }
+.view th[aria-sort=ascending] > span:first-child::after { content: " ▲"; }
+.view th[aria-sort=descending] > span:first-child::after { content: " ▼"; }
+.view td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.view td.na { color: var(--muted); font-style: italic; }
 .figure-view object { display: block; width: 100%; max-height: 70vh; border: 0; border-radius: .3rem; }
 #runr:not(.shiny) .via .shinylive, #runr.shiny .via .webr, #runr.shiny #runrtrust { display: none; }
 #repl .ask { position: relative; display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }

@@ -300,6 +300,17 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
+	 * Forgets what an earlier analysis noted on this (built-in) environment, {@link forcing}, {@link locking}, {@link methods}, and {@link unknownMethodsAt}:
+	 * the built-in environment is shared by every analysis of a context, but what these say holds for one program only.
+	 */
+	public forgetProgramMarks(): void {
+		this.forcing = undefined;
+		this.locking = undefined;
+		this.methods = undefined;
+		this.unknownMethodsAt = undefined;
+	}
+
+	/**
 	 * What this frame binds `name` to for a `<<-` from a function written in it: its own binding, or, for the emptied stand-in of a function
 	 * around it, what the frame it stands in for held when the closure was created (see {@link superMemory}).
 	 */

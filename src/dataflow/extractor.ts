@@ -694,6 +694,8 @@ function extractDataFlowGraph<OtherInfo>(
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	const env = ctx.env.makeCleanEnv();
+	/* what an earlier program noted on the built-in environment all programs share does not hold for this one */
+	REnvironment.findBuiltIn(env.current).forgetProgramMarks();
 	env.current.n = ctx.meta.getNamespace();
 	const environment = attachProject(env, ctx);
 

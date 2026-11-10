@@ -32,6 +32,7 @@ import { callerGenerationsOf, stackEnvKindOf } from './built-in-stack-env';
 import { EnvironmentProducers, holdsValueOf, rebindAliases, rebindHolders } from './built-in-envir-utils';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { noteOwnMethod } from './built-in-expression-list';
 
 const OpOfProcessor: Partial<Record<BuiltInProcName, EnvOpKind>> = {
 	[BuiltInProcName.Assignment]: EnvOpKind.Define,
@@ -328,6 +329,9 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 		/* every call on the way makes the change */
 		for(const c of op.kind === EnvOpKind.Read ? [] : calls) {
 			graph.addEdge(value ?? op.id, c, EdgeType.SideEffectOnCall);
+		}
+		if(op.kind === EnvOpKind.Define || op.kind === EnvOpKind.Replace) {
+			all.forEach(name => noteOwnMethod(name, environment, ctx));
 		}
 		environment = applyOp(op, value, all, at, environment, cds, call, graph);
 	}

@@ -61,7 +61,9 @@ export const BaseDefinitions = [
 	fn(base('t'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigXDots }, Primitive),
 	/* an {@link BuiltInEvalName} marks what the value solver folds; a test checks the names against the handler tables */
 	/* the result follows from how large the argument is, not from what is in it, so it is bounded (`Narrows`) */
-	fn(base('length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical',
+	/* their bodies ask `dim(x)` and `length(x)`, which dispatch on the class of `x` */
+	fn(base('nrow', 'ncol', 'NROW', 'NCOL'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape, dispatches: ['dim', 'length'] }, Primitive),
+	fn(base('length', 'lengths', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical',
 		'is.function', 'is.list', 'is.double', 'is.integer', 'is.complex', 'is.raw', 'is.single', 'is.ordered'), BuiltInProcName.DefaultReadAllArgs,
 	{ props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape }, Primitive),
 	/* the names and the class are read off the argument, so whatever it carries can show up in the result */

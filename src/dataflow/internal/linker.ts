@@ -545,6 +545,10 @@ export function getAllLinkedFunctionDefinitions(
 	return [result, builtIns];
 }
 
+function subsets(node: RNode<ParentInformation> | undefined): boolean {
+	return RAccess.is(node) && node.operator === '[';
+}
+
 /** One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition. */
 function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void): NodeId | undefined {
 	if(NodeId.isBuiltIn(id)) {
@@ -560,7 +564,8 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 			next(named, false, undefined);
 		}
 	}
-	const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
+	/* a subset (`fs[1]`) holds entries as the list does, an element access (`fs[[1]]`, `fs$f`) the entry it names */
+	const nextViaAccess = viaAccess || (DfgVertex.hasOrigin(vertex, BuiltInProcName.Access) && !subsets(graph.idMap?.get(id)));
 	const isSkipType = DfgVertex.isFunctionCall(vertex);
 	/* a replacement keeps its target what it was (`environment(f) <- e` leaves `f` the same function), unless the call is to what it put into a part of it, so the walk goes on to the binding it replaces only */
 	const replaces = DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess;
@@ -897,11 +902,12 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 	}
 }
 
-/** An access of an environment one of `refs` is bound to in `environment` reads its field: `function(i) e$a`. */
+/** An access of an environment one of `refs` is bound to in `environment` reads its field: `function(i) e$a`, and the call reads what the environment holds, as that of a named function does (see {@link readEnvironmentContents}): `function(i) rd(e)`. */
 function bindAccessedFields(refs: readonly IdentifierReference[], environment: REnvironmentInformation, graph: DataflowGraph, idMap: AstIdMap, call: NodeId): void {
 	for(const ref of refs) {
-		for(const { envState } of (ref.name === undefined ? undefined : Resolve.byNameAndType(ref.name, environment, ReferenceType.Variable)?.filter(hasEnvState)) ?? []) {
-			bindAccessedField(graph, ref.nodeId, envState, idMap, call);
+		for(const holder of (ref.name === undefined ? undefined : Resolve.byNameAndType(ref.name, environment, ReferenceType.Variable)?.filter(hasEnvState)) ?? []) {
+			bindAccessedField(graph, ref.nodeId, holder.envState, idMap, call);
+			readEnvironmentContents(graph, call, holder);
 		}
 	}
 }

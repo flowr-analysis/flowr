@@ -1,7 +1,7 @@
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type CalledFunctions, errorEscapes, getAllLinkedFunctionDefinitions, linkFunctionCalls, linkFunctionCallWithSingleTarget, linkWritesCarriedByLoop } from '../../../../linker';
+import { bindAccessedField, type CalledFunctions, errorEscapes, getAllLinkedFunctionDefinitions, linkFunctionCalls, linkFunctionCallWithSingleTarget, linkWritesCarriedByLoop } from '../../../../linker';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -10,7 +10,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { loadNodesForNamespace } from './built-in-library';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, isInGraphDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, isInGraphDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, EnvOpKind, VertexType } from '../../../../../graph/vertex';
@@ -37,7 +37,7 @@ import { Dataflow } from '../../../../../graph/df-helper';
 import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { internalGenericMethods, linkedFunctionIds } from '../../../../dispatch-linking';
 import { REnvironment } from '../../../../../environments/environment';
-import { s3MethodPrefixesOf } from '../../../../../environments/group-generics';
+import { isGroupGeneric, s3MethodPrefixesOf } from '../../../../../environments/group-generics';
 import { InternalGenerics } from '../../../../../environments/default-builtin-config';
 import { CallProp, CallProps } from '../../../../../environments/built-in-props';
 
@@ -195,8 +195,20 @@ function activeBindingsReadIn(fn: DataflowGraphVertexFunctionDefinition, functio
 	};
 	for(const id of fn.subflow.graph) {
 		/* a free read of the body is bound where the function is called */
-		for(const binding of Dataflow.targetsOf(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall)) {
+		const bindings = Dataflow.targetsOf(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);
+		for(const binding of bindings) {
 			read(id, binding);
+		}
+		/* one the call of a function around the body is left to resolve (see `linkLiftedReads`) is read there, with the field it accesses */
+		const name = bindings.length === 0 && DfgVertex.isUse(graph.getVertex(id)) && graph.idMap !== undefined ? NodeId.recoverBareName(id, graph.idMap) : undefined;
+		for(const holder of name === undefined ? [] : Resolve.byName(name, environment) ?? []) {
+			read(id, holder.nodeId);
+			if(hasEnvState(holder) && graph.idMap !== undefined) {
+				bindAccessedField(graph, id, holder.envState, graph.idMap, functionCall);
+				const node = graph.idMap.get(id);
+				const access = node === undefined ? undefined : RNode.directParent(node, graph.idMap)?.info.id;
+				Dataflow.targetsOf(graph, access ?? id, EdgeType.Reads).forEach(field => read(id, field));
+			}
 		}
 	}
 	for(const ref of fn.subflow.in) {
@@ -359,18 +371,40 @@ export function printMethodsOf(id: NodeId, environment: REnvironmentInformation,
 
 /** A call of a built-in generic (`length(x)`, `x$a`, `x + 1`) may run the `<name>.<class>` methods the code itself binds for it, and `new` the `initialize` methods, so it changes what they change, each only maybe. */
 function ownMethodsCalledBy(thisGraph: DataflowGraph, environment: REnvironmentInformation, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): CalledFunctions[] {
-	const found: CalledFunctions[] = [];
+	const methods = new Map<NodeId, NodeId[]>();
+	const add = (call: NodeId, ids: readonly NodeId[]) => methods.set(call, [...methods.get(call) ?? [], ...ids]);
+	/* the calls by each name whose `<name>.<class>` methods they may run */
+	const generics = new Map<string, NodeId[]>();
+	const methodsBound = REnvironment.findBuiltIn(environment.current).methods === true;
 	for(const [id, call] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
 		if(!call.onlyBuiltin || call.name === undefined || !thisGraph.isRoot(id)) {
 			continue;
 		}
-		const methods = [
-			...isBuiltInGeneric(call.name, ctx) ? s3MethodPrefixesOf(call.name).flatMap(prefix => ownDefinitionsPrefixed(`${prefix}.`, environment)) : [],
-			...call.initializer === undefined ? [] : Dataflow.targetsOf(graph, id, EdgeType.Calls).filter(t => !NodeId.isBuiltIn(t))
-		];
-		const called = methods.length === 0 ? [] : [...getAllLinkedFunctionDefinitions(new Set(methods), graph)[0]];
+		/* a built-in may run generics of its own as well (`nrow(x)` asks `dim(x)`) */
+		const prefixes = methodsBound ? [...isBuiltInGeneric(call.name, ctx) ? s3MethodPrefixesOf(call.name) : [], ...ctx.env.builtInFunctionOf(call.name)?.config?.dispatches ?? []] : [];
+		prefixes.forEach(prefix => generics.set(prefix, [...generics.get(prefix) ?? [], id]));
+		if(call.initializer !== undefined) {
+			add(id, Dataflow.targetsOf(graph, id, EdgeType.Calls).filter(t => !NodeId.isBuiltIn(t)));
+		}
+	}
+	for(const frame of generics.size > 0 ? REnvironment.frames(environment.current) : []) {
+		/* the frames of the packages bind their own methods, which the configuration states */
+		if(frame.t !== undefined || frame.builtInEnv) {
+			break;
+		}
+		for(const [name, definitions] of frame.memory) {
+			for(let dot = name.indexOf('.', 1); dot > 0; dot = name.indexOf('.', dot + 1)) {
+				for(const call of generics.get(name.slice(0, dot)) ?? []) {
+					add(call, definitions.filter(d => !NodeId.isBuiltIn(d.nodeId)).map(d => d.nodeId));
+				}
+			}
+		}
+	}
+	const found: CalledFunctions[] = [];
+	for(const [functionCall, ids] of methods) {
+		const called = [...getAllLinkedFunctionDefinitions(new Set(ids), graph)[0]];
 		if(called.length > 0) {
-			found.push({ functionCall: id, called, propagateExitPoints: [], alternatives: true });
+			found.push({ functionCall, called, propagateExitPoints: [], alternatives: true });
 		}
 	}
 	return found;
@@ -380,20 +414,16 @@ function isBuiltInGeneric(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): 
 	return InternalGenerics.has(Identifier.getName(name)) || CallProps.hasAny(ctx.env.builtInFunctionOf(name)?.config, CallProp.Generic);
 }
 
-/** The definitions the frames of the code itself (not those of the packages) bind to a name starting with `prefix`. */
-function ownDefinitionsPrefixed(prefix: string, environment: REnvironmentInformation): NodeId[] {
-	const found: NodeId[] = [];
-	for(const frame of REnvironment.frames(environment.current)) {
-		if(frame.t !== undefined || frame.builtInEnv) {
-			break;
-		}
-		for(const [name, definitions] of frame.memory) {
-			if(name.startsWith(prefix)) {
-				found.push(...definitions.filter(d => !NodeId.isBuiltIn(d.nodeId)).map(d => d.nodeId));
-			}
+/** Notes a binding of `name` a call of a built-in generic may dispatch to (`length.foo`, `Ops.foo`), as only then the calls look for such methods (see {@link ownMethodsCalledBy}). */
+export function noteOwnMethod(name: Identifier, environment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): void {
+	const plain = Identifier.getName(name);
+	for(let dot = plain.indexOf('.', 1); dot > 0; dot = plain.indexOf('.', dot + 1)) {
+		const prefix = plain.slice(0, dot);
+		if(isGroupGeneric(prefix) || isBuiltInGeneric(prefix, ctx)) {
+			REnvironment.findBuiltIn(environment.current).methods = true;
+			return;
 		}
 	}
-	return found;
 }
 
 /** Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run (all of them if the classes are not known), with any that is no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it, any other one if the classes are not known. */
@@ -437,7 +467,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			const effects = nextGraph.unknownSideEffects;
 			for(const effect of inside.size < effects.size ? inside : effects) {
 				if(typeof effect !== 'object' && inside.has(effect) && effects.has(effect)) {
-					nextGraph.addEdge(effect, functionCall, EdgeType.SideEffectOnCall);
+					/* every call on the way makes it */
+					for(const call of [functionCall, ...chain ?? []]) {
+						nextGraph.addEdge(effect, call, EdgeType.SideEffectOnCall);
+					}
 				}
 			}
 			// only merge the environments they have in common

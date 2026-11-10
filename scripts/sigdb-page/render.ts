@@ -5,6 +5,7 @@ import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
 import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, originWords, related, titled, type Part } from './contract-view';
+import { uniqueArray } from '../../src/util/collections/arrays';
 
 /** a word of a signature with what it means, for its hover */
 function described(word: string): string {
@@ -177,15 +178,25 @@ export class Hits {
 		head.append(list);
 		row.append(head);
 		const formals = guards === undefined ? [] : contractFormals(formalsOf(args), formalsOf(declared ?? ''), guards);
-		if(guards !== undefined) {
-			row.append(teaser(name, guards, formals));
-		}
 		const ambient = entry.ambientIn(chosen?.pkg.name);
-		if(ambient.length > 0) {
-			row.append(ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name));
+		/* the card names what the contract and the global state are about in one line, the opened view says what holds and what is done */
+		if(guards !== undefined || ambient.length > 0) {
+			row.append(teaser(name, guards, formals, ambient));
 		}
 		/* how it takes part in S3 dispatch is for the opened view, the card stays one line or two */
-		const open = opens(row, () => this.owners(entry, guards === undefined ? undefined : contract(name, guards, formals, chosen), s3Line(entry), chosen?.pkg.name));
+		const open = opens(row, () => {
+			const contracted = guards === undefined ? undefined : contract(name, guards, formals, chosen);
+			const detail = this.owners(entry, contracted, s3Line(entry), chosen?.pkg.name);
+			if(ambient.length > 0) {
+				const block = ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name);
+				if(contracted === undefined) {
+					detail.prepend(block);
+				} else {
+					contracted.after(block);
+				}
+			}
+			return detail;
+		});
 		this.list.append(row);
 		/* the name asked for, plain or qualified, opens right away, the first such hit only */
 		if(!this.expanded && name === this.asked.needle) {
@@ -359,14 +370,29 @@ export class Hits {
 	}
 }
 
-/** The contract within the row: where it comes from, the formals it speaks of, and what relates them; the row opens the rest */
-function teaser(name: string, guards: Guards, formals: readonly string[]): HTMLElement {
-	const [, , , origin = '', , , returns = []] = guards;
-	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
+/**
+ * One line within the row: the formals the contract speaks of, where it comes from, and the parts of the global state a call
+ * touches, each with what is said of it on hover; the row opens the rest.
+ */
+function teaser(name: string, guards: Guards | undefined, formals: readonly string[], ambient: readonly AmbientFamily[]): HTMLElement {
+	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally and what it does to the global state, click to open');
 	const line = el('div');
-	const claimed = claimsByFormal(guards, formals);
-	line.append(el('span', 'label', 'contract'), originTag(origin), ...spokenOf(guards, formals).map(formal => formalMark(guardedChip(el('code', hueOf(formals.indexOf(formal)), formal), formal, claimed.get(formal)), formal)),
-		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
+	if(guards !== undefined) {
+		const [, , , origin = '', , , returns = []] = guards;
+		const claimed = claimsByFormal(guards, formals);
+		line.append(el('span', 'label', 'contract'), originTag(origin), ...spokenOf(guards, formals).map(formal => formalMark(guardedChip(el('code', hueOf(formals.indexOf(formal)), formal), formal, claimed.get(formal)), formal)),
+			...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
+	}
+	if(ambient.length > 0) {
+		const words = db.ambientWords.families;
+		line.append(...guards === undefined ? [] : [el('span', 'sep', '\u00b7')], el('span', 'label', 'ambient'), ...ambient.map(([family, accesses]) => {
+			const [label = family, description = ''] = words[family] ?? [];
+			const done = uniqueArray(accesses.map(([, , verb]) => verb));
+			/* what changes the state stands out from what only looks at it */
+			const changes = accesses.some(([, access]) => !Looks.has(access));
+			return titled(el('span', changes ? 'fam changes' : 'fam', label), `${description}${description === '' ? '' : ': '}${done.join(', ')}`);
+		}));
+	}
 	box.append(line);
 	return box;
 }

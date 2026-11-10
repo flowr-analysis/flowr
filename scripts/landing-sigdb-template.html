@@ -217,7 +217,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .teaser { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .2rem; font-size: .78rem; color: var(--muted); cursor: pointer; }
 #hits .teaser code, #hits .contract code.arg { font-size: .75rem; padding: 0 .3rem; border-radius: .3rem; color: color-mix(in srgb, var(--hue) 80%, var(--fg)); background: color-mix(in srgb, var(--hue) 12%, transparent); }
 #hits .label { font-variant: small-caps; letter-spacing: .04em; }
-#hits .origin { font-size: .68rem; padding: 0 .4rem; border-radius: .7rem; border: 1px solid var(--border); }
+#hits .origin { font-size: .66rem; padding: 0 .35rem; border-radius: .7rem; border: 1px solid var(--border); }
 #hits .origin.inferred { color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
 #hits .origin.stated { color: color-mix(in srgb, #7a5cd6 70%, var(--muted)); }
 #hits .contract { margin-bottom: .3rem; }
@@ -266,8 +266,14 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .sep { color: var(--border); }
 #hits .contract .claim abbr { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); cursor: help; }
 #hits .contract .tag { justify-self: start; }
-#hits .teaser { flex-direction: column; align-items: flex-start; }
-#hits .teaser > div { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+#hits .teaser { flex-direction: column; align-items: flex-start; margin-top: .1rem; }
+/* one compact line: the formals of the contract and the parts of the state, the opened row tells the rest */
+#hits .teaser > div { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; line-height: 1.25; }
+#hits .teaser code { font-size: .7rem; padding: 0 .25rem; }
+#hits .teaser .label { font-size: .7rem; margin-right: .1rem; }
+#hits .teaser .sep { color: var(--border); margin: 0 .25rem; }
+#hits .teaser .fam { font-size: .7rem; padding: 0 .35rem; border-radius: .7rem; border: 1px solid var(--border); color: color-mix(in srgb, #1f8a96 70%, var(--fg)); cursor: help; }
+#hits .teaser .fam.changes { border-color: color-mix(in srgb, #1f8a96 45%, var(--border)); }
 #hits .teaser .related { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .74rem; color: var(--fg); gap: 0; }
 #hits .teaser .related .arg { padding: 0; background: none; }
 #hits .contract .why { margin-top: .35rem; }

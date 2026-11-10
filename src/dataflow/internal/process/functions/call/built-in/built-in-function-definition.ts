@@ -27,6 +27,7 @@ import { type NextMethods, callsNextMethod, type DispatchContext, DispatchNarrow
 import { createFreshEnvState } from './built-in-new-env';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { EnvType, REnvironment } from '../../../../../environments/environment';
+import type { MemoryView } from '../../../../../environments/frame-memory';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
@@ -1085,6 +1086,20 @@ function namesRemovedBy(call: DataflowGraphVertexFunctionCall, idMap: AstIdMap<P
 	return names;
 }
 
+/**
+ * What a frame holds for a `<<-` within a function written in it: what it binds itself, and, as the emptied stand-in of a function around it,
+ * what the frame it stands in for held, so `<<-` in a function three levels deep still finds the binding of the outermost one.
+ */
+function lexicalMemoryOf(this: void, frame: Environment): MemoryView {
+	const original = frame.superMemory;
+	if(original === undefined || original.size === 0) {
+		return frame.memory;
+	} else if(frame.memory.size === 0) {
+		return original;
+	}
+	return new Map([...original, ...frame.memory]);
+}
+
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {
 	const level = data.environment.level;
 	/* the enclosing frames are emptied, but a `<<-` binds lexically, so each stand-in keeps what its original held */
@@ -1100,7 +1115,7 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 		if(i === level) {
 			env.current.setClosureNodeId(rootId);
 		} else {
-			env.current.standsInFor(enclosing[level - 1 - i].memory);
+			env.current.standsInFor(lexicalMemoryOf(enclosing[level - 1 - i]));
 		}
 	}
 	return { ...data, environment: env };

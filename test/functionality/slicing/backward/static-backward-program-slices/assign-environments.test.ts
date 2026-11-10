@@ -75,6 +75,8 @@ const Programs: readonly (readonly [name: string, code: string])[] = [
 	['eval of an assign', 'nm <- "y9"\neval(quote(assign(nm, 5)))\nprint(y9)'],
 	['an alias of the list', 'v <- list(n = "dyn")\nx <- v\nassign(x$n, 11)\nprint(dyn)'],
 	['the name and the value from one list', 'spec <- list(name = "total", value = 1:3)\nassign(spec$name, sum(spec$value))\nprint(total)'],
+	['<<- binds in a frame three functions up', 'v <- 10\nf0 <- function() {\n  v <- 0\n  f1 <- function() {\n    f2 <- function() v <<- v + 1\n    f2()\n  }\n  f1()\n  v\n}\nprint(c(f0(), v))'],
+	['<<- binds in a frame four functions up', 'v <- 10\nf0 <- function() {\n  f1 <- function() {\n    v <- 0\n    f2 <- function() {\n      f3 <- function() v <<- v + 1\n      f3()\n    }\n    f2()\n  }\n  f1()\n}\nf0()\nprint(v)'],
 	['nested list fields', 'cfg <- list(out = list(name = "res"))\nassign(cfg$out$name, "ok")\nprint(res)']
 ];
 

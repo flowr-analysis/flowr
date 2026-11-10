@@ -255,7 +255,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .raw .copy:hover { color: var(--accent); border-color: var(--accent); }
 #hits .contract .chead { margin: 0 0 .3rem; font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 #hits .contract .ctable { display: grid; gap: .1rem; }
-#hits .contract .crow { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: .8rem; align-items: baseline; padding: .1rem .5rem; border-radius: .4rem; font-size: .82rem; }
+#hits .contract .crow { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: .8rem; align-items: start; padding: .1rem .5rem; border-radius: .4rem; font-size: .82rem; }
 #hits .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a failure reads in one line under its condition rather than as a narrow column beside it */
 #hits .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: .05rem; }
@@ -266,7 +266,6 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .sep { color: var(--border); }
 #hits .contract .claim abbr { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); cursor: help; }
 #hits .contract .tag { justify-self: start; }
-#hits .contract .unless, #hits .teaser .unless { color: var(--muted); font-style: italic; }
 #hits .teaser { flex-direction: column; align-items: flex-start; }
 #hits .teaser > div { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
 #hits .teaser .related { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .74rem; color: var(--fg); gap: 0; }
@@ -286,6 +285,12 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .or, #hits .teaser .or { color: color-mix(in srgb, #1f8a96 72%, var(--fg)); font-style: normal; font-weight: normal; margin: 0 .2em; }
 #hits .contract .and, #hits .contract .cmp, #hits .teaser .and { color: var(--muted); font-style: normal; }
 #hits .contract .word, #hits .teaser .word { font-style: italic; }
+/* `if` and `unless` open a part of their own, so they stand out like the `||` that separates alternatives */
+#hits .contract .if, #hits .contract .unless, #hits .teaser .if, #hits .teaser .unless { color: color-mix(in srgb, #8a5cb8 75%, var(--fg)); font-style: italic; }
+#hits .contract .cond .paren { font-weight: 600; }
+#hits .contract .cond .paren.p0 { color: color-mix(in srgb, #8a5cb8 70%, var(--fg)); }
+#hits .contract .cond .paren.p1 { color: color-mix(in srgb, #1f8a96 70%, var(--fg)); }
+#hits .contract .cond .paren.p2 { color: color-mix(in srgb, #b07d00 70%, var(--fg)); }
 #hits .lit { background: color-mix(in srgb, var(--hue, var(--accent)) 20%, transparent); border-radius: .25rem; }
 #hits .stated .formal.guarded { cursor: help; }
 #hits .stated .formal.quiet { color: color-mix(in srgb, var(--muted) 75%, transparent); }

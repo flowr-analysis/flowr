@@ -1,6 +1,7 @@
 import { blank, el } from '../page-lib/dom';
 import type { Guards } from './database';
 import { spokenOf } from './contract-formals';
+import { grouped } from '../../src/dataflow/fn/guards/condition-grouping';
 
 /*
  * How a contract reads, shared by the signature browser and the playground: the formals in their hues, the operators set
@@ -52,7 +53,7 @@ export function conjuncts(condition: string): string[] {
 
 /** each formal in its own color and the operators set apart, so a long condition reads at a glance */
 function marker(search: (q: string) => string, formals: readonly string[], result = false, calls: NonNullable<Guards[10]> = []): (code: string) => (string | HTMLElement)[] {
-	return code => code.split(/(\|\||&&|[<>=!]=|!|%in%|(?:\b[A-Za-z.][A-Za-z0-9._]*::)?\b[A-Za-z.][A-Za-z0-9._]*\b(?:\()?)/).filter(part => part !== '').flatMap(part => {
+	return code => parens(grouped(code).split(/(\|\||&&|[<>=!]=|!|%in%|(?:\b[A-Za-z.][A-Za-z0-9._]*::)?\b[A-Za-z.][A-Za-z0-9._]*\b(?:\()?)/).filter(part => part !== '').flatMap(part => {
 		if(Operators[part] !== undefined) {
 			return [titled(el('span', Operators[part][0], part), Operators[part][1])];
 		} else if(result && part === 'result') {
@@ -67,7 +68,20 @@ function marker(search: (q: string) => string, formals: readonly string[], resul
 			return [link('fn', fn, search(qualified), qualified + ': ' + (FunctionAbout[fn] ?? 'search for it')), '('];
 		}
 		return [ClaimAbout[part] === undefined ? part : titled(el('abbr', undefined, part), ClaimAbout[part])];
-	});
+	}));
+}
+
+/** the parentheses within the plain text of a rendered condition, each pair in the color of its depth so it is easy to see which close which */
+function parens(parts: readonly (string | HTMLElement)[]): (string | HTMLElement)[] {
+	let depth = 0;
+	return parts.flatMap(part => typeof part !== 'string' ? [part] : part.split(/([()])/).filter(p => p !== '').map(p => {
+		if(p === '(') {
+			return el('span', `paren p${depth++ % 3}`, p);
+		} else if(p === ')') {
+			return el('span', `paren p${--depth % 3}`, p);
+		}
+		return p;
+	}));
 }
 
 /** what the functions conditions are usually written with check, so a reader can follow a condition without the manual */
@@ -187,7 +201,8 @@ export function contract(name: string, guards: Guards, formals: readonly string[
 	}
 	for(const [holds, unless] of relations) {
 		const said = el('code', 'cond');
-		said.append(...marked(holds), ...(unless === '' ? [] : [el('span', 'unless word', ' unless '), ...marked(unless)]));
+		/* one condition, so the `unless` and what it groups read alike in every row */
+		said.append(...marked(unless === '' ? holds : `${holds} unless ${unless}`));
 		rows.append(contractRow('claim relation', related(holds, formals).flatMap((f, at) => [...at > 0 ? [' '] : [], chip(f)]), [said]));
 	}
 	if(returns.length > 0) {
@@ -255,6 +270,8 @@ const Operators: Readonly<Record<string, readonly [cls: string, about: string]>>
 	'%in%':     ['cmp', 'is one of'],
 	'in':       ['cmp', 'is one of the set that follows'],
 	'and':      ['and word', 'and'],
+	'unless':   ['unless word', 'unless the following holds, which lets the call through anyway'],
+	'if':       ['if word', 'only if the following holds'],
 	'pmatches': ['cmp', 'is one of the set that follows, or a prefix that picks out only one of them, as pmatch and match.arg allow'],
 	'not':      ['not word', 'not']
 };

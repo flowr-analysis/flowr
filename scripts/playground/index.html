@@ -377,7 +377,7 @@ code, pre { font-family: var(--mono); }
 .contract a.at:hover { text-decoration: underline; }
 /* the rows share their columns, so the conditions line up under each other */
 .contract .ctable { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .05rem .6rem; }
-.contract .crow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline; padding: .05rem .35rem; border-radius: .35rem; font-size: .78rem; }
+.contract .crow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; padding: .05rem .35rem; border-radius: .35rem; font-size: .78rem; }
 .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .contract code { font-family: var(--mono); }
@@ -397,8 +397,13 @@ code, pre { font-family: var(--mono); }
 .contract .why > summary { cursor: pointer; font-size: .72rem; color: var(--muted); padding: .1rem .35rem; }
 .contract .not { color: color-mix(in srgb, #c2453b 62%, var(--muted)); }
 .contract .or { color: color-mix(in srgb, #1f8a96 72%, var(--fg)); margin: 0 .2em; }
-.contract .and, .contract .cmp, .contract .unless { color: var(--muted); }
-.contract .word, .contract .unless { font-style: italic; }
+.contract .and, .contract .cmp { color: var(--muted); }
+.contract .word { font-style: italic; }
+.contract .if, .contract .unless { color: color-mix(in srgb, #8a5cb8 75%, var(--fg)); font-style: italic; }
+.contract .cond .paren { font-weight: 600; }
+.contract .cond .paren.p0 { color: color-mix(in srgb, #8a5cb8 70%, var(--fg)); }
+.contract .cond .paren.p1 { color: color-mix(in srgb, #1f8a96 70%, var(--fg)); }
+.contract .cond .paren.p2 { color: color-mix(in srgb, #b07d00 70%, var(--fg)); }
 .contract .lit { background: color-mix(in srgb, var(--hue, var(--accent)) 20%, transparent); border-radius: .25rem; }
 #panel .contracts { display: grid; gap: .5rem; }
 #panel .fncontract .tcall { font-family: var(--mono); font-size: .8rem; font-weight: 600; }

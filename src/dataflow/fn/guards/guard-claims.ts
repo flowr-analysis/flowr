@@ -5,6 +5,7 @@ import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
 import { AnyType, RValueType, type GuardFacts, type GuardFactsLookup, type ReturnedValue, type RValueTypes } from '../../environments/guard-facts';
 import { setEquals } from '../../../util/collections/set';
 import { appliesFormal, typeNames } from './guard-knowledge';
+import { allOf } from './condition-grouping';
 
 /** The inclusive bounds of a number, the upper one `Infinity` if there is none; JSON turns that into `null`, so it is stated as such. */
 export type ClaimedRange = readonly [lower: number | null, upper: number | null];
@@ -765,7 +766,7 @@ export function claimWords(this: void, { types, unclassedTypes, values, partial,
 
 /** Each case of a claim as its condition and what holds in it, see {@link claimConditions}. */
 export function caseConditions(this: void, formal: string, { cases }: FormalClaim): string[] {
-	return (cases ?? []).map(c => `if ${c.when}: ${[...claimConditions(formal, c.claim), ...(c.relations ?? []).map(r => r.holds)].join(' && ')}`);
+	return (cases ?? []).map(c => `if (${c.when}): ${allOf([...claimConditions(formal, c.claim), ...(c.relations ?? []).map(r => r.holds)])}`);
 }
 
 /** What a call returns in a few words, see {@link claimWords}: what holds of it, and the formal it hands back. */

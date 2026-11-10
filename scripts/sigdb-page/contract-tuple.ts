@@ -1,5 +1,6 @@
 import type { StatedGuards } from '../../src/dataflow/fn/guards/built-in-guards';
 import { caseConditions, claimConditions, returnConditions } from '../../src/dataflow/fn/guards/guard-claims';
+import { allOf, grouped } from '../../src/dataflow/fn/guards/condition-grouping';
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { contractTokens } from './contract-search';
 import type { Guards } from './database';
@@ -9,7 +10,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 	const claims = [
 		...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, claim), ...caseConditions(formal, claim)]]),
 		/* a claim that holds unless something else lets the call through reads as that alternative or the claim, unless the cases of the formal say it shorter */
-		...(stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined).map(({ formal, claim, unless }): [string, string[]] => [formal, [`${unless} || ${claimConditions(formal, claim).join(' && ')}`]])
+		...(stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined).map(({ formal, claim, unless }): [string, string[]] => [formal, [grouped(`${unless} || ${allOf(claimConditions(formal, claim))}`)]])
 	];
 	const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message, reads, brief, loc }): [string, string, string, string, string, string, string, string] =>
 		[requires, kind, fails, via?.join(', ') ?? '', message ?? '', reads ?? '', brief ?? '', loc === undefined ? '' : `${loc.fn}:${loc.line}:${loc.column}`]);
@@ -28,7 +29,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 		relations: (stated.relations ?? []).map(r => r.formals),
 		returns:   stated.returns
 	});
-	return [stated.requires, claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []], result, named,
+	return [stated.requires, claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : allOf(claimConditions(unlessClaim.formal, unlessClaim.claim))]), [...stated.required ?? []], result, named,
 		stated.dispatches === undefined ? [] : [stated.dispatches, stated.methods ?? []], stated.methodOf === undefined ? [] : [stated.methodOf.generic, stated.methodOf.class],
 		calls.map(id => [Identifier.toPreludeString(id), Identifier.toString(id)]), tokens];
 }

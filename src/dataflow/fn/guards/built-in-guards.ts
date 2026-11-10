@@ -7,12 +7,30 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { claimsOf, readingOf, type FormalClaim } from './guard-claims';
 import { defaultGuardFacts, passes } from './guard-knowledge';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
-import { RBaseGuards, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
+import { RBaseGuards, RBaseGuardsDate, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
 import { uniqueArray } from '../../../util/collections/arrays';
+import type { Column } from '../../../util/range';
+
+/**
+ * Where a {@link StatedGuards} comes from: read off the closure of a function (by `scripts/gen-base-guards.ts` into the base table, or when the signature
+ * database was built), or stated by flowR for a function written in C. Another version of R may check less or more.
+ */
+export interface GuardOrigin {
+	readonly source:   'base-table' | 'sigdb' | 'builtin'
+	/** the R version the closure was read off, or for `builtin` the one the stated facts are taken for */
+	readonly r:        string
+	/** when it was read off, as an ISO date, absent if unknown */
+	readonly date?:    string
+	/** the package the function is of, and its version */
+	readonly pkg?:     BrandedNamespace
+	readonly version?: string
+}
 
 /** What is known about a function without a program to read it from: {@link FunctionGuards} without the clauses, which point at code. */
 export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<Pick<FunctionGuards, 'relations' | 'conditional' | 'returns' | 'passes'>> {
@@ -20,8 +38,8 @@ export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<
 	readonly required?:   readonly BrandedIdentifier[]
 	/** see {@link FunctionGuards.formals} */
 	readonly formals?:    Readonly<Record<BrandedIdentifier, FormalClaim>>
-	/** the R version they were read off, for what a closure checks, which another version may check differently */
-	readonly readOff?:    string
+	/** where they come from and which R they hold for, see {@link GuardOrigin} */
+	readonly readOff?:    GuardOrigin
 	/** why each part of {@link StatedGuards.requires} is in effect */
 	readonly because?:    readonly GuardReason[]
 	/** the S3 generic it is a method of, written `pkg::name`, and the class it is the method for */
@@ -57,6 +75,26 @@ export interface GuardReason {
 	readonly via?:     readonly string[]
 	/** see {@link GuardClause.message} */
 	readonly message?: string
+	/**
+	 * Where the failing code is: the function it is written in (`pkg::name` where the package is known, a helper for a condition inherited
+	 * through {@link GuardReason.via}) and its line and column counted from the line that function's definition starts on, in the code
+	 * analyzed. For the base table that is the closure as R prints it, since base R keeps no source references.
+	 */
+	readonly loc?:     { readonly fn: string, readonly line: number, readonly column: Column }
+}
+
+/** {@link GuardReason.loc} of `node`, by the outermost function definition around it and the name it is assigned to. */
+function locationOf(this: void, node: RNodeWithParent | undefined, idMap: AstIdMap, qualified: (name: string) => string): GuardReason['loc'] {
+	let definition: RNodeWithParent | undefined;
+	for(let at = node; at !== undefined; at = RNode.directParent(at, idMap)) {
+		definition = RFunctionDefinition.is(at) ? at : definition;
+	}
+	const assigned = definition === undefined ? undefined : RNode.directParent(definition, idMap);
+	const name = assigned !== undefined && RBinaryOp.is(assigned) ? assigned.lhs.lexeme?.replaceAll('`', '') : undefined;
+	if(node?.location === undefined || definition?.location === undefined || name === undefined) {
+		return undefined;
+	}
+	return { fn: qualified(name), line: node.location[0] - definition.location[0] + 1, column: node.location[1] };
 }
 
 const MaxReasonLength = 160;
@@ -91,6 +129,7 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 		const brief = briefOf(node, message, idMap);
 		const reads = readingOf(requires, defaultGuardFacts());
 		const formals = [...GuardTerm.formalsOf(requires)];
+		const loc = locationOf(node, idMap, qualified);
 		return {
 			requires: rendered,
 			kind,
@@ -99,7 +138,8 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 			...(reads === undefined ? {} : { reads }),
 			...(formals.length === 0 ? {} : { formals }),
 			...(via === undefined || via.length === 0 ? {} : { via: via.map(id => qualified(RNode.ownLexeme(idMap.get(id)) ?? '')) }),
-			...(message === undefined ? {} : { message })
+			...(message === undefined ? {} : { message }),
+			...(loc === undefined ? {} : { loc })
 		};
 	});
 }
@@ -124,7 +164,8 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 	}
 	const claims = claimsOf(stated.map(([, term]) => term), stated.map(([formal]) => formal), defaultGuardFacts());
 	const calls = callsOfTerms(stated.map(([, term]) => term));
-	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(claims).length > 0 ? { formals: claims } : {}), ...(calls.length > 0 ? { calls } : {}) };
+	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(claims).length > 0 ? { formals: claims } : {}), ...(calls.length > 0 ? { calls } : {}),
+		readOff:  { source: 'builtin', r: RBaseGuardsVersion } };
 }
 
 /** Everything with stated guards, as `[package, name]`. */
@@ -144,5 +185,5 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
 export function builtInGuards(this: void, name: BrandedIdentifier, pkg: BrandedNamespace | undefined = baseRExportOwner(name)): StatedGuards | undefined {
 	const owner = pkg ?? PkgName.Base;
 	const read = RBaseGuards[String(owner)]?.[String(name)];
-	return read !== undefined ? { ...read, readOff: RBaseGuardsVersion } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);
+	return read !== undefined ? { ...read, readOff: { source: 'base-table', r: RBaseGuardsVersion, date: RBaseGuardsDate, pkg: owner, version: RBaseGuardsVersion } } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);
 }

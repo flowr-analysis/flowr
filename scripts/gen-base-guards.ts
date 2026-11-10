@@ -160,6 +160,9 @@ ${rows.join(',\n')}
 
 /** The R version {@link RBaseGuards} was read off. */
 export const RBaseGuardsVersion = ${JSON.stringify(version)};
+
+/** The day {@link RBaseGuards} was read off, as an ISO date. */
+export const RBaseGuardsDate = ${JSON.stringify(new Date().toISOString().slice(0, 10))};
 `);
 	console.log(`wrote ${Target}`);
 	process.exit(0);

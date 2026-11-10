@@ -138,7 +138,7 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			const src = withGuards(await SigDatabase.open(path.join(dir, `db${SigDbExt}`)));
 			const combn = src.functionByName('utils', 'combn');
 			expect(combn?.guards?.formals?.m?.bounds).toEqual({ length: [1, 1], value: [0, null] });
-			expect(combn?.guards?.readOff).toBe(RBaseGuardsVersion);
+			expect(combn?.guards?.readOff?.r).toBe(RBaseGuardsVersion);
 			expect(src.functions('utils')?.find(f => f.name === 'unknownToFlowr')?.guards).toBeUndefined();
 			expect(signatureFunctionInfo(src, 'utils', 'combn')?.guards?.required).toEqual(combn?.guards?.required);
 		});

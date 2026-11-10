@@ -8,7 +8,7 @@ import { guardsForPage } from '../../../scripts/sigdb-index';
 
 const Root = path.join(__dirname, '..', '..', '..');
 
-const Hooks = ['q', 'mode', 'sort', 'filters', 'scope', 'status', 'hits', 'data', 'kinds', 'stated', 'topics', 'formals', 'groups', 'generics', 'topics-complete', 'ambient-words', 'raw', 'helpcontracts', 'helpkinds'];
+const Hooks = ['q', 'mode', 'sort', 'filters', 'scope', 'status', 'hits', 'data', 'kinds', 'stated', 'topics', 'formals', 'groups', 'generics', 'topics-complete', 'ambient-words', 'docs', 'raw', 'helpcontracts', 'helpkinds'];
 
 describe('Signature database page', () => {
 	test('the template carries the bundle placeholder and every id the script binds to', () => {

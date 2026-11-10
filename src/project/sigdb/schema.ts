@@ -49,15 +49,25 @@ export const SigDbExt = '.sigs.ndjson';
 
 /** function-level boolean properties, packed into {@link SigFn}'s bitfield */
 export const enum FnProp {
+	/** the package exports the name, so a caller reaches it without `:::` */
 	Exported         = 1 << 0,
+	/** takes a function as an argument or returns one */
 	HigherOrder      = 1 << 1,
+	/** calls itself, directly or through other functions of the package */
 	Recursive        = 1 << 2,
+	/** calls something deprecated, so it may stop working once that goes */
 	CallsDeprecated  = 1 << 3,
+	/** may raise an error, so a caller cannot count on a value back */
 	CanThrow         = 1 << 4,
+	/** marked as deprecated by the package itself */
 	Deprecated       = 1 << 5,
+	/** calls into R's internal code, like `.Internal` or `.Call`, which no R source shows */
 	CallsInternal    = 1 << 6,
+	/** may answer differently for the same arguments, like random draws or the clock */
 	NonDeterministic = 1 << 7,
+	/** the package has no manual page for the name */
 	NoDoc            = 1 << 8,
+	/** an implementation of a generic for one class, like `print.data.frame` */
 	S3Method         = 1 << 9,
 	/**
 	 * An exported function that is also an S3 class this package OWNS: it is a same-named constructor for a

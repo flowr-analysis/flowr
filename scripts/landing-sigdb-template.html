@@ -105,15 +105,15 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 .filters button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
 
 /* minmax(0, 1fr), not the implicit auto: a track sized to its content would let a long signature push the row past the page */
-#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .3rem; }
 #hits li {
-	padding: .55rem .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel);
+	padding: .4rem .7rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel);
 	transition: border-color .12s; cursor: pointer; min-width: 0;
 }
 /* one line per hit: the signature is the part that gives way, so nothing else is pushed onto a line of its own */
 #hits .head { display: flex; flex-wrap: nowrap; gap: .3rem .8rem; align-items: baseline; min-width: 0; }
 #hits .head > :not(.stated) { flex: none; }
-#hits .detail { margin-top: .55rem; border-top: 1px solid var(--border); padding-top: .55rem; }
+#hits .detail { margin-top: .35rem; border-top: 1px solid var(--border); padding-top: .35rem; }
 #hits .detail p { margin: .1rem 0; font-size: .85rem; }
 #hits .pkghit .detail p {
 	display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr); gap: .8rem; align-items: baseline; color: var(--fg);
@@ -136,7 +136,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .own {
 	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto) auto minmax(4.2rem, auto) 1rem;
 	gap: .8rem; align-items: baseline;
-	padding: .3rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
+	padding: .15rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
 	cursor: pointer;
 }
 #hits .own:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
@@ -171,12 +171,9 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 	font-weight: 500;
 	color: var(--muted); background: var(--sunk); border-color: var(--border);
 }
-#hits .ask {
-	display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: .5rem 0 0;
-	color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-#hits .ask::after { content: ""; } /* the command itself is the text node after the label */
-#hits .ask span { font-family: system-ui, sans-serif; }
+/* what to ask flowR, a copy button under the package rows rather than a line of its own */
+#hits .askbtn { justify-self: end; padding: 0 .4rem; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .68rem; cursor: pointer; border-radius: .3rem; border: 1px solid var(--border); background: none; color: var(--muted); opacity: .7; }
+#hits .askbtn:hover { opacity: 1; color: var(--accent); border-color: var(--accent); }
 #hits li:hover { border-color: var(--accent); }
 #hits .name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
 #hits .name.value { font-weight: 500; font-style: italic; }
@@ -207,27 +204,27 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 /* what a call returns is no formal, so it has a hue of its own */
 #hits .result { --hue: #5f7486; }
 #hits .contract .cond .result { color: color-mix(in srgb, var(--hue) 85%, var(--fg)); font-weight: 500; }
-#hits .teaser { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .3rem; font-size: .78rem; color: var(--muted); cursor: pointer; }
+#hits .teaser { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .2rem; font-size: .78rem; color: var(--muted); cursor: pointer; }
 #hits .teaser code, #hits .contract code.arg { font-size: .75rem; padding: 0 .3rem; border-radius: .3rem; color: color-mix(in srgb, var(--hue) 80%, var(--fg)); background: color-mix(in srgb, var(--hue) 12%, transparent); }
 #hits .label { font-variant: small-caps; letter-spacing: .04em; }
 #hits .origin { font-size: .68rem; padding: 0 .4rem; border-radius: .7rem; border: 1px solid var(--border); }
 #hits .origin.inferred { color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
 #hits .origin.stated { color: color-mix(in srgb, #7a5cd6 70%, var(--muted)); }
-#hits .contract { margin-bottom: .6rem; }
+#hits .contract { margin-bottom: .3rem; }
 /* what a call does to the global state, a line per part, and how it takes part in S3 dispatch */
-#hits .ambient { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: .5rem; row-gap: .1rem; align-items: baseline; margin-top: .3rem; font-size: .78rem; color: var(--muted); }
+#hits .ambient { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: .5rem; row-gap: 0; align-items: baseline; margin-top: .2rem; font-size: .78rem; color: var(--muted); }
 #hits .ambient .aline { display: contents; }
 #hits .ambient .fam { justify-self: start; font-size: .74rem; padding: 0 .4rem; border-radius: .7rem; border: 1px solid var(--border); color: color-mix(in srgb, #1f8a96 70%, var(--fg)); cursor: help; }
 #hits .ambient .acc { cursor: help; }
 #hits .ambient .acc.changes { color: var(--fg); }
 #hits .ambient .when, #hits .s3 .reach { font-style: italic; }
 #hits .ambient .sep, #hits .s3 .sep { color: var(--border); }
-#hits .s3 { margin-top: .3rem; font-size: .78rem; color: var(--muted); line-height: 1.6; }
+#hits .s3 { margin-top: .2rem; font-size: .78rem; color: var(--muted); line-height: 1.5; }
 #hits .s3 .label { margin-right: .4rem; }
 #hits .s3 a { color: var(--fg); text-decoration: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; }
 #hits .s3 a:hover { color: var(--accent); text-decoration: underline; }
 #hits .s3 a.more { font-family: inherit; color: var(--muted); }
-#hits .s3 .hascontract { margin-left: .25rem; font-size: .68rem; color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
+#hits .s3 .hascontract { margin-left: .1rem; font-size: .68rem; color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
 #hits .s3 code { font-size: .74rem; }
 #hits .s3 code.arg { padding: 0 .25rem; border-radius: .3rem; color: color-mix(in srgb, var(--hue, var(--fg)) 80%, var(--fg)); background: color-mix(in srgb, var(--hue, var(--muted)) 12%, transparent); }
 #hits .rawbtn { margin-left: .4rem; padding: 0 .35rem; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .68rem; line-height: 1.4; cursor: pointer; border-radius: .3rem; border: 1px solid var(--border); background: none; color: var(--muted); opacity: .7; }
@@ -238,9 +235,10 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .raw .copy:hover { color: var(--accent); border-color: var(--accent); }
 #hits .contract .chead { margin: 0 0 .3rem; font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 #hits .contract .ctable { display: grid; gap: .1rem; }
-#hits .contract .crow { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: .8rem; align-items: baseline; padding: .25rem .5rem; border-radius: .4rem; font-size: .82rem; }
+#hits .contract .crow { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: .8rem; align-items: baseline; padding: .1rem .5rem; border-radius: .4rem; font-size: .82rem; }
 #hits .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-#hits .contract .crow.condition { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+/* a failure reads in one line under its condition rather than as a narrow column beside it */
+#hits .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: .05rem; }
 #hits .contract code.cond { font-size: .76rem; color: var(--fg); white-space: normal; overflow-wrap: normal; word-break: normal; }
 #hits .contract .from { font-size: .76rem; color: var(--muted); }
 #hits .contract .from .via { font-style: italic; }
@@ -255,7 +253,12 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .teaser .related .arg { padding: 0; background: none; }
 #hits .contract .why { margin-top: .35rem; }
 #hits .contract .why > summary { cursor: pointer; font-size: .78rem; color: var(--muted); padding: .2rem .5rem; }
-#hits .contract .from { display: flex; flex-direction: column; gap: .1rem; }
+#hits .contract .from { display: block; padding-left: 1.2em; font-size: .72rem; }
+#hits .contract .from .sep { color: var(--muted); }
+/* a long condition breaks only at its top-level connectives, the lines after the first indented */
+#hits code.cond { display: inline-block; padding-left: 1.2em; text-indent: -1.2em; }
+#hits code.cond .seg { display: inline-block; text-indent: 0; }
+#hits .teaser code.guarded { border-bottom: 1px dashed color-mix(in srgb, var(--hue) 70%, transparent); border-radius: .3rem .3rem 0 0; cursor: help; }
 #hits .contract .from .where { font-size: .72rem; }
 #hits .contract .from code.at { font-size: .72rem; color: color-mix(in srgb, var(--fg) 70%, var(--muted)); }
 /* operators set apart without shouting and always upright, only the connectives written as words lean */
@@ -399,6 +402,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 <script type="application/json" id="groups">"<!--GROUPS-->"</script>
 <script type="application/json" id="generics">"<!--GENERICS-->"</script>
 <script type="application/json" id="ambient-words">"<!--AMBIENT-WORDS-->"</script>
+<script type="application/json" id="docs">"<!--DOCS-->"</script>
 <!-- what flowR answers per function, gzipped and only unpacked once a reader opens one -->
 <script type="text/plain" id="raw"><!--RAW--></script>
 <!--FOOTER:sigdb-->

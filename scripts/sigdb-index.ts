@@ -4,12 +4,14 @@
  * signature browser never disagree about what flowR knows.
  */
 import zlib from 'zlib';
+import ts from 'typescript';
 import { ExportFlag, PropFlags } from './sigdb-page/export-flags';
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { MergedSignatureSource, SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../src/project/sigdb/reader';
 import { defaultSigDbPaths } from '../src/project/sigdb/manifest';
+import { FnPropNames } from '../src/project/sigdb/schema';
 /* the plain function lists rather than the query module, which would pull in half the analyzer */
 import { LibraryFunctions } from '../src/queries/catalog/dependencies-query/function-info/library-functions';
 import { SourceFunctions } from '../src/queries/catalog/dependencies-query/function-info/source-functions';
@@ -105,6 +107,37 @@ export function guardsForPage(): Record<string, Guards> {
 			stated.dispatches === undefined ? [] : [stated.dispatches, stated.methods ?? []], stated.methodOf === undefined ? [] : [stated.methodOf.generic, stated.methodOf.class],
 			calls.map(id => [Identifier.toPreludeString(id), Identifier.toString(id)]), tokens]]];
 	}));
+}
+
+/**
+ * What the words of a signature mean that the vocabulary of {@link CallProps} and {@link ArgProps} does not word itself: the
+ * semantic tags (`draws-graphics`) and the properties the database records (`can-throw`), read off their documentation in the code,
+ * which is the one place they are explained.
+ */
+export function wordDocsForPage(): Record<string, string> {
+	const docs: Record<string, string> = {};
+	const read = (file: string, enumName: string, keyOf: (member: ts.EnumMember) => string | undefined) => {
+		const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+		source.forEachChild(node => {
+			if(!ts.isEnumDeclaration(node) || node.name.text !== enumName) {
+				return;
+			}
+			for(const member of node.members) {
+				const key = keyOf(member);
+				const doc = ts.getJSDocCommentsAndTags(member).map(d => ts.getTextOfJSDocComment((d as ts.JSDoc).comment) ?? '').join(' ');
+				if(key !== undefined && doc !== '') {
+					docs[key] = doc.replace(/\s*\(see [^)]*\)/g, '').replace(/\{@link\s+(?:[^}|]*\|)?([^}]*)\}/g, (_, shown: string) => shown.split('.').at(-1) ?? shown).replace(/\s+/g, ' ').trim();
+				}
+			}
+		});
+	};
+	read(path.join('src', 'dataflow', 'environments', 'built-in-props.ts'), 'SemanticCallTag', member => member.initializer && ts.isStringLiteral(member.initializer) ? member.initializer.text : undefined);
+	const names = new Set(Object.values(FnPropNames));
+	read(path.join('src', 'project', 'sigdb', 'schema.ts'), 'FnProp', member => {
+		const kebab = member.name.getText().replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+		return names.has(kebab) ? kebab : undefined;
+	});
+	return docs;
 }
 
 /** The words a page needs to speak of the parts of the global state and the accesses to them, see {@link AmbientFamilyInfo}. */

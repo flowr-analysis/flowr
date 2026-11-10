@@ -9,6 +9,7 @@ import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 /**
  * Path heuristic for an R package `inst/` resource (installed verbatim, not namespace source). Fallback for
@@ -24,7 +25,7 @@ const ResolveEdges: number = EdgeType.Reads | EdgeType.DefinedByOnCall;
  * Whether the variable use `id` resolves to a local definition, a parameter, or a built-in (function or
  * constant such as `T`, `pi`). Broader than `Dataflow.origin`, which misses built-in constants.
  */
-export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeId): boolean {
+export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeId, seen: Set<NodeId> = new Set([id])): boolean {
 	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(DfEdge.doesNotIncludeType(edge, ResolveEdges) || DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 			continue;
@@ -35,6 +36,10 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 		const targetVtx = graph.getVertex(target);
 		/* a value is what `attach(list(a = 1))` binds the name to */
 		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx) || DfgVertex.isValue(targetVtx)) {
+			return true;
+		}
+		/* a name written without a definition vertex of its own is defined by its value (`list2env(list(a = 1), globalenv())`), or by the `attach` it names a data set for (`attach(mtcars)`) */
+		if(DfgVertex.isUse(targetVtx) && !seen.has(target) && (Dataflow.targetsOf(graph, target, EdgeType.DefinedBy).length > 0 || Dataflow.targetsOf(graph, target, EdgeType.Reads).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Attach)) || useResolvesToDefinitionOrBuiltin(graph, target, seen.add(target)))) {
 			return true;
 		}
 	}

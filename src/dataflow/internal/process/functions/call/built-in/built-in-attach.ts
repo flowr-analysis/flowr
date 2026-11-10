@@ -8,6 +8,7 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { datasetShape } from '../../../../../../util/r-datasets';
 import { type BrandedIdentifier, Identifier, ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -41,7 +42,10 @@ export function processAttach<OtherInfo>(
 	/* a list written out names its bindings, `attach(list(a = 1))` binds `a` to `1` */
 	const listed = envirResolution === undefined && RFunctionCall.isNamed(whatNode, AttachableLiterals)
 		&& whatNode.arguments.every(a => a !== EmptyArgument && a.name !== undefined && a.value !== undefined) ? whatNode.arguments as readonly RArgument<OtherInfo & ParentInformation>[] : undefined;
-	if(!envirResolution && !listed) {
+	/* a data set R ships (`attach(mtcars)`) binds its columns */
+	const dataset = envirResolution === undefined && listed === undefined && RSymbol.is(whatNode) && Resolve.byName(whatNode.content, data.environment)?.every(d => NodeId.isBuiltIn(d.nodeId)) !== false
+		? datasetShape(Identifier.getName(whatNode.content)) : undefined;
+	if(!envirResolution && !listed && !dataset) {
 		bindsUnknownNames(result.graph, result.environment, rootId);
 		return result;
 	}
@@ -51,6 +55,11 @@ export function processAttach<OtherInfo>(
 	for(const entry of listed ?? []) {
 		const at = (entry.value as RNodeWithParent).info.id;
 		injected.push({ nodeId: at, name: entry.name?.content as Identifier, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : undefined });
+		result.graph.addEdge(at, rootId, EdgeType.Reads);
+	}
+	for(const column of dataset?.columns ?? []) {
+		const at = (whatNode as RSymbol<OtherInfo & ParentInformation>).info.id;
+		injected.push({ nodeId: at, name: column, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : undefined });
 		result.graph.addEdge(at, rootId, EdgeType.Reads);
 	}
 	for(const [varName, varDefs] of envirResolution?.envDef.envState.current.memory ?? []) {

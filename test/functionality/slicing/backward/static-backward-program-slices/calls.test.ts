@@ -1384,6 +1384,7 @@ describe('Calls checked against R', withTreeSitter(parser => {
 			['uncalled ggplot body and a later library', 'f <- 1\ng <- function() ggplot()\nprint(f)\nlibrary(ggplot2)', '3@print', true],
 			['the data set of an attached package', 'suppressMessages(library(dplyr))\nx <- 1\nprint(nrow(starwars))', '3@print', true],
 			['the data set of the package attached last', 'suppressMessages({ library(dplyr); library(ggplot2) })\nprint(nrow(mpg))', '2@print', true],
+			['a column of an attached data set', 'x <- 1\nattach(mtcars)\nprint(mean(mpg))', '3@print', false],
 			['uncalled theme body and a later library', 'f <- 1\ng <- function() theme_classic()\ncat(f, "\\n")\nlibrary(ggplot2)', '3@cat', true],
 		] as const) {
 			assertSliceMatchesR(parser, name, code, { criterion, whole: true, sigdb });

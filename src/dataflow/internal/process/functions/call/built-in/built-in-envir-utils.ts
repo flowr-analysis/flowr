@@ -297,8 +297,10 @@ function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderD
 	const written = writtenDefinitionsOf(result, definedAt);
 
 	let newEnvState = envDef.envState;
+	/* the frame of the function itself (`e <- environment()`) is where the write binds anyway */
+	const ownFrame = envDef.envState.current.closure !== undefined && envDef.envState.current.closure === callerEnvironment.current.closure;
 	/* only a binding the write made here moves into the environment, `local(y <- 2, envir = e)` leaves the caller's `y` alone */
-	const namesToRemove = written.filter(w => result.environment.current.lookup(Identifier.getName(w.name))?.some(d => d.nodeId === w.nodeId)).map(w => ({ name: w.name }));
+	const namesToRemove = ownFrame ? [] : written.filter(w => result.environment.current.lookup(Identifier.getName(w.name))?.some(d => d.nodeId === w.nodeId)).map(w => ({ name: w.name }));
 	for(const w of written) {
 		newEnvState = REnvironment.define(w, false, newEnvState);
 	}

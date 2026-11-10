@@ -19,7 +19,8 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { type EnvirResolution, envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { REnvironment } from '../../../../../environments/environment';
+import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 
 
 export interface LocalFunctionConfiguration {
@@ -135,10 +136,24 @@ export function evaluateInEnvir<OtherInfo>(
 			return defs !== undefined && defs.length > 0;
 		};
 		const linked = { ...dfExpr, environment, in: dfExpr.in.filter(r => !boundInEnvir(r)), unknownReferences: dfExpr.unknownReferences.filter(r => !boundInEnvir(r)) };
-		return routeWrittenToEnvir(linked, envir, rootId, data.environment);
+		const routed = routeWrittenToEnvir(linked, envir, rootId, data.environment);
+		return { ...routed, environment: sessionStateWrittenBy(dfExpr, routed.environment) };
 	}
 	const environment = REnvironment.popLocal(dfExpr.environment);
 	/* definitions of the local scope vanish with it, only what escaped it may bubble up */
 	const out = dfExpr.out.filter(o => o.name !== undefined && Resolve.byNameAndType(o.name, environment, o.type)?.some(d => d.nodeId === o.nodeId));
 	return { ...dfExpr, environment, out };
+}
+
+/** The state of the session `dfExpr` writes (options, sinks, the device) is the same whatever environment it is evaluated in, so it stays written for the caller as well: `local(options(digits = 3), envir = e)`. */
+function sessionStateWrittenBy(dfExpr: DataflowInformation, environment: REnvironmentInformation): REnvironmentInformation {
+	for(const [name, definitions] of REnvironment.findGlobal(dfExpr.environment.current).memory) {
+		for(const definition of AmbientStateName.is(name) ? definitions : []) {
+			if(dfExpr.graph.hasVertex(definition.nodeId)) {
+				/* the caller keeps what it knew besides, as the evaluation need not have replaced it */
+				environment = REnvironment.define({ ...definition, name }, true, environment, true);
+			}
+		}
+	}
+	return environment;
 }

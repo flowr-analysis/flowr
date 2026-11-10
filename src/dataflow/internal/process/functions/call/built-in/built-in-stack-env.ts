@@ -69,16 +69,27 @@ function namesDirectCaller<Info>(node: RNode<Info> | undefined): boolean {
 	return callerGenerationsOf(node) === 1;
 }
 
-/** How many calls up `parent.frame(n)` or `sys.frame(-n)` as `node` looks, with a constant `n`. */
+/** How many calls up `parent.frame(n)`, `sys.frame(-n)` or `sys.frame(sys.parent(n))` as `node` looks, with a constant `n`. */
 export function callerGenerationsOf<Info>(node: RNode<Info> | undefined): number | undefined {
 	const [n, ...rest] = RFunctionCall.is(node) ? node.arguments : [];
-	const value = n === undefined || n === EmptyArgument ? undefined : n.value;
-	const negated = RUnaryOp.is(value) && value.operator === '-' ? value.operand : undefined;
-	const count = RNumber.is(value) ? value.content.num : RNumber.is(negated) ? -negated.content.num : undefined;
+	const value = valueOf(n);
 	const called = RFunctionCall.calledName(node);
 	const sysFrame = called !== undefined && Identifier.getName(called) === 'sys.frame';
-	const generations = sysFrame ? (count === undefined ? undefined : -count) : n === undefined ? 1 : count;
+	/* `sys.parent(n)` numbers the frame `parent.frame(n)` is */
+	const parent = sysFrame && RFunctionCall.isNamed(value, 'sys.parent') && value.arguments.length <= 1 ? value : undefined;
+	const count = constantOf(parent === undefined ? value : valueOf(parent.arguments[0]));
+	const generations = parent !== undefined ? (parent.arguments.length === 0 ? 1 : count) : sysFrame ? (count === undefined ? undefined : -count) : n === undefined ? 1 : count;
 	return rest.length === 0 && generations !== undefined && Number.isInteger(generations) && generations >= 1 ? generations : undefined;
+}
+
+function valueOf<Info>(arg: PotentiallyEmptyRArgument<Info> | undefined): RNode<Info> | undefined {
+	return arg === undefined || arg === EmptyArgument ? undefined : arg.value;
+}
+
+/** The number `node` is, negated or not. */
+function constantOf<Info>(node: RNode<Info> | undefined): number | undefined {
+	const negated = RUnaryOp.is(node) && node.operator === '-' ? node.operand : undefined;
+	return RNumber.is(node) ? node.content.num : RNumber.is(negated) ? -negated.content.num : undefined;
 }
 
 /** The stack environment an AST `node` denotes directly: a `.GlobalEnv`/`.BaseEnv` symbol, a `globalenv()`/`baseenv()`/`emptyenv()` call, the current env via `environment()`, the parent via `parent.env(e)`, or a named search-path entry via `as.environment("package:x")`. */

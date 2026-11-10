@@ -8,6 +8,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { LocalFunctionConfiguration } from './built-in-local';
@@ -217,6 +218,14 @@ function handedTo(parameter: NodeId, { fn, via, graph, idMap }: Run): NodeId[] {
 	return (FunctionSemantics.call.match.toSpec(call.args, formals).get(parameter) ?? []).map(a => RArgument.valueOf(idMap.get(a))?.info.id ?? a);
 }
 
+/** The default of the parameter `id` reads, if it reads just that and the call hands nothing to it: a `parent.frame()` there is evaluated in the frame of the function run. */
+function unhandedDefault(id: NodeId, run: Run): RNode<ParentInformation> | undefined {
+	const parameter = parameterReadBy(id, run);
+	const name = parameter === undefined || handedTo(parameter, run).length > 0 ? undefined : run.idMap.get(parameter);
+	const formal = name === undefined ? undefined : RNode.directParent(name, run.idMap);
+	return RParameter.isWithDefault(formal) ? formal.defaultValue : undefined;
+}
+
 /** What the call hands over for `id`, if that just reads a parameter, else `id` itself. */
 function valueAt(id: NodeId, run: Run): NodeId {
 	const parameter = parameterReadBy(id, run);
@@ -401,7 +410,7 @@ function referenceTypeOf(vertex: DataflowGraphVertexInfo | undefined, graph: Dat
 	return DfgVertex.isUse(vertex) || DfgVertex.isFunctionCall(vertex) ? ReferenceType.Unknown : ReferenceType.Variable;
 }
 
-/** The definitions the function `fn` makes in the frame of its caller (`assign("x", v, envir = parent.frame())`) for the call `call` within another function: the reads of that frame may see them, which the frame does not know of when it is processed, as it learns of the callee later (the top level runs them in {@link instantiateEnvOps}). */
+/** The definitions the function `fn` makes in the frame of its caller (`assign("x", v, envir = parent.frame())`) for the call `call` within another function: the reads of that frame may see them, which the frame does not know of when it is processed, as it learns of the callee later (the top level runs them in {@link instantiateEnvOps}); likewise what it reads there (`get("x", envir = parent.frame())`) may be any definition of the frame. */
 export function linkCallerFrameWrites(call: NodeId, fn: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): void {
 	const idMap = graph.idMap;
 	const enclosing = idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(call, idMap);
@@ -411,7 +420,8 @@ export function linkCallerFrameWrites(call: NodeId, fn: DataflowGraphVertexFunct
 	}
 	const run: Run = { fn, via: call, direct: true, graph, idMap, context: contextOfChain([call], fn.id, idMap) };
 	for(const op of fn.envOps) {
-		const generations = op.kind === EnvOpKind.Read || op.kind === EnvOpKind.Remove ? undefined : op.generations ?? callerGenerations(idMap.get(op.envir), fn.subflow.environment, graph, idMap);
+		const generations = op.kind === EnvOpKind.Remove ? undefined
+			: op.generations ?? callerGenerations(idMap.get(op.envir), fn.subflow.environment, graph, idMap) ?? callerGenerations(unhandedDefault(op.envir, run), fn.subflow.environment, graph, idMap);
 		if(generations === undefined) {
 			continue;
 		} else if(generations > 1) {
@@ -425,6 +435,15 @@ export function linkCallerFrameWrites(call: NodeId, fn: DataflowGraphVertexFunct
 			continue;
 		}
 		const all = new Set([...op.literals, ...names.flat() as BrandedIdentifier[]]);
+		if(op.kind === EnvOpKind.Read) {
+			for(const id of RNode.collectAllIdsWithStop(frame.body, RFunctionDefinition.is)) {
+				if(DfgVertex.isVariableDefinition(graph.getVertex(id)) && all.has(NodeId.recoverBareName(id, idMap) ?? '')) {
+					graph.addEdge(op.id, id, EdgeType.Reads);
+					graph.addEdge(call, id, EdgeType.Reads);
+				}
+			}
+			continue;
+		}
 		const value = op.value === undefined ? op.id : valueAt(op.value, run);
 		graph.addEdge(value, call, EdgeType.SideEffectOnCall);
 		for(const id of RNode.collectAllIdsWithStop(frame.body, RFunctionDefinition.is)) {

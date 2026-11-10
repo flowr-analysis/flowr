@@ -343,6 +343,10 @@ function processAssignmentTarget<OtherInfo>(
 			targetId,
 			targetName,
 			args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+			extraArgs:                (() => {
+				const [a, b] = getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]);
+				return config.quoteSource ? res.processedArguments.filter((p): p is DataflowInformation => p !== undefined && p !== a && p !== b) : [];
+			})(),
 			rootId,
 			data,
 			information:              res.information,
@@ -619,6 +623,8 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 	readonly rootId:                   NodeId
 	readonly data:                     DataflowProcessorInformation<OtherInfo>
 	readonly information:              DataflowInformation
+	/** the other arguments of a `delayedAssign` (`eval.env = e`), which it reads */
+	readonly extraArgs?:               readonly DataflowInformation[]
 }
 
 /** Models a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: `x` is both **read** (its value comes from outside) and **defined** by the call; unlike {@link markAsAssignment} we keep the read edge. */
@@ -717,7 +723,7 @@ export function markAsAssignment<OtherInfo>(
 
 /** Helper for when the _target_ of an assignment is known to be a (single) symbol (i.e. `x <- ...`, not `names(x) <- ...`). */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
-	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
+	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource, extraArgs = [] } = config;
 	const kindOfValue = checkTargetReferenceType(sourceArg, config.modesForFn);
 	const referenceType = config.replacement && kindOfValue === ReferenceType.Variable ? ReferenceType.Unknown : kindOfValue;
 	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
@@ -798,7 +804,8 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		...sourceArg.unknownReferences,
 		...sourceArg.in,
 		...targetName ? targetArg.in : targetArg.in.filter(i => i.nodeId !== targetId),
-		...readFromSourceWritten
+		...readFromSourceWritten,
+		...extraArgs.flatMap(a => [...a.in, ...a.unknownReferences])
 	];
 
 	/* a quoted source (`delayedAssign`) writes nothing yet, its writes happen where it is forced (see `Deferred`) */
@@ -821,6 +828,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		information.environment = REnvironment.define({ ...copied, name: copied.name, envId: copied.nodeId }, false, information.environment);
 	}
 
+	for(const extra of extraArgs) {
+		information.graph.addEdge(rootId, extra.entryPoint, EdgeType.Reads);
+	}
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);
 	information.graph.addEdge(rootId, useSourceIds[0], quoteSource ? EdgeType.NonStandardEvaluation : EdgeType.Reads);
 

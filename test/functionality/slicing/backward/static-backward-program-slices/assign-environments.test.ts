@@ -44,6 +44,7 @@ const Programs: readonly (readonly [name: string, code: string])[] = [
 	['<<- of a function with its own x', 'f <- function() {\n  x <- 1\n  g <- function() {\n    x <- 3\n    x <<- 2\n  }\n  g()\n  x\n}\nprint(f())'],
 	['sys.function recursion keeps its base case', 'f <- function(n) if(n <= 1) 1 else n * sys.function()(n - 1)\nprint(f(4))'],
 	['rm from the global environment in a function', 'x <- 1\nf <- function() rm("x", envir = globalenv())\nf()\nprint(exists("x"))'],
+	['delayedAssign reads the environment its promise runs in', 'k <- 1\ne <- new.env()\ne$k <- 10\ndelayedAssign("p", k + 1, eval.env = e)\nk <- 2\nprint(p)'],
 	['get of a computed name', 'nm <- "zz2"\nassign(nm, 1)\nprint(get(nm))'],
 	['mget of a computed name', 'nm <- "zz3"\nassign(nm, 1)\nprint(mget(nm))'],
 	['names from a vector', 'nms <- c("aa", "bb")\nassign(nms[1], 1)\nassign(nms[2], 2)\nprint(aa + bb)'],

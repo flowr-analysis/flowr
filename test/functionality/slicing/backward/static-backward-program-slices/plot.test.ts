@@ -353,6 +353,8 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		/* what a function prints through the calls it makes is printed by them, so a slice for the outer call keeps them */
 		assertSliceMatchesR(shell, 'RD-B1 a callee printing within a called function', 'f <- function(a) { cat("f\\n"); a }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
 		assertSliceMatchesR(shell, 'RD-B2 printing two calls down', 'h <- function() cat("deep\\n")\nf <- function(a, b = a * 2) { h(); b }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
+		/* a function handed to a call is printed whole, so what its body reads has to be in the slice as well */
+		assertSliceMatchesR(shell, 'RD-B5 a handed function prints its whole body', 'lg <- character()\nh <- function(f) f()\nprint(h(function() { lg <<- c(lg, "r"); 1 }))', { whole: true });
 		/* a promise leaves where a read forces it, `p` returning from `f` here */
 		assertSliceMatchesR(shell, 'RD-B3 a forced promise returns', 'f <- function() {\n  delayedAssign("p", return(1))\n  p\n  cat("dead\\n")\n}\nprint(f())', { whole: true });
 		/* what an exit hook prints is printed by the call registering it */

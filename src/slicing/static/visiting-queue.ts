@@ -126,6 +126,11 @@ export class VisitingQueue {
 		return this.idThreshold.has(id);
 	}
 
+	/** Every node added so far, see {@link hasId}. */
+	public visitedIds(): readonly NodeId[] {
+		return [...this.idThreshold.keys()];
+	}
+
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,

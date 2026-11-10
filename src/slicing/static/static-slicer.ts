@@ -24,6 +24,7 @@ import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { GasOverrides } from '../../gas';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
@@ -147,6 +148,12 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		if(!queue.nonEmpty() && argumentWrites !== undefined) {
 			argumentWrites.forEach(id => queue.add(id, emptyEnv, basePrint, false));
 			argumentWrites = undefined;
+		}
+		/* what the reconstruction prints as written is in the slice, and so is what it needs, see {@link printedAsWritten} */
+		if(!queue.nonEmpty()) {
+			for(const id of printedAsWritten(queue, idMap, graph)) {
+				queue.add(id, emptyEnv, basePrint, false);
+			}
 		}
 	} while(queue.nonEmpty());
 
@@ -436,6 +443,36 @@ function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, stat
 				if(first || ((vertex.ruledOutAt !== undefined || contexts.has(innerCall)) && !decided.has(key))) {
 					decided.add(key);
 					calls.push([innerCall, chain]);
+				}
+			}
+		}
+	}
+	return found;
+}
+
+/**
+ * The parts of the program the slice will print although nothing selected them: a selected named call is printed with its arguments as
+ * they are written (but for a block handed to it, see `reconstructCallOfBlock`), so a function handed to it prints its whole body,
+ * `lg <<- c(lg, "r")` in `h(function() { lg <<- c(lg, "r"); 1 })` included, which then needs the definition of `lg` as well.
+ */
+function printedAsWritten(queue: VisitingQueue, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
+	const found: NodeId[] = [];
+	for(const id of queue.visitedIds()) {
+		const call = idMap.get(id);
+		if(!RFunctionCall.isNamed(call)) {
+			continue;
+		}
+		for(const arg of call.arguments) {
+			const value = RArgument.valueOf(arg);
+			if(value === undefined || (RExpressionList.is(value) && value.grouping?.[0].content === '{')) {
+				continue;
+			}
+			/* a function the slice runs part of prints its whole body, an argument the slice leaves out otherwise is just not evaluated */
+			for(const part of RNode.collectAllIds(value)) {
+				const node = idMap.get(part);
+				const body = RFunctionDefinition.is(node) ? [...RNode.collectAllIds(node.body)] : [];
+				if(body.some(inner => queue.hasId(inner))) {
+					found.push(...body.filter(inner => !queue.hasId(inner) && graph.hasVertex(inner)));
 				}
 			}
 		}

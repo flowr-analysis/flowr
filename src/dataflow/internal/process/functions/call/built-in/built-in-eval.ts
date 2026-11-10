@@ -3,7 +3,7 @@ import { bindsUnknownNames } from './built-in-expression-list';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { DataflowInformation } from '../../../../../info';
+import { DataflowInformation, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import { type ParentInformation, sourcedDeterministicCountingIdGenerator } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -24,10 +24,11 @@ import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { envirOf, pipedCall, resolveArgToEnvirOrAmbiguous, resolveConstantString, routeWrittenToStackEnv, unknownIfAmbiguous } from './built-in-envir-utils';
-import { evaluateInEnvir } from './built-in-local';
+import { evaluateInEnvir, exitsPassingReturn } from './built-in-local';
 import { processDataflowFor } from '../../../../../processor';
 import { REnvironment } from '../../../../../environments/environment';
 import { CapturingCalls } from '../quoted';
+import { ControlFlow } from '../../../../control-flow';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -132,13 +133,22 @@ export function processEvalCall<OtherInfo>(
 				information.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 			}
 		}
-		return mergeSourced({ ...information, entryPoint: rootId }, result);
+		return mergeSourced({ ...information, entryPoint: rootId }, result.map(r => keepReturnsInEval(r, rootId)));
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
 	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	/* a captured expression is linked once the graph is complete, but the state its calls access has to show now */
 	return evaluatesCapturedCode(information, rootId, data);
+}
+
+/** `return` only leaves the evaluation `eval` opens (`eval(quote(return(1)))` does not return from the caller), like it does in `local` */
+function keepReturnsInEval(evaluated: DataflowInformation, rootId: NodeId): DataflowInformation {
+	if(!evaluated.exitPoints.some(e => e.type === ExitPointType.Return)) {
+		return evaluated;
+	}
+	ControlFlow.jumpsTo(evaluated.graph, evaluated, ExitPointType.Return, rootId);
+	return { ...evaluated, exitPoints: exitsPassingReturn(evaluated.exitPoints, rootId) };
 }
 
 /** the entry in {@link DataflowProcessorInformation#referenceChain} of evaluating `code`, so code evaluating itself (`q <- quote(eval(q))`) is not unrolled forever */
@@ -211,7 +221,7 @@ function evaluateQuoted<OtherInfo>(
 		environment: results.map(r => r.environment).reduce((acc, e) => REnvironment.append(acc, e)),
 		in:          information.in.concat(results.flatMap(r => r.in), results.flatMap(r => r.unknownReferences)),
 		out:         information.out.concat(results.flatMap(r => r.out)),
-		exitPoints:  information.exitPoints.concat(results.flatMap(r => r.exitPoints)),
+		exitPoints:  information.exitPoints.concat(results.flatMap(r => keepReturnsInEval(r, rootId).exitPoints)),
 		hooks:       information.hooks.concat(results.flatMap(r => r.hooks))
 	};
 	for(const r of results) {

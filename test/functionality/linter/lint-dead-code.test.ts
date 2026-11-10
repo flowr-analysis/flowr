@@ -119,6 +119,10 @@ print(2)
 		describe('on.exit defers its expression', () => {
 			// on.exit(expr) registers expr to run at function exit
 			assertLinter('on.exit(return) does not poison enclosing function', parser, 'f <- function() {\n  on.exit(return(3))\n  x <- 1\n  x\n}', 'dead-code', []);
+			assertLinter('a return in a local may preempt the stops after it, so the local does not surely stop', parser, 'f <- function(a, cc) {\n  local({\n    if(!a) return(1)\n    if(cc) stop("x")\n    stop("y")\n  })\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('a return in evaluated code leaves only the eval', parser, 'g <- function() {\n  eval(quote(return(1)))\n  cat("live")\n}\ng()', 'dead-code', []);
+			assertLinter('a return in parsed evaluated code leaves only the eval', parser, 'g <- function() {\n  eval(parse(text = "return(1)"))\n  cat("live")\n}\ng()', 'dead-code', []);
+			assertLinter('a stop in evaluated code still leaves the function', parser, 'g <- function() {\n  eval(quote(stop("x")))\n  cat("dead")\n}\ng()', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [3, 3, 3, 13], quickFix: [{ type: 'remove', loc: [3, 3, 3, 13], description: 'Remove the unreachable code' }] }]);
 		});
 
 		describe('switch arms are mutually exclusive', () => {

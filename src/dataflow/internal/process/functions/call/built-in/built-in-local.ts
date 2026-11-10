@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { updateNestedFunctionClosures } from './built-in-function-definition';
 import { processDataflowFor } from '../../../../../processor';
-import { DataflowInformation, ExitPointType } from '../../../../../info';
+import { DataflowInformation, type ExitPoint, ExitPointType, withCds } from '../../../../../info';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -99,7 +99,7 @@ export function processLocal<OtherInfo>(
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
 		environment:       dfExpr.environment,
-		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints.filter(e => e.type !== ExitPointType.Return)),
+		exitPoints:        dfEnv.exitPoints.concat(exitsPassingReturn(dfExpr.exitPoints, rootId)),
 		graph,
 		entryPoint:        rootId,
 		cfgEntry,
@@ -156,4 +156,13 @@ function sessionStateWrittenBy(dfExpr: DataflowInformation, environment: REnviro
 		}
 	}
 	return environment;
+}
+
+/**
+ * The exits that leave a construct `return` leaves only itself (`local`, `eval`). If there is such a `return`, it may preempt
+ * every other exit, which therefore only happens if the construct is not left that way.
+ */
+export function exitsPassingReturn(exits: readonly ExitPoint[], rootId: NodeId): ExitPoint[] {
+	const returns = exits.some(e => e.type === ExitPointType.Return);
+	return exits.filter(e => e.type !== ExitPointType.Return).map(e => returns && e.type !== ExitPointType.Default ? { ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) } : e);
 }

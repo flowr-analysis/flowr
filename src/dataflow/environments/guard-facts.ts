@@ -74,7 +74,16 @@ export type RCondition =
 	/** the length of the value compares to the given one */
 	| { readonly length: '==' | '<=' | '>=', readonly to: number }
 	/** the value can be applied as a function, which depends on the functions around */
-	| { readonly callable: true };
+	| { readonly callable: true }
+	/** the condition holds of the value bound to another formal of the same call, like `is.null(value)` letting any `x` of `attr<-` through */
+	| { readonly on: BrandedIdentifier, readonly holds: RCondition }
+	/** what `of` reads off the value, the outermost reader first, compares to a number, to what is read off another formal, or to what a call without arguments returns */
+	| { readonly compare: '==' | '<=' | '>=' | '<' | '>', readonly of?: readonly BrandedIdentifier[], readonly to: number | ROperand };
+
+/** What a comparison of an {@link RCondition} compares to: what `of` reads off the value of formal `on`, or what calling `call` without arguments returns, like `...length()`. */
+export type ROperand =
+	| { readonly on: BrandedIdentifier, readonly of?: readonly BrandedIdentifier[] }
+	| { readonly call: BrandedIdentifier };
 
 /** The R versions something holds for, from `since` on and before `until`, either end open if left out. */
 export interface RVersions {
@@ -93,13 +102,17 @@ export interface RFailure extends RVersions {
 
 /** What the value a function returns is like, whatever it was handed. */
 export interface ReturnedValue {
-	readonly types:   RValueTypes
+	readonly types:         RValueTypes
 	/** it is a single value */
-	readonly scalar?: boolean
+	readonly scalar?:       boolean
 	/** no element of it is `NA` */
-	readonly notNA?:  boolean
+	readonly notNA?:        boolean
 	/** it counts something, so it holds whole numbers none of which is negative */
-	readonly count?:  boolean
+	readonly count?:        boolean
+	/** it holds at least one element */
+	readonly nonEmpty?:     boolean
+	/** all of this holds only if the value of this formal has no class attribute, as a method for a classed one may return anything */
+	readonly dispatchesOn?: BrandedIdentifier
 }
 
 /** What a function has to do with the guards of what calls it, all read off the built-in definitions rather than its name. */

@@ -40,7 +40,7 @@ export const ImplicitClasses: readonly string[] = ['matrix', 'array', 'integer',
 export function guardFactsIn(this: void, definitions: BuiltInDefinitions, version: string = RBaseGuardsVersion): GuardFactsLookup {
 	const known = new Map<BrandedIdentifier, GuardFacts>();
 	for(const definition of definitions) {
-		if(definition.type === 'function') {
+		if(definition.type !== 'constant') {
 			for(const [name, facts] of Object.entries(definition.config?.guards ?? {})) {
 				known.set(Identifier.getName(name), factsIn(facts, version));
 			}
@@ -96,18 +96,40 @@ export function callable(this: void, of: GuardTerm, resolves: (name: BrandedIden
 		: GuardTerm.any(is('is.function', of), own);
 }
 
-/** The condition in terms of the value `of`, with `resolves` telling whether a function of the name is around, see {@link callable}. */
-function conditionOn(this: void, condition: RCondition, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean): GuardTerm {
+/** The term of the value bound to a formal of the same call, `undefined` if flowR cannot state it. */
+export type FormalTerms = (formal: BrandedIdentifier) => GuardTerm | undefined;
+
+/** `of` with each of the readers applied, the outermost first. */
+function readOff(this: void, readers: readonly BrandedIdentifier[] | undefined, of: GuardTerm): GuardTerm {
+	return (readers ?? []).reduceRight((inner, reader) => is(reader, inner), of);
+}
+
+/**
+ * The condition in terms of the value `of`, with `resolves` telling whether a function of the name is around, see {@link callable}, and `formals` the values of the other formals.
+ * What speaks of a value flowR cannot state lets everything through, which `positive` tells apart from what a negation turns into the opposite.
+ */
+function conditionOn(this: void, condition: RCondition, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean, formals: FormalTerms, positive = true): GuardTerm {
+	const unknown = positive ? GuardTerm.True : GuardTerm.False;
 	if('is' in condition) {
 		return is(condition.is, condition.of === undefined ? of : is(condition.of, of));
 	} else if('not' in condition) {
-		return GuardTerm.known('!', conditionOn(condition.not, of, resolves));
+		const inner = conditionOn(condition.not, of, resolves, formals, !positive);
+		return GuardTerm.isTrue(inner) ? GuardTerm.False : GuardTerm.isFalse(inner) ? GuardTerm.True : GuardTerm.known('!', inner);
 	} else if('any' in condition) {
-		return GuardTerm.any(...condition.any.map(c => conditionOn(c, of, resolves)));
+		return GuardTerm.any(...condition.any.map(c => conditionOn(c, of, resolves, formals, positive)));
 	} else if('all' in condition) {
-		return GuardTerm.all(...condition.all.map(c => conditionOn(c, of, resolves)));
+		return GuardTerm.all(...condition.all.map(c => conditionOn(c, of, resolves, formals, positive)));
 	} else if('length' in condition) {
 		return GuardTerm.known(condition.length, is('length', of), { kind: 'constant', lexeme: String(condition.to), value: condition.to });
+	} else if('on' in condition) {
+		const other = formals(condition.on);
+		return other === undefined ? unknown : conditionOn(condition.holds, other, resolves, formals, positive);
+	} else if('compare' in condition) {
+		const { to } = condition;
+		const right = typeof to === 'number' ? { kind: 'constant', lexeme: String(to), value: to } as const
+			: 'call' in to ? { kind: 'call', fn: to.call, known: true, args: [] } as const
+				: formals(to.on);
+		return right === undefined ? unknown : GuardTerm.known(condition.compare, readOff(condition.of, of), typeof to !== 'number' && 'on' in to ? readOff(to.of, right) : right);
 	}
 	return callable(of, resolves);
 }
@@ -122,9 +144,9 @@ export function appliesFormal(this: void, facts: GuardFacts | undefined): boolea
 	return Object.values(facts?.asks ?? {}).some(failures => failures.some(asksCallable));
 }
 
-/** What it takes for `of` not to make R raise the failure, `other` being the second operand of an operator, which may bring a method of its own as well. */
-export function passes(this: void, failure: RFailure, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean, other?: GuardTerm): GuardTerm {
-	const condition = conditionOn(failure.requires, of, resolves);
+/** What it takes for `of` not to make R raise the failure, `other` being the second operand of an operator, which may bring a method of its own as well, and `formals` the values of the other formals of the call. */
+export function passes(this: void, failure: RFailure, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean, other?: GuardTerm, formals: FormalTerms = () => undefined): GuardTerm {
+	const condition = conditionOn(failure.requires, of, resolves, formals);
 	return failure.dispatches ? GuardTerm.any(condition, is('is.object', of), ...(other === undefined || other.kind === 'constant' ? [] : [is('is.object', other)])) : condition;
 }
 

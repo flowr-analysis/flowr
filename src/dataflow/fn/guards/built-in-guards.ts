@@ -9,7 +9,7 @@ import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-the
 import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import { claimsOf, readingOf, type FormalClaim } from './guard-claims';
+import { claimsOf, conditionalClaimsOf, readingOf, relationsOf, returnedClaimOf, type FormalClaim } from './guard-claims';
 import { defaultGuardFacts, passes } from './guard-knowledge';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsDate, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
@@ -147,25 +147,36 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 /** {@link StatedGuards} per package and name. */
 export type BaseGuards = Readonly<Record<string, Readonly<Record<string, StatedGuards>>>>;
 
-/** What R fails on for a function written in C, as the built-in definitions state it, `undefined` if flowR does not know of any. */
+/** What R fails on for a function written in C, and what it returns, as the built-in definitions state it, `undefined` if flowR does not know of any. */
 function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | undefined {
-	const asks = defaultGuardFacts()(name)?.asks;
-	if(asks === undefined) {
-		return undefined;
-	}
+	const facts = defaultGuardFacts()(name);
+	const asks = facts?.asks ?? {};
 	const formals = Object.keys(asks);
 	const stated = Object.entries(asks).flatMap(([formal, failures]) => {
 		/* what the dots hold is several values, none of which a formal of the name `...` could stand for in R code */
 		const other = formals.find(f => f !== formal);
-		return formal === '...' ? [] : failures.map(f => [formal, passes(f, GuardTerm.formal(formal), () => false, other === undefined ? undefined : GuardTerm.formal(other))] as const);
+		return formal === '...' ? [] : failures.map(f => [formal, passes(f, GuardTerm.formal(formal), () => false, other === undefined ? undefined : GuardTerm.formal(other), GuardTerm.formal)] as const);
 	});
-	if(stated.length === 0) {
+	const returns = facts?.returns === undefined || facts.returns === 'argument' ? undefined : returnedClaimOf(facts.returns);
+	const passed = facts?.returns === 'argument' ? formals[0] : undefined;
+	if(stated.length === 0 && returns === undefined && passed === undefined) {
 		return undefined;
 	}
-	const claims = claimsOf(stated.map(([, term]) => term), stated.map(([formal]) => formal), defaultGuardFacts());
-	const calls = callsOfTerms(stated.map(([, term]) => term));
-	return { requires: GuardTerm.render(GuardTerm.all(...stated.map(([, term]) => term))), ...(Object.keys(claims).length > 0 ? { formals: claims } : {}), ...(calls.length > 0 ? { calls } : {}),
-		readOff:  { source: 'builtin', r: RBaseGuardsVersion } };
+	const terms = stated.map(([, term]) => term);
+	const claims = claimsOf(terms, stated.map(([formal]) => formal), defaultGuardFacts());
+	const relations = relationsOf(terms, defaultGuardFacts());
+	const conditional = conditionalClaimsOf(terms, formals.filter(f => f !== '...'), defaultGuardFacts());
+	const calls = callsOfTerms(terms);
+	return {
+		requires: terms.length === 0 ? '' : GuardTerm.render(GuardTerm.all(...terms)),
+		...(Object.keys(claims).length > 0 ? { formals: claims } : {}),
+		...(relations.length > 0 ? { relations } : {}),
+		...(conditional.length > 0 ? { conditional } : {}),
+		...(returns === undefined ? {} : { returns }),
+		...(passed === undefined ? {} : { passes: passed }),
+		...(calls.length > 0 ? { calls } : {}),
+		readOff:  { source: 'builtin', r: RBaseGuardsVersion }
+	};
 }
 
 /** Everything with stated guards, as `[package, name]`. */
@@ -173,7 +184,7 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
 	const table = RBaseGuards;
 	const inTable = Object.entries(table).flatMap(([pkg, names]) => Object.keys(names).map(name => [pkg, name] as [BrandedNamespace, BrandedIdentifier]));
 	const known = new Set(inTable.map(([pkg, name]) => `${pkg}::${name}`));
-	return [...inTable, ...namesWithGuardFacts().filter(([, name]) => defaultGuardFacts()(name)?.asks !== undefined).map(([, name]) => [baseRExportOwner(name) ?? PkgName.Base, name] as [BrandedNamespace, BrandedIdentifier]).filter(([pkg, name]) => !known.has(`${pkg}::${name}`))];
+	return [...inTable, ...namesWithGuardFacts().filter(([, name]) => requirementsOf(name) !== undefined).map(([, name]) => [baseRExportOwner(name) ?? PkgName.Base, name] as [BrandedNamespace, BrandedIdentifier]).filter(([pkg, name]) => !known.has(`${pkg}::${name}`))];
 }
 
 /**

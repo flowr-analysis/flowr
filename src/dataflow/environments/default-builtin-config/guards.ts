@@ -6,6 +6,7 @@ import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } fr
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import { base, fn, pkg, Primitive } from './define-helpers';
 import { Forced, sig } from './shared-signatures';
+import { PrimitiveLanguageGuardFacts } from './guards-primitive-lang';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
 const Numeric = Integer | Double;
@@ -20,7 +21,6 @@ const OneTruth: ReturnedValue = { types: Logical, scalar: true, notNA: true };
 const SingleResult: GuardFacts = { computes: true, singleResult: true, returns: OneTruth };
 /* `all(NA)` is `NA`, and `inherits(x, what, which = TRUE)` returns integers */
 const OneLogical: GuardFacts = { singleResult: true, returns: { types: Logical, scalar: true } };
-const Count: ReturnedValue = { types: Integer, scalar: true, notNA: true, count: true };
 const Returns = (types: RValueTypes, more: Omit<ReturnedValue, 'types'> = {}): GuardFacts => ({ returns: { types, ...more } });
 const OpensFrame: GuardFacts = { opensFrame: true };
 
@@ -39,18 +39,8 @@ const RealMathematical = dispatched(is('is.numeric', 'is.logical'), 'non-numeric
 const Cumulated = dispatched(not('is.function', 'is.environment', 'is.language'), "cannot coerce type ... to vector of type 'double'");
 const Ordered = (name: string): readonly RFailure[] => [...Cumulated, ...dispatched({ not: { is: 'is.complex' } }, `'${name}' not defined for complex numbers`)];
 const NotLogical = dispatched({ any: [is('is.numeric', 'is.logical', 'is.complex', 'is.raw'), { length: '==', to: 0 }] }, 'invalid argument type');
-const Dollar = dispatched({ any: [{ is: 'is.null' }, { all: [{ is: 'is.recursive' }, { not: { is: 'is.function' } }] }] }, '$ operator is invalid for atomic vectors');
-const Subsettable = dispatched(not('is.function', 'is.environment', 'is.symbol'), 'object of type ... is not subsettable');
-const ElementSubsettable = dispatched(not('is.function', 'is.symbol'), 'object of type ... is not subsettable');
 const Text = (message: string): readonly RFailure[] => fails(is('is.character'), message);
 const Applied = fails({ callable: true }, "'%s' is not a function, character or symbol");
-/* a condition of more than one value only warned before R 4.2, which went by the first one */
-const Condition: readonly RFailure[] = [
-	{ requires: { length: '>=', to: 1 }, message: 'argument is of length zero' },
-	{ requires: { length: '<=', to: 1 }, message: 'the condition has length > 1', since: '4.2.0' },
-	{ requires: { not: { is: 'is.na' } }, message: 'missing value where TRUE/FALSE needed', since: '4.2.0' },
-	{ requires: { any: [{ length: '>=', to: 2 }, { not: { is: 'is.na' } }] }, message: 'missing value where TRUE/FALSE needed', until: '4.2.0' }
-];
 /* no dispatch happens, but a class like `Date` may hide a number from `is.numeric`, and an empty operand reads as `NA` */
 const LogicalOperand = (operand: string, operator: string): readonly RFailure[] => [
 	{ requires: is('is.logical', 'is.numeric', 'is.complex', 'is.object'), message: `invalid '${operand}' type in 'x ${operator} y'` },
@@ -140,6 +130,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'is.factor':         predicate(Integer, { classed: true }),
 		'is.ordered':        predicate(Integer, { classed: true }),
 		'is.object':         predicate(AnyType, { classed: true }),
+		...PrimitiveLanguageGuardFacts,
 		'typeof':            { reads: TypeOf, computes: true },
 		'storage.mode':      { reads: TypeOf, computes: true },
 		'mode':              { reads: ModeOf, computes: true },
@@ -165,9 +156,6 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'==':                Compared('=='),
 		'!=':                Compared('!='),
 		'!':                 { asks: { x: NotLogical } },
-		'$':                 { asks: { x: Dollar }, computes: true },
-		'[':                 { asks: { x: Subsettable }, computes: true },
-		'[[':                { asks: { x: ElementSubsettable }, computes: true },
 		/* the `Math` group: each dispatches on a classed `x`, as `trunc` does for a `Date` */
 		'sqrt':              Math,
 		'abs':               Math,
@@ -239,33 +227,18 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'all':               { ...OneLogical, computes: true },
 		'any':               OneLogical,
 		'anyNA':             SingleResult,
-		'missing':           { singleResult: true, returns: OneTruth },
 		'requireNamespace':  { singleResult: true, returns: OneTruth },
 		'&&':                Logicals('&&'),
 		'||':                Logicals('||'),
-		'if':                { asks: { cond: Condition } },
-		'while':             { asks: { cond: Condition } },
 		'nzchar':            { ...Computes, ...Returns(Logical) },
-		'class':             { ...Computes, ...Returns(Character) },
-		'oldClass':          { ...Computes, ...Returns(Character | Null) },
-		'c':                 Computes,
 		'stopifnot':         Computes,
-		'invisible':         { ...Computes, returns: 'argument' },
-		'list':              { ...Computes, ...Returns(List) },
-		'names':             { ...Computes, ...Returns(Character | Null) },
-		'dim':               Computes,
 		'seq_len':           { ...Computes, ...Returns(Numeric, { notNA: true, count: true }) },
 		'seq_along':         { ...Computes, ...Returns(Numeric, { notNA: true, count: true }) },
 		'xor':               Computes,
 		'|>':                Computes,
 		'all.equal':         Computes,
-		'nargs':             { ...Computes, returns: Count },
-		'...length':         { ...Computes, returns: Count },
-		'...elt':            Computes,
 		'%in%':              { ...Computes, ...Returns(Logical, { notNA: true }) },
 		'%*%':               Computes,
-		':':                 Computes,
-		'@':                 Computes,
 		'identity':          { returns: 'argument' },
 		'paste':             Returns(Character),
 		'paste0':            Returns(Character),
@@ -287,8 +260,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'sys.source':        OpensFrame,
 		'attach':            OpensFrame,
 		'sys.frame':         OpensFrame,
-		'sys.frames':        OpensFrame,
-		'as.environment':    OpensFrame
+		'sys.frames':        OpensFrame
 	},
 	[PkgName.Methods]: {
 		'is':     Computes,
@@ -347,18 +319,23 @@ export const GuardDefinitions = [
 	fn(pkg('checkmate', ...Object.keys(CheckmateChecks).flatMap(name => [snakeCased(name), camelCased(name)])), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Invisible | CallProp.Throws })
 ] as const satisfies AnyBuiltInDefinition[];
 
-/** The definitions, each with the {@link GuardFacts} of its names on it. */
+/** The definitions, each with the {@link GuardFacts} of its names on it, a replacement function by the name R calls, like `names<-`. */
 export function markGuards(definitions: BuiltInDefinitions): BuiltInDefinitions {
 	return definitions.map(def => {
-		if(def.type !== 'function') {
+		if(def.type === 'constant') {
 			return def;
 		}
+		const named = def.type === 'replacement' ? (name: BrandedIdentifier): BrandedIdentifier => `${name}<-` : (name: BrandedIdentifier) => name;
 		const guards = Object.fromEntries((def.names as readonly Identifier[]).flatMap(id => {
 			const namespace = Identifier.getNamespace(id) ?? PkgName.Base;
-			const facts = GuardFactsOfPackages[namespace]?.[Identifier.getName(id)];
-			return facts === undefined ? [] : [[Identifier.getName(id), AttachedBasePackageSet.has(namespace) ? facts : { ...facts, pkg: namespace }]];
+			const name = named(Identifier.getName(id));
+			const facts = GuardFactsOfPackages[namespace]?.[name];
+			return facts === undefined ? [] : [[name, AttachedBasePackageSet.has(namespace) ? facts : { ...facts, pkg: namespace }]];
 		}));
-		return Object.keys(guards).length === 0 ? def : { ...def, config: { ...def.config, guards } };
+		if(Object.keys(guards).length === 0) {
+			return def;
+		}
+		return def.type === 'replacement' ? { ...def, config: { ...def.config, guards } } : { ...def, config: { ...def.config, guards } };
 	});
 }
 

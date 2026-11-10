@@ -571,10 +571,19 @@ function returnedBy(this: void, facts: GuardFacts | undefined): ReturnedValue | 
 	}
 }
 
-function ofReturned(this: void, { types, scalar, notNA, count }: ReturnedValue): Abstract {
+function ofReturned(this: void, { types, scalar, notNA, count, nonEmpty }: ReturnedValue): Abstract {
 	const typed: Abstract = { ...ofTypes(types), notNA: notNA === true, whole: count === true };
 	const counted = count ? both(typed, ofBound('value', 0, Infinity)) : typed;
-	return scalar ? both(counted, ofBound('length', 1, 1)) : counted;
+	return scalar ? both(counted, ofBound('length', 1, 1)) : nonEmpty ? both(counted, ofBound('length', 1, Infinity)) : counted;
+}
+
+/** What a function is stated to return, a classed value bringing a method of its own making it a case of the unclassed one, see {@link ReturnedValue.dispatchesOn}. */
+export function returnedClaimOf(this: void, returned: ReturnedValue): FormalClaim | undefined {
+	const claim = toClaim(ofReturned(returned));
+	if(Object.keys(claim).length === 0) {
+		return undefined;
+	}
+	return returned.dispatchesOn === undefined ? claim : { cases: [{ when: `!is.object(${returned.dispatchesOn})`, claim }] };
 }
 
 /** The types `c` turns its elements into, from the weakest to the strongest. */
@@ -639,7 +648,8 @@ function ofValue(this: void, term: GuardTerm | undefined, conditions: readonly G
 	if(returned === 'argument') {
 		return term.args.length === 0 ? ofConstants([]) : term.args.length === 1 ? ofValue(only.value, conditions, facts) : Unconstrained;
 	}
-	return returned === undefined ? Unconstrained : ofReturned(returned);
+	/* a method for a classed argument may return anything */
+	return returned === undefined || returned.dispatchesOn !== undefined ? Unconstrained : ofReturned(returned);
 }
 
 /** What holds of the value of every normal return, given what holds of the formals on every one of them, `undefined` if that is nothing. */

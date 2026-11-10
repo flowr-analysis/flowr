@@ -24,6 +24,7 @@ import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-ex
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import type { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -32,7 +33,7 @@ import { definitionsBehind } from '../higher-order-function';
 import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant } from './guard-term';
 import type { GuardFacts, GuardFactsLookup, RFailure } from '../../environments/guard-facts';
-import { asksCallable, callable, composesName, defaultGuardFacts, getAsExists, guardFactsIn, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
+import { type FormalTerms, asksCallable, callable, composesName, defaultGuardFacts, getAsExists, guardFactsIn, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
 import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-linking';
@@ -296,7 +297,9 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 	} else if(scope.frameIsOpen) {
 		return undefined;
 	}
-	const origins = Dataflow.origin(state.graph, node.info.id)?.filter(o => !scope.skips.has(o.id));
+	const found = Dataflow.origin(state.graph, node.info.id)?.filter(o => !scope.skips.has(o.id));
+	/* the target of `names(x) <- v` is defined there, while the replacement function reads what it held before */
+	const origins = found !== undefined && found.length > 1 ? found.filter(o => o.id !== node.info.id) : found;
 	if(origins === undefined || origins.length === 0) {
 		/* no call links the read yet */
 		return onceBoundLiteral(name, scope, state, depth) ?? { kind: 'free', name };
@@ -744,7 +747,7 @@ function walkIf(this: void, condNode: RNodeWithParent, then: RNodeWithParent, ot
 		return before;
 	}
 	const term = termOf(condNode, run.scope, run.state);
-	conditionRequirement('if', condNode, atCondition, run);
+	conditionRequirement('if', 'cond', condNode, atCondition, run);
 	const [yes, no] = stepsOf(term, run.state.facts);
 	if(returnsNull) {
 		returnsValue(NullValue, [...atCondition, no], run);
@@ -769,6 +772,7 @@ function walkSwitch(this: void, node: RFunctionCall<ParentInformation>, path: Pa
 	if(atSwitch === undefined) {
 		return before;
 	}
+	conditionRequirement('switch', 'EXPR', selector.value, atSwitch, run);
 	const term = termOf(selector.value, run.scope, run.state);
 	const names = alternatives.flatMap(a => a === EmptyArgument || a.name === undefined ? [] : [GuardTerm.string(String(a.name.content))]);
 	const notString = term === undefined ? GuardTerm.True : GuardTerm.known('!', GuardTerm.known('is.character', term));
@@ -867,17 +871,17 @@ function evaluatedAndNot(this: void, vertex: DataflowGraphVertexFunctionCall, st
 }
 
 /** Notes that `of` has to pass each of the failures R raises by itself, `other` being the second operand of an operator. */
-function addFailures(this: void, failures: readonly RFailure[], of: GuardTerm, at: NodeId, path: Path, run: Run, other?: GuardTerm): void {
+function addFailures(this: void, failures: readonly RFailure[], of: GuardTerm, at: NodeId, path: Path, run: Run, other?: GuardTerm, formals?: FormalTerms): void {
 	for(const failure of failures) {
-		addClause(run, path, passes(failure, of, n => isDefined(n, run.state), other), at, { kind: 'implicit', message: messageFor(failure, of) });
+		addClause(run, path, passes(failure, of, n => isDefined(n, run.state), other, formals), at, { kind: 'implicit', message: messageFor(failure, of) });
 	}
 }
 
-/** What `if` or `while` asks of a condition that is a formal. */
-function conditionRequirement(this: void, construct: BrandedIdentifier, condNode: RNodeWithParent, path: Path, run: Run): void {
+/** What `if`, `while`, `for`, or `switch` asks of what decides it, if that is a formal, `part` being the formal of the construct it fills. */
+function conditionRequirement(this: void, construct: BrandedIdentifier, part: BrandedIdentifier, condNode: RNodeWithParent, path: Path, run: Run): void {
 	const formal = formalOfNode(condNode, run);
 	if(formal !== undefined) {
-		addFailures(run.state.facts(construct)?.asks?.cond ?? [], formal, condNode.info.id, path, run);
+		addFailures(run.state.facts(construct)?.asks?.[part] ?? [], formal, condNode.info.id, path, run);
 	}
 }
 
@@ -892,6 +896,10 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 	const termOfNode = (n: RNodeWithParent) => termOf(n, scope, state);
 	/* an operator also dispatches on its other operand, which has to be stated to be ruled out */
 	const operands = Object.keys(asks).length === 2 ? [...bound.values()].flat() : [];
+	const formals: FormalTerms = formal => {
+		const values = bound.get(formal) ?? [];
+		return values.length === 1 ? termOfNode(values[0]) : undefined;
+	};
 	for(const [formal, failures] of Object.entries(asks)) {
 		for(const value of bound.get(formal) ?? []) {
 			const term = termOfNode(value);
@@ -899,7 +907,7 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 			const other = otherNode === undefined ? undefined : termOfNode(otherNode);
 			const stated = failures.filter(f => term !== undefined && (term.kind === 'formal' || asksCallable(f)) && (!f.dispatches || otherNode === undefined || other !== undefined));
 			if(term !== undefined) {
-				addFailures(stated, term, vertex.id, path, run, other);
+				addFailures(stated, term, vertex.id, path, run, other, formals);
 			}
 		}
 	}
@@ -1348,7 +1356,7 @@ function walkNode(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 		case RType.IfThenElse:
 			return runsBuiltIn(callVertexOf(node.info.id, run.state), BuiltInProcName.IfThenElse) ? walkIf(node.condition, node.then, node.otherwise, path, run, run.tails.get(node.info.id) === Tail.Elseless) : skipped(node, path, run);
 		case RType.ForLoop:
-			return [...walk(node.vector, path, run), ...walkLoopBody(node.body, path, run)];
+			return walkFor(node, path, run);
 		case RType.WhileLoop:
 			return walkWhile(node, path, run);
 		case RType.RepeatLoop:
@@ -1360,7 +1368,8 @@ function walkNode(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 			if((node.operator === '&&' || node.operator === '||') && knownNameOf(node.info.id, callVertexOf(node.info.id, run.state) as DataflowGraphVertexFunctionCall, run.state) !== undefined) {
 				return walkShortCircuit(node.operator, node.lhs, node.rhs, path, run);
 			}
-			return walkCall(node, path, run);
+			/* `names(x) <- v` is a call of `names<-`, which the dataflow puts on the call on the left */
+			return callVertexOf(node.info.id, run.state) === undefined && runsBuiltIn(callVertexOf(node.lhs.info.id, run.state), BuiltInProcName.Replacement) ? walkCall(node.lhs, path, run) : walkCall(node, path, run);
 		case RType.Pipe:
 		case RType.FunctionCall:
 		case RType.UnaryOp:
@@ -1371,11 +1380,20 @@ function walkNode(this: void, node: RNodeWithParent, path: Path, run: Run): Exit
 	}
 }
 
+function walkFor(this: void, node: RForLoop<ParentInformation>, path: Path, run: Run): Exit[] {
+	const before = walk(node.vector, path, run);
+	const atLoop = afterExits(path, before);
+	if(atLoop !== undefined && runsBuiltIn(callVertexOf(node.info.id, run.state), BuiltInProcName.ForLoop)) {
+		conditionRequirement('for', 'seq', node.vector, atLoop, run);
+	}
+	return [...before, ...walkLoopBody(node.body, path, run)];
+}
+
 function walkWhile(this: void, node: RWhileLoop<ParentInformation>, path: Path, run: Run): Exit[] {
 	const before = walk(node.condition, path, run);
 	const atCondition = afterExits(path, before);
 	if(atCondition !== undefined && runsBuiltIn(callVertexOf(node.info.id, run.state), BuiltInProcName.WhileLoop)) {
-		conditionRequirement('while', node.condition, atCondition, run);
+		conditionRequirement('while', 'cond', node.condition, atCondition, run);
 	}
 	return [...before, ...walkLoopBody(node.body, path, run)];
 }

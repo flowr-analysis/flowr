@@ -998,6 +998,34 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 	}
 });
 
+registerQueryDocumentation('data-columns', {
+	type:             'active',
+	shortDescription: 'Returns the columns of a data frame that can be written at a position, as an editor offers them to complete.',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'library(dplyr)\npenguins |> filter(year > 2008, bi)';
+		return `
+Editors complete names, and within code that works on a data frame the names worth offering are often its columns:
+after \`df$\`, but also in every argument a call evaluates within its data, as \`filter\`, \`mutate\`, \`subset\`, \`with\`, or \`aes\` do.
+flowR knows which arguments a call evaluates that way (they are _quoted_ in the dataflow graph), so this works for every such call,
+not just for a fixed list of them. The data frame is another argument of that call, the left side of a pipe into it, or, for a layer
+like \`geom_point(aes(...))\`, an argument of what it is added to. Its columns come from the ${linkToQueryOfName('absint')} of data frame shapes,
+which also knows the data sets R finds as lazy data, like \`penguins\` of \`datasets\` or \`starwars\` of \`dplyr\` (once loaded, or as \`dplyr::starwars\`).
+
+Consider the following code, with the cursor just after the \`bi\` (line 2, column 34):
+
+${codeBlock('r', exampleCode)}
+
+The query asks for the columns at that position:
+
+${
+	await showQuery(shell, exampleCode, [{ type: 'data-columns', positions: ['2:34'] }], { showCode: false, shorthand: sliceQueryShorthand(['2:34'] as SlicingCriteria, escapeNewline(exampleCode)), ctx })
+}
+
+The position has to fall within a node. An editor completing a name not typed yet, as in \`filter(penguins, )\`, inserts a placeholder name at the cursor first.
+		`;
+	}
+});
+
 registerQueryDocumentation('dice', {
 	type:             'active',
 	shortDescription: 'Reduces the code to the parts that carry information from a given start point to a given end point.',

@@ -802,6 +802,25 @@ async function completeColumn(context: CompletionContext, access: { from: number
 	};
 }
 
+/** what stands in for a name not typed yet, so the analysis has a node at the cursor */
+const Placeholder = '.flowr_completion_';
+
+/** the columns flowR's data columns query offers at `line`:`col` of the open file, the file analyzed as `code` */
+let maskedAsked: { code: string, at: string, columns: Promise<readonly { name: string, frame: string }[]> } | undefined;
+function maskedColumnsAt(code: string, line: number, col: number): Promise<readonly { name: string, frame: string }[]> {
+	const at = `${line}:${col}`;
+	if(maskedAsked?.code !== code || maskedAsked.at !== at) {
+		const columns = (async() => {
+			const answers = await (await analyzer(undefined, code)).query([{ type: 'data-columns', positions: [at] }]);
+			const found = answers['data-columns'].results[at];
+			const frames = found?.frames.map(f => f.lexeme ?? 'the data').join(', ') ?? '';
+			return found?.columns.map(name => ({ name, frame: frames })) ?? [];
+		})().catch(() => []);
+		maskedAsked = { code, at, columns };
+	}
+	return maskedAsked.columns;
+}
+
 /** the call whose parentheses hold `pos`, by its name, if any */
 function callAround(text: string, pos: number): string | undefined {
 	let depth = 0;
@@ -869,15 +888,23 @@ function complete(context: CompletionContext): CompletionResult | null | Promise
 	/* right after `(` or `,` of a call, the parameters of what it calls come first */
 	const called = /[(,]\s*$/.test(text.slice(Math.max(0, word.from - 200), word.from)) ? callAround(text, word.from) : undefined;
 	const named = called === undefined ? [] : parametersOf(called).filter(p => p.startsWith(needle)).map(p => ({ label: p, apply: `${p} = `, type: 'property', detail: `argument of ${called}`, boost: 99 }));
-	return {
+	const others = ranked([
+		...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
+		/* what the script attached is nearer than what flowR knows without it */
+		...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
+		...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
+	]);
+	/* within what a call evaluates in its data, as `filter(penguins, bi)` or `aes(x = bi)`, the columns of that data come first */
+	const line = context.state.doc.lineAt(word.to);
+	const typed = word.from === word.to ? Placeholder : '';
+	const code = text.slice(0, word.to) + typed + text.slice(word.to);
+	return maskedColumnsAt(code, line.number, word.to - line.from + typed.length + 1).then(columns => ({
 		from:    word.from,
-		options: [...named, ...ranked([
-			...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
-			/* what the script attached is nearer than what flowR knows without it */
-			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
-			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
-		])]
-	};
+		options: [
+			...columns.map(({ name, frame }) => ({ label: name, apply: /^[A-Za-z.][\w.]*$/.test(name) ? name : `\`${name}\``, type: 'property', detail: `column of ${frame}`, boost: 99 })),
+			...named, ...others
+		]
+	}));
 }
 
 /**

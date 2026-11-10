@@ -106,6 +106,7 @@ import {
 } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 import { type CodeClonesQuery, CodeClonesQueryDefinition } from './catalog/code-clones-query/code-clones-query-format';
+import { type DataColumnsQuery, DataColumnsQueryDefinition } from './catalog/data-columns-query/data-columns-query-format';
 import {
 	type FunctionInfoQuery,
 	FunctionInfoQueryDefinition
@@ -149,6 +150,7 @@ export type Query = CallContextQuery
 	| GuessDepVersionsQuery
 	| FunctionInfoQuery
 	| CodeClonesQuery
+	| DataColumnsQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -231,7 +233,8 @@ export const SupportedQueries = {
 	'dice':                 DiceQueryDefinition,
 	'guess-dep-versions':   GuessDepVersionsQueryDefinition,
 	'function-info':        FunctionInfoQueryDefinition,
-	'code-clones':          CodeClonesQueryDefinition
+	'code-clones':          CodeClonesQueryDefinition,
+	'data-columns':         DataColumnsQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

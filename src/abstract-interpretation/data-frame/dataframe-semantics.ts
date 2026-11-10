@@ -1,16 +1,20 @@
 import { VariableResolve } from '../../config';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import type { IdentifierString } from '../../dataflow/environments/identifier';
+import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { datasetShape } from '../../util/r-datasets';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexUse } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RAccess, type RIndexAccess, type RNamedAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -28,6 +32,9 @@ import { DataFrameDomain } from './dataframe-domain';
 import { unescapeSpecialChars } from './resolve-args';
 import { applyDataFrameSemantics, ConstraintType, getConstraintType, JoinType } from './semantics';
 import type { DataFrameOperation, DataFrameOperations } from './shape-inference';
+
+/** see `scripts/gen-r-datasets.ts`, which keeps at most this many columns of a data set */
+const MaxDatasetColumns = 200;
 
 /**
  * Represents the different types of data frames in R
@@ -534,6 +541,26 @@ export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain
 	}
 
 	/**
+	 * A symbol without a definition in the program that names a data set R finds as lazy data, such as `penguins`
+	 * (from `datasets`), `starwars` once `dplyr` is loaded, or `dplyr::starwars`, has the shape of that data set.
+	 */
+	public handleVariableUse(state: DataFrameStateDomain, vertex: DataflowGraphVertexUse, ctx: AbsintContext<DataFrameStateDomain>): void {
+		const node = ctx.getAstNode(vertex.id);
+
+		if(!RSymbol.is(node) || node.info.role === RoleInParent.FunctionCallName || Dataflow.origin(ctx.dfg, vertex.id)?.some(origin => origin.type === OriginType.ReadVariableOrigin)) {
+			return;
+		}
+		const loaded = loadedPackages(ctx);
+		const shape = datasetShape(Identifier.getName(node.content), Identifier.getNamespace(node.content), pkg => loaded.has(String(pkg)) || ctx.context.deps.getDependency(pkg) !== undefined);
+
+		if(shape !== undefined) {
+			/* the table keeps at most the first columns of a very wide data set, which then are not all its names */
+			const colnames = shape.columns.length < MaxDatasetColumns ? [...shape.columns] : undefined;
+			applyDataFrameExpression(state, node, [{ operation: 'read', operand: undefined, source: `${shape.pkg}::${shape.name}`, colnames, rows: shape.rows }], ctx, this.operations);
+		}
+	}
+
+	/**
 	 * Applies the abstract semantics defined for the called replacement function, or over-approximates
 	 * the modified data frame operand of any other replacement function by the `unknown` abstract operation.
 	 */
@@ -544,6 +571,33 @@ export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain
 			applyUnknownAssignment(state, vertex, ctx, this.operations);
 		}
 	}
+}
+
+/** the packages the program names in a `library` call or the like, per dataflow graph */
+const loadedOf = new WeakMap<object, ReadonlySet<string>>();
+
+/** The packages the program loads by name, whose data sets R then finds as well (whether or not flowR knows anything else of them). */
+function loadedPackages(ctx: AbsintContext<DataFrameStateDomain>): ReadonlySet<string> {
+	let loaded = loadedOf.get(ctx.dfg);
+	if(loaded === undefined) {
+		const names = new Set<string>();
+		for(const [, vertex] of ctx.dfg.vertices(true)) {
+			if(DfgVertex.isFunctionCall(vertex) && DfgVertex.hasOrigin(vertex, BuiltInProcName.Library)) {
+				for(const arg of vertex.args) {
+					const value = arg === EmptyArgument ? undefined : ctx.getAstNode(arg.nodeId);
+					const named = RArgument.is(value) ? value.value : value;
+					if(RSymbol.is(named)) {
+						names.add(String(Identifier.getName(named.content)));
+					} else if(RString.is(named)) {
+						names.add(named.content.str);
+					}
+				}
+			}
+		}
+		loaded = names;
+		loadedOf.set(ctx.dfg, loaded);
+	}
+	return loaded;
 }
 
 /**

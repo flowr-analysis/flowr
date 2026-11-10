@@ -60,7 +60,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		], {}, { allowInvalidFiles: true, addFiles: [new FlowrInlineTextFile(`${path.sep}project${path.sep}.RProfile`, 'source("/project/test.R")')] });
 		assertLinter('autoload file with invalid source disallowed', parser, '', 'autoload-files', [
 			{ certainty: LintingResultCertainty.Certain, filePath: `${path.sep}project${path.sep}.RProfile`, loc: undefined },
-			{ certainty: LintingResultCertainty.Uncertain, filePath: '/project/test.R', loc: undefined }
+			{ certainty: LintingResultCertainty.Uncertain, filePath: `${path.sep}project${path.sep}test.R`, loc: undefined }
 		], {}, { addFiles: [new FlowrInlineTextFile(`${path.sep}project${path.sep}.RProfile`, 'source("/project/test.R")')] });
 	});
 }));

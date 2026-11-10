@@ -370,14 +370,144 @@ function shapeOfLiterals(this: void, term: GuardTerm): { readonly type: RValueTy
 	return { type: CombinedRanks[Math.max(0, ...types.map(t => CombinedRanks.indexOf(t as RValueType)))], length };
 }
 
-/** A predicate on literals decided, as literals have no attributes. */
+/** The constants of a literal vector like `c("a", "b")` or of a single constant, `undefined` for anything else. */
+function constantsOf(this: void, term: GuardTerm | undefined): readonly GuardConstant[] | undefined {
+	if(term?.kind === 'constant') {
+		return [term];
+	} else if(!isCall(term, 'c') || !term.known) {
+		return undefined;
+	}
+	const elements = term.args.map(a => a.value);
+	return elements.every(e => e.kind === 'constant') ? elements : undefined;
+}
+
+type Scalar = string | number | boolean;
+
+/** The value of a literal: `null` for `NA`, `undefined` for one without a single value of its own (`NULL`, a complex number). */
+function scalarOf(this: void, term: GuardTerm): Scalar | null | undefined {
+	if(term.kind !== 'constant') {
+		return undefined;
+	} else if(term.value !== undefined) {
+		return typeof term.value === 'number' && Number.isNaN(term.value) ? null : term.value;
+	} else if(term.lexeme === 'Inf') {
+		return Infinity;
+	}
+	return term.lexeme === 'NULL' ? undefined : term.lexeme.startsWith('NA') || term.lexeme === 'NaN' ? null : undefined;
+}
+
+function logical(this: void, value: boolean | null): GuardConstant {
+	return value === null ? { kind: 'constant', lexeme: 'NA' } : value ? True : False;
+}
+
+function isInteger(this: void, term: GuardTerm): boolean {
+	return term.kind === 'constant' && /^-?(?:0[xX][0-9a-fA-F]+|[0-9]+)L$/.test(term.lexeme);
+}
+
+function numberConstant(this: void, value: number, integer: boolean): GuardConstant {
+	return Number.isFinite(value) ? { kind: 'constant', lexeme: `${value}${integer ? 'L' : ''}`, value } : { kind: 'constant', lexeme: value > 0 ? 'Inf' : '-Inf', value };
+}
+
+const Comparisons: Readonly<Record<string, (a: number, b: number) => boolean>> = {
+	'==': (a, b) => a === b, '!=': (a, b) => a !== b, '<': (a, b) => a < b, '<=': (a, b) => a <= b, '>': (a, b) => a > b, '>=': (a, b) => a >= b
+};
+const Arithmetic: Readonly<Record<string, (a: number, b: number) => number>> = {
+	'+': (a, b) => a + b, '-': (a, b) => a - b, '*': (a, b) => a * b, '/': (a, b) => a / b
+};
+const Rounding: Readonly<Record<string, (a: number) => number>> = { trunc: Math.trunc, floor: Math.floor, ceiling: Math.ceil };
+
+/** Whether `match.arg(arg, choices)` returns, for a single string and literal choices, `undefined` for anything else. */
+function matchesArg(this: void, call: GuardCall): boolean | undefined {
+	const [arg, choices] = call.args;
+	const options = constantsOf(choices?.value)?.map(c => c.value);
+	if(call.args.length !== 2 || arg.name !== undefined || (choices.name !== undefined && choices.name !== 'choices') || options === undefined || !options.every(o => typeof o === 'string')) {
+		return undefined;
+	}
+	const given = scalarOf(arg.value);
+	if(typeof given === 'number' || typeof given === 'boolean') {
+		/* match.arg rejects anything but NULL or a character vector */
+		return false;
+	} else if(typeof given !== 'string') {
+		return undefined;
+	}
+	return given !== '' && (options.includes(given) || options.filter(o => o.startsWith(given)).length === 1);
+}
+
+/** The call of R's own on literals evaluated as R would, `undefined` where that is not settled. */
+function evaluated(this: void, call: GuardCall): GuardTerm | undefined {
+	const fn = String(call.fn);
+	const operands = call.args.map(a => a.value);
+	const [first, second] = operands;
+	const [a, b] = [first === undefined ? undefined : scalarOf(first), second === undefined ? undefined : scalarOf(second)];
+	if(call.args.some(arg => arg.name !== undefined) && fn !== 'succeeds') {
+		return undefined;
+	}
+	switch(fn) {
+		case 'length': {
+			const constants = operands.length === 1 ? constantsOf(first) : undefined;
+			return constants === undefined ? undefined : numberConstant(constants.filter(c => c.lexeme !== 'NULL').length, true);
+		}
+		case 'is.na':
+			return operands.length === 1 && a !== undefined ? logical(a === null) : undefined;
+		case 'unclass':
+			return operands.length === 1 && first.kind === 'constant' ? first : undefined;
+		case 'as.logical':
+		case 'all':
+		case 'any':
+			if(operands.length !== 1 || (typeof a !== 'boolean' && (fn !== 'as.logical' || typeof a !== 'number'))) {
+				return a === null && fn === 'as.logical' ? logical(null) : undefined;
+			}
+			return logical(typeof a === 'number' ? (Number.isNaN(a) ? null : a !== 0) : a);
+		case 'isTRUE':
+		case 'isFALSE':
+			return operands.length === 1 && first.kind === 'constant' && first.lexeme !== 'NULL' ? logical(a === (fn === 'isTRUE')) : undefined;
+		case '%in%': {
+			const among = constantsOf(second)?.map(scalarOf);
+			return a === undefined || a === null || among === undefined || !among.every(v => typeof v === typeof a) ? undefined : logical(among.includes(a));
+		}
+		case 'succeeds':
+			return isCall(first, 'match.arg') && first.known ? (r => r === undefined ? undefined : logical(r))(matchesArg(first)) : undefined;
+	}
+	if(Rounding[fn] !== undefined && operands.length === 1 && typeof a === 'number') {
+		return numberConstant(Rounding[fn](a), false);
+	} else if(fn === '-' && operands.length === 1 && typeof a === 'number') {
+		return numberConstant(-a, isInteger(first));
+	} else if(operands.length !== 2 || a === undefined || b === undefined) {
+		return undefined;
+	} else if(Comparisons[fn] !== undefined) {
+		if(a === null || b === null) {
+			return logical(null);
+		} else if(typeof a === 'string' || typeof b === 'string') {
+			/* strings compare by the collation of the locale, and a number turns into a string first */
+			return typeof a === 'string' && typeof b === 'string' && (fn === '==' || fn === '!=') ? logical((a === b) === (fn === '==')) : undefined;
+		}
+		return logical(Comparisons[fn](Number(a), Number(b)));
+	} else if(Arithmetic[fn] !== undefined && typeof a === 'number' && typeof b === 'number') {
+		return numberConstant(Arithmetic[fn](a, b), fn !== '/' && isInteger(first) && isInteger(second));
+	}
+	return undefined;
+}
+
+/**
+ * A call of R's own on literals evaluated as R would, as a call site handing over literals makes it: predicates by what
+ * literals are (they have no attributes), and comparisons, arithmetic, `length`, `is.na`, `%in%` and `match.arg` by what R computes.
+ * Anything not settled stays as it is, the operands of `&&` and `||` are decided one by one.
+ */
 function decided(this: void, term: GuardTerm, facts: GuardFactsLookup): GuardTerm {
 	if(!isCall(term) || !term.known) {
 		return term;
+	} else if(term.fn === '&&' || term.fn === '||') {
+		const operands = term.args.map(a => decided(a.value, facts));
+		return term.fn === '&&' ? all(...operands) : any(...operands);
 	} else if(term.fn === '!') {
 		const of = decided(term.args[0].value, facts);
 		return of.kind === 'constant' && typeof of.value === 'boolean' ? (of.value ? False : True) : known('!', of);
 	}
+	const call: GuardCall = { ...term, args: term.args.map(a => ({ ...a, value: decided(a.value, facts) })) };
+	return evaluated(call) ?? predicateDecided(call, facts);
+}
+
+/** A predicate on literals decided, as literals have no attributes. */
+function predicateDecided(this: void, term: GuardCall, facts: GuardFactsLookup): GuardTerm {
 	const predicate = facts(term.fn)?.predicate;
 	const [arg] = term.args;
 	const shape = term.args.length === 1 && arg.name === undefined ? shapeOfLiterals(arg.value) : undefined;
@@ -465,14 +595,5 @@ export const GuardTerm = {
 	isTrue(this: void, term: GuardTerm): boolean {
 		return term.kind === 'constant' && term.value === true;
 	},
-	/** The constants of a literal vector like `c("a", "b")` or of a single constant, `undefined` for anything else. */
-	constants(this: void, term: GuardTerm | undefined): readonly GuardConstant[] | undefined {
-		if(term?.kind === 'constant') {
-			return [term];
-		} else if(!isCall(term, 'c') || !term.known) {
-			return undefined;
-		}
-		const elements = term.args.map(a => a.value);
-		return elements.every(e => e.kind === 'constant') ? elements : undefined;
-	}
+	constantsOf
 } as const;

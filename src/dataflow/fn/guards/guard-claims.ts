@@ -195,7 +195,7 @@ function ofPredicate(this: void, call: GuardCall, formal: BrandedIdentifier, hol
 	} else if(stated?.measures !== undefined && isFormal(first, formal) && call.args.length === 1) {
 		return holds ? boundOf(name, '>=', 1) : boundOf(name, '==', 0);
 	} else if(holds && call.fn === 'inherits' && isFormal(first, formal) && call.args.length === 2) {
-		const classes = valuesOf(GuardTerm.constants(second) ?? []);
+		const classes = valuesOf(GuardTerm.constantsOf(second) ?? []);
 		return classes?.size ? { ...Unconstrained, classes: new Set([...classes].map(String)) } : Unconstrained;
 	}
 	return Unconstrained;
@@ -227,7 +227,7 @@ function boundOf(this: void, measure: BrandedIdentifier, op: BrandedIdentifier, 
 
 /** What `read op constants` says, `read` being a term reading something off the formal. */
 function ofComparison(this: void, read: GuardTerm, op: BrandedIdentifier, right: GuardTerm, formal: BrandedIdentifier, facts: GuardFactsLookup): Abstract {
-	const constants = GuardTerm.constants(right);
+	const constants = GuardTerm.constantsOf(right);
 	if(GuardTerm.isCall(read) && read.known && isFormal(read.args[0]?.value, formal) && read.args.length === 1) {
 		const reader = facts(read.fn)?.reads;
 		const values = (op === '==' || op === '%in%') && constants !== undefined ? valuesOf(constants) : undefined;
@@ -274,7 +274,7 @@ function ofCheck(this: void, call: GuardCall, formal: BrandedIdentifier, facts: 
 		}
 	}
 	const choices = check.choices === undefined ? undefined : call.args.find((a, i) => a.name === check.choices || (a.name === undefined && i === 1))?.value;
-	const values = choices === undefined ? undefined : valuesOf(GuardTerm.constants(choices) ?? []);
+	const values = choices === undefined ? undefined : valuesOf(GuardTerm.constantsOf(choices) ?? []);
 	const claim = { ...ofTypes(types, check.classed), values: ofValues(values), partial: values !== undefined && check.partial === true };
 	return check.scalar && !loosened ? both(claim, ofBound('length', 1, 1)) : claim;
 }
@@ -635,7 +635,7 @@ function ofValue(this: void, term: GuardTerm | undefined, conditions: readonly G
 	if(term?.kind === 'formal') {
 		return conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, term.name, facts)), Unconstrained);
 	}
-	const constants = GuardTerm.constants(term);
+	const constants = GuardTerm.constantsOf(term);
 	if(constants !== undefined && (!GuardTerm.isCall(term) || term.args.every(a => a.name === undefined))) {
 		return ofConstants(constants);
 	} else if(!GuardTerm.isCall(term) || !term.known) {

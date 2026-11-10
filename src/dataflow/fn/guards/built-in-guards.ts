@@ -15,7 +15,7 @@ import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsDate, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
-import { parseGuardTerm } from './guard-ground';
+import { parseGuardTerm } from './guard-term-syntax';
 import { groupMethodConditions } from './group-method-guards';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';

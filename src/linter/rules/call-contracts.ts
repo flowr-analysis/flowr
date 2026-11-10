@@ -18,7 +18,7 @@ import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridg
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { GuardTerm, type GuardBinding, type GuardConstant } from '../../dataflow/fn/guards/guard-term';
-import { evaluateGround, parseGuardTerm } from '../../dataflow/fn/guards/guard-ground';
+import { parseGuardTerm } from '../../dataflow/fn/guards/guard-term-syntax';
 import { builtInClauses, type StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
 import { atCall, callBinding } from '../../dataflow/fn/guards/function-guards';
 import { guardFactsOf } from '../../dataflow/fn/guards/guard-knowledge';
@@ -266,7 +266,7 @@ function brokenBy(this: void, vertex: DataflowGraphVertexFunctionCall, contract:
 		const { requires } = atCall(clause, call, undefined, facts);
 		const placeholders = [...GuardTerm.formalsOf(requires)];
 		const bindings = combinations(new Map(placeholders.map(p => [p, literalsOf(p)])));
-		if(bindings === undefined || !bindings.every(binding => GuardTerm.isFalse(evaluateGround(GuardTerm.substituteCondition(requires, binding, undefined, facts), facts)))) {
+		if(bindings === undefined || !bindings.every(binding => GuardTerm.isFalse(GuardTerm.substituteCondition(requires, binding, undefined, facts)))) {
 			continue;
 		}
 		const values = contract.formals.flatMap(formal => {

@@ -42,7 +42,7 @@ export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<
 	/** see {@link FunctionGuards.formals} */
 	readonly formals?:    Readonly<Record<BrandedIdentifier, FormalClaim>>
 	/** where they come from and which R they hold for, see {@link GuardOrigin} */
-	readonly readOff?:    GuardOrigin
+	readonly origin?:     GuardOrigin
 	/** why each part of {@link StatedGuards.requires} is in effect */
 	readonly because?:    readonly GuardReason[]
 	/** the S3 generic it is a method of, written `pkg::name`, and the class it is the method for */
@@ -199,7 +199,7 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 		...(returns === undefined ? {} : { returns }),
 		...(passed === undefined ? {} : { passes: passed }),
 		...(calls.length > 0 ? { calls } : {}),
-		readOff:  { source: 'builtin', r: RBaseGuardsVersion }
+		origin:   { source: 'builtin', r: RBaseGuardsVersion }
 	};
 }
 
@@ -220,5 +220,5 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
 export function builtInGuards(this: void, name: BrandedIdentifier, pkg: BrandedNamespace | undefined = baseRExportOwner(name)): StatedGuards | undefined {
 	const owner = pkg ?? PkgName.Base;
 	const read = RBaseGuards[String(owner)]?.[String(name)];
-	return read !== undefined ? { ...read, readOff: { source: 'base-table', r: RBaseGuardsVersion, date: RBaseGuardsDate, pkg: owner, version: RBaseGuardsVersion } } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);
+	return read !== undefined ? { ...read, origin: { source: 'base-table', r: RBaseGuardsVersion, date: RBaseGuardsDate, pkg: owner, version: RBaseGuardsVersion } } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);
 }

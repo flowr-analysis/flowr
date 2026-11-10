@@ -89,7 +89,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(roles.length > 0) {
 		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
 	}
-	const origin = fn.guards?.readOff;
+	const origin = fn.guards?.origin;
 	if(origin !== undefined && origin.source !== 'builtin' && origin.r !== fn.version) {
 		result.push(`      ╰ ${italic(`contracts of R ${origin.r}${origin.date === undefined ? '' : `, updated ${origin.date}`}`, f)}`);
 	}

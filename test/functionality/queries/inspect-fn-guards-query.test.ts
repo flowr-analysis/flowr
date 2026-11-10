@@ -554,14 +554,14 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	/* what is claimed about the formals */
 	const AnythingBut = (...not: readonly string[]) => ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'function', 'environment', 'symbol', 'language', 'expression', 'other'].filter(t => !not.includes(t));
 	claims('f <- function(x) { if(!is.integer(x)) stop("n"); x }', { x: { types: ['integer'] } }, ['x']);
-	claims('f <- function(x) { stopifnot(is.numeric(x)); x }', { x: { plainTypes: ['integer', 'double'] } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.numeric(x)); x }', { x: { unclassedTypes: ['integer', 'double'] } }, ['x']);
 	claims('f <- function(x) { if(is.null(x)) stop("n"); x }', { x: { types: AnythingBut('NULL') } }, ['x']);
 	claims('f <- function(x) { if(is.numeric(x)) stop("n"); 1 }', {}, ['x']);
-	claims('f <- function(x) { if(is.numeric(x) || is.character(x)) x else stop("n") }', { x: { plainTypes: ['integer', 'double', 'character'] } }, ['x']);
-	claims('f <- function(x) { if(!is.data.frame(x)) stop("n"); 1 }', { x: { types: ['list'], plainTypes: [] } }, ['x']);
-	claims('f <- function(x) { x + 1 }', { x: { plainTypes: ['NULL', 'logical', 'integer', 'double', 'complex'] } }, ['x']);
+	claims('f <- function(x) { if(is.numeric(x) || is.character(x)) x else stop("n") }', { x: { unclassedTypes: ['integer', 'double', 'character'] } }, ['x']);
+	claims('f <- function(x) { if(!is.data.frame(x)) stop("n"); 1 }', { x: { types: ['list'], unclassedTypes: [] } }, ['x']);
+	claims('f <- function(x) { x + 1 }', { x: { unclassedTypes: ['NULL', 'logical', 'integer', 'double', 'complex'] } }, ['x']);
 	claims('f <- function(x) { strsplit(x, "") }', { x: { types: ['character'] } }, ['x']);
-	claims('f <- function(x) { if(!is.numeric(x)) stop("n"); x + 1 }', { x: { plainTypes: ['integer', 'double'] } }, ['x']);
+	claims('f <- function(x) { if(!is.numeric(x)) stop("n"); x + 1 }', { x: { unclassedTypes: ['integer', 'double'] } }, ['x']);
 	claims('f <- function(mode = c("fast", "slow")) { mode <- match.arg(mode); mode }', { mode: { types: ['NULL', 'character'], values: ['fast', 'slow'], partial: true } }, []);
 	claims('f <- function(x) { if(!(x %in% c("a", "b"))) stop("n"); x }', { x: { values: ['a', 'b'] } }, ['x']);
 
@@ -589,7 +589,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 			{ holds: 'length(x) > m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0 || !is.function(m) && !is.environment(m) || is.object(m)' },
 			{ holds: 'length(x) > m', formals: ['x', 'm'], unless: 'is.numeric(x) && length(x) == 1L && x > 0 || m == 0' }
 		]);
-		assert.deepStrictEqual(guards?.relations[0].unlessClaim, { formal: 'x', claim: { plainTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } } });
+		assert.deepStrictEqual(guards?.relations[0].unlessClaim, { formal: 'x', claim: { unclassedTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } } });
 	});
 
 	test('a claim that holds unless another formal lets the call through', async() => {
@@ -637,7 +637,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test('a generic takes what its default method asks of a value without a class', async() => {
 		const guards = await guardsOfF(parser, 'g <- function(x, ...) UseMethod("g"); g.default <- function(x, k = 1) { stopifnot(is.numeric(x)); x }; g.foo <- function(x, ...) 1; f <- function(y) g(y)');
 		assert.strictEqual(guards?.requires, 'is.object(y) || is.numeric(y)');
-		assert.deepStrictEqual(guards?.formals.y, { plainTypes: ['integer', 'double'] });
+		assert.deepStrictEqual(guards?.formals.y, { unclassedTypes: ['integer', 'double'] });
 	});
 
 	test('the table of the base packages relates generics and methods', () => {
@@ -666,7 +666,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x = "a") { paste(x) }', {}, []);
 	claims('f <- function(x = c("a", "b")) { list(x) }', {}, []);
 	claims('f <- function(x = TRUE, n = 5L) { list(x, n) }', {}, []);
-	claims('f <- function(n = 5L) { if(!is.numeric(n)) stop("n"); n }', { n: { plainTypes: ['integer', 'double'] } }, []);
+	claims('f <- function(n = 5L) { if(!is.numeric(n)) stop("n"); n }', { n: { unclassedTypes: ['integer', 'double'] } }, []);
 	claims('f <- function(x = 1L) { stopifnot(is.character(x)); x }', { x: { types: ['character'] } }, []);
 	claims('f <- function(x = NULL) { if(is.null(x)) 1 else x }', {}, []);
 
@@ -680,10 +680,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('g <- function(y, ...) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', {}, []);
 	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(z = 2, x, ...) }', { x: { types: ['list', 'pairlist'] } }, ['x']);
 	claims('g <- function(y, z = 1) { stopifnot(is.list(y)); y }; h <- function(x, ...) { g(x, ...) }; f <- function(v) { h(v) }', { v: { types: ['list', 'pairlist'] } }, []);
-	claims('f <- function(x) { if(x != "a" && x != "b") stop("n"); x }', { x: { plainTypes: AnythingBut('function', 'environment'), values: ['a', 'b'] } }, ['x']);
+	claims('f <- function(x) { if(x != "a" && x != "b") stop("n"); x }', { x: { unclassedTypes: AnythingBut('function', 'environment'), values: ['a', 'b'] } }, ['x']);
 	claims('f <- function(x) { switch(x, a = 1, b = 2, stop("no")) }', { x: { types: ['logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'expression', 'other'], values: ['a', 'b'], bounds: { length: [1, 1] } } }, ['x']);
-	claims('f <- function(x, y = 1) { stopifnot(x > 0, x <= 5, length(y) == 1L); x }', { x: { plainTypes: AnythingBut('function', 'environment', 'symbol', 'language') }, y: { bounds: { length: [1, 1] } } }, ['x']);
-	claims('f <- function(x) { stopifnot(is.numeric(x), x > 0, x <= 5); x }', { x: { plainTypes: ['integer', 'double'], bounds: { value: [0, 5] } } }, ['x']);
+	claims('f <- function(x, y = 1) { stopifnot(x > 0, x <= 5, length(y) == 1L); x }', { x: { unclassedTypes: AnythingBut('function', 'environment', 'symbol', 'language') }, y: { bounds: { length: [1, 1] } } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.numeric(x), x > 0, x <= 5); x }', { x: { unclassedTypes: ['integer', 'double'], bounds: { value: [0, 5] } } }, ['x']);
 	claims('f <- function(x) { if(length(x) == 0) stop("n"); x }', { x: { bounds: { length: [1, null] } } }, ['x']);
 	claims('f <- function(x) { if(nrow(x) > 3) stop("n"); x }', { x: { bounds: { nrow: [null, 3] } } }, ['x']);
 	claims('f <- function(x) { if(!inherits(x, c("a", "b"))) stop("n"); x }', { x: { classes: ['a', 'b'] } }, ['x']);
@@ -723,7 +723,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x) { stopifnot(nrow(x) > 0); 1 }', {}, ['x']);
 	claims('f <- function(x) { if(nrow(x) > 0) 1 else stop("n") }', { x: { bounds: { nrow: [1, null] } } }, ['x']);
 	claims('f <- function(x) { stopifnot(!is.na(x)); 1 }', { x: { notNA: true } }, ['x']);
-	claims('f <- function(x) { stopifnot(is.finite(x)); 1 }', { x: { plainTypes: ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw'], notNA: true } }, ['x']);
+	claims('f <- function(x) { stopifnot(is.finite(x)); 1 }', { x: { unclassedTypes: ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw'], notNA: true } }, ['x']);
 	claims('f <- function(x = 1) { if(missing(x)) stop("n"); 1 }', {}, ['x']);
 	claims('f <- function(x) { rlang::check_required(x); 1 }', {}, ['x']);
 	claims('g <- function(y) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(y = x, ...) }', { x: { types: ['list', 'pairlist'] } }, ['x']);
@@ -737,14 +737,14 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 
 	/* what is claimed about the value a call returns */
 	const OneTruth = { types: ['logical'], bounds: { length: [1, 1] }, notNA: true } as const;
-	returns('f <- function(x) { stopifnot(is.numeric(x)); x }', { plainTypes: ['integer', 'double'] }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x)); x }', { unclassedTypes: ['integer', 'double'] }, 'x');
 	returns('f <- function(x) { if(!is.character(x)) stop("n"); x }', { types: ['character'] }, 'x');
-	returns('f <- function(x) { stopifnot(is.numeric(x), length(x) == 1, x > 0); x }', { plainTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x), length(x) == 1, x > 0); x }', { unclassedTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } }, 'x');
 	returns('f <- function(x) { if(!inherits(x, "foo")) stop("n"); invisible(x) }', { classes: ['foo'] }, 'x');
-	returns('f <- function(x) { stopifnot(is.numeric(x)); y <- x; return(invisible(y)) }', { plainTypes: ['integer', 'double'] }, 'x');
+	returns('f <- function(x) { stopifnot(is.numeric(x)); y <- x; return(invisible(y)) }', { unclassedTypes: ['integer', 'double'] }, 'x');
 	returns('g <- function(y) y; f <- function(x) { g(x) }', undefined, 'x');
-	returns('f <- function(x) { if(is.numeric(x)) x else "a" }', { plainTypes: ['integer', 'double', 'character'] });
-	returns('f <- function(x) { if(is.numeric(x)) { x } else { if(is.character(x)) x else NULL } }', { plainTypes: ['NULL', 'integer', 'double', 'character'] });
+	returns('f <- function(x) { if(is.numeric(x)) x else "a" }', { unclassedTypes: ['integer', 'double', 'character'] });
+	returns('f <- function(x) { if(is.numeric(x)) { x } else { if(is.character(x)) x else NULL } }', { unclassedTypes: ['NULL', 'integer', 'double', 'character'] });
 	returns('f <- function(x) { if(missing(x)) "none" else if(is.character(x)) x else stop("n") }', { types: ['character'] });
 	/* an `if` without an `else` returns `NULL` when not taken */
 	returns('f <- function(x) { if(is.numeric(x)) 1L }', { types: ['NULL', 'integer'], bounds: { length: [0, 1] } });

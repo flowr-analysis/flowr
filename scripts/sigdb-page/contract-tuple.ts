@@ -20,7 +20,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 	}
 	const calls = (stated.calls ?? []).map(qualified => Identifier.parse(qualified));
 	const tokens = contractTokens({
-		inferred:  stated.readOff !== undefined && stated.readOff.source !== 'builtin',
+		inferred:  stated.origin !== undefined && stated.origin.source !== 'builtin',
 		formals:   named,
 		claims:    stated.formals ?? {},
 		required:  stated.required ?? [],
@@ -28,7 +28,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 		relations: (stated.relations ?? []).map(r => r.formals),
 		returns:   stated.returns
 	});
-	return [stated.requires, claims, because, stated.readOff === undefined || stated.readOff.source === 'builtin' ? '' : stated.readOff.r + (stated.readOff.date === undefined ? '' : '@' + stated.readOff.date), (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []], result, named,
+	return [stated.requires, claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : claimConditions(unlessClaim.formal, unlessClaim.claim).join(' and ')]), [...stated.required ?? []], result, named,
 		stated.dispatches === undefined ? [] : [stated.dispatches, stated.methods ?? []], stated.methodOf === undefined ? [] : [stated.methodOf.generic, stated.methodOf.class],
 		calls.map(id => [Identifier.toPreludeString(id), Identifier.toString(id)]), tokens];
 }

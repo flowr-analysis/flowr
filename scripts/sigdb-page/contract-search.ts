@@ -3,7 +3,7 @@ import type { FormalClaim } from '../../src/dataflow/fn/guards/guard-claims';
 type ClaimTest = (claim: FormalClaim, required: boolean) => boolean;
 
 /** the types a claim allows, of any value or else of one without a class, `undefined` without a claim on them */
-const typesOf = (claim: FormalClaim): readonly string[] | undefined => claim.types ?? claim.plainTypes;
+const typesOf = (claim: FormalClaim): readonly string[] | undefined => claim.types ?? claim.unclassedTypes;
 const only = (...allowed: readonly string[]): ClaimTest => claim => typesOf(claim)?.every(type => allowed.includes(type)) ?? false;
 
 /** the kinds of parameters `param:kind` asks for, each read off the fields of a {@link FormalClaim} */
@@ -107,7 +107,7 @@ export function contractTokens({ inferred, formals, claims, required, calls, rel
 	for(const formal of formals) {
 		tokens.add('contract:' + formal);
 		const claim = claims[formal] ?? {};
-		for(const type of new Set([...claim.types ?? [], ...claim.plainTypes ?? []])) {
+		for(const type of new Set([...claim.types ?? [], ...claim.unclassedTypes ?? []])) {
 			tokens.add('type:' + type).add('type:' + formal + '=' + type);
 		}
 		for(const [kind, [, holds]] of Object.entries(ParamKinds)) {
@@ -128,7 +128,7 @@ export function contractTokens({ inferred, formals, claims, required, calls, rel
 	}
 	if(returns !== undefined) {
 		tokens.add('returns:');
-		(returns.types ?? returns.plainTypes ?? []).forEach(type => tokens.add('returns:' + type));
+		(returns.types ?? returns.unclassedTypes ?? []).forEach(type => tokens.add('returns:' + type));
 	}
 	return [...tokens];
 }

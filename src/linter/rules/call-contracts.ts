@@ -101,7 +101,7 @@ function builtInContract(this: void, name: Identifier, data: Analysis): Contract
 	const stated = entry.entry?.guards ?? FunctionSemantics.builtInGuards(bare, namespace);
 	const version = ctx.rVersionKnown ? ctx.resolvedRVersion : undefined;
 	const ofC = namespace === undefined || isBaseRPackage(namespace) ? builtInClauses(bare, facts) : undefined;
-	const origin = stated?.readOff;
+	const origin = stated?.origin;
 	let clauses: readonly GuardTerm[] = [];
 	if(stated !== undefined && origin !== undefined && origin.source !== 'builtin') {
 		clauses = origin.source === 'base-table' && version !== undefined && !sameRelease(origin.r, version) ? [] : statedClauses(bare, stated, formals, data);

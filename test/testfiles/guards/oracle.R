@@ -33,7 +33,7 @@ succeeds <- function(e) {
 }
 .guards_claim <- function(v, claim, n, report) {
   if(!is.null(claim$types) && !(.guards_type(v) %in% claim$types)) report("types", n, v)
-  if(!is.null(claim$plainTypes) && !is.object(v) && !(.guards_type(v) %in% claim$plainTypes)) report("plainTypes", n, v)
+  if(!is.null(claim$unclassedTypes) && !is.object(v) && !(.guards_type(v) %in% claim$unclassedTypes)) report("unclassedTypes", n, v)
   if(!is.null(claim$classes) && !any(class(v) %in% claim$classes) && !(isS4(v) && any(vapply(claim$classes, function(c) methods::is(v, c), logical(1))))) report("classes", n, v)
   if(!is.null(claim$values) && is.character(v)) {
     values <- as.character(claim$values)

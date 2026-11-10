@@ -4,7 +4,7 @@ import { db, Owner, type AmbientFamily, type Entry, type Guards, type Package, t
 import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
-import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, readOffWords, related, titled, type Part } from './contract-view';
+import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, originWords, related, titled, type Part } from './contract-view';
 
 /** a word of a signature with what it means, for its hover */
 function described(word: string): string {
@@ -354,11 +354,11 @@ export class Hits {
 
 /** The contract within the row: where it comes from, the formals it speaks of, and what relates them; the row opens the rest */
 function teaser(name: string, guards: Guards, formals: readonly string[]): HTMLElement {
-	const [, , , readOff = '', , , returns = []] = guards;
+	const [, , , origin = '', , , returns = []] = guards;
 	const box = titled(el('div', 'teaser'), 'what a call of ' + name + ' has to fulfill to return normally, click to open');
 	const line = el('div');
 	const claimed = claimsByFormal(guards, formals);
-	line.append(el('span', 'label', 'contract'), originTag(readOff), ...spokenOf(guards, formals).map(formal => formalMark(guardedChip(el('code', hueOf(formals.indexOf(formal)), formal), formal, claimed.get(formal)), formal)),
+	line.append(el('span', 'label', 'contract'), originTag(origin), ...spokenOf(guards, formals).map(formal => formalMark(guardedChip(el('code', hueOf(formals.indexOf(formal)), formal), formal, claimed.get(formal)), formal)),
 		...(returns.length === 0 ? [] : [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
 	box.append(line);
 	return box;
@@ -505,7 +505,7 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 				return dispatchOf(name, guards, formalChip(formals), owner);
 			}
 			const key = owner.pkg.name + '::' + name;
-			const head = titled(el('p', 'chead'), readOffWords(guards[3] ?? ''));
+			const head = titled(el('p', 'chead'), originWords(guards[3] ?? ''));
 			head.append('of ' + key + ' ' + owner.pkg.version, ...owner.file === undefined || url === undefined ? [] : [' \u00b7 implemented in ',
 				blank(link('src', owner.file + (owner.line === undefined ? '' : ':' + owner.line), url, 'where ' + key + ' is written'))],
 			' ', asJson(box, 'contracts', key, 'the builtIns entry of the inspect-fn-guards query for ' + key, 'result'));

@@ -10,7 +10,7 @@ export type Guards = readonly [
 	/** each clause with why it is in effect, `reads` being it in words and `brief` the failing code shortened, both empty if there is nothing to add */
 	because?: readonly (readonly [requires: string, kind: string, fails: string, via: string, message: string, reads?: string, brief?: string, loc?: string])[],
 	/** the R version a contract was inferred from by reading the closure, empty for one flowR states of a function written in C */
-	readOff?: string,
+	origin?: string,
 	/** comparisons relating formals, like `length(x) >= m`, with what lets a call through instead */
 	relations?: readonly (readonly [holds: string, unless: string])[],
 	/** the formals a call has to give */

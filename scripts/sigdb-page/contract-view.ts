@@ -102,16 +102,16 @@ const FunctionAbout: Readonly<Record<string, string>> = {
 };
 
 /** the R version a contract was read off and the day, `R 4.5.3 · updated 2026-04-01`, from the `version@date` of {@link Guards}, empty for a stated one */
-export function readOffWords(readOff: string): string {
-	const [r, date] = readOff.split('@');
-	return readOff === '' ? '' : 'R ' + r + (date === undefined ? '' : ' \u00b7 updated ' + date);
+export function originWords(origin: string): string {
+	const [r, date] = origin.split('@');
+	return origin === '' ? '' : 'R ' + r + (date === undefined ? '' : ' \u00b7 updated ' + date);
 }
 
 /** where a contract comes from: read off the R code of the function, or stated by flowR for one written in C */
-export function originTag(readOff: string): HTMLElement {
-	return readOff === ''
+export function originTag(origin: string): HTMLElement {
+	return origin === ''
 		? titled(el('span', 'origin stated', 'stated'), 'flowR states this of a function written in C')
-		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function (' + readOffWords(readOff) + '), so another version of R may ask for less or more');
+		: titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the R code of the function (' + originWords(origin) + '), so another version of R may ask for less or more');
 }
 
 /** the formals a relation speaks of, in the order of the signature */

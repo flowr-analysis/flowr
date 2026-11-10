@@ -1,5 +1,5 @@
 import { el } from '../page-lib/dom';
-import { contract, link, originTag, readOffWords, titled, type Part } from '../sigdb-page/contract-view';
+import { contract, link, originTag, originWords, titled, type Part } from '../sigdb-page/contract-view';
 import { guardsTuple } from '../sigdb-page/contract-tuple';
 import { contractFormals } from '../sigdb-page/contract-formals';
 import type { Guards } from '../sigdb-page/database';
@@ -73,9 +73,9 @@ export function contractCard(name: string, formals: readonly string[], guards: G
 		jump.addEventListener('click', event => (event.preventDefault(), go(place)));
 		return jump;
 	};
-	const readOff = guards[3] ?? '';
+	const updated = guards[3] ?? '';
 	const origin = program === undefined
-		? [originTag(readOff), ...readOff === '' ? [] : [el('span', 'rver', readOffWords(readOff))]]
+		? [originTag(updated), ...updated === '' ? [] : [el('span', 'rver', originWords(updated))]]
 		: [titled(el('span', 'origin inferred', 'inferred'), 'inferred by reading the code of ' + name + ' in this script'),
 			...program.line === undefined ? [] : [at(program, (program.file === undefined ? '' : program.file + ':') + 'L' + program.line)]];
 	const head = el('div', 'chead');

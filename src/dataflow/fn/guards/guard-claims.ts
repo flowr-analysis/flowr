@@ -15,27 +15,27 @@ export type ClaimedRange = readonly [lower: number | null, upper: number | null]
  */
 export interface FormalClaim {
 	/** the value has one of these types (see {@link RValueType}) */
-	readonly types?:      readonly string[]
+	readonly types?:          readonly string[]
 	/** the same, for a value without a class attribute, as those can bring methods of their own; only stated if it says more than {@link FormalClaim.types} */
-	readonly plainTypes?: readonly string[]
+	readonly unclassedTypes?: readonly string[]
 	/** a character value holds only these, or abbreviates one of them if {@link FormalClaim.partial} is set, numbers and logicals are only stated for a value that is one */
-	readonly values?:     readonly (string | number | boolean)[]
+	readonly values?:         readonly (string | number | boolean)[]
 	/** the {@link FormalClaim.values} are matched partially, as `match.arg` does */
-	readonly partial?:    boolean
+	readonly partial?:        boolean
 	/** `class(x)` holds at least one of these, or `x` is an S4 object that `is` one, as `inherits` asks `is` for those */
-	readonly classes?:    readonly string[]
+	readonly classes?:        readonly string[]
 	/** the bounds of what the formal measures: `value` for a number without a class attribute, only stated if the formal is one, else `length`, `nchar`, `nrow`, `ncol`, `NROW`, or `NCOL`, which are taken to be whole numbers, as an S3 method of `length` returning anything else breaks its contract */
-	readonly bounds?:     Readonly<Record<string, ClaimedRange>>
+	readonly bounds?:         Readonly<Record<string, ClaimedRange>>
 	/** no element is `NA` */
-	readonly notNA?:      boolean
+	readonly notNA?:          boolean
 	/** must be usable as a function: being one, naming one, or being bound to a name another function can be found by */
-	readonly callable?:   boolean
+	readonly callable?:       boolean
 	/** every element is a whole number, as `trunc(x) == x` asks */
-	readonly whole?:      boolean
+	readonly whole?:          boolean
 	/** what the formal has to complete into a name that exists, like `paste0("f_", x)` */
-	readonly resolves?:   readonly ClaimedName[]
+	readonly resolves?:       readonly ClaimedName[]
 	/** what holds in each of the cases a branch on the formal tells apart, like `if(is.logical(center)) ... else ...` */
-	readonly cases?:      readonly FormalCase[]
+	readonly cases?:          readonly FormalCase[]
 }
 
 /** One of the cases a branch on a formal tells apart, with what a normal return makes sure of in it. */
@@ -385,7 +385,7 @@ function toClaim(this: void, abstract: Abstract): FormalClaim {
 	const stated = boundsOf(bounds);
 	return {
 		...(types.isTop() ? {} : { types: typeNames(typeBits(types)) }),
-		...(plain.equals(types) || plain.isTop() ? {} : { plainTypes: typeNames(typeBits(plain)) }),
+		...(plain.equals(types) || plain.isTop() ? {} : { unclassedTypes: typeNames(typeBits(plain)) }),
 		...(values === undefined || values.size === 0 ? {} : { values: [...values], ...(partial ? { partial } : {}) }),
 		...(classes === undefined ? {} : { classes: [...classes] }),
 		...(stated === undefined ? {} : { bounds: stated }),
@@ -469,7 +469,7 @@ export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[]
 			}
 			const claim = toClaim(about.map(a => abstractOf(a, formal, facts)).reduce(either));
 			/* that a formal has to have a class unless another one passes is all dispatching leaves, not a claim */
-			const onlyClassed = Object.keys(claim).length === 1 && claim.plainTypes?.length === 0;
+			const onlyClassed = Object.keys(claim).length === 1 && claim.unclassedTypes?.length === 0;
 			return Object.keys(claim).length === 0 || onlyClassed ? [] : [{ formal, claim, unless: GuardTerm.render(GuardTerm.any(...others)) }];
 		});
 	});
@@ -721,7 +721,7 @@ function setOf(this: void, words: readonly (string | number | boolean)[]): strin
  * Reads a claim on `formal` as conditions written the way R would test them, all of which hold, like
  * `typeof(m) in {integer, double}`, `length(m) == 1`, and `m >= 0`.
  */
-export function claimConditions(this: void, formal: string, { types, plainTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
+export function claimConditions(this: void, formal: string, { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
 	const ofTypes = (named: readonly string[], unclassed: boolean) => {
 		const left = typeNames(AnyType).filter(t => !named.includes(t));
 		const said = left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
@@ -734,7 +734,7 @@ export function claimConditions(this: void, formal: string, { types, plainTypes,
 	};
 	return [
 		...types === undefined ? [] : [ofTypes(types, false)],
-		...plainTypes === undefined ? [] : [ofTypes(plainTypes, true)],
+		...unclassedTypes === undefined ? [] : [ofTypes(unclassedTypes, true)],
 		...values === undefined ? [] : [`${formal} ${partial ? 'pmatches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`],
 		...classes === undefined ? [] : [classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`],
 		...Object.entries(bounds ?? {}).flatMap(([measure, bound]) => range(measure, bound)),
@@ -746,12 +746,12 @@ export function claimConditions(this: void, formal: string, { types, plainTypes,
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */
-export function claimWords(this: void, { types, plainTypes, values, partial, classes, bounds, notNA, callable, whole, resolves, cases }: FormalClaim): string[] {
+export function claimWords(this: void, { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves, cases }: FormalClaim): string[] {
 	const range = (what: string, [lower, upper]: ClaimedRange) => lower !== null && lower === upper ? `${what} = ${lower}`
 		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
 	return [
 		types === undefined ? '' : typesInWords(types),
-		plainTypes === undefined ? '' : `${typesInWords(plainTypes)}, unless classed`,
+		unclassedTypes === undefined ? '' : `${typesInWords(unclassedTypes)}, unless classed`,
 		values === undefined ? '' : `one of ${values.join(', ')}${partial ? ' (or a prefix)' : ''}`,
 		classes === undefined ? '' : `class ${listed(classes)}`,
 		...Object.entries(bounds ?? {}).map(([measure, bound]) => range(measure, bound)),

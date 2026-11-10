@@ -98,6 +98,8 @@ export interface RFailure extends RVersions {
 	readonly message:     string
 	/** a value with a class attribute, or a classed other operand, may bring a method of its own, which lets anything through */
 	readonly dispatches?: boolean
+	/** R only looks at the value if another formal passes this, as `TRUE && y` evaluates `y` while `FALSE && y` does not */
+	readonly when?:       { readonly of: BrandedIdentifier, readonly holds: RCondition }
 }
 
 /** What the value a function returns is like, whatever it was handed. */
@@ -131,6 +133,8 @@ export interface GuardFacts {
 	readonly asserts?:      readonly BrandedIdentifier[]
 	/** what R fails on for the value of each formal on top of evaluating it, a `callable` condition marking the formal holding what it applies at once */
 	readonly asks?:         Readonly<Record<BrandedIdentifier, readonly RFailure[]>>
+	/** the formals a call has to hand a value, as R fails on a call without one even though nothing evaluates it */
+	readonly required?:     readonly BrandedIdentifier[]
 	/** it yields one logical, no matter how long its arguments are */
 	readonly singleResult?: boolean
 	/** what it returns, or `argument` for the one argument it was handed, as `invisible` returns it; a predicate, a measure, and what {@link GuardFacts.reads} need not state it */

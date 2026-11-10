@@ -35,6 +35,7 @@ import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type 
 import type { GuardFacts, GuardFactsLookup, RFailure } from '../../environments/guard-facts';
 import { type FormalTerms, asksCallable, callable, composesName, getAsExists, guardFactsOf, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
 import { s3GroupGenericOf } from '../../environments/group-generics';
+import { groupMethodConditions } from './group-method-guards';
 import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
 import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-linking';
 import { baseRExportOwner } from '../../../util/r-base-packages';
@@ -811,6 +812,7 @@ function walkSwitch(this: void, node: RFunctionCall<ParentInformation>, path: Pa
 	const names = alternatives.flatMap(a => a === EmptyArgument || a.name === undefined ? [] : [GuardTerm.string(String(a.name.content))]);
 	const notString = term === undefined ? GuardTerm.True : GuardTerm.known('!', GuardTerm.known('is.character', term));
 	const isAny = (of: readonly GuardTerm[]) => term === undefined ? GuardTerm.True : GuardTerm.known('%in%', term, of.length === 1 ? of[0] : GuardTerm.known('c', ...of));
+	const selected = term?.kind === 'constant' && typeof term.value === 'string' ? term.value : undefined;
 	let falling: GuardTerm[] = [];
 	const walks = alternatives.map(alternative => () => {
 		if(alternative === EmptyArgument) {
@@ -823,8 +825,10 @@ function walkSwitch(this: void, node: RFunctionCall<ParentInformation>, path: Pa
 		}
 		const reachedBy = name === undefined ? undefined : [...falling, name];
 		falling = [];
-		const fails = reachedBy === undefined ? GuardTerm.any(notString, isAny(names))
-			: GuardTerm.any(notString, GuardTerm.known('!', isAny(reachedBy)));
+		/* a literal string selects the alternative right away, as in a method with `.Generic` spelled out */
+		const fails = selected !== undefined ? ((reachedBy ?? names).some(n => GuardTerm.constantString(n) === selected) === (reachedBy !== undefined) ? GuardTerm.False : GuardTerm.True)
+			: reachedBy === undefined ? GuardTerm.any(notString, isAny(names))
+				: GuardTerm.any(notString, GuardTerm.known('!', isAny(reachedBy)));
 		return walk(alternative.value, [...atSwitch, { holds: GuardTerm.True, fails: names.length === 0 ? GuardTerm.True : fails }], run);
 	});
 	return [...before, ...branches(run, ...walks)];
@@ -930,10 +934,13 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 	const termOfNode = (n: RNodeWithParent) => termOf(n, scope, state);
 	/* an operator also dispatches on its other operand, which has to be stated to be ruled out */
 	const operands = Object.keys(asks).length === 2 ? [...bound.values()].flat() : [];
+	/* what another formal was handed, as far as it is one of the caller's, as a literal would only spell out what is known of it */
 	const formals: FormalTerms = formal => {
 		const values = bound.get(formal) ?? [];
-		return values.length === 1 ? termOfNode(values[0]) : undefined;
+		const term = values.length === 1 ? termOfNode(values[0]) : undefined;
+		return term?.kind === 'formal' ? term : undefined;
 	};
+	groupMethodRequirements(name, asks, bound, termOfNode, vertex, path, run);
 	for(const [formal, failures] of Object.entries(asks)) {
 		for(const value of bound.get(formal) ?? []) {
 			const term = termOfNode(value);
@@ -944,6 +951,23 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 				addFailures(stated, term, vertex.id, path, run, other, formals);
 			}
 		}
+	}
+}
+
+/** What the methods of the base packages for the classes of R's own values ask on a call of a member of a group generic, but for classes the program has methods for. */
+function groupMethodRequirements(this: void, name: BrandedIdentifier, asks: NonNullable<GuardFacts['asks']>, bound: ReadonlyMap<BrandedIdentifier, readonly RNodeWithParent[]>, termOfNode: (n: RNodeWithParent) => GuardTerm | undefined, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
+	const group = s3GroupGenericOf(name);
+	if(group === undefined) {
+		return;
+	}
+	const operands = Object.keys(asks).filter(f => f !== '...').map(f => {
+		const values = bound.get(f) ?? [];
+		const term = values.length === 1 ? termOfNode(values[0]) : undefined;
+		return term?.kind === 'formal' || term?.kind === 'constant' ? term : undefined;
+	});
+	const excluded = new Set([...run.state.methodClasses(name), ...run.state.methodClasses(group)]);
+	for(const condition of groupMethodConditions(name, operands, excluded, run.state.facts)) {
+		addClause(run, path, condition, vertex.id, { kind: 'implicit' });
 	}
 }
 
@@ -1432,7 +1456,8 @@ function walkShortCircuit(this: void, operator: '&&' | '||', lhs: RNodeWithParen
 		return before;
 	}
 	const left = termOf(lhs, run.scope, run.state);
-	const operand = (formal: BrandedIdentifier) => run.state.facts(operator)?.asks?.[formal] ?? [];
+	/* the path already states what makes R look at the right operand */
+	const operand = (formal: BrandedIdentifier) => (run.state.facts(operator)?.asks?.[formal] ?? []).map(({ when: _, ...failure }) => failure);
 	if(left?.kind === 'formal') {
 		addFailures(operand('x'), left, lhs.info.id, atRight, run);
 	}

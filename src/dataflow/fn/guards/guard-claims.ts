@@ -468,7 +468,9 @@ export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[]
 				return [];
 			}
 			const claim = toClaim(about.map(a => abstractOf(a, formal, facts)).reduce(either));
-			return Object.keys(claim).length === 0 ? [] : [{ formal, claim, unless: GuardTerm.render(GuardTerm.any(...others)) }];
+			/* that a formal has to have a class unless another one passes is all dispatching leaves, not a claim */
+			const onlyClassed = Object.keys(claim).length === 1 && claim.plainTypes?.length === 0;
+			return Object.keys(claim).length === 0 || onlyClassed ? [] : [{ formal, claim, unless: GuardTerm.render(GuardTerm.any(...others)) }];
 		});
 	});
 }
@@ -681,10 +683,20 @@ function succeedsInWords(this: void, call: GuardCall, facts: GuardFactsLookup): 
 	return said.length > 0 ? said.join(' && ') : `${GuardTerm.render(call)} runs without an error`;
 }
 
-/** A condition as a reader without flowR's notation reads it, `undefined` if it reads as written: each `succeeds` stated by what it checks. */
-export function readingOf(this: void, condition: GuardTerm, facts: GuardFactsLookup): string | undefined {
+/**
+ * A condition as a reader without flowR's notation reads it, `undefined` if it reads as written: each `succeeds` stated by what it checks,
+ * and, for a condition of a call of a member of a group generic, a class letting the call through as the method it may bring.
+ * @param group - the group generic the failing call dispatches through, like `Math`
+ */
+export function readingOf(this: void, condition: GuardTerm, facts: GuardFactsLookup, group?: BrandedIdentifier): string | undefined {
 	const alternatives = GuardTerm.disjuncts(condition);
-	const read = (term: GuardTerm) => GuardTerm.isCall(term, 'succeeds') && term.known && GuardTerm.isCall(term.args[0]?.value) ? succeedsInWords(term.args[0].value, facts) : undefined;
+	const read = (term: GuardTerm) => {
+		if(GuardTerm.isCall(term, 'succeeds') && term.known && GuardTerm.isCall(term.args[0]?.value)) {
+			return succeedsInWords(term.args[0].value, facts);
+		}
+		const [of] = GuardTerm.isCall(term, 'is.object') && term.known ? term.args : [];
+		return group !== undefined && of !== undefined ? `${GuardTerm.render(of.value)} may have a ${group} method` : undefined;
+	};
 	const readings = alternatives.map(read);
 	return readings.every(r => r === undefined) ? undefined : alternatives.map((a, at) => readings[at] ?? GuardTerm.render(a)).join(' || ');
 }

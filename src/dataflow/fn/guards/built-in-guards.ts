@@ -15,7 +15,9 @@ import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { namesWithGuardFacts } from '../../environments/default-builtin-config/guards';
 import { RBaseGuards, RBaseGuardsDate, RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm } from './guard-term';
-import { uniqueArray } from '../../../util/collections/arrays';
+import { groupMethodConditions } from './group-method-guards';
+import { s3GroupGenericOf } from '../../environments/group-generics';
+import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
 import type { Column } from '../../../util/range';
 
 /**
@@ -128,7 +130,8 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 	return clauses.map(({ requires, rendered, kind, at, via, message }) => {
 		const node = idMap.get(at);
 		const brief = briefOf(node, message, idMap);
-		const reads = readingOf(requires, defaultGuardFacts());
+		const called = RNode.ownLexeme(node);
+		const reads = readingOf(requires, defaultGuardFacts(), called === undefined ? undefined : s3GroupGenericOf(called));
 		const formals = [...GuardTerm.formalsOf(requires)];
 		const loc = locationOf(node, idMap, qualified);
 		return {
@@ -177,16 +180,19 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 	const stated = builtInClauses(name, defaultGuardFacts()) ?? [];
 	const returns = facts?.returns === undefined || facts.returns === 'argument' ? undefined : returnedClaimOf(facts.returns);
 	const passed = facts?.returns === 'argument' ? formals[0] : undefined;
-	if(stated.length === 0 && returns === undefined && passed === undefined) {
+	if(stated.length === 0 && returns === undefined && passed === undefined && (facts?.required ?? []).length === 0) {
 		return undefined;
 	}
-	const terms = stated.map(c => c.requires);
-	const claims = claimsOf(terms, stated.map(c => c.formal), defaultGuardFacts());
+	const required = facts?.required ?? [];
+	const dispatched = formals.filter(f => f !== '...');
+	const terms = [...stated.map(c => c.requires), ...groupMethodConditions(name, dispatched.map(GuardTerm.formal), new Set(), defaultGuardFacts())];
+	const claims = claimsOf(terms, uniqueArrayMerge<BrandedIdentifier>(stated.map(c => c.formal), required), defaultGuardFacts());
 	const relations = relationsOf(terms, defaultGuardFacts());
 	const conditional = conditionalClaimsOf(terms, formals.filter(f => f !== '...'), defaultGuardFacts());
 	const calls = callsOfTerms(terms);
 	return {
 		requires: terms.length === 0 ? '' : GuardTerm.render(GuardTerm.all(...terms)),
+		...(required.length > 0 ? { required } : {}),
 		...(Object.keys(claims).length > 0 ? { formals: claims } : {}),
 		...(relations.length > 0 ? { relations } : {}),
 		...(conditional.length > 0 ? { conditional } : {}),

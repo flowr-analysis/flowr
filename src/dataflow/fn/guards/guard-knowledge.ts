@@ -153,7 +153,14 @@ export function appliesFormal(this: void, facts: GuardFacts | undefined): boolea
 /** What it takes for `of` not to make R raise the failure, `other` being the second operand of an operator, which may bring a method of its own as well, and `formals` the values of the other formals of the call. */
 export function passes(this: void, failure: RFailure, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean, other?: GuardTerm, formals: FormalTerms = () => undefined): GuardTerm {
 	const condition = conditionOn(failure.requires, of, resolves, formals);
-	return failure.dispatches ? GuardTerm.any(condition, is('is.object', of), ...(other === undefined || other.kind === 'constant' ? [] : [is('is.object', other)])) : condition;
+	const { when } = failure;
+	const looked = when === undefined ? undefined : formals(when.of);
+	/* what R does not look at then cannot fail, and without knowing whether it looks, nothing is asked */
+	if(when !== undefined && looked === undefined) {
+		return GuardTerm.True;
+	}
+	const unchecked = when === undefined || looked === undefined ? GuardTerm.False : conditionOn({ not: when.holds }, looked, resolves, formals);
+	return GuardTerm.any(unchecked, condition, ...(failure.dispatches ? [is('is.object', of), ...(other === undefined || other.kind === 'constant' ? [] : [is('is.object', other)])] : []));
 }
 
 /** What R says on the failure for the value `of`. */

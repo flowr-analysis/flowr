@@ -29,6 +29,7 @@ import { MiscDefinitions } from './misc-packages';
 import { TestingDefinitions } from './unit-testing';
 import { GuardDefinitions, markGuards } from './guards';
 import { PrimitiveLanguageDefinitions } from './guards-primitive-lang';
+import { PrimitiveOpsGuardDefinitions } from './guards-primitive-ops';
 import { markFormals } from './r-formals';
 
 export type { StatedSignature } from './shared-configs';
@@ -83,7 +84,8 @@ export const WrittenBuiltinDefinitions = [
 	...MiscDefinitions,
 	...TestingDefinitions,
 	...GuardDefinitions,
-	...PrimitiveLanguageDefinitions
+	...PrimitiveLanguageDefinitions,
+	...PrimitiveOpsGuardDefinitions
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */

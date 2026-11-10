@@ -1,12 +1,13 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../built-in-config';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp } from '../built-in-props';
-import { AnyType, RValueType, type CheckingCall, type GuardFacts, type RCondition, type RFailure, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
+import { RValueType, type CheckingCall, type GuardFacts, type RCondition, type RFailure, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import { base, fn, pkg, Primitive } from './define-helpers';
 import { Forced, sig } from './shared-signatures';
 import { PrimitiveLanguageGuardFacts } from './guards-primitive-lang';
+import { PrimitiveOpsGuardFacts } from './guards-primitive-ops';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
 const Numeric = Integer | Double;
@@ -19,8 +20,6 @@ const scalar = (yes: RValueTypes): GuardFacts => predicate(yes, { scalar: true }
 const Computes: GuardFacts = { computes: true };
 const OneTruth: ReturnedValue = { types: Logical, scalar: true, notNA: true };
 const SingleResult: GuardFacts = { computes: true, singleResult: true, returns: OneTruth };
-/* `all(NA)` is `NA`, and `inherits(x, what, which = TRUE)` returns integers */
-const OneLogical: GuardFacts = { singleResult: true, returns: { types: Logical, scalar: true } };
 const Returns = (types: RValueTypes, more: Omit<ReturnedValue, 'types'> = {}): GuardFacts => ({ returns: { types, ...more } });
 const OpensFrame: GuardFacts = { opensFrame: true };
 
@@ -30,34 +29,19 @@ const fails = (requires: RCondition, message: string, more: Omit<RFailure, 'requ
 const dispatched = (requires: RCondition, message: string): readonly RFailure[] => fails(requires, message, { dispatches: true });
 
 /* what R fails on by itself, each read off R; a dispatching one lets a classed value through, which may bring a method */
-const Calculable = is('is.numeric', 'is.logical', 'is.complex', 'is.null');
-const Arithmetic = dispatched(Calculable, 'non-numeric argument to binary operator');
 const Mathematical = dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to mathematical function');
 /* the members of the `Math` group with no complex version, which fail with 'unimplemented complex function' for one */
 const RealMathematical = dispatched(is('is.numeric', 'is.logical'), 'non-numeric argument to mathematical function');
-/* the cumulative ones coerce what they get to a number, which only a function, an environment, and the language cannot be, and the extremes do not order complex numbers */
+/* the cumulative ones coerce what they get to a number, which only a function, an environment, and the language cannot be, and the extremes do not order complex numbers, of which an empty vector has none */
 const Cumulated = dispatched(not('is.function', 'is.environment', 'is.language'), "cannot coerce type ... to vector of type 'double'");
-const Ordered = (name: string): readonly RFailure[] => [...Cumulated, ...dispatched({ not: { is: 'is.complex' } }, `'${name}' not defined for complex numbers`)];
-const NotLogical = dispatched({ any: [is('is.numeric', 'is.logical', 'is.complex', 'is.raw'), { length: '==', to: 0 }] }, 'invalid argument type');
+const Ordered = (name: string): readonly RFailure[] => [...Cumulated, ...dispatched({ any: [{ not: { is: 'is.complex' } }, { length: '==', to: 0 }] }, `'${name}' not defined for complex numbers`)];
 const Text = (message: string): readonly RFailure[] => fails(is('is.character'), message);
 const Applied = fails({ callable: true }, "'%s' is not a function, character or symbol");
-/* no dispatch happens, but a class like `Date` may hide a number from `is.numeric`, and an empty operand reads as `NA` */
-const LogicalOperand = (operand: string, operator: string): readonly RFailure[] => [
-	{ requires: is('is.logical', 'is.numeric', 'is.complex', 'is.object'), message: `invalid '${operand}' type in 'x ${operator} y'` },
-	{ requires: { length: '<=', to: 1 }, message: "'length = n' in coercion to 'logical(1)'", since: '4.3.0' }
-];
 
-const ArithmeticOperands = { asks: { e1: Arithmetic, e2: Arithmetic } };
-const Compared = (operator: string): GuardFacts => {
-	const operand = dispatched(not('is.function', 'is.environment'), `comparison (${operator}) is possible only for atomic and list types`);
-	return { asks: { e1: operand, e2: operand } };
-};
 const Math = { asks: { x: Mathematical } };
 const RealMath = { asks: { x: RealMathematical } };
-const Summary = { asks: { '...': dispatched(Calculable, "invalid 'type' of argument") } };
 const Prefixed = { asks: { x: Text('non-character object(s)') } };
 const Pathed = { asks: { path: Text('a character vector argument expected') } };
-const Logicals = (operator: string): GuardFacts => ({ ...OneLogical, asks: { x: LogicalOperand('x', operator), y: LogicalOperand('y', operator) } });
 
 /* `typeof` names each function kind on its own, `mode` lumps them */
 const TypeOf: Readonly<Record<string, RValueTypes>> = {
@@ -103,34 +87,13 @@ function camelCased(this: void, name: BrandedIdentifier): BrandedIdentifier {
  */
 const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<BrandedIdentifier, GuardFacts>>>> = {
 	[PkgName.Base]: {
-		'is.null':           exact(Null),
-		'is.logical':        exact(Logical),
-		'is.integer':        predicate(Integer, { exact: 'unclassed' }),
-		'is.double':         exact(Double),
-		'is.complex':        exact(Complex),
-		'is.character':      exact(Character),
-		'is.raw':            exact(Raw),
-		'is.function':       predicate(Fn, { exact: true, callable: true }),
-		'is.environment':    predicate(Environment, { exact: true, classedToo: Other }),
-		'is.symbol':         predicate(Symbol, { exact: true, callable: true }),
-		'is.name':           predicate(Symbol, { exact: true, callable: true }),
-		'is.call':           exact(Language),
-		'is.expression':     exact(Expression),
-		'is.language':       exact(Symbol | Language | Expression),
-		'is.list':           exact(List | Pairlist),
-		'is.pairlist':       exact(Null | Pairlist),
-		'is.numeric':        predicate(Numeric, { plain: true }),
-		'is.atomic':         { ...predicate(Atomic, { exact: true, plain: true }), changed: [{ until: '4.4.0', facts: predicate(Atomic | Null, { exact: true, plain: true }) }] },
 		'is.vector':         predicate(Atomic | List | Expression, { plain: true }),
-		'is.recursive':      predicate(List | Pairlist | Fn | Environment | Language | Expression | Other),
 		'is.primitive':      predicate(Fn),
-		'is.matrix':         predicate(Atomic | List | Expression),
-		'is.array':          predicate(Atomic | List | Expression),
 		'is.data.frame':     predicate(List, { classed: true }),
 		'is.factor':         predicate(Integer, { classed: true }),
 		'is.ordered':        predicate(Integer, { classed: true }),
-		'is.object':         predicate(AnyType, { classed: true }),
 		...PrimitiveLanguageGuardFacts,
+		...PrimitiveOpsGuardFacts,
 		'typeof':            { reads: TypeOf, computes: true },
 		'storage.mode':      { reads: TypeOf, computes: true },
 		'mode':              { reads: ModeOf, computes: true },
@@ -142,20 +105,6 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'ncol':              { measures: 'nullable' },
 		'nchar':             { measures: 'elementwise' },
 		'match.arg':         { check: { types: Character | Null, choices: 'choices', choicesFromDefault: true, partial: true } },
-		'+':                 { ...ArithmeticOperands, computes: true },
-		'-':                 { ...ArithmeticOperands, computes: true },
-		'*':                 { ...ArithmeticOperands, computes: true },
-		'/':                 { ...ArithmeticOperands, computes: true },
-		'^':                 { ...ArithmeticOperands, computes: true },
-		'%%':                { ...ArithmeticOperands, computes: true },
-		'%/%':               { ...ArithmeticOperands, computes: true },
-		'<':                 Compared('<'),
-		'<=':                Compared('<='),
-		'>':                 Compared('>'),
-		'>=':                Compared('>='),
-		'==':                Compared('=='),
-		'!=':                Compared('!='),
-		'!':                 { asks: { x: NotLogical } },
 		/* the `Math` group: each dispatches on a classed `x`, as `trunc` does for a `Date` */
 		'sqrt':              Math,
 		'abs':               Math,
@@ -195,8 +144,6 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'cumprod':           { asks: { x: Cumulated } },
 		'cummax':            { asks: { x: Ordered('cummax') } },
 		'cummin':            { asks: { x: Ordered('cummin') } },
-		'sum':               Summary,
-		'prod':              Summary,
 		'strsplit':          { asks: { x: Text('non-character argument') } },
 		'startsWith':        Prefixed,
 		'endsWith':          Prefixed,
@@ -224,31 +171,18 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'identical':         SingleResult,
 		'isTRUE':            SingleResult,
 		'isFALSE':           SingleResult,
-		'all':               { ...OneLogical, computes: true },
-		'any':               OneLogical,
 		'anyNA':             SingleResult,
 		'requireNamespace':  { singleResult: true, returns: OneTruth },
-		'&&':                Logicals('&&'),
-		'||':                Logicals('||'),
-		'nzchar':            { ...Computes, ...Returns(Logical) },
 		'stopifnot':         Computes,
-		'seq_len':           { ...Computes, ...Returns(Numeric, { notNA: true, count: true }) },
-		'seq_along':         { ...Computes, ...Returns(Numeric, { notNA: true, count: true }) },
 		'xor':               Computes,
 		'|>':                Computes,
 		'all.equal':         Computes,
 		'%in%':              { ...Computes, ...Returns(Logical, { notNA: true }) },
-		'%*%':               Computes,
 		'identity':          { returns: 'argument' },
 		'paste':             Returns(Character),
 		'paste0':            Returns(Character),
 		'toupper':           Returns(Character),
 		'tolower':           Returns(Character),
-		'as.character':      Returns(Character),
-		'as.integer':        Returns(Integer),
-		'as.numeric':        Returns(Double),
-		'as.double':         Returns(Double),
-		'as.logical':        Returns(Logical),
 		'rm':                OpensFrame,
 		'remove':            OpensFrame,
 		'list2env':          OpensFrame,

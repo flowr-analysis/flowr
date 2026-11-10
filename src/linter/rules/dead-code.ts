@@ -67,7 +67,7 @@ export const DEAD_CODE = {
 				const fix = own === undefined ? undefined : isUnbracedBody(own, idMap)
 					? { type: 'replace' as const, loc: result.loc, replacement: '{}', description: 'Replace the unreachable code with an empty block' }
 					: isStatement(own, idMap) ? { type: 'remove' as const, loc: result.loc, description: 'Remove the unreachable code' } : undefined;
-				return fix === undefined ? result : { ...result, quickFix: [fix] };
+				return fix === undefined ? result : { ...result, quickFix: [fix] } as DeadCodeResult;
 			})
 		};
 	},
@@ -91,7 +91,7 @@ function ownNode(result: DeadCodeResult, idMap: AstIdMap): RNode<ParentInformati
 	return ids.map(id => id === undefined ? undefined : idMap.get(id)).find(node => {
 		const own = SourceLocation.fromNode(node);
 		return node?.info.role === RoleInParent.ExpressionListChild && own !== undefined
-			&& SourceLocation.isSubsetOf(result.loc, own) && SourceLocation.isSubsetOf(own, result.loc);
+			&& SourceLocation.isSubsetOf(result.loc as SourceLocation, own) && SourceLocation.isSubsetOf(own, result.loc as SourceLocation);
 	});
 }
 
@@ -110,7 +110,7 @@ function isUnbracedBody(node: RNode<ParentInformation>, idMap: AstIdMap): boolea
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
 	for(let i = results.length - 1; i >= 0; i--) {
 		const result = results[i];
-		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc, other.loc));
+		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc as SourceLocation, other.loc as SourceLocation));
 		if(other !== undefined) {
 			if(!Array.isArray(other.involvedId)) {
 				other.involvedId = other.involvedId !== undefined ? [other.involvedId] : [];

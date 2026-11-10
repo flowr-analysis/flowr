@@ -131,7 +131,7 @@ export const FILE_PATH_VALIDITY = {
 					metadata.totalValid++;
 					return [];
 				}
-				return [{ involvedId: nodeId, loc: loc as SourceLocation, filePath, certainty, ...(quickFix ? { quickFix } : {}) }];
+				return [{ involvedId: nodeId, loc: loc, filePath, certainty, ...(quickFix ? { quickFix } : {}) }];
 			};
 			if(namesOnly.has(Identifier.getName(matchingRead.functionName))) {
 				if(!loc || typeof value !== 'string' || value === Unknown

@@ -234,7 +234,7 @@ export const NAMING_CONVENTION = {
 					...m,
 					involvedId: id,
 					quickFix:   canRename ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
-				} as NamingConventionResult;
+				};
 			});
 		return {
 			results,

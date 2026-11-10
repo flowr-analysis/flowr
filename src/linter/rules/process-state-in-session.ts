@@ -269,7 +269,10 @@ export const PROCESS_STATE_IN_SESSION = {
 				add(node, ProcessStateChange.CacheKey, write.name, write.fix.replace('%s', missing.join(', ')));
 			}
 		}
-		return { results: results.toSorted((a, b) => SourceLocation.compare(a.loc, b.loc)), '.meta': { sessionFunctions: sessions.length } };
+		return {
+			results: results.toSorted((a, b) => SourceLocation.compare(a.loc as SourceLocation, b.loc as SourceLocation)),
+			'.meta': { sessionFunctions: sessions.length }
+		};
 	},
 	prettyPrint: prettyPrint(
 		result => `${result.change} by ${result.name} at ${SourceLocation.format(result.loc)}`,

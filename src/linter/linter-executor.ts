@@ -29,6 +29,9 @@ function withoutUntrustedRegexes<Name extends LintingRuleNames>(ruleName: Name, 
 
 /** the finding with the file it is in, which a rule pointing at a node of the program leaves to that node */
 function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap): Result {
+	if(found.loc === undefined) {
+		return found;
+	}
 	const file = found.loc[4] ?? idMap.get([found.involvedId ?? []].flat()[0])?.info.file;
 	return file === found.loc[4] ? found : { ...found, loc: [found.loc[0], found.loc[1], found.loc[2], found.loc[3], file] };
 }
@@ -44,7 +47,7 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		const ruleSearch = rule.createSearch(fullConfig, input);
 
 		const searchStart = Date.now();
-		const searchResult = await runSearch(ruleSearch, input);
+		const searchResult = ruleSearch !== undefined ? await runSearch(ruleSearch, input) : undefined as never;
 		const searchTime = Date.now() - searchStart;
 
 		const processStart = Date.now();

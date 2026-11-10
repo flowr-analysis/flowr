@@ -1,6 +1,5 @@
 import { LintingResultCertainty, type LintingResult, type LintingRule, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
-import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { FileRole } from '../../project/context/flowr-file';
@@ -18,7 +17,7 @@ export interface SoftwareHasLicenseConfig extends MergeableRecord {
 export type SoftwareHasLicenseMetadata = MergeableRecord;
 
 export const SOFTWARE_HAS_LICENSE = {
-	createSearch:        () => Q.from([]),
+	createSearch:        () => undefined as never,
 	processSearchResult: (_elements, config, data) => {
 		const ctx = data.inspectContext();
 		const licenseFiles = ctx.files.getFilesByRole(FileRole.License);
@@ -51,4 +50,4 @@ export const SOFTWARE_HAS_LICENSE = {
 			checkDescriptionFile: true
 		})
 	}
-} as const satisfies LintingRule<SoftwareHasLicenseResult, SoftwareHasLicenseMetadata, SoftwareHasLicenseConfig>;
+} as const satisfies LintingRule<SoftwareHasLicenseResult, SoftwareHasLicenseMetadata, SoftwareHasLicenseConfig, never, never>;

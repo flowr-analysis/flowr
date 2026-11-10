@@ -6,6 +6,7 @@
 
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
+import type { StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
 
 /** The definition location of the binding, with a file path usually relative to the package project root. */
 export interface SigDefinitionLocation {
@@ -201,9 +202,16 @@ export interface PkgBlob {
 	classes?:          SigClass[];
 	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.classes} */
 	classesByVersion?: Record<string, number[]>;
+	/** pool of unique contracts (shared across a package's versions), absent when the bundle stores none */
+	contracts?:        StatedGuards[];
+	/**
+	 * Index into {@link PkgBlob.fns} to an index into {@link PkgBlob.contracts}, only for the functions with a contract.
+	 * A function's contract is part of its pooled record, so two versions only share a slot if their contracts agree.
+	 */
+	contractOf?:       Record<number, number>;
 }
-/** On-disk tuple form of a {@link PkgBlob}, field order, ending `sources`; trailing elements are additive. */
-export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?, SigClass[]?, Record<string, number[]>?];
+/** On-disk tuple form of a {@link PkgBlob}, field order, ending `contractOf`; trailing elements are additive. */
+export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?, SigClass[]?, Record<string, number[]>?, StatedGuards[]?, Record<number, number>?];
 
 /**
  * Per-package metadata. The optional 4th element marks an **R-core / base package**: for these the version keys
@@ -280,6 +288,8 @@ export interface SigFunctionInfo {
 	readonly topic?:      string;
 	/** the package this name is re-exported from: the package defines nothing of the name, it imports and exports it */
 	readonly reexportOf?: string;
+	/** what a call has to fulfill to return normally, as flowR infers it from the definition; absent when nothing sensible is known */
+	readonly guards?:     StatedGuards;
 }
 /** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
 export interface SigDependencyInfo {
@@ -342,4 +352,6 @@ export interface SigDbFeatures {
 	dependencies?: boolean;
 	/** per-version class relations (superclasses, slots, unions) -- default true */
 	classes?:      boolean;
+	/** per-function contracts (what a call has to fulfill to return normally, see {@link SigFunctionInfo.guards}) -- default true */
+	contracts?:    boolean;
 }

@@ -30,6 +30,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('a function of R written in C', parser, 'strsplit(1, "a")', 'call-contracts', [
 				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 16), function: 'strsplit', broken: ['is.character(x) fails for x = 1'] }
 			]);
+			assertLinter('a negative length', parser, 'seq_len(-1)', 'call-contracts', [
+				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 11), function: 'seq_len', broken: ['is.atomic(length.out) && !is.raw(length.out) && length(length.out) >= 1 && (!is.numeric(length.out) || length(length.out) > 1 || length.out >= 0) fails for length.out = -1'] }
+			]);
 			assertLinter('sqrt of a string', parser, 'sqrt("a")', 'call-contracts', [
 				{ certainty: Uncertain, loc: SourceRange.from(1, 1, 1, 9), function: 'sqrt', broken: [`${sqrtFails} x = "a"`] }
 			]);
@@ -84,6 +87,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				['code after a stop', 'f <- function() { stop("x"); sqrt("a") }'],
 				['quoted code', 'quote(sqrt("a"))'],
 				['a vector of numbers', 'sqrt(c(1, 2))'],
+				['a length whose first element is fine', 'seq_len(c(1, -2))'],
 				['a logical', 'sqrt(TRUE)']
 			] as const) {
 				assertLinter(label, parser, code, 'call-contracts', []);

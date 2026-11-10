@@ -92,6 +92,9 @@ const Classified: GuardFacts = { asks: { x: dispatched(is('is.atomic', 'is.null'
  * R's sequences and its type predicates and coercions, each read off R 4.6.1.
  * What is asked of a value that may dispatch holds only without a class attribute.
  */
+/** a single number is at least 0, R rejects even `-0.5` as a length */
+const SingleNonNegative: RCondition = { any: [{ not: { is: 'is.numeric' } }, { length: '>', to: 1 }, { compare: '>=', to: 0 }] };
+
 export const PrimitiveOpsGuardFacts: Readonly<Record<BrandedIdentifier, GuardFacts>> = {
 	'+':              Arithmetic,
 	'-':              Arithmetic,
@@ -127,7 +130,7 @@ export const PrimitiveOpsGuardFacts: Readonly<Record<BrandedIdentifier, GuardFac
 	'crossprod':      product('nrow', 'nrow', is('is.numeric', 'is.logical', 'is.complex', 'is.null')),
 	'tcrossprod':     product('ncol', 'ncol', is('is.numeric', 'is.logical', 'is.complex', 'is.null')),
 	/* the first element is the length, a string like `"3"` and the codes of a factor included */
-	'seq_len':        { asks: { 'length.out': fails({ all: [{ is: 'is.atomic' }, { not: { is: 'is.raw' } }, { length: '>=', to: 1 }] }, 'argument must be coercible to non-negative integer') }, required: ['length.out'], computes: true, returns: { types: Numeric, notNA: true, count: true } },
+	'seq_len':        { asks: { 'length.out': fails({ all: [{ is: 'is.atomic' }, { not: { is: 'is.raw' } }, { length: '>=', to: 1 }, SingleNonNegative] }, 'argument must be coercible to non-negative integer') }, required: ['length.out'], computes: true, returns: { types: Numeric, notNA: true, count: true } },
 	'seq_along':      { required: ['along.with'], computes: true, returns: { types: Numeric, notNA: true, count: true } },
 	'rep':            { asks: { x: dispatched(not('is.function', 'is.symbol', 'is.call'), 'attempt to replicate an object of this type') }, computes: true },
 	'xtfrm':          { asks: { x: dispatched(not('is.function', 'is.environment', 'is.symbol', 'is.call', 'is.raw'), 'cannot be sorted') }, required: OneValue, computes: true },

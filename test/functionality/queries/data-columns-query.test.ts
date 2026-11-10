@@ -44,6 +44,13 @@ describe('Data Columns Query', () => {
 		expectColumns('a column the program adds', 'library(dplyr)\nd <- mutate(penguins, ratio = bill_len / bill_dep)\nfilter(d, ra§)', DataColumnsContext.Masked, [...Penguins, 'ratio']);
 		expectColumns('a local variable shadows the data set', 'penguins <- data.frame(a = 1)\nsubset(penguins, a§)', DataColumnsContext.Masked, ['a']);
 	});
+	describe('siblings in a data mask', () => {
+		expectColumns('a column named like a data set is no data', 'library(ggplot2)\nggplot(mtcars, aes(x = wt, y = mpg, colour = h§))', DataColumnsContext.Masked, ['mpg', 'cyl', 'disp', 'hp', 'drat', 'wt', 'qsec', 'vs', 'am', 'gear', 'carb']);
+	});
+	describe('assignments', () => {
+		expectColumns('the assigned name is no data of the call on the right', 'library(dplyr)\nd1 <- as.data.frame(unique(iris))\nd2 <- mutate(d1, dbl = Sepal.Len§ * 2)', undefined, []);
+		expectColumns('a known frame is still used', 'library(dplyr)\nd <- mutate(penguins, r = bi§)', DataColumnsContext.Masked, Penguins);
+	});
 	describe('no columns', () => {
 		expectColumns('the data argument itself', 'library(dplyr)\nfilter(pengu§, year > 2008)', undefined, []);
 		expectColumns('a call evaluating its arguments as usual', 'mean(penguins, na§)', undefined, []);

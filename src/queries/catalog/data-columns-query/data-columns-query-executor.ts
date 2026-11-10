@@ -19,6 +19,9 @@ import { DataColumnsContext, type DataColumnsAt, type DataColumnsFrame, type Dat
 /** the pipes that hand their left side to the call on their right as its data */
 const Pipes = new Set(['|>', '%>%', '%<>%', '%T>%', '%$%']);
 
+/** the operators binding a value to a name, whose sides are no data of the call that is evaluated within */
+const Assignments = new Set(['<-', '=', '<<-', '->', '->>', ':=']);
+
 /** the innermost node whose code holds `line`:`col`, where a cursor just past a name still counts as within it */
 function innermostAt(idMap: AstIdMap, line: number, col: number, file: string | undefined): RNodeWithParent | undefined {
 	let best: RNodeWithParent | undefined;
@@ -100,7 +103,8 @@ function framesFor(node: RNodeWithParent, idMap: AstIdMap, dfg: DataflowGraph): 
 		if(RFunctionCall.is(ancestor) || RBinaryOp.is(ancestor) || RPipe.is(ancestor)) {
 			const around = ancestor.info.parent === undefined ? undefined : idMap.get(ancestor.info.parent);
 			const outer = RArgument.is(around) ? idMap.get(around.info.parent as NodeId) : around;
-			const level = operandsOf(ancestor).filter(operand => operand !== child && !RNode.iterateParents(child, idMap).some(p => p === operand));
+			/* the other quoted operands are written in the same data mask (`y = mpg` next to `x = wt` in `aes`), and name columns, not data */
+			const level = operandsOf(ancestor).filter(operand => operand !== child && !RNode.iterateParents(child, idMap).some(p => p === operand) && !dfg.isQuoted(operand.info.id));
 			/* the pipe hands its left side on as the first argument */
 			if(outer !== undefined && Pipes.has(operatorOf(outer) ?? '') && valueOf(operandsOf(outer)[1]) === ancestor) {
 				level.unshift(operandsOf(outer)[0]);
@@ -108,7 +112,7 @@ function framesFor(node: RNodeWithParent, idMap: AstIdMap, dfg: DataflowGraph): 
 			if(outer !== undefined && RBinaryOp.is(outer) && outer.operator === '+' && outer.rhs === ancestor) {
 				level.push(...leftLayers(outer.lhs));
 			}
-			if(!(op !== undefined && Pipes.has(op))) {
+			if(!(op !== undefined && (Pipes.has(op) || Assignments.has(op)))) {
 				candidates.push(level);
 			}
 		}

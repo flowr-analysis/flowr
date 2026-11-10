@@ -106,9 +106,10 @@ export class Package {
 		return this.base ? baseManualTopicUrl(this.name, topic) : rdrrTopicUrl(this.name, topic);
 	}
 
-	sourceUrl(file: string | undefined, line: number | undefined): string | undefined {
+	/** where `file` is in the sources of this package; for a base package at the sources of R `rVersion`, those of its own version by default */
+	sourceUrl(file: string | undefined, line: number | undefined, rVersion = this.version): string | undefined {
 		if(this.base) {
-			return rSourceUrl(this.name, this.version, file, line);
+			return rSourceUrl(this.name, rVersion, file, line);
 		}
 		const repository = this.repository;
 		return repository === RRepositories['cran'] ? cranMirrorSourceUrl(this.name, this.version, file, line) : repository.home(this.name);

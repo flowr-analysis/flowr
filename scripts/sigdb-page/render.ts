@@ -531,7 +531,9 @@ function methodLink(method: Entry, generic: string): HTMLElement {
 
 /** the contract of `name` as the database knows it of `owner`: where it is written, how it takes part in S3 dispatch, failures linking to their source */
 function contract(name: string, guards: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
-	const url = owner?.sourceUrl;
+	/* an inferred contract was read off the code of a given R, so its lines are those of that R's sources, not of the version the database lists */
+	const rVersion = (guards[3] ?? '').split('@')[0] || undefined;
+	const url = owner === undefined ? undefined : owner.pkg.sourceUrl(owner.file, owner.line, owner.pkg.base ? rVersion : undefined);
 	return contractView(name, guards, formals, {
 		head: box => {
 			if(owner === undefined) {
@@ -546,7 +548,7 @@ function contract(name: string, guards: Guards, formals: readonly string[], owne
 		},
 		search,
 		located: fn => located(fn, owner),
-		failing: (loc, raiser) => failingAt(loc, raiser, owner)
+		failing: (loc, raiser) => failingAt(loc, raiser, owner, rVersion)
 	});
 }
 
@@ -577,7 +579,7 @@ function dispatchOf(name: string, guards: Guards, chip: (formal: string) => HTML
  * the database says `fn` is written in when it knows, else within `fn`. The line is counted in the closure as R prints it, which base R keeps
  * no source of, so in the file it is close to the failing code rather than at it.
  */
-function failingAt(loc: string, fallback: string, home: Owner | undefined): { parts: Part[], url?: string } {
+function failingAt(loc: string, fallback: string, home: Owner | undefined, rVersion?: string): { parts: Part[], url?: string } {
 	const parts = loc.split(':');
 	const [line, column] = loc === '' ? [] : parts.slice(-2).map(Number);
 	const fn = loc === '' ? fallback : parts.slice(0, -2).join(':');
@@ -589,7 +591,7 @@ function failingAt(loc: string, fallback: string, home: Owner | undefined): { pa
 		return { parts: [shown, ...line === undefined ? [] : [', line ' + line + ':' + column]] };
 	}
 	const at = owner.line === undefined || line === undefined ? owner.line : owner.line + line - 1;
-	const url = owner.pkg.sourceUrl(owner.file, at);
+	const url = owner.pkg.sourceUrl(owner.file, at, owner.pkg.base ? rVersion : undefined);
 	const text = owner.file + (at === undefined ? '' : ':' + at);
 	const about = line === undefined ? 'where ' + name + ' is written' : 'line ' + line + ', column ' + column + ' of ' + name + ' as R prints it, which starts at ' + owner.file + ':' + owner.line + '; base R keeps no source, so the line in the file is close rather than exact';
 	return { parts: [shown, ', ', url === undefined ? titled(el('span', 'src', text), about) : blank(link('src', text, url, about))], url };

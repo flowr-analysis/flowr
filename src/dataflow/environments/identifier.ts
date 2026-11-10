@@ -2,12 +2,11 @@ import type { AmbientStateName } from './ambient-state-name';
 import type { AttachedBuiltIn, BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
 import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlDependency } from '../info';
+import type { ControlDependency, ExitPoint  } from '../info';
 import { escapeRegex, splitRQuotes } from '../../util/text/strings';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
-import type { ExitPoint } from '../info';
 /* type-only, as the value import would cycle back through the graph helpers */
 
 export { PkgName } from './pkg-name';

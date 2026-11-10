@@ -1391,10 +1391,12 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 	return sites;
 }
 
-/** Whether `node` branches or loops on a value that is not a constant, which R may reject (`if(NA)`). */
-function testsValue(node: RNode<ParentInformation>): boolean {
-	const tested = RIfThenElse.is(node) || RWhileLoop.is(node) ? node.condition : RForLoop.is(node) ? node.vector : undefined;
-	return tested !== undefined && !RConstant.is(tested);
+/** Whether `node` branches or loops on a value R may reject: a condition that is not `TRUE` or `FALSE` (`if(NA)`, `if(logical(0))`) or a vector that is not a constant. */
+export function testsValue(node: RNode<ParentInformation>): boolean {
+	if(RIfThenElse.is(node) || RWhileLoop.is(node)) {
+		return !RLogical.is(node.condition);
+	}
+	return RForLoop.is(node) && !RConstant.is(node.vector);
 }
 
 /** The handlers of a `withCallingHandlers` whose first handler muffles every `warning` of its `expr`, `undefined` otherwise. */

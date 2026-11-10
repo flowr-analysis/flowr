@@ -22,7 +22,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { errorsOfWarnings, mayLock, maySignal, signalSites } from './built-in-ambient-state';
+import { errorsOfWarnings, mayLock, maySignal, signalSites, testsValue } from './built-in-ambient-state';
 import { builtInLookup } from '../../../../../environments/query-fn-props';
 import { ArgProp, CallProp, CallProps, type FnSig } from '../../../../../environments/built-in-props';
 import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -338,13 +338,39 @@ function matchHandlers(given: readonly FunctionArgument[], config: TryConfig, gr
 
 /** Orders the raising calls in every body a block catching errors may run, once per definition and after linking bound all calls. */
 export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext, environment: REnvironmentInformation): void {
-	const ordered = new Set<NodeId>();
+	const ordered = new Map<NodeId, readonly NodeId[]>();
+	/* a warning raises where `warn` may be 2, which a body may set itself: `f <- function() { options(warn = 2); as.integer("a") }` */
+	const warn = AmbientStateName.option('warn');
+	/* through the earlier settings a later one of `warn` (an `on.exit` restoring it) still reads */
+	const warnsAsErrors = (site: NodeId) => {
+		const seen = new Set<NodeId>();
+		const todo = [site];
+		for(let current = todo.pop(); current !== undefined; current = todo.pop()) {
+			for(const t of Dataflow.targetsOf(graph, current, EdgeType.Reads)) {
+				const writes = graph.ambientAccessOf(t)?.writes;
+				if(writes?.has(AmbientStateName.warnsAsErrors)) {
+					return true;
+				} else if(writes?.has(warn) && !seen.has(t)) {
+					seen.add(t);
+					todo.push(t);
+				}
+			}
+		}
+		return false;
+	};
 	const reach = (node: RNode<ParentInformation>) => {
-		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
+		const isDefinition = RFunctionDefinition.is(node);
+		for(const id of isDefinition ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
 			const definition = idMap.get(id);
 			if(!ordered.has(id) && RFunctionDefinition.is(definition)) {
-				ordered.add(id);
-				order(definition.body, []);
+				ordered.set(id, []);
+				const raising = order(definition.body, []);
+				ordered.set(id, raising.filter(warnsAsErrors));
+				keepEscapingWritesBeforeRaise(id, raising, graph, idMap);
+			}
+			/* whether such a warning raises decides what the call yields, its value or that of a handler */
+			for(const site of isDefinition ? [] : ordered.get(id) ?? []) {
+				graph.addEdge(node.info.id, site, EdgeType.Reads);
 			}
 		}
 	};
@@ -362,13 +388,44 @@ export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: F
 	}
 }
 
+/** What the body of `fn` writes outside its frame stays visible past a later write of the same name if a raising site in between may leave the body: `x <<- 1; log(-1); x <<- 2`. */
+function keepEscapingWritesBeforeRaise(fn: NodeId, raising: readonly NodeId[], graph: DataflowGraph, idMap: AstIdMap): void {
+	const at = (id: NodeId) => idMap.get(id)?.location;
+	const raises = raising.map(at).filter(isNotUndefined);
+	const subflow = raising.length === 0 ? undefined : graph.getVertex(fn);
+	if(!DfgVertex.isFunctionDefinition(subflow)) {
+		return;
+	}
+	const superAssigns = (id: NodeId) => {
+		const node = idMap.get(id);
+		const parent = node && RNode.directParent(node, idMap);
+		return RBinaryOp.is(parent) && (parent.operator === '<<-' || parent.operator === '->>');
+	};
+	const escaping = [...subflow.subflow.graph].filter(id => DfgVertex.isVariableDefinition(graph.getVertex(id)) && RNode.findEnclosing(id, idMap, RFunctionDefinition.is) === fn
+		&& (superAssigns(id) || Dataflow.targetsOf(graph, id, EdgeType.SideEffectOnCall).length > 0));
+	for(const later of escaping) {
+		const end = at(later);
+		if(end === undefined) {
+			continue;
+		}
+		const name = NodeId.recoverBareName(later, idMap);
+		for(const earlier of escaping) {
+			const start = at(earlier);
+			if(start !== undefined && NodeId.recoverBareName(earlier, idMap) === name && SourceRange.compare(start, end) < 0
+				&& raises.some(r => SourceRange.compare(start, r) < 0 && SourceRange.compare(r, end) < 0)) {
+				graph.addEdge(later, earlier, EdgeType.Reads);
+			}
+		}
+	}
+}
+
 /** Makes every later call read the earlier ones that may raise, and those read the construct `rootId`; returns the raising ones. */
 function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, targetsOf, reach, locked }: { rootId?: NodeId, targetsOf?: (name: Identifier) => readonly IdentifierDefinition[], reach?: (node: RNode<ParentInformation>) => void, locked: boolean }) {
 	type Node = RNode<ParentInformation>;
 	const raises = (node: Node): boolean => {
 		const vertex = graph.getVertex(node.info.id);
 		const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : RFunctionCall.is(node) ? RFunctionCall.calledName(node) : RAccess.is(node) ? node.operator : node.lexeme;
-		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
+		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || testsValue(node) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
 			return true;
 		} else if(DfgVertex.isFunctionCall(vertex)) {
 			/* a built-in may raise on its own for what it is handed (`log("a")`, a locked binding), binding a name raises only for what its value does, unless it may be locked */

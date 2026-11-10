@@ -263,6 +263,9 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .chead { margin: 0 0 .3rem; font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 #hits .contract .ctable { display: grid; gap: .1rem; }
 #hits .contract .crow { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: .8rem; align-items: start; padding: .1rem .5rem; border-radius: .4rem; font-size: .82rem; }
+/* the formals a row is about wrap within a narrow column, and on a narrow screen they go above what holds */
+#hits .contract .crow > span:first-child { display: flex; flex-wrap: wrap; gap: .2rem; max-width: 14rem; }
+@media (max-width: 700px) { #hits .contract .crow { grid-template-columns: minmax(0, 1fr); gap: .2rem; } #hits .contract .crow > span:first-child { max-width: none; } }
 #hits .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a failure reads in one line under its condition rather than as a narrow column beside it */
 #hits .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: .05rem; }
@@ -275,7 +278,11 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .contract .tag { justify-self: start; }
 #hits .teaser { flex-direction: column; align-items: flex-start; margin-top: .1rem; }
 /* one compact line: the formals of the contract and the parts of the state, the opened row tells the rest */
-#hits .teaser > div { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; line-height: 1.25; }
+#hits .teaser { max-width: 100%; }
+#hits .teaser > div { display: flex; flex-wrap: nowrap; align-items: center; gap: .2rem; line-height: 1.25; max-width: 100%; overflow: hidden; white-space: nowrap; }
+#hits .teaser > div > * { flex: none; }
+/* a line too long for the row fades out at its end instead of wrapping, its chips say the rest on hover and the opened row in full */
+#hits .teaser > div.clipped { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
 /* every chip of the compact line is as high as the others, so the line reads as one row */
 #hits .teaser code, #hits .teaser .origin { display: inline-flex; align-items: center; height: 1.15rem; box-sizing: border-box; font-size: .68rem; padding: 0 .35rem; line-height: 1; }
 #hits .teaser .label { font-size: .7rem; margin-right: .1rem; }

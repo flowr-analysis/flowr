@@ -397,8 +397,27 @@ function teaser(name: string, guards: Guards | undefined, formals: readonly stri
 		}));
 	}
 	box.append(line);
+	markClipped(line);
 	return box;
 }
+
+/** the compact lines shown, which a resize may clip or unclip */
+const compactLines = new Set<WeakRef<HTMLElement>>();
+/** marks a compact line that does not fit its row, which then fades out at its end, see the page's styles */
+function markClipped(line: HTMLElement): void {
+	compactLines.add(new WeakRef(line));
+	requestAnimationFrame(() => line.classList.toggle('clipped', line.scrollWidth > line.clientWidth + 1));
+}
+window.addEventListener('resize', () => {
+	for(const ref of compactLines) {
+		const line = ref.deref();
+		if(line === undefined || !line.isConnected) {
+			compactLines.delete(ref);
+		} else {
+			line.classList.toggle('clipped', line.scrollWidth > line.clientWidth + 1);
+		}
+	}
+});
 
 /** what a contract says of each formal: that a call has to give it, its claims, and the relations it is part of */
 function claimsByFormal(guards: Guards, formals: readonly string[]): Map<string, string[]> {

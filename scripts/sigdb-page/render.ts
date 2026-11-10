@@ -536,8 +536,54 @@ function methodLink(method: Entry, generic: string): HTMLElement {
 }
 
 
+/**
+ * What every method of the S3 generic `guards` describes asks of a formal, beyond what the generic itself asks, by formal, with the methods it
+ * is read off: a call of the generic dispatches to one of them, so it probably has to fulfill that too, unless a method no contract is known of takes it.
+ */
+function probableClaims(guards: Guards): { readonly methods: readonly string[], readonly claims: readonly (readonly [string, readonly string[]])[] } | undefined {
+	const dispatch = guards[8];
+	const methods = dispatch?.length === 2 ? dispatch[1].filter(m => db.guards.has(m)) : [];
+	if(methods.length < 2) {
+		return undefined;
+	}
+	const asked = (g: Guards) => {
+		const by = new Map<string, Set<string>>((g[5] ?? []).map(f => [f, new Set(['!missing(' + f + ')'])]));
+		for(const [formal, words] of g[1]) {
+			by.set(formal, new Set([...by.get(formal) ?? [], ...words]));
+		}
+		return by;
+	};
+	const own = asked(guards);
+	const [first, ...rest] = methods.map(m => asked(db.guards.get(m) as Guards));
+	const common = [...first].flatMap(([formal, words]): [string, string[]][] => {
+		const shared = [...words].filter(w => rest.every(other => other.get(formal)?.has(w) === true) && !(own.get(formal)?.has(w) ?? false));
+		return shared.length === 0 ? [] : [[formal, shared]];
+	});
+	return common.length === 0 ? undefined : { methods, claims: common };
+}
+
 /** the contract of `name` as the database knows it of `owner`: where it is written, how it takes part in S3 dispatch, failures linking to their source */
 function contract(name: string, guards: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
+	const box = ownContract(name, guards, formals, owner);
+	const probable = probableClaims(guards);
+	if(probable !== undefined) {
+		const shown = uniqueArray([...formals, ...probable.claims.map(([formal]) => formal)]);
+		const view = contractView(name, ['', probable.claims, [], '', [], [], [], shown], shown, {
+			head: () => {
+				const head = titled(el('p', 'chead probable'), 'read off the methods with a contract, a method of another package may ask less');
+				head.append(el('span', 'origin probable', 'probable'), ' as all ' + probable.methods.length + ' methods with a contract ask it:');
+				return [head];
+			},
+			search,
+			located: fn => located(fn, owner),
+			failing: () => ({ parts: [] })
+		});
+		box.append(view);
+	}
+	return box;
+}
+
+function ownContract(name: string, guards: Guards, formals: readonly string[], owner?: Owner): HTMLElement {
 	/* an inferred contract was read off the code of a given R, so its lines are those of that R's sources, not of the version the database lists */
 	const rVersion = (guards[3] ?? '').split('@')[0] || undefined;
 	const url = owner === undefined ? undefined : owner.pkg.sourceUrl(owner.file, owner.line, owner.pkg.base ? rVersion : undefined);

@@ -223,6 +223,9 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .label { font-variant: small-caps; letter-spacing: .04em; }
 #hits .origin { font-size: .66rem; padding: 0 .35rem; border-radius: .7rem; border: 1px solid var(--border); }
 #hits .origin.inferred { color: color-mix(in srgb, #2f9e6a 70%, var(--muted)); }
+/* claims read off the methods of a generic, which a method of another package may not share */
+#hits .origin.probable { color: color-mix(in srgb, #b07d00 75%, var(--fg)); border-style: dashed; }
+#hits .contract .chead.probable { margin-top: .4rem; }
 #hits .origin.stated { color: color-mix(in srgb, #7a5cd6 70%, var(--muted)); }
 #hits .contract { margin-bottom: .3rem; }
 /* what a call does to the global state, a line per part, and how it takes part in S3 dispatch */

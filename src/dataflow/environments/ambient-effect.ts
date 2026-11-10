@@ -166,10 +166,12 @@ function withFileAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 /** A call starting a process hands it every environment variable, a call loading a package looks for it in the library paths, a call printing adds to the diverted output. */
 function withImplicitAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 	const { tags, ambient } = config;
+	/* what always goes to the message sink, like `message`, does not print to the output sink */
+	const printsToMessages = Ambient.list(ambient).some(e => e.family === Ambient.messageSink.adds.family && e.when === undefined && e.unless === undefined);
 	const implied = [
 		...tags?.includes(SemanticCallTag.Process) ? [Ambient.env.reads] : [],
 		...tags?.includes(SemanticCallTag.LoadsPackage) ? [Ambient.libPaths.reads] : [],
-		...tags?.includes(SemanticCallTag.Prints) ? [Ambient.sink.adds] : []
+		...tags?.includes(SemanticCallTag.Prints) && !printsToMessages ? [Ambient.sink.adds] : []
 	];
 	return implied.length === 0 ? config : { ...config, ambient: [...Ambient.list(ambient), ...implied] };
 }

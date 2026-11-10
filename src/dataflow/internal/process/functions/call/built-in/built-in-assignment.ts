@@ -20,7 +20,7 @@ import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../..
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, isInGraphDefinition, ReferenceType } from '../../../../../environments/identifier';
 import { ambientWritesBetween, ambientWritesOfAssignment, markForcing } from './built-in-ambient-state';
 import { bindsUnknownNames, noteOwnMethod } from './built-in-expression-list';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
@@ -766,11 +766,13 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	const forces = quoteSource ? ambientWritesBetween(sourceArg.environment, data.environment) : [];
 	/* the promise reads the state where it is forced, not where it is bound */
 	const forcedReads = quoteSource ? uniqueArray([...sourceArg.in, ...sourceArg.unknownReferences].map(r => r.name).filter(AmbientStateName.is)) : [];
-	if(forces.length > 0 || forcedReads.length > 0) {
+	/* what the promise binds once forced, which plain reads of the variables cannot see until the promise is linked to where it is forced */
+	const forcedWrites = quoteSource ? sourceArg.out.filter((w): w is NamedInGraphIdentifierDefinition => isInGraphDefinition(w as IdentifierDefinition) && w.name !== undefined && !AmbientStateName.is(Identifier.getName(w.name))) : [];
+	if(forces.length > 0 || forcedReads.length > 0 || forcedWrites.length > 0) {
 		markForcing(data.environment);
 	}
 	const tracked = envState ? { envState, envId, ...frame !== undefined || copied?.closureFrame ? { closureFrame: true } as const : {} } : returnsEnvState ? { returnsEnvState } : envId === undefined ? {} : { envId };
-	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {}, ...forcedReads.length > 0 ? { forcedReads } : {} }));
+	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {}, ...forcedReads.length > 0 ? { forcedReads } : {}, ...forcedWrites.length > 0 ? { forcedWrites } : {} }));
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);

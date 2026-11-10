@@ -214,6 +214,17 @@ print(2)
 			]);
 		});
 
+		/* a variable a promise writes is written where a read forces the promise */
+		describe('writes of a forced promise', () => {
+			assertLinter('a read forces the write', parser, 'x <- FALSE\ndelayedAssign("y", x <- TRUE)\ny\nif (x) cat("live") else cat("dead")', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [4, 25, 4, 35], quickFix: [emptied([4, 25, 4, 35])] }
+			]);
+			assertLinter('a read that may not happen', parser, 'x <- FALSE\ndelayedAssign("y", x <- TRUE)\nif(runif(1) > 2) y\nif (x) cat("a") else cat("b")', 'dead-code', []);
+			assertLinter('without a read nothing is written', parser, 'x <- FALSE\ndelayedAssign("y", x <- TRUE)\nif (x) cat("dead") else cat("live")', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 8, 3, 18], quickFix: [emptied([3, 8, 3, 18])] }
+			]);
+		});
+
 		describe('reflective name arguments', () => {
 			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
 			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);

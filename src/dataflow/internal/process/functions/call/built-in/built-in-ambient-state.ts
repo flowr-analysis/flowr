@@ -304,7 +304,13 @@ export function ambientAccessOfSymbol<OtherInfo>(res: DataflowInformation, symbo
 	const definitions = forcing ? Resolve.byName(symbol.content, data.environment) ?? [] : [];
 	const promises = definitions.filter(isInGraphDefinition);
 	const reads = uniqueArrayMerge(ambientReadsOfSymbol(symbol, data, forcing), promises.flatMap(d => d.forcedReads ?? []));
-	return withAccess(res, symbol.info.id, data, reads, promises.flatMap(d => d.forces ?? []).map(maybe));
+	const accessed = withAccess(res, symbol.info.id, data, reads, promises.flatMap(d => d.forces ?? []).map(maybe));
+	/* a read may be the one forcing the promise, so what its code binds may be bound from here on (the first read forces it, so only maybe) */
+	let environment = accessed.environment;
+	for(const write of promises.flatMap(d => d.forcedWrites ?? [])) {
+		environment = REnvironment.define(write, false, environment, true);
+	}
+	return environment === accessed.environment ? accessed : { ...accessed, environment };
 }
 
 /** Binds `name` (globally) to the given definitions, in addition to what it holds with `keep`, so `#graphics` can become what another state holds. */

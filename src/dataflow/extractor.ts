@@ -24,7 +24,7 @@ import { DfEdge, EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import { reResolveOpenReferences, linkMaterializedExportsToLoaders, linkPromisesToWritesOfCall, linkUsesOfScopedInstances, settleConditionalWritesOfCalls } from './internal/process/functions/call/built-in/transitive-side-effects';
+import { reResolveOpenReferences, linkMaterializedExportsToLoaders, linkPromisesToWritesOfCall, linkStateWritesOfForcedPromises, linkUsesOfScopedInstances, settleConditionalWritesOfCalls } from './internal/process/functions/call/built-in/transitive-side-effects';
 import { linkHandlersToSignalSites, linkLateWarningsAsErrors, orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
 import { linkInstantiations, separateMethodRegistrations } from './internal/process/functions/call/built-in/built-in-s-four';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
@@ -744,6 +744,7 @@ function extractDataFlowGraph<OtherInfo>(
 	const cleanEnvironment = ctx.env.makeCleanEnv();
 	separateClosureInstances(df.graph, name => queryFnProps(name, { environment: cleanEnvironment }));
 	linkPromisesToWritesOfCall(df.graph, ctx);
+	linkStateWritesOfForcedPromises(df.graph);
 	linkUsesOfScopedInstances(df.graph);
 	settleConditionalWritesOfCalls(df.graph, ctx);
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));

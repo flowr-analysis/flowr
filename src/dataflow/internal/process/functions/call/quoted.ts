@@ -78,6 +78,13 @@ export const Quoted = {
 		return [];
 	},
 
+	/** The variable a delaying call (`delayedAssign`) binds its promise to. */
+	promisedBinding(this: void, graph: DataflowGraph, id: NodeId): NodeId | undefined {
+		const vertex = graph.getVertex(id);
+		return DfgVertex.isFunctionCall(vertex) && DelayingCalls.has(Identifier.getName(vertex.name))
+			? Dataflow.sourcesOf(graph, id, EdgeType.DefinedBy).find(target => DfgVertex.isVariableDefinition(graph.getVertex(target))) : undefined;
+	},
+
 	/** Links every name in `expr` against `environment` and hands back what stays unresolved. */
 	evaluateIn: linkExpressionIn,
 
@@ -118,7 +125,7 @@ export const Quoted = {
 					continue;
 				}
 				const promised = namesOnce();
-				const binding = Dataflow.sourcesOf(graph, id, EdgeType.DefinedBy).find(target => DfgVertex.isVariableDefinition(graph.getVertex(target)));
+				const binding = Quoted.promisedBinding(graph, id);
 				const flow = binding === undefined ? undefined : cfgOnce();
 				const sites = flow === undefined || binding === undefined ? undefined : Deferred.forcedAt(graph, binding, flow, true);
 				/* the promise runs in `eval.env`, so whatever that environment holds may be what it reads */

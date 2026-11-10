@@ -162,6 +162,34 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	}
 }
 
+/** A promise (`delayedAssign`) forced where its name is not read at the top level, by a call running a closure that reads it or by an access of an environment holding it, changes the state at that point, which later code reading the state sees. */
+export function linkStateWritesOfForcedPromises(this: void, graph: DataflowGraph): void {
+	let readers: ReadonlyMap<NodeId, ReadonlySet<AmbientStateName>> | undefined;
+	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const binding = FunctionSemantics.call.quoted.promisedBinding(graph, id);
+		const promise = binding === undefined ? [] : Dataflow.targetsOf(graph, id, EdgeType.NonStandardEvaluation);
+		const written = promise.length === 0 ? [] : [...ambientAccessOf(graph, promise.flatMap(p => [...RNode.collectAllIds(graph.idMap?.get(p))]))[AmbientAccessKind.Write].keys()];
+		if(binding === undefined || written.length === 0) {
+			continue;
+		}
+		readers ??= new Map([...graph.ambientAccessIds()].map(r => [r, new Set(graph.ambientAccessOf(r)?.[AmbientAccessKind.Read].keys())]));
+		for(const site of FunctionSemantics.promiseForcingPoints(binding, graph)) {
+			const statement = ProgramOrder.runsOnceAt(site, graph);
+			if(statement === undefined || written.every(name => graph.ambientAccessOf(site)?.[AmbientAccessKind.Write].has(name))) {
+				continue;
+			}
+			for(const expr of promise) {
+				graph.addEdge(site, expr, EdgeType.Reads);
+			}
+			for(const [reader, reads] of readers) {
+				if(written.some(name => reads.has(name)) && ProgramOrder.offset(reader, statement, graph) > 0) {
+					graph.addEdge(reader, site, EdgeType.Reads);
+				}
+			}
+		}
+	}
+}
+
 /** The families of instances a scope may open one of for its code, see {@link linkUsesOfScopedInstances}. */
 const ScopedInstances: readonly AmbientFamily[] = [OutputSinks, GraphicsDevices];
 

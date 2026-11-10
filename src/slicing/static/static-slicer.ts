@@ -188,6 +188,15 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		if(deferring !== undefined) {
 			enqueue(deferring, baseEnvironment, baseEnvFingerprint);
 		}
+		/* what a promise changes happens where it is forced, and a forcing statement of the program must not print what it did not */
+		const binding = deferring !== undefined && (graph.ambientAccessOf(id)?.writes.size ?? 0) > 0 ? FunctionSemantics.call.quoted.promisedBinding(graph, deferring) : undefined;
+		for(const site of binding === undefined ? [] : FunctionSemantics.promiseForcingPoints(binding, graph)) {
+			const node = idMap.get(site);
+			enqueue(site, baseEnvironment, baseEnvFingerprint);
+			if(node !== undefined && RNode.strictlyEnclosingFunction(site, idMap) === undefined) {
+				enqueue(RNode.topLevelStatement(node, idMap).info.id, baseEnvironment, baseEnvFingerprint);
+			}
+		}
 		/* a call or a definition within a promise runs only when the promise is forced, within captured code only when it is evaluated */
 		if(DfgVertex.isFunctionCall(currentVertex) || DfgVertex.isVariableDefinition(currentVertex)) {
 			const dependencies = FunctionSemantics.promiseDependencies(id, graph);

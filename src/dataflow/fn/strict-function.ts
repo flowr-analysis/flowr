@@ -465,8 +465,10 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 		const element = isElementRead(param, graph);
 		const binding = element ? Dataflow.targetsOf(graph, param, EdgeType.Reads).find(t => idMap.get(t)?.info.role === RoleInParent.ParameterName) : param;
 		const owner = idMap.get(idMap.get(binding ?? -1)?.info.parent ?? -1)?.info.parent;
-		for(const read of element ? [param] : Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
-			found.push(read);
+		/* a promise bound outside of every function (`delayedAssign`) is forced by each call running a closure reading it */
+		const global = !element && !DfgVertex.isFunctionDefinition(graph.getVertex(owner ?? ''));
+		for(const read of element ? [param] : Dataflow.sourcesOf(graph, param, global ? EdgeType.Reads | EdgeType.DefinedByOnCall : EdgeType.Reads)) {
+			found.push(read, ...global ? callersOf(read, graph, idMap) : []);
 			/* only a closure within the function owning the parameter captures it, a read elsewhere is no call of one */
 			const closures: NodeId[] = [];
 			let closure = RNode.findEnclosing(read, idMap, RFunctionDefinition.is);
@@ -491,6 +493,21 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 		}
 	}
 	return found;
+}
+
+/** The calls running the closures holding `id`, and those running the closures holding these calls in turn. */
+function callersOf(id: NodeId, graph: DataflowGraph, idMap: AstIdMap, seen = new Set<NodeId>()): NodeId[] {
+	const closure = RNode.strictlyEnclosingFunction(id, idMap);
+	if(closure === undefined || seen.has(closure)) {
+		return [];
+	}
+	seen.add(closure);
+	return Dataflow.sourcesOf(graph, closure, EdgeType.Calls).flatMap(call => [call, ...callersOf(call, graph, idMap, seen)]);
+}
+
+/** Where the promise bound to `binding` may be forced, see {@link promiseDependencies}. */
+export function promiseForcingPoints(this: void, binding: NodeId, graph: DataflowGraph): NodeId[] {
+	return graph.idMap === undefined ? [] : forcingPointsOf([binding], graph, graph.idMap);
 }
 
 /** What a node within promises depends on to run: the holder of each `byPromise` dependency and where that promise may be forced. */

@@ -354,6 +354,8 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');
 		counterexample('SF-rm-list-variable-vector', 'nms <- c("a", "b")\na <- 1\nb <- 2\nrm(list = nms)\nprint(exists("b"))', '5@print', 'print(exists("b"))');
+		/* what on.exit registers runs last: the output before the function ends is kept although the registered stop() comes first in the text */
+		counterexample('SF-on-exit-raise-runs-last', 'f <- function() {\n  on.exit(stop("x"))\n  cat("live\\n")\n}\ntry(f(), silent = TRUE)', '5@try', 'f <- function() {\n        on.exit(stop("x"))\n        cat("live\\n")\n    }\ntry(f(), silent = TRUE)');
 		/* forcing a promise raises what it raises: the read of a delayedAssign or of a lazy parameter is part of the slice of the try around it */
 		counterexample('SF-delayed-assign-forced-in-try', 'f <- function() {\n  delayedAssign("p", stop("e"))\n  p\n  cat("dead\\n")\n}\ntry(f(), silent = TRUE)', '6@try', 'f <- function() {\n        delayedAssign("p", stop("e"))\n        p\n        cat("dead\\n")\n    }\ntry(f(), silent = TRUE)');
 		counterexample('SF-lazy-argument-forced-in-try', 'f <- function(a) { cat("f\\n"); a }\ng <- function() {\n  f(stop("e"))\n  cat("dead\\n")\n}\ntry(g(), silent = TRUE)', '6@try', 'f <- function(a) {\n        cat("f\\n")\n        a\n    }\ng <- function() {\n        f(stop("e"))\n        cat("dead\\n")\n    }\ntry(g(), silent = TRUE)');

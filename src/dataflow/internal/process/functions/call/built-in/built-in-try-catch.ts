@@ -471,6 +471,7 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 			return promised !== undefined && DfgVertex.isFunctionCall(graph.getVertex(t)) && raises(promised);
 		});
 	};
+	const isHook = (node: Node) => RFunctionCall.is(node) && DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.RegisterHook);
 	const order = (node: Node, before: readonly NodeId[]): NodeId[] => {
 		reach?.(node);
 		if(RFunctionDefinition.is(node)) {
@@ -478,8 +479,15 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		} else if(RExpressionList.is(node)) {
 			const sites: NodeId[] = [];
 			let current = before;
+			/* what `on.exit` registers runs when the function exits, after everything else in the list (`on.exit(stop("x")); cat("a")` prints before it raises) */
+			const hooks = node.children.filter(isHook);
 			for(const child of node.children) {
-				const raised = order(child, current);
+				const raised = hooks.includes(child) ? [] : order(child, current);
+				current = raised.length > 0 ? raised : current;
+				sites.push(...raised);
+			}
+			for(const hook of hooks) {
+				const raised = order(hook, current);
 				current = raised.length > 0 ? raised : current;
 				sites.push(...raised);
 			}

@@ -1,7 +1,7 @@
 import { blank, el } from '../page-lib/dom';
 import type { Guards } from './database';
 import { spokenOf } from './contract-formals';
-import { grouped } from '../../src/dataflow/fn/guards/condition-grouping';
+import { grouped, splitTopLevel } from '../../src/dataflow/fn/guards/condition-grouping';
 
 /*
  * How a contract reads, shared by the signature browser and the playground: the formals in their hues, the operators set
@@ -28,28 +28,6 @@ export function titled<T extends HTMLElement>(node: T, title: string | undefined
 	return node;
 }
 
-/** The parts of `condition` joined by a `&&` outside of any parentheses, brackets, or strings. */
-export function conjuncts(condition: string): string[] {
-	const parts: string[] = [];
-	let depth = 0, quote: string | undefined, start = 0;
-	for(let i = 0; i < condition.length; i++) {
-		const c = condition[i];
-		if(quote !== undefined) {
-			quote = c === '\\' ? (i++, quote) : c === quote ? undefined : quote;
-		} else if(c === '"' || c === "'" || c === '`') {
-			quote = c;
-		} else if('([{'.includes(c)) {
-			depth++;
-		} else if(')]}'.includes(c)) {
-			depth--;
-		} else if(depth === 0 && condition.startsWith(' && ', i)) {
-			parts.push(condition.slice(start, i));
-			start = i + 4;
-			i += 3;
-		}
-	}
-	return [...parts, condition.slice(start)];
-}
 
 /** each formal in its own color and the operators set apart, so a long condition reads at a glance */
 function marker(search: (q: string) => string, formals: readonly string[], result = false, calls: NonNullable<Guards[10]> = []): (code: string) => (string | HTMLElement)[] {
@@ -214,7 +192,7 @@ export function contract(name: string, guards: Guards, formals: readonly string[
 		rows.append(contractRow('claim result', [titled(el('code', 'arg result', 'result'), 'the value a call returns normally')], [said]));
 	}
 	box.append(rows);
-	const conditions = because.length > 0 ? because : conjuncts(requires).filter(part => part !== '').map(part => [part, '', '', '', ''] as const);
+	const conditions = because.length > 0 ? because : splitTopLevel(requires, ' && ').filter(part => part !== '').map(part => [part, '', '', '', ''] as const);
 	if(conditions.length > 0) {
 		const why = el('details', 'why');
 		why.addEventListener('click', event => event.stopPropagation());

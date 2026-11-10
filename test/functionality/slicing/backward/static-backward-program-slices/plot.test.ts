@@ -354,5 +354,8 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');
 		counterexample('SF-rm-list-variable-vector', 'nms <- c("a", "b")\na <- 1\nb <- 2\nrm(list = nms)\nprint(exists("b"))', '5@print', 'print(exists("b"))');
+		/* quit() ends the program, so what follows it in the called function must not run in the slice */
+		counterexample('SF-quit-ends-program', 'f <- function() {\n  cat("live\\n")\n  quit(save = "no")\n  cat("dead\\n")\n}\nf()', '6@f', 'f <- function() {\n        cat("live\\n")\n        quit(save = "no")\n    }\nf()');
+		assertSliced(label('SF-q-in-branch', ['functions-with-global-side-effects', 'call-normal', 'newlines']), shell, 'x <- 1\nif(x > 0) q()\ncat("after\\n")', ['3@cat'], 'x <- 1\nif(x > 0) q()\ncat("after\\n")', { cfgExcludeProperties: ['single-entry-and-exit'] });
 	});
 }));

@@ -295,6 +295,8 @@ export const BaseDefinitions = [
 		{ ambient: [ReadPrintingOptions, { ...Ambient.messageSink.adds, when: { arg: 'file', formals: ['...', 'file'], calls: ['stderr'] } }], props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional, sep: Forced.Value, fill: Forced.Value, labels: Forced.Value, append: Forced.Flag }) }),
 	fn(base('switch'), BuiltInProcName.Default, { alternativeArgsFrom: 1, useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure, sig: sig({ EXPR: Forced.Value }) }),
 	fn(base('stop'), BuiltInProcName.Default, { ...Throws, signals: ['simpleError', 'error', 'condition'] }),
+	/* ends the program: nothing after it runs, so it is an exit like a raise for everything that follows (no handler catches it, but treating it as one only keeps more) */
+	fn(base('quit', 'q'), BuiltInProcName.Default, { cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ save: Forced.Value, status: Forced.Value, runLast: Forced.Value }) }),
 	/* their classes depend on more than the message (`class = `, a glue template evaluated in the caller) */
 	fn([...pkg(PkgName.Rlang, 'abort'), ...pkg(PkgName.Cli, 'cli_abort'), ...pkg(PkgName.RmethodsS3, 'throw'), ...pkg(PkgName.Roo, 'throw'),
 		/* R.oo re-exports R.methodsS3::throw */ ...pkg(PkgName.Purrr, 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length')], BuiltInProcName.Default, Throws),

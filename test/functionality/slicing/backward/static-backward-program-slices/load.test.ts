@@ -6,7 +6,7 @@ import { BuiltInOperators } from '../../../../../src/dataflow/environments/defau
 describe('load', { concurrent: false }, withShell(shell => {
 	/* in this case, we assume that it may have an impact! */
 	assertSliced(label('simple loading', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in', 'newlines']),
-		shell, 'load("x.RData")\ncat(N)', ['2@N'], 'load("x.RData")\nN');
+		shell, 'load("x.RData")\ncat(N)', ['2@N'], 'load("x.RData")\ncat(N)');
 	/* currently we cannot narrow this down */
 	assertSliced(label('multiple loads', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in', 'newlines']),
 		shell, 'load("z.RData")\nload("x.RData")\ncat(N)\nload("y.RData")', ['3@cat'], 'load("z.RData")\nload("x.RData")\ncat(N)\nload("y.RData")');

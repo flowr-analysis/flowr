@@ -54,7 +54,7 @@ const TestSignatures = {
  */
 const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
 	[Identifier.from(['sum', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic | CallProp.Primitive }],
-	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure | CallProp.Primitive, tags: [SemanticCallTag.Narrows] }],
+	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic | CallProp.Primitive, tags: [SemanticCallTag.Narrows] }],
 	[Identifier.from(['lapply', PkgName.Base]), { props: CallProp.MayPure | CallProp.Primitive }],
 	[Identifier.from(['print', PkgName.Base]), { props: CallProp.Invisible | CallProp.Generic, tags: [SemanticCallTag.Prints] }],
 	[Identifier.from(['stop', PkgName.Base]), { props: CallProp.Throws | CallProp.Primitive }],
@@ -129,14 +129,14 @@ describe('Built-in properties', () => {
 			assert.isTrue(pure.has('base::sum'), 'sum is pure');
 			assert.isFalse(pure.has('base::tempfile'), 'tempfile is not');
 			assert.isTrue(index.with(SemanticCallTag.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
-			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Primitive);
+			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Generic | CallProp.Primitive);
 			assert.deepStrictEqual(index.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 			const foldable = new Set(BuiltInIndex.default().foldable.map(Identifier.getName));
 			assert.isTrue(foldable.has('+'), 'arithmetic is folded');
 			assert.isTrue(foldable.has('paste'));
 			assert.isFalse(foldable.has('read.csv'), 'reading a file is not');
 			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
-			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Primitive);
+			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Generic | CallProp.Primitive);
 			assert.deepStrictEqual(registered.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 			assert.isTrue(registered.with(SemanticCallTag.Process).some(i => Identifier.getName(i) === 'system'));
 			/* `DBI` is not attached at startup, so it is in the package memory the index walks, not the built-in one */

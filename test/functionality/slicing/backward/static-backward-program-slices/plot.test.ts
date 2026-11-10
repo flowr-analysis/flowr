@@ -1,4 +1,4 @@
-import { assertSliced, assertSliceKeeps, assumeLoadedPackages, withShell } from '../../../_helper/shell';
+import { assertSliced, assertSliceKeeps, assertSliceMatchesR, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
@@ -350,6 +350,9 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		assertSliceKeeps('RA-B2b a validating call that raises stays', shell, 'validate <- function(x) { stopifnot(is.numeric(x), all(x >= 0)); invisible(TRUE) }\nvalidate(c(-1, 2))\nprint("valid")', '3@print', { kept: ['validate(c(-1, 2))', 'stopifnot(is.numeric(x), all(x >= 0))'] });
 		counterexample('RA-B3-rm-reads-what-it-removes', 'mean <- function(x) stop("shadow")\nrm(mean)\nprint(mean(1:3))', '2@rm', 'mean <- function(x) { }\nrm(mean)');
 		counterexample('RA-B3b-rm-of-a-variable', 'x <- 1\nrm(x)', '2@rm', 'x <- 1\nrm(x)');
+		/* what a function prints through the calls it makes is printed by them, so a slice for the outer call keeps them */
+		assertSliceMatchesR(shell, 'RD-B1 a callee printing within a called function', 'f <- function(a) { cat("f\\n"); a }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
+		assertSliceMatchesR(shell, 'RD-B2 printing two calls down', 'h <- function() cat("deep\\n")\nf <- function(a, b = a * 2) { h(); b }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
 		/* rm(list = <vector of names>) removes (and so reads) every one of the names */
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');

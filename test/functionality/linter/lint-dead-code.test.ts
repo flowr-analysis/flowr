@@ -225,6 +225,13 @@ print(2)
 			]);
 		});
 
+		describe('promises leaving the function', () => {
+			assertLinter('a forced return', parser, 'f <- function() {\n  delayedAssign("p", return(1))\n  p\n  cat("dead")\n}\nf()', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 13], quickFix: [{ type: 'remove', loc: [4, 3, 4, 13], description: 'Remove the unreachable code' }] }
+			]);
+			assertLinter('a raise that is never forced', parser, 'f <- function() {\n  delayedAssign("p", stop("boom"))\n  if(runif(1) > 2) p\n  cat("live")\n}\nf()', 'dead-code', []);
+		});
+
 		describe('reflective name arguments', () => {
 			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
 			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);

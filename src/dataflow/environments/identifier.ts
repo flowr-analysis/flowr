@@ -7,6 +7,7 @@ import { escapeRegex, splitRQuotes } from '../../util/text/strings';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
+import type { ExitPoint } from '../info';
 /* type-only, as the value import would cycle back through the graph helpers */
 
 export { PkgName } from './pkg-name';
@@ -343,6 +344,8 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly forces?:          readonly AmbientStateName[]
 	/** The variables forcing the promise this identifier binds (`delayedAssign("y", x <- TRUE)`) may write, which a read of it may define. */
 	readonly forcedWrites?:    readonly NamedInGraphIdentifierDefinition[]
+	/** How forcing the promise this identifier binds may leave the function, `delayedAssign("p", return(1))` returning from it, which a read of it may do. */
+	readonly forcedExits?:     readonly ExitPoint[]
 	/** The ambient state forcing the promise this identifier binds reads, which it reads where it is forced. */
 	readonly forcedReads?:     readonly AmbientStateName[]
 	/** Whether the ambient state is only assumed written, by a body flowR cannot see. */

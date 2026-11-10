@@ -353,6 +353,8 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		/* what a function prints through the calls it makes is printed by them, so a slice for the outer call keeps them */
 		assertSliceMatchesR(shell, 'RD-B1 a callee printing within a called function', 'f <- function(a) { cat("f\\n"); a }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
 		assertSliceMatchesR(shell, 'RD-B2 printing two calls down', 'h <- function() cat("deep\\n")\nf <- function(a, b = a * 2) { h(); b }\ng <- function() {\n  f(3)\n  cat("live\\n")\n}\ng()', { whole: true });
+		/* a promise leaves where a read forces it, `p` returning from `f` here */
+		assertSliceMatchesR(shell, 'RD-B3 a forced promise returns', 'f <- function() {\n  delayedAssign("p", return(1))\n  p\n  cat("dead\\n")\n}\nprint(f())', { whole: true });
 		/* rm(list = <vector of names>) removes (and so reads) every one of the names */
 		counterexample('SF-rm-list-vector-reads-defs', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))', '3@rm', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))');
 		counterexample('SF-rm-list-vector-kills', 'a <- 1\nb <- 2\nrm(list = c("a", "b"))\nprint(exists("b"))', '4@print', 'print(exists("b"))');
@@ -365,7 +367,7 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		/* what on.exit registers runs last: the output before the function ends is kept although the registered stop() comes first in the text */
 		counterexample('SF-on-exit-raise-runs-last', 'f <- function() {\n  on.exit(stop("x"))\n  cat("live\\n")\n}\ntry(f(), silent = TRUE)', '5@try', 'f <- function() {\n        on.exit(stop("x"))\n        cat("live\\n")\n    }\ntry(f(), silent = TRUE)');
 		/* forcing a promise raises what it raises: the read of a delayedAssign or of a lazy parameter is part of the slice of the try around it */
-		counterexample('SF-delayed-assign-forced-in-try', 'f <- function() {\n  delayedAssign("p", stop("e"))\n  p\n  cat("dead\\n")\n}\ntry(f(), silent = TRUE)', '6@try', 'f <- function() {\n        delayedAssign("p", stop("e"))\n        p\n        cat("dead\\n")\n    }\ntry(f(), silent = TRUE)');
+		counterexample('SF-delayed-assign-forced-in-try', 'f <- function() {\n  delayedAssign("p", stop("e"))\n  p\n  cat("dead\\n")\n}\ntry(f(), silent = TRUE)', '6@try', 'f <- function() {\n        delayedAssign("p", stop("e"))\n        p\n    }\ntry(f(), silent = TRUE)');
 		counterexample('SF-lazy-argument-forced-in-try', 'f <- function(a) { cat("f\\n"); a }\ng <- function() {\n  f(stop("e"))\n  cat("dead\\n")\n}\ntry(g(), silent = TRUE)', '6@try', 'f <- function(a) {\n        cat("f\\n")\n        a\n    }\ng <- function() {\n        f(stop("e"))\n        cat("dead\\n")\n    }\ntry(g(), silent = TRUE)');
 		/* quit() ends the program, so what follows it in the called function must not run in the slice */
 		counterexample('SF-quit-ends-program', 'f <- function() {\n  cat("live\\n")\n  quit(save = "no")\n  cat("dead\\n")\n}\nf()', '6@f', 'f <- function() {\n        cat("live\\n")\n        quit(save = "no")\n    }\nf()');

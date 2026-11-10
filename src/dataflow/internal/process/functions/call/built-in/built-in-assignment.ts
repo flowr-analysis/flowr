@@ -5,6 +5,7 @@ import type { AstIdMap,
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
+import { ExitPointType } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import { NseArguments, NseKind } from '../nse-kind';
 import { Unquote } from '../nse';
@@ -787,11 +788,13 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	const forcedReads = quoteSource ? uniqueArray([...sourceArg.in, ...sourceArg.unknownReferences].map(r => r.name).filter(AmbientStateName.is)) : [];
 	/* what the promise binds once forced, which plain reads of the variables cannot see until the promise is linked to where it is forced */
 	const forcedWrites = quoteSource ? sourceArg.out.filter((w): w is NamedInGraphIdentifierDefinition => isInGraphDefinition(w as IdentifierDefinition) && w.name !== undefined && !AmbientStateName.is(Identifier.getName(w.name))) : [];
-	if(forces.length > 0 || forcedReads.length > 0 || forcedWrites.length > 0) {
+	/* and how it leaves the function it runs in, where it is forced */
+	const forcedExits = quoteSource ? sourceArg.exitPoints.filter(e => e.type !== ExitPointType.Default) : [];
+	if(forces.length > 0 || forcedReads.length > 0 || forcedWrites.length > 0 || forcedExits.length > 0) {
 		markForcing(data.environment);
 	}
 	const tracked = envState ? { envState, envId, ...frame !== undefined || copied?.closureFrame ? { closureFrame: true } as const : {} } : returnsEnvState ? { returnsEnvState } : envId === undefined ? {} : { envId };
-	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {}, ...forcedReads.length > 0 ? { forcedReads } : {}, ...forcedWrites.length > 0 ? { forcedWrites } : {} }));
+	const writeNodes = written.map(w => ({ ...w, ...tracked, ...forces.length > 0 ? { forces } : {}, ...forcedReads.length > 0 ? { forcedReads } : {}, ...forcedWrites.length > 0 ? { forcedWrites } : {}, ...forcedExits.length > 0 ? { forcedExits } : {} }));
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);

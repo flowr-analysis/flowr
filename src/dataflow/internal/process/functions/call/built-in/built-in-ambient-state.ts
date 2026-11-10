@@ -311,7 +311,9 @@ export function ambientAccessOfSymbol<OtherInfo>(res: DataflowInformation, symbo
 	for(const write of promises.flatMap(d => d.forcedWrites ?? [])) {
 		environment = REnvironment.define(write, false, environment, true);
 	}
-	return environment === accessed.environment ? accessed : { ...accessed, environment };
+	/* a read reached either forces the promise or comes after a forcing that left already, so it leaves as the promise does */
+	const exits = promises.flatMap(d => d.forcedExits ?? []).map(e => ({ ...e, nodeId: symbol.info.id, cds: e.cds ?? data.cds }));
+	return environment === accessed.environment && exits.length === 0 ? accessed : { ...accessed, environment, exitPoints: [...accessed.exitPoints, ...exits] };
 }
 
 /** Binds `name` (globally) to the given definitions, in addition to what it holds with `keep`, so `#graphics` can become what another state holds. */

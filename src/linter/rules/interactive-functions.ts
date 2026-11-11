@@ -52,7 +52,7 @@ export const INTERACTIVE_FUNCTIONS = {
 			return guarded ? [] : [Object.assign(element, { certainty: inFunction ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain })];
 		}));
 	},
-	prettyPrint: functionFinderUtil.prettyPrint('an interactive session (a viewer, an editor, or the debugger), which a script run by Rscript does not have'),
+	prettyPrint: functionFinderUtil.prettyPrint('an interactive session, which Rscript does not have'),
 	info:        {
 		name:          'Interactive Functions',
 		tags:          [LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.Robustness],

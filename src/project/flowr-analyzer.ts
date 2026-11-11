@@ -237,10 +237,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public async fork(options?: ForkOptions): Promise<FlowrAnalyzer> {
-		// TODO: add functionality to the options
-		// const lazy = options?.lazy ?? false;
-		// const forkDataflow = options?.forkDataflow ?? true;
-
+		// TODO: implement lazy = options?.lazy ?? false;
 		const fork = await  new FlowrAnalyzerBuilder()
 			.setEngine(this.parser.name)
 			.setConfig(FlowrConfig.clone(this.flowrConfig))

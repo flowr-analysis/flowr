@@ -25,25 +25,24 @@ describe('Analyzer', withTreeSitter(parser => {
 
 		a.addFile(
 			new FlowrInlineTextFile('virtual-analyzer-fork/a.R', 'x <- 40'),
-			new FlowrInlineTextFile('virtual-analyzer-fork/b.R', 'y <- x + 2\nprint(y)')
+			new FlowrInlineTextFile('virtual-analyzer-fork/b.R', 'y <- x + 2')
 		);
 		a.addRequest(
 			{ request: 'file', content: 'virtual-analyzer-fork/a.R' },
 			{ request: 'file', content: 'virtual-analyzer-fork/b.R' }
 		);
-		const b = await a.fork();
-
 		const resultA = await graph(a);
+		const b = await a.fork();
 		assert.deepStrictEqual(resultA, await graph(b));
 
 		b.updateConfig({ project: { implicitSources: ['setup.R', 'branch.R', 'main.R'] } });
-		b.addFile(new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5\nprint(branch)'));
+		b.addFile(new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5'));
 		b.addRequest({ request: 'file', content: 'virtual-analyzer-fork/branch.R' });
 		const resultB = await graph(b);
 		assert.notDeepEqual(resultA, resultB);
 
 		a.updateConfig({ project: { implicitSources: ['setup.R', 'branch.R', 'main.R'] } });
-		a.addFile(new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5\nprint(branch)'));
+		a.addFile(new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5'));
 		a.addRequest({ request: 'file', content: 'virtual-analyzer-fork/branch.R' });
 		const c = await a.fork();
 		assert.deepStrictEqual(await graph(c), resultB);
@@ -57,9 +56,7 @@ describe('Analyzer', withTreeSitter(parser => {
 		const initial = 'x <- 1';
 		a.addRequest(initial);
 		const b = await a.fork();
-
-		const [graphA, graphB] = await Promise.all([graph(a), graph(b)]);
-		assert.deepStrictEqual(graphA, graphB);
+		assert.deepStrictEqual(await graph(a), await graph(b));
 
 		const requestA = 'y <- x + 2';
 		const requestB = 'y <- x + 3';
@@ -67,9 +64,8 @@ describe('Analyzer', withTreeSitter(parser => {
 		a.addRequest(requestA);
 		b.addRequest(requestB);
 
-		const [resultA, resultB] = await Promise.all([graph(a), graph(b)]);
-		assert.deepStrictEqual(resultA, await analyze(initial, requestA));
-		assert.deepStrictEqual(resultB, await analyze(initial, requestB));
+		assert.deepStrictEqual(await(graph(a)), await analyze(initial, requestA));
+		assert.deepStrictEqual(await (graph(b)), await analyze(initial, requestB));
 	});
 
 	test('resetting and closing an analyzer does not interfere with its forks', async() => {
@@ -116,10 +112,35 @@ describe('Analyzer', withTreeSitter(parser => {
 		assert.deepStrictEqual(await graph(a), graphA);
 	});
 
+	test('using the "decouple files" option to share mutable inline files', async() => {
+		const a = await new FlowrAnalyzerBuilder()
+			.setParser(parser)
+			.setEngine('tree-sitter')
+			.build();
+		a.addRequest('x <- 1');
+		const inline = new FlowrInlineTextFile('example.R', 'y <- x + 5');
+		a.addFile(inline);
+		a.addRequest({request: 'file', content: 'example.R'});
+
+		const baseGraph = await graph(a);
+
+		const b = await a.fork({ decoupleFiles: true });
+		const c = await a.fork(); 
+		assert.deepStrictEqual(await graph(b), baseGraph);
+		inline.updateInlineContent('y <- 2');
+
+		const graphA = await graph(a);
+		const graphB = await graph(b);
+		const graphC = await graph(c);
+		
+		assert.deepStrictEqual(graphB, baseGraph)
+		assert.notDeepEqual(graphC, baseGraph);
+		assert.notDeepEqual(graphA, baseGraph);
+		assert.deepStrictEqual(graphC, graphA);
+	});
+
 	/* TODO:
-		- Tests for ForkOptions:
-			- Test for decoupeling files
-			- Test for lazy?
+		- Test for lazy option (as soon as implemented)
 		- Maybe?: Tests with dependency query and/or other analyses
 	*/
 

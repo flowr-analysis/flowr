@@ -6,6 +6,7 @@
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
 import { button, el } from '../page-lib/dom';
+import { dataViewer, type Viewed } from './data-viewer';
 import { compressToEncodedURIComponent } from 'lz-string';
 
 
@@ -191,15 +192,6 @@ const DefineView = `local({
 	attach(e, name = "playground:view", pos = 2L, warn.conflicts = FALSE)
 })`;
 
-/** a table as `View()` wrote it, see {@link DefineView} */
-interface Viewed {
-	readonly title:   string
-	readonly rows:    number
-	readonly names:   readonly string[]
-	readonly classes: readonly string[]
-	readonly cells:   readonly (readonly string[])[]
-}
-
 /** reads the table a `View()` wrote, or nothing if the line is no `View()` of the playground's */
 async function viewed(s: Session, line: string): Promise<Viewed | undefined> {
 	if(!line.startsWith(ViewMark)) {
@@ -212,65 +204,6 @@ async function viewed(s: Session, line: string): Promise<Viewed | undefined> {
 	const [title = '', rows = '0', names = '', classes = '', ...cells] = new TextDecoder().decode(data).replace(/\n$/, '').split('\n');
 	const split = (fields: string) => fields.split('\u001f');
 	return { title, rows: Number(rows), names: split(names), classes: split(classes), cells: cells.map(split) };
-}
-
-const Numeric = new Set(['numeric', 'integer', 'double', 'difftime']);
-
-/** a table to scroll through, which sorts by a column on a click on its head, as RStudio's data viewer does */
-function viewTable(view: Viewed): HTMLElement {
-	const box = el('div', 'view');
-	const columns = view.names.length;
-	const shown = view.cells.length;
-	box.append(el('div', 'note meta', `View: ${view.title}, ${view.rows} row${view.rows === 1 ? '' : 's'} and ${columns} column${columns === 1 ? '' : 's'}${shown < view.rows ? `, the first ${shown} shown` : ''}`));
-	const scroll = el('div', 'view-scroll');
-	const table = el('table');
-	const head = el('tr');
-	const body = el('tbody');
-	let order: { column: number, down: boolean } | undefined;
-	const fill = (): void => {
-		const rows = [...view.cells];
-		if(order !== undefined) {
-			const { column, down } = order;
-			const numeric = Numeric.has(view.classes[column]);
-			rows.sort((a, b) => {
-				const x = a[column] ?? '', y = b[column] ?? '';
-				/* NA goes last either way, as in RStudio */
-				if(x === 'NA' || y === 'NA') {
-					return x === y ? 0 : x === 'NA' ? 1 : -1;
-				}
-				const by = numeric ? Number(x) - Number(y) : x.localeCompare(y, undefined, { numeric: true });
-				return down ? -by : by;
-			});
-		}
-		body.replaceChildren(...rows.map(row => {
-			const tr = el('tr');
-			tr.append(...row.map((cell, at) => el('td', [cell === 'NA' ? 'na' : '', Numeric.has(view.classes[at]) ? 'num' : ''].filter(Boolean).join(' ') || undefined, cell)));
-			return tr;
-		}));
-	};
-	view.names.forEach((name, column) => {
-		const th = el('th');
-		th.title = view.classes[column] ? `${name} (${view.classes[column]}), click to sort` : 'click to sort';
-		th.append(el('span', undefined, name), el('span', 'cls', view.classes[column] ?? ''));
-		th.addEventListener('click', () => {
-			order = order?.column === column ? (order.down ? undefined : { column, down: true }) : { column, down: false };
-			for(const other of head.children) {
-				other.removeAttribute('aria-sort');
-			}
-			if(order !== undefined) {
-				th.setAttribute('aria-sort', order.down ? 'descending' : 'ascending');
-			}
-			fill();
-		});
-		head.append(th);
-	});
-	const thead = el('thead');
-	thead.append(head);
-	table.append(thead, body);
-	fill();
-	scroll.append(table);
-	box.append(scroll);
-	return box;
 }
 
 function start(): Promise<Session> {
@@ -568,7 +501,7 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 			const text = await textOf(entry);
 			const table = entry.type === 'stdout' ? await viewed(s, text) : undefined;
 			if(table !== undefined) {
-				sink.append(viewTable(table));
+				sink.append(dataViewer(table));
 			} else {
 				sink.line(text, classOf(entry.type));
 			}

@@ -41,7 +41,7 @@ import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
 import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-linking';
 import { baseRExportOwner, isBasePrimitive } from '../../../util/r-base-packages';
 import { RBaseGuards } from '../../../data/r-base-guards.generated';
-import { BranchPaths, type BranchStep } from '../../../abstract-interpretation/branch-paths';
+import type { BranchPaths, BranchStep } from '../../../abstract-interpretation/branch-paths';
 import { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
@@ -1170,7 +1170,10 @@ function branchPathsOf(this: void, state: GuardState): BranchPaths {
 	if(state.paths === undefined) {
 		const graph = state.graph;
 		const controlFlow = { graph: new ControlFlowGraph(graph), entryPoints: [...graph.rootIds()], exitPoints: [], returns: [], breaks: [], nexts: [] };
-		state.paths = new BranchPaths({ controlFlow, dfg: graph, normalizedAst: { idMap: graph.idMap as AstIdMap }, ctx: state.ctx });
+		/* loaded on demand: the abstract interpreter it builds on reads the function semantics, which hold the guards */
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- breaks the import cycle, see above
+		const { BranchPaths: Paths } = require('../../../abstract-interpretation/branch-paths') as typeof import('../../../abstract-interpretation/branch-paths');
+		state.paths = new Paths({ controlFlow, dfg: graph, normalizedAst: { idMap: graph.idMap as AstIdMap }, ctx: state.ctx });
 		state.paths.start();
 	}
 	return state.paths;

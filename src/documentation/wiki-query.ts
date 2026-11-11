@@ -794,7 +794,8 @@ ${codeBlock('json', JSON.stringify({ inputSources: {
 const DependencyRoles: readonly (readonly [title: string, categories: readonly DefaultDependencyCategoryName[]])[] = [
 	['Inputs', ['library', 'remote', 'source', 'read']],
 	['Outputs', ['write', 'visualize']],
-	['What the script does with data', ['transform', 'statistics', 'test']]
+	['What the script does with data', ['transform', 'statistics', 'test']],
+	['What only works in an interactive session', ['interactive']]
 ];
 
 /** the categories and the values they report, generated from the categories the query knows */

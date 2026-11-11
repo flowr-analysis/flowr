@@ -51,15 +51,16 @@ export function aboutFlagNamed(name: string): string | undefined {
 
 /** what flowR's dependency query takes a name for, as a chip reads and what it means */
 export const Kinds: Readonly<Record<string, { readonly label: string, readonly about: string }>> = {
-	library:    { label: 'can load a package', about: 'attaches a package, like library or require' },
-	source:     { label: 'can source a file', about: 'runs the R code of another file, like source' },
-	read:       { label: 'can read a file', about: 'reads data from somewhere outside the program, like read.csv' },
-	write:      { label: 'can write a file', about: 'writes data out of the program, like write.csv' },
-	visualize:  { label: 'can draw a plot', about: 'draws something, like plot or ggsave' },
-	test:       { label: 'a test', about: 'a test expectation or test runner, like testthat::expect_equal' },
-	remote:     { label: 'can use the network', about: 'reaches the network, like download.file' },
-	statistics: { label: 'statistics', about: 'a statistical function flowR\'s dependency query knows' },
-	builtin:    { label: 'flowR', about: 'flowR knows the name itself: its built-in configuration says what a call does, which the signature shows' }
+	library:     { label: 'can load a package', about: 'attaches a package, like library or require' },
+	source:      { label: 'can source a file', about: 'runs the R code of another file, like source' },
+	read:        { label: 'can read a file', about: 'reads data from somewhere outside the program, like read.csv' },
+	write:       { label: 'can write a file', about: 'writes data out of the program, like write.csv' },
+	visualize:   { label: 'can draw a plot', about: 'draws something, like plot or ggsave' },
+	test:        { label: 'a test', about: 'a test expectation or test runner, like testthat::expect_equal' },
+	remote:      { label: 'can use the network', about: 'reaches the network, like download.file' },
+	statistics:  { label: 'statistics', about: 'a statistical function flowR\'s dependency query knows' },
+	interactive: { label: 'interactive only', about: 'needs an interactive session, like View, edit, or browser, which a script run by Rscript does not have' },
+	builtin:     { label: 'flowR', about: 'flowR knows the name itself: its built-in configuration says what a call does, which the signature shows' }
 };
 
 /** where a package comes from, as the tag of an owner row reads */

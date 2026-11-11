@@ -20,7 +20,8 @@ import { computeWriteFunctions } from '../src/queries/catalog/dependencies-query
 import { BuiltInIndex } from '../src/dataflow/environments/query-fn-props';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
-import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
+import { functionsTagged } from '../src/queries/catalog/dependencies-query/function-info/tagged-functions';
+import { SemanticCallTag } from '../src/dataflow/environments/built-in-props';
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } from '../src/dataflow/environments/identifier';
 import { AttachedBasePackageSet, baseRExportOwner } from '../src/util/r-base-packages';
@@ -317,13 +318,14 @@ function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics
  */
 function builtInKinds(): Map<string, string[]> {
 	const categories: Record<string, readonly { name: string }[]> = {
-		library:    LibraryFunctions,
-		source:     SourceFunctions,
-		read:       computeReadFunctions(DefaultBuiltinConfig),
-		write:      computeWriteFunctions(DefaultBuiltinConfig),
-		visualize:  VisualizeFunctions,
-		test:       TestFunctions,
-		statistics: statisticsFunctions(BuiltInIndex.default())
+		library:     LibraryFunctions,
+		source:      SourceFunctions,
+		read:        computeReadFunctions(DefaultBuiltinConfig),
+		write:       computeWriteFunctions(DefaultBuiltinConfig),
+		visualize:   VisualizeFunctions,
+		test:        TestFunctions,
+		statistics:  functionsTagged(BuiltInIndex.default(), SemanticCallTag.Statistics),
+		interactive: functionsTagged(BuiltInIndex.default(), SemanticCallTag.Interactive)
 	};
 	const kinds = new Map<string, string[]>();
 	/* flowR's own built-in definitions: `:`, `<-`, `TRUE` and the rest of what it understands without

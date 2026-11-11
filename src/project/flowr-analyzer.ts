@@ -22,6 +22,8 @@ import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/t
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import { TaintAnalysis, type TaintAnalysisBuilder } from '../taint-analysis/builder/taint-analysis';
+/* the guards of functions read how code is reached, which the abstract interpreter works out */
+import '../abstract-interpretation/branch-paths-interpreter';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { VertexType } from '../dataflow/graph/vertex';
 import { Dataflow } from '../dataflow/graph/df-helper';

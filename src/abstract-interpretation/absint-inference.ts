@@ -1,5 +1,5 @@
 import { CfgEdge, CfgVertex, type ControlFlowInformation, NoNeighbors, type ReadOnlyControlFlowGraph } from '../control-flow/control-flow-graph';
-import { FunctionSemantics } from '../dataflow/fn/function-semantics';
+import { UnsupportedFunctions } from './unsupported-functions';
 import { type OnCall, SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { visitCfgInOrder } from '../control-flow/simple-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
@@ -1108,7 +1108,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
-		return FunctionSemantics.call.unsupported.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
+		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
 	}
 
 	/**

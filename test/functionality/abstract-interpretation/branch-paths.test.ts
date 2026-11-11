@@ -2,6 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { BranchPaths } from '../../../src/abstract-interpretation/branch-paths';
+import '../../../src/abstract-interpretation/branch-paths-interpreter';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { withTreeSitter } from '../_helper/shell';
@@ -14,7 +15,7 @@ describe('Branch paths', withTreeSitter(parser => {
 		analyzer.addRequest(requestFromInput(code));
 		const dfg = (await analyzer.dataflow()).graph;
 		const ast = await analyzer.normalize();
-		const paths = new BranchPaths({ controlFlow: await analyzer.controlflow(), dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });
+		const paths = BranchPaths.create({ controlFlow: await analyzer.controlflow(), dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });
 		paths.start();
 		const [definition] = dfg.verticesOfType(VertexType.FunctionDefinition).toArray();
 		const [call] = dfg.verticesOfType(VertexType.FunctionCall).filter(([, v]) => Identifier.getName(v.name) === name).toArray();

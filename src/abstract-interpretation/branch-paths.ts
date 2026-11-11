@@ -1,13 +1,10 @@
-import { AbstractInterpreter, type AbsintVisitorConfiguration } from './absint-inference';
+import type { AbsintVisitorConfiguration } from './absint-inference';
+import { guard } from '../util/assert';
 import { Top } from './domains/lattice';
 import { BoundedSetDomain } from './domains/bounded-set-domain';
 import type { BoundedSetLift } from './domains/bounded-set-domain';
-import type { MultiValueStateDomain } from './domains/multi-value-state-domain';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RTrue, type RFalse } from '../r-bridge/lang-4.x/convert-values';
-import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { DfgVertex } from '../dataflow/graph/vertex';
-import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 
 /**
  * One branch taken on the way to a node: the construct deciding it (`if`, `while`, `&&`, `||`, `switch`, ...), which
@@ -128,63 +125,36 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 	}
 }
 
-type Paths = { readonly paths: BranchPathDomain };
+export type Paths = { readonly paths: BranchPathDomain };
 
 /**
  * Works out, for every node of every function body, the branches taken on the way there from the start of the body,
  * see {@link BranchPathDomain}. Each body is interpreted on its own, whether or not anything calls it, without stepping
  * into what it calls, and the state is kept per function definition (the key is its id).
  */
-export class BranchPaths extends AbstractInterpreter<Paths> {
-	constructor(config: AbsintVisitorConfiguration) {
-		super(config, {
-			domains:   { paths: BranchPathDomain.start() },
-			semantics: {
-				paths: {
-					handleFunctionDefinition: (state, vertex) => state.set(vertex.id, BranchPathDomain.start())
-				}
-			}
-		});
-	}
-
-	public override start(): void {
-		super.start();
-		this.interpretUncalledFunctions();
-	}
-
-	protected override shouldEnterCall(): boolean {
-		return false;
-	}
-
-	/** A call changing environments (`eval`, `rm`, ...) changes no branch taken on the way there. */
-	protected override isUnsupportedFunctionCall(): boolean {
-		return false;
-	}
-
-	/**
-	 * The step a branch takes is the construct deciding it, as is: unlike the narrowing of values, which looks into the
-	 * operands of `&&` and `||`, the right one of which has not run yet when the left decides whether it does.
-	 */
-	protected override handleConditionBranch(state: MultiValueStateDomain<Partial<Paths>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse, target?: NodeId): MultiValueStateDomain<Partial<Paths>> {
-		const step: BranchStep = { cause: conditionVertex.id, when: branch === RTrue, ...(target !== undefined && isSwitch(conditionVertex) ? { target } : {}) };
-		const next = state.create(state.value);
-		this.applySemantics((_semantics, view) => {
-			for(const [key, value] of view.entries()) {
-				if(value instanceof BranchPathDomain) {
-					view.set(key, value.taking(step));
-				}
-			}
-		}, next);
-		return next;
-	}
-
+export interface BranchPaths {
+	/** the control flow the paths are taken in */
+	readonly controlFlow: ControlFlowInformation
+	/** Interprets every function body. */
+	start(): void
 	/** The paths to the node within the body of the definition, `undefined` if they are not known; only branches `mergeable` says nothing hangs on are merged away, see {@link BranchPathDomain#paths}. */
-	public pathsTo(definition: NodeId, node: NodeId, mergeable?: (cause: NodeId) => boolean): readonly (readonly BranchStep[])[] | undefined {
-		const value = this.getAbstractState(node, 'paths')?.get(definition);
-		return value instanceof BranchPathDomain ? value.paths(mergeable) : undefined;
-	}
+	pathsTo(definition: NodeId, node: NodeId, mergeable?: (cause: NodeId) => boolean): readonly (readonly BranchStep[])[] | undefined
 }
 
-function isSwitch(vertex: DataflowGraphVertexArgument): vertex is DataflowGraphVertexFunctionCall {
-	return DfgVertex.hasOrigin(vertex, BuiltInProcName.Switch);
-}
+/** Made by the interpreter once it is loaded, see `branch-paths-interpreter.ts`, which the {@link FlowrAnalyzer} loads. */
+let Interpreter: ((config: AbsintVisitorConfiguration) => BranchPaths) | undefined;
+
+export const BranchPaths = {
+	/**
+	 * Interprets with the {@link AbstractInterpreter}, which is loaded apart from these paths: it builds on the dataflow
+	 * semantics, which in turn read the guards of functions that use the paths.
+	 */
+	create(this: void, config: AbsintVisitorConfiguration): BranchPaths {
+		guard(Interpreter !== undefined, 'load abstract-interpretation/branch-paths-interpreter first, as the FlowrAnalyzer does');
+		return Interpreter(config);
+	},
+	/** Hands over how to make the interpreter, see {@link BranchPaths.create}. */
+	register(this: void, make: (config: AbsintVisitorConfiguration) => BranchPaths): void {
+		Interpreter = make;
+	}
+} as const;

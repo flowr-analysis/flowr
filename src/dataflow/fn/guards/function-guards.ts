@@ -1469,7 +1469,8 @@ class GuardVisitor extends DataflowAwareCfgGuidedVisitor {
 		}
 		const all = () => vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined);
 		const lazy = (call !== undefined && !RFunctionCall.isNamed(call)) || soleCallee(id, state) !== undefined ? all() : evaluatedAndNot(vertex, state).lazy;
-		lazy.forEach(value => RNode.collectAllIds(value).forEach(n => this.skip(n)));
+		/* of a named argument, what flowR hands over may be its name, the value R does not evaluate sits next to it */
+		lazy.map(value => RNode.directParent(value, state.graph.idMap as AstIdMap)).forEach((argument, at) => RNode.collectAllIds(RArgument.is(argument) ? argument : lazy[at]).forEach(n => this.skip(n)));
 	}
 
 	/** What may not run can still return from the function, with a value flowR does not know. */

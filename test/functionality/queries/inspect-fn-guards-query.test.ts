@@ -729,6 +729,10 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x) { rlang::check_required(x); 1 }', {}, ['x']);
 	claims('g <- function(y) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(y = x, ...) }', { x: { types: ['list', 'pairlist'] } }, ['x']);
 	claims('g <- function(y, z) { stopifnot(is.list(y)); y }; f <- function(x, ...) { g(x, ...) }', {}, []);
+	/* a named argument R hands over unevaluated is read by none */
+	claims('f <- function(x, lab, ...) { g <- function(x, lab, ...) if(missing(lab)) 1 else lab; g(x = x, lab = lab, ...) }', {}, []);
+	/* a default R evaluates once the body changed what it reads says nothing of what the caller hands over */
+	claims('f <- function(n, s = 1:n) { n <- 2; stopifnot(is.numeric(s)); s }', {});
 	claims('f <- function(x, y) { if(x) y; 1 }', { x: { bounds: { length: [1, 1] }, notNA: true } }, ['x']);
 	claims('f <- function(x = 1) { force(x) }', {}, []);
 

@@ -8,6 +8,7 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { MemoryView } from '../../../../../environments/frame-memory';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataLoadNodesForNamespace, loadNodesForNamespace } from './built-in-library';
+import { BaseDatasets } from '../../../../../../util/r-base-packages';
 import { scopeOf } from '../../../../../environments/resolve-by-name';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -255,8 +256,13 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	if(probableTarget === undefined) {
 		/* a data set of an attached package (`starwars` after `library(dplyr)`) is bound by the load */
 		if(readName !== undefined && !(read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
-			for(const load of dataLoadNodesForNamespace(environments, Identifier.getName(readName))) {
+			const loads = dataLoadNodesForNamespace(environments, Identifier.getName(readName));
+			for(const load of loads) {
 				nextGraph.addEdge(read.nodeId, load, EdgeType.Reads);
+			}
+			/* R finds the data set only as the binding that hid it is removed (`iris <- 1; rm(iris); iris`), a name found nowhere stays missing either way */
+			if(loads.length > 0 || BaseDatasets.has(Identifier.getName(readName))) {
+				readRemovals(nextGraph, read.nodeId, readName, environments);
 			}
 		}
 		return false;

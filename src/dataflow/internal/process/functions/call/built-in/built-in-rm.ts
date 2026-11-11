@@ -296,5 +296,6 @@ export function processRm<OtherInfo>(
 		return res;
 	}
 	const names = targets.all || targets.unknown ? undefined : targets.names.map(n => n.name);
-	return { ...res, environment: ambientWritesOfRelease(res.graph, applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
+	/* the removal stays noted, so a later read of the name, which R then finds elsewhere (lazy data, a built-in), reads the removal, see `readRemovals` */
+	return { ...res, environment: ambientWritesOfRelease(res.graph, applyKills(res.environment, kills, true), names, rootId, data.cds), kill: kills };
 }

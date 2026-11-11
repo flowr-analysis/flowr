@@ -6,7 +6,7 @@ import type { DataflowGraph } from '../../graph/graph';
 import { FunctionArgument } from '../../graph/graph';
 import { Dataflow } from '../../graph/df-helper';
 import { OriginType } from '../../origin/dfg-get-origin';
-import type { CallRuledOut, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../graph/vertex';
+import type { CallRuledOut, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse  } from '../../graph/vertex';
 import { DfgVertex } from '../../graph/vertex';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { ArgProp, CallProp, CallProps, ImpureProps, SemanticCallTag, type ArgProps, type FnSig } from '../../environments/built-in-props';
@@ -47,6 +47,12 @@ import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-o
 import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import { isNotUndefined } from '../../../util/assert';
 import { contextFromInput } from '../../../project/context/flowr-analyzer-context';
+import { DataflowAwareCfgGuidedVisitor } from '../../../control-flow/dfg-cfg-guided-visitor';
+import { CfgVertex, type CfgBasicBlockVertex } from '../../../control-flow/control-flow-graph';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import { happensBeforeEach } from '../../../control-flow/happens-before';
 import { casesOf, claimsOf, conditionalClaimsOf, impliedBy, relationsOf, returnedFormalOf, returnsOf, type ClaimedName, type ClaimedRelation, type ConditionalClaim, type FormalCase, type FormalClaim, type ReturnedTerm } from './guard-claims';
 
 /** One condition every normal return of a function has passed; if it does not hold, the call fails. */
@@ -165,6 +171,8 @@ interface Scope {
 	readonly definition: RFunctionDefinition<ParentInformation>
 	readonly vertex:     DataflowGraphVertexFunctionDefinition
 	readonly formals:    ReadonlyMap<NodeId, BrandedIdentifier>
+	/** the formals whose default reads a name the body binds, as `scores = 1:n` with `n <- length(levs)`, which R evaluates once the body ran up to where the formal is read, so no claim from outside can tell what they hold */
+	readonly drifting:   ReadonlySet<NodeId>
 	/** something got hold of the frame of the function, or could write to it as far as flowR can tell, so what a formal holds is not known from here on */
 	frameIsOpen:         boolean
 	/** the definitions in branches the path at hand did not take, which a read there cannot see, see {@link eachPath} */
@@ -318,7 +326,7 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 	} else if(origins.length > 1) {
 		/* what a call binds a formal to, as a dispatch links it, is the formal still */
 		const inside = origins.filter(o => scope.formals.has(o.id) || scope.vertex.subflow.graph.has(o.id));
-		const formal = inside.length === 1 ? scope.formals.get(inside[0].id) : undefined;
+		const formal = inside.length === 1 && !scope.drifting.has(inside[0].id) ? scope.formals.get(inside[0].id) : undefined;
 		if(formal !== undefined) {
 			return GuardTerm.formal(formal);
 		}
@@ -332,7 +340,7 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 	const free: GuardTerm = { kind: 'free', name, origin: id };
 	const formal = scope.formals.get(id);
 	if(formal !== undefined) {
-		return GuardTerm.formal(formal);
+		return scope.drifting.has(id) ? undefined : GuardTerm.formal(formal);
 	} else if(NodeId.isBuiltIn(id)) {
 		return name === 'T' ? GuardTerm.True : name === 'F' ? GuardTerm.False : free;
 	}
@@ -385,7 +393,11 @@ function scopeOf(this: void, id: NodeId, state: GuardState): Scope | undefined {
 	if(!RFunctionDefinition.is(definition) || !DfgVertex.isFunctionDefinition(vertex)) {
 		return undefined;
 	}
-	return { definition, vertex, formals: new Map(definition.parameters.filter(p => !p.special).map(p => [p.name.info.id, p.name.content])), frameIsOpen: false, skips: new Set() };
+	const bound = new Set(RNode.collectAllIdsWithStop(definition.body, n => RFunctionDefinition.is(n)).values()
+		.filter(n => DfgVertex.isVariableDefinition(state.graph.getVertex(n))).map(n => NodeId.recoverBareName(n, state.graph.idMap)));
+	const drifting = new Set(definition.parameters.filter(p => p.defaultValue !== undefined && RNode.collectAllIds(p.defaultValue).values()
+		.some(n => RSymbol.is(nodeOf(n, state)) && bound.has(NodeId.recoverBareName(n, state.graph.idMap)))).map(p => p.name.info.id));
+	return { definition, vertex, formals: new Map(definition.parameters.filter(p => !p.special).map(p => [p.name.info.id, p.name.content])), drifting, frameIsOpen: false, skips: new Set() };
 }
 
 /** The formals of a function by name, `...` among them. */
@@ -1146,11 +1158,11 @@ interface RunOrder {
 	/** a default of a formal may do more than compute a value, which it does on first read, wherever that is */
 	readonly effectfulDefaults: boolean
 	/** the ways out of the function the control flow does not tell, see {@link exitStep} */
-	readonly exits:             readonly NodeId[]
+	readonly exits:             ReadonlySet<NodeId>
 	/** {@link exitStep} of an exit, worked out once */
 	readonly exitStep:          (exit: NodeId) => PathStep
-	/** whether `from` may run before `to`, see {@link reaches} */
-	readonly reaches:           (from: NodeId, to: NodeId) => boolean
+	/** those of the `candidates` that may run before `node`, see {@link happensBeforeEach} */
+	readonly before:            (candidates: ReadonlySet<NodeId>, node: NodeId) => NodeId[]
 }
 
 /** The ways each node of every body of the graph is reached, worked out once per run, see {@link BranchPaths}. */
@@ -1279,9 +1291,9 @@ function pathsAt(this: void, node: RNodeWithParent, run: Run): { readonly path: 
 	const { scope } = run;
 	const order = run.order as RunOrder;
 	/* what holds of the formals is gone once the frame may have been written behind the back of the dataflow */
-	scope.frameIsOpen = order.openers.values().some(opener => opener === node.info.id || order.reaches(opener, node.info.id));
-	run.effects = order.effectfulDefaults || order.effects.values().some(site => site !== node.info.id && order.reaches(site, node.info.id));
-	const exits = order.exits.filter(exit => exit !== node.info.id && order.reaches(exit, node.info.id)).map(order.exitStep);
+	scope.frameIsOpen = order.openers.has(node.info.id) || order.before(order.openers, node.info.id).length > 0;
+	run.effects = order.effectfulDefaults || order.before(order.effects, node.info.id).length > 0;
+	const exits = order.before(order.exits, node.info.id).map(order.exitStep);
 	return stepsTo(node, run)?.map(({ path, skips }) => ({ path: [...path, ...exits], skips }));
 }
 
@@ -1354,18 +1366,7 @@ function orderOf(this: void, run: Run): RunOrder {
 			return vertex !== undefined && !RSymbol.is(nodeOf(id, state)) && !onlyComputes(id, vertex, state);
 		}));
 	const cfg = branchPathsOf(state).config.controlFlow.graph;
-	const reached = memoize((from: NodeId) => {
-		const seen = new Set<NodeId>();
-		for(let todo = [...cfg.successors(from)]; todo.length > 0;) {
-			const next = todo.pop() as NodeId;
-			if(!seen.has(next)) {
-				seen.add(next);
-				todo.push(...cfg.successors(next));
-			}
-		}
-		return seen;
-	});
-	return { effects, openers, effectfulDefaults, exits, exitStep: memoize((exit: NodeId) => exitStep(exit, run)), reaches: (from, to) => reached(from).has(to) };
+	return { effects, openers, effectfulDefaults, exits: new Set(exits), exitStep: memoize((exit: NodeId) => exitStep(exit, run)), before: (candidates, node) => [...happensBeforeEach(cfg, candidates, node).keys()].filter(c => c !== node) };
 }
 
 /** Each path to the node, with what flowR cannot tell how the node is reached left without any. */
@@ -1377,200 +1378,158 @@ function eachPath(this: void, node: RNodeWithParent, run: Run, fn: (path: Path) 
 	run.scope.skips = new Set();
 }
 
-/** Code flowR does not follow, as it may run or not: all that is left is whether it may return from the function, with a value flowR does not know. */
-function skippedRegion(this: void, node: RNodeWithParent, run: Run): void {
-	const { state } = run;
-	for(const id of RNode.collectAllIdsWithStop(node, n => RFunctionDefinition.is(n))) {
+/**
+ * Walks the body of the function in the order its control flow runs it, asking of each call what it requires on every way it is reached
+ * (see {@link pathsAt}). Code that may not run at all (an argument R may not evaluate, what `tryCatch` or `local` runs) asks nothing.
+ */
+class GuardVisitor extends DataflowAwareCfgGuidedVisitor {
+	private readonly run: Run;
+	/** the nodes of the body, without those of the functions it defines */
+	private readonly own: ReadonlySet<NodeId>;
+	/** the nodes that may not run, see {@link GuardVisitor#skip} */
+	private readonly skipped = new Set<NodeId>();
+	/** what is asked once a node is evaluated, as the condition of an `if` is, which the control flow reaches before what the `if` runs */
+	private readonly evaluated = new Map<NodeId, () => void>();
+
+	constructor(run: Run) {
+		super({ controlFlow: branchPathsOf(run.state).config.controlFlow, dfg: run.state.graph, defaultVisitingOrder: 'forward' });
+		this.run = run;
+		this.own = new Set(RNode.collectAllIdsWithStop(run.scope.definition.body, n => RFunctionDefinition.is(n)));
+		for(const id of this.own) {
+			if(!this.skipped.has(id)) {
+				this.prepare(id);
+			}
+		}
+	}
+
+	/** Walks the body from its start. */
+	public walk(): void {
+		const { subflow } = this.run.scope.vertex;
+		this.startVisitor([subflow.cfgEntry ?? subflow.entryPoint]);
+	}
+
+	/** Notes what of the node may not run (the arguments R may not evaluate, or all of it), and what its evaluated parts ask. */
+	private prepare(id: NodeId): void {
+		const { run } = this;
+		const { state } = run;
+		const node = nodeOf(id, state);
 		const vertex = callVertexOf(id, state);
-		if(vertex !== undefined && !RSymbol.is(nodeOf(id, state)) && (DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || Identifier.getName(vertex.name) === 'return_from')) {
-			eachPath(nodeOf(id, state) as RNodeWithParent, run, path => returnsValue(undefined, path, run));
+		if(node === undefined || vertex === undefined || RSymbol.is(node)) {
+			return;
+		}
+		const inner = () => RNode.collectAllIds(node).forEach(n => n !== id && this.skip(n));
+		/* a `(` or `{` or `if` of the program's own may not evaluate what it holds, `tryCatch` and `local` run it elsewhere, a `return` that may be one of the program's own may still be the one of R */
+		if((RExpressionList.is(node) && mayRunOwn(id, vertex, state)) || (RIfThenElse.is(node) && !runsBuiltIn(vertex, BuiltInProcName.IfThenElse))
+			|| DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || (DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) && !runsBuiltIn(vertex, BuiltInProcName.Return)) || runsBuiltIn(vertex, BuiltInProcName.Local)) {
+			inner();
+			return;
+		}
+		const call = RFunctionCall.is(node) ? node : undefined;
+		const name = knownNameOf(id, vertex, state);
+		const condition = (construct: BrandedIdentifier, part: BrandedIdentifier, decides: RNodeWithParent) =>
+			this.evaluated.set(decides.info.id, () => eachPath(decides, run, path => conditionRequirement(construct, part, decides, path, run)));
+		if(RIfThenElse.is(node)) {
+			condition('if', 'cond', node.condition);
+			return;
+		} else if(RForLoop.is(node) || RWhileLoop.is(node)) {
+			if(RForLoop.is(node) && runsBuiltIn(vertex, BuiltInProcName.ForLoop)) {
+				condition('for', 'seq', node.vector);
+			} else if(RWhileLoop.is(node) && runsBuiltIn(vertex, BuiltInProcName.WhileLoop)) {
+				condition('while', 'cond', node.condition);
+			}
+			return;
+		} else if(RBinaryOp.is(node) && (node.operator === '&&' || node.operator === '||') && name !== undefined) {
+			/* the path already states what makes R look at the right operand */
+			const operand = (formal: BrandedIdentifier) => (state.facts(node.operator)?.asks?.[formal] ?? []).map(({ when: _, ...failure }) => failure);
+			for(const [side, formal] of [[node.lhs, 'x'], [node.rhs, 'y']] as const) {
+				this.evaluated.set(side.info.id, () => eachPath(side, run, path => {
+					const term = termOf(side, run.scope, state);
+					if(term?.kind === 'formal') {
+						addFailures(operand(formal), term, side.info.id, path, run);
+					}
+				}));
+			}
+			return;
+		} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.StopIfNot)) {
+			const asserting = state.facts(Identifier.getName(vertex.name))?.asserts;
+			const conditions = asserting === undefined ? stopIfNotConditions(call) : call.arguments.flatMap(a => a === EmptyArgument || a.value === undefined || asserting.includes(a.name?.content ?? '') ? [] : [a.value]);
+			if(conditions === undefined) {
+				inner();
+			}
+			conditions?.forEach(expression => this.evaluated.set(expression.info.id, () => conditionClause(expression, asserting === undefined, run)));
+			return;
+		} else if(call !== undefined && name === 'switch') {
+			const [selector] = call.arguments;
+			if(selector !== EmptyArgument && selector?.value !== undefined) {
+				condition('switch', 'EXPR', selector.value);
+			}
+			return;
+		} else if(RExpressionList.is(node) || RRepeatLoop.is(node) || (call !== undefined && (runsBuiltIn(vertex, BuiltInProcName.Return) || name === 'UseMethod'))) {
+			return;
+		}
+		const all = () => vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined);
+		const lazy = (call !== undefined && !RFunctionCall.isNamed(call)) || soleCallee(id, state) !== undefined ? all() : evaluatedAndNot(vertex, state).lazy;
+		lazy.forEach(value => RNode.collectAllIds(value).forEach(n => this.skip(n)));
+	}
+
+	/** What may not run can still return from the function, with a value flowR does not know. */
+	private skip(id: NodeId): void {
+		this.skipped.add(id);
+		const vertex = callVertexOf(id, this.run.state);
+		if(vertex !== undefined && !RSymbol.is(nodeOf(id, this.run.state)) && (DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || Identifier.getName(vertex.name) === 'return_from')) {
+			eachPath(nodeOf(id, this.run.state) as RNodeWithParent, this.run, path => returnsValue(undefined, path, this.run));
+		}
+	}
+
+	protected override visitDataflowNode(node: Exclude<CfgVertex, CfgBasicBlockVertex>): void {
+		const id = CfgVertex.getId(node);
+		if(this.own.has(id) && !this.skipped.has(id)) {
+			super.visitDataflowNode(node);
+			this.evaluated.get(id)?.();
+		}
+	}
+
+	protected override visitVariableUse(use: DataflowGraphVertexUse): void {
+		const node = nodeOf(use.id, this.run.state);
+		const paths = node === undefined ? undefined : pathsAt(node, this.run);
+		if(node !== undefined && paths?.length === 1 && paths[0].path.length === 0) {
+			const read = termOf(node, this.run.scope, this.run.state);
+			if(read?.kind === 'formal') {
+				this.run.read.add(read.name);
+			}
+		}
+	}
+
+	protected override visitFunctionCall(vertex: DataflowGraphVertexFunctionCall): void {
+		const node = nodeOf(vertex.id, this.run.state);
+		if(node !== undefined && !RSymbol.is(node)) {
+			callRequirements(node, vertex, this.run);
 		}
 	}
 }
 
-/** What the node and what it evaluates asks of the formals, in the order R evaluates it, each on every way it is reached. */
-function visit(this: void, node: RNodeWithParent, run: Run): void {
-	const { state } = run;
-	switch(node.type) {
-		case RType.ExpressionList: {
-			/* a `(` or `{` of the program's own may not evaluate what it holds */
-			const vertex = callVertexOf(node.info.id, state);
-			if(vertex !== undefined && mayRunOwn(node.info.id, vertex, state)) {
-				skippedRegion(node, run);
-			} else {
-				node.children.forEach(child => visit(child, run));
-			}
-			break;
-		}
-		case RType.Argument:
-			if(node.value !== undefined) {
-				visit(node.value, run);
-			}
-			break;
-		case RType.Symbol: {
-			const paths = pathsAt(node, run);
-			if(paths?.length === 1 && paths[0].path.length === 0) {
-				const read = termOf(node, run.scope, state);
-				if(read?.kind === 'formal') {
-					run.read.add(read.name);
-				}
-			}
-			break;
-		}
-		case RType.FunctionDefinition:
-		case RType.Number:
-		case RType.String:
-		case RType.Logical:
-		case RType.Comment:
-		case RType.LineDirective:
-		case RType.Break:
-		case RType.Next:
-			break;
-		case RType.IfThenElse:
-			if(!runsBuiltIn(callVertexOf(node.info.id, state), BuiltInProcName.IfThenElse)) {
-				skippedRegion(node, run);
-				break;
-			}
-			visit(node.condition, run);
-			eachPath(node.condition, run, path => conditionRequirement('if', 'cond', node.condition, path, run));
-			if(run.tails.get(node.info.id) === Tail.Elseless) {
-				eachPath(node.condition, run, path => returnsValue(NullValue, [...path, stepsOf(termOf(node.condition, run.scope, state), state.facts)[1]], run));
-			}
-			visit(node.then, run);
-			if(node.otherwise !== undefined) {
-				visit(node.otherwise, run);
-			}
-			break;
-		case RType.ForLoop:
-			visit(node.vector, run);
-			if(runsBuiltIn(callVertexOf(node.info.id, state), BuiltInProcName.ForLoop)) {
-				eachPath(node.vector, run, path => conditionRequirement('for', 'seq', node.vector, path, run));
-			}
-			visit(node.body, run);
-			break;
-		case RType.WhileLoop:
-			visit(node.condition, run);
-			if(runsBuiltIn(callVertexOf(node.info.id, state), BuiltInProcName.WhileLoop)) {
-				eachPath(node.condition, run, path => conditionRequirement('while', 'cond', node.condition, path, run));
-			}
-			visit(node.body, run);
-			break;
-		case RType.RepeatLoop:
-			visit(node.body, run);
-			break;
-		case RType.BinaryOp:
-			if((node.operator === '&&' || node.operator === '||') && knownNameOf(node.info.id, callVertexOf(node.info.id, state) as DataflowGraphVertexFunctionCall, state) !== undefined) {
-				visitShortCircuit(node.operator, node.lhs, node.rhs, run);
-			} else if(callVertexOf(node.info.id, state) === undefined && runsBuiltIn(callVertexOf(node.lhs.info.id, state), BuiltInProcName.Replacement)) {
-				/* `names(x) <- v` is a call of `names<-`, which the dataflow puts on the call on the left */
-				visitCall(node.lhs, run);
-			} else {
-				visitCall(node, run);
-			}
-			break;
-		case RType.Pipe:
-		case RType.FunctionCall:
-		case RType.UnaryOp:
-		case RType.Access:
-			visitCall(node, run);
-			break;
-		default:
-			skippedRegion(node, run);
-	}
-	if(run.tails.get(node.info.id) === Tail.Value && !endsRun(node, state)) {
-		eachPath(node, run, path => returnsValue(termOf(node, run.scope, state), path, run));
-	}
-}
-
-/** Whether the node never hands back a value of its own, as it raises an error or returns from the function. */
-function endsRun(this: void, node: RNodeWithParent, state: GuardState): boolean {
-	const vertex = callVertexOf(node.info.id, state);
-	return runsBuiltIn(vertex, BuiltInProcName.Stop) || runsBuiltIn(vertex, BuiltInProcName.Return) || (vertex !== undefined && knownNameOf(node.info.id, vertex, state) === 'UseMethod');
-}
-
-function visitShortCircuit(this: void, operator: '&&' | '||', lhs: RNodeWithParent, rhs: RNodeWithParent, run: Run): void {
-	/* the path already states what makes R look at the right operand */
-	const operand = (formal: BrandedIdentifier) => (run.state.facts(operator)?.asks?.[formal] ?? []).map(({ when: _, ...failure }) => failure);
-	for(const [side, formal] of [[lhs, 'x'], [rhs, 'y']] as const) {
-		visit(side, run);
-		eachPath(side, run, path => {
-			const term = termOf(side, run.scope, run.state);
-			if(term?.kind === 'formal') {
-				addFailures(operand(formal), term, side.info.id, path, run);
-			}
-		});
-	}
-}
-
-/** Every condition of a `stopifnot` has to hold. */
-function conditionClauses(this: void, call: RNodeWithParent, conditions: readonly RNodeWithParent[], vector: boolean, run: Run): void {
-	const paths = pathsAt(call, run) ?? [];
-	let currents = paths.map(p => p.path);
-	for(const expression of conditions) {
-		visit(expression, run);
-		/* `stopifnot("x must be positive" = x > 0)` */
-		const named = vector ? RNode.directParent(expression, run.state.graph.idMap as AstIdMap) : undefined;
-		const message = RArgument.is(named) ? named.name?.content : undefined;
-		currents = currents.map((path, at) => {
-			run.scope.skips = paths[at].skips;
-			const term = termOf(expression, run.scope, run.state);
-			run.scope.skips = new Set();
-			if(term === undefined) {
-				return path;
-			}
-			run.scope.skips = paths[at].skips;
-			addClause(run, path, GuardTerm.truth(term, true, run.state.facts, vector), expression.info.id, { kind: 'explicit', ...(message === undefined ? {} : { message: String(message) }) });
-			run.scope.skips = new Set();
-			return path;
-		});
-	}
-}
-
-function visitCall(this: void, node: RNodeWithParent, run: Run): void {
+/** What the call asks of the formals on every way it is reached, its arguments being asked of where the control flow evaluates them. */
+function callRequirements(this: void, node: RNodeWithParent, vertex: DataflowGraphVertexFunctionCall, run: Run): void {
 	const { state } = run;
 	const id = node.info.id;
-	const vertex = callVertexOf(id, state);
-	if(vertex === undefined) {
-		skippedRegion(node, run);
-		return;
-	}
 	const call = RFunctionCall.is(node) ? node : undefined;
-	if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.Stop)) {
-		evaluatedAndNot(vertex, state).forced.forEach(arg => visit(arg, run));
+	if(RIfThenElse.is(node) || RForLoop.is(node) || RWhileLoop.is(node) || (RBinaryOp.is(node) && (node.operator === '&&' || node.operator === '||') && knownNameOf(id, vertex, state) !== undefined)) {
+		return;
+	} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.Stop)) {
 		eachPath(node, run, path => addClause(run, path, GuardTerm.False, id, { kind: 'explicit', ...(messageOf(node) === undefined ? {} : { message: messageOf(node) }) }));
 		return;
 	} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.StopIfNot)) {
-		const asserting = state.facts(Identifier.getName(vertex.name))?.asserts;
-		const conditions = asserting === undefined ? stopIfNotConditions(call) : call.arguments.flatMap(a => a === EmptyArgument || a.value === undefined || asserting.includes(a.name?.content ?? '') ? [] : [a.value]);
-		if(conditions === undefined) {
-			skippedRegion(node, run);
-		} else {
-			conditionClauses(node, conditions, asserting === undefined, run);
-		}
 		return;
 	} else if(call !== undefined && runsBuiltIn(vertex, BuiltInProcName.Return)) {
 		const [value] = call.arguments;
 		const returned = value === undefined || value === EmptyArgument ? undefined : value.value;
-		if(returned !== undefined) {
-			visit(returned, run);
-		}
 		eachPath(node, run, path => returnsValue(returned === undefined ? NullValue : termOf(returned, run.scope, state), path, run));
 		return;
-	} else if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || runsBuiltIn(vertex, BuiltInProcName.Local)) {
-		/* a `return` that may be one of the program's own may still be the one of R */
-		skippedRegion(node, run);
+	} else if(call === undefined && !RBinaryOp.is(node) && !RUnaryOp.is(node) && !RAccess.is(node) && !RPipe.is(node)) {
 		return;
 	}
 	const name = knownNameOf(id, vertex, state);
 	if(call !== undefined && name === 'switch') {
-		const [selector, ...alternatives] = call.arguments;
-		if(selector === EmptyArgument || selector?.value === undefined) {
-			skippedRegion(node, run);
-			return;
-		}
-		visit(selector.value, run);
-		eachPath(selector.value, run, path => conditionRequirement('switch', 'EXPR', selector.value as RNodeWithParent, path, run));
-		alternatives.forEach(a => a !== EmptyArgument && a.value !== undefined && visit(a.value, run));
 		return;
 	} else if(call !== undefined && name === 'UseMethod') {
 		eachPath(node, run, path => {
@@ -1579,21 +1538,10 @@ function visitCall(this: void, node: RNodeWithParent, run: Run): void {
 			returnsValue(undefined, path, run);
 		});
 		return;
-	}
-	if(call !== undefined && !RFunctionCall.isNamed(call)) {
-		visit(call.calledFunction, run);
-		vertex.args.filter(FunctionArgument.isNotEmpty).forEach(a => {
-			const value = valueOfArgument(a.nodeId, vertex, state.graph);
-			if(value !== undefined) {
-				skippedRegion(value, run);
-			}
-		});
+	} else if(call !== undefined && !RFunctionCall.isNamed(call)) {
 		return;
 	}
 	const target = soleCallee(id, state);
-	const { forced, lazy } = target === undefined ? evaluatedAndNot(vertex, state) : { forced: [], lazy: vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined) };
-	lazy.forEach(value => skippedRegion(value, run));
-	forced.forEach(value => visit(value, run));
 	eachPath(node, run, path => {
 		if(target !== undefined) {
 			inherit(target, vertex, path, run);
@@ -1615,6 +1563,40 @@ function visitCall(this: void, node: RNodeWithParent, run: Run): void {
 			}
 		}
 	});
+}
+
+/** A condition of a `stopifnot` has to hold. */
+function conditionClause(this: void, expression: RNodeWithParent, vector: boolean, run: Run): void {
+	/* `stopifnot("x must be positive" = x > 0)` */
+	const named = vector ? RNode.directParent(expression, run.state.graph.idMap as AstIdMap) : undefined;
+	const message = RArgument.is(named) ? named.name?.content : undefined;
+	eachPath(expression, run, path => {
+		const term = termOf(expression, run.scope, run.state);
+		if(term !== undefined) {
+			addClause(run, path, GuardTerm.truth(term, true, run.state.facts, vector), expression.info.id, { kind: 'explicit', ...(message === undefined ? {} : { message: String(message) }) });
+		}
+	});
+}
+
+/** What the body hands back at its end, on every way it gets there: the value of the node, or `NULL` for an `if` without an `else` that is not taken. */
+function tailReturns(this: void, run: Run): void {
+	const { state } = run;
+	for(const [id, tail] of run.tails) {
+		const node = nodeOf(id, state);
+		if(node === undefined) {
+			continue;
+		} else if(tail === Tail.Elseless && RIfThenElse.is(node)) {
+			eachPath(node.condition, run, path => returnsValue(NullValue, [...path, stepsOf(termOf(node.condition, run.scope, state), state.facts)[1]], run));
+		} else if(tail === Tail.Value && !endsRun(node, state)) {
+			eachPath(node, run, path => returnsValue(termOf(node, run.scope, state), path, run));
+		}
+	}
+}
+
+/** Whether the node never hands back a value of its own, as it raises an error or returns from the function. */
+function endsRun(this: void, node: RNodeWithParent, state: GuardState): boolean {
+	const vertex = callVertexOf(node.info.id, state);
+	return runsBuiltIn(vertex, BuiltInProcName.Stop) || runsBuiltIn(vertex, BuiltInProcName.Return) || (vertex !== undefined && knownNameOf(node.info.id, vertex, state) === 'UseMethod');
 }
 
 /** Takes out of a clause what another one rules out: `is.null(x) || is.numeric(x)` is `is.numeric(x)` once `!is.null(x)` holds, as code reads `if(is.null(x)) stop() else if(!is.numeric(x)) stop()`. */
@@ -1679,7 +1661,8 @@ function contractOf(this: void, id: NodeId, state: GuardState, via: readonly Nod
 	markTails(scope.definition.body, state, tails);
 	const run: Run = { scope, state, clauses: new Map(), read: new Set(), openers: frameOpeners(scope.definition, state), tails, returned: [], via: via.slice(0, reach), reach: 0, called: false, effects: false };
 	const order = run.order = orderOf(run);
-	visit(scope.definition.body, run);
+	new GuardVisitor(run).walk();
+	tailReturns(run);
 	state.depth--;
 	const demanded = new Set([...run.clauses.values()].flatMap(c => demandsPresenceOf(c.requires, state.facts)));
 	const contract: Contract = {

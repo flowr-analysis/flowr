@@ -98,6 +98,8 @@ export enum SemanticCallTag {
 	Process     = 'process',
 	/** asks the user, like `readline` or a file chooser */
 	User        = 'asks-user',
+	/** only does its job in an interactive session: opens a viewer, an editor, or the debugger (`View`, `edit`, `browser`), which a script run by `Rscript` has none of */
+	Interactive = 'interactive-only',
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
 	CommandLine = 'command-line',
 	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
@@ -179,7 +181,7 @@ export const ProvenanceProps: CallProps = CallProp.Primitive;
 export const ImpureProps: PropMask = getPropMask([
 	CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang,
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network, SemanticCallTag.Process,
-	SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics, SemanticCallTag.Database,
+	SemanticCallTag.User, SemanticCallTag.Interactive, SemanticCallTag.CommandLine, SemanticCallTag.Graphics, SemanticCallTag.Database,
 	SemanticCallTag.Opens, SemanticCallTag.Closes, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints
 ]);
 
@@ -207,7 +209,7 @@ export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, Seman
 export const PropagatedProps: PropMask = getPropMask([
 	CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang | CallProp.Concurrent,
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
-	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
+	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.Interactive, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
 	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
 	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript, SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage,
 	SemanticCallTag.ChecksPackage, SemanticCallTag.DetachesPackage

@@ -83,6 +83,14 @@ read.csv("https://example.com/data.csv")
 download.file("https://foo.bar")
 `
 	},
+	'interactive-functions': {
+		configType: 'InteractiveFunctionsConfig', ruleType:   'INTERACTIVE_FUNCTIONS', testfile:   'lint-interactive-functions',
+		example:    `
+p <- penguins
+View(p)
+if(interactive()) browser()
+`
+	},
 	'file-path-validity': {
 		configType: 'FilePathValidityConfig', ruleType:   'FILE_PATH_VALIDITY', testfile:   'lint-file-path-validity',
 		example:    { code: 'survey <- read.csv("data/Survey.csv")', files: { 'R/survey.csv': 'id,value\n1,2\n' } }

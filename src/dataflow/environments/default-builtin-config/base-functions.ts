@@ -495,6 +495,14 @@ export const BaseDefinitions = [
 	/* whatever the user types, picks, or sends along with a request */
 	fn([...base('readline', 'file.choose'), ...utils('askYesNo', 'choose.files', 'choose.dir', 'menu', 'select.list', 'winDialogString', 'winDialog')], BuiltInProcName.Default,
 		{ tags: [SemanticCallTag.User], sig: sig({ '...': ArgProp.Forced }) }),
+	/* what opens a viewer, an editor, or the debugger, which only an interactive session has: `View(df)` left in a script does nothing under `Rscript` */
+	fn(utils('View'), BuiltInProcName.Default,
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Interactive], sig: sig({ x: Forced.Value, title: Forced.Value }) }),
+	/* `edit` and `data.entry` hand back what was edited, the others return invisibly */
+	fn([...utils('edit', 'de', 'data.entry')], BuiltInProcName.Default,
+		{ tags: [SemanticCallTag.Interactive], sig: sig({ '...': ArgProp.Forced }) }),
+	fn([...utils('fix', 'file.edit', 'page', 'recover'), ...base('browser', 'debug', 'debugonce', 'undebug')], BuiltInProcName.Default,
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Interactive], sig: sig({ '...': ArgProp.Forced }) }),
 	/* they only make up a path, they do not go near the file system, so `File` would be wrong here */
 	fn(base('tempfile', 'tempdir'), BuiltInProcName.Default, { tags: [SemanticCallTag.TempFile], sig: sig({ '...': ArgProp.Forced }) }),
 	/* they are all mapped to `<-` but we separate super assignments */

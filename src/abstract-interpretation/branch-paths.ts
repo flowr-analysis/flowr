@@ -42,6 +42,37 @@ function stepsOf(path: string): Set<string> {
 	return new Set(path === '' ? [] : path.split(StepSeparator));
 }
 
+/** The other way the step goes, the same branch taken the other way. */
+function flipped(step: string): string {
+	const [cause, when, target] = step.split(PartSeparator);
+	return [cause, when === '1' ? '0' : '1', target].join(PartSeparator);
+}
+
+/** The paths with every two that differ in one branch only merged into one without it, until no more do. */
+function resolved(paths: Set<string>[]): Set<string>[] {
+	const unique = new Map(paths.map(p => [encodePath(p), p]));
+	for(let merged = true; merged;) {
+		merged = false;
+		const all = [...unique.values()];
+		search: for(const a of all) {
+			for(const step of a) {
+				const twin = new Set(a);
+				twin.delete(step);
+				const other = encodePath(twin.add(flipped(step)));
+				if(unique.has(other) && flipped(step) !== step) {
+					twin.delete(flipped(step));
+					unique.delete(encodePath(a));
+					unique.delete(other);
+					unique.set(encodePath(twin), twin);
+					merged = true;
+					break search;
+				}
+			}
+		}
+	}
+	return [...unique.values()];
+}
+
 /**
  * The ways a node is reached, each as the set of branches taken on the way, which is a disjunction of conjunctions:
  * a join keeps the paths of either side, a meet takes the branches of both. Past {@link MaxPaths} paths it is Top,
@@ -80,9 +111,12 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		return this.create([...this.value].map(path => encodePath(stepsOf(path).add(taken))));
 	}
 
-	/** The paths, each a list of the branches it takes, `undefined` for Top. */
+	/**
+	 * The paths, each a list of the branches it takes, `undefined` for Top. Two paths that only differ in which way one branch
+	 * went are one path without that branch, as the node is reached either way (`if(c) a else b; d` reaches `d` whatever `c` is).
+	 */
 	public paths(): readonly (readonly BranchStep[])[] | undefined {
-		return this.isValue() ? [...this.value].map(path => [...stepsOf(path)].map(decodeStep)) : undefined;
+		return this.isValue() ? resolved([...this.value].map(stepsOf)).map(steps => [...steps].map(decodeStep)) : undefined;
 	}
 }
 

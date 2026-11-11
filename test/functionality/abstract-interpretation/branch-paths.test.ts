@@ -34,6 +34,9 @@ describe('Branch paths', withTreeSitter(parser => {
 	test('each arm of a switch is told apart, by what it evaluates first', async() => {
 		assert.deepStrictEqual(await pathsTo('f <- function(k) switch(k, a = 1, b = stop("no b"), 3)', 'stop'), [['switch=true@"no b"']]);
 	});
+	test('what is reached whichever way a branch went does not depend on it', async() => {
+		assert.deepStrictEqual(await pathsTo('f <- function(x) { if(is.null(x)) y <- 1 else y <- 2; log(x) }', 'log'), [[]]);
+	});
 	test('the right operand of && runs once the left one held', async() => {
 		assert.deepStrictEqual(await pathsTo('f <- function(x) is.numeric(x) && log(x) > 0', 'log'), [['&&=true']]);
 	});

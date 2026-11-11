@@ -1,4 +1,5 @@
 import { AbstractInterpreter, type AbsintVisitorConfiguration } from './absint-inference';
+import { Top } from './domains/lattice';
 import { BoundedSetDomain } from './domains/bounded-set-domain';
 import type { BoundedSetLift } from './domains/bounded-set-domain';
 import type { MultiValueStateDomain } from './domains/multi-value-state-domain';
@@ -75,15 +76,21 @@ function resolved(paths: Set<string>[], mergeable: (step: string) => boolean): S
 
 /**
  * The ways a node is reached, each as the set of branches taken on the way, which is a disjunction of conjunctions:
- * a join keeps the paths of either side, a meet takes the branches of both. Past {@link MaxPaths} paths it is Top,
- * which says nothing about how the node is reached.
+ * a join keeps the paths of either side, a meet takes the branches of both. Past {@link MaxPaths} paths it keeps only the
+ * branches all of them take.
  */
 export class BranchPathDomain extends BoundedSetDomain<string> {
 	constructor(value: BoundedSetLift<string> | string[], limit = MaxPaths) {
 		super(value, limit);
 	}
 
+	/** Past the limit, the paths are the one path of the steps all of them take, which still holds whichever way the node was reached. */
 	public override create(value: BoundedSetLift<string> | string[]): this {
+		const paths = value === Top ? undefined : [...value as Iterable<string>];
+		if(paths !== undefined && paths.length > this.limit) {
+			const common = paths.map(stepsOf).reduce((a, b) => a.intersection(b));
+			return new BranchPathDomain([encodePath(common)], this.limit) as this;
+		}
 		return new BranchPathDomain(value, this.limit) as this;
 	}
 

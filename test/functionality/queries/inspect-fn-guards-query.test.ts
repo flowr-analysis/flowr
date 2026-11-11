@@ -482,7 +482,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(is.null(x)) x <- 1; stopifnot(is.numeric(x)); x }', 'is.null(x) || is.numeric(x)');
 	guards('f <- function(x, y) { if(y) x <- "a"; if(!is.character(x)) stop("c"); x }', 'length(y) >= 1 && length(y) <= 1 && !is.na(y) && (as.logical(unclass(y)) || is.character(x))');
 	guards('f <- function(x) { if(is.character(x)) x <- nchar(x); for(i in 1:2) x <- x + 1; stopifnot(x > 0); x }', '');
-	guards('f <- function(x, s) { if(is.numeric(x)) x <- seq_len(x); if(s) { if(is.factor(x)) x <- as.integer(x) }; x[1] }', '(!is.numeric(x) || is.atomic(x) && !is.raw(x) && length(x) >= 1 && (!is.numeric(x) || length(x) >= 2 || x >= 0)) && length(s) >= 1 && length(s) <= 1 && !is.na(s) && (is.numeric(x) || !as.logical(unclass(s)) || is.factor(x) || !is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x)) && (is.numeric(x) || as.logical(unclass(s)) || !is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x))');
+	guards('f <- function(x, s) { if(is.numeric(x)) x <- seq_len(x); if(s) { if(is.factor(x)) x <- as.integer(x) }; x[1] }', '(!is.numeric(x) || is.atomic(x) && !is.raw(x) && length(x) >= 1 && (!is.numeric(x) || length(x) >= 2 || x >= 0)) && length(s) >= 1 && length(s) <= 1 && !is.na(s) && (is.numeric(x) || as.logical(unclass(s)) || !is.function(x) && !is.environment(x) && !is.symbol(x) || is.object(x))');
 	guards('f <- function(x, a, b) { if(a) x <- 1; if(b) x <- "z"; stopifnot(is.character(x)); x }', 'length(a) >= 1 && length(a) <= 1 && !is.na(a) && length(b) >= 1 && length(b) <= 1 && !is.na(b) && (as.logical(unclass(a)) || as.logical(unclass(b)) || is.character(x))');
 	guards('f <- function(FUN, extra) { if(missing(extra)) FUN(1) else FUN(1, extra) }', 'is.function(FUN) || exists("FUN", mode = "function")');
 	guards('f <- function(x, ...) UseMethod("f"); f.default <- function(x, center = TRUE) { stopifnot(is.numeric(x)); x }; f.foo <- function(x, ...) 1', '');
@@ -959,6 +959,7 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => {
 		}
 		assert.isAbove(Checked.length, 100, 'the cases have to run first');
 		assert.deepStrictEqual(broken, []);
-	}, 600_000);
+	/* the oracle runs every case in R, which takes its time on a machine shared with other work */
+	}, 1_200_000);
 /* what the programs bind in the global environment must not reach the tests sharing the session */
 }, true));

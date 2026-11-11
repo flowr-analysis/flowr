@@ -487,7 +487,9 @@ function valueOfArgument(this: void, argument: NodeId, vertex: DataflowGraphVert
 function inlined(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall, scope: Scope, state: GuardState, depth: number): GuardTerm | undefined {
 	const target = soleCallee(id, state);
 	const callee = target === undefined || depth >= MaxTermDepth ? undefined : scopeOf(target, state);
-	const body = callee === undefined ? undefined : singleExpression(callee.definition, state);
+	const single = callee === undefined ? undefined : singleExpression(callee.definition, state);
+	/* a generic hands over to whichever method it dispatches to, what it says itself is no value of the call */
+	const body = single !== undefined && RFunctionCall.isNamed(single) && Identifier.getName(single.functionName.content) === 'UseMethod' ? undefined : single;
 	const term = callee === undefined || body === undefined ? undefined : termOf(body, callee, state, depth + 1);
 	return term === undefined || callee === undefined ? undefined : GuardTerm.substitute(term, bindingOf(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state, depth + 1)));
 }
@@ -1292,18 +1294,25 @@ function exitStep(this: void, exit: NodeId, run: Run): PathStep {
 	return paths?.length === 1 ? { holds: GuardTerm.True, fails: GuardTerm.all(...paths[0].path.map(step => step.holds)) } : UnknownStep;
 }
 
+/** Whether the condition the branch takes its way by can be stated, without which which way it went tells nothing apart. */
+function statesCondition(this: void, cause: NodeId, run: Run): boolean {
+	const construct = nodeOf(cause, run.state);
+	return !RIfThenElse.is(construct) || termOf(construct.condition, run.scope, run.state) !== undefined;
+}
+
 /** {@link pathsAt} without the exits and what happened before, which does not change anything of the run. */
 function stepsTo(this: void, node: RNodeWithParent, run: Run): { readonly path: Path, readonly skips: ReadonlySet<NodeId> }[] | undefined {
 	const { state, scope } = run;
 	/* a branch defining something is one a read after it may see either way, see {@link untaken} */
-	const found = branchPathsOf(state).pathsTo(scope.vertex.id, node.info.id, cause => untaken([{ cause, when: true }, { cause, when: false }], state).size === 0);
+	const found = branchPathsOf(state).pathsTo(scope.vertex.id, node.info.id, cause => untaken([{ cause, when: true }, { cause, when: false }], state).size === 0 || !statesCondition(cause, run));
 	/* what runs in the body of a loop runs any number of times, so nothing is known of how it is reached */
 	const looped = inLoopOf(node, run);
-	return found?.map(steps => {
+	/* what flowR cannot tell how it is reached is reached in a way nothing is known of */
+	return (found ?? [[]]).map(steps => {
 		const sorted = [...steps].sort((a, b) => positionOf(a.cause, state) - positionOf(b.cause, state));
 		const skips = untaken(sorted, state);
 		scope.skips = skips;
-		const path = [...sorted.map(step => stepOf(step, node, run)).filter(isNotUndefined), ...looped ? [UnknownStep] : []];
+		const path = [...sorted.map(step => stepOf(step, node, run)).filter(isNotUndefined), ...looped || found === undefined ? [UnknownStep] : []];
 		scope.skips = new Set();
 		return { path, skips };
 	});
@@ -1480,17 +1489,16 @@ function endsRun(this: void, node: RNodeWithParent, state: GuardState): boolean 
 }
 
 function visitShortCircuit(this: void, operator: '&&' | '||', lhs: RNodeWithParent, rhs: RNodeWithParent, run: Run): void {
-	visit(lhs, run);
-	const left = termOf(lhs, run.scope, run.state);
 	/* the path already states what makes R look at the right operand */
 	const operand = (formal: BrandedIdentifier) => (run.state.facts(operator)?.asks?.[formal] ?? []).map(({ when: _, ...failure }) => failure);
-	if(left?.kind === 'formal') {
-		eachPath(lhs, run, path => addFailures(operand('x'), left, lhs.info.id, path, run));
-	}
-	visit(rhs, run);
-	const right = termOf(rhs, run.scope, run.state);
-	if(right?.kind === 'formal') {
-		eachPath(rhs, run, path => addFailures(operand('y'), right, rhs.info.id, path, run));
+	for(const [side, formal] of [[lhs, 'x'], [rhs, 'y']] as const) {
+		visit(side, run);
+		eachPath(side, run, path => {
+			const term = termOf(side, run.scope, run.state);
+			if(term?.kind === 'formal') {
+				addFailures(operand(formal), term, side.info.id, path, run);
+			}
+		});
 	}
 }
 

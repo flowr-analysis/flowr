@@ -733,6 +733,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	claims('f <- function(x, lab, ...) { g <- function(x, lab, ...) if(missing(lab)) 1 else lab; g(x = x, lab = lab, ...) }', {}, []);
 	/* a default R evaluates once the body changed what it reads says nothing of what the caller hands over */
 	claims('f <- function(n, s = 1:n) { n <- 2; stopifnot(is.numeric(s)); s }', {});
+	claims('f <- function(z, lim = range(z), lev = pretty(lim)) { z <- 1; stopifnot(is.numeric(lev)); lev }', {});
 	claims('f <- function(x, y) { if(x) y; 1 }', { x: { bounds: { length: [1, 1] }, notNA: true } }, ['x']);
 	claims('f <- function(x = 1) { force(x) }', {}, []);
 

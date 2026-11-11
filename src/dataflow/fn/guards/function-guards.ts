@@ -393,10 +393,21 @@ function scopeOf(this: void, id: NodeId, state: GuardState): Scope | undefined {
 	if(!RFunctionDefinition.is(definition) || !DfgVertex.isFunctionDefinition(vertex)) {
 		return undefined;
 	}
-	const bound = new Set(RNode.collectAllIdsWithStop(definition.body, n => RFunctionDefinition.is(n)).values()
+	const bound = new Set<BrandedIdentifier | undefined>(RNode.collectAllIdsWithStop(definition.body, n => RFunctionDefinition.is(n)).values()
 		.filter(n => DfgVertex.isVariableDefinition(state.graph.getVertex(n))).map(n => NodeId.recoverBareName(n, state.graph.idMap)));
-	const drifting = new Set(definition.parameters.filter(p => p.defaultValue !== undefined && RNode.collectAllIds(p.defaultValue).values()
-		.some(n => RSymbol.is(nodeOf(n, state)) && bound.has(NodeId.recoverBareName(n, state.graph.idMap)))).map(p => p.name.info.id));
+	/* a default reading a formal that drifts drifts as well, as `levels = pretty(zlim)` with `zlim = range(z)` */
+	const drifting = new Set<NodeId>();
+	for(let grew = true; grew;) {
+		grew = false;
+		for(const p of definition.parameters) {
+			if(!drifting.has(p.name.info.id) && p.defaultValue !== undefined && RNode.collectAllIds(p.defaultValue).values()
+				.some(n => RSymbol.is(nodeOf(n, state)) && bound.has(NodeId.recoverBareName(n, state.graph.idMap)))) {
+				drifting.add(p.name.info.id);
+				bound.add(p.name.content);
+				grew = true;
+			}
+		}
+	}
 	return { definition, vertex, formals: new Map(definition.parameters.filter(p => !p.special).map(p => [p.name.info.id, p.name.content])), drifting, frameIsOpen: false, skips: new Set() };
 }
 

@@ -71,11 +71,6 @@ export function packageInfo(ctx: ReadOnlyFlowrAnalyzerContext): PackageInfo {
 	};
 }
 
-/** All packages the DESCRIPTION declares in any dependency field. */
-export function allDeclared(info: PackageInfo): Set<BrandedNamespace> {
-	return new Set([...info.declared.values()].flat());
-}
-
 /** The name a function definition is bound to by a plain assignment (`f <- function() ...`). */
 export function boundName(def: RNode<ParentInformation>, idMap: AstIdMap): string | undefined {
 	const parent = def.info.parent === undefined ? undefined : idMap.get(def.info.parent);

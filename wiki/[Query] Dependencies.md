@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5), do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -18,12 +18,12 @@ file of a `read.csv`:
 | `library` (Libraries) | 22 | `library`, `require`, `loadNamespace`, `requireNamespace` | `unknown` |
 | `remote` (Remote Installs) | 10 | `install_github`, `install_gitlab`, `install_bitbucket`, `install_git` | `unknown` |
 | `source` (Sourced Files) | 4 | `source`, `sys.source`, `source_url`, `source_gist` | `unknown` |
-| `read` (Read Data) | 236 | `dbConnect`, `dbConnect`, `dbConnect`, `dbConnect` | `unknown` |
+| `read` (Read Data) | 235 | `dbConnect`, `dbConnect`, `dbConnect`, `dbConnect` | `unknown` |
 | **Outputs** | | | |
-| `write` (Outputs) | 213 | `dump`, `open`, `seek`, `open.connection` | `stdout` |
-| `visualize` (Visualizations) | 579 | `ggplot`, `ggplotly`, `ggMarginal`, `ggcorrplot` |  |
+| `write` (Outputs) | 216 | `dump`, `open`, `seek`, `open.connection` | `stdout` |
+| `visualize` (Visualizations) | 582 | `ggplot`, `ggplotly`, `ggMarginal`, `ggcorrplot` |  |
 | **What the script does with data** | | | |
-| `transform` (Data Transformations) | 140 | `subset`, `transform`, `filter`, `filter_out` |  |
+| `transform` (Data Transformations) | 141 | `subset`, `transform`, `filter`, `filter_out` |  |
 | `statistics` (Statistics) | 74 | `lm`, `glm`, `nls`, `lmer` |  |
 | `test` (Tests) | 14 | `test_that`, `describe`, `it`, `test_file` |  |
 
@@ -94,7 +94,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (8 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -209,7 +209,7 @@ criteria go in parentheses, as with <span title="Description (Repl Command): Que
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;**Read Data** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**a.csv** _via read.csv (node 10)_\
 &nbsp;&nbsp;&nbsp;**focus** _the lines taking part:_ 1, 3, 5
@@ -221,7 +221,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{"dependencies":{".meta":{"focus":[10,8,0,2,1,11,6,18,20]},"library":[],"remote":[],"source":[],"read":[{"nodeId":10,"functionName":"read.csv","assignedTo":"d","value":"a.csv"}],"write":[],"visualize":[],"transform":[],"test":[],"statistics":[]},".meta":{}}
+{"dependencies":{".meta":{"focus":[10,11,8,0,2,1,6,18,20]},"library":[],"remote":[],"source":[],"read":[{"nodeId":10,"functionName":"read.csv","assignedTo":"d","value":"a.csv"}],"write":[],"visualize":[],"transform":[],"test":[],"statistics":[]},".meta":{}}
 ```
 
 </details>
@@ -263,7 +263,7 @@ resolved with the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (1 ms)\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(3)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 38)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 40, linked 38)_\

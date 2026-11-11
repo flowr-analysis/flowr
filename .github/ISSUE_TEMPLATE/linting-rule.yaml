@@ -26,6 +26,7 @@ body:
         - Absolute Paths
         - Bogus Return
         - Call Arguments
+        - Call Contracts
         - Class String Comparison
         - Code Clones
         - Compiled Code

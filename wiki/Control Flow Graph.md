@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
 2)&nbsp;a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), and 3)&nbsp;a control flow graph&nbsp;(CFG).
@@ -699,7 +699,6 @@ flowchart LR
     3[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *1.1-8* (**id: 3**)
     arg: (1)`"]]
-    style 3 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -715,7 +714,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 print(3)

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 This page describes the abstract interpretation framework of _flowR_.
 Abstract interpretation abstracts the concrete semantics of a program to automatically infer properties about the behavior of a program.
@@ -1881,6 +1881,11 @@ class BoundedSetDomain~T, Value extends BoundedSetLift<T> = BoundedSetLift<T>~{
     <<class>>
 }
 click BoundedSetDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/bounded-set-domain.ts#L25" "The bounded set abstract domain as sets of possible values bounded by a #96;limit#96; indicating the maximum number of inferred values. The Bottom element is defined as the empty set and the Top element is defined as; #60;code#62;Top#60;/code#62;; symbol."
+class TypeSet{
+    <<type>>
+}
+style TypeSet opacity:.35,fill:#FAFAFA
+click TypeSet href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/fn/guards/guard-claims.ts#L87" ""
 class IntervalDomain~Value extends IntervalLift = IntervalLift~{
     <<class>>
 }
@@ -1909,7 +1914,7 @@ class DataFrameStateDomain{
     <<type>>
 }
 style DataFrameStateDomain opacity:.35,fill:#FAFAFA
-click DataFrameStateDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/dataframe-semantics.ts#L42" "The state abstract domain of the data frame shape analysis"
+click DataFrameStateDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/data-frame/dataframe-semantics.ts#L49" "The state abstract domain of the data frame shape analysis"
 class SetRangeDomain~T, Value extends SetRangeLift<T> = SetRangeLift<T>~{
     <<class>>
 }
@@ -1933,6 +1938,7 @@ click MultiValueStateDomain href "https://github.com/flowr-analysis/flowr/tree/m
 FiniteDomain --|> AbstractDomain
 AnyAbstractDomain .. AbstractDomain
 BoundedSetDomain --|> AbstractDomain
+TypeSet .. BoundedSetDomain
 IntervalDomain --|> AbstractDomain
 PosIntervalDomain --|> IntervalDomain
 PartialProductDomain --|> AbstractDomain

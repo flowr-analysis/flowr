@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 - [Overview](#Overview)
   - [Overview of the Analyzer](#Overview_32_of_32_the_32_Analyzer)  
@@ -525,14 +525,14 @@ you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/proje
 
 <h3 id="Dependencies_32_Context">Dependencies Context</h3>
 
-Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L126"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> that provides access to the identified dependencies and their versions,
+Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L127"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> that provides access to the identified dependencies and their versions,
 including the version of R:
 
- * [FlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L126)   
+ * [FlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L127)   
    Manages the project's dependencies, their versions, and their interplay with
    <code>FlowrAnalyzerPackageVersionsPlugin</code>
    s.
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L126">src/project/context/flowr-analyzer-dependencies-context.ts#L126</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L127">src/project/context/flowr-analyzer-dependencies-context.ts#L127</a>)</i>
    
     <details><summary>View more (AbstractFlowrAnalyzerContext, ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver)</summary>
 
@@ -550,11 +550,11 @@ including the version of R:
      to access the full project context.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/abstract-flowr-analyzer-context.ts#L12">src/project/context/abstract-flowr-analyzer-context.ts#L12</a>)</i>
      
-   * **[ReadOnlyFlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L21)**   
+   * **[ReadOnlyFlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L22)**   
      Read-only interface to the
      <code>FlowrAnalyzerDependenciesContext</code>
      for inspecting dependencies without modifying them.
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L21">src/project/context/flowr-analyzer-dependencies-context.ts#L21</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L22">src/project/context/flowr-analyzer-dependencies-context.ts#L22</a>)</i>
      
    * **[InvalidationEventReceiver](https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41)**   
    
@@ -563,12 +563,12 @@ including the version of R:
     </details>
 
 Probably the most important method is
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L285"><code>FlowrAnalyzerDependenciesContext::<i>getDependency</i></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L286"><code>FlowrAnalyzerDependenciesContext::<i>getDependency</i></code></a>
 that allows you to query for a specific dependency by name.
 
 <h3 id="Functions_32_Context">Functions Context</h3>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L126"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> also provides access to the associated
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L127"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> also provides access to the associated
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L51"><code><span title="This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata. It works in conjunction with FlowrAnalyzerPackageVersionsPlugin s to gather and maintain this information. If you are interested in inspecting these functions, refer to ReadOnlyFlowrAnalyzerFunctionsContext .">FlowrAnalyzerFunctionsContext</span></code></a> via its `functionsContext` attribute.
 
  * [FlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L51)   

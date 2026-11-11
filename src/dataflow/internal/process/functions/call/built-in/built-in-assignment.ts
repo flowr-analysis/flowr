@@ -546,6 +546,8 @@ function tryRouteFieldEnvAssign<OtherInfo>(
 		noteOwnMethod(fieldName, normalResult.environment, data.ctx);
 		return { ...normalResult, environment: REnvironment.define(definition, true, normalResult.environment) };
 	}
+	/* a read of the field reaches the value it binds, which only the replacement binds there (`get("f", envir = e)` after `e$f <- v`), as a deferred write keeps its value as well */
+	normalResult.graph.addEdge(source.info.id, normalResult.entryPoint, EdgeType.SideEffectOnCall);
 	const newEnvState = REnvironment.define(fieldDef, false, envirResolution.envDef.envState);
 	if(envirResolution.envDef.closureFrame === true) {
 		/* `environment(g)$v <- x` writes the frame, `g` still holds the same closure */

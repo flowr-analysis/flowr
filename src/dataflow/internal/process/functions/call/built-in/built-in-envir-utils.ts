@@ -175,7 +175,8 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 	const idMap = graph.idMap;
 	for(const id of body) {
 		const read = idMap?.get(id);
-		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t))) {
+		/* what the body binds by `<<-` is the frame, which the write into it may replace, so only a local binding hides the frame */
+		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t) && !Dataflow.definedBySuperAssignment(graph, t))) {
 			continue;
 		}
 		const written = ClosureFrames.writesOf(name, environment, Identifier.getName(read.content), called.id, graph);

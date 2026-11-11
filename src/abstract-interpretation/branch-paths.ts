@@ -149,6 +149,11 @@ export class BranchPaths extends AbstractInterpreter<Paths> {
 		return false;
 	}
 
+	/** A call changing environments (`eval`, `rm`, ...) changes no branch taken on the way there. */
+	protected override isUnsupportedFunctionCall(): boolean {
+		return false;
+	}
+
 	/**
 	 * The step a branch takes is the construct deciding it, as is: unlike the narrowing of values, which looks into the
 	 * operands of `&&` and `||`, the right one of which has not run yet when the left decides whether it does.

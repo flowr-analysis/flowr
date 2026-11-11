@@ -1158,6 +1158,11 @@ function branchPathsOf(this: void, state: GuardState): BranchPaths {
 	return state.paths;
 }
 
+/** Whether the code may return from the function, as a `return` in it does. */
+function mayReturn(this: void, node: RNodeWithParent, state: GuardState): boolean {
+	return RNode.collectAllIdsWithStop(node, n => RFunctionDefinition.is(n)).values().some(id => DfgVertex.hasOrigin(callVertexOf(id, state), BuiltInProcName.Return));
+}
+
 /** Where the node starts in the code, to order the steps of a path outermost first. */
 function positionOf(this: void, id: NodeId, state: GuardState): number {
 	const location = nodeOf(id, state)?.location;
@@ -1177,13 +1182,14 @@ function stepOf(this: void, { cause, when, target }: BranchStep, node: RNodeWith
 	if(RIfThenElse.is(construct)) {
 		return pick(termOf(construct.condition, scope, state));
 	} else if(RForLoop.is(construct) || RWhileLoop.is(construct) || RRepeatLoop.is(construct)) {
-		/* what comes after a loop is reached either way, what runs within it is known nothing of, see {@link pathsAt} */
-		return undefined;
+		/* what comes after a loop is reached either way, unless the body may return, of which nothing is known; what runs within it is known nothing of, see {@link pathsAt} */
+		return within(node, construct.body, state) || !mayReturn(construct.body, state) ? undefined : UnknownStep;
 	} else if(RBinaryOp.is(construct) && (construct.operator === '&&' || construct.operator === '||')) {
 		/* the left operand decides whether the right one runs, and nothing after */
 		return within(node, construct.rhs, state) ? pick(termOf(construct.lhs, scope, state)) : undefined;
 	} else if(RFunctionCall.is(construct) && knownNameOf(cause, callVertexOf(cause, state) as DataflowGraphVertexFunctionCall, state) === 'switch') {
-		return switchStep(construct, when ? target : undefined, run);
+		/* what comes after it was reached through whichever alternative did not leave, of which nothing is known */
+		return within(node, construct, state) ? switchStep(construct, when ? target : undefined, run) : UnknownStep;
 	}
 	return UnknownStep;
 }
@@ -1276,7 +1282,8 @@ function orderOf(this: void, run: Run): RunOrder {
 	const openers = new Set(run.openers);
 	for(const id of RNode.collectAllIdsWithStop(scope.definition.body, n => RFunctionDefinition.is(n))) {
 		const vertex = callVertexOf(id, state);
-		if(vertex === undefined || RSymbol.is(nodeOf(id, state))) {
+		/* a name standing for a call, as the generic `UseMethod` names stands for the dispatch, does nothing of its own */
+		if(vertex === undefined || RSymbol.is(nodeOf(id, state)) || RConstant.is(nodeOf(id, state))) {
 			continue;
 		}
 		const target = RFunctionCall.isNamed(nodeOf(id, state)) ? soleCallee(id, state) : undefined;

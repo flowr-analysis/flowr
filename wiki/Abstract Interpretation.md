@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-11-11, 21:06:24 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 This page describes the abstract interpretation framework of _flowR_.
 Abstract interpretation abstracts the concrete semantics of a program to automatically infer properties about the behavior of a program.
@@ -292,6 +292,75 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
      </details>
      
+      <details><summary>View more (BranchPathDomain)</summary>
+
+     * [BranchPathDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/branch-paths.ts#L79)   
+       The ways a node is reached, each as the set of branches taken on the way, which is a disjunction of conjunctions:
+       a join keeps the paths of either side, a meet takes the branches of both. Past
+       <code>MaxPaths</code>
+       paths it keeps only the
+       branches all of them take.
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/branch-paths.ts#L79">src/abstract-interpretation/branch-paths.ts#L79</a></summary>
+       
+       ```ts
+       /**
+        * The ways a node is reached, each as the set of branches taken on the way, which is a disjunction of conjunctions:
+        * a join keeps the paths of either side, a meet takes the branches of both. Past {@link MaxPaths} paths it keeps only the
+        * branches all of them take.
+        */
+       export class BranchPathDomain extends BoundedSetDomain<string> {
+           constructor(value: BoundedSetLift<string> | string[], limit = MaxPaths) {
+               super(value, limit);
+           }
+       
+           /** Past the limit, the paths are the one path of the steps all of them take, which still holds whichever way the node was reached. */
+           public override create(value: BoundedSetLift<string> | string[]): this {
+               const paths = value === Top ? undefined : [...value as Iterable<string>];
+               if(paths !== undefined && paths.length > this.limit) {
+                   const common = paths.map(stepsOf).reduce((a, b) => a.intersection(b));
+                   return new BranchPathDomain([encodePath(common)], this.limit) as this;
+               }
+               return new BranchPathDomain(value, this.limit) as this;
+           }
+       
+           /** Reached without any branch, as the start of a function body is. */
+           public static start(): BranchPathDomain {
+               return new BranchPathDomain(['']);
+           }
+       
+           protected override meetValue(this: this & BranchPathDomain, other: BoundedSetDomain<string>): this {
+               if(!other.isValue()) {
+                   return this.create(other.value);
+               }
+               const theirs: readonly string[] = [...other.value];
+               const mine: readonly string[] = [...this.value as ReadonlySet<string>];
+               const both = mine.flatMap(a => theirs.map(b => encodePath(stepsOf(a).union(stepsOf(b)))));
+               return this.create(both);
+           }
+       
+           /** Every path continued by taking the branch. */
+           public taking(step: BranchStep): this {
+               if(!this.isValue()) {
+                   return this;
+               }
+               const taken = encodeStep(step);
+               return this.create([...this.value].map(path => encodePath(stepsOf(path).add(taken))));
+           }
+       
+           /**
+            * The paths, each a list of the branches it takes, `undefined` for Top. Two paths that only differ in which way one branch
+            * went are one path without that branch, as the node is reached either way (`if(c) a else b; d` reaches `d` whatever `c` is),
+            * unless `mergeable` says something hangs on the branch it went.
+            */
+           public paths(mergeable: (cause: NodeId) => boolean = () => true): readonly (readonly BranchStep[])[] | undefined {
+               return this.isValue() ? resolved([...this.value].map(stepsOf), step => mergeable(decodeStep(step).cause)).map(steps => [...steps].map(decodeStep)) : undefined;
+           }
+       }
+       ```
+       
+       </details>
+       
+      </details>
    * [IntervalDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/interval-domain.ts#L26)   
      The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values.
      The Bottom element is defined as
@@ -1881,6 +1950,10 @@ class BoundedSetDomain~T, Value extends BoundedSetLift<T> = BoundedSetLift<T>~{
     <<class>>
 }
 click BoundedSetDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/bounded-set-domain.ts#L25" "The bounded set abstract domain as sets of possible values bounded by a #96;limit#96; indicating the maximum number of inferred values. The Bottom element is defined as the empty set and the Top element is defined as; #60;code#62;Top#60;/code#62;; symbol."
+class BranchPathDomain{
+    <<class>>
+}
+click BranchPathDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/branch-paths.ts#L79" "The ways a node is reached, each as the set of branches taken on the way, which is a disjunction of conjunctions#58; a join keeps the paths of either side, a meet takes the branches of both. Past; #60;code#62;MaxPaths#60;/code#62;; paths it keeps only the branches all of them take."
 class TypeSet{
     <<type>>
 }
@@ -1938,6 +2011,7 @@ click MultiValueStateDomain href "https://github.com/flowr-analysis/flowr/tree/m
 FiniteDomain --|> AbstractDomain
 AnyAbstractDomain .. AbstractDomain
 BoundedSetDomain --|> AbstractDomain
+BranchPathDomain --|> BoundedSetDomain
 TypeSet .. BoundedSetDomain
 IntervalDomain --|> AbstractDomain
 PosIntervalDomain --|> IntervalDomain
@@ -1977,8 +2051,8 @@ state.setValue(1, 'string', new BoundedSetDomain(new Set(['Hello world!'])));
 
 We perform abstract interpretation by forward-traversing the [control flow graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph) of _flowR_ using an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L126"><code><span title="An abstract interpreter that visits the control flow graph to perform abstract interpretation using fixpoint iteration. The visitor infers the abstract values of multiple abstract domains in a single traversal. The abstract state maps each AST node to the abstract values of all domains of the AbsintAnalysis , and whenever a node is visited, the AbstractSemantics of every domain of the analysis are...">AbstractInterpreter</span></code></a>. For each visited control flow vertex, the abstract interpreter retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The abstract interpreter already handles (delayed) widening at widening points.
 
-Joining the predecessors goes through <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L744"><code><span title="The abstract state one predecessor contributes, joined into the state at the current vertex.  The condition semantics of the analysis are applied at branches: on the then-branch of if(u) a else b the predecessor is u and branch.when is true, so u held.">AbstractInterpreter::<b>getPredecessorState</b></span></code></a>, which is handed the branch that was taken to get to the vertex.
-For `if(u) 3 else 2` the step onto `3` reports the condition `u` as the predecessor and the `if` as the branch, together with the outcome `u` had, which is what the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L273"><code><span title="Handles a control flow edge that is only taken if a condition evaluates to a specific value, allowing to refine the abstract state with the information gained from the taken branch.">handleConditionBranch</span></code></a> semantics of a domain are applied to on the way into a branch.
+Joining the predecessors goes through <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L744"><code><span title="The abstract state one predecessor contributes, joined into the state at the current vertex.  The condition semantics of the analysis are applied at branches: on the then-branch of if(u) a else b the predecessor is u and branch.when is true, so u held. target is the vertex the branch enters, which tells the arms of a switch apart.">AbstractInterpreter::<b>getPredecessorState</b></span></code></a>, which is handed the branch that was taken to get to the vertex.
+For `if(u) 3 else 2` the step onto `3` reports the condition `u` as the predecessor and the `if` as the branch, together with the outcome `u` had, which is what the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/abstract-semantics.ts#L274"><code><span title="Handles a control flow edge that is only taken if a condition evaluates to a specific value, allowing to refine the abstract state with the information gained from the taken branch.">handleConditionBranch</span></code></a> semantics of a domain are applied to on the way into a branch.
 The other direction is <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L107"><code><span title="The constructs whose outcome the given vertex decides, e.g. the if a condition belongs to. This is what tells you, standing on u in if(u) a else b, that you are evaluating the condition of that if.">BasicCfgGuidedVisitor::<b>getDecidedConstructs</b></span></code></a>: standing on `u`, it names the `if` that `u` decides.
 
 The analysis is interprocedural: it steps into what a call dispatches to and continues with the state at the exit points of those functions, using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-inference.ts#L820"><code><span title="Runs the bodies the given call dispatches to, starting from the state at the call, and returns the state control comes back with: the states at their exit points joined. A call already being interpreted is not entered again, so recursion stops at the second entry.">AbstractInterpreter::<b>enterCall</b></span></code></a>.

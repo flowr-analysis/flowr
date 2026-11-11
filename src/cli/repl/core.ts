@@ -107,22 +107,47 @@ export function computeCompletions(line: string, config: FlowrConfig): [string[]
 /** the most names a plain R line is offered, the first ones in order */
 const MaxRNames = 40;
 
-/** the functions flowR knows and the data sets R always finds (`penguins`), each with what it is, as the completions of an R name */
-let rNames: ReadonlyMap<string, string> | undefined;
+/** the functions flowR knows and the data sets R always finds (`penguins`), by name, with the packages they come from */
+let rNames: ReadonlyMap<string, readonly string[]> | undefined;
 
-/** completes the name `line` ends in, as `Vi` to `View`, see {@link rNames} */
+/** whether the end of `line` is within a string or a comment, where nothing names an R object */
+function endsInText(line: string): boolean {
+	let quote: string | undefined;
+	for(let at = 0; at < line.length; at++) {
+		const c = line[at];
+		if(quote !== undefined) {
+			quote = c === '\\' ? (at++, quote) : c === quote ? undefined : quote;
+		} else if(c === '"' || c === "'" || c === '`') {
+			quote = c;
+		} else if(c === '#') {
+			return true;
+		}
+	}
+	return quote !== undefined;
+}
+
+/**
+ * Completes the name `line` ends in, as `Vi` to `View`, from {@link rNames}, only from the package named in
+ * `base::pri`. Nothing after `$` or `@`, which name a column or slot, within a number, a string, or a comment.
+ */
 function completeRName(line: string): [string[], string, ReadonlyMap<string, string>] {
-	rNames ??= new Map([
-		...datasetsOf('datasets').map(name => [String(name), 'data set of datasets'] as const),
-		...DefaultBuiltinConfig.flatMap(d => d.names.map(id => [String(Identifier.getName(id)), 'flowR built-in'] as const))
-	]);
-	const fragment = /[A-Za-z.][\w.]*$/.exec(line)?.[0] ?? '';
-	if(fragment.length === 0) {
+	rNames ??= (() => {
+		const found = new Map<string, string[]>();
+		const add = (name: string, pkg: string) => found.set(name, [...found.get(name) ?? [], pkg]);
+		datasetsOf('datasets').forEach(name => add(String(name), 'datasets'));
+		DefaultBuiltinConfig.forEach(d => d.names.forEach(id => add(String(Identifier.getName(id)), String(Identifier.getNamespace(id) ?? ''))));
+		return found;
+	})();
+	const typed = /(?:([A-Za-z][\w.]*):::?)?((?<![\w.$@])[A-Za-z.][\w.]*)$/.exec(line);
+	if(typed === null || endsInText(line) || /^\.\d/.test(typed[2])) {
 		return [[], '', new Map()];
 	}
-	const found = [...rNames.keys()].filter(name => name.startsWith(fragment) && name !== fragment)
+	const [, pkg, fragment] = typed;
+	const known = rNames;
+	const found = [...known.keys()].filter(name => name.startsWith(fragment) && name !== fragment && (pkg === undefined || known.get(name)?.includes(pkg)))
 		.sort((a, b) => a.length - b.length || a.localeCompare(b)).slice(0, MaxRNames);
-	return [found, fragment, new Map(found.map(name => [name, `${name}  ${rNames?.get(name) ?? ''}`]))];
+	const what = (name: string) => known.get(name)?.includes('datasets') ? 'data set of datasets' : 'flowR built-in';
+	return [found, fragment, new Map(found.map(name => [name, `${name}  ${what(name)}`]))];
 }
 
 /**

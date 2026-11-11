@@ -1385,6 +1385,11 @@ describe('Calls checked against R', withTreeSitter(parser => {
 			['the data set of an attached package', 'suppressMessages(library(dplyr))\nx <- 1\nprint(nrow(starwars))', '3@print', true],
 			['the data set of the package attached last', 'suppressMessages({ library(dplyr); library(ggplot2) })\nprint(nrow(mpg))', '2@print', true],
 			['the data set a function reads, attached before the call', 'f <- function() nrow(starwars)\nsuppressMessages(library(dplyr))\nprint(f())', '3@print', true],
+			['a data set found again once the binding hiding it is removed', 'mtcars$mpg[1] <- 0\nr1 <- mtcars$mpg[1]\nrm(mtcars)\nprint(c(r1, mtcars$mpg[1]))', '4@print', true],
+			['a base data set shadowed and then removed', 'iris <- "mine"\na <- iris\nrm(iris)\nprint(c(a, class(iris)))', '4@print', true],
+			['an assignment into the caller under a condition of the callee', 'f <- function(flag) if(flag) assign("pp", "set", envir = parent.frame())\npp <- "orig"\nf(FALSE)\na <- pp\nf(TRUE)\nprint(c(a, pp))', '6@print', true],
+			['a write into the frame of a closure counting with <<-', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\ncnt <- mk()\ncnt()\nenvironment(cnt)$n <- 10\nprint(cnt())', '5@print', true],
+			['a field of a closure frame read back by get', 'mk <- function() { n <- 0; function() n }\ncnt <- mk()\ne <- environment(cnt)\ne$n <- 10\nprint(get("n", envir = e))', '5@print', true],
 			['a column of an attached data set', 'x <- 1\nattach(mtcars)\nprint(mean(mpg))', '3@print', false],
 			['uncalled theme body and a later library', 'f <- 1\ng <- function() theme_classic()\ncat(f, "\\n")\nlibrary(ggplot2)', '3@cat', true],
 		] as const) {

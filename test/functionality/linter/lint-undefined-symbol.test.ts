@@ -23,6 +23,8 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('locally defined function is not flagged', parser, 'foo <- function() 1\nfoo()',
 				'undefined-symbol', []);
 
+			assertLinter('a name an assign may bind under a name we cannot tell is not flagged', parser, 'invisible(lapply(1:3, function(i) assign(paste0("g", i), i, envir = .GlobalEnv)))\nprint(g3)',
+				'undefined-symbol', []);
 			assertLinter('builtin is not flagged', parser, 'print("hi")\nc(1, 2)',
 				'undefined-symbol', []);
 

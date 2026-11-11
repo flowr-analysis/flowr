@@ -1,3 +1,4 @@
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
@@ -109,18 +110,21 @@ const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
 /**
  * The names bound by the `assign(name, value)` calls of the code, as far as flowR resolves `name`:
  * `assign(paste0("year", i), ...)` in a loop over `2000:2025` binds `year2000` to `year2025`.
+ * `undefined` if one of them binds a name flowR cannot tell (`lapply(1:3, function(i) assign(paste0("g", i), i))`), which may be any.
  */
-function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> {
+function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> | undefined {
 	const names = new Set<BrandedIdentifier>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(!callsBuiltIn(graph, id, NameBindingFunctions)) {
 			continue;
 		}
 		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'x', true, ctx);
-		for(const str of values?.values().flatMap(v => [...v]) ?? []) {
-			if(str !== undefined) {
-				names.add(str);
-			}
+		const found = values === undefined ? [] : [...values.values().flatMap(v => [...v])];
+		if(found.length === 0 || found.some(str => str === undefined || str === Unknown)) {
+			return undefined;
+		}
+		for(const str of found) {
+			names.add(str as BrandedIdentifier);
 		}
 	}
 	return names;
@@ -253,7 +257,7 @@ export const UNDEFINED_SYMBOL = {
 				return suppress('declaredGlobal');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)
-			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && boundByAssign.has(name))) {
+			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && (boundByAssign === undefined || boundByAssign.has(name)))) {
 				return suppress('enclosingScope');
 			}
 			// consumed by non-standard evaluation (quoting), hence not an ordinary read

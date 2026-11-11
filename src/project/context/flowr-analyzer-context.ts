@@ -277,6 +277,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 				this.addFile(file);
 			}
 		}
+
 		for(const consideredFile of source.files.consideredFilesList()) {
 			this.files.addConsideredFile(consideredFile);
 		}

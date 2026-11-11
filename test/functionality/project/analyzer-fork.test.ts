@@ -64,7 +64,7 @@ describe('Analyzer', withTreeSitter(parser => {
 		a.addRequest(requestA);
 		b.addRequest(requestB);
 
-		assert.deepStrictEqual(await(graph(a)), await analyze(initial, requestA));
+		assert.deepStrictEqual(await (graph(a)), await analyze(initial, requestA));
 		assert.deepStrictEqual(await (graph(b)), await analyze(initial, requestB));
 	});
 
@@ -104,7 +104,7 @@ describe('Analyzer', withTreeSitter(parser => {
 		const graphA = await graph(a);
 
 		const b = await a.fork({ forkDataflow: true });
-		assert.deepStrictEqual(await graph(b, false), graphA);
+		assert.deepStrictEqual(await graph(b), graphA);
 
 		b.addRequest('y <- x * 2');
 		const graphB = await graph(b);
@@ -120,28 +120,23 @@ describe('Analyzer', withTreeSitter(parser => {
 		a.addRequest('x <- 1');
 		const inline = new FlowrInlineTextFile('example.R', 'y <- x + 5');
 		a.addFile(inline);
-		a.addRequest({request: 'file', content: 'example.R'});
+		a.addRequest({ request: 'file', content: 'example.R' });
 
 		const baseGraph = await graph(a);
 
 		const b = await a.fork({ decoupleFiles: true });
-		const c = await a.fork(); 
+		const c = await a.fork();
 		assert.deepStrictEqual(await graph(b), baseGraph);
 		inline.updateInlineContent('y <- 2');
 
 		const graphA = await graph(a);
 		const graphB = await graph(b);
 		const graphC = await graph(c);
-		
-		assert.deepStrictEqual(graphB, baseGraph)
+
+		assert.deepStrictEqual(graphB, baseGraph);
 		assert.notDeepEqual(graphC, baseGraph);
 		assert.notDeepEqual(graphA, baseGraph);
 		assert.deepStrictEqual(graphC, graphA);
 	});
-
-	/* TODO:
-		- Test for lazy option (as soon as implemented)
-		- Maybe?: Tests with dependency query and/or other analyses
-	*/
 
 }));

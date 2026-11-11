@@ -414,7 +414,17 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 
 /** Whether an enclosing scope binds the name of a call within a closure before the closure exists, see {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out, whatever the end of the script binds there. */
 export function callBoundInScope(call: NodeId, graph: DataflowGraph): boolean {
-	return !graph.isRoot(call) && Dataflow.targetsOf(graph, call, EdgeType.Reads).some(r => boundBeforeClosure(r, call, graph));
+	return !graph.isRoot(call) && nameReadsOf(call, graph).some(r => boundBeforeClosure(r, call, graph));
+}
+
+/**
+ * The definitions the name of `call` reads, without what else it reads: the methods a built-in runs (`[.cls` for `x[i]`)
+ * and what they return, which say nothing about what the name is bound to.
+ */
+export function nameReadsOf(call: NodeId, graph: DataflowGraph): NodeId[] {
+	const vertex = graph.getVertex(call);
+	const name = DfgVertex.isFunctionCall(vertex) && vertex.name !== undefined ? String(Identifier.getName(vertex.name)) : undefined;
+	return Dataflow.targetsOf(graph, call, EdgeType.Reads).filter(r => name === undefined || NodeId.recoverBareName(r, graph.idMap) === name);
 }
 
 /** Whether the local definition `def` is made before the closure holding the read `read` is created, on every way there: `h <- function() 2; g <- function() h()` binds `h` in the scope before `g` exists, so no call of `g` looks past the scope for it. */
@@ -727,6 +737,11 @@ function calleesOf(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonl
  * @lintIgnore vertex-has-origin
  */
 export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironmentInformation, ctx: FlowrAnalyzerContext) {
+	/* linking changes the graph after nearly every call it resolves, so the walks are not worth sharing */
+	graph.withoutSharedTargetWalks(() => linkNestedFunctionCalls(graph, outEnvironment, ctx));
+}
+
+function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
 	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment, graph);
 	let rootDefinitions: DefaultMap<BrandedIdentifier, NodeId[]> | undefined;
 	const calls = graph.verticesOfType(VertexType.FunctionCall).toArray();
@@ -812,7 +827,7 @@ export function updateNestedFunctionCalls(graph: DataflowGraph, outEnvironment: 
 		/* the dispatch is decided anew, from every method the name may reach */
 		delete (vertex as Partial<Writable<typeof vertex>>).ruledOut;
 		delete (vertex as Partial<Writable<typeof vertex>>).ruledOutAt;
-		const targets = new Set(callBoundInScope(id, graph) ? linkedFunctionIds(new Set(Dataflow.targetsOf(graph, id, EdgeType.Reads)), graph) : Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
+		const targets = new Set(callBoundInScope(id, graph) ? linkedFunctionIds(new Set(nameReadsOf(id, graph)), graph) : Dataflow.callTargetsOf(id, graph, effectiveEnvironment));
 		/* a dispatch depends on the classes of its arguments, so it waits for the value flow to be linked */
 		const dispatches = origin.includes(BuiltInProcName.S3Dispatch) || narrower.reachesS4Method(targets) || mayDispatch && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf);
 		if(dispatches && !deferred.has(id)) {

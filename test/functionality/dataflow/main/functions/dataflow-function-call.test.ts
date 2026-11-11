@@ -580,13 +580,12 @@ testFuncCorrect(1:5, sum)
 			.call('d', 'h', [])
 			.reads('d', 'u');
 		const alone = ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph));
-		expect(graph.sharingTargetWalks(() => ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph)))).toEqual(alone);
+		expect(graph.withoutSharedTargetWalks(() => ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph)))).toEqual(alone);
 		expect(alone[0]).toContain('f');
-		graph.sharingTargetWalks(() => {
-			expect(Dataflow.callTargetsOf('c', graph)).toContain('f');
-			graph.defineFunction('f2', ['r2'], { out: [], in: [], unknownReferences: [], entryPoint: 'r2', graph: new Set(['r2']), environment: defaultEnv() })
-				.definedBy('g', 'f2');
-			expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
-		});
+		/* the shared walks start anew once the graph changes */
+		expect(Dataflow.callTargetsOf('c', graph)).toContain('f');
+		graph.defineFunction('f2', ['r2'], { out: [], in: [], unknownReferences: [], entryPoint: 'r2', graph: new Set(['r2']), environment: defaultEnv() })
+			.definedBy('g', 'f2');
+		expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
 	});
 }));

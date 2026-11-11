@@ -42,13 +42,11 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
  */
 export function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
 	const { ctx, only } = options;
-	return graph.sharingTargetWalks(() => {
-		const strict = strictnessOfEach(definitions, graph, { ctx });
-		return {
-			props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
-			roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
-		};
-	});
+	const strict = strictnessOfEach(definitions, graph, { ctx });
+	return {
+		props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
+		roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
+	};
 }
 
 /** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */

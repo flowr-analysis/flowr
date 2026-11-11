@@ -260,10 +260,8 @@ export async function executeQueriesOfSameType<SpecificQuery extends Query>(data
 function runExecutor(data: BasicQueryData, type: SupportedQueryTypes, queries: readonly Query[]): Promise<BaseQueryResult> {
 	const definition = SupportedQueries[type] as SupportedQuery | undefined;
 	guard(definition !== undefined, `Unsupported query type: ${type}`);
-	/* a query asks for the targets of many calls of a graph it leaves as it is; without an analyzer the executor is the one to fail */
-	const graph = (data.analyzer as typeof data.analyzer | undefined)?.peekDataflow()?.graph;
 	const run = (): Promise<BaseQueryResult> => definition.executor(data, queries as never);
-	return graph === undefined ? run() : graph.sharingTargetWalks(run);
+	return run();
 }
 
 /** Groups the queries by type in the order the types first occur, unfolding virtual queries into the queries they stand for. */

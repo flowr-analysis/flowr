@@ -514,6 +514,14 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	return [...all];
 }
 
+/**
+ * The steps a walk for the function definitions reads evaluate to takes with the calls it is in before it forgets them: the
+ * walk keeps apart what a parameter holds in each call of a function, so a program whose functions call each other a lot
+ * (thousands of calls, as in a package) has it visit every vertex once per call. Without the calls, a visit covers them all,
+ * which reaches the same functions and maybe more, so the walk stays sound and ends after visiting each vertex about once.
+ */
+const MaxContextSensitiveSteps = 20_000;
+
 /** Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved the accessed objects (first layer of reads/returns/calls/...). */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
@@ -525,13 +533,16 @@ export function getAllLinkedFunctionDefinitions(
 	/* the calls each vertex was expanded under, by whether an access led to it */
 	const expanded = [new Map<NodeId, Set<NodeId | undefined>>(), new Map<NodeId, Set<NodeId | undefined>>()] as const;
 	const scopes: CallScopes = new Map();
+	let steps = 0;
 	const next = (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => {
-		if(expanded[viaAccess ? 1 : 0].get(id)?.has(call) !== true) {
-			potential.push([id, viaAccess, call]);
+		/* past the budget, the walk forgets the calls it is in, which only lets it reach more (see `MaxContextSensitiveSteps`) */
+		const kept = steps < MaxContextSensitiveSteps ? call : undefined;
+		if(expanded[viaAccess ? 1 : 0].get(id)?.has(kept) !== true) {
+			potential.push([id, viaAccess, kept]);
 		}
 	};
 
-	for(let item = potential.pop(); item !== undefined; item = potential.pop()) {
+	for(let item = potential.pop(); item !== undefined; item = potential.pop(), steps++) {
 		const [cid, viaAccess, call] = item;
 		const done = expanded[viaAccess ? 1 : 0];
 		const calls = done.get(cid);

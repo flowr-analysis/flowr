@@ -46,15 +46,15 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (16 ms)
+    Query: linter (19 ms)
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
        ╰ Absolute Paths (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-       ╰ +20 rules with no findings (:query to see all)
-    All queries together required ≈16 ms (1ms accuracy, total 16 ms)
+       ╰ +21 rules with no findings (:query to see all)
+    All queries together required ≈19 ms (1ms accuracy, total 19 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -68,15 +68,15 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (14 ms)\
+    Query: **linter** (22 ms)\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;╰ _+20 rules with no findings (:query* to see all)_\
-    _All queries together required ≈14 ms (1ms accuracy, total 14 ms)_
+    &nbsp;&nbsp;&nbsp;╰ _+21 rules with no findings (:query* to see all)_\
+    _All queries together required ≈22 ms (1ms accuracy, total 23 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -85,7 +85,7 @@ It offers a wide variety of features, for example:
     The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
     
     ```json
-    {"linter":{"results":{"deprecated-functions":{"results":[],".meta":{"builtin":0,"sigdb":0}},"file-path-validity":{"results":[{"involvedId":3,"loc":[1,1,1,23],"filePath":"/root/x.txt","certainty":"certain"}],".meta":{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}},"seeded-randomness":{"results":[],".meta":{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}},"absolute-file-paths":{"results":[{"certainty":"certain","filePath":"/root/x.txt","loc":[1,1,1,23]}],".meta":{"totalConsidered":1,"totalUnknown":0}},"unused-definitions":{"results":[],".meta":{"totalConsidered":0}},"network-functions":{"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},"dataframe-access-validation":{"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},"dead-code":{"results":[],".meta":{}},"useless-loop":{"results":[],".meta":{"numOfUselessLoops":0}},"problematic-inputs":{"results":[],".meta":{}},"stop-call":{"results":[],".meta":{"consideredNodes":0}},"roxygen-arguments":{"results":[],".meta":{}},"no-leaked-credentials":{"results":[],".meta":{"totalChecked":1}},"undefined-symbol":{"results":[],".meta":{"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}}},"unused-import":{"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},"unclosed-connection":{"results":[],".meta":{"totalOpened":0,"totalClosed":0}},"overwritten-file":{"results":[],".meta":{"totalFiles":0}},"unescaped-arguments":{"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},"namespace-access":{"results":[],".meta":{"unresolved":0}},"secret-exfiltration":{"results":[],".meta":{"secretSinkCalls":0}},"process-state-in-session":{"results":[],".meta":{"sessionFunctions":0}},"call-contracts":{"results":[],".meta":{"checkedCalls":0}}},".meta":{}},".meta":{}}
+    {"linter":{"results":{"deprecated-functions":{"results":[],".meta":{"builtin":0,"sigdb":0}},"file-path-validity":{"results":[{"involvedId":3,"loc":[1,1,1,23],"filePath":"/root/x.txt","certainty":"certain"}],".meta":{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}},"seeded-randomness":{"results":[],".meta":{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}},"absolute-file-paths":{"results":[{"certainty":"certain","filePath":"/root/x.txt","loc":[1,1,1,23]}],".meta":{"totalConsidered":1,"totalUnknown":0}},"unused-definitions":{"results":[],".meta":{"totalConsidered":0}},"network-functions":{"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},"dataframe-access-validation":{"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},"dead-code":{"results":[],".meta":{}},"useless-loop":{"results":[],".meta":{"numOfUselessLoops":0}},"problematic-inputs":{"results":[],".meta":{}},"stop-call":{"results":[],".meta":{"consideredNodes":0}},"roxygen-arguments":{"results":[],".meta":{}},"no-leaked-credentials":{"results":[],".meta":{"totalChecked":1}},"undefined-symbol":{"results":[],".meta":{"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}}},"unused-import":{"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},"unclosed-connection":{"results":[],".meta":{"totalOpened":0,"totalClosed":0}},"overwritten-file":{"results":[],".meta":{"totalFiles":0}},"unescaped-arguments":{"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},"namespace-access":{"results":[],".meta":{"unresolved":0}},"secret-exfiltration":{"results":[],".meta":{"secretSinkCalls":0}},"process-state-in-session":{"results":[],".meta":{"sessionFunctions":0}},"call-contracts":{"results":[],".meta":{"checkedCalls":0}},"interactive-functions":{"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}}},".meta":{}},".meta":{}}
     ```
     
     </details>
@@ -141,7 +141,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈13 ms (1ms accuracy, total 13 ms)
+    All queries together required ≈19 ms (1ms accuracy, total 20 ms)
     ```
     
     </details>

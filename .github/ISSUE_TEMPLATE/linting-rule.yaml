@@ -39,6 +39,7 @@ body:
         - File Path Validity
         - Foreign Function Calls
         - Global Environment Modification
+        - Interactive Functions
         - Namespace Access Validity
         - Namespace Tampering
         - Naming Convention

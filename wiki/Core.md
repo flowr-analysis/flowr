@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-11-11, 08:13:04 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
@@ -1219,7 +1219,7 @@ by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tr
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L42"><code><span title="Processes different types of access operations. e.g. a[i] a$foo a[[i]] a@foo.">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L61"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as a call of for with the three as arguments.">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
 
-Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L452"><code><span title="Semantics of a built-in that hold no matter which processor handles the call.">BuiltInFnInfo</span></code></a> -- see
+Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L454"><code><span title="Semantics of a built-in that hold no matter which processor handles the call.">BuiltInFnInfo</span></code></a> -- see
 [Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
 
 #### Labeling the Built-Ins
@@ -1272,8 +1272,8 @@ function calls over to the function calling it).
 | `Pure` | 478 | computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes ImpureProps) |
 | `MayPure` | 134 | pure on its own, but it runs code it is handed, so whatever that code does happens too. |
 | `Throws`<sup>db</sup> | 45 | may signal an error, like `stop()` (see SigDbInferable) |
-| `Invisible` | 613 | returns invisibly, so the result is not auto-printed |
-| `Generic`<sup>db</sup> | 199 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
+| `Invisible` | 622 | returns invisibly, so the result is not auto-printed |
+| `Generic`<sup>db</sup> | 200 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
 | `Scope` | 80 | binds, rebinds, or removes names outside of its own frame, like `assign` or `library` |
 | `NonDet`<sup>db</sup> | 36 | the result may differ between two identical calls for a reason neither `Random` nor `Ambient` covers (see SigDbInferable) |
 | `Ambient` | 34 | depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) |
@@ -1281,7 +1281,7 @@ function calls over to the function calling it).
 | `Ffi` | 10 | calls native code through the foreign function interface, like `.Call` |
 | `Lang` | 84 | produces a language object, like `quote` or `deparse` |
 | `Concurrent`<sup>db</sup> | 41 | runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only reproducibility and where an error surfaces. |
-| `Primitive` | 414 | the R language itself provides it: a `.Primitive` or `.Internal` of a base package, `if` and `for` and the operators included. |
+| `Primitive` | 418 | the R language itself provides it: a `.Primitive` or `.Internal` of a base package, `if` and `for` and the operators included. |
 
 </details>
 
@@ -1295,6 +1295,7 @@ function calls over to the function calling it).
 | `Network` | 109 | always reaches the network, like `curl::curl_download`. |
 | `Process` | 13 | runs a system command |
 | `User` | 44 | asks the user, like `readline` or a file chooser |
+| `Interactive` | 12 | only does its job in an interactive session: opens a viewer, an editor, or the debugger (`View`, `edit`, `browser`), which a script run by `Rscript` has none of |
 | `CommandLine` | 1 | hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do |
 | `Glob` | 22 | yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer |
 | `Graphics` | 674 | draws on a graphics device |
@@ -1326,25 +1327,25 @@ system, so a call doing both states both), and `Reads`/`Writes` say what happens
 
 </details>
 
-Most of these properties combine freely. The exceptions are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L187"><code><span title="Which properties rule each other out, as [property, everything stating it forbids].">ExclusiveCallProps</span></code></a>, which a
+Most of these properties combine freely. The exceptions are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L189"><code><span title="Which properties rule each other out, as [property, everything stating it forbids].">ExclusiveCallProps</span></code></a>, which a
 test checks the whole configuration against:
 
-* `Pure` rules out `MayPure`, `Scope`, `NonDet`, `Ambient`, `Configures`, `Ffi`, `Lang`, `Random`, `File`, `TempFile`, `Network`, `Process`, `User`, `CommandLine`, `Graphics`, `Database`, `Opens`, `Closes`, `Reads`, `Writes`, `Prints`
+* `Pure` rules out `MayPure`, `Scope`, `NonDet`, `Ambient`, `Configures`, `Ffi`, `Lang`, `Random`, `File`, `TempFile`, `Network`, `Process`, `User`, `Interactive`, `CommandLine`, `Graphics`, `Database`, `Opens`, `Closes`, `Reads`, `Writes`, `Prints`
 * `NonDet` rules out `Ambient`, `Random`
 * `Random` rules out `Ambient`
 
 <details><summary>What each argument role means</summary>
 
-A role is stated per parameter in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L357"><code><span title="The formals of a built-in, in the order they are declared in, each with what its argument is used for.">FnSig</span></code></a> of a built-in, in the order R declares
+A role is stated per parameter in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L359"><code><span title="The formals of a built-in, in the order they are declared in, each with what its argument is used for.">FnSig</span></code></a> of a built-in, in the order R declares
 them, with `...` covering every position from where it appears. The count is how many built-ins have at least one
 parameter in that role.
 
 | Argument role | Built-ins | Meaning |
 | :-- | --: | :-- |
-| `Forced` | 1689 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
+| `Forced` | 1701 | evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` |
 | `NoDefault` | 66 | declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it |
 | `Alias` | 46 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge. |
-| `Value` | 896 | the result is computed from the argument's value, like `x` in `sum(x)` |
+| `Value` | 897 | the result is computed from the argument's value, like `x` in `sum(x)` |
 | `Shape` | 30 | only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` |
 | `Flag` | 121 | selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` |
 | `Resource` | 402 | names the resource the call reads or writes, like `file` in `write.csv(x, file)`. |

@@ -1143,6 +1143,8 @@ interface RunOrder {
 	readonly openers:           ReadonlySet<NodeId>
 	/** a default of a formal may do more than compute a value, which it does on first read, wherever that is */
 	readonly effectfulDefaults: boolean
+	/** the ways out of the function the control flow does not tell, see {@link exitStep} */
+	readonly exits:             readonly NodeId[]
 	/** whether `from` may run before `to`, see {@link reaches} */
 	readonly reaches:           (from: NodeId, to: NodeId) => boolean
 }
@@ -1158,9 +1160,22 @@ function branchPathsOf(this: void, state: GuardState): BranchPaths {
 	return state.paths;
 }
 
-/** Whether the code may return from the function, as a `return` in it does. */
-function mayReturn(this: void, node: RNodeWithParent, state: GuardState): boolean {
-	return RNode.collectAllIdsWithStop(node, n => RFunctionDefinition.is(n)).values().some(id => DfgVertex.hasOrigin(callVertexOf(id, state), BuiltInProcName.Return));
+/** Whether the node runs in the body of a loop of the function. */
+function inLoopOf(this: void, node: RNodeWithParent | undefined, { state, scope }: Run): boolean {
+	const idMap = state.graph.idMap as AstIdMap;
+	return node !== undefined && [node, ...RNode.iterateParents(node, idMap)].some(n => {
+		const parent = RNode.directParent(n, idMap);
+		return (RForLoop.is(parent) || RWhileLoop.is(parent) || RRepeatLoop.is(parent)) && parent.body === n && within(parent, scope.definition.body, state);
+	});
+}
+
+/** Whether the code ends in a `stop`, so it never completes. */
+function alwaysFails(this: void, node: RNodeWithParent, state: GuardState): boolean {
+	let last = node;
+	while(RExpressionList.is(last) && last.children.length > 0) {
+		last = last.children[last.children.length - 1];
+	}
+	return runsBuiltIn(callVertexOf(last.info.id, state), BuiltInProcName.Stop);
 }
 
 /** Where the node starts in the code, to order the steps of a path outermost first. */
@@ -1180,10 +1195,15 @@ function stepOf(this: void, { cause, when, target }: BranchStep, node: RNodeWith
 	const construct = nodeOf(cause, state);
 	const pick = (term: GuardTerm | undefined) => stepsOf(term, state.facts)[when ? 0 : 1];
 	if(RIfThenElse.is(construct)) {
+		/* code after an `if` whose other branch always fails asks nothing more of it: the failure asks for the condition itself */
+		const other = when ? construct.otherwise : construct.then;
+		if(other !== undefined && !within(node, construct, state) && alwaysFails(other, state)) {
+			return undefined;
+		}
 		return pick(termOf(construct.condition, scope, state));
 	} else if(RForLoop.is(construct) || RWhileLoop.is(construct) || RRepeatLoop.is(construct)) {
-		/* what comes after a loop is reached either way, unless the body may return, of which nothing is known; what runs within it is known nothing of, see {@link pathsAt} */
-		return within(node, construct.body, state) || !mayReturn(construct.body, state) ? undefined : UnknownStep;
+		/* what comes after a loop is reached either way, what runs within it is known nothing of, and a `return` in it is an exit of its own, see {@link pathsAt} */
+		return undefined;
 	} else if(RBinaryOp.is(construct) && (construct.operator === '&&' || construct.operator === '||')) {
 		/* the left operand decides whether the right one runs, and nothing after */
 		return within(node, construct.rhs, state) ? pick(termOf(construct.lhs, scope, state)) : undefined;
@@ -1252,19 +1272,31 @@ function untaken(this: void, steps: readonly BranchStep[], state: GuardState): S
  * (see {@link untaken}), `undefined` if they are not known.
  */
 function pathsAt(this: void, node: RNodeWithParent, run: Run): { readonly path: Path, readonly skips: ReadonlySet<NodeId> }[] | undefined {
-	const { state, scope } = run;
-	/* a branch defining something is one a read after it may see either way, see {@link untaken} */
-	const found = branchPathsOf(state).pathsTo(scope.vertex.id, node.info.id, cause => untaken([{ cause, when: true }, { cause, when: false }], state).size === 0);
-	/* what runs in the body of a loop runs any number of times, so nothing is known of how it is reached */
-	const looped = RNode.iterateParents(node, state.graph.idMap as AstIdMap).some(p => p === scope.definition) && [node, ...RNode.iterateParents(node, state.graph.idMap as AstIdMap)]
-		.some(n => {
-			const parent = RNode.directParent(n, state.graph.idMap as AstIdMap);
-			return (RForLoop.is(parent) || RWhileLoop.is(parent) || RRepeatLoop.is(parent)) && parent.body === n && within(parent, scope.definition.body, state);
-		});
+	const { scope } = run;
 	const order = run.order as RunOrder;
 	/* what holds of the formals is gone once the frame may have been written behind the back of the dataflow */
 	scope.frameIsOpen = order.openers.values().some(opener => opener === node.info.id || order.reaches(opener, node.info.id));
 	run.effects = order.effectfulDefaults || order.effects.values().some(site => site !== node.info.id && order.reaches(site, node.info.id));
+	const exits = order.exits.filter(exit => exit !== node.info.id && order.reaches(exit, node.info.id)).map(exit => exitStep(exit, run));
+	return stepsTo(node, run)?.map(({ path, skips }) => ({ path: [...path, ...exits], skips }));
+}
+
+/**
+ * What the control flow does not tell of a way out before `exit`: as it may have left the function there (a call of what may be
+ * the `return` of R, a `return` in a loop), code after it is reached only if it did not, as the conditions on the way there say.
+ */
+function exitStep(this: void, exit: NodeId, run: Run): PathStep {
+	const paths = stepsTo(nodeOf(exit, run.state) as RNodeWithParent, run);
+	return paths?.length === 1 ? { holds: GuardTerm.True, fails: GuardTerm.all(...paths[0].path.map(step => step.holds)) } : UnknownStep;
+}
+
+/** {@link pathsAt} without the exits and what happened before, which does not change anything of the run. */
+function stepsTo(this: void, node: RNodeWithParent, run: Run): { readonly path: Path, readonly skips: ReadonlySet<NodeId> }[] | undefined {
+	const { state, scope } = run;
+	/* a branch defining something is one a read after it may see either way, see {@link untaken} */
+	const found = branchPathsOf(state).pathsTo(scope.vertex.id, node.info.id, cause => untaken([{ cause, when: true }, { cause, when: false }], state).size === 0);
+	/* what runs in the body of a loop runs any number of times, so nothing is known of how it is reached */
+	const looped = inLoopOf(node, run);
 	return found?.map(steps => {
 		const sorted = [...steps].sort((a, b) => positionOf(a.cause, state) - positionOf(b.cause, state));
 		const skips = untaken(sorted, state);
@@ -1280,10 +1312,20 @@ function orderOf(this: void, run: Run): RunOrder {
 	const { state, scope } = run;
 	const effects = new Set<NodeId>();
 	const openers = new Set(run.openers);
+	const exits: NodeId[] = [];
+	const inUseMethod = new Set<NodeId>();
 	for(const id of RNode.collectAllIdsWithStop(scope.definition.body, n => RFunctionDefinition.is(n))) {
 		const vertex = callVertexOf(id, state);
+		const node = nodeOf(id, state);
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) && (!runsBuiltIn(vertex, BuiltInProcName.Return) || inLoopOf(node, run))) {
+			exits.push(id);
+		}
+		/* what names the generic of a `UseMethod` is no call of its own, whatever the dataflow turns it into */
+		if(vertex !== undefined && knownNameOf(id, vertex, state) === 'UseMethod' && RFunctionCall.is(node)) {
+			node.arguments.forEach(a => a !== EmptyArgument && a.value !== undefined && RNode.collectAllIds(a.value).forEach(i => inUseMethod.add(i)));
+		}
 		/* a name standing for a call, as the generic `UseMethod` names stands for the dispatch, does nothing of its own */
-		if(vertex === undefined || RSymbol.is(nodeOf(id, state)) || RConstant.is(nodeOf(id, state))) {
+		if(vertex === undefined || RSymbol.is(node) || RConstant.is(node) || inUseMethod.has(id)) {
 			continue;
 		}
 		const target = RFunctionCall.isNamed(nodeOf(id, state)) ? soleCallee(id, state) : undefined;
@@ -1312,7 +1354,7 @@ function orderOf(this: void, run: Run): RunOrder {
 		}
 		return seen;
 	});
-	return { effects, openers, effectfulDefaults, reaches: (from, to) => reached(from).has(to) };
+	return { effects, openers, effectfulDefaults, exits, reaches: (from, to) => reached(from).has(to) };
 }
 
 /** Each path to the node, with what flowR cannot tell how the node is reached left without any. */

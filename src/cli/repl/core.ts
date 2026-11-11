@@ -27,6 +27,9 @@ import { startAndEndsWith, matchByPrefixOrSubsequence } from '../../util/text/st
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
 import { exitSafe } from '../../util/proc';
+import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { datasetsOf } from '../../util/r-datasets';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -93,8 +96,33 @@ export function computeCompletions(line: string, config: FlowrConfig): [string[]
 		}
 	}
 
+	/* a plain R line, which runs in R: the name typed last completes to what R finds without the script binding it */
+	if(line.trim().length > 0 && !line.trimStart().startsWith(':')) {
+		return completeRName(line);
+	}
 	// if no command is already typed, just return all commands that match
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
+}
+
+/** the most names a plain R line is offered, the first ones in order */
+const MaxRNames = 40;
+
+/** the functions flowR knows and the data sets R always finds (`penguins`), each with what it is, as the completions of an R name */
+let rNames: ReadonlyMap<string, string> | undefined;
+
+/** completes the name `line` ends in, as `Vi` to `View`, see {@link rNames} */
+function completeRName(line: string): [string[], string, ReadonlyMap<string, string>] {
+	rNames ??= new Map([
+		...datasetsOf('datasets').map(name => [String(name), 'data set of datasets'] as const),
+		...DefaultBuiltinConfig.flatMap(d => d.names.map(id => [String(Identifier.getName(id)), 'flowR built-in'] as const))
+	]);
+	const fragment = /[A-Za-z.][\w.]*$/.exec(line)?.[0] ?? '';
+	if(fragment.length === 0) {
+		return [[], '', new Map()];
+	}
+	const found = [...rNames.keys()].filter(name => name.startsWith(fragment) && name !== fragment)
+		.sort((a, b) => a.length - b.length || a.localeCompare(b)).slice(0, MaxRNames);
+	return [found, fragment, new Map(found.map(name => [name, `${name}  ${rNames?.get(name) ?? ''}`]))];
 }
 
 /**

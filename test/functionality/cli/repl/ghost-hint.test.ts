@@ -123,4 +123,12 @@ describe('REPL ghost hint', () => {
 		expect(replCompleter(':signature add ', cfg)[0]).toEqual(['file://']);
 		expect(completionSuggestion(':signature add ', cfg)).toBe('');
 	});
+	test(label('completes the R name a plain line ends in', [], ['other']), () => {
+		const cfg = FlowrConfig.default();
+		expect(replCompleter('Vie', cfg)[0]).toContain('View');
+		expect(replCompleter('x <- pengu', cfg)).toEqual([['penguins'], 'pengu']);
+		expect(completionSuggestion('summary(mtc', cfg)).toBe('ars');
+		/* a command line is not R */
+		expect(replCompleter(':que', cfg)[0]).toContain(':query ');
+	});
 });

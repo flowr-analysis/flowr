@@ -1145,6 +1145,8 @@ interface RunOrder {
 	readonly effectfulDefaults: boolean
 	/** the ways out of the function the control flow does not tell, see {@link exitStep} */
 	readonly exits:             readonly NodeId[]
+	/** {@link exitStep} of an exit, worked out once */
+	readonly exitStep:          (exit: NodeId) => PathStep
 	/** whether `from` may run before `to`, see {@link reaches} */
 	readonly reaches:           (from: NodeId, to: NodeId) => boolean
 }
@@ -1277,7 +1279,7 @@ function pathsAt(this: void, node: RNodeWithParent, run: Run): { readonly path: 
 	/* what holds of the formals is gone once the frame may have been written behind the back of the dataflow */
 	scope.frameIsOpen = order.openers.values().some(opener => opener === node.info.id || order.reaches(opener, node.info.id));
 	run.effects = order.effectfulDefaults || order.effects.values().some(site => site !== node.info.id && order.reaches(site, node.info.id));
-	const exits = order.exits.filter(exit => exit !== node.info.id && order.reaches(exit, node.info.id)).map(exit => exitStep(exit, run));
+	const exits = order.exits.filter(exit => exit !== node.info.id && order.reaches(exit, node.info.id)).map(order.exitStep);
 	return stepsTo(node, run)?.map(({ path, skips }) => ({ path: [...path, ...exits], skips }));
 }
 
@@ -1354,7 +1356,7 @@ function orderOf(this: void, run: Run): RunOrder {
 		}
 		return seen;
 	});
-	return { effects, openers, effectfulDefaults, exits, reaches: (from, to) => reached(from).has(to) };
+	return { effects, openers, effectfulDefaults, exits, exitStep: memoize((exit: NodeId) => exitStep(exit, run)), reaches: (from, to) => reached(from).has(to) };
 }
 
 /** Each path to the node, with what flowR cannot tell how the node is reached left without any. */

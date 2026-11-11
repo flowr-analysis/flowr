@@ -322,8 +322,9 @@ export function instantiateEnvOps(call: NodeId, fn: DataflowGraphVertexFunctionD
 		}
 		const all = [...op.literals, ...names.flat() as BrandedIdentifier[]];
 		const holders = typeof at === 'object' ? at.holders : [];
-		/* with several names or environments, each is only maybe the one */
-		const cds = callCds ?? (all.length > 1 || holders.length > 1 ? [] : undefined);
+		/* with several names or environments, each is only maybe the one, and an op the body only runs under a condition (`if(flag) assign(...)`) only maybe runs */
+		const within = graph.getVertex(op.id)?.cds ?? [];
+		const cds = within.length > 0 ? [...callCds ?? [], ...within] : callCds ?? (all.length > 1 || holders.length > 1 ? [] : undefined);
 		/* what a call within another function hands over is kept by that call only, which a slice reaches through the value in the body */
 		const value = op.value === undefined || !run.direct ? op.value : valueAt(op.value, run);
 		/* every call on the way makes the change */

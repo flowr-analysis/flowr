@@ -1389,6 +1389,7 @@ describe('Calls checked against R', withTreeSitter(parser => {
 			['a base data set shadowed and then removed', 'iris <- "mine"\na <- iris\nrm(iris)\nprint(c(a, class(iris)))', '4@print', true],
 			['an assignment into the caller under a condition of the callee', 'f <- function(flag) if(flag) assign("pp", "set", envir = parent.frame())\npp <- "orig"\nf(FALSE)\na <- pp\nf(TRUE)\nprint(c(a, pp))', '6@print', true],
 			['a write into the frame of a closure counting with <<-', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\ncnt <- mk()\ncnt()\nenvironment(cnt)$n <- 10\nprint(cnt())', '5@print', true],
+			['a write into the frame of a closure a helper is handed', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nreset <- function(f, v) { environment(f)$n <- v; invisible() }\ncnt <- mk()\nreset(cnt, 20)\nprint(cnt())', '5@print', true],
 			['a field of a closure frame read back by get', 'mk <- function() { n <- 0; function() n }\ncnt <- mk()\ne <- environment(cnt)\ne$n <- 10\nprint(get("n", envir = e))', '5@print', true],
 			['a column of an attached data set', 'x <- 1\nattach(mtcars)\nprint(mean(mpg))', '3@print', false],
 			['uncalled theme body and a later library', 'f <- 1\ng <- function() theme_classic()\ncat(f, "\\n")\nlibrary(ggplot2)', '3@cat', true],

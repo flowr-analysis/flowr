@@ -122,12 +122,13 @@ function evaluatedDefinitions(node: RFunctionCall<ParentInformation>, config: Lo
 	return ops;
 }
 
-/** `env$x <- value` or `env[["x"]] <- value` in a body where `env` is a parameter: the call decides whether it writes into an environment the caller holds or into a copy of a list, see {@link EnvOpKind.Replace}. */
+/** `env$x <- value` or `env[["x"]] <- value` (`environment(f)$x <- value` alike) in a body where `env` (`f`) is a parameter: the call decides whether it writes into an environment the caller holds or into a copy of a list, see {@link EnvOpKind.Replace}. */
 function replacementOf(id: NodeId, node: RNode<ParentInformation> | undefined, graph: DataflowGraph, idMap: AstIdMap, environment: REnvironmentInformation): DeferredEnvOp | undefined {
 	const access: RAccess<ParentInformation> | undefined = RAccess.is(node) ? node : undefined;
 	const assignment = access && RNode.directParent(access, idMap);
 	const value = RBinaryOp.is(assignment) && assignment.lhs === access && ReplacedBy.has(assignment.operator) ? (assignment as RBinaryOp<ParentInformation>).rhs : undefined;
-	const target = value !== undefined && RSymbol.is(access?.accessed) ? access : undefined;
+	/* the environment is a variable, or the frame of the closure one holds (`environment(f)$n <- v`) */
+	const target = value !== undefined && (RSymbol.is(access?.accessed) || frameOf(access?.accessed) !== undefined) ? access : undefined;
 	const field = target !== undefined && target.access.length === 1 && FieldAccess.has(target.operator) ? RArgument.valueOf(target.access[0]) : undefined;
 	if(target === undefined || field === undefined || !(heldByParameter(target.accessed.info.id, graph, idMap) || callerGenerations(target.accessed, environment, graph, idMap) !== undefined)) {
 		return undefined;

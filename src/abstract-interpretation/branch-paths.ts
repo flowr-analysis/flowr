@@ -49,7 +49,7 @@ function flipped(step: string): string {
 }
 
 /** The paths with every two that differ in one branch only merged into one without it, until no more do. */
-function resolved(paths: Set<string>[]): Set<string>[] {
+function resolved(paths: Set<string>[], mergeable: (step: string) => boolean): Set<string>[] {
 	const unique = new Map(paths.map(p => [encodePath(p), p]));
 	for(let merged = true; merged;) {
 		merged = false;
@@ -59,7 +59,7 @@ function resolved(paths: Set<string>[]): Set<string>[] {
 				const twin = new Set(a);
 				twin.delete(step);
 				const other = encodePath(twin.add(flipped(step)));
-				if(unique.has(other) && flipped(step) !== step) {
+				if(unique.has(other) && flipped(step) !== step && mergeable(step)) {
 					twin.delete(flipped(step));
 					unique.delete(encodePath(a));
 					unique.delete(other);
@@ -92,7 +92,7 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		return new BranchPathDomain(['']);
 	}
 
-	protected override meetValue(this: this & BranchPathDomain, other: BranchPathDomain): this {
+	protected override meetValue(this: this & BranchPathDomain, other: BoundedSetDomain<string>): this {
 		if(!other.isValue()) {
 			return this.create(other.value);
 		}
@@ -113,10 +113,11 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 
 	/**
 	 * The paths, each a list of the branches it takes, `undefined` for Top. Two paths that only differ in which way one branch
-	 * went are one path without that branch, as the node is reached either way (`if(c) a else b; d` reaches `d` whatever `c` is).
+	 * went are one path without that branch, as the node is reached either way (`if(c) a else b; d` reaches `d` whatever `c` is),
+	 * unless `mergeable` says something hangs on the branch it went.
 	 */
-	public paths(): readonly (readonly BranchStep[])[] | undefined {
-		return this.isValue() ? resolved([...this.value].map(stepsOf)).map(steps => [...steps].map(decodeStep)) : undefined;
+	public paths(mergeable: (cause: NodeId) => boolean = () => true): readonly (readonly BranchStep[])[] | undefined {
+		return this.isValue() ? resolved([...this.value].map(stepsOf), step => mergeable(decodeStep(step).cause)).map(steps => [...steps].map(decodeStep)) : undefined;
 	}
 }
 
@@ -165,10 +166,10 @@ export class BranchPaths extends AbstractInterpreter<Paths> {
 		return next;
 	}
 
-	/** The paths to the node within the body of the definition, `undefined` if they are not known. */
-	public pathsTo(definition: NodeId, node: NodeId): readonly (readonly BranchStep[])[] | undefined {
+	/** The paths to the node within the body of the definition, `undefined` if they are not known; only branches `mergeable` says nothing hangs on are merged away, see {@link BranchPathDomain#paths}. */
+	public pathsTo(definition: NodeId, node: NodeId, mergeable?: (cause: NodeId) => boolean): readonly (readonly BranchStep[])[] | undefined {
 		const value = this.getAbstractState(node, 'paths')?.get(definition);
-		return value instanceof BranchPathDomain ? value.paths() : undefined;
+		return value instanceof BranchPathDomain ? value.paths(mergeable) : undefined;
 	}
 }
 

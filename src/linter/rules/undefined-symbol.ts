@@ -1,4 +1,3 @@
-import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
@@ -104,6 +103,9 @@ function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyze
 	return names;
 }
 
+/** what {@link getArgumentStringValue} gives for a value it cannot tell, as the dependencies query has it */
+const UnknownValue = 'unknown';
+
 /** the calls binding the name they are handed as a string, which flowR does not link to the reads of that name */
 const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
 
@@ -120,7 +122,7 @@ function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext):
 		}
 		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'x', true, ctx);
 		const found = values === undefined ? [] : [...values.values().flatMap(v => [...v])];
-		if(found.length === 0 || found.some(str => str === undefined || str === Unknown)) {
+		if(found.length === 0 || found.some(str => str === undefined || str === UnknownValue)) {
 			return undefined;
 		}
 		for(const str of found) {

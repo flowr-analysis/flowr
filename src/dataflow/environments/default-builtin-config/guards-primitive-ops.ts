@@ -5,16 +5,10 @@ import { AnyType, RValueType, type GuardFacts, type RCondition, type RFailure, t
 import type { BrandedIdentifier } from '../identifier';
 import { base, fn, Primitive } from './define-helpers';
 import { Forced, sig } from './shared-signatures';
+import { Atomic, dispatched, each, fails, is, not, Numeric } from './guard-builders';
+import { RGroupGenerics } from '../group-generics';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
-const Numeric = Integer | Double;
-const Atomic = Logical | Numeric | Complex | Character | Raw;
-
-const is = (...predicates: readonly BrandedIdentifier[]): RCondition => predicates.length === 1 ? { is: predicates[0] } : { any: predicates.map(p => ({ is: p })) };
-const not = (...predicates: readonly BrandedIdentifier[]): RCondition => ({ all: predicates.map(p => ({ not: { is: p } })) });
-const fails = (requires: RCondition, message: string, more: Omit<RFailure, 'requires' | 'message'> = {}): readonly RFailure[] => [{ requires, message, ...more }];
-/* a value with a class attribute, or a classed other operand, may bring a method of its own */
-const dispatched = (requires: RCondition, message: string): readonly RFailure[] => fails(requires, message, { dispatches: true });
 const predicate = (yes: RValueTypes, more: Omit<TypePredicate, 'yes'> = {}): TypePredicate => ({ yes, ...more });
 /* what a method returns is up to the method, so this holds for a value without a class; with two operands or the dots to dispatch on, nothing is stated */
 const Dispatched = (on: BrandedIdentifier, types: RValueTypes, more: Omit<ReturnedValue, 'types' | 'dispatchesOn'> = {}): ReturnedValue => ({ types, dispatchesOn: on, ...more });
@@ -98,35 +92,17 @@ const SingleNonNegative: RCondition = { any: [{ not: { is: 'is.numeric' } }, { l
  * What is asked of a value that may dispatch holds only without a class attribute.
  */
 export const PrimitiveOpsGuardFacts: Readonly<Record<BrandedIdentifier, GuardFacts>> = {
-	'+':              Arithmetic,
-	'-':              Arithmetic,
-	'*':              Arithmetic,
-	'/':              Arithmetic,
-	'^':              Arithmetic,
-	'%%':             Arithmetic,
-	'%/%':            Arithmetic,
-	'==':             Compared('==', false),
-	'!=':             Compared('!=', false),
-	'<':              Compared('<', true),
-	'<=':             Compared('<=', true),
-	'>':              Compared('>', true),
-	'>=':             Compared('>=', true),
-	'&':              Elementwise,
-	'|':              Elementwise,
+	...each(Arithmetic, ...RGroupGenerics.Arith.filter(op => op !== '**')),
+	...Object.fromEntries(RGroupGenerics.Compare.map(op => [op, Compared(op, op !== '==' && op !== '!=')])),
+	...each(Elementwise, ...RGroupGenerics.Logic),
 	'!':              { asks: { x: dispatched({ any: [is('is.numeric', 'is.logical', 'is.complex', 'is.raw'), { length: '==', to: 0 }] }, 'invalid argument type') }, computes: true, returns: Dispatched('x', Logical | Raw) },
 	'&&':             Logicals('&&', 'isTRUE'),
 	'||':             Logicals('||', 'isFALSE'),
-	'sum':            Summed,
-	'prod':           Summed,
-	'max':            Ordered,
-	'min':            Ordered,
+	...each(Summed, 'sum', 'prod'),
+	...each(Ordered, 'max', 'min'),
 	'range':          Ranged,
-	'all':            Quantified,
-	'any':            Quantified,
-	'Re':             ComplexPart(Double),
-	'Im':             ComplexPart(Double),
-	'Mod':            ComplexPart(Double),
-	'Arg':            ComplexPart(Double),
+	...each(Quantified, 'all', 'any'),
+	...each(ComplexPart(Double), 'Re', 'Im', 'Mod', 'Arg'),
 	'Conj':           ComplexPart(Double | Complex),
 	'%*%':            { ...product('ncol', 'nrow', Multiplied), required: ['x', 'y'] },
 	'crossprod':      product('nrow', 'nrow', is('is.numeric', 'is.logical', 'is.complex', 'is.null')),
@@ -163,9 +139,7 @@ export const PrimitiveOpsGuardFacts: Readonly<Record<BrandedIdentifier, GuardFac
 	'is.array':       Generic(Atomic | List | Expression),
 	'is.object':      Predicate(predicate(AnyType, { classed: true })),
 	'is.na':          { required: OneValue, computes: true },
-	'is.finite':      Classified,
-	'is.infinite':    Classified,
-	'is.nan':         Classified,
+	...each(Classified, 'is.finite', 'is.infinite', 'is.nan'),
 	/* R has no single precision, so it fails whatever it is handed */
 	'is.single':      { asks: { x: fails({ any: [] }, 'type "single" unimplemented in R') }, required: OneValue },
 	'as.integer':     Coerced(Integer, ToNumbers),

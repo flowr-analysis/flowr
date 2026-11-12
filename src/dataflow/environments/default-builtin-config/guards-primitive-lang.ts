@@ -1,25 +1,19 @@
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp } from '../built-in-props';
-import { AnyType, RValueType, type GuardFacts, type RCondition, type RFailure, type ReturnedValue, type RValueTypes } from '../guard-facts';
+import { AnyType, RValueType, type GuardFacts, type RCondition, type RFailure } from '../guard-facts';
 import type { BrandedIdentifier } from '../identifier';
 import { base, fn, Primitive, replacement } from './define-helpers';
 import { Forced, sig } from './shared-signatures';
+import { all, any, Computes, each, fail as fails, is, not, Returns } from './guard-builders';
 
 const { Null, Logical, Integer, Double, Character, List, Function: Fn, Environment, Language, Expression } = RValueType;
 
-const is = (...predicates: readonly BrandedIdentifier[]): RCondition => predicates.length === 1 ? { is: predicates[0] } : { any: predicates.map(p => ({ is: p })) };
-const not = (...predicates: readonly BrandedIdentifier[]): RCondition => ({ all: predicates.map(p => ({ not: { is: p } })) });
-const any = (...conditions: readonly RCondition[]): RCondition => ({ any: conditions });
-const all = (...conditions: readonly RCondition[]): RCondition => ({ all: conditions });
 const length = (op: '==' | '<=' | '>=', to: number): RCondition => ({ length: op, to });
 /** the condition holds of the value of another formal of the call */
 const on = (formal: BrandedIdentifier, holds: RCondition): RCondition => ({ on: formal, holds });
-const fails = (requires: RCondition, message: string, more: Omit<RFailure, 'requires' | 'message'> = {}): RFailure => ({ requires, message, ...more });
 /** what R fails on unless the value of `formal` has a class attribute, which may bring a method of its own */
 const unlessClassed = (formal: BrandedIdentifier, failure: RFailure): RFailure => ({ ...failure, requires: any(on(formal, is('is.object')), failure.requires) });
-const Returns = (types: RValueTypes, more: Omit<ReturnedValue, 'types'> = {}): GuardFacts => ({ returns: { types, ...more } });
-const Computes: GuardFacts = { computes: true };
 const Scalar = length('==', 1);
 
 /* a condition of more than one value only warned before R 4.2, which went by the first one */
@@ -195,18 +189,11 @@ export const PrimitiveLanguageGuardFacts: Readonly<Record<BrandedIdentifier, Gua
 		...Computes,
 		...Returns(Integer | Double)
 	},
-	'.C':                   { asks: NativeName },
-	'.Call':                { asks: NativeName },
-	'.External':            { asks: NativeName },
-	'.External2':           { asks: NativeName },
-	'.Fortran':             { asks: NativeName },
-	'.Call.graphics':       { asks: NativeName },
-	'.External.graphics':   { asks: NativeName },
+	...each({ asks: NativeName }, '.C', '.Call', '.External', '.External2', '.Fortran', '.Call.graphics', '.External.graphics'),
 	'.Primitive':           { asks: { name: OneString('string argument required') }, ...Returns(Fn) },
 	'.class2':              { ...Computes, ...Returns(Character, { nonEmpty: true }) },
 	'.isMethodsDispatchOn': Returns(Logical, { scalar: true, notNA: true }),
-	'.primTrace':           { asks: { obj: [fails(is('is.function', 'is.character'), 'argument must be a function')] } },
-	'.primUntrace':         { asks: { obj: [fails(is('is.function', 'is.character'), 'argument must be a function')] } },
+	...each({ asks: { obj: [fails(is('is.function', 'is.character'), 'argument must be a function')] } }, '.primTrace', '.primUntrace'),
 	'tracemem':             { asks: { x: [fails(not('is.null', 'is.function', 'is.environment'), 'argument must not be a function')] }, ...Returns(Character, { scalar: true, notNA: true }) },
 	'untracemem':           { asks: { x: [fails({ not: { is: 'is.function' } }, 'argument must not be a function')] }, ...Returns(Null) },
 	'retracemem':           { asks: { x: [fails({ not: { is: 'is.function' } }, 'argument must not be a function')], previous: [fails(any(is('is.null'), all(is('is.character'), Scalar)), "invalid 'previous' argument")] }, ...Returns(Null | Character) },

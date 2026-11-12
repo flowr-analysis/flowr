@@ -1,32 +1,26 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../built-in-config';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp } from '../built-in-props';
-import { RValueType, type CheckingCall, type GuardFacts, type RCondition, type RFailure, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
+import { RValueType, type CheckingCall, type GuardFacts, type RFailure, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
 import { base, fn, pkg, Primitive } from './define-helpers';
 import { Forced, sig } from './shared-signatures';
 import { PrimitiveLanguageGuardFacts } from './guards-primitive-lang';
 import { PrimitiveOpsGuardFacts } from './guards-primitive-ops';
+import { RGroupGenerics } from '../group-generics';
+import { Atomic, Computes, dispatched, each, fails, is, not, Numeric, Returns } from './guard-builders';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
-const Numeric = Integer | Double;
-const Atomic = Logical | Numeric | Complex | Character | Raw;
 
 /** Spelled the way the facts below read best. */
 const predicate = (yes: RValueTypes, more: Omit<TypePredicate, 'yes'> = {}): GuardFacts => ({ predicate: { yes, ...more } });
 const exact = (yes: RValueTypes): GuardFacts => predicate(yes, { exact: true });
 const scalar = (yes: RValueTypes): GuardFacts => predicate(yes, { scalar: true });
-const Computes: GuardFacts = { computes: true };
 const OneTruth: ReturnedValue = { types: Logical, scalar: true, notNA: true };
 const SingleResult: GuardFacts = { computes: true, singleResult: true, returns: OneTruth };
-const Returns = (types: RValueTypes, more: Omit<ReturnedValue, 'types'> = {}): GuardFacts => ({ returns: { types, ...more } });
 const OpensFrame: GuardFacts = { opensFrame: true };
 
-const is = (...predicates: readonly BrandedIdentifier[]): RCondition => predicates.length === 1 ? { is: predicates[0] } : { any: predicates.map(p => ({ is: p })) };
-const not = (...predicates: readonly BrandedIdentifier[]): RCondition => ({ all: predicates.map(p => ({ not: { is: p } })) });
-const fails = (requires: RCondition, message: string, more: Omit<RFailure, 'requires' | 'message'> = {}): readonly RFailure[] => [{ requires, message, ...more }];
-const dispatched = (requires: RCondition, message: string): readonly RFailure[] => fails(requires, message, { dispatches: true });
 
 /* what R fails on by itself, each read off R; a dispatching one lets a classed value through, which may bring a method */
 const Mathematical = dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to mathematical function');
@@ -39,6 +33,7 @@ const Text = (message: string): readonly RFailure[] => fails(is('is.character'),
 const Applied = fails({ callable: true }, "'%s' is not a function, character or symbol");
 
 const Math = { asks: { x: Mathematical } };
+const RealMathNames: ReadonlySet<string> = new Set(['sign', 'floor', 'ceiling', 'trunc', 'expm1', 'log1p', 'cospi', 'sinpi', 'tanpi', 'gamma', 'lgamma', 'digamma', 'trigamma']);
 const RealMath = { asks: { x: RealMathematical } };
 const Prefixed = { asks: { x: Text('non-character object(s)') } };
 const Pathed = { asks: { path: Text('a character vector argument expected') } };
@@ -87,114 +82,61 @@ function camelCased(this: void, name: BrandedIdentifier): BrandedIdentifier {
  */
 const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<BrandedIdentifier, GuardFacts>>>> = {
 	[PkgName.Base]: {
-		'is.vector':         predicate(Atomic | List | Expression, { plain: true }),
-		'is.primitive':      predicate(Fn),
-		'is.data.frame':     predicate(List, { classed: true }),
-		'is.factor':         predicate(Integer, { classed: true }),
-		'is.ordered':        predicate(Integer, { classed: true }),
+		'is.vector':        predicate(Atomic | List | Expression, { plain: true }),
+		'is.primitive':     predicate(Fn),
+		'is.data.frame':    predicate(List, { classed: true }),
+		'is.factor':        predicate(Integer, { classed: true }),
+		'is.ordered':       predicate(Integer, { classed: true }),
 		...PrimitiveLanguageGuardFacts,
 		...PrimitiveOpsGuardFacts,
-		'typeof':            { reads: TypeOf, computes: true },
-		'storage.mode':      { reads: TypeOf, computes: true },
-		'mode':              { reads: ModeOf, computes: true },
-		'length':            { measures: 'single' },
-		'NROW':              { measures: 'single' },
-		'NCOL':              { measures: 'single' },
+		'typeof':           { reads: TypeOf, computes: true },
+		'storage.mode':     { reads: TypeOf, computes: true },
+		'mode':             { reads: ModeOf, computes: true },
+		'length':           { measures: 'single' },
+		'NROW':             { measures: 'single' },
+		'NCOL':             { measures: 'single' },
 		/* what has no dimensions has `NULL` for these */
-		'nrow':              { measures: 'nullable' },
-		'ncol':              { measures: 'nullable' },
-		'nchar':             { measures: 'elementwise' },
-		'match.arg':         { check: { types: Character | Null, choices: 'choices', choicesFromDefault: true, partial: true } },
-		/* the `Math` group: each dispatches on a classed `x`, as `trunc` does for a `Date` */
-		'sqrt':              Math,
-		'abs':               Math,
-		'exp':               Math,
-		'log2':              Math,
-		'log10':             Math,
-		'cos':               Math,
-		'sin':               Math,
-		'tan':               Math,
-		'acos':              Math,
-		'asin':              Math,
-		'atan':              Math,
-		'cosh':              Math,
-		'sinh':              Math,
-		'tanh':              Math,
-		'acosh':             Math,
-		'asinh':             Math,
-		'atanh':             Math,
+		'nrow':             { measures: 'nullable' },
+		'ncol':             { measures: 'nullable' },
+		'nchar':            { measures: 'elementwise' },
+		'match.arg':        { check: { types: Character | Null, choices: 'choices', choicesFromDefault: true, partial: true } },
+		/* the `Math` group: each dispatches on a classed `x`, as `trunc` does for a `Date`, those without a complex version fail for one */
+		...Object.fromEntries(RGroupGenerics.Math.filter(name => name !== 'log' && !name.startsWith('cum')).map(name => [name, RealMathNames.has(name) ? RealMath : Math])),
 		/* a complex `base` makes it take a string or `NULL` for `x` */
-		'log':               { missingOk: ['base'] },
-		'sign':              RealMath,
-		'floor':             RealMath,
-		'ceiling':           RealMath,
-		'trunc':             RealMath,
-		'expm1':             RealMath,
-		'log1p':             RealMath,
-		'cospi':             RealMath,
-		'sinpi':             RealMath,
-		'tanpi':             RealMath,
-		'gamma':             RealMath,
-		'lgamma':            RealMath,
-		'digamma':           RealMath,
-		'trigamma':          RealMath,
-		'round':             { ...Math, missingOk: ['digits'] },
-		'signif':            { ...Math, missingOk: ['digits'] },
-		'cumsum':            { asks: { x: Cumulated } },
-		'cumprod':           { asks: { x: Cumulated } },
-		'cummax':            { asks: { x: Ordered('cummax') } },
-		'cummin':            { asks: { x: Ordered('cummin') } },
-		'strsplit':          { asks: { x: Text('non-character argument') } },
-		'startsWith':        Prefixed,
-		'endsWith':          Prefixed,
-		'basename':          Pathed,
-		'dirname':           Pathed,
-		'sprintf':           { asks: { fmt: Text("'fmt' is not a character vector") }, returns: { types: Character } },
-		'file.exists':       { asks: { '...': Text('invalid \'file\' argument') } },
-		'dir.exists':        { asks: { paths: Text('invalid filename argument') } },
-		'which':             { asks: { x: fails(is('is.logical'), 'argument to \'which\' is not logical') } },
-		'new.env':           { asks: { parent: fails(is('is.environment'), '\'enclos\' must be an environment') } },
-		'apply':             { asks: { X: fails({ not: { is: 'is.null', of: 'dim' } }, 'dim(X) must have a positive length') } },
-		'assign':            { asks: { x: Text('invalid first argument') } },
-		'get':               { asks: { x: fails(is('is.character', 'is.symbol'), 'invalid first argument') } },
-		'exists':            { asks: { x: fails(is('is.character', 'is.symbol'), 'invalid first argument') }, computes: true, singleResult: true, returns: OneTruth },
-		'do.call':           { asks: { args: fails(is('is.list'), 'second argument must be a list'), what: fails({ callable: true }, "'what' must be a function or character string") } },
-		'match.fun':         { asks: { FUN: Applied } },
-		'lapply':            { asks: { FUN: Applied } },
-		'sapply':            { asks: { FUN: Applied } },
-		'vapply':            { asks: { FUN: Applied } },
-		'mapply':            { asks: { FUN: Applied } },
-		'Map':               { asks: { f: Applied } },
+		'log':              { missingOk: ['base'] },
+		'round':            { ...Math, missingOk: ['digits'] },
+		'signif':           { ...Math, missingOk: ['digits'] },
+		'cumsum':           { asks: { x: Cumulated } },
+		'cumprod':          { asks: { x: Cumulated } },
+		'cummax':           { asks: { x: Ordered('cummax') } },
+		'cummin':           { asks: { x: Ordered('cummin') } },
+		'strsplit':         { asks: { x: Text('non-character argument') } },
+		'startsWith':       Prefixed,
+		'endsWith':         Prefixed,
+		'basename':         Pathed,
+		'dirname':          Pathed,
+		'sprintf':          { asks: { fmt: Text("'fmt' is not a character vector") }, returns: { types: Character } },
+		'file.exists':      { asks: { '...': Text('invalid \'file\' argument') } },
+		'dir.exists':       { asks: { paths: Text('invalid filename argument') } },
+		'which':            { asks: { x: fails(is('is.logical'), 'argument to \'which\' is not logical') } },
+		'new.env':          { asks: { parent: fails(is('is.environment'), '\'enclos\' must be an environment') } },
+		'apply':            { asks: { X: fails({ not: { is: 'is.null', of: 'dim' } }, 'dim(X) must have a positive length') } },
+		'assign':           { asks: { x: Text('invalid first argument') } },
+		'get':              { asks: { x: fails(is('is.character', 'is.symbol'), 'invalid first argument') } },
+		'exists':           { asks: { x: fails(is('is.character', 'is.symbol'), 'invalid first argument') }, computes: true, singleResult: true, returns: OneTruth },
+		'do.call':          { asks: { args: fails(is('is.list'), 'second argument must be a list'), what: fails({ callable: true }, "'what' must be a function or character string") } },
+		...each({ asks: { FUN: Applied } }, 'match.fun', 'lapply', 'sapply', 'vapply', 'mapply'),
+		'Map':              { asks: { f: Applied } },
 		/* `Reduce` returns for an empty `x` before it looks at `f`, so it asks nothing of it */
-		'Filter':            { asks: { f: Applied } },
-		'inherits':          { computes: true, singleResult: true },
-		'identical':         SingleResult,
-		'isTRUE':            SingleResult,
-		'isFALSE':           SingleResult,
-		'anyNA':             SingleResult,
-		'requireNamespace':  { singleResult: true, returns: OneTruth },
-		'stopifnot':         Computes,
-		'xor':               Computes,
-		'|>':                Computes,
-		'all.equal':         Computes,
-		'%in%':              { ...Computes, ...Returns(Logical, { notNA: true }) },
-		'identity':          { returns: 'argument' },
-		'paste':             Returns(Character),
-		'paste0':            Returns(Character),
-		'toupper':           Returns(Character),
-		'tolower':           Returns(Character),
-		'rm':                OpensFrame,
-		'remove':            OpensFrame,
-		'list2env':          OpensFrame,
-		'makeActiveBinding': OpensFrame,
-		'eval':              OpensFrame,
-		'evalq':             OpensFrame,
-		'eval.parent':       OpensFrame,
-		'source':            OpensFrame,
-		'sys.source':        OpensFrame,
-		'attach':            OpensFrame,
-		'sys.frame':         OpensFrame,
-		'sys.frames':        OpensFrame
+		'Filter':           { asks: { f: Applied } },
+		'inherits':         { computes: true, singleResult: true },
+		...each(SingleResult, 'identical', 'isTRUE', 'isFALSE', 'anyNA'),
+		'requireNamespace': { singleResult: true, returns: OneTruth },
+		...each(Computes, 'stopifnot', 'xor', '|>', 'all.equal'),
+		'%in%':             { ...Computes, ...Returns(Logical, { notNA: true }) },
+		'identity':         { returns: 'argument' },
+		...each(Returns(Character), 'paste', 'paste0', 'toupper', 'tolower'),
+		...each(OpensFrame, 'rm', 'remove', 'list2env', 'makeActiveBinding', 'eval', 'evalq', 'eval.parent', 'source', 'sys.source', 'attach', 'sys.frame', 'sys.frames')
 	},
 	[PkgName.Methods]: {
 		'is':     Computes,
@@ -226,10 +168,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		/* takes a symbol as well, unlike `arg_match` */
 		'arg_match0':          { check: { types: Character | Symbol, choices: 'values' } },
 		'check_required':      { check: { present: true } },
-		'env_poke':            OpensFrame,
-		'env_bind':            OpensFrame,
-		'caller_env':          OpensFrame,
-		'current_env':         OpensFrame
+		...each(OpensFrame, 'env_poke', 'env_bind', 'caller_env', 'current_env')
 	},
 	'checkmate': Object.fromEntries(Object.entries(CheckmateChecks).flatMap(([name, check]) => [[`assert_${name}`, { check }], [camelCased(name), { check }]]))
 };

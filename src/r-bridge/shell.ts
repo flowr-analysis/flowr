@@ -398,7 +398,8 @@ class RShellSession {
 		});
 		this.options = options;
 		// initialize the session
-		this.writeLine(initCommand(options.eol, options.pipeBind));
+		/* since R 4.4 an error in a command no longer ends the session, older versions ignore the option */
+		this.writeLine('options(catch.script.errors=TRUE);' + initCommand(options.eol, options.pipeBind));
 
 		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {

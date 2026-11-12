@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-11, 11:32:55 UTC (v2.17.5, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's helper objects, by what they are about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-11-12, 15:30:09 UTC (v2.17.5, R v4.5.0), do not edit directly._
 
 This page lists every important helper object of flowR.
 
@@ -60,7 +60,7 @@ This page lists every important helper object of flowR.
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L212"><code><span title="The one helper to ask a vertex what it is.">DfgVertex</span></code></a> | The one helper to ask a vertex what it is. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L42"><code><span title="Helper functions to work with FunctionArguments . EmptyArgument marks an empty argument.">FunctionArgument</span></code></a> | Helper functions to work with FunctionArguments. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph-helper.ts#L37"><code><span title="The underlying functions which work for any graph* like view.">GraphHelper</span></code></a> | The underlying functions which work for any graph* like view. |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/fn/guards/guard-term.ts#L536"><code><span title="Terms state what a guard asks for, see GuardTerm .">GuardTerm</span></code></a> | Terms state what a guard asks for, see GuardTerm. |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/fn/guards/guard-term.ts#L538"><code><span title="Terms state what a guard asks for, see GuardTerm .">GuardTerm</span></code></a> | Terms state what a guard asks for, see GuardTerm. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/program-order.ts#L12"><code><span title="Program order of top-level code outside loops and quotes: it runs once, so its definitions are not there yet for the statements before.">ProgramOrder</span></code></a> | Program order of top-level code outside loops and quotes: it runs once, so its definitions are not there yet for the statements before. |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L131"><code><span title="Helpers for the UnknownSideEffect union, which is either a plain NodeId or a { id, linkTo } object.">UnknownSideEffect</span></code></a> | Helpers for the UnknownSideEffect union, which is either a plain NodeId or a `{ id, linkTo }` object. |
 

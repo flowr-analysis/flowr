@@ -108,7 +108,8 @@ export function originTag(origin: string): HTMLElement {
 
 /** the formals a relation speaks of, in the order of the signature */
 export function related(holds: string, formals: readonly string[]): string[] {
-	return formals.filter(f => new RegExp('\\b' + f.replace(/\./g, '\\.') + '\\b').test(holds));
+	// eslint-disable-next-line flowr/replacement-pattern -- `escapeRegex` lives beside node built-ins the browser bundle cannot resolve
+	return formals.filter(f => new RegExp('\\b' + f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(holds));
 }
 
 /**

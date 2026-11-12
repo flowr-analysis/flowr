@@ -6,6 +6,7 @@ import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
 import { guardsOfFunctions, summarizeClauses } from './guards/function-guards';
 import { builtInGuards } from './guards/built-in-guards';
+import { CallContracts } from './guards/call-contracts';
 import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOfImpl, toSigClassesImpl } from './class-declaration';
 import { DfgVertex } from '../graph/vertex';
 import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
@@ -51,6 +52,8 @@ export const FunctionSemantics = {
 	guardSummary:    summarizeClauses,
 	/** What a function of the base packages asks for, what the signature database answers as {@link DecodedFunction.guards} as well. */
 	builtInGuards,
+	/** What a function asks of its calls by name, definition, or call, and what a call breaks of it, see {@link CallContracts}. */
+	contracts:       CallContracts,
 	/** The reflective argument bits of one definition. */
 	frameReflection: reflectiveRolesOf,
 	/** What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of them it does not simply evaluate. */

@@ -1,12 +1,36 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { summarizeIdsIfTooLong, queryHeader } from '../../query-print';
 import type { FlowrSearch } from '../../../search/flowr-search-builder';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { executeSearch } from './search-query-executor';
 import { flowrSearchToMermaid } from '../../../search/flowr-search-printer';
 import { Mermaid } from '../../../util/mermaid/mermaid';
+import { metaSince } from '../../query-meta';
+import { runSearch } from '../../../search/flowr-search-executor';
+
+/**
+ * Executes the given search queries using the provided analyzer.
+ */
+export async function executeSearch({ analyzer }: BasicQueryData, queries: readonly SearchQuery[]): Promise<SearchQueryResult> {
+	const start = Date.now();
+	const results: { ids: NodeId[], search: FlowrSearch }[] = [];
+	for(const query of queries) {
+		const { search } = query;
+
+		const searchResult = await runSearch(search, analyzer);
+
+		results.push({
+			ids: searchResult.getElements().map(({ node }) => node.info.id),
+			search
+		});
+	}
+
+	return {
+		...metaSince(start),
+		results
+	};
+}
 
 export interface SearchQuery extends BaseQueryFormat {
 	readonly type:   'search';

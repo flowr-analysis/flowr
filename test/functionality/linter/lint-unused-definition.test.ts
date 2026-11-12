@@ -8,7 +8,7 @@ import { guard } from '../../../src/util/assert';
 import { SourceLocation, SourceRange } from '../../../src/util/range';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-executor';
+import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-format';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unused definitions', () => {

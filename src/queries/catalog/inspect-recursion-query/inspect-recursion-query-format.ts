@@ -1,9 +1,24 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { executeRecursionQuery } from './inspect-recursion-query-executor';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { SupportedQuery } from '../../query';
 import { functionPropertyQuery } from '../../query-function-property';
+import { CallGraph } from '../../../dataflow/graph/call-graph';
+import { QueryFunctionFilter } from '../../query-function-filter';
+
+/**
+ * Execute recursion function inspection queries on the given analyzer.
+ */
+export async function executeRecursionQuery({ analyzer }: BasicQueryData, queries: readonly InspectRecursionQuery[]): Promise<Record<NodeId, boolean>> {
+	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);
+
+	const result: Record<NodeId, boolean> = {};
+	for(const [id] of fns) {
+		result[id] = CallGraph.isRecursive(id, cg);
+	}
+
+	return result;
+}
 
 /**
  * Either returns all function definitions alongside whether they are recursive,

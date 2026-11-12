@@ -10,7 +10,6 @@ import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/
 import type { ParentInformation, AstIdMap, NormalizedAst  } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { isBaseRPackage } from '../../../util/r-base-packages';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
@@ -114,31 +113,6 @@ export function formalNames(def: RFunctionDefinition<ParentInformation>): Brande
 export function isWithin(id: NodeId, def: NodeId, idMap: AstIdMap): boolean {
 	for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
 		if(cur.info.id === def) {
-			return true;
-		}
-	}
-	return false;
-}
-
-/** The function definitions a call reaches by its `Calls` edges. */
-export function calledDefinitions(graph: DataflowGraph, call: NodeId, idMap: AstIdMap): RFunctionDefinition<ParentInformation>[] {
-	const defs: RFunctionDefinition<ParentInformation>[] = [];
-	for(const [target, edge] of graph.edgesFrom(call)) {
-		const def = DfEdge.includesType(edge, EdgeType.Calls) ? idMap.get(target) : undefined;
-		if(RFunctionDefinition.is(def)) {
-			defs.push(def);
-		}
-	}
-	return defs;
-}
-
-/** the replacement functions that rewrite a function, after which its formals and checks are no longer those of its definition */
-export const FormalsRewriters: ReadonlySet<BrandedIdentifier> = new Set(['formals<-', 'body<-', 'args<-']);
-
-/** Whether the node or an ancestor is quoted or otherwise evaluated elsewhere (`quote(...)`, a data mask). */
-export function isQuoted(graph: DataflowGraph, id: NodeId, idMap: AstIdMap): boolean {
-	for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
-		if(graph.edgesTo(cur.info.id).values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation))) {
 			return true;
 		}
 	}

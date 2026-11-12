@@ -1,14 +1,44 @@
-import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
+import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
-import type { ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
+import type { ExceptionsByFunction, ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { metaSince } from '../../query-meta';
+import { QueryFunctionFilter } from '../../query-function-filter';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
+
+
+/**
+ * Execute exception function inspection queries on the given analyzer.
+ */
+export async function executeExceptionQuery({ analyzer }: BasicQueryData, queries: readonly InspectExceptionQuery[]): Promise<InspectExceptionQueryResult> {
+	const start = Date.now();
+	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);
+	const result: ExceptionsByFunction = {};
+
+	for(const [id] of fns) {
+		if(result[id]) {
+			continue;
+		}
+		const res = FunctionSemantics.exceptions(id, cg, { knownThrower: result });
+		for(const [k, v] of Object.entries(res) as [NodeId, ExceptionPoint[]][]) {
+			if(!result[k]) {
+				result[k] = v;
+			}
+		}
+	}
+
+	return {
+		...metaSince(start),
+		/* collecting walks whatever the call graph holds, reporting stays with the definitions someone wrote */
+		exceptions: Object.fromEntries(Object.entries(result).filter(([id]) => QueryFunctionFilter.written(id)))
+	};
+}
 
 /**
  * Either returns all function definitions alongside exception information,

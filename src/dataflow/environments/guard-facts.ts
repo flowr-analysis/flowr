@@ -113,6 +113,8 @@ export interface ReturnedValue {
 	readonly count?:        boolean
 	/** it holds at least one element */
 	readonly nonEmpty?:     boolean
+	/** for a list, the types each of its elements has, as the columns of a data frame read from a file */
+	readonly elements?:     RValueTypes
 	/** all of this holds only if the value of this formal has no class attribute, as a method for a classed one may return anything */
 	readonly dispatchesOn?: BrandedIdentifier
 }

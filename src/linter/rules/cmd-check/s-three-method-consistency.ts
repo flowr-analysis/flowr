@@ -15,7 +15,7 @@ import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { s3GroupGenericMembers } from '../../../dataflow/environments/group-generics';
+import { RGroupGenerics, s3GroupGenericMembers } from '../../../dataflow/environments/group-generics';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { at, type CmdCheckResult, printer, formalNames as rawFormalNames, packageInfo, projectNodes, topLevelDefinitions } from './cmd-check-util';
 
@@ -68,7 +68,7 @@ function formalNames(def: RFunctionDefinition<ParentInformation>): BrandedIdenti
 const SubsetGenerics: ReadonlySet<BrandedIdentifier> = new Set(['[', '[[', '$']);
 
 /** the operators for which a method with as many arguments as the generic is fine whatever their names */
-const OperatorGenerics: ReadonlySet<BrandedIdentifier> = new Set(['+', '-', '*', '/', '^', '%%', '%/%', '&', '|', '!', '==', '!=', '<', '<=', '>=', '>']);
+const OperatorGenerics: ReadonlySet<BrandedIdentifier> = new Set(RGroupGenerics.Ops);
 
 /** whether a method with the formals `mArgs` is consistent with the generic `gName` of formals `gArgs` (`tools::checkS3methods`) */
 function consistent(gName: BrandedIdentifier, gArgs: readonly BrandedIdentifier[], mName: BrandedIdentifier, mArgs: readonly BrandedIdentifier[]): boolean {

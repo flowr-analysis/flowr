@@ -138,6 +138,10 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		...each(Returns(Character), 'paste', 'paste0', 'toupper', 'tolower'),
 		...each(OpensFrame, 'rm', 'remove', 'list2env', 'makeActiveBinding', 'eval', 'evalq', 'eval.parent', 'source', 'sys.source', 'attach', 'sys.frame', 'sys.frames')
 	},
+	[PkgName.Utils]: {
+		/* a data frame of atomic columns, whatever the file holds */
+		...each(Returns(List, { elements: Atomic }), 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'read.table', 'read.fwf')
+	},
 	[PkgName.Methods]: {
 		'is':     Computes,
 		'hasArg': Computes

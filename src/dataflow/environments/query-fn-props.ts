@@ -2,6 +2,7 @@
  * `FunctionSemantics` wires the call helpers together and this file sits below it, so `CallProps` is used directly here; reaching for `FunctionSemantics.call.props` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
+import { compareByCodeUnit } from '../../util/text/strings';
 import { type ArgProps, type BuiltInFnInfo, CallProp, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticCallTags, type StatedProps, CallProps } from './built-in-props';
 import { FunctionSemantics } from '../fn/function-semantics';
 import type { BuiltIns } from './built-in';
@@ -245,27 +246,44 @@ function nonEmpty<T extends { readonly length: number }>(of: T | undefined): T |
 	return of !== undefined && of.length > 0 ? of : undefined;
 }
 
-/** The package an unqualified `name` is answered for. */
+/** The package an unqualified `name` is answered for: a dependency exporting it, else an attached base package, asking only those rather than every package of the database. */
 function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
-	let best: BrandedNamespace | undefined;
-	let bestRank = Number.MAX_SAFE_INTEGER;
-	let pulled: ReadonlySet<BrandedNamespace> | undefined;
-	for(const pkg of ctx.deps.packagesExporting(name)) {
-		const attached = pkg === PkgName.Base || AttachedBasePackageSet.has(pkg);
-		if(!attached) {
-			pulled ??= new Set(ctx.deps.getDependencies().map(d => d.name));
-			if(!pulled.has(pkg)) {
-				continue; // nothing attaches it here, so no call in this project reaches it unqualified
-			}
-			return pkg; // and nothing outranks a package the code attaches itself
-		}
-		const rank = pkg === PkgName.Base ? 2 : 1;
-		if(rank < bestRank) {
-			bestRank = rank;
-			best = pkg;
-		}
+	if(!ctx.deps.hasSignatureDatabase()) {
+		return baseRExportOwner(name);
 	}
-	return best ?? baseRExportOwner(name);
+	/* a `library()` the analysis meets adds a dependency, which may answer a name anew */
+	const dependencies = ctx.deps.getDependencies().length;
+	let known = ExportingPerContext.get(ctx.deps);
+	if(known?.dependencies !== dependencies) {
+		known = { dependencies, owners: new Map() };
+		ExportingPerContext.set(ctx.deps, known);
+	}
+	if(!known.owners.has(name)) {
+		known.owners.set(name, exportingPackage(name, ctx));
+	}
+	return known.owners.get(name);
+}
+
+/** what {@link packageExporting} answered per dependencies context, as long as it has the same number of dependencies */
+const ExportingPerContext = new WeakMap<object, { readonly dependencies: number, readonly owners: Map<BrandedIdentifier, BrandedNamespace | undefined> }>();
+
+function exportingPackage(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
+	const db = signatureDbOf(ctx.deps);
+	const src = db.sources();
+	const mostUsed = (pkgs: Iterable<BrandedNamespace>): BrandedNamespace | undefined => {
+		let best: BrandedNamespace | undefined;
+		for(const pkg of pkgs) {
+			if(db.rawFunctionOf(Identifier.make(name, pkg))?.exported === true && (best === undefined || src.downloads(pkg) > src.downloads(best) || (src.downloads(pkg) === src.downloads(best) && compareByCodeUnit(pkg, best) < 0))) {
+				best = pkg;
+			}
+		}
+		return best;
+	};
+	const attached = (pkg: BrandedNamespace) => pkg === PkgName.Base || AttachedBasePackageSet.has(pkg);
+	return mostUsed(new Set(ctx.deps.getDependencies().map(d => d.name).filter(p => !attached(p))))
+		?? mostUsed([...AttachedBasePackageSet].filter(p => p !== PkgName.Base))
+		?? mostUsed([PkgName.Base])
+		?? baseRExportOwner(name);
 }
 
 /** The identifiers a definition registers, with the suffixes of a replacement spelled out. */

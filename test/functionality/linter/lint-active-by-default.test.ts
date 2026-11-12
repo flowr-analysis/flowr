@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-executor';
+import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-format';
 import { type LintingRuleNames, LintingRules } from '../../../src/linter/linter-rules';
 import { LintingRuleTag } from '../../../src/linter/linter-tags';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';

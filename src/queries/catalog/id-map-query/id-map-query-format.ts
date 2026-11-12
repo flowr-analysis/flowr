@@ -1,9 +1,26 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { executeIdMapQuery } from './id-map-query-executor';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { summarizeIdsIfTooLong, queryHeader } from '../../query-print';
+import { log } from '../../../util/log';
+import { metaSince } from '../../query-meta';
+
+/**
+ * Executes the given ID map queries using the provided analyzer.
+ */
+export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: readonly IdMapQuery[]): Promise<IdMapQueryResult> {
+	if(queries.length !== 1) {
+		log.warn('Id-Map query expects only up to one query, but got', queries.length);
+	}
+
+	const startTime = Date.now();
+	const idMap = (await analyzer.normalize()).idMap;
+	return {
+		...metaSince(startTime),
+		idMap
+	};
+}
 
 export interface IdMapQuery extends BaseQueryFormat {
 	readonly type: 'id-map';

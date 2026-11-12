@@ -1,12 +1,9 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
-import { executeTaintQuery } from './taint-query-executor';
-import type {
-	AnyPredefinedTaintAnalysisName
-} from '../../../taint-analysis/predefined/predefined';
+import type { AnyPredefinedTaintAnalysisName, AllPredefinedTaintAnalysisNames } from '../../../taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/predefined';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
@@ -14,6 +11,38 @@ import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
+import { log } from '../../../util/log';
+
+
+
+/**
+ * Executes the given taint queries using the provided analyzer.
+ */
+export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: readonly TaintQuery[]): Promise<TaintQueryResult<AllPredefinedTaintAnalysisNames>> {
+	const flattened = queries.flatMap(q => q.defs);
+	const start = Date.now();
+
+	if(flattened.length === 0) {
+		log.warn('Missing taint query definition');
+		return {
+			results: new Map(),
+			'.meta': {
+				timing: Date.now() - start
+			},
+		};
+	}
+
+	const analysis = analyzer
+		.taint<AllPredefinedTaintAnalysisNames>()
+		.addPredefined(...flattened);
+
+	return {
+		results: await analysis.run(),
+		'.meta': {
+			timing: Date.now() - start
+		},
+	};
+}
 
 
 

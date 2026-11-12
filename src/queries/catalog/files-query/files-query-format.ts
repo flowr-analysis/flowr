@@ -1,8 +1,7 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { bold, ColorEffect, Colors } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { executeFileQuery } from './files-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FileRole } from '../../../project/context/flowr-file';
 import { jsonReplacer } from '../../../util/json';
@@ -10,6 +9,52 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
+import { metaSince } from '../../query-meta';
+
+/**
+ * Executes the given files queries using the provided analyzer.
+ */
+export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly FilesQuery[]): Promise<FilesQueryResult> {
+	const start = Date.now();
+	const base = analyzer.inspectContext().files.getAllFiles();
+
+	let files: FileQueryInfo[] = [];
+	const foundFingerprints = new Set<string>();
+	for(const query of queries) {
+		if(query.matchesPathRegex === undefined && query.roles === undefined) {
+			files = base.map(l => ({
+				roles:   l.roles,
+				content: l.content(),
+				path:    l.path()
+			}));
+			break;
+		}
+		const pathRegex = query.matchesPathRegex ? new RegExp(query.matchesPathRegex) : undefined;
+		for(const file of base) {
+			const fingerprint = `${file.roles?.join(':')}:::${file.path()}`;
+			if(foundFingerprints.has(fingerprint)) {
+				continue;
+			}
+			if(pathRegex && !pathRegex.test(file.path())) {
+				continue;
+			}
+			if((query.roles?.length ?? 0) > 0 && !query.roles?.every(r => file.roles?.includes(r))) {
+				continue;
+			}
+			foundFingerprints.add(fingerprint);
+			files.push({
+				roles:   file.roles,
+				content: file.content(),
+				path:    file.path()
+			});
+		}
+	}
+
+	return Promise.resolve({
+		...metaSince(start),
+		files
+	});
+}
 
 /**
  * Returns the content(s) of all files matching the given pattern.

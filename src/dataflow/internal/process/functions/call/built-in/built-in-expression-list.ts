@@ -18,6 +18,7 @@ import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, EnvOpKind, VertexType } from '../../../../../graph/vertex';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
@@ -36,6 +37,8 @@ import { compactRecord } from '../../../../../../util/objects';
 import { applyAmbientStateOfCalledBuiltIns, autoPrints, autoPrintsStatementsOf, mayForce, readsOfAutoPrint } from './built-in-ambient-state';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { Dataflow } from '../../../../../graph/df-helper';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RValueType } from '../../../../../environments/guard-facts';
 import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { internalGenericMethods, linkedFunctionIds } from '../../../../dispatch-linking';
 import { REnvironment } from '../../../../../environments/environment';
@@ -448,12 +451,50 @@ export function noteUnknownMethods(environment: REnvironmentInformation, id: Nod
 	(builtIn.unknownMethodsAt ??= []).push(id);
 }
 
-/** Marks `id` as binding names we cannot tell (`assign(nm, v, envir = e)`, `source(file)`), an unknown side effect that may bind a method as well, unless the `value` it binds is a constant. */
-export function bindsUnknownNames(graph: DataflowGraph, environment: REnvironmentInformation, id: NodeId, value?: RNode<ParentInformation>): void {
+/** Marks `id` as binding names we cannot tell (`assign(nm, v, envir = e)`, `source(file)`), an unknown side effect that may bind a method as well, unless the `value` it binds (with `elements`, each of its elements) cannot be a function, as R only finds functions as methods. */
+export function bindsUnknownNames(graph: DataflowGraph, environment: REnvironmentInformation, id: NodeId, value?: RNode<ParentInformation>, ctx?: ReadOnlyFlowrAnalyzerContext, elements = false): void {
 	handleUnknownSideEffect(graph, environment, id);
-	if(!RConstant.is(value)) {
+	if(!cannotBeFunction(value, environment, graph, ctx, elements)) {
 		noteUnknownMethods(environment, id);
 	}
+}
+
+/** How deep {@link cannotBeFunction} follows the values a symbol may hold. */
+const MaxValueDepth = 8;
+
+/** The values a definition binds: those it records, else the right-hand side of the plain assignment `x <- v` making it. */
+function valuesBoundBy(definition: NodeId, recorded: readonly NodeId[] | undefined, graph: DataflowGraph): RNode<ParentInformation>[] {
+	if(recorded !== undefined && recorded.length > 0) {
+		return recorded.map(v => graph.idMap?.get(v)).filter(v => v !== undefined);
+	}
+	const node = graph.idMap?.get(definition);
+	const parent = node?.info.parent === undefined ? undefined : graph.idMap?.get(node.info.parent);
+	return RBinaryOp.is(parent) && parent.lhs === node && ['<-', '=', '<<-'].includes(parent.operator) ? [parent.rhs] : [];
+}
+
+/** Whether the value of `node` (or with `elements` each of its elements) surely is no function: a constant, a call of a built-in stated to return no function, or a symbol bound only to such values. */
+export function cannotBeFunction(node: RNode<ParentInformation> | undefined, environment: REnvironmentInformation, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined, elements = false, depth = 0): boolean {
+	if(RConstant.is(node)) {
+		return true;
+	} else if(node === undefined || ctx === undefined || depth >= MaxValueDepth) {
+		return false;
+	} else if(RSymbol.is(node)) {
+		const definitions = Resolve.byName(node.content, environment);
+		return definitions !== undefined && definitions.length > 0 && definitions.every(d => {
+			const values = isInGraphDefinition(d) && !NodeId.isBuiltIn(d.nodeId) ? valuesBoundBy(d.nodeId, d.value, graph) : [];
+			return values.length > 0 && values.every(v => v !== node && cannotBeFunction(v, environment, graph, ctx, elements, depth + 1));
+		});
+	} else if(!RFunctionCall.isNamed(node)) {
+		return false;
+	}
+	const name = node.functionName.content;
+	const callees = Resolve.byNameAndType(name, environment, ReferenceType.Function);
+	if(callees === undefined || callees.length === 0 || callees.some(d => !NodeId.isBuiltIn(d.nodeId))) {
+		return false;
+	}
+	const returns = ctx.env.builtInFunctionOf(name)?.config?.guards?.[Identifier.getName(name)]?.returns;
+	const types = typeof returns !== 'object' || returns.dispatchesOn !== undefined ? undefined : elements ? returns.elements : returns.types;
+	return types !== undefined && (types & RValueType.Function) === 0;
 }
 
 /** Of the definitions `found` for `print`, those printing a value of the class vectors `classes` may run (all of them if the classes are not known), with any that is no `print.<class>` method; links the `NextMethod()` calls of each to the methods after it, any other one if the classes are not known. */

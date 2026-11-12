@@ -271,6 +271,17 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
  */
 export function builtInGuards(this: void, name: BrandedIdentifier, pkg: BrandedNamespace | undefined = baseRExportOwner(name)): StatedGuards | undefined {
 	const owner = pkg ?? PkgName.Base;
+	const key = `${String(owner)}::${String(name)}`;
+	if(!builtInGuardsCache.has(key)) {
+		builtInGuardsCache.set(key, readBuiltInGuards(name, owner));
+	}
+	return builtInGuardsCache.get(key);
+}
+
+/** {@link builtInGuards} per `pkg::name`, as the table and the facts do not change while flowR runs */
+const builtInGuardsCache = new Map<string, StatedGuards | undefined>();
+
+function readBuiltInGuards(this: void, name: BrandedIdentifier, owner: BrandedNamespace): StatedGuards | undefined {
 	const stored = RBaseGuards()[String(owner)]?.[String(name)];
 	const read = stored === undefined ? undefined : statedGuardsOfStored(stored, `${String(owner)}::${String(name)}`);
 	return read !== undefined ? { ...read, origin: { source: 'base-table', r: RBaseGuardsVersion, date: RBaseGuardsDate, pkg: owner, version: RBaseGuardsVersion } } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);

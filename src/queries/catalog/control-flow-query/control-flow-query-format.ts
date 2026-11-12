@@ -1,12 +1,31 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeControlFlowQuery } from './control-flow-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
+import { log } from '../../../util/log';
+import { metaSince } from '../../query-meta';
+
+/**
+ * Executes the control flow query with the given simplification passes.
+ */
+export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
+	if(queries.length !== 1) {
+		log.warn('The control flow query expects only up to one query, but got', queries.length);
+	}
+
+	const query = queries[0];
+
+	const start = Date.now();
+	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses);
+	return {
+		...metaSince(start),
+		controlFlow
+	};
+}
 
 /**
  * Provides the control flow graph with an optional, fixed configuration

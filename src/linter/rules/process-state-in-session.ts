@@ -25,7 +25,7 @@ import { at, builtInOf } from '../linter-util';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { uniqueArray } from '../../util/collections/arrays';
 import { accessedFieldName } from '../../dataflow/internal/linker';
-import { calledDefinitions, formalNames, isWithin, projectNodes } from './cmd-check/cmd-check-util';
+import { formalNames, isWithin, projectNodes } from './cmd-check/cmd-check-util';
 import { globalAssignment, superAssignmentTarget, targetVariable } from './cmd-check/global-environment-modification';
 
 /** Ways per-session code changes process-wide state: `<<-` and `assign` to globals, `assignInNamespace`, setters like `options`, top-level reactive values, cache keys missing session values, and `addResourcePath` */
@@ -168,7 +168,7 @@ function sharedCache(arg: Node | undefined, graph: DataflowGraph, idMap: AstIdMa
 	if(arg === undefined || RString.is(arg)) {
 		return arg === undefined ? absent : arg.content.str !== 'session';
 	} else if(RFunctionCall.isNamed(arg)) {
-		return calledDefinitions(graph, arg.info.id, idMap).some(fn => sharedCache(RExpressionList.is(fn.body) ? fn.body.children.at(-1) : fn.body, graph, idMap, inSession, false));
+		return Dataflow.calleeDefinitionsOf(graph, arg.info.id).some(fn => sharedCache(RExpressionList.is(fn.body) ? fn.body.children.at(-1) : fn.body, graph, idMap, inSession, false));
 	}
 	const defs = Dataflow.targetsOf(graph, arg.info.id, EdgeType.Reads);
 	return RSymbol.is(arg) && (defs.length === 0 || defs.some(d => !inSession(d)));

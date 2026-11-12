@@ -1,11 +1,46 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeHappensBefore } from './happens-before-query-executor';
-import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { Ternary } from '../../../util/logic';
+import { metaSince } from '../../query-meta';
+import { Ternary } from '../../../util/logic';
+import { log } from '../../../util/log';
+import { happensBefore } from '../../../control-flow/happens-before';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+
+/**
+ * Execute happens-before queries on the given analyzer.
+ * This checks, whether for two given slicing criteria `a` and `b`, `a` happens before `b` in the control flow graph.
+ */
+export async function executeHappensBefore({ analyzer }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
+	const start = Date.now();
+	const results: Record<string, Ternary> = {};
+	const ast = await analyzer.normalize();
+	const cfg = await analyzer.controlflow(undefined);
+	for(const query of queries) {
+		const { a, b } = query;
+		const fingerprint = HappensBeforeKey.of(a, b);
+		if(fingerprint in results) {
+			log.warn('Duplicate happens-before query', query, 'ignoring');
+		}
+
+		try {
+			const resolvedA = SlicingCriterion.parse(a, ast.idMap);
+			const resolvedB = SlicingCriterion.parse(b, ast.idMap);
+
+			results[fingerprint] = happensBefore(cfg.graph, resolvedA, resolvedB);
+		} catch(e) {
+			log.error('Error while executing happens-before query', query, e);
+			results[fingerprint] = Ternary.Maybe;
+		}
+	}
+
+	return {
+		...metaSince(start),
+		results
+	};
+}
 
 export interface HappensBeforeQuery extends BaseQueryFormat {
 	readonly type: 'happens-before';

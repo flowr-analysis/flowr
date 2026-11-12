@@ -612,6 +612,33 @@ export class SigDatabase implements PackageSignatureSource {
 		return false;
 	}
 
+	/**
+	 * Whether `pkg` may offer the name with dictionary id `id`, deciding from the raw bytes of a blob not decoded yet: every `[id,` they hold may
+	 * start a function record, so their ids are a superset of the names the package has, kept for {@link mayOffer} as {@link nameIdsOfBlob}.
+	 */
+	private mayHoldNameId(pkg: BrandedNamespace, name: BrandedIdentifier): boolean {
+		const blobIdx = this.index.pkgs[pkg];
+		if(blobIdx === undefined || this.fd === NoFile || this.blobCache.has(blobIdx) || this.nameIdsOfBlob.has(blobIdx)) {
+			return true;
+		}
+		const [start, bytes] = this.index.blobs[blobIdx];
+		const buf = Buffer.allocUnsafe(bytes);
+		fs.readSync(this.fd, buf, 0, bytes, start);
+		const ids = new Set<number>();
+		for(let at = buf.indexOf(91); at >= 0; at = buf.indexOf(91, at + 1)) {
+			let num = 0;
+			let end = at + 1;
+			for(; end < bytes && buf[end] >= 48 && buf[end] <= 57; end++) {
+				num = num * 10 + buf[end] - 48;
+			}
+			if(end > at + 1 && buf[end] === 44) {
+				ids.add(num);
+			}
+		}
+		this.nameIdsOfBlob.set(blobIdx, Int32Array.from(ids).sort());
+		return this.mayOffer(pkg, name);
+	}
+
 	/** drop one decoded blob, for the shared budget to reclaim what it costs (see {@link keepBlob}) */
 	public dropBlob(blobIdx: number): void {
 		this.blobCache.delete(blobIdx);
@@ -688,7 +715,7 @@ export class SigDatabase implements PackageSignatureSource {
 		}
 		const found: string[] = [];
 		for(const pkg in this.index.pkgs) {
-			if(this.mayOffer(pkg, name) && this.exportsNameId(pkg, id)) {
+			if(this.mayHoldNameId(pkg, name) && this.mayOffer(pkg, name) && this.exportsNameId(pkg, id)) {
 				found.push(pkg);
 			}
 		}

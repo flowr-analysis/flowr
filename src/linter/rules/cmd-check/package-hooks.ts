@@ -18,10 +18,11 @@ import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop'
 import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { builtInOf, callsBuiltIn } from '../../linter-util';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { at, printer, calledDefinitions, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
+import { at, printer, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
 
 /** what is wrong with a package hook */
 export type PackageHookIssue =
@@ -102,7 +103,7 @@ function reachedCalls(def: RFunctionDefinition<ParentInformation>, df: DataflowI
 				return false;
 			}
 			result.push({ id: node.info.id, name: Identifier.getName(builtInOf(df.graph, node.info.id) ?? vertex.name), via });
-			for(const callee of follow ? calledDefinitions(df.graph, node.info.id, idMap) : []) {
+			for(const callee of follow ? Dataflow.calleeDefinitionsOf(df.graph, node.info.id) : []) {
 				if(!visited.has(callee.info.id)) {
 					visited.add(callee.info.id);
 					work.push({ def: callee, via: via ?? node.info.id });

@@ -1,16 +1,68 @@
-import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
+import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeFnGuardsQuery } from './inspect-fn-guards-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { SourceLocation } from '../../../util/range';
 import { FunctionFilterSchema } from '../../query-function-property';
 import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/function-guards';
-import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import type { StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
-import { claimWords, returnWords } from '../../../dataflow/fn/guards/guard-claims';
+import { claimWords, returnWords, relationsOf } from '../../../dataflow/fn/guards/guard-claims';
+import { metaSince } from '../../query-meta';
+import { QueryFunctionFilter } from '../../query-function-filter';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
+import { GuardTerm } from '../../../dataflow/fn/guards/guard-term';
+import { conditionsPerFormal } from '../../../dataflow/fn/guards/function-guards';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
+import { defaultGuardFacts } from '../../../dataflow/fn/guards/guard-knowledge';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+
+/** The part of the answer for one function a query asks for, `undefined` if that is nothing. */
+function keep(guards: FunctionGuards, { kind, onlyPure, formals }: InspectFnGuardsQuery): FunctionGuards | undefined {
+	const named: ReadonlySet<BrandedIdentifier> | undefined = formals && new Set(formals);
+	const wanted = (clause: GuardClause) => (kind === undefined || clause.kind === kind) && (!onlyPure || clause.pure)
+		&& (named === undefined || GuardTerm.formalsOf(clause.requires).values().some(f => named.has(f)));
+	const onlyNamed = <T>(of: Readonly<Record<BrandedIdentifier, T>>) => named === undefined ? of : Object.fromEntries(Object.entries(of).filter(([name]) => named.has(name)));
+	const clauses = guards.clauses.filter(wanted);
+	const kept: FunctionGuards = {
+		...FunctionSemantics.guardSummary(clauses),
+		clauses,
+		conditions:  onlyNamed(conditionsPerFormal(clauses)),
+		formals:     onlyNamed(guards.formals),
+		relations:   relationsOf(clauses.map(c => c.requires), defaultGuardFacts()),
+		conditional: guards.conditional.filter(c => named === undefined || named.has(c.formal)),
+		required:    guards.required.filter(f => named === undefined || named.has(f)),
+		...(guards.returns === undefined ? {} : { returns: guards.returns }),
+		...(guards.passes === undefined ? {} : { passes: guards.passes })
+	};
+	return clauses.length > 0 || kept.required.length > 0 || Object.keys(kept.formals).length > 0 || kept.returns !== undefined ? kept : undefined;
+}
+
+/** What R's functions of the given names ask for, the ones flowR knows nothing of left out. */
+function statedFor(names: readonly string[], ctx: ReadOnlyFlowrAnalyzerContext): Record<string, StatedGuards> {
+	return Object.fromEntries(names.flatMap(name => {
+		const stated = FunctionSemantics.contracts.statedOf(Identifier.parse(name), ctx);
+		return stated === undefined ? [] : [[name, stated]];
+	}));
+}
+
+/** Execute function-guard inspection queries on the given analyzer. */
+export async function executeFnGuardsQuery({ analyzer }: BasicQueryData, queries: readonly InspectFnGuardsQuery[]): Promise<InspectFnGuardsQueryResult> {
+	const start = Date.now();
+	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
+	const [query = { type: 'inspect-fn-guards' }] = queries;
+	const graph = (await analyzer.dataflow()).graph;
+	const guards = FunctionSemantics.guards(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx: analyzer.inspectContext() });
+	return {
+		...metaSince(start),
+		...(query.builtIns === undefined ? {} : { builtIns: statedFor(query.builtIns, analyzer.inspectContext()) }),
+		guards: Object.fromEntries(Object.entries(guards).flatMap(([id, of]) => {
+			const kept = keep(of, query);
+			return kept === undefined ? [] : [[id, kept]];
+		}))
+	};
+}
 
 /** Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter. */
 export interface InspectFnGuardsQuery extends BaseQueryFormat {

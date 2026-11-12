@@ -411,7 +411,7 @@ function processAssignmentTarget<OtherInfo>(
 		}
 		const replaced = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.beforeDefine);
 		if(yieldsEnvironment(target.accessed, replaced.graph, data)) {
-			bindsUnknownNames(replaced.graph, replaced.environment, rootId, source);
+			bindsUnknownNames(replaced.graph, replaced.environment, rootId, source, data.ctx);
 		}
 		return replaced;
 	} else if(type === RType.Access) {
@@ -438,7 +438,7 @@ function processAssignmentTarget<OtherInfo>(
 
 	dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an unknown target type ${target.type} => unknown impact`);
 	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, origin: originOf(config) }).information;
-	bindsUnknownNames(info.graph, info.environment, rootId, source);
+	bindsUnknownNames(info.graph, info.environment, rootId, source, data.ctx);
 	return info;
 }
 
@@ -594,7 +594,7 @@ function tryRouteToCustomEnv<OtherInfo>(
 	const value = args.length < 2 ? undefined : RArgument.valueOf(getEffectiveOrder(config, [args[0], args[1]])[1]);
 	if(envirRouting === 'ambiguous' || (!envirRouting && suppliesArg(args, config.sig, EnvirPositionFormals))) {
 		const info = processKnownFunctionCall({ name, args, rootId, data, origin: originOf(config) }).information;
-		bindsUnknownNames(info.graph, info.environment, rootId, value);
+		bindsUnknownNames(info.graph, info.environment, rootId, value, data.ctx);
 		return info;
 	}
 	if(!envirRouting) {
@@ -603,7 +603,7 @@ function tryRouteToCustomEnv<OtherInfo>(
 		}
 		/* an environment we cannot name (`sys.frame(-1)`) may be any frame, so the write stays here and is kept as well */
 		const info = processAssignment(name, args, rootId, data, { ...config, environmentArg: undefined });
-		bindsUnknownNames(info.graph, info.environment, rootId, value);
+		bindsUnknownNames(info.graph, info.environment, rootId, value, data.ctx);
 		return info;
 	}
 

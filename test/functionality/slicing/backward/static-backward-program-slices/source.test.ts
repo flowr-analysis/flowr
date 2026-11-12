@@ -3,7 +3,7 @@ import { label } from '../../../_helper/label';
 import { assert, describe, test } from 'vitest';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-format';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 describe('source', { concurrent: false }, withShell(shell => {

@@ -1,28 +1,75 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { missingRootsWithoutRequests, queryHeader } from '../../query-print';
 import Joi from 'joi';
 import { LintingRuleTag } from '../../../linter/linter-tags';
-import { executeLinterQuery } from './linter-query-executor';
-import {
-	type LintingRuleNames,
-	type LintingRuleResult,
-	LintingRules,
-	getLintingRule
-} from '../../../linter/linter-rules';
-import { type LintingResultsError,
-	type ConfiguredLintingRule,
-	LintingPrettyPrintContext,
-	LintingResultCertainty,
-	LintingResults
-} from '../../../linter/linter-format';
+import { type LintingRuleNames, type LintingRuleResult, LintingRules, getLintingRule } from '../../../linter/linter-rules';
+import { type LintingResultsError, type ConfiguredLintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingResults } from '../../../linter/linter-format';
 import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
 import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
-import { type LintResultsByRule, LinterOutputFormat } from '../../../linter/linter-output';
+import { type LintResultsByRule, LinterOutputFormat, formatLints } from '../../../linter/linter-output';
+import { metaSince } from '../../query-meta';
+import { log } from '../../../util/log';
+import { executeLintingRule } from '../../../linter/linter-executor';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../gas';
+import { flowrVersion } from '../../../util/version';
+
+/**
+ * Executes the given linter queries using the provided analyzer.
+ * A query without an explicit rule list runs only the rules that are active by default.
+ * @see {@link executeLintingRule}
+ * @see {@link LinterRuleInformation#activeByDefault} - opts a rule out of the default rule set
+ */
+export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: readonly LinterQuery[]): Promise<LinterQueryResult> {
+	// no explicit rules: run the rules that opt in via activeByDefault (default true), minus those the (project-kind
+	// specialized) config disables by name or tag -- e.g. software-has-license/-tests are off for a lone script or a
+	// notebook, and the cmd-check rules for everything but a package
+	const disabled = new Set(analyzer.flowrConfig.linter.disabledRules);
+	const disabledTags = new Set<string>(analyzer.flowrConfig.linter.disabledTags ?? []);
+	const defaultRules = (Object.keys(LintingRules) as LintingRuleNames[])
+		.filter((name: LintingRuleNames) => {
+			const info = LintingRules[name].info as { activeByDefault?: boolean, tags: readonly string[] };
+			return info.activeByDefault !== false && !disabled.has(name) && !info.tags.some(t => disabledTags.has(t));
+		});
+	const tagged = (tags: readonly LintingRuleTag[]) => (Object.keys(LintingRules) as LintingRuleNames[])
+		.filter(name => (LintingRules[name].info.tags as readonly LintingRuleTag[]).some(t => tags.includes(t)));
+	const flattened = queries.flatMap(q => q.rules ?? (q.tags ? tagged(q.tags) : defaultRules));
+	const distinct = new Set(flattened);
+	if(distinct.size !== flattened.length) {
+		const pretty = [...distinct].filter(r => flattened.indexOf(r) !== flattened.lastIndexOf(r)).map(r => typeof r === 'string' ? r : r.name).join(', ');
+		log.warn(`Linter query collection contains duplicate rules ${pretty}, only linting for each rule once`);
+	}
+
+	// typed loosely to avoid a too-complex mapped-union at the indexed writes below; cast back on return
+	const results: { results: Record<string, unknown> } = { results: {} };
+
+	const start = Date.now();
+
+	const gas = analyzer.inspectContext().gas;
+	for(const entry of distinct) {
+		const ruleName = typeof entry === 'string' ? entry : entry.name;
+		if(gas.checkGas(GasFeatureKey.Linter) >= GasLevel.Critical) {
+			log.warn(`Skipping linting rule ${ruleName} due to resource pressure (gas: critical). See ${GasWikiRef}`);
+			results.results[ruleName] = { error: new Error(`skipped due to resource pressure (gas: critical), see ${GasWikiRef}`) };
+			continue;
+		}
+		const run = (): Promise<unknown> => executeLintingRule<typeof ruleName>(ruleName, analyzer, (entry as ConfiguredLintingRule)?.config);
+		results.results[ruleName] = await run();
+	}
+
+	/* rendered here, not when printing, so an api client gets it too */
+	const format = queries.map(q => q.format).find(isNotUndefined);
+	const formatted = format ? formatLints((results as LinterQueryResult).results, format, flowrVersion().toString()) : undefined;
+	return {
+		...results,
+		...(formatted ? { formatted } : {}),
+		...metaSince(start)
+	};
+}
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:    'linter';

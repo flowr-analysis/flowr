@@ -24,6 +24,8 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { metaPackageCore } from '../../project/attached-packages';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -109,6 +111,10 @@ export const Dataflow = {
 	/** The ids of the function definitions a call is linked to by a {@link EdgeType.Calls} edge (empty if none, e.g. for built-ins). */
 	calleeIdsOf(this: void, graph: DataflowGraph, call: NodeId): NodeId[] {
 		return Dataflow.targetsOf(graph, call, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/** The function definitions (as nodes of the normalized AST) a call is linked to by a {@link EdgeType.Calls} edge, see {@link Dataflow.calleeIdsOf}. */
+	calleeDefinitionsOf(this: void, graph: DataflowGraph, call: NodeId): RFunctionDefinition<ParentInformation>[] {
+		return Dataflow.calleeIdsOf(graph, call).map(id => graph.idMap?.get(id)).filter(RFunctionDefinition.is);
 	},
 	/** All known targets of a call, as well as the name sources which define them (empty if there are none). */
 	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
@@ -290,6 +296,16 @@ export const Dataflow = {
 	/** See {@link DataflowGraph#isQuoted}, which this answers for `graph`. */
 	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
 		return graph.isQuoted(id, withOutgoing);
+	},
+	/** Whether the node or one of its AST ancestors is quoted or evaluated elsewhere (`quote(...)`, a data mask), see {@link DataflowGraph#isQuoted}. */
+	isWithinQuoted(this: void, id: NodeId, graph: DataflowGraph): boolean {
+		const idMap = graph.idMap;
+		for(let cur = idMap?.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap?.get(cur.info.parent)) {
+			if(graph.isQuoted(cur.info.id)) {
+				return true;
+			}
+		}
+		return false;
 	},
 
 	/** Given the id of a vertex (usually a variable use), this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids! */

@@ -99,7 +99,10 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const callSigs: Parameters<typeof deferringCall>[3] = new Map();
 	/* the unknown side effects every slice keeps are seeds as well, so what they reach is not cut off as running too late */
 	const effects = [...graph.unknownSideEffects].filter((id): id is NodeId => typeof id !== 'object');
-	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph, options.reached) : undefined;
+	const reached = [...options.reached ?? []];
+	let missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph, reached) : undefined;
+	/* the nodes whose edges {@link missesSeeds} cut, to follow again once the slice reaches further */
+	const cut: NodeToSlice[] = [];
 	const separatedWrite = (id: NodeId): boolean => info.graph.fileWritesPerCall?.has(id) === true
 		&& !openedBodies.has(RNode.findEnclosing(id, idMap, RFunctionDefinition.is) as NodeId);
 	/* the dispatches within functions decided per call, as visited, and per call of such a function the dispatches it decides */
@@ -140,22 +143,38 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		ids.flatMap(id => [...RNode.collectAllIdsWithStop(idMap.get(id), RFunctionDefinition.is)].filter(part => part !== id && DfgVertex.isFunctionCall(graph.getVertex(part)))), graph, PrintedOutput);
 
 	/* a drained queue completes the body slice, only then can a boundary decide whether its callers matter */
-	do{
-		while(queue.nonEmpty()) {
-			processNode();
-		}
-		resolveCalleeBoundaries();
-		if(!queue.nonEmpty() && argumentWrites !== undefined) {
-			argumentWrites.forEach(id => queue.add(id, emptyEnv, basePrint, false));
-			argumentWrites = undefined;
-		}
-		/* what the reconstruction prints as written is in the slice, and so is what it needs, see {@link printedAsWritten} */
-		if(!queue.nonEmpty()) {
-			for(const id of printedAsWritten(queue, idMap, graph)) {
-				queue.add(id, emptyEnv, basePrint, false);
+	drain();
+	/* a statement the slice keeps although it runs after the seeds (the close of a sink the seed opens) needs what runs before it as well */
+	for(let beyond = beyondSeeds(); beyond.length > 0; beyond = beyondSeeds()) {
+		reached.push(...beyond);
+		missesSeeds = outsideSeedRun([...ids, ...effects], idMap, direction, graph, reached);
+		cut.splice(0).forEach(c => processNode(c));
+		drain();
+	}
+
+	function beyondSeeds(): NodeId[] {
+		const misses = missesSeeds;
+		return direction === SliceDirection.Backward && misses !== undefined ? [...queue.status().result].filter(misses) : [];
+	}
+
+	function drain(): void {
+		do{
+			while(queue.nonEmpty()) {
+				processNode();
 			}
-		}
-	} while(queue.nonEmpty());
+			resolveCalleeBoundaries();
+			if(!queue.nonEmpty() && argumentWrites !== undefined) {
+				argumentWrites.forEach(id => queue.add(id, emptyEnv, basePrint, false));
+				argumentWrites = undefined;
+			}
+			/* what the reconstruction prints as written is in the slice, and so is what it needs, see {@link printedAsWritten} */
+			if(!queue.nonEmpty()) {
+				for(const id of printedAsWritten(queue, idMap, graph)) {
+					queue.add(id, emptyEnv, basePrint, false);
+				}
+			}
+		} while(queue.nonEmpty());
+	}
 
 	function processNode(current: NodeToSlice = queue.next()): void {
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
@@ -170,6 +189,9 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		   a function links to all its calls, and none running before the seeds can */
 		const reachable = missesSeeds !== undefined && (strictlyEnclosing !== undefined || direction === SliceDirection.Forward)
 			? withoutMissed(allEdges, missesSeeds) : allEdges;
+		if(reachable !== allEdges) {
+			cut.push(current);
+		}
 		/* a dispatch decided per call of its function runs only what the calls of it in the slice may run */
 		const perCall = direction === SliceDirection.Backward && sliceGraph === undefined && DfgVertex.isFunctionCall(currentVertex) ? currentVertex.ruledOutAt : undefined;
 		let ruledOut: ReadonlySet<NodeId> | undefined;
@@ -302,11 +324,6 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	}
 
 	const status = queue.status();
-	/* a statement the slice keeps although it runs after the seeds (the close of a sink the seed opens) needs what runs before it as well */
-	const beyond = direction === SliceDirection.Backward && missesSeeds !== undefined ? [...status.result].filter(missesSeeds) : [];
-	if(beyond.length > 0) {
-		return staticSlice({ ...options, reached: [...options.reached ?? [], ...beyond] });
-	}
 	const result = ctx.config.solver.slicer?.autoExtend ? extendSlices(status.result, idMap) : status.result;
 	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
 }
@@ -398,13 +415,26 @@ function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: Slic
 
 const PrintedOutput: ReadonlySet<AmbientStateName> = new Set([AmbientStateName.sinkOutput]);
 
+/** per graph, which does not change while it is sliced: the calls writing each combination of states asked for, and the calls a dispatch is decided for */
+const WritesPerGraph = new WeakMap<DataflowGraph, { readonly writers: Map<string, ReadonlySet<NodeId>>, contexts?: ReadonlySet<NodeId> }>();
+
+function writesOf(graph: DataflowGraph): { readonly writers: Map<string, ReadonlySet<NodeId>>, contexts?: ReadonlySet<NodeId> } {
+	let known = WritesPerGraph.get(graph);
+	if(known === undefined) {
+		known = { writers: new Map() };
+		WritesPerGraph.set(graph, known);
+	}
+	return known;
+}
+
 /** The calls writing one of the `states` (`cat`, `print`, ...: they print into {@link AmbientStateName.sinkOutput}) within the functions the `seeds` call (a printed value its `print` method), transitively, but for the methods the slice rules out for the seeds (`ruledOutHere`). */
 function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, states: ReadonlySet<AmbientStateName>, ruledOutHere?: ReadonlySet<NodeId>): NodeId[] {
-	const writers = new Set<NodeId>();
-	for(const id of graph.ambientAccessIds()) {
-		if(graph.ambientAccessOf(id)?.writes.keys().some(state => states.has(state))) {
-			writers.add(id);
-		}
+	const known = writesOf(graph);
+	const key = [...states].sort().join(',');
+	let writers = known.writers.get(key);
+	if(writers === undefined) {
+		writers = new Set([...graph.ambientAccessIds()].filter(id => graph.ambientAccessOf(id)?.writes.keys().some(state => states.has(state))));
+		known.writers.set(key, writers);
 	}
 	if(writers.size === 0) {
 		return [];
@@ -417,7 +447,7 @@ function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, stat
 	const calls: [NodeId, readonly NodeId[]][] = [...seeds].map(id => [id, []]);
 	const decided = new Set<string>();
 	/* the calls a dispatch is decided for, which have to be followed again for every other way they are run */
-	const contexts = new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([, v]) => callsRuledOutAt(v.ruledOutAt ?? [])));
+	const contexts = known.contexts ??= new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([, v]) => callsRuledOutAt(v.ruledOutAt ?? [])));
 	for(let next = calls.pop(); next !== undefined; next = calls.pop()) {
 		const [call, via] = next;
 		const ruledOut = ruledOutVia((graph.getVertex(call) as Partial<DataflowGraphVertexFunctionCall> | undefined)?.ruledOutAt, via);

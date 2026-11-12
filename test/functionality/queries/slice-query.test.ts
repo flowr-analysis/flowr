@@ -5,7 +5,7 @@ import type {
 	StaticSliceQuery,
 	StaticSliceQueryResult
 } from '../../../src/queries/catalog/static-slice-query/static-slice-query-format';
-import { fingerPrintOfQuery } from '../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { fingerPrintOfQuery } from '../../../src/queries/catalog/static-slice-query/static-slice-query-format';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import {
 	DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE,

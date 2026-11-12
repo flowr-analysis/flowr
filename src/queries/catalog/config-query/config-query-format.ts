@@ -1,5 +1,4 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { executeConfigQuery } from './config-query-executor';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { queryHeader } from '../../query-print';
 import { bold, italic, voidFormatter, type OutputFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
@@ -12,6 +11,49 @@ import { type CommandCompletions, describeCompletion } from '../../../cli/repl/c
 import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
 import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/strings';
+import { log } from '../../../util/log';
+import { isNotUndefined } from '../../../util/assert';
+
+/**
+ * Executes the given configuration queries using the provided analyzer.
+ */
+export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
+	if(queries.some(q => q.reset)) {
+		analyzer.resetConfig();
+	}
+
+	const updates = queries.map(q => q.update).filter(isNotUndefined);
+	if(updates.length > 1) {
+		log.warn('Config query usually expects only up to one update, but got', updates.length);
+	}
+
+	// validate here too (not only in the repl parser), so a programmatic / JSON-API update cannot merge an unknown
+	// key or a wrong-typed value; the update then lands via `updateConfig`, which invalidates the analysis cache
+	for(const given of updates) {
+		const err = validateConfigUpdate(given);
+		if(err !== undefined) {
+			log.warn(`ignoring invalid config update: ${err}`);
+			continue;
+		}
+		// queries may come from clients of the server, so they must not choose what flowR executes, loads, or downloads
+		const update = structuredClone(given);
+		const dropped = FlowrConfig.dropUntrusted(update);
+		if(dropped.length > 0) {
+			log.warn(`ignoring untrusted options in config update: ${dropped.join(', ')}`);
+		}
+		analyzer.updateConfig(update);
+	}
+
+	const specialization = analyzer.inspectContext().configSpecialization();
+	return Promise.resolve({
+		'.meta': {
+			/* there is no sense in measuring a get */
+			timing: 0
+		},
+		config: analyzer.flowrConfig,
+		...(specialization ? { specialization } : {})
+	});
+}
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';

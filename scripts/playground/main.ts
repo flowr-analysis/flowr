@@ -64,7 +64,6 @@ import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { contractCard, placeIn, programContracts, statedContract, type ProgramContract } from './contracts';
 import { FunctionSemantics } from '../../src/dataflow/fn/function-semantics';
-import { fnEntry } from '../../src/dataflow/environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../src/project/context/flowr-analyzer-context';
 import type { InspectFnGuardsQueryResult } from '../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
@@ -623,7 +622,7 @@ function contractOf(name: string, about: Known, known: Signature | undefined): H
 	if(about.local || pkg === undefined || bare !== name) {
 		return undefined;
 	}
-	const guardsOf = (id: Identifier) => (contractContext === undefined ? undefined : fnEntry(id, contractContext).entry?.guards) ?? FunctionSemantics.builtInGuards(Identifier.getName(id), Identifier.getNamespace(id));
+	const guardsOf = (id: Identifier) => FunctionSemantics.contracts.statedOf(id, contractContext);
 	let id = Identifier.make(name, pkg);
 	let shown = statedContract(guardsOf(id), params);
 	let note: string | undefined;

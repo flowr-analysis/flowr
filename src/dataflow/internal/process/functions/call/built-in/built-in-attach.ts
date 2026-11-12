@@ -46,7 +46,7 @@ export function processAttach<OtherInfo>(
 	const dataset = envirResolution === undefined && listed === undefined && RSymbol.is(whatNode) && Resolve.byName(whatNode.content, data.environment)?.every(d => NodeId.isBuiltIn(d.nodeId)) !== false
 		? datasetShape(Identifier.getName(whatNode.content)) : undefined;
 	if(!envirResolution && !listed && !dataset) {
-		bindsUnknownNames(result.graph, result.environment, rootId);
+		bindsUnknownNames(result.graph, result.environment, rootId, whatNode, data.ctx, true);
 		return result;
 	}
 

@@ -209,14 +209,16 @@ export const UNDEFINED_SYMBOL = {
 		];
 
 		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
-		const src = deps.signatures().sources();
+		const db = deps.signatures();
+		const src = db.sources();
 		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
+		const exportsOf = memoize((pkg: BrandedNamespace): ReadonlySet<BrandedIdentifier> => new Set(db.exportsOf(pkg)?.exported ?? []));
 		const loadedNames = new Set<BrandedNamespace>(loadedPackages.map(p => p.name));
 		/* the database records no data sets, which a loaded package makes available as lazy data */
 		const isDatasetOfLoadedPackage = (name: BrandedIdentifier): boolean =>
 			datasetShape(name, undefined, pkg => loadedNames.has(pkg)) !== undefined;
 		const isExportedByLoadedPackage = memoize((name: BrandedIdentifier): boolean =>
-			loadedPackages.some(p => p.has(name)) || isDatasetOfLoadedPackage(name) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
+			loadedPackages.some(p => p.has(name)) || isDatasetOfLoadedPackage(name) || [...importedByLoaded].some(p => exportsOf(p).has(name)));
 
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);

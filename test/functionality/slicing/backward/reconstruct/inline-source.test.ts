@@ -10,7 +10,7 @@ import { buildSourceInlineMap } from '../../../../../src/reconstruct/inline/sour
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
 import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-format';
 import { SliceDirection } from '../../../../../src/util/slice-direction';
 import { RFunctionCall } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 

@@ -16,7 +16,8 @@ export function initCommand(eol: string, pipeBind = false): string {
 	/* Force a UTF-8 character type so `getParseData`'s `encodeString` emits raw UTF-8 rather than locale-dependent
 	 * octal escapes (e.g. `\303\264`), which are not valid JSON and would break parsing of non-ASCII R sources on
 	 * hosts running in a non-UTF-8 locale (a common CI setup). Falls back silently if no UTF-8 locale is available. */
-	return 'invisible(suppressWarnings(local(for(.l in c("C.UTF-8","en_US.UTF-8","UTF-8")) if(nzchar(Sys.setlocale("LC_CTYPE",.l))) break)));'
+	/* since R 4.4 an error in a command no longer ends the session, older versions ignore the option */
+	return 'options(catch.script.errors=TRUE);invisible(suppressWarnings(local(for(.l in c("C.UTF-8","en_US.UTF-8","UTF-8")) if(nzchar(Sys.setlocale("LC_CTYPE",.l))) break)));'
 		+ (pipeBind ? 'Sys.setenv("_R_USE_PIPEBIND_"="true");' : '')
 		+ 'flowr_output<-NULL;flowr_get_ast<-compiler::cmpfun(function(...){tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */

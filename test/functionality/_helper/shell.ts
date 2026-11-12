@@ -833,6 +833,24 @@ export function assertSliceRunsInR(name: string, parser: KnownParser, code: stri
 
 const execFileAsync = promisify(execFile);
 
+/* each test file runs its tests concurrently, so without a bound every worker starts an R for each of them at once, which runs out of memory */
+const MaxRunningR = 2;
+let runningR = 0;
+const waitingForR: (() => void)[] = [];
+
+async function withRSlot<T>(this: void, run: () => Promise<T>): Promise<T> {
+	if(runningR >= MaxRunningR) {
+		await new Promise<void>(resolve => waitingForR.push(resolve));
+	}
+	runningR++;
+	try {
+		return await run();
+	} finally {
+		runningR--;
+		waitingForR.shift()?.();
+	}
+}
+
 /**
  * What `Rscript` prints for `code` in a fresh directory holding `files`, failing on an error or after 20 seconds.
  * The code goes through a file, as windows cuts `-e` at the first line break.
@@ -846,14 +864,16 @@ export async function printedByR(code: string, files: Readonly<Record<string, st
 		await fs.promises.mkdir(cwd);
 		await fs.promises.writeFile(script, code);
 		await Promise.all(Object.entries(files).map(([name, content]) => fs.promises.writeFile(path.join(cwd, name), content)));
-		const running = execFileAsync('Rscript', ['--vanilla', script], { cwd, maxBuffer: 1 << 24 });
-		/* not the `timeout` of execFile: when a blocked event loop (e.g., loading the signature database) runs it late, it drops the output of an R that finished long ago and reports success */
-		const timer = setTimeout(() => running.child.kill('SIGKILL'), 20_000);
-		try {
-			return (await running).stdout.replace(/\r\n/g, '\n').trimEnd();
-		} finally {
-			clearTimeout(timer);
-		}
+		return await withRSlot(async() => {
+			const running = execFileAsync('Rscript', ['--vanilla', script], { cwd, maxBuffer: 1 << 24 });
+			/* not the `timeout` of execFile: when a blocked event loop (e.g., loading the signature database) runs it late, it drops the output of an R that finished long ago and reports success */
+			const timer = setTimeout(() => running.child.kill('SIGKILL'), 20_000);
+			try {
+				return (await running).stdout.replace(/\r\n/g, '\n').trimEnd();
+			} finally {
+				clearTimeout(timer);
+			}
+		});
 	} finally {
 		await fs.promises.rm(root, { recursive: true, force: true });
 	}

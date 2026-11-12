@@ -55,7 +55,8 @@ const Ordered: GuardFacts = { asks: { '...': dispatched(is('is.numeric', 'is.log
 /* `range.default`, which the primitive runs, flattens lists and expressions first */
 const Ranged: GuardFacts = { asks: { '...': dispatched(is('is.numeric', 'is.logical', 'is.character', 'is.null', 'is.list', 'is.expression'), InvalidType) }, computes: true };
 /* `all("a")` is `NA`, and `all(new.env())` holds, as an environment is empty to it */
-const Quantified: GuardFacts = { asks: { '...': dispatched(not('is.function', 'is.symbol', 'is.call'), 'cannot coerce to logical') }, computes: true, singleResult: true };
+/* before R 4.6 a symbol coerced to `TRUE` with a warning */
+const Quantified: GuardFacts = { asks: { '...': [...dispatched(not('is.function', 'is.call'), 'cannot coerce to logical'), { ...dispatched(not('is.symbol'), 'cannot coerce to logical')[0], since: '4.6.0' }] }, computes: true, singleResult: true };
 const ComplexPart = (returns: RValueTypes): GuardFacts => ({ asks: { z: dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to function') }, required: ['z'], computes: true, returns: Dispatched('z', returns) });
 
 /* a matrix product asks for numbers, and of two matrices for the dimensions to match */

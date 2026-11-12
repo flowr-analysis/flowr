@@ -28,7 +28,8 @@ const Dollar = fails(any(is('is.null'), all(is('is.recursive'), { not: { is: 'is
 const Subsettable = fails(not('is.function', 'is.environment', 'is.symbol'), NotSubsettable);
 const ElementSubsettable = fails(not('is.function', 'is.symbol'), NotSubsettable);
 /* what holds no attributes, though setting none at all, or `NULL`, works on everything */
-const Attributable = all(not('is.null'), not('is.symbol', 'is.primitive'));
+/* before R 4.6 a primitive took attributes as well, which changed it everywhere */
+const attributable = (failing: (holds: RCondition) => RFailure): RFailure[] => [failing(all(not('is.null'), not('is.symbol'))), { ...failing(not('is.primitive')), since: '4.6.0' }];
 const UnlessNullValue = (holds: RCondition, message: string): RFailure => fails(any(on('value', is('is.null')), holds), message);
 const NameString = (message: string): readonly RFailure[] => [
 	fails(is('is.character'), message),
@@ -66,25 +67,25 @@ export const PrimitiveLanguageGuardFacts: Readonly<Record<BrandedIdentifier, Gua
 	'[[<-':         { asks: { x: [{ ...ElementSubsettable, dispatches: true }] } },
 	'$<-':          { asks: { x: [{ ...ElementSubsettable, dispatches: true }] } },
 	'attr':         { asks: { x: [], which: OneString("exactly one attribute 'which' must be given") }, computes: true },
-	'attr<-':       { asks: { x: [UnlessNullValue(Attributable, 'cannot set an attribute on ...')], which: NameString("'name' must be non-null character string"), value: [] } },
+	'attr<-':       { asks: { x: attributable(holds => UnlessNullValue(holds, 'cannot set an attribute on ...')), which: NameString("'name' must be non-null character string"), value: [] } },
 	'attributes':   { ...Computes, ...Returns(List | Null) },
 	'attributes<-': {
 		asks: {
-			x:     [fails(any(on('value', length('==', 0)), not('is.symbol', 'is.primitive')), 'cannot set an attribute on ...')],
+			x:     [fails(any(on('value', length('==', 0)), not('is.symbol')), 'cannot set an attribute on ...'), { ...fails(any(on('value', length('==', 0)), not('is.primitive')), 'cannot set an attribute on ...'), since: '4.6.0' }],
 			value: [fails(any(is('is.null'), all(is('is.list'), { not: { is: 'is.pairlist' } })), 'attributes must be a list or NULL')]
 		}
 	},
 	'class':   { ...Computes, ...Returns(Character, { nonEmpty: true }) },
 	'class<-': {
 		asks: {
-			x:     [UnlessNullValue(not('is.null'), 'attempt to set an attribute on NULL'), fails(any(on('value', length('==', 0)), not('is.symbol', 'is.primitive')), 'cannot set an attribute on ...')],
+			x:     [UnlessNullValue(not('is.null'), 'attempt to set an attribute on NULL'), fails(any(on('value', length('==', 0)), not('is.symbol')), 'cannot set an attribute on ...'), { ...fails(any(on('value', length('==', 0)), not('is.primitive')), 'cannot set an attribute on ...'), since: '4.6.0' }],
 			value: [fails(not('is.function', 'is.environment'), "attempt to set invalid 'class' attribute")]
 		}
 	},
 	'oldClass':   { ...Computes, ...Returns(Character | Null) },
 	'oldClass<-': {
 		asks: {
-			x:     [fails(any(on('value', length('==', 0)), Attributable), 'cannot set an attribute on ...')],
+			x:     attributable(holds => fails(any(on('value', length('==', 0)), holds), 'cannot set an attribute on ...')),
 			value: [fails(any(is('is.character'), length('==', 0)), "attempt to set invalid 'class' attribute")]
 		}
 	},
@@ -117,7 +118,7 @@ export const PrimitiveLanguageGuardFacts: Readonly<Record<BrandedIdentifier, Gua
 			]
 		}
 	},
-	'levels<-': { asks: { x: [unlessClassed('x', UnlessNullValue(Attributable, 'cannot set an attribute on ...'))], value: [] } },
+	'levels<-': { asks: { x: attributable(holds => unlessClassed('x', UnlessNullValue(holds, 'cannot set an attribute on ...'))), value: [] } },
 	'length<-': {
 		asks: {
 			x:     [unlessClassed('x', fails(not('is.function', 'is.environment', 'is.symbol', 'is.call'), 'cannot set length of non-(vector or list)'))],

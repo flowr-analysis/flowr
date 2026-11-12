@@ -7,7 +7,7 @@ succeeds <- function(e) {
 .guards_values <- list(NULL, TRUE, FALSE, NA, NA_integer_, NA_character_, NA_real_, NaN, 1L, 0L, -1L, 2L, 1.5, 0, -1, 7, 1i, "a", "b", "al", "alpha", "beta", "z", "", "TRUE", "fn_a", "sum2", raw(1),
   list(1), list(), list(a = 1), list(a = 2), function(...) 1, sum, new.env(), quote(a), quote(a + b), data.frame(a = 1), data.frame(), factor("a"), factor("b", levels = c("z", "b")),
   structure(1, class = "foo"), structure(function(...) 1, class = "foo"), expression(a), pairlist(a = 1), c(1, 2), c(-1, 1), character(0), integer(0), logical(0), c("a", "b"), c("b", "a"),
-  c(TRUE, FALSE), c(TRUE, TRUE), matrix(1:4, 2), Sys.Date(), globalenv(), as.POSIXct("2020-01-01"), as.difftime(1, units = "secs"), numeric_version("1.2"), table(1), ts(1:3), array(1, c(1, 1, 1)), matrix("a"))
+  c(TRUE, FALSE), c(TRUE, TRUE), matrix(1:4, 2), Sys.Date(), globalenv(), .POSIXct(1, tz = "UTC"), as.difftime(1, units = "secs"), numeric_version("1.2"), table(1), ts(1:3), array(1, c(1, 1, 1)), matrix("a"))
 .guards_values <- c(.guards_values, local({
   methods::setClass(".GuardsN", contains = "numeric")
   list(methods::setRefClass(".GuardsRef", fields = list(n = "numeric"))$new(n = 1), methods::new(".GuardsN", 1), methods::setClass(".GuardsP", representation(x = "numeric")))

@@ -29,6 +29,11 @@ async function guardsOfF(parser: KnownParser, code: string, config?: FlowrConfig
 	return result.guards[Math.max(...definitions.map(Number))];
 }
 
+/** The configuration assuming the given R version. */
+const inVersion = (version: string) => FlowrConfig.amend(FlowrConfig.default(), c => {
+	c.solver.sigdb.assumedRVersion = version;
+});
+
 describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	/** Compares what `f` asks of its calls, and what of that fails before any side effect (all of it, if left out). */
 	function guards(code: string, requires: string, pure = requires) {
@@ -359,7 +364,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(any(!x %in% c("a", "b"))) stop("n"); 1 }', 'all(x %in% c("a", "b"))');
 	guards('f <- function(x) { if(!all(x %in% c("a", "b"))) stop("n"); 1 }', 'all(x %in% c("a", "b"))');
 	guards('f <- function(x) { if(any(c(TRUE, x))) stop("n"); 1 }', 'all(!c(TRUE, x))');
-	guards('f <- function(x) { if(any(x, na.rm = TRUE)) stop("n"); 1 }', '(!is.function(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && !any(x, na.rm = TRUE)');
+	guards('f <- function(x) { if(any(x, na.rm = TRUE)) stop("n"); 1 }', '(!is.function(x) && !is.call(x) || is.object(x)) && (!is.symbol(x) || is.object(x)) && !any(x, na.rm = TRUE)');
 	guards('f <- function(x) { if(isTRUE(all.equal(x, 1))) stop("n"); 1 }', '!isTRUE(all.equal(x, 1))');
 
 	/* class checks that say nothing or little */
@@ -464,7 +469,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	guards('f <- function(x) { if(is.environment(x)) stop("e"); 1 }', '!is.environment(x)');
 	guards('f <- function(x) { stopifnot(inherits(x, "function")); 1 }', 'inherits(x, "function")');
 	guards('f <- function(x) { if(is.integer(x)) stop("a"); 1 }', '!is.integer(x)');
-	guards('f <- function(x) { if(any(x)) stop("a"); 1 }', '(!is.function(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && !any(x)');
+	guards('f <- function(x) { if(any(x)) stop("a"); 1 }', '(!is.function(x) && !is.call(x) || is.object(x)) && (!is.symbol(x) || is.object(x)) && !any(x)');
 	guards('f <- function(x) { stopifnot(!x); 1 }', '(is.numeric(x) || is.logical(x) || is.complex(x) || is.raw(x) || length(x) == 0 || is.object(x)) && all(!x)');
 	guards('f <- function(x) { stopifnot(exists("x")); 1 }', 'exists("x")');
 	guards('f <- function(x) { if(!(exists("x"))) stop("a"); 1 }', 'exists("x")');
@@ -500,14 +505,14 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	/* the primitives of the language: replacement functions, accessors, and what decides control flow */
 	guards('f <- function(x, v) { names(x) <- v; x }', '(is.object(x) || is.null(v) || !is.null(x) && !is.function(x) && !is.environment(x) && !is.symbol(x)) && (is.object(x) || !is.function(v) && !is.environment(v)) && (is.object(x) || is.null(v) || length(v) <= length(x))');
 	guards('f <- function(x, d) { dim(x) <- d; x }', '(is.object(x) || is.null(d) || is.atomic(x) || is.list(x) || is.expression(x)) && (is.object(x) || is.null(d) || is.atomic(d)) && (is.object(x) || is.null(d) || length(d) >= 1) && (is.object(x) || !anyNA(d)) && (is.object(x) || is.null(d) || prod(as.integer(d)) == length(x))');
-	guards('f <- function(x, w, v) { attr(x, w) <- v; x }', '(is.null(v) || !is.null(x) && !is.symbol(x) && !is.primitive(x)) && is.character(w) && length(w) == 1 && !is.na(w) && nchar(w) >= 1');
+	guards('f <- function(x, w, v) { attr(x, w) <- v; x }', '(is.null(v) || !is.null(x) && !is.symbol(x)) && (is.null(v) || !is.primitive(x)) && is.character(w) && length(w) == 1 && !is.na(w) && nchar(w) >= 1');
 	guards('f <- function(x, w) { attr(x, w) }', 'is.character(w) && length(w) == 1');
-	guards('f <- function(x, v) { oldClass(x) <- v; x }', '(length(v) == 0 || !is.null(x) && !is.symbol(x) && !is.primitive(x)) && (is.character(v) || length(v) == 0)');
-	guards('f <- function(x, v) { class(x) <- v; x }', '(is.null(v) || !is.null(x)) && (length(v) == 0 || !is.symbol(x) && !is.primitive(x)) && !is.function(v) && !is.environment(v)');
-	guards('f <- function(x, v) { levels(x) <- v; x }', 'is.object(x) || is.null(v) || !is.null(x) && !is.symbol(x) && !is.primitive(x)');
+	guards('f <- function(x, v) { oldClass(x) <- v; x }', '(length(v) == 0 || !is.null(x) && !is.symbol(x)) && (length(v) == 0 || !is.primitive(x)) && (is.character(v) || length(v) == 0)');
+	guards('f <- function(x, v) { class(x) <- v; x }', '(is.null(v) || !is.null(x)) && (length(v) == 0 || !is.symbol(x)) && (length(v) == 0 || !is.primitive(x)) && !is.function(v) && !is.environment(v)');
+	guards('f <- function(x, v) { levels(x) <- v; x }', '(is.object(x) || is.null(v) || !is.null(x) && !is.symbol(x)) && (is.object(x) || is.null(v) || !is.primitive(x))');
 	guards('f <- function(x, n) { length(x) <- n; x }', '(is.object(x) || !is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x)) && (is.object(x) || length(n) == 1) && (is.object(x) || is.numeric(n) || is.character(n) || is.object(n)) && (is.object(x) || !is.na(n)) && (is.object(x) || !is.numeric(n) || n > -1)');
 	guards('f <- function(x, v) { dimnames(x) <- v; x }', '(is.object(x) || is.null(v) || !is.null(dim(x))) && (is.object(x) || is.null(v) || is.list(v))');
-	guards('f <- function(x, v) { attributes(x) <- v; x }', '(length(v) == 0 || !is.symbol(x) && !is.primitive(x)) && (is.null(v) || is.list(v) && !is.pairlist(v))');
+	guards('f <- function(x, v) { attributes(x) <- v; x }', '(length(v) == 0 || !is.symbol(x)) && (length(v) == 0 || !is.primitive(x)) && (is.null(v) || is.list(v) && !is.pairlist(v))');
 	guards('f <- function(g, e) { environment(g) <- e; g }', '(is.null(e) || !is.null(g) && !is.symbol(g)) && (is.environment(e) || is.null(e))');
 	guards('f <- function(x, m) { storage.mode(x) <- m; x }', 'is.character(m) && length(m) >= 1');
 	guards('f <- function(x, i) { x[[i]] <- 1; x }', '!is.function(x) && !is.symbol(x) || is.object(x)');
@@ -611,9 +616,6 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	});
 
 	test('what R fails on by itself goes by the R version analyzed for', async() => {
-		const inVersion = (version: string) => FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.solver.sigdb.assumedRVersion = version;
-		});
 		const condition = 'f <- function(x) { if(x) 1 else 2 }';
 		assert.strictEqual((await guardsOfF(parser, condition, inVersion('4.1.3')))?.requires, 'length(x) >= 1 && (length(x) >= 2 || !is.na(x))');
 		assert.strictEqual((await guardsOfF(parser, condition, inVersion('4.2.0')))?.requires, 'length(x) >= 1 && length(x) <= 1 && !is.na(x)');
@@ -934,7 +936,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 }));
 
 /* everything above again, this time asking R whether what the query states is true */
-describe('Guards hold in R', { sequential: true }, withShell(shell => {
+describe('Guards hold in R', { sequential: true }, withShell(shell => withTreeSitter(parser => {
 	const Oracle = path.resolve('test/testfiles/guards/oracle.R').replaceAll('\\', '/');
 	const toR = (value: unknown): string => {
 		if(Array.isArray(value)) {
@@ -950,9 +952,13 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => {
 	const NeedsPackage = /checkmate|assertthat|rlang/;
 	test(label('no normal return breaks a claim', ['name-normal'], ['other']), async() => {
 		await shell.sendCommandWithOutput(`source(${JSON.stringify(Oracle)})`);
+		/* what R fails on changes between versions, so ask for the guards in the version this R has */
+		const version = (await shell.usedRVersion())?.format();
 		const broken: string[] = [];
 		let previous = '';
-		for(const { code, guards } of Checked) {
+		for(const checked of Checked) {
+			const { code } = checked;
+			const guards = version === undefined || checked.guards === undefined ? checked.guards : await guardsOfF(parser, code, inVersion(version));
 			if(NeedsPackage.test(code) || guards === undefined) {
 				continue;
 			}
@@ -974,4 +980,4 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => {
 	/* the oracle runs every case in R, which takes its time on a machine shared with other work */
 	}, 1_200_000);
 /* what the programs bind in the global environment must not reach the tests sharing the session */
-}, true));
+})(), true));

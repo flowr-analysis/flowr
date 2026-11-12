@@ -202,12 +202,12 @@ function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLoo
 }
 
 /** How tightly the operators bind, for putting parentheses exactly where R needs them. */
-const Precedence: Readonly<Record<BrandedIdentifier, number>> = {
+export const Precedence: Readonly<Record<BrandedIdentifier, number>> = {
 	'||':   1, '|':    1, '&&':   2, '&':    2, '==':   4, '!=':   4, '<':    4, '<=':   4, '>':    4, '>=':   4,
 	'+':    5, '-':    5, '*':    6, '/':    6, '%%':   7, '%/%':  7, '%in%': 7, '%*%':  7, ':':    8, '^':    9
 };
-const NegationPrecedence = 3;
-const AtomPrecedence = 10;
+export const NegationPrecedence = 3;
+export const AtomPrecedence = 10;
 
 function precedenceOf(this: void, term: GuardTerm): number {
 	if(!isCall(term)) {
@@ -227,7 +227,9 @@ function renderBelow(this: void, term: GuardTerm, atLeast: number): string {
 
 /** A name R reads without backticks, `...` and `..1` among them. */
 const Syntactic = /^(?:[A-Za-z]|\.(?![0-9]))[A-Za-z0-9._]*$|^\.$/;
-const Reserved = new Set(['if', 'else', 'repeat', 'while', 'function', 'for', 'next', 'break', 'TRUE', 'FALSE', 'NULL', 'Inf', 'NaN', 'NA', 'NA_integer_', 'NA_real_', 'NA_character_', 'NA_complex_', 'in']);
+/** The names R reads as constants rather than as variables. */
+export const RConstantNames: ReadonlySet<string> = new Set(['NA', 'NULL', 'NaN', 'Inf', 'NA_integer_', 'NA_real_', 'NA_character_', 'NA_complex_']);
+const Reserved = new Set(['if', 'else', 'repeat', 'while', 'function', 'for', 'next', 'break', 'TRUE', 'FALSE', 'in', ...RConstantNames]);
 
 /** The term in the R syntax it stands for. */
 function render(this: void, term: GuardTerm): string {

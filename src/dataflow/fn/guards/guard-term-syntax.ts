@@ -1,20 +1,15 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
 import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import { GuardTerm, type GuardArgument, type GuardCall } from './guard-term';
+import { AtomPrecedence, GuardTerm, NegationPrecedence, Precedence, RConstantNames, type GuardArgument, type GuardCall } from './guard-term';
+import { closingQuote } from '../../../util/text/args';
+import { unescapeRString } from '../../eval/values/string/string-constants';
 
-/** The names R reads as constants rather than as variables. */
-const ConstantNames: ReadonlySet<string> = new Set(['NA', 'NULL', 'NaN', 'Inf', 'NA_integer_', 'NA_real_', 'NA_character_', 'NA_complex_']);
 
 /** What flowR writes into terms beyond plain R, see {@link GuardTerm}. */
 const OwnNotation: ReadonlySet<string> = new Set(['succeeds', '...names']);
 
-const BinaryPrecedence: Readonly<Record<string, number>> = {
-	'||': 1, '|':  1, '&&': 2, '&':  2, '==': 4, '!=': 4, '<':  4, '<=': 4, '>':  4, '>=': 4,
-	'+':  5, '-':  5, '*':  6, '/':  6, ':':  8, '^':  9
-};
-const NegationPrecedence = 3;
-const SignPrecedence = 9;
+const SignPrecedence = AtomPrecedence - 1;
 const SpecialPrecedence = 7;
 
 type Token = { readonly kind: 'name' | 'string' | 'number' | 'op', readonly text: string, readonly value?: string };
@@ -22,7 +17,6 @@ type Token = { readonly kind: 'name' | 'string' | 'number' | 'op', readonly text
 const Name = /^(?:[A-Za-z]|\.(?![0-9]))[A-Za-z0-9._]*|^\./;
 const NumberLiteral = /^(?:0[xX][0-9a-fA-F]+|(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)[Li]?/;
 const Operators = ['::', '||', '&&', '==', '!=', '<=', '>=', '[[', '(', ')', ',', '=', '!', '<', '>', '+', '-', '*', '/', '^', ':', '$', '@', '[', ']', '|', '&'];
-const Escapes: Readonly<Record<string, string>> = { n: '\n', t: '\t', r: '\r', '0': '\0', '\\': '\\', '"': '"', '\'': '\'', '`': '`' };
 
 function tokenize(this: void, text: string): Token[] | undefined {
 	const tokens: Token[] = [];
@@ -35,20 +29,9 @@ function tokenize(this: void, text: string): Token[] | undefined {
 		}
 		const quote = rest[0];
 		if(quote === '"' || quote === '\'' || quote === '`') {
-			let value = '';
-			let end = 1;
-			for(; end < rest.length && rest[end] !== quote; end++) {
-				if(rest[end] === '\\') {
-					const escaped = Escapes[rest[++end]];
-					if(escaped === undefined) {
-						return undefined;
-					}
-					value += escaped;
-				} else {
-					value += rest[end];
-				}
-			}
-			if(end >= rest.length) {
+			const end = closingQuote(rest);
+			const value = end === undefined ? undefined : unescapeRString(rest.slice(1, end));
+			if(end === undefined || value === undefined) {
 				return undefined;
 			}
 			tokens.push({ kind: quote === '`' ? 'name' : 'string', text: rest.slice(0, end + 1), value });
@@ -120,7 +103,7 @@ class TermParser {
 		}
 		while(left !== undefined) {
 			const op = this.peek();
-			const precedence = op?.kind !== 'op' ? undefined : op.text.startsWith('%') ? SpecialPrecedence : BinaryPrecedence[op.text];
+			const precedence = op?.kind !== 'op' ? undefined : op.text.startsWith('%') ? SpecialPrecedence : Precedence[op.text];
 			if(op === undefined || precedence === undefined || precedence < min) {
 				break;
 			}
@@ -206,7 +189,7 @@ class TermParser {
 			return undefined;
 		} else if(token.text === 'TRUE' || token.text === 'FALSE') {
 			return token.text === 'TRUE' ? GuardTerm.True : GuardTerm.False;
-		} else if(ConstantNames.has(token.text)) {
+		} else if(RConstantNames.has(token.text)) {
 			return { kind: 'constant', lexeme: token.text };
 		}
 		return this.formals.has(name) ? GuardTerm.formal(name) : { kind: 'free', name };

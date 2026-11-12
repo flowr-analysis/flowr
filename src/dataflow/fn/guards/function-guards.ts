@@ -32,7 +32,7 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import { bindsOutside, type BuiltInLookup } from '../frame-reflection';
 import { definitionsBehind } from '../higher-order-function';
 import { memoize } from '../../../util/collections/defaultmap';
-import { GuardTerm, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant, type GuardOuter } from './guard-term';
+import { GuardTerm, RConstantNames, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant, type GuardOuter } from './guard-term';
 import type { GuardFacts, GuardFactsLookup, RFailure } from '../../environments/guard-facts';
 import { type FormalTerms, asksCallable, callable, composesName, getAsExists, guardFactsOf, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
 import { s3GroupGenericOf } from '../../environments/group-generics';
@@ -281,8 +281,6 @@ function isPureTerm(this: void, term: GuardTerm, state: GuardState): boolean {
 	return pure && term.args.every(a => isPureTerm(a.value, state));
 }
 
-const NotEvaluated: ReadonlySet<BrandedIdentifier> = new Set(['NA', 'NULL', 'NaN', 'Inf', 'NA_integer_', 'NA_real_', 'NA_character_', 'NA_complex_']);
-
 /** Whether a formal goes by the name, in which case reading it as something from outside means flowR lost track of it. */
 function isFormalName(this: void, name: BrandedIdentifier, scope: Scope): boolean {
 	return scope.formals.values().some(formal => formal === name);
@@ -312,7 +310,7 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 	const name = NodeId.recoverBareName(node.info.id, state.graph.idMap);
 	if(name === undefined) {
 		return undefined;
-	} else if(NotEvaluated.has(name)) {
+	} else if(RConstantNames.has(name)) {
 		return { kind: 'constant', lexeme: name };
 	} else if(scope.frameIsOpen) {
 		return undefined;

@@ -258,7 +258,7 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 
 /** Everything with stated guards, as `[package, name]`. */
 export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: BrandedIdentifier][] {
-	const table = RBaseGuards;
+	const table = RBaseGuards();
 	const inTable = Object.entries(table).flatMap(([pkg, names]) => Object.keys(names).map(name => [pkg, name] as [BrandedNamespace, BrandedIdentifier]));
 	const known = new Set(inTable.map(([pkg, name]) => `${pkg}::${name}`));
 	return [...inTable, ...namesWithGuardFacts().filter(([, name]) => requirementsOf(name) !== undefined).map(([, name]) => [baseRExportOwner(name) ?? PkgName.Base, name] as [BrandedNamespace, BrandedIdentifier]).filter(([pkg, name]) => !known.has(`${pkg}::${name}`))];
@@ -272,7 +272,7 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
  */
 export function builtInGuards(this: void, name: BrandedIdentifier, pkg: BrandedNamespace | undefined = baseRExportOwner(name)): StatedGuards | undefined {
 	const owner = pkg ?? PkgName.Base;
-	const stored = RBaseGuards[String(owner)]?.[String(name)];
+	const stored = RBaseGuards()[String(owner)]?.[String(name)];
 	const read = stored === undefined ? undefined : statedGuardsOfStored(stored, `${String(owner)}::${String(name)}`);
 	return read !== undefined ? { ...read, origin: { source: 'base-table', r: RBaseGuardsVersion, date: RBaseGuardsDate, pkg: owner, version: RBaseGuardsVersion } } : (baseRExportOwner(name) === owner || owner === PkgName.Base ? requirementsOf(name) : undefined);
 }

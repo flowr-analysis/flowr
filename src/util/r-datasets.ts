@@ -22,7 +22,7 @@ let byName: Map<string, BrandedNamespace[]> | undefined;
 function packagesWith(name: BrandedIdentifier): readonly BrandedNamespace[] {
 	if(byName === undefined) {
 		byName = new Map();
-		for(const [pkg, sets] of Object.entries(RDatasets)) {
+		for(const [pkg, sets] of Object.entries(RDatasets())) {
 			for(const set of Object.keys(sets)) {
 				const known = byName.get(set);
 				if(known === undefined) {
@@ -48,11 +48,11 @@ function packagesWith(name: BrandedIdentifier): readonly BrandedNamespace[] {
  */
 export function datasetShape(name: BrandedIdentifier, pkg?: BrandedNamespace, isLoaded: (pkg: BrandedNamespace) => boolean = () => false): DatasetShape | undefined {
 	const from = pkg ?? (BaseDatasets.has(name) ? 'datasets' : packagesWith(name).find(isLoaded));
-	const shape = from === undefined ? undefined : RDatasets[String(from)]?.[String(name)];
+	const shape = from === undefined ? undefined : RDatasets()[String(from)]?.[String(name)];
 	return shape === undefined || from === undefined ? undefined : { pkg: from, name, rows: shape[0], columns: shape[1], classes: shape[2] };
 }
 
 /** Every data set `pkg` ships as a data frame, by name. */
 export function datasetsOf(pkg: BrandedNamespace): readonly BrandedIdentifier[] {
-	return Object.keys(RDatasets[String(pkg)] ?? {});
+	return Object.keys(RDatasets()[String(pkg)] ?? {});
 }

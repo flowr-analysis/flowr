@@ -758,7 +758,7 @@ function closureMissingOk(this: void, name: BrandedIdentifier, formals: readonly
 	if(owner === undefined || isBasePrimitive(name)) {
 		return [];
 	}
-	const stored = RBaseGuards[String(owner)]?.[String(name)];
+	const stored = RBaseGuards()[String(owner)]?.[String(name)];
 	/* without a contract of its own, flowR's model of the function (a generic forcing what it dispatches on) is all there is */
 	if(stored === undefined) {
 		return [];

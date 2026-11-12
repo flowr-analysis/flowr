@@ -45,7 +45,7 @@ export function dispatchedOperands(this: void, name: BrandedIdentifier): number 
  * @param excluded  - the classes with a method of the program, which may run instead
  */
 export function groupMethodConditions(this: void, name: BrandedIdentifier, operands: readonly (GuardTerm | undefined)[], excluded: ReadonlySet<string>, facts?: GuardFactsLookup): GuardTerm[] {
-	const entries = RGroupMethodGuards[String(name)] ?? [];
+	const entries = RGroupMethodGuards()[String(name)] ?? [];
 	const dispatched = operands.slice(0, dispatchedOperands(name));
 	/* the classes asking the same, so that each operand needs only one condition for them */
 	const byAsked = new Map<string, { readonly asked: GuardTerm, readonly classes: (readonly string[])[] }>();

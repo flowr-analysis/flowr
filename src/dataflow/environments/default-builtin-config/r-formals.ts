@@ -41,7 +41,7 @@ const Named = /^[A-Za-z.]/;
 
 /** The formals R declares for `pkg::name`, if the package was installed when {@link RFormals} was generated and exports a function of that name. */
 function declaredFormals(pkg: string, name: string): readonly BrandedIdentifier[] | undefined {
-	const formals = RFormals[pkg]?.[name];
+	const formals = RFormals()[pkg]?.[name];
 	return formals === undefined ? undefined : formals === '' ? [] : formals.split(',');
 }
 

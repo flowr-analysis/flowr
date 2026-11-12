@@ -643,9 +643,9 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 
 	test('the table of the base packages relates generics and methods', () => {
 		assert.include(FunctionSemantics.builtInGuards('scale', 'base')?.requires, 'is.object(x) ||');
-		assert.include(RBaseGuards.base.scale?.methods ?? [], 'base::scale.default');
-		assert.deepStrictEqual(RBaseGuards.base['scale.default']?.methodOf, { generic: 'base::scale', class: 'default' });
-		assert.strictEqual(RBaseGuards.base.scale?.dispatches, 'x');
+		assert.include(RBaseGuards().base.scale?.methods ?? [], 'base::scale.default');
+		assert.deepStrictEqual(RBaseGuards().base['scale.default']?.methodOf, { generic: 'base::scale', class: 'default' });
+		assert.strictEqual(RBaseGuards().base.scale?.dispatches, 'x');
 	});
 
 	test('an operator takes the class of its other operand into account', async() => {
@@ -657,7 +657,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 	test('the table of the base packages takes nothing from a default', () => {
 		/* each of these only has a default of that type, and takes others just as well */
 		for(const [pkg, name, formal] of [['utils', 'head', 'n'], ['base', 'round', 'digits'], ['base', 'paste', 'sep'], ['base', 'nchar', 'type'], ['base', 'seq_len', 'length.out']]) {
-			assert.isUndefined(RBaseGuards[pkg]?.[name]?.formals?.[formal]?.types, `${pkg}::${name}`);
+			assert.isUndefined(RBaseGuards()[pkg]?.[name]?.formals?.[formal]?.types, `${pkg}::${name}`);
 		}
 	});
 

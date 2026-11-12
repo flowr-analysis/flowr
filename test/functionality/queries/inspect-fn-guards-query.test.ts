@@ -957,7 +957,12 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => {
 			}
 			const returned = `${guards.returns === undefined ? 'NULL' : toR(guards.returns)}, ${guards.passes === undefined ? 'NULL' : JSON.stringify(guards.passes)}`;
 			const command = `.guards_check(${JSON.stringify(code)}, c(${guards.clauses.map(c => JSON.stringify(c.rendered)).join(', ')}), ${toR(guards.formals)}, c(${guards.required.map(r => JSON.stringify(r)).join(', ')}), ${returned})`;
-			const found = (await shell.sendCommandWithOutput(command)).filter(l => l.trim().length > 0);
+			const answer = await shell.sendCommandWithOutput(`tryCatch(${command}, error = function(e) cat("the oracle failed:", conditionMessage(e), "\\n"))`).catch((e: Error) => e);
+			if(answer instanceof Error) {
+				broken.push(`${code}\n  ${answer.message}`);
+				break;
+			}
+			const found = answer.filter(l => l.trim().length > 0);
 			if(found.length > 0) {
 				broken.push(`${code}\n  ${found.slice(0, 3).join('\n  ')}`);
 			}
